@@ -600,7 +600,7 @@ export const videoApi = {
   },
 
   async getTaskStatus(taskId: string): Promise<TaskStatus> {
-    return request(`/api/videos/task/${taskId}`);
+    return request(`/api/videos/status/${taskId}`);
   },
 
   async getSummary(summaryId: number): Promise<Summary> {
