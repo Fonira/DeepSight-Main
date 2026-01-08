@@ -170,10 +170,12 @@ export const PlaylistPage: React.FC = () => {
         
         const discovery = await videoApi.discover(
           smartInput.searchQuery,
-          smartInput.searchLanguages || ['fr', 'en'],
-          videoCount + 5, // Get a few extra for filtering
-          30,
-          'default'
+          {
+            languages: smartInput.searchLanguages || ['fr', 'en'],
+            limit: videoCount + 5, // Get a few extra for filtering
+            min_quality: 30,
+            target_duration: 'default'
+          }
         );
         
         setDiscoveryResult(discovery);
