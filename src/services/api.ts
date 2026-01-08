@@ -675,28 +675,66 @@ export const videoApi = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const chatApi = {
+  /**
+   * 💬 Envoie une question au chat IA
+   * Endpoint: POST /api/chat/ask
+   */
   async send(
     summaryId: number,
     message: string,
-    options?: { enable_web_search?: boolean; enable_fact_check?: boolean }
-  ): Promise<ChatMessage> {
-    return request('/api/chat/send', {
+    useWebSearch: boolean = false
+  ): Promise<{ response: string; web_search_used: boolean; sources: Array<{ title: string; url: string }> }> {
+    return request('/api/chat/ask', {
       method: 'POST',
       body: {
         summary_id: summaryId,
-        message,
-        ...options,
+        question: message,  // Backend attend "question" pas "message"
+        use_web_search: useWebSearch,
+        mode: 'standard',
       },
       timeout: 120000,
     });
   },
 
+  /**
+   * 📜 Récupère l'historique du chat
+   * Endpoint: GET /api/chat/history/{summary_id}
+   * Retourne { messages: [...], quota_info: {...} }
+   */
   async getHistory(summaryId: number): Promise<ChatMessage[]> {
-    return request(`/api/chat/history/${summaryId}`);
+    const response = await request<{ messages: ChatMessage[]; quota_info: Record<string, unknown> }>(
+      `/api/chat/history/${summaryId}`
+    );
+    // Extraire et normaliser les messages
+    if (response && response.messages && Array.isArray(response.messages)) {
+      return response.messages.map(msg => ({
+        ...msg,
+        // S'assurer que content est une string
+        content: typeof msg.content === 'string' ? msg.content : String(msg.content || ''),
+      }));
+    }
+    return [];
   },
 
+  /**
+   * 📊 Récupère le quota du chat
+   * Endpoint: GET /api/chat/{summary_id}/quota
+   */
   async getQuota(summaryId: number): Promise<ChatQuota> {
-    return request(`/api/chat/quota/${summaryId}`);
+    const response = await request<{
+      can_ask: boolean;
+      reason: string;
+      daily_limit: number;
+      daily_used: number;
+      per_video_limit: number;
+      per_video_used: number;
+    }>(`/api/chat/${summaryId}/quota`);
+    
+    return {
+      used: response.daily_used || 0,
+      limit: response.daily_limit || 10,
+      remaining: (response.daily_limit || 10) - (response.daily_used || 0),
+    };
   },
 
   async clearHistory(summaryId: number): Promise<{ success: boolean }> {
