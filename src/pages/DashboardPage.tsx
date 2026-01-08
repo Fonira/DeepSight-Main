@@ -323,13 +323,14 @@ export const DashboardPage: React.FC = () => {
         console.log(`💬 Loading chat history for summary ${selectedSummary.id}...`);
         const history = await chatApi.getHistory(selectedSummary.id);
         
-        // L'API retourne maintenant directement un tableau de messages
+        // L'API retourne maintenant directement un tableau normalisé
         if (history && Array.isArray(history) && history.length > 0) {
           // Convertir l'historique du backend au format du frontend
           const formattedMessages: ChatMessage[] = history.map((msg: any, index: number) => ({
             id: msg.id?.toString() || `history-${index}-${Date.now()}`,
             role: msg.role as 'user' | 'assistant',
-            content: msg.content,
+            // S'assurer que content est une string
+            content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
             timestamp: msg.created_at ? new Date(msg.created_at) : undefined,
             sources: msg.sources || [],
             web_search_used: msg.web_search_used || false,
