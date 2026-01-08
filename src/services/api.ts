@@ -908,6 +908,25 @@ export const billingApi = {
   },
 
   /**
+   * ✅ Confirme un checkout Stripe et met à jour le plan
+   * Utilisé comme fallback quand les webhooks ne fonctionnent pas
+   */
+  async confirmCheckout(sessionId: string): Promise<{
+    success: boolean;
+    message: string;
+    plan?: string;
+    credits_added?: number;
+    new_credits?: number;
+    already_updated?: boolean;
+    status?: string;
+  }> {
+    return request('/api/billing/confirm-checkout', {
+      method: 'POST',
+      body: { session_id: sessionId },
+    });
+  },
+
+  /**
    * 📋 Récupère les plans disponibles
    */
   async getPlans(): Promise<{
