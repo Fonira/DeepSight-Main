@@ -1,0 +1,509 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "error": "Une erreur est survenue",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "confirm": "Confirmer",
+    "back": "Retour",
+    "next": "Suivant",
+    "search": "Rechercher",
+    "or": "ou",
+    "yes": "Oui",
+    "no": "Non",
+    "close": "Fermer",
+    "copy": "Copier",
+    "copied": "Copié !",
+    "share": "Partager",
+    "download": "Télécharger",
+    "refresh": "Actualiser",
+    "retry": "Réessayer",
+    "seeMore": "Voir plus",
+    "seeLess": "Voir moins",
+    "noResults": "Aucun résultat",
+    "required": "Obligatoire",
+    "optional": "Optionnel"
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "analysis": "Analyse",
+    "history": "Historique",
+    "playlists": "Playlists",
+    "settings": "Paramètres",
+    "subscription": "Abonnement",
+    "myAccount": "Mon compte",
+    "admin": "Administration",
+    "legal": "Mentions légales",
+    "upgrade": "Améliorer",
+    "logout": "Déconnexion",
+    "login": "Connexion"
+  },
+  "auth": {
+    "login": "Connexion",
+    "register": "Inscription",
+    "loginWithGoogle": "Continuer avec Google",
+    "loginWithEmail": "Se connecter par email",
+    "registerWithEmail": "S'inscrire par email",
+    "email": "Adresse email",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "username": "Nom d'utilisateur",
+    "forgotPassword": "Mot de passe oublié ?",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "verifyEmail": "Vérifier l'email",
+    "verificationCode": "Code de vérification",
+    "resendCode": "Renvoyer le code",
+    "noAccount": "Pas encore de compte ?",
+    "hasAccount": "Déjà un compte ?",
+    "createAccount": "Créer un compte",
+    "signIn": "Se connecter",
+    "signUp": "S'inscrire",
+    "signOut": "Se déconnecter",
+    "welcomeBack": "Bon retour !",
+    "createYourAccount": "Créez votre compte",
+    "enterEmail": "Entrez votre adresse email",
+    "enterPassword": "Entrez votre mot de passe",
+    "passwordRequirements": "Au moins 8 caractères",
+    "checkYourEmail": "Vérifiez votre boîte mail",
+    "codeSent": "Un code a été envoyé à",
+    "sessionExpired": "Votre session a expiré",
+    "sessionExpiredOtherDevice": "Vous vous êtes peut-être connecté depuis un autre appareil",
+    "pleaseLoginAgain": "Veuillez vous reconnecter"
+  },
+  "dashboard": {
+    "title": "Analyse vidéo",
+    "subtitle": "URL YouTube, texte brut, ou recherche intelligente de vidéos",
+    "placeholder": "Collez une URL YouTube ou décrivez la vidéo recherchée...",
+    "placeholderSearch": "Recherchez un sujet : \"IA\", \"climat\", \"économie\"...",
+    "analyze": "Analyser",
+    "analyzing": "Analyse en cours...",
+    "credits": "crédits",
+    "creditsRemaining": "crédits restants",
+    "selectCategory": "Catégorie",
+    "selectMode": "Mode d'analyse",
+    "autoDetect": "Détection auto",
+    "searchMode": "Recherche",
+    "urlMode": "URL",
+    "textMode": "Texte",
+    "pasteUrl": "Collez l'URL d'une vidéo YouTube",
+    "pasteText": "Collez un texte à analyser",
+    "videoFound": "Vidéo trouvée",
+    "readyToAnalyze": "Prête à analyser",
+    "estimatedTime": "Temps estimé",
+    "estimatedCredits": "Crédits estimés"
+  },
+  "analysis": {
+    "title": "Analyse",
+    "summary": "Synthèse",
+    "summaryExpress": "Synthèse Express",
+    "summaryStandard": "Synthèse Standard", 
+    "summaryDeep": "Synthèse Approfondie",
+    "keyPoints": "Points clés",
+    "entities": "Entités",
+    "concepts": "Concepts",
+    "keywords": "Mots-clés",
+    "factCheck": "Vérification des faits",
+    "factCheckLite": "Fact-check rapide",
+    "reliability": "Score de fiabilité",
+    "sources": "Sources",
+    "citations": "Citations",
+    "timestamps": "Horodatages",
+    "chat": "Chat IA",
+    "export": "Exporter",
+    "copy": "Copier",
+    "cite": "Citer",
+    "share": "Partager",
+    "favorite": "Favori",
+    "notes": "Notes",
+    "studyTools": "Outils d'étude",
+    "conceptMap": "Carte conceptuelle",
+    "glossary": "Glossaire",
+    "quiz": "Quiz",
+    "flashcards": "Fiches mémo",
+    "mindMap": "Carte mentale",
+    "timeline": "Chronologie",
+    "inProgress": "Analyse en cours...",
+    "complete": "Analyse terminée",
+    "failed": "Échec de l'analyse",
+    "noKeywords": "Aucun mot-clé disponible",
+    "noConcepts": "Aucun concept extrait",
+    "loadingConcepts": "Chargement des concepts...",
+    "seconds": "secondes",
+    "minutes": "minutes",
+    "words": "mots",
+    "readingTime": "Temps de lecture"
+  },
+  "categories": {
+    "auto": "Détection automatique",
+    "general": "Général",
+    "interview": "Interview / Podcast",
+    "documentary": "Documentaire",
+    "tutorial": "Tutoriel",
+    "news": "Actualités",
+    "educational": "Éducatif",
+    "scientific": "Scientifique",
+    "tech": "Technologie",
+    "science": "Science",
+    "business": "Business",
+    "politics": "Politique",
+    "health": "Santé",
+    "education": "Éducation",
+    "entertainment": "Divertissement",
+    "sports": "Sports",
+    "culture": "Culture",
+    "music": "Musique",
+    "gaming": "Jeux vidéo",
+    "lifestyle": "Style de vie",
+    "travel": "Voyage",
+    "food": "Cuisine",
+    "history": "Histoire",
+    "philosophy": "Philosophie",
+    "economics": "Économie",
+    "law": "Droit",
+    "environment": "Environnement"
+  },
+  "modes": {
+    "quick": "Express",
+    "quickDesc": "30 secondes de lecture",
+    "standard": "Standard",
+    "standardDesc": "2-4 minutes de lecture",
+    "deep": "Approfondi",
+    "deepDesc": "5-10 minutes de lecture",
+    "expert": "Expert",
+    "expertDesc": "Analyse académique complète"
+  },
+  "history": {
+    "title": "Historique",
+    "subtitle": "Retrouvez toutes vos analyses précédentes",
+    "empty": "Aucune analyse pour le moment",
+    "emptyDesc": "Vos analyses apparaîtront ici",
+    "delete": "Supprimer",
+    "deleteConfirm": "Êtes-vous sûr de vouloir supprimer cette analyse ?",
+    "viewDetails": "Voir les détails",
+    "openAnalysis": "Ouvrir l'analyse",
+    "searchHistory": "Rechercher dans l'historique...",
+    "filterByCategory": "Filtrer par catégorie",
+    "filterByDate": "Filtrer par date",
+    "sortBy": "Trier par",
+    "sortNewest": "Plus récent",
+    "sortOldest": "Plus ancien",
+    "sortTitle": "Titre",
+    "today": "Aujourd'hui",
+    "yesterday": "Hier",
+    "thisWeek": "Cette semaine",
+    "thisMonth": "Ce mois",
+    "older": "Plus ancien"
+  },
+  "playlists": {
+    "title": "Playlists",
+    "subtitle": "Analysez des playlists YouTube entières",
+    "create": "Créer une playlist",
+    "analyze": "Analyser la playlist",
+    "analyzing": "Analyse en cours...",
+    "empty": "Aucune playlist analysée",
+    "emptyDesc": "Collez l'URL d'une playlist YouTube pour commencer",
+    "videos": "vidéos",
+    "analyzed": "analysées",
+    "pending": "en attente",
+    "corpus": "Corpus",
+    "corpusAnalysis": "Analyse de corpus",
+    "metaAnalysis": "Méta-analyse",
+    "crossReferences": "Références croisées",
+    "commonThemes": "Thèmes communs",
+    "chatWithPlaylist": "Discuter avec la playlist"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "subtitle": "Gérez votre compte et vos préférences",
+    "profile": "Profil",
+    "account": "Compte",
+    "preferences": "Préférences",
+    "appearance": "Apparence",
+    "language": "Langue",
+    "interfaceLanguage": "Langue de l'interface",
+    "analysisLanguage": "Langue des analyses",
+    "theme": "Thème",
+    "darkMode": "Mode sombre",
+    "lightMode": "Mode clair",
+    "systemTheme": "Suivre le système",
+    "notifications": "Notifications",
+    "emailNotifications": "Notifications par email",
+    "pushNotifications": "Notifications push",
+    "analysisComplete": "Analyse terminée",
+    "security": "Sécurité",
+    "changePassword": "Changer le mot de passe",
+    "currentPassword": "Mot de passe actuel",
+    "newPassword": "Nouveau mot de passe",
+    "twoFactor": "Authentification à deux facteurs",
+    "sessions": "Sessions actives",
+    "revokeAll": "Révoquer toutes les sessions",
+    "subscription": "Abonnement",
+    "currentPlan": "Plan actuel",
+    "manageBilling": "Gérer la facturation",
+    "cancelSubscription": "Annuler l'abonnement",
+    "dangerZone": "Zone dangereuse",
+    "deleteAccount": "Supprimer mon compte",
+    "deleteAccountWarning": "Cette action est irréversible",
+    "exportData": "Exporter mes données",
+    "saved": "Paramètres enregistrés",
+    "saveChanges": "Enregistrer les modifications"
+  },
+  "upgrade": {
+    "title": "Choisissez votre offre",
+    "subtitle": "Débloquez des analyses avancées et des fonctionnalités premium",
+    "recommended": "Recommandé",
+    "popular": "Populaire",
+    "bestValue": "Meilleur rapport qualité/prix",
+    "currentPlan": "Plan actuel",
+    "month": "/mois",
+    "year": "/an",
+    "annually": "Facturation annuelle",
+    "monthly": "Facturation mensuelle",
+    "savePercent": "Économisez {percent}%",
+    "securePayment": "Paiement sécurisé par Stripe",
+    "cancelAnytime": "Annulation à tout moment",
+    "moneyBack": "Satisfait ou remboursé 14 jours",
+    "features": "Fonctionnalités incluses",
+    "compare": "Comparer les plans",
+    "faq": "Questions fréquentes",
+    "cta": {
+      "currentPlan": "Plan actuel",
+      "free": "Commencer gratuitement",
+      "starter": "Choisir Starter",
+      "pro": "Passer à Pro",
+      "expert": "Devenir Expert"
+    },
+    "plans": {
+      "free": {
+        "name": "Découverte",
+        "description": "Pour découvrir Deep Sight",
+        "features": {
+          "credits": "10 crédits/mois",
+          "analysis": "Analyses de base",
+          "history": "Historique 7 jours",
+          "chat": "Chat IA limité",
+          "export": "Export texte"
+        }
+      },
+      "starter": {
+        "name": "Starter",
+        "description": "Pour les utilisateurs réguliers",
+        "features": {
+          "credits": "60 crédits/mois",
+          "analysis": "Analyses avancées",
+          "history": "Historique 60 jours",
+          "chat": "Chat IA illimité",
+          "export": "Tous les exports",
+          "factCheck": "Fact-checking"
+        }
+      },
+      "pro": {
+        "name": "Pro",
+        "description": "Pour les professionnels",
+        "features": {
+          "credits": "200 crédits/mois",
+          "analysis": "Tous les modèles IA",
+          "history": "Historique illimité",
+          "playlists": "Analyse de playlists",
+          "webSearch": "Recherche web IA",
+          "priority": "Support prioritaire"
+        }
+      },
+      "expert": {
+        "name": "Expert",
+        "description": "Pour les organisations",
+        "features": {
+          "credits": "500 crédits/mois",
+          "analysis": "Analyses illimitées",
+          "api": "Accès API",
+          "corpus": "Corpus personnalisés",
+          "team": "Multi-utilisateurs",
+          "support": "Support dédié"
+        }
+      }
+    }
+  },
+  "chat": {
+    "title": "Chat IA",
+    "placeholder": "Posez une question sur cette vidéo...",
+    "placeholderPlaylist": "Posez une question sur cette playlist...",
+    "send": "Envoyer",
+    "thinking": "Réflexion en cours...",
+    "searching": "Recherche en cours...",
+    "typing": "En train d'écrire...",
+    "webSearch": "Recherche web",
+    "webSearchEnabled": "Recherche web activée",
+    "webSearchDisabled": "Recherche web désactivée",
+    "newConversation": "Nouvelle conversation",
+    "clearHistory": "Effacer l'historique",
+    "copyResponse": "Copier la réponse",
+    "regenerate": "Régénérer",
+    "stopGenerating": "Arrêter",
+    "sourcesUsed": "Sources utilisées",
+    "basedOnVideo": "Basé sur la vidéo",
+    "basedOnWeb": "Basé sur le web",
+    "suggestions": {
+      "keyPoints": "Quels sont les points principaux ?",
+      "summary": "Résume en 3 points essentiels",
+      "sources": "Quelles sont les sources citées ?",
+      "bias": "Y a-t-il des biais dans cette vidéo ?",
+      "critique": "Quelle est ta critique de ce contenu ?",
+      "compare": "Compare avec d'autres points de vue",
+      "explain": "Explique-moi comme si j'avais 10 ans",
+      "deeper": "Approfondis ce sujet"
+    },
+    "errors": {
+      "tooLong": "Message trop long",
+      "rateLimited": "Trop de messages, veuillez patienter",
+      "noCredits": "Crédits insuffisants",
+      "failed": "Erreur lors de l'envoi"
+    }
+  },
+  "export": {
+    "title": "Exporter l'analyse",
+    "selectFormat": "Choisissez un format",
+    "downloading": "Téléchargement en cours...",
+    "success": "Export réussi !",
+    "formats": {
+      "txt": "Texte brut (.txt)",
+      "md": "Markdown (.md)",
+      "pdf": "Document PDF (.pdf)",
+      "docx": "Document Word (.docx)",
+      "json": "Données JSON (.json)"
+    },
+    "options": {
+      "includeSummary": "Inclure la synthèse",
+      "includeTranscript": "Inclure la transcription",
+      "includeChat": "Inclure l'historique du chat",
+      "includeMetadata": "Inclure les métadonnées"
+    }
+  },
+  "errors": {
+    "generic": "Une erreur est survenue",
+    "tryAgain": "Veuillez réessayer",
+    "invalidUrl": "URL invalide",
+    "invalidYoutubeUrl": "URL YouTube invalide",
+    "videoNotFound": "Vidéo introuvable",
+    "videoUnavailable": "Vidéo non disponible",
+    "videoTooLong": "Vidéo trop longue (max 4 heures)",
+    "videoTooShort": "Vidéo trop courte (min 30 secondes)",
+    "noTranscript": "Aucune transcription disponible",
+    "transcriptError": "Erreur lors de la récupération de la transcription",
+    "noCredits": "Crédits insuffisants",
+    "creditRequired": "Cette action nécessite {count} crédit(s)",
+    "networkError": "Erreur de connexion réseau",
+    "serverError": "Erreur serveur, veuillez réessayer",
+    "timeout": "Délai d'attente dépassé",
+    "unauthorized": "Non autorisé",
+    "forbidden": "Accès refusé",
+    "notFound": "Page introuvable",
+    "maintenance": "Service en maintenance",
+    "rateLimited": "Trop de requêtes, veuillez patienter"
+  },
+  "success": {
+    "analysisSaved": "Analyse enregistrée",
+    "analysisCopied": "Analyse copiée",
+    "linkCopied": "Lien copié",
+    "settingsSaved": "Paramètres enregistrés",
+    "passwordChanged": "Mot de passe modifié",
+    "emailVerified": "Email vérifié",
+    "subscriptionUpdated": "Abonnement mis à jour"
+  },
+  "footer": {
+    "legal": "Mentions légales",
+    "privacy": "Politique de confidentialité",
+    "terms": "Conditions d'utilisation",
+    "contact": "Contact",
+    "help": "Aide",
+    "about": "À propos",
+    "copyright": "© 2026 Deep Sight. Tous droits réservés.",
+    "madeWith": "Fait avec",
+    "inFrance": "en France"
+  },
+  "landing": {
+    "hero": {
+      "title": "Comprenez YouTube en profondeur",
+      "subtitle": "Synthèses intelligentes, fact-checking automatique et assistant IA pour analyser n'importe quelle vidéo",
+      "cta": "Commencer gratuitement",
+      "ctaSecondary": "Voir une démo",
+      "trustedBy": "Utilisé par des chercheurs, journalistes et étudiants"
+    },
+    "features": {
+      "title": "Fonctionnalités",
+      "subtitle": "Tout ce dont vous avez besoin pour analyser des vidéos",
+      "synthesis": {
+        "title": "Synthèses intelligentes",
+        "description": "Obtenez des résumés structurés adaptés au type de contenu"
+      },
+      "factCheck": {
+        "title": "Vérification des faits",
+        "description": "Identifiez les affirmations vérifiables et les sources"
+      },
+      "chat": {
+        "title": "Chat contextuel",
+        "description": "Posez des questions précises sur le contenu"
+      },
+      "export": {
+        "title": "Export professionnel",
+        "description": "Téléchargez vos analyses en PDF, Word ou Markdown"
+      }
+    },
+    "useCases": {
+      "title": "Pour qui ?",
+      "researchers": {
+        "title": "Chercheurs",
+        "description": "Analysez des heures de contenu en quelques minutes"
+      },
+      "journalists": {
+        "title": "Journalistes",
+        "description": "Vérifiez les sources et identifiez les biais"
+      },
+      "students": {
+        "title": "Étudiants",
+        "description": "Créez des fiches de révision et des résumés"
+      }
+    },
+    "pricing": {
+      "title": "Tarifs simples et transparents",
+      "subtitle": "Choisissez l'offre adaptée à vos besoins"
+    },
+    "faq": {
+      "title": "Questions fréquentes",
+      "items": [
+        {
+          "question": "Comment fonctionne Deep Sight ?",
+          "answer": "Deep Sight utilise l'IA pour analyser les transcriptions YouTube et générer des synthèses structurées, adaptées au type de contenu."
+        },
+        {
+          "question": "Quels types de vidéos puis-je analyser ?",
+          "answer": "Toute vidéo YouTube avec une transcription disponible : documentaires, interviews, cours, conférences, tutoriels..."
+        },
+        {
+          "question": "Mes données sont-elles sécurisées ?",
+          "answer": "Oui, vos analyses sont privées et nous ne partageons jamais vos données. Hébergement en Europe conforme au RGPD."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Prêt à analyser vos vidéos ?",
+      "subtitle": "Rejoignez des milliers d'utilisateurs qui gagnent du temps",
+      "button": "Créer un compte gratuit"
+    }
+  },
+  "notifications": {
+    "analysisComplete": "Analyse terminée",
+    "analysisReady": "Votre analyse est prête !",
+    "clickToView": "Cliquez pour voir",
+    "newFeature": "Nouvelle fonctionnalité",
+    "welcome": "Bienvenue sur Deep Sight !"
+  },
+  "accessibility": {
+    "skipToContent": "Aller au contenu",
+    "menu": "Menu",
+    "closeMenu": "Fermer le menu",
+    "openMenu": "Ouvrir le menu",
+    "toggleTheme": "Changer le thème",
+    "toggleLanguage": "Changer la langue"
+  }
+}

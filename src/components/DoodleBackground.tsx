@@ -1,0 +1,120 @@
+/**
+ * 🎨 DEEP SIGHT DOODLES v10 - REPEATING PATTERN
+ * Couvre TOUTE la page avec un pattern répétitif
+ */
+
+import React, { useMemo } from 'react';
+import { useTheme } from '../contexts/ThemeContext';
+
+interface DoodleBackgroundProps {
+  density?: number;
+  variant?: 'default' | 'analysis' | 'video' | 'academic';
+}
+
+const ICONS = [
+  "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-2 14V8l6 4-6 4z",
+  "M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6zm8 2v8l6-4-6-4z",
+  "M23 7l-7 5 7 5V7zM14 5H3a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z",
+  "M5 3l14 9-14 9V3z",
+  "M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2zM7.5 13a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm9 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z",
+  "M12 4c-2 0-3.5 1-4 2.5-.5-1-2-1.5-3-.5S3.5 8 4 9c-1 .5-1.5 2-.5 3s2 1.5 3 1c.5 1.5 2 2.5 4 2.5s3.5-1 4-2.5c1 .5 2 0 3-1s.5-2.5-.5-3c.5-1 0-2.5-1-3.5s-2.5 0-3 .5C15.5 5 14 4 12 4z",
+  "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z",
+  "M5 5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm14 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-7 7a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7 7l5 5m5-5l-5 5",
+  "M22 12h-4l-3 9L9 3l-3 9H2",
+  "M18 20V10M12 20V4M6 20v-6",
+  "M3 3v18h18M7 14l4-4 4 4 5-6",
+  "M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10h10z",
+  "M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z",
+  "M9 18h6M10 22h4M12 2a6 6 0 0 0-6 6c0 2 1 3.5 2.5 5 .5.5 1 1.5 1 2.5V17h5v-1.5c0-1 .5-2 1-2.5 1.5-1.5 2.5-3 2.5-5a6 6 0 0 0-6-6z",
+  "M12 3v2m0 14v2m9-9h-2M5 12H3m15.4-6.4l-1.4 1.4M7 17l-1.4 1.4m12.8 0L17 17M7 7L5.6 5.6",
+  "M12 2l2.4 7.4h7.6l-6 4.6 2.4 7.4-6.4-4.8-6.4 4.8 2.4-7.4-6-4.6h7.6z",
+  "M13 2L3 14h9l-1 8 10-12h-9l1-8z",
+  "M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2V3zm18 0h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7V3z",
+  "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM14 2v6h6",
+  "M2 4h20v12H2V4zm5 16h10m-5-4v4",
+  "M12 18h.01M7 21h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2z",
+  "M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z",
+  "M16 18l6-6-6-6M8 6l-6 6 6 6",
+  "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4v6l4 2",
+  "M4 6h16M4 12h16M4 18h7",
+  "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 2h6v4H9V2z",
+  "M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm-8 14v2m-4 0h8",
+  "M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm6 18h.01",
+  "M9 3h6m-5 0v6l-5 9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1l-5-9V3",
+  "M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7",
+];
+
+const seededRandom = (seed: number): number => {
+  const x = Math.sin(seed * 9999) * 10000;
+  return x - Math.floor(x);
+};
+
+const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
+  density = 80,
+  variant = 'default'
+}) => {
+  const { isDark } = useTheme();
+  
+  const color = isDark ? '#A78BFA' : '#8B5CF6';
+  const opacity = isDark ? 0.10 : 0.14;
+
+  // Créer un tile/pattern de doodles
+  const tileDoodles = useMemo(() => {
+    const items = [];
+    const cols = 8;
+    const rows = 8;
+    const tileSize = 400; // Taille du pattern qui se répète
+    const cellW = tileSize / cols;
+    const cellH = tileSize / rows;
+    
+    for (let i = 0; i < density; i++) {
+      const seed = 42 + i * 17;
+      const col = i % cols;
+      const row = Math.floor(i / cols) % rows;
+      
+      items.push({
+        id: i,
+        path: ICONS[Math.floor(seededRandom(seed) * ICONS.length)],
+        x: col * cellW + cellW / 2 + (seededRandom(seed + 1) - 0.5) * 25,
+        y: row * cellH + cellH / 2 + (seededRandom(seed + 2) - 0.5) * 25,
+        rotation: (seededRandom(seed + 3) - 0.5) * 45,
+        scale: 0.6 + seededRandom(seed + 4) * 0.4,
+      });
+    }
+    return items;
+  }, [density]);
+
+  // Créer le SVG pattern en data URI
+  const patternSvg = useMemo(() => {
+    const paths = tileDoodles.map((d) => 
+      `<g transform="translate(${d.x}, ${d.y}) rotate(${d.rotation}) scale(${d.scale})" opacity="${opacity}">
+        <path d="${d.path}" transform="translate(-12, -12)" fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>`
+    ).join('');
+    
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">${paths}</svg>`;
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+  }, [tileDoodles, color, opacity]);
+
+  return (
+    <div 
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        minHeight: '100%',
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        zIndex: 0,
+        backgroundImage: patternSvg,
+        backgroundRepeat: 'repeat',
+        backgroundSize: '400px 400px',
+      }}
+      aria-hidden="true"
+    />
+  );
+};
+
+export default DoodleBackground;

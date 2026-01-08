@@ -1,0 +1,407 @@
+/**
+ * DEEP SIGHT v5.1 — Sidebar
+ * Navigation latérale sobre et fonctionnelle
+ * 🆕 Logo cliquable vers la page principale
+ */
+
+import React from "react";
+import { NavLink, useNavigate } from "react-router-dom";
+import {
+  LayoutDashboard,
+  History,
+  ListVideo,
+  Settings,
+  CreditCard,
+  LogOut,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  HelpCircle,
+  ExternalLink,
+  Shield,
+  Scale,
+  BarChart3
+} from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
+import { useLanguage } from "../../contexts/LanguageContext";
+
+// === Logo cliquable vers la page principale ===
+const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({ collapsed, onClick }) => {
+  const [imageError, setImageError] = React.useState(false);
+  
+  // SVG du logo Deep Sight (œil stylisé avec play button)
+  const LogoSVG = () => (
+    <svg viewBox="0 0 100 100" className="w-full h-full">
+      <defs>
+        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#8B5CF6" />
+          <stop offset="50%" stopColor="#6366F1" />
+          <stop offset="100%" stopColor="#06B6D4" />
+        </linearGradient>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      {/* Cercles concentriques (œil) */}
+      <circle cx="50" cy="50" r="45" fill="none" stroke="url(#logoGradient)" strokeWidth="3" opacity="0.8" filter="url(#glow)"/>
+      <circle cx="50" cy="50" r="32" fill="none" stroke="url(#logoGradient)" strokeWidth="2.5" opacity="0.9"/>
+      <circle cx="50" cy="50" r="20" fill="none" stroke="url(#logoGradient)" strokeWidth="2"/>
+      {/* Triangle play au centre */}
+      <polygon points="45,38 45,62 65,50" fill="url(#logoGradient)" filter="url(#glow)"/>
+      {/* Point lumineux */}
+      <circle cx="62" cy="38" r="4" fill="#06B6D4" opacity="0.9"/>
+    </svg>
+  );
+  
+  return (
+    <button 
+      onClick={onClick}
+      className="flex items-center gap-3 group cursor-pointer hover:opacity-90 transition-all"
+      title="Retour à l'accueil"
+    >
+      <div className="relative w-10 h-10 flex-shrink-0 rounded-xl overflow-hidden flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+        {/* Halo au hover */}
+        <div 
+          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          style={{
+            background: 'radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, transparent 70%)',
+            filter: 'blur(8px)',
+          }}
+        />
+        {!imageError ? (
+          <img 
+            src="/logo.png" 
+            alt="Deep Sight" 
+            className="w-full h-full object-contain relative z-10"
+            style={{ filter: 'drop-shadow(0 2px 8px rgba(99, 102, 241, 0.5))' }}
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-full relative z-10">
+            <LogoSVG />
+          </div>
+        )}
+      </div>
+      {!collapsed && (
+        <span className="font-display text-lg font-semibold tracking-tight bg-gradient-to-r from-violet-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+          Deep Sight
+        </span>
+      )}
+    </button>
+  );
+};
+
+// === Nav Item ===
+interface NavItemProps {
+  to: string;
+  icon: React.ElementType;
+  label: string;
+  collapsed?: boolean;
+  badge?: string;
+  external?: boolean;
+}
+
+const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, collapsed, badge, external }) => {
+  const baseClasses = "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium";
+  
+  if (external) {
+    return (
+      <a
+        href={to}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`${baseClasses} text-text-secondary hover:text-text-primary hover:bg-bg-hover`}
+        title={collapsed ? label : undefined}
+      >
+        <Icon className="w-5 h-5 flex-shrink-0" />
+        {!collapsed && (
+          <>
+            <span className="flex-1">{label}</span>
+            <ExternalLink className="w-3.5 h-3.5 text-text-muted" />
+          </>
+        )}
+      </a>
+    );
+  }
+
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `${baseClasses} ${
+          isActive
+            ? 'bg-accent-primary-muted text-accent-primary'
+            : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+        }`
+      }
+      title={collapsed ? label : undefined}
+    >
+      <Icon className="w-5 h-5 flex-shrink-0" />
+      {!collapsed && (
+        <>
+          <span className="flex-1">{label}</span>
+          {badge && (
+            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-accent-secondary-muted text-accent-secondary">
+              {badge}
+            </span>
+          )}
+        </>
+      )}
+    </NavLink>
+  );
+};
+
+// === User Card ===
+interface UserCardProps {
+  collapsed?: boolean;
+}
+
+const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
+  const { user, logout } = useAuth();
+  const { language } = useLanguage();
+  const navigate = useNavigate();
+
+  if (!user) return null;
+
+  const planLabels: Record<string, string> = {
+    free: '🆓 Découverte',
+    starter: '⚡ Starter',
+    pro: '⭐ Pro',
+    expert: '👑 Expert',
+    unlimited: '👑 Admin',
+  };
+
+  const planColors: Record<string, string> = {
+    free: 'text-text-tertiary',
+    starter: 'text-emerald-400',
+    pro: 'text-amber-400',
+    expert: 'text-purple-400',
+    unlimited: 'text-yellow-400',
+  };
+
+  const planBgColors: Record<string, string> = {
+    free: 'bg-gray-500/10',
+    starter: 'bg-emerald-500/10',
+    pro: 'bg-amber-500/10',
+    expert: 'bg-purple-500/10',
+    unlimited: 'bg-yellow-500/10',
+  };
+
+  const currentPlan = user.plan || 'free';
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
+  // Formater les crédits
+  const formatCredits = (credits: number) => {
+    // Toujours afficher la valeur exacte avec séparateur de milliers
+    return credits.toLocaleString();
+  };
+
+  if (collapsed) {
+    return (
+      <div className="p-2">
+        <button
+          onClick={handleLogout}
+          className="w-full p-2 rounded-lg hover:bg-bg-hover transition-colors"
+          title={language === 'fr' ? 'Déconnexion' : 'Sign out'}
+        >
+          <div className={`w-8 h-8 rounded-full ${planBgColors[currentPlan]} flex items-center justify-center ${planColors[currentPlan]} font-medium text-sm`}>
+            {user.email?.charAt(0).toUpperCase() || 'U'}
+          </div>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-3">
+      <div className="p-3 rounded-xl bg-bg-tertiary border border-border-subtle">
+        <div className="flex items-center gap-3 mb-3">
+          <div className={`w-10 h-10 rounded-full ${planBgColors[currentPlan]} flex items-center justify-center ${planColors[currentPlan]} font-semibold`}>
+            {user.email?.charAt(0).toUpperCase() || 'U'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-text-primary truncate">
+              {user.email?.split('@')[0] || 'Utilisateur'}
+            </p>
+            <p className={`text-xs font-semibold ${planColors[currentPlan]}`}>
+              {planLabels[currentPlan]}
+            </p>
+          </div>
+        </div>
+
+        {/* Crédits restants */}
+        {user.credits !== undefined && (
+          <div className="mb-3 p-2 rounded-lg bg-bg-hover">
+            <div className="flex items-center justify-between text-xs mb-1">
+              <span className="text-text-tertiary flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                {language === 'fr' ? 'Crédits' : 'Credits'}
+              </span>
+              <span className={`font-bold ${planColors[currentPlan]}`}>
+                {formatCredits(user.credits)}
+              </span>
+            </div>
+            {user.credits_monthly && user.credits_monthly > 0 && (
+              <div className="h-1.5 rounded-full bg-bg-primary overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    currentPlan === 'free' ? 'bg-gray-500' :
+                    currentPlan === 'starter' ? 'bg-emerald-500' :
+                    currentPlan === 'pro' ? 'bg-amber-500' :
+                    'bg-purple-500'
+                  }`}
+                  style={{ width: `${Math.min((user.credits / user.credits_monthly) * 100, 100)}%` }}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div className="flex items-center gap-2">
+          {currentPlan === 'free' && (
+            <button
+              onClick={() => navigate('/upgrade')}
+              className="flex-1 px-3 py-1.5 rounded-lg bg-accent-primary text-white text-xs font-medium hover:bg-accent-primary-hover transition-colors flex items-center justify-center gap-1.5"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Upgrade
+            </button>
+          )}
+          <button
+            onClick={handleLogout}
+            className="px-3 py-1.5 rounded-lg bg-bg-hover text-text-secondary text-xs font-medium hover:text-text-primary transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// === Sidebar principale ===
+interface SidebarProps {
+  collapsed?: boolean;
+  onToggle?: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle }) => {
+  const { language } = useLanguage();
+  const { user, isAdmin } = useAuth();
+  const navigate = useNavigate();
+
+  const isProUser = user?.plan === 'pro' || user?.plan === 'expert';
+  
+  // Admin: soit via is_admin du backend, soit par email direct (fallback)
+  const ADMIN_EMAIL = "maximeleparc3@gmail.com";
+  const isUserAdmin = isAdmin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+  // Navigation vers la page principale
+  const handleLogoClick = () => {
+    navigate('/dashboard');
+  };
+
+  return (
+    <aside
+      className={`fixed left-0 top-0 h-screen bg-bg-secondary border-r border-border-subtle flex flex-col z-40 transition-all duration-300 ${
+        collapsed ? 'w-[72px]' : 'w-[260px]'
+      }`}
+    >
+      {/* Header */}
+      <div className={`h-16 flex items-center justify-between border-b border-border-subtle ${collapsed ? 'px-4' : 'px-4'}`}>
+        <Logo collapsed={collapsed} onClick={handleLogoClick} />
+        {onToggle && (
+          <button
+            onClick={onToggle}
+            className="w-7 h-7 rounded-md flex items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-bg-hover transition-colors"
+          >
+            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+          </button>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+        <NavItem
+          to="/dashboard"
+          icon={LayoutDashboard}
+          label={language === 'fr' ? 'Analyse' : 'Analysis'}
+          collapsed={collapsed}
+        />
+        <NavItem
+          to="/history"
+          icon={History}
+          label={language === 'fr' ? 'Historique' : 'History'}
+          collapsed={collapsed}
+        />
+        <NavItem
+          to="/playlists"
+          icon={ListVideo}
+          label="Playlists"
+          collapsed={collapsed}
+          badge={isProUser ? undefined : "Pro"}
+        />
+
+        <div className="h-px bg-border-subtle my-4" />
+
+        <NavItem
+          to="/settings"
+          icon={Settings}
+          label={language === 'fr' ? 'Paramètres' : 'Settings'}
+          collapsed={collapsed}
+        />
+        <NavItem
+          to="/upgrade"
+          icon={CreditCard}
+          label={language === 'fr' ? 'Abonnement' : 'Subscription'}
+          collapsed={collapsed}
+        />
+        <NavItem
+          to="/usage"
+          icon={BarChart3}
+          label={language === 'fr' ? 'Mon compte' : 'My Account'}
+          collapsed={collapsed}
+        />
+
+        {/* Admin - visible uniquement pour les admins */}
+        {isUserAdmin && (
+          <>
+            <div className="h-px bg-border-subtle my-4" />
+            <NavItem
+              to="/admin"
+              icon={Shield}
+              label="Admin"
+              collapsed={collapsed}
+              badge="🔐"
+            />
+          </>
+        )}
+
+        {/* Mentions légales */}
+        <div className="h-px bg-border-subtle my-4" />
+        <NavItem
+          to="/legal"
+          icon={Scale}
+          label={language === 'fr' ? 'Mentions légales' : 'Legal'}
+          collapsed={collapsed}
+        />
+      </nav>
+
+      {/* Footer avec User */}
+      <div className="border-t border-border-subtle">
+        <UserCard collapsed={collapsed} />
+      </div>
+    </aside>
+  );
+};
+
+export default Sidebar;

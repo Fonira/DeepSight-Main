@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    
+    <!-- 🤿 Deep Sight - Meta de base -->
+    <title>Deep Sight - Analyse YouTube IA</title>
+    <meta name="description" content="Analysez et synthétisez vos vidéos YouTube avec l'IA. Résumés intelligents, points clés, timestamps, et chat interactif." />
+    <meta name="author" content="Deep Sight" />
+    <meta name="keywords" content="youtube, analyse, résumé, IA, intelligence artificielle, synthèse, vidéo, transcription" />
+    
+    <!-- 🎨 Couleurs et thème -->
+    <meta name="theme-color" content="#6366F1" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#6366F1" media="(prefers-color-scheme: light)" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="msapplication-TileColor" content="#0a0a0b" />
+    <meta name="msapplication-navbutton-color" content="#6366F1" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    
+    <!-- 📱 PWA - Progressive Web App -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Deep Sight" />
+    <meta name="application-name" content="Deep Sight" />
+    
+    <!-- 🖼️ Favicons & Icônes - Optimisés pour tous les appareils -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="16x16 32x32 48x48 64x64 128x128 256x256" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512x512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="mask-icon" href="/icons/icon-512x512.png" color="#6366F1" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+    
+    <!-- 📱 iOS Splash Screens -->
+    <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png" />
+    
+    <!-- 🔗 Open Graph (Facebook, LinkedIn) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://deepsightsynthesis.com/" />
+    <meta property="og:title" content="Deep Sight - Analyse YouTube IA" />
+    <meta property="og:description" content="Analysez et synthétisez vos vidéos YouTube avec l'IA. Résumés intelligents, points clés, et chat interactif." />
+    <meta property="og:image" content="https://deepsightsynthesis.com/og-image.png" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:site_name" content="Deep Sight" />
+    
+    <!-- 🐦 Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Deep Sight - Analyse YouTube IA" />
+    <meta name="twitter:description" content="Analysez et synthétisez vos vidéos YouTube avec l'IA." />
+    <meta name="twitter:image" content="https://deepsightsynthesis.com/og-image.png" />
+    
+    <!-- 🔒 Sécurité -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="format-detection" content="telephone=no" />
+    
+    <!-- 📊 Preload des ressources critiques -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://api.deepsightsynthesis.com" />
+    
+    <!-- 🎯 Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+    <!-- 📱 iOS Safe Areas -->
+    <style>
+      :root {
+        --sat: env(safe-area-inset-top);
+        --sar: env(safe-area-inset-right);
+        --sab: env(safe-area-inset-bottom);
+        --sal: env(safe-area-inset-left);
+      }
+      
+      /* Padding bottom safe pour les bannières */
+      .pb-safe {
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
+      }
+      
+      /* Animation slide up pour les bannières */
+      @keyframes slide-up {
+        from {
+          transform: translateY(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      
+      .animate-slide-up {
+        animation: slide-up 0.3s ease-out forwards;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- 🔄 Noscript fallback -->
+    <noscript>
+      <div style="padding: 2rem; text-align: center; font-family: sans-serif; background: #0a0a0b; color: white; min-height: 100vh;">
+        <h1>JavaScript requis</h1>
+        <p>Deep Sight nécessite JavaScript pour fonctionner. Veuillez l'activer dans votre navigateur.</p>
+      </div>
+    </noscript>
+    
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
