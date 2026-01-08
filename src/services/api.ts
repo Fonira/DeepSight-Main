@@ -555,16 +555,46 @@ export const videoApi = {
     });
   },
 
+  /**
+   * 🔀 Analyse hybride unifiée
+   * Supporte: URL YouTube, texte brut, ou recherche intelligente
+   */
   async analyzeHybrid(params: {
-    url: string;
-    language?: string;
+    // Type d'entrée
+    inputType?: 'url' | 'raw_text' | 'search';
+    // Pour URL mode
+    url?: string;
+    // Pour RAW_TEXT mode
+    rawText?: string;
+    textTitle?: string;
+    textSource?: string;
+    // Pour SEARCH mode
+    searchQuery?: string;
+    // Options communes
     mode?: string;
     category?: string;
-    questions?: string[];
+    lang?: string;
+    model?: string;
+    deepResearch?: boolean;
   }): Promise<{ task_id: string; status: string }> {
-    return request('/api/videos/analyze-hybrid', {
+    // Convertir camelCase → snake_case pour le backend Python
+    const body: Record<string, unknown> = {};
+    
+    if (params.inputType) body.input_type = params.inputType;
+    if (params.url) body.url = params.url;
+    if (params.rawText) body.raw_text = params.rawText;
+    if (params.textTitle) body.text_title = params.textTitle;
+    if (params.textSource) body.text_source = params.textSource;
+    if (params.searchQuery) body.search_query = params.searchQuery;
+    if (params.mode) body.mode = params.mode;
+    if (params.category) body.category = params.category;
+    if (params.lang) body.lang = params.lang;
+    if (params.model) body.model = params.model;
+    if (params.deepResearch !== undefined) body.deep_research = params.deepResearch;
+    
+    return request('/api/videos/analyze/hybrid', {
       method: 'POST',
-      body: params,
+      body,
       timeout: 300000,
     });
   },
