@@ -183,39 +183,8 @@ export const DashboardPage: React.FC = () => {
   
   const SUGGESTED_QUESTIONS = language === 'fr' ? SUGGESTED_QUESTIONS_FR : SUGGESTED_QUESTIONS_EN;
 
-  // === PERSISTANCE: Sauvegarder le dernier résultat ===
-  
-  useEffect(() => {
-    if (selectedSummary) {
-      try {
-        localStorage.setItem('deepsight_last_analysis', JSON.stringify(selectedSummary));
-      } catch (e) {
-        console.warn('Failed to save analysis to localStorage');
-      }
-    }
-  }, [selectedSummary]);
-  
-  // === PERSISTANCE: Charger le dernier résultat au démarrage ===
-  
-  useEffect(() => {
-    const summaryId = searchParams.get('id');
-    // Ne charger depuis localStorage que si pas d'ID dans l'URL et pas déjà de résultat
-    if (!summaryId && !selectedSummary) {
-      try {
-        const saved = localStorage.getItem('deepsight_last_analysis');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          // Vérifier que c'est valide (a au moins un ID et du contenu)
-          if (parsed && parsed.id && parsed.summary_content) {
-            setSelectedSummary(parsed);
-            console.log('📥 Restored last analysis from localStorage');
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to load analysis from localStorage');
-      }
-    }
-  }, []); // Seulement au montage
+  // === SESSION ONLY: Ne plus persister la dernière analyse ===
+  // L'analyse reste uniquement pour la session courante (pas de localStorage)
 
   // === Charger depuis l'URL (historique) ===
   
@@ -1135,6 +1104,18 @@ export const DashboardPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="panel-body prose max-w-none">
+                    {/* 🎙️ Lecteur Audio TTS - EN HAUT */}
+                    {showAudioPlayer && (
+                      <div className="mb-6 animate-fadeIn not-prose">
+                        <AudioPlayer
+                          summaryId={selectedSummary.id}
+                          title={selectedSummary.video_title || (language === 'fr' ? 'Résumé audio' : 'Audio summary')}
+                          language={selectedSummary.lang === 'en' ? 'en' : 'fr'}
+                          variant="full"
+                        />
+                      </div>
+                    )}
+                    
                     <EnrichedMarkdown 
                       language={language}
                       onTimecodeClick={handleTimecodeClick}
@@ -1150,18 +1131,6 @@ export const DashboardPage: React.FC = () => {
                         language={language}
                       />
                     </div>
-
-                    {/* 🎙️ Lecteur Audio TTS */}
-                    {showAudioPlayer && (
-                      <div className="mt-6 animate-fadeIn">
-                        <AudioPlayer
-                          summaryId={selectedSummary.id}
-                          title={selectedSummary.video_title || (language === 'fr' ? 'Résumé audio' : 'Audio summary')}
-                          language={selectedSummary.lang === 'en' ? 'en' : 'fr'}
-                          variant="full"
-                        />
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
