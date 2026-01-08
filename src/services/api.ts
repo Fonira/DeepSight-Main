@@ -620,14 +620,31 @@ export const videoApi = {
     return request(`/api/videos/concepts/${summaryId}/enriched`);
   },
 
+  /**
+   * 🔍 Découverte intelligente de vidéos
+   * Endpoint: POST /api/videos/discover
+   * GRATUIT - Ne consomme pas de crédits
+   */
   async discover(
     query: string,
-    options?: { limit?: number; source?: string }
+    options?: { 
+      limit?: number; 
+      languages?: string[];
+      min_quality?: number;
+      target_duration?: string;
+    }
   ): Promise<DiscoveryResponse> {
-    const params = new URLSearchParams({ q: query });
-    if (options?.limit) params.set('limit', String(options.limit));
-    if (options?.source) params.set('source', options.source);
-    return request(`/api/videos/discover?${params}`);
+    return request('/api/videos/discover', {
+      method: 'POST',
+      body: {
+        query,
+        max_results: options?.limit || 10,
+        languages: options?.languages || ['fr', 'en'],
+        min_quality: options?.min_quality || 30.0,
+        target_duration: options?.target_duration || 'default',
+      },
+      timeout: 60000,
+    });
   },
 
   async factCheck(summaryId: number): Promise<FactCheckResult[]> {
