@@ -310,9 +310,16 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
               ) : (
                 <>
                   {messages.map((msg) => {
+                    // 🔧 S'assurer que content est une string
+                    const contentStr = typeof msg.content === 'string' 
+                      ? msg.content 
+                      : (msg.content && typeof msg.content === 'object' 
+                          ? JSON.stringify(msg.content) 
+                          : String(msg.content || ''));
+                    
                     const { beforeQuestions, questions } = msg.role === 'assistant' 
-                      ? parseAskQuestions(msg.content) 
-                      : { beforeQuestions: msg.content, questions: [] };
+                      ? parseAskQuestions(contentStr) 
+                      : { beforeQuestions: contentStr, questions: [] };
                     
                     return (
                     <div key={msg.id} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : ''}`}>
@@ -342,7 +349,7 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
                             )}
                           </>
                         ) : (
-                          <p className="text-sm">{msg.content}</p>
+                          <p className="text-sm">{contentStr}</p>
                         )}
                         {msg.sources && msg.sources.length > 0 && (
                           <div className="mt-2 pt-2 border-t border-white/20">
@@ -356,7 +363,7 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
                           </div>
                         )}
                         {msg.role === 'assistant' && (
-                          <button onClick={() => copyToClipboard(msg.content, msg.id)}
+                          <button onClick={() => copyToClipboard(contentStr, msg.id)}
                             className="mt-1 text-[10px] text-gray-500 hover:text-gray-300 flex items-center gap-1">
                             {copiedId === msg.id ? <><Check className="w-2.5 h-2.5" />{t.copied}</> : <><Copy className="w-2.5 h-2.5" />{t.copy}</>}
                           </button>
