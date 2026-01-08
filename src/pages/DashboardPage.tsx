@@ -373,10 +373,12 @@ export const DashboardPage: React.FC = () => {
         
         const discovery = await videoApi.discover(
           smartInput.searchQuery!,
-          smartInput.searchLanguages || ['fr', 'en'],
-          20,  // Plus de résultats pour meilleure sélection
-          30,
-          'default'
+          {
+            languages: smartInput.searchLanguages || ['fr', 'en'],
+            limit: 20,  // Plus de résultats pour meilleure sélection
+            min_quality: 30,
+            target_duration: 'default'
+          }
         );
         
         setDiscoveryResult(discovery);
