@@ -1,6 +1,6 @@
 /**
  * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  💎 UPGRADE PAGE v3.0 — Différenciation claire Expert vs Pro                        ║
+ * ║  💎 UPGRADE PAGE v3.1 — Features réellement implémentées uniquement                 ║
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
@@ -13,11 +13,8 @@ import DoodleBackground from '../components/DoodleBackground';
 import { 
   Check, X, Sparkles, Zap, Star, Crown, Loader2, 
   ArrowUp, ArrowDown, AlertCircle, RefreshCw,
-  Rocket, Shield, MessageSquare, Search, FileText,
-  Volume2, Code, HeadphonesIcon, BookOpen, Users,
-  ChevronDown, ChevronUp, Lock, Key, Webhook, 
-  Layers, Headphones, GraduationCap, Palette,
-  Infinity, Brain, Globe, Database
+  BookOpen, ChevronDown, ChevronUp, Key, 
+  Infinity, Database, ListVideo, Headphones
 } from 'lucide-react';
 import { billingApi } from '../services/api';
 
@@ -30,8 +27,7 @@ type PlanId = 'free' | 'starter' | 'pro' | 'expert';
 interface PlanFeature {
   text: { fr: string; en: string };
   included: boolean;
-  highlight?: boolean; // Pour mettre en avant
-  exclusive?: boolean; // Exclusif à ce plan
+  highlight?: boolean;
 }
 
 interface PlanConfig {
@@ -42,16 +38,8 @@ interface PlanConfig {
   popular?: boolean;
   recommended?: boolean;
   order: number;
-  color: string;
   gradient: string;
   features: PlanFeature[];
-  limits: {
-    analyses: string;
-    chat: string;
-    playlists: string;
-    webSearch: string;
-    apiRequests?: string;
-  };
 }
 
 const PLANS: PlanConfig[] = [
@@ -61,14 +49,7 @@ const PLANS: PlanConfig[] = [
     description: { fr: 'Pour explorer', en: 'To explore' },
     price: 0,
     order: 0,
-    color: 'from-slate-500 to-slate-600',
     gradient: 'from-slate-500 to-slate-600',
-    limits: {
-      analyses: '5/mois',
-      chat: '5/vidéo',
-      playlists: '—',
-      webSearch: '—',
-    },
     features: [
       { text: { fr: '5 analyses/mois', en: '5 analyses/month' }, included: true },
       { text: { fr: 'Synthèse express', en: 'Express summary' }, included: true },
@@ -84,14 +65,7 @@ const PLANS: PlanConfig[] = [
     description: { fr: 'Pour les réguliers', en: 'For regular users' },
     price: 4.99,
     order: 1,
-    color: 'from-blue-500 to-blue-600',
     gradient: 'from-blue-500 to-blue-600',
-    limits: {
-      analyses: '50/mois',
-      chat: '20/vidéo',
-      playlists: '—',
-      webSearch: '20/mois',
-    },
     features: [
       { text: { fr: '50 analyses/mois', en: '50 analyses/month' }, included: true },
       { text: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, included: true },
@@ -108,22 +82,14 @@ const PLANS: PlanConfig[] = [
     price: 9.99,
     popular: true,
     order: 2,
-    color: 'from-violet-500 to-purple-600',
     gradient: 'from-violet-500 to-purple-600',
-    limits: {
-      analyses: '200/mois',
-      chat: 'Illimité',
-      playlists: '10 vidéos',
-      webSearch: '100/mois',
-    },
     features: [
       { text: { fr: '200 analyses/mois', en: '200 analyses/month' }, included: true },
       { text: { fr: 'Chat illimité', en: 'Unlimited chat' }, included: true, highlight: true },
-      { text: { fr: 'Recherche web (Perplexity)', en: 'Web search (Perplexity)' }, included: true, highlight: true },
+      { text: { fr: 'Recherche web (100/mois)', en: 'Web search (100/mo)' }, included: true, highlight: true },
       { text: { fr: 'Playlists (10 vidéos)', en: 'Playlists (10 videos)' }, included: true },
       { text: { fr: 'Export PDF + Markdown', en: 'PDF + Markdown export' }, included: true },
       { text: { fr: 'Lecture audio TTS', en: 'TTS audio' }, included: true },
-      { text: { fr: 'Support prioritaire', en: 'Priority support' }, included: true },
       { text: { fr: 'Accès API', en: 'API access' }, included: false },
     ],
   },
@@ -134,26 +100,18 @@ const PLANS: PlanConfig[] = [
     price: 14.99,
     recommended: true,
     order: 3,
-    color: 'from-amber-500 to-orange-500',
     gradient: 'from-amber-500 to-orange-500',
-    limits: {
-      analyses: 'Illimité',
-      chat: 'Illimité',
-      playlists: '50 vidéos',
-      webSearch: '500/mois',
-      apiRequests: '1000/jour',
-    },
     features: [
       { text: { fr: 'Analyses illimitées', en: 'Unlimited analyses' }, included: true, highlight: true },
       { text: { fr: 'Tout Pro inclus', en: 'All Pro features' }, included: true },
       { text: { fr: 'Playlists (50 vidéos)', en: 'Playlists (50 videos)' }, included: true, highlight: true },
-      { text: { fr: '500 recherches web/mois', en: '500 web searches/mo' }, included: true },
+      { text: { fr: 'Recherche web (500/mois)', en: 'Web search (500/mo)' }, included: true, highlight: true },
     ],
   },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🌟 FEATURES EXCLUSIVES EXPERT
+// 🌟 AVANTAGES EXPERT (uniquement features implémentées)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface ExclusiveFeature {
@@ -167,43 +125,28 @@ const EXPERT_EXCLUSIVES: ExclusiveFeature[] = [
   {
     icon: Key,
     title: { fr: 'Accès API REST', en: 'REST API Access' },
-    description: { fr: 'Intégrez Deep Sight dans vos applications avec notre API complète', en: 'Integrate Deep Sight into your apps with our complete API' },
+    description: { fr: 'Intégrez Deep Sight dans vos applications (1000 req/jour)', en: 'Integrate Deep Sight into your apps (1000 req/day)' },
     badge: { fr: 'NOUVEAU', en: 'NEW' },
   },
   {
-    icon: Webhook,
-    title: { fr: 'Webhooks', en: 'Webhooks' },
-    description: { fr: 'Recevez des notifications automatiques à chaque analyse', en: 'Get automatic notifications for each analysis' },
+    icon: Infinity,
+    title: { fr: 'Analyses illimitées', en: 'Unlimited Analyses' },
+    description: { fr: 'Aucune limite mensuelle sur les analyses', en: 'No monthly limit on analyses' },
+  },
+  {
+    icon: ListVideo,
+    title: { fr: 'Playlists étendues', en: 'Extended Playlists' },
+    description: { fr: 'Jusqu\'à 50 vidéos par playlist (vs 10 pour Pro)', en: 'Up to 50 videos per playlist (vs 10 for Pro)' },
   },
   {
     icon: Database,
-    title: { fr: 'Corpus personnalisés', en: 'Custom Corpus' },
-    description: { fr: 'Créez vos propres collections de vidéos pour analyse croisée', en: 'Create your own video collections for cross-analysis' },
-  },
-  {
-    icon: Brain,
-    title: { fr: 'Chat multi-vidéos', en: 'Multi-video Chat' },
-    description: { fr: 'Posez des questions sur plusieurs vidéos simultanément', en: 'Ask questions across multiple videos at once' },
-  },
-  {
-    icon: Layers,
-    title: { fr: 'Export en masse', en: 'Bulk Export' },
-    description: { fr: 'Exportez toutes vos analyses en un clic', en: 'Export all your analyses with one click' },
-  },
-  {
-    icon: GraduationCap,
-    title: { fr: 'Formation incluse', en: 'Training Included' },
-    description: { fr: 'Session de formation personnalisée à Deep Sight', en: 'Personalized training session on Deep Sight' },
+    title: { fr: '500 recherches web/mois', en: '500 Web Searches/mo' },
+    description: { fr: '5x plus de recherches Perplexity que Pro', en: '5x more Perplexity searches than Pro' },
   },
   {
     icon: Headphones,
-    title: { fr: 'Support dédié', en: 'Dedicated Support' },
-    description: { fr: 'Assistance prioritaire avec temps de réponse garanti', en: 'Priority assistance with guaranteed response time' },
-  },
-  {
-    icon: Palette,
-    title: { fr: 'Branding personnalisé', en: 'Custom Branding' },
-    description: { fr: 'Personnalisez les exports avec votre logo (bientôt)', en: 'Customize exports with your logo (coming soon)' },
+    title: { fr: 'Support prioritaire', en: 'Priority Support' },
+    description: { fr: 'Assistance email avec réponse rapide', en: 'Fast email support response' },
   },
 ];
 
@@ -232,38 +175,27 @@ const COMPARISON_MATRIX: ComparisonRow[] = [
   { category: '🔬 Analyse', feature: { fr: 'Synthèse express', en: 'Express summary' }, free: true, starter: true, pro: true, expert: true },
   { category: '🔬 Analyse', feature: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, free: false, starter: true, pro: true, expert: true },
   { category: '🔬 Analyse', feature: { fr: 'Glossaire concepts', en: 'Concepts glossary' }, free: false, starter: true, pro: true, expert: true },
-  { category: '🔬 Analyse', feature: { fr: 'Carte mentale', en: 'Mind map' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
   
   // Chat & Recherche
   { category: '💬 Chat & Recherche', feature: { fr: 'Chat IA', en: 'AI Chat' }, free: true, starter: true, pro: true, expert: true },
   { category: '💬 Chat & Recherche', feature: { fr: 'Recherche web (Perplexity)', en: 'Web search (Perplexity)' }, free: false, starter: '20/mois', pro: '100/mois', expert: '500/mois', expertHighlight: true },
-  { category: '💬 Chat & Recherche', feature: { fr: 'Recherche approfondie', en: 'Deep research' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
-  { category: '💬 Chat & Recherche', feature: { fr: 'Chat multi-vidéos', en: 'Multi-video chat' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
   
   // Playlists
-  { category: '📚 Playlists & Corpus', feature: { fr: 'Analyse de playlists', en: 'Playlist analysis' }, free: false, starter: false, pro: '10 vidéos', expert: '50 vidéos', expertHighlight: true },
-  { category: '📚 Playlists & Corpus', feature: { fr: 'Corpus personnalisés', en: 'Custom corpus' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
-  { category: '📚 Playlists & Corpus', feature: { fr: 'Comparaison de corpus', en: 'Corpus comparison' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
+  { category: '📚 Playlists', feature: { fr: 'Analyse de playlists', en: 'Playlist analysis' }, free: false, starter: false, pro: '10 vidéos', expert: '50 vidéos', expertHighlight: true },
   
   // Export
   { category: '📄 Export', feature: { fr: 'Export PDF', en: 'PDF export' }, free: false, starter: true, pro: true, expert: true },
   { category: '📄 Export', feature: { fr: 'Export Markdown', en: 'Markdown export' }, free: false, starter: false, pro: true, expert: true },
-  { category: '📄 Export', feature: { fr: 'Export en masse', en: 'Bulk export' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
   
   // Audio
   { category: '🎧 Audio', feature: { fr: 'Lecture audio TTS', en: 'TTS audio' }, free: false, starter: false, pro: true, expert: true },
-  { category: '🎧 Audio', feature: { fr: 'Choix de voix', en: 'Voice selection' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
   
-  // API & Intégrations
-  { category: '🔌 API & Intégrations', feature: { fr: 'Accès API REST', en: 'REST API access' }, free: false, starter: false, pro: false, expert: '1000 req/jour', expertHighlight: true },
-  { category: '🔌 API & Intégrations', feature: { fr: 'Webhooks', en: 'Webhooks' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
-  { category: '🔌 API & Intégrations', feature: { fr: 'Intégrations personnalisées', en: 'Custom integrations' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
+  // API
+  { category: '🔌 API', feature: { fr: 'Accès API REST', en: 'REST API access' }, free: false, starter: false, pro: false, expert: '1000 req/jour', expertHighlight: true },
   
   // Support
   { category: '🛟 Support', feature: { fr: 'Support email', en: 'Email support' }, free: true, starter: true, pro: true, expert: true },
   { category: '🛟 Support', feature: { fr: 'Support prioritaire', en: 'Priority support' }, free: false, starter: false, pro: true, expert: true },
-  { category: '🛟 Support', feature: { fr: 'Support dédié', en: 'Dedicated support' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
-  { category: '🛟 Support', feature: { fr: 'Formation incluse', en: 'Training included' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -289,7 +221,7 @@ export const UpgradePage: React.FC = () => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState<{ plan: PlanId; action: 'upgrade' | 'downgrade' } | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['📊 Limites', '🔌 API & Intégrations']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['📊 Limites', '🔌 API']);
 
   const currentPlan = (user?.plan || 'free') as PlanId;
   const currentPlanConfig = PLANS.find(p => p.id === currentPlan) || PLANS[0];
@@ -308,7 +240,6 @@ export const UpgradePage: React.FC = () => {
     loadData();
   }, []);
 
-  // Catégories uniques pour la vue tableau
   const categories = [...new Set(COMPARISON_MATRIX.map(r => r.category))];
 
   const handleChangePlan = async (newPlanId: PlanId) => {
@@ -559,7 +490,7 @@ export const UpgradePage: React.FC = () => {
                             ))}
                           </div>
 
-                          {/* Expert Exclusive Badge */}
+                          {/* Expert API Badge */}
                           {isExpert && (
                             <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
                               <div className="flex items-center gap-2 text-amber-400 text-sm font-medium mb-1">
@@ -568,8 +499,8 @@ export const UpgradePage: React.FC = () => {
                               </div>
                               <p className="text-xs text-text-tertiary">
                                 {language === 'fr' 
-                                  ? '1000 requêtes/jour, webhooks, intégrations'
-                                  : '1000 requests/day, webhooks, integrations'}
+                                  ? '1000 requêtes/jour pour vos intégrations'
+                                  : '1000 requests/day for your integrations'}
                               </p>
                             </div>
                           )}
@@ -606,24 +537,24 @@ export const UpgradePage: React.FC = () => {
                   })}
                 </div>
 
-                {/* Expert Exclusive Section */}
+                {/* Expert Benefits Section */}
                 <div className="card p-8 mb-12 bg-gradient-to-br from-amber-500/5 to-orange-500/5 border-amber-500/20">
                   <div className="text-center mb-8">
                     <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/20 text-amber-400 text-sm font-semibold mb-4">
                       <Sparkles className="w-4 h-4" />
-                      {language === 'fr' ? 'Exclusivités Expert' : 'Expert Exclusives'}
+                      {language === 'fr' ? 'Avantages Expert' : 'Expert Benefits'}
                     </div>
                     <h2 className="text-2xl font-bold text-text-primary mb-2">
                       {language === 'fr' ? 'Pourquoi choisir Expert ?' : 'Why choose Expert?'}
                     </h2>
                     <p className="text-text-secondary max-w-2xl mx-auto">
                       {language === 'fr' 
-                        ? 'Des fonctionnalités avancées pour les professionnels qui veulent tirer le maximum de Deep Sight.'
-                        : 'Advanced features for professionals who want to get the most out of Deep Sight.'}
+                        ? 'Le plan Expert offre des limites étendues et un accès API pour les professionnels.'
+                        : 'The Expert plan offers extended limits and API access for professionals.'}
                     </p>
                   </div>
 
-                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-5">
                     {EXPERT_EXCLUSIVES.map((feature, idx) => {
                       const Icon = feature.icon;
                       return (
@@ -638,8 +569,8 @@ export const UpgradePage: React.FC = () => {
                               </span>
                             )}
                           </div>
-                          <h3 className="font-semibold text-text-primary mb-1">{feature.title[lang]}</h3>
-                          <p className="text-sm text-text-tertiary">{feature.description[lang]}</p>
+                          <h3 className="font-semibold text-text-primary mb-1 text-sm">{feature.title[lang]}</h3>
+                          <p className="text-xs text-text-tertiary">{feature.description[lang]}</p>
                         </div>
                       );
                     })}
@@ -743,7 +674,6 @@ export const UpgradePage: React.FC = () => {
                   {PLANS.map((plan) => {
                     const isCurrent = plan.id === currentPlan;
                     const isHigher = plan.order > currentPlanConfig.order;
-                    const isExpert = plan.id === 'expert';
                     return (
                       <div key={plan.id} className="flex justify-center">
                         <button
@@ -790,7 +720,7 @@ export const UpgradePage: React.FC = () => {
               <div className="grid md:grid-cols-2 gap-6 text-sm">
                 <div className="space-y-1">
                   <p className="font-semibold text-text-primary">{language === 'fr' ? "Comment fonctionne l'API ?" : 'How does the API work?'}</p>
-                  <p className="text-text-secondary">{language === 'fr' ? 'Générez votre clé API dans Paramètres. Documentation complète disponible.' : 'Generate your API key in Settings. Full documentation available.'}</p>
+                  <p className="text-text-secondary">{language === 'fr' ? 'Générez votre clé API dans Paramètres. Documentation disponible.' : 'Generate your API key in Settings. Documentation available.'}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="font-semibold text-text-primary">{language === 'fr' ? "Comment fonctionne l'upgrade ?" : 'How does upgrade work?'}</p>
