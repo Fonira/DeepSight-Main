@@ -956,6 +956,53 @@ export const billingApi = {
   }> {
     return request('/api/billing/transactions');
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔑 API KEYS MANAGEMENT (Expert Plan Only)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * 📊 Vérifie le statut de la clé API
+   */
+  async getApiKeyStatus(): Promise<{
+    has_api_key: boolean;
+    created_at: string | null;
+    last_used: string | null;
+  }> {
+    return request('/api/billing/api-key/status');
+  },
+
+  /**
+   * 🔐 Génère une nouvelle clé API
+   * ⚠️ La clé n'est retournée qu'une seule fois !
+   */
+  async generateApiKey(): Promise<{
+    api_key: string;
+    message: string;
+  }> {
+    return request('/api/billing/api-key/generate', { method: 'POST' });
+  },
+
+  /**
+   * 🔄 Régénère la clé API (révoque l'ancienne)
+   * ⚠️ La nouvelle clé n'est retournée qu'une seule fois !
+   */
+  async regenerateApiKey(): Promise<{
+    api_key: string;
+    message: string;
+  }> {
+    return request('/api/billing/api-key/regenerate', { method: 'POST' });
+  },
+
+  /**
+   * 🗑️ Révoque définitivement la clé API
+   */
+  async revokeApiKey(): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    return request('/api/billing/api-key', { method: 'DELETE' });
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
