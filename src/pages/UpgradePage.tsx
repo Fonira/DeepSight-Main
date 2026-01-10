@@ -1,6 +1,6 @@
 /**
  * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  💎 UPGRADE PAGE v2.0 — Page d'abonnement moderne et intuitive                     ║
+ * ║  💎 UPGRADE PAGE v3.0 — Différenciation claire Expert vs Pro                        ║
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
@@ -15,15 +15,24 @@ import {
   ArrowUp, ArrowDown, AlertCircle, RefreshCw,
   Rocket, Shield, MessageSquare, Search, FileText,
   Volume2, Code, HeadphonesIcon, BookOpen, Users,
-  ChevronDown, ChevronUp, Lock
+  ChevronDown, ChevronUp, Lock, Key, Webhook, 
+  Layers, Headphones, GraduationCap, Palette,
+  Infinity, Brain, Globe, Database
 } from 'lucide-react';
 import { billingApi } from '../services/api';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📊 CONFIGURATION DES PLANS (Source de vérité)
+// 📊 CONFIGURATION DES PLANS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type PlanId = 'free' | 'starter' | 'pro' | 'expert';
+
+interface PlanFeature {
+  text: { fr: string; en: string };
+  included: boolean;
+  highlight?: boolean; // Pour mettre en avant
+  exclusive?: boolean; // Exclusif à ce plan
+}
 
 interface PlanConfig {
   id: PlanId;
@@ -31,30 +40,17 @@ interface PlanConfig {
   description: { fr: string; en: string };
   price: number;
   popular?: boolean;
+  recommended?: boolean;
   order: number;
+  color: string;
+  gradient: string;
+  features: PlanFeature[];
   limits: {
-    monthlyAnalyses: number | '∞';
-    chatPerVideo: number | '∞';
-    playlists: number | '∞' | false;
-  };
-  features: {
-    summaryExpress: boolean;
-    summaryDetailed: boolean;
-    conceptsGlossary: boolean;
-    chatBasic: boolean;
-    chatWebSearch: boolean;
-    suggestedQuestions: boolean;
-    factCheckBasic: boolean;
-    factCheckAdvanced: boolean;
-    intelligentSearch: boolean;
-    playlists: boolean;
-    corpus: boolean;
-    exportPdf: boolean;
-    exportMarkdown: boolean;
-    ttsAudio: boolean;
-    apiAccess: boolean;
-    prioritySupport: boolean;
-    dedicatedSupport: boolean;
+    analyses: string;
+    chat: string;
+    playlists: string;
+    webSearch: string;
+    apiRequests?: string;
   };
 }
 
@@ -65,26 +61,22 @@ const PLANS: PlanConfig[] = [
     description: { fr: 'Pour explorer', en: 'To explore' },
     price: 0,
     order: 0,
-    limits: { monthlyAnalyses: 5, chatPerVideo: 5, playlists: false },
-    features: {
-      summaryExpress: true,
-      summaryDetailed: false,
-      conceptsGlossary: false,
-      chatBasic: true,
-      chatWebSearch: false,
-      suggestedQuestions: false,
-      factCheckBasic: false,
-      factCheckAdvanced: false,
-      intelligentSearch: false,
-      playlists: false,
-      corpus: false,
-      exportPdf: false,
-      exportMarkdown: false,
-      ttsAudio: false,
-      apiAccess: false,
-      prioritySupport: false,
-      dedicatedSupport: false,
+    color: 'from-slate-500 to-slate-600',
+    gradient: 'from-slate-500 to-slate-600',
+    limits: {
+      analyses: '5/mois',
+      chat: '5/vidéo',
+      playlists: '—',
+      webSearch: '—',
     },
+    features: [
+      { text: { fr: '5 analyses/mois', en: '5 analyses/month' }, included: true },
+      { text: { fr: 'Synthèse express', en: 'Express summary' }, included: true },
+      { text: { fr: 'Chat basique (5 questions)', en: 'Basic chat (5 questions)' }, included: true },
+      { text: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, included: false },
+      { text: { fr: 'Recherche web', en: 'Web search' }, included: false },
+      { text: { fr: 'Export PDF', en: 'PDF export' }, included: false },
+    ],
   },
   {
     id: 'starter',
@@ -92,26 +84,22 @@ const PLANS: PlanConfig[] = [
     description: { fr: 'Pour les réguliers', en: 'For regular users' },
     price: 4.99,
     order: 1,
-    limits: { monthlyAnalyses: 50, chatPerVideo: 20, playlists: false },
-    features: {
-      summaryExpress: true,
-      summaryDetailed: true,
-      conceptsGlossary: true,
-      chatBasic: true,
-      chatWebSearch: false,
-      suggestedQuestions: true,
-      factCheckBasic: true,
-      factCheckAdvanced: false,
-      intelligentSearch: true,
-      playlists: false,
-      corpus: false,
-      exportPdf: true,
-      exportMarkdown: false,
-      ttsAudio: false,
-      apiAccess: false,
-      prioritySupport: false,
-      dedicatedSupport: false,
+    color: 'from-blue-500 to-blue-600',
+    gradient: 'from-blue-500 to-blue-600',
+    limits: {
+      analyses: '50/mois',
+      chat: '20/vidéo',
+      playlists: '—',
+      webSearch: '20/mois',
     },
+    features: [
+      { text: { fr: '50 analyses/mois', en: '50 analyses/month' }, included: true },
+      { text: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, included: true },
+      { text: { fr: 'Chat (20 questions/vidéo)', en: 'Chat (20 questions/video)' }, included: true },
+      { text: { fr: 'Export PDF', en: 'PDF export' }, included: true },
+      { text: { fr: 'Recherche web (Perplexity)', en: 'Web search (Perplexity)' }, included: false },
+      { text: { fr: 'Playlists & corpus', en: 'Playlists & corpus' }, included: false },
+    ],
   },
   {
     id: 'pro',
@@ -120,102 +108,162 @@ const PLANS: PlanConfig[] = [
     price: 9.99,
     popular: true,
     order: 2,
-    limits: { monthlyAnalyses: 200, chatPerVideo: '∞', playlists: 10 },
-    features: {
-      summaryExpress: true,
-      summaryDetailed: true,
-      conceptsGlossary: true,
-      chatBasic: true,
-      chatWebSearch: true,
-      suggestedQuestions: true,
-      factCheckBasic: true,
-      factCheckAdvanced: true,
-      intelligentSearch: true,
-      playlists: true,
-      corpus: false,
-      exportPdf: true,
-      exportMarkdown: true,
-      ttsAudio: true,
-      apiAccess: false,
-      prioritySupport: true,
-      dedicatedSupport: false,
+    color: 'from-violet-500 to-purple-600',
+    gradient: 'from-violet-500 to-purple-600',
+    limits: {
+      analyses: '200/mois',
+      chat: 'Illimité',
+      playlists: '10 vidéos',
+      webSearch: '100/mois',
     },
+    features: [
+      { text: { fr: '200 analyses/mois', en: '200 analyses/month' }, included: true },
+      { text: { fr: 'Chat illimité', en: 'Unlimited chat' }, included: true, highlight: true },
+      { text: { fr: 'Recherche web (Perplexity)', en: 'Web search (Perplexity)' }, included: true, highlight: true },
+      { text: { fr: 'Playlists (10 vidéos)', en: 'Playlists (10 videos)' }, included: true },
+      { text: { fr: 'Export PDF + Markdown', en: 'PDF + Markdown export' }, included: true },
+      { text: { fr: 'Lecture audio TTS', en: 'TTS audio' }, included: true },
+      { text: { fr: 'Support prioritaire', en: 'Priority support' }, included: true },
+      { text: { fr: 'Accès API', en: 'API access' }, included: false },
+    ],
   },
   {
     id: 'expert',
     name: { fr: 'Expert', en: 'Expert' },
-    description: { fr: 'Pour les organisations', en: 'For organizations' },
+    description: { fr: 'Pour les professionnels', en: 'For professionals' },
     price: 14.99,
+    recommended: true,
     order: 3,
-    limits: { monthlyAnalyses: '∞', chatPerVideo: '∞', playlists: 50 },
-    features: {
-      summaryExpress: true,
-      summaryDetailed: true,
-      conceptsGlossary: true,
-      chatBasic: true,
-      chatWebSearch: true,
-      suggestedQuestions: true,
-      factCheckBasic: true,
-      factCheckAdvanced: true,
-      intelligentSearch: true,
-      playlists: true,
-      corpus: true,
-      exportPdf: true,
-      exportMarkdown: true,
-      ttsAudio: true,
-      apiAccess: true,
-      prioritySupport: true,
-      dedicatedSupport: true,
+    color: 'from-amber-500 to-orange-500',
+    gradient: 'from-amber-500 to-orange-500',
+    limits: {
+      analyses: 'Illimité',
+      chat: 'Illimité',
+      playlists: '50 vidéos',
+      webSearch: '500/mois',
+      apiRequests: '1000/jour',
     },
+    features: [
+      { text: { fr: 'Analyses illimitées', en: 'Unlimited analyses' }, included: true, highlight: true },
+      { text: { fr: 'Tout Pro inclus', en: 'All Pro features' }, included: true },
+      { text: { fr: 'Playlists (50 vidéos)', en: 'Playlists (50 videos)' }, included: true, highlight: true },
+      { text: { fr: '500 recherches web/mois', en: '500 web searches/mo' }, included: true },
+    ],
   },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📋 MATRICE DES FONCTIONNALITÉS POUR COMPARAISON
+// 🌟 FEATURES EXCLUSIVES EXPERT
 // ═══════════════════════════════════════════════════════════════════════════════
 
-interface FeatureRow {
-  id: string;
-  category: string;
-  name: { fr: string; en: string };
-  free: boolean | string;
-  starter: boolean | string;
-  pro: boolean | string;
-  expert: boolean | string;
+interface ExclusiveFeature {
+  icon: React.ElementType;
+  title: { fr: string; en: string };
+  description: { fr: string; en: string };
+  badge?: { fr: string; en: string };
 }
 
-const FEATURE_MATRIX: FeatureRow[] = [
-  // Analyses
-  { id: 'analyses', category: '📊 Analyses', name: { fr: 'Analyses mensuelles', en: 'Monthly analyses' }, free: '5', starter: '50', pro: '200', expert: '∞' },
-  { id: 'summary_express', category: '📊 Analyses', name: { fr: 'Synthèse express', en: 'Express summary' }, free: true, starter: true, pro: true, expert: true },
-  { id: 'summary_detailed', category: '📊 Analyses', name: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, free: false, starter: true, pro: true, expert: true },
-  { id: 'concepts', category: '📊 Analyses', name: { fr: 'Glossaire concepts', en: 'Concepts glossary' }, free: false, starter: true, pro: true, expert: true },
+const EXPERT_EXCLUSIVES: ExclusiveFeature[] = [
+  {
+    icon: Key,
+    title: { fr: 'Accès API REST', en: 'REST API Access' },
+    description: { fr: 'Intégrez Deep Sight dans vos applications avec notre API complète', en: 'Integrate Deep Sight into your apps with our complete API' },
+    badge: { fr: 'NOUVEAU', en: 'NEW' },
+  },
+  {
+    icon: Webhook,
+    title: { fr: 'Webhooks', en: 'Webhooks' },
+    description: { fr: 'Recevez des notifications automatiques à chaque analyse', en: 'Get automatic notifications for each analysis' },
+  },
+  {
+    icon: Database,
+    title: { fr: 'Corpus personnalisés', en: 'Custom Corpus' },
+    description: { fr: 'Créez vos propres collections de vidéos pour analyse croisée', en: 'Create your own video collections for cross-analysis' },
+  },
+  {
+    icon: Brain,
+    title: { fr: 'Chat multi-vidéos', en: 'Multi-video Chat' },
+    description: { fr: 'Posez des questions sur plusieurs vidéos simultanément', en: 'Ask questions across multiple videos at once' },
+  },
+  {
+    icon: Layers,
+    title: { fr: 'Export en masse', en: 'Bulk Export' },
+    description: { fr: 'Exportez toutes vos analyses en un clic', en: 'Export all your analyses with one click' },
+  },
+  {
+    icon: GraduationCap,
+    title: { fr: 'Formation incluse', en: 'Training Included' },
+    description: { fr: 'Session de formation personnalisée à Deep Sight', en: 'Personalized training session on Deep Sight' },
+  },
+  {
+    icon: Headphones,
+    title: { fr: 'Support dédié', en: 'Dedicated Support' },
+    description: { fr: 'Assistance prioritaire avec temps de réponse garanti', en: 'Priority assistance with guaranteed response time' },
+  },
+  {
+    icon: Palette,
+    title: { fr: 'Branding personnalisé', en: 'Custom Branding' },
+    description: { fr: 'Personnalisez les exports avec votre logo (bientôt)', en: 'Customize exports with your logo (coming soon)' },
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 📋 MATRICE DE COMPARAISON
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface ComparisonRow {
+  category: string;
+  feature: { fr: string; en: string };
+  free: string | boolean;
+  starter: string | boolean;
+  pro: string | boolean;
+  expert: string | boolean;
+  expertHighlight?: boolean;
+}
+
+const COMPARISON_MATRIX: ComparisonRow[] = [
+  // Limites
+  { category: '📊 Limites', feature: { fr: 'Analyses/mois', en: 'Analyses/month' }, free: '5', starter: '50', pro: '200', expert: '∞', expertHighlight: true },
+  { category: '📊 Limites', feature: { fr: 'Durée max vidéo', en: 'Max video length' }, free: '1h', starter: '2h', pro: '4h', expert: '∞', expertHighlight: true },
+  { category: '📊 Limites', feature: { fr: 'Questions chat/vidéo', en: 'Chat questions/video' }, free: '5', starter: '20', pro: '∞', expert: '∞' },
+  { category: '📊 Limites', feature: { fr: 'Historique', en: 'History' }, free: '7 jours', starter: '60 jours', pro: '180 jours', expert: '∞', expertHighlight: true },
   
-  // Chat
-  { id: 'chat', category: '💬 Chat IA', name: { fr: 'Questions/vidéo', en: 'Questions/video' }, free: '5', starter: '20', pro: '∞', expert: '∞' },
-  { id: 'web_search', category: '💬 Chat IA', name: { fr: 'Recherche web (Perplexity)', en: 'Web search (Perplexity)' }, free: false, starter: false, pro: true, expert: true },
-  { id: 'suggestions', category: '💬 Chat IA', name: { fr: 'Questions suggérées', en: 'Suggested questions' }, free: false, starter: true, pro: true, expert: true },
+  // Analyse
+  { category: '🔬 Analyse', feature: { fr: 'Synthèse express', en: 'Express summary' }, free: true, starter: true, pro: true, expert: true },
+  { category: '🔬 Analyse', feature: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, free: false, starter: true, pro: true, expert: true },
+  { category: '🔬 Analyse', feature: { fr: 'Glossaire concepts', en: 'Concepts glossary' }, free: false, starter: true, pro: true, expert: true },
+  { category: '🔬 Analyse', feature: { fr: 'Carte mentale', en: 'Mind map' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
   
-  // Fact-checking
-  { id: 'factcheck', category: '🔍 Vérification', name: { fr: 'Fact-checking basique', en: 'Basic fact-checking' }, free: false, starter: true, pro: true, expert: true },
-  { id: 'factcheck_adv', category: '🔍 Vérification', name: { fr: 'Fact-checking avancé', en: 'Advanced fact-checking' }, free: false, starter: false, pro: true, expert: true },
+  // Chat & Recherche
+  { category: '💬 Chat & Recherche', feature: { fr: 'Chat IA', en: 'AI Chat' }, free: true, starter: true, pro: true, expert: true },
+  { category: '💬 Chat & Recherche', feature: { fr: 'Recherche web (Perplexity)', en: 'Web search (Perplexity)' }, free: false, starter: '20/mois', pro: '100/mois', expert: '500/mois', expertHighlight: true },
+  { category: '💬 Chat & Recherche', feature: { fr: 'Recherche approfondie', en: 'Deep research' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
+  { category: '💬 Chat & Recherche', feature: { fr: 'Chat multi-vidéos', en: 'Multi-video chat' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
   
-  // Recherche & Playlists
-  { id: 'search', category: '🎯 Recherche', name: { fr: 'Recherche intelligente', en: 'Intelligent search' }, free: false, starter: true, pro: true, expert: true },
-  { id: 'playlists', category: '🎯 Recherche', name: { fr: 'Playlists & corpus', en: 'Playlists & corpus' }, free: false, starter: false, pro: '10 vidéos', expert: '50 vidéos' },
-  { id: 'corpus', category: '🎯 Recherche', name: { fr: 'Corpus personnalisés', en: 'Custom corpus' }, free: false, starter: false, pro: false, expert: true },
+  // Playlists
+  { category: '📚 Playlists & Corpus', feature: { fr: 'Analyse de playlists', en: 'Playlist analysis' }, free: false, starter: false, pro: '10 vidéos', expert: '50 vidéos', expertHighlight: true },
+  { category: '📚 Playlists & Corpus', feature: { fr: 'Corpus personnalisés', en: 'Custom corpus' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
+  { category: '📚 Playlists & Corpus', feature: { fr: 'Comparaison de corpus', en: 'Corpus comparison' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
   
   // Export
-  { id: 'export_pdf', category: '📄 Export', name: { fr: 'Export PDF', en: 'PDF export' }, free: false, starter: true, pro: true, expert: true },
-  { id: 'export_md', category: '📄 Export', name: { fr: 'Export Markdown & TXT', en: 'Markdown & TXT export' }, free: false, starter: false, pro: true, expert: true },
+  { category: '📄 Export', feature: { fr: 'Export PDF', en: 'PDF export' }, free: false, starter: true, pro: true, expert: true },
+  { category: '📄 Export', feature: { fr: 'Export Markdown', en: 'Markdown export' }, free: false, starter: false, pro: true, expert: true },
+  { category: '📄 Export', feature: { fr: 'Export en masse', en: 'Bulk export' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
   
   // Audio
-  { id: 'tts', category: '🎧 Audio', name: { fr: 'Lecture audio TTS', en: 'TTS audio' }, free: false, starter: false, pro: true, expert: true },
+  { category: '🎧 Audio', feature: { fr: 'Lecture audio TTS', en: 'TTS audio' }, free: false, starter: false, pro: true, expert: true },
+  { category: '🎧 Audio', feature: { fr: 'Choix de voix', en: 'Voice selection' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
   
-  // Avancé
-  { id: 'api', category: '⚡ Avancé', name: { fr: 'Accès API', en: 'API access' }, free: false, starter: false, pro: false, expert: true },
-  { id: 'support', category: '⚡ Avancé', name: { fr: 'Support prioritaire', en: 'Priority support' }, free: false, starter: false, pro: true, expert: true },
-  { id: 'dedicated', category: '⚡ Avancé', name: { fr: 'Support dédié + Formation', en: 'Dedicated support + Training' }, free: false, starter: false, pro: false, expert: true },
+  // API & Intégrations
+  { category: '🔌 API & Intégrations', feature: { fr: 'Accès API REST', en: 'REST API access' }, free: false, starter: false, pro: false, expert: '1000 req/jour', expertHighlight: true },
+  { category: '🔌 API & Intégrations', feature: { fr: 'Webhooks', en: 'Webhooks' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
+  { category: '🔌 API & Intégrations', feature: { fr: 'Intégrations personnalisées', en: 'Custom integrations' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
+  
+  // Support
+  { category: '🛟 Support', feature: { fr: 'Support email', en: 'Email support' }, free: true, starter: true, pro: true, expert: true },
+  { category: '🛟 Support', feature: { fr: 'Support prioritaire', en: 'Priority support' }, free: false, starter: false, pro: true, expert: true },
+  { category: '🛟 Support', feature: { fr: 'Support dédié', en: 'Dedicated support' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
+  { category: '🛟 Support', feature: { fr: 'Formation incluse', en: 'Training included' }, free: false, starter: false, pro: false, expert: true, expertHighlight: true },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -241,7 +289,7 @@ export const UpgradePage: React.FC = () => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState<{ plan: PlanId; action: 'upgrade' | 'downgrade' } | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['📊 Analyses', '💬 Chat IA']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['📊 Limites', '🔌 API & Intégrations']);
 
   const currentPlan = (user?.plan || 'free') as PlanId;
   const currentPlanConfig = PLANS.find(p => p.id === currentPlan) || PLANS[0];
@@ -259,6 +307,9 @@ export const UpgradePage: React.FC = () => {
     };
     loadData();
   }, []);
+
+  // Catégories uniques pour la vue tableau
+  const categories = [...new Set(COMPARISON_MATRIX.map(r => r.category))];
 
   const handleChangePlan = async (newPlanId: PlanId) => {
     if (newPlanId === currentPlan) return;
@@ -279,21 +330,27 @@ export const UpgradePage: React.FC = () => {
     setError(null);
     setSuccess(null);
     setShowConfirmModal(null);
-    
+
     try {
-      const response = await billingApi.changePlan(newPlanId);
-      
-      if (response.action === 'checkout_required' && response.checkout_url) {
-        window.location.href = response.checkout_url;
-        return;
+      if (action === 'upgrade' || (currentPlan === 'free' && newPlanId !== 'free')) {
+        const result = await billingApi.createCheckout(newPlanId);
+        if (result.checkout_url) {
+          window.location.href = result.checkout_url;
+          return;
+        }
+      } else {
+        const result = await billingApi.changePlan(newPlanId);
+        if (result.success) {
+          setSuccess(language === 'fr' 
+            ? 'Plan modifié ! Changement effectif au prochain renouvellement.'
+            : 'Plan changed! Takes effect at next renewal.');
+          await refreshUser(true);
+          const status = await billingApi.getSubscriptionStatus();
+          setSubscriptionStatus(status);
+        }
       }
-      
-      setSuccess(response.message);
-      await refreshUser(true);
-      const status = await billingApi.getSubscriptionStatus();
-      setSubscriptionStatus(status);
     } catch (err: any) {
-      setError(err.message || (language === 'fr' ? 'Une erreur est survenue.' : 'An error occurred.'));
+      setError(err?.message || (language === 'fr' ? 'Erreur lors du changement' : 'Error changing plan'));
     } finally {
       setLoading(null);
     }
@@ -301,378 +358,462 @@ export const UpgradePage: React.FC = () => {
 
   const handleCancelSubscription = async () => {
     if (!confirm(language === 'fr' 
-      ? 'Êtes-vous sûr de vouloir annuler votre abonnement ?' 
-      : 'Are you sure you want to cancel your subscription?')) return;
+      ? 'Êtes-vous sûr de vouloir annuler ? Vous garderez vos avantages jusqu\'à la fin de la période payée.'
+      : 'Are you sure? You\'ll keep benefits until paid period ends.')) return;
     
     setLoading('cancel');
     try {
       await billingApi.cancelSubscription();
-      setSuccess(language === 'fr' ? 'Abonnement annulé' : 'Subscription cancelled');
-      await refreshUser(true);
+      setSuccess(language === 'fr' 
+        ? 'Abonnement annulé. Accès maintenu jusqu\'à la fin de la période.'
+        : 'Subscription cancelled. Access kept until period end.');
       const status = await billingApi.getSubscriptionStatus();
       setSubscriptionStatus(status);
     } catch (err: any) {
-      setError(err.message);
+      setError(err?.message || 'Error');
     } finally {
       setLoading(null);
     }
   };
 
-  const getPlanIcon = (id: PlanId) => {
-    const icons = { free: Zap, starter: Star, pro: Crown, expert: Sparkles };
-    return icons[id];
+  const getPlanIcon = (planId: PlanId) => {
+    switch (planId) {
+      case 'free': return Zap;
+      case 'starter': return Star;
+      case 'pro': return Crown;
+      case 'expert': return Sparkles;
+    }
   };
 
-  const getPlanGradient = (id: PlanId) => {
-    const gradients = {
-      free: 'from-slate-500 to-slate-600',
-      starter: 'from-blue-500 to-indigo-600',
-      pro: 'from-violet-500 to-purple-600',
-      expert: 'from-amber-500 to-orange-600',
-    };
-    return gradients[id];
-  };
-
-  const renderValue = (value: boolean | string) => {
+  const renderValue = (value: string | boolean) => {
     if (value === true) return <Check className="w-5 h-5 text-green-400" />;
-    if (value === false) return <X className="w-5 h-5 text-gray-600" />;
-    return <span className="text-sm font-semibold text-accent-primary">{value}</span>;
+    if (value === false) return <X className="w-5 h-5 text-gray-500" />;
+    if (value === '∞') return <Infinity className="w-5 h-5 text-amber-400" />;
+    return <span className="text-sm text-text-secondary">{value}</span>;
   };
-
-  const categories = [...new Set(FEATURE_MATRIX.map(f => f.category))];
 
   return (
-    <div className="min-h-screen bg-bg-primary flex">
-      <Sidebar isCollapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
+    <div className="min-h-screen bg-bg-primary relative">
+      <DoodleBackground variant="default" density={50} />
+      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
-      <main className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
-        <DoodleBackground />
-        
-        <div className="relative z-10 p-6 md:p-8 max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-10">
-            <h1 className="text-3xl md:text-4xl font-display font-bold text-text-primary mb-3">
-              {language === 'fr' ? 'Choisissez votre plan' : 'Choose your plan'}
-            </h1>
-            <p className="text-text-secondary max-w-2xl mx-auto">
-              {language === 'fr' 
-                ? 'Débloquez des fonctionnalités puissantes pour analyser le contenu vidéo.'
-                : 'Unlock powerful features to analyze video content.'}
-            </p>
-          </div>
+      <main className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
+        <div className="min-h-screen p-6 lg:p-8">
+          <div className="max-w-7xl mx-auto">
 
-          {/* Alerts */}
-          {error && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-red-400" />
-              <p className="text-red-400 flex-1">{error}</p>
-              <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300"><X className="w-4 h-4" /></button>
-            </div>
-          )}
-          {success && (
-            <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-xl flex items-center gap-3">
-              <Check className="w-5 h-5 text-green-400" />
-              <p className="text-green-400 flex-1">{success}</p>
-              <button onClick={() => setSuccess(null)} className="text-green-400 hover:text-green-300"><X className="w-4 h-4" /></button>
-            </div>
-          )}
+            {/* Header */}
+            <header className="text-center mb-10">
+              <h1 className="font-display text-3xl md:text-4xl font-bold text-text-primary mb-3">
+                {language === 'fr' ? 'Choisissez votre plan' : 'Choose your plan'}
+              </h1>
+              <p className="text-text-secondary max-w-2xl mx-auto">
+                {language === 'fr' 
+                  ? 'Débloquez des fonctionnalités puissantes pour analyser le contenu vidéo.'
+                  : 'Unlock powerful features to analyze video content.'}
+              </p>
+            </header>
 
-          {/* View Toggle */}
-          <div className="flex justify-center mb-8">
-            <div className="bg-bg-secondary rounded-xl p-1.5 flex gap-1">
-              <button
-                onClick={() => setViewMode('cards')}
-                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  viewMode === 'cards' ? 'bg-accent-primary text-white shadow-lg' : 'text-text-secondary hover:text-text-primary'
-                }`}
-              >
-                {language === 'fr' ? '🎴 Cartes' : '🎴 Cards'}
-              </button>
-              <button
-                onClick={() => setViewMode('table')}
-                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  viewMode === 'table' ? 'bg-accent-primary text-white shadow-lg' : 'text-text-secondary hover:text-text-primary'
-                }`}
-              >
-                {language === 'fr' ? '📊 Comparaison' : '📊 Comparison'}
-              </button>
-            </div>
-          </div>
-
-          {/* Card View */}
-          {viewMode === 'cards' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-12">
-              {PLANS.map((plan) => {
-                const Icon = getPlanIcon(plan.id);
-                const isCurrent = plan.id === currentPlan;
-                const isHigher = plan.order > currentPlanConfig.order;
-                const isLower = plan.order < currentPlanConfig.order;
-
-                return (
-                  <div
-                    key={plan.id}
-                    className={`relative card p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl ${
-                      plan.popular ? 'ring-2 ring-accent-primary shadow-lg shadow-accent-primary/20' : ''
-                    } ${isCurrent ? 'ring-2 ring-green-500 shadow-lg shadow-green-500/20' : ''}`}
-                  >
-                    {/* Badges */}
-                    {plan.popular && !isCurrent && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-gradient-to-r from-accent-primary to-purple-500 text-white text-xs font-bold rounded-full shadow-lg">
-                        ⭐ {language === 'fr' ? 'Recommandé' : 'Recommended'}
-                      </div>
-                    )}
-                    {isCurrent && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full shadow-lg flex items-center gap-1">
-                        <Check className="w-3 h-3" />
-                        {language === 'fr' ? 'Plan actuel' : 'Current'}
-                      </div>
-                    )}
-
-                    {/* Icon & Name */}
-                    <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${getPlanGradient(plan.id)} flex items-center justify-center mb-5 shadow-lg`}>
-                      <Icon className="w-8 h-8 text-white" />
-                    </div>
-
-                    <h3 className="text-2xl font-bold text-text-primary mb-1">{plan.name[lang]}</h3>
-                    <p className="text-sm text-text-tertiary mb-5">{plan.description[lang]}</p>
-
-                    {/* Price */}
-                    <div className="mb-6">
-                      <span className="text-4xl font-display font-bold text-text-primary">
-                        {plan.price === 0 ? '0' : plan.price.toFixed(2).replace('.', ',')}
-                      </span>
-                      <span className="text-text-tertiary ml-1">€/{language === 'fr' ? 'mois' : 'mo'}</span>
-                    </div>
-
-                    {/* Key Features */}
-                    <div className="space-y-3 mb-6 min-h-[200px]">
-                      <div className="flex items-center gap-3 text-sm">
-                        <div className="w-6 h-6 rounded-full bg-green-500/20 flex items-center justify-center">
-                          <Check className="w-3.5 h-3.5 text-green-400" />
-                        </div>
-                        <span className="text-text-secondary">
-                          {plan.limits.monthlyAnalyses === '∞' 
-                            ? (language === 'fr' ? 'Analyses illimitées' : 'Unlimited analyses')
-                            : `${plan.limits.monthlyAnalyses} ${language === 'fr' ? 'analyses/mois' : 'analyses/mo'}`}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center gap-3 text-sm">
-                        <div className={`w-6 h-6 rounded-full ${plan.features.summaryDetailed ? 'bg-green-500/20' : 'bg-gray-500/20'} flex items-center justify-center`}>
-                          {plan.features.summaryDetailed ? <Check className="w-3.5 h-3.5 text-green-400" /> : <X className="w-3.5 h-3.5 text-gray-500" />}
-                        </div>
-                        <span className={plan.features.summaryDetailed ? 'text-text-secondary' : 'text-text-muted'}>
-                          {language === 'fr' ? 'Analyse détaillée' : 'Detailed analysis'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-3 text-sm">
-                        <div className={`w-6 h-6 rounded-full ${plan.features.chatWebSearch ? 'bg-green-500/20' : 'bg-gray-500/20'} flex items-center justify-center`}>
-                          {plan.features.chatWebSearch ? <Check className="w-3.5 h-3.5 text-green-400" /> : <X className="w-3.5 h-3.5 text-gray-500" />}
-                        </div>
-                        <span className={plan.features.chatWebSearch ? 'text-text-secondary' : 'text-text-muted'}>
-                          {language === 'fr' ? 'Recherche web (Perplexity)' : 'Web search (Perplexity)'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-3 text-sm">
-                        <div className={`w-6 h-6 rounded-full ${plan.features.playlists ? 'bg-green-500/20' : 'bg-gray-500/20'} flex items-center justify-center`}>
-                          {plan.features.playlists ? <Check className="w-3.5 h-3.5 text-green-400" /> : <X className="w-3.5 h-3.5 text-gray-500" />}
-                        </div>
-                        <span className={plan.features.playlists ? 'text-text-secondary' : 'text-text-muted'}>
-                          {language === 'fr' ? 'Playlists & corpus' : 'Playlists & corpus'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-3 text-sm">
-                        <div className={`w-6 h-6 rounded-full ${plan.features.exportPdf ? 'bg-green-500/20' : 'bg-gray-500/20'} flex items-center justify-center`}>
-                          {plan.features.exportPdf ? <Check className="w-3.5 h-3.5 text-green-400" /> : <X className="w-3.5 h-3.5 text-gray-500" />}
-                        </div>
-                        <span className={plan.features.exportPdf ? 'text-text-secondary' : 'text-text-muted'}>
-                          {language === 'fr' ? 'Export PDF' : 'PDF export'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-3 text-sm">
-                        <div className={`w-6 h-6 rounded-full ${plan.features.ttsAudio ? 'bg-green-500/20' : 'bg-gray-500/20'} flex items-center justify-center`}>
-                          {plan.features.ttsAudio ? <Check className="w-3.5 h-3.5 text-green-400" /> : <X className="w-3.5 h-3.5 text-gray-500" />}
-                        </div>
-                        <span className={plan.features.ttsAudio ? 'text-text-secondary' : 'text-text-muted'}>
-                          {language === 'fr' ? 'Lecture audio TTS' : 'TTS audio'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* CTA */}
-                    <button
-                      onClick={() => handleChangePlan(plan.id)}
-                      disabled={isCurrent || loading === plan.id || plan.id === 'free'}
-                      className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
-                        isCurrent
-                          ? 'bg-green-500/20 text-green-400 cursor-default'
-                          : isHigher
-                          ? `bg-gradient-to-r ${getPlanGradient(plan.id)} text-white hover:opacity-90 shadow-lg`
-                          : isLower
-                          ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30'
-                          : 'bg-bg-tertiary text-text-muted cursor-not-allowed'
-                      }`}
-                    >
-                      {loading === plan.id ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : isCurrent ? (
-                        <><Check className="w-5 h-5" /> {language === 'fr' ? 'Plan actuel' : 'Current plan'}</>
-                      ) : isHigher ? (
-                        <><ArrowUp className="w-5 h-5" /> {language === 'fr' ? 'Passer à' : 'Upgrade to'} {plan.name[lang]}</>
-                      ) : isLower ? (
-                        <><ArrowDown className="w-5 h-5" /> {language === 'fr' ? 'Rétrograder' : 'Downgrade'}</>
-                      ) : (
-                        language === 'fr' ? 'Plan gratuit' : 'Free plan'
-                      )}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Table View */}
-          {viewMode === 'table' && (
-            <div className="card overflow-hidden mb-12">
-              {/* Header */}
-              <div className="grid grid-cols-5 gap-4 p-5 bg-bg-secondary border-b border-border-primary">
-                <div className="font-semibold text-text-secondary">
-                  {language === 'fr' ? 'Fonctionnalités' : 'Features'}
+            {/* Alerts */}
+            {subscriptionStatus?.cancel_at_period_end && (
+              <div className="card p-4 mb-6 border-amber-500/30 bg-amber-500/10 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-400" />
+                  <span className="text-amber-300 text-sm">
+                    {language === 'fr' 
+                      ? `Abonnement annulé. Accès jusqu'au ${new Date(subscriptionStatus.current_period_end!).toLocaleDateString()}`
+                      : `Subscription cancelled. Access until ${new Date(subscriptionStatus.current_period_end!).toLocaleDateString()}`}
+                  </span>
                 </div>
-                {PLANS.map((plan) => {
-                  const Icon = getPlanIcon(plan.id);
-                  const isCurrent = plan.id === currentPlan;
-                  return (
-                    <div key={plan.id} className="text-center">
-                      <div className={`inline-flex w-12 h-12 rounded-xl bg-gradient-to-br ${getPlanGradient(plan.id)} items-center justify-center mb-2 shadow-lg`}>
-                        <Icon className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="font-bold text-text-primary">{plan.name[lang]}</div>
-                      <div className="text-sm text-text-tertiary">{plan.price === 0 ? '0€' : `${plan.price.toFixed(2).replace('.', ',')}€`}</div>
-                      {isCurrent && (
-                        <div className="text-xs text-green-400 mt-1 flex items-center justify-center gap-1">
-                          <Check className="w-3 h-3" /> {language === 'fr' ? 'Actuel' : 'Current'}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                <button
+                  onClick={async () => {
+                    await billingApi.reactivateSubscription();
+                    const status = await billingApi.getSubscriptionStatus();
+                    setSubscriptionStatus(status);
+                  }}
+                  className="text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  {language === 'fr' ? 'Réactiver' : 'Reactivate'}
+                </button>
               </div>
+            )}
 
-              {/* Features by category */}
-              {categories.map((category) => (
-                <div key={category} className="border-b border-border-primary last:border-b-0">
-                  <button
-                    onClick={() => setExpandedCategories(prev => 
-                      prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
-                    )}
-                    className="w-full grid grid-cols-5 gap-4 p-4 bg-bg-tertiary/50 hover:bg-bg-tertiary transition-colors"
-                  >
-                    <div className="flex items-center gap-2 text-text-primary font-semibold">
-                      {category}
-                      {expandedCategories.includes(category) 
-                        ? <ChevronUp className="w-4 h-4 text-text-tertiary" />
-                        : <ChevronDown className="w-4 h-4 text-text-tertiary" />
-                      }
-                    </div>
-                  </button>
-                  
-                  {expandedCategories.includes(category) && (
-                    <div className="divide-y divide-border-primary/30">
-                      {FEATURE_MATRIX.filter(f => f.category === category).map((feature) => (
-                        <div key={feature.id} className="grid grid-cols-5 gap-4 p-4 hover:bg-bg-tertiary/30 transition-colors">
-                          <div className="text-sm text-text-secondary">{feature.name[lang]}</div>
-                          {(['free', 'starter', 'pro', 'expert'] as PlanId[]).map((planId) => (
-                            <div key={planId} className="flex justify-center">
-                              {renderValue(feature[planId])}
+            {error && (
+              <div className="card p-4 mb-6 border-red-500/30 bg-red-500/10 text-red-300 text-sm flex items-center gap-2">
+                <AlertCircle className="w-4 h-4" /> {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="card p-4 mb-6 border-green-500/30 bg-green-500/10 text-green-300 text-sm flex items-center gap-2">
+                <Check className="w-4 h-4" /> {success}
+              </div>
+            )}
+
+            {/* View Toggle */}
+            <div className="flex justify-center mb-8">
+              <div className="inline-flex bg-bg-tertiary rounded-xl p-1">
+                <button
+                  onClick={() => setViewMode('cards')}
+                  className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                    viewMode === 'cards' 
+                      ? 'bg-accent-primary text-white shadow-lg' 
+                      : 'text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  🃏 {language === 'fr' ? 'Cartes' : 'Cards'}
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
+                    viewMode === 'table' 
+                      ? 'bg-accent-primary text-white shadow-lg' 
+                      : 'text-text-secondary hover:text-text-primary'
+                  }`}
+                >
+                  📊 {language === 'fr' ? 'Comparaison' : 'Comparison'}
+                </button>
+              </div>
+            </div>
+
+            {/* Cards View */}
+            {viewMode === 'cards' && (
+              <>
+                {/* Plan Cards */}
+                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+                  {PLANS.map((plan) => {
+                    const Icon = getPlanIcon(plan.id);
+                    const isCurrent = plan.id === currentPlan;
+                    const isHigher = plan.order > currentPlanConfig.order;
+                    const isLower = plan.order < currentPlanConfig.order;
+                    const isExpert = plan.id === 'expert';
+
+                    return (
+                      <div
+                        key={plan.id}
+                        className={`card relative overflow-hidden transition-all duration-300 hover:scale-[1.02] ${
+                          isCurrent ? 'ring-2 ring-green-500/50' : ''
+                        } ${isExpert ? 'ring-2 ring-amber-500/50 shadow-xl shadow-amber-500/10' : ''}`}
+                      >
+                        {/* Badge */}
+                        {plan.popular && !isExpert && (
+                          <div className="absolute -top-0 -right-0">
+                            <div className="bg-violet-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
+                              {language === 'fr' ? 'Populaire' : 'Popular'}
                             </div>
-                          ))}
+                          </div>
+                        )}
+                        {isExpert && (
+                          <div className="absolute -top-0 -right-0">
+                            <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl flex items-center gap-1">
+                              <Sparkles className="w-3 h-3" />
+                              {language === 'fr' ? 'Recommandé' : 'Recommended'}
+                            </div>
+                          </div>
+                        )}
+                        {isCurrent && (
+                          <div className="absolute top-3 left-3">
+                            <div className="bg-green-500/20 text-green-400 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
+                              <Check className="w-3 h-3" />
+                              {language === 'fr' ? 'Plan actuel' : 'Current plan'}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="p-6 pt-10">
+                          {/* Icon & Name */}
+                          <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-5 shadow-lg`}>
+                            <Icon className="w-8 h-8 text-white" />
+                          </div>
+
+                          <h3 className="text-2xl font-bold text-text-primary mb-1">{plan.name[lang]}</h3>
+                          <p className="text-sm text-text-tertiary mb-5">{plan.description[lang]}</p>
+
+                          {/* Price */}
+                          <div className="mb-6">
+                            <span className="text-4xl font-display font-bold text-text-primary">
+                              {plan.price === 0 ? '0' : plan.price.toFixed(2).replace('.', ',')}
+                            </span>
+                            <span className="text-text-tertiary ml-1">€/{language === 'fr' ? 'mois' : 'mo'}</span>
+                          </div>
+
+                          {/* Key Features */}
+                          <div className="space-y-3 mb-6 min-h-[180px]">
+                            {plan.features.map((feature, idx) => (
+                              <div key={idx} className="flex items-center gap-3 text-sm">
+                                <div className={`w-6 h-6 rounded-full ${
+                                  feature.included 
+                                    ? feature.highlight 
+                                      ? 'bg-amber-500/20' 
+                                      : 'bg-green-500/20' 
+                                    : 'bg-gray-500/20'
+                                } flex items-center justify-center`}>
+                                  {feature.included 
+                                    ? <Check className={`w-3.5 h-3.5 ${feature.highlight ? 'text-amber-400' : 'text-green-400'}`} /> 
+                                    : <X className="w-3.5 h-3.5 text-gray-500" />}
+                                </div>
+                                <span className={`${feature.included ? 'text-text-secondary' : 'text-text-muted line-through'} ${feature.highlight ? 'font-medium text-amber-300' : ''}`}>
+                                  {feature.text[lang]}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Expert Exclusive Badge */}
+                          {isExpert && (
+                            <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
+                              <div className="flex items-center gap-2 text-amber-400 text-sm font-medium mb-1">
+                                <Key className="w-4 h-4" />
+                                {language === 'fr' ? '+ Accès API REST' : '+ REST API Access'}
+                              </div>
+                              <p className="text-xs text-text-tertiary">
+                                {language === 'fr' 
+                                  ? '1000 requêtes/jour, webhooks, intégrations'
+                                  : '1000 requests/day, webhooks, integrations'}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* CTA */}
+                          <button
+                            onClick={() => handleChangePlan(plan.id)}
+                            disabled={isCurrent || loading === plan.id || plan.id === 'free'}
+                            className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+                              isCurrent
+                                ? 'bg-green-500/20 text-green-400 cursor-default'
+                                : isHigher
+                                ? `bg-gradient-to-r ${plan.gradient} text-white hover:opacity-90 shadow-lg`
+                                : isLower
+                                ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30'
+                                : 'bg-bg-tertiary text-text-muted cursor-not-allowed'
+                            }`}
+                          >
+                            {loading === plan.id ? (
+                              <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : isCurrent ? (
+                              <><Check className="w-5 h-5" /> {language === 'fr' ? 'Plan actuel' : 'Current plan'}</>
+                            ) : isHigher ? (
+                              <><ArrowUp className="w-5 h-5" /> {language === 'fr' ? `Passer à ${plan.name[lang]}` : `Upgrade to ${plan.name[lang]}`}</>
+                            ) : isLower ? (
+                              <><ArrowDown className="w-5 h-5" /> {language === 'fr' ? 'Rétrograder' : 'Downgrade'}</>
+                            ) : (
+                              language === 'fr' ? 'Plan gratuit' : 'Free plan'
+                            )}
+                          </button>
                         </div>
-                      ))}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Expert Exclusive Section */}
+                <div className="card p-8 mb-12 bg-gradient-to-br from-amber-500/5 to-orange-500/5 border-amber-500/20">
+                  <div className="text-center mb-8">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/20 text-amber-400 text-sm font-semibold mb-4">
+                      <Sparkles className="w-4 h-4" />
+                      {language === 'fr' ? 'Exclusivités Expert' : 'Expert Exclusives'}
+                    </div>
+                    <h2 className="text-2xl font-bold text-text-primary mb-2">
+                      {language === 'fr' ? 'Pourquoi choisir Expert ?' : 'Why choose Expert?'}
+                    </h2>
+                    <p className="text-text-secondary max-w-2xl mx-auto">
+                      {language === 'fr' 
+                        ? 'Des fonctionnalités avancées pour les professionnels qui veulent tirer le maximum de Deep Sight.'
+                        : 'Advanced features for professionals who want to get the most out of Deep Sight.'}
+                    </p>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {EXPERT_EXCLUSIVES.map((feature, idx) => {
+                      const Icon = feature.icon;
+                      return (
+                        <div key={idx} className="p-5 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-amber-500/30 transition-colors">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                              <Icon className="w-5 h-5 text-amber-400" />
+                            </div>
+                            {feature.badge && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                                {feature.badge[lang]}
+                              </span>
+                            )}
+                          </div>
+                          <h3 className="font-semibold text-text-primary mb-1">{feature.title[lang]}</h3>
+                          <p className="text-sm text-text-tertiary">{feature.description[lang]}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* CTA Expert */}
+                  {currentPlan !== 'expert' && (
+                    <div className="text-center mt-8">
+                      <button
+                        onClick={() => handleChangePlan('expert')}
+                        disabled={loading === 'expert'}
+                        className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold shadow-lg shadow-amber-500/25 hover:opacity-90 transition-opacity"
+                      >
+                        {loading === 'expert' ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <>
+                            <Sparkles className="w-5 h-5" />
+                            {language === 'fr' ? 'Passer à Expert — 14,99€/mois' : 'Upgrade to Expert — €14.99/mo'}
+                          </>
+                        )}
+                      </button>
                     </div>
                   )}
                 </div>
-              ))}
+              </>
+            )}
 
-              {/* CTA Row */}
-              <div className="grid grid-cols-5 gap-4 p-5 bg-bg-secondary">
-                <div />
-                {PLANS.map((plan) => {
-                  const isCurrent = plan.id === currentPlan;
-                  const isHigher = plan.order > currentPlanConfig.order;
-                  return (
-                    <div key={plan.id} className="flex justify-center">
-                      <button
-                        onClick={() => handleChangePlan(plan.id)}
-                        disabled={isCurrent || loading === plan.id || plan.id === 'free'}
-                        className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all ${
-                          isCurrent ? 'bg-green-500/20 text-green-400'
-                          : isHigher ? 'bg-accent-primary text-white hover:bg-accent-primary/90 shadow-lg'
-                          : 'bg-bg-tertiary text-text-muted'
-                        }`}
-                      >
-                        {loading === plan.id ? <Loader2 className="w-4 h-4 animate-spin" />
-                          : isCurrent ? (language === 'fr' ? 'Actuel' : 'Current')
-                          : isHigher ? (language === 'fr' ? 'Choisir' : 'Select')
-                          : '-'}
-                      </button>
-                    </div>
-                  );
-                })}
+            {/* Table View */}
+            {viewMode === 'table' && (
+              <div className="card overflow-hidden mb-12">
+                {/* Header */}
+                <div className="grid grid-cols-5 gap-4 p-5 bg-bg-secondary border-b border-border-primary">
+                  <div className="font-semibold text-text-secondary">
+                    {language === 'fr' ? 'Fonctionnalités' : 'Features'}
+                  </div>
+                  {PLANS.map((plan) => {
+                    const Icon = getPlanIcon(plan.id);
+                    const isCurrent = plan.id === currentPlan;
+                    const isExpert = plan.id === 'expert';
+                    return (
+                      <div key={plan.id} className={`text-center ${isExpert ? 'bg-amber-500/5 -mx-2 px-2 py-2 rounded-lg' : ''}`}>
+                        <div className={`inline-flex w-12 h-12 rounded-xl bg-gradient-to-br ${plan.gradient} items-center justify-center mb-2 shadow-lg`}>
+                          <Icon className="w-6 h-6 text-white" />
+                        </div>
+                        <div className="font-bold text-text-primary">{plan.name[lang]}</div>
+                        <div className="text-sm text-text-tertiary">{plan.price === 0 ? '0€' : `${plan.price.toFixed(2).replace('.', ',')}€`}</div>
+                        {isCurrent && (
+                          <div className="text-xs text-green-400 mt-1 flex items-center justify-center gap-1">
+                            <Check className="w-3 h-3" /> {language === 'fr' ? 'Actuel' : 'Current'}
+                          </div>
+                        )}
+                        {isExpert && !isCurrent && (
+                          <div className="text-xs text-amber-400 mt-1">
+                            {language === 'fr' ? '⭐ Recommandé' : '⭐ Recommended'}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Features by category */}
+                {categories.map((category) => (
+                  <div key={category} className="border-b border-border-primary last:border-b-0">
+                    <button
+                      onClick={() => setExpandedCategories(prev => 
+                        prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
+                      )}
+                      className="w-full grid grid-cols-5 gap-4 p-4 bg-bg-tertiary/50 hover:bg-bg-tertiary transition-colors"
+                    >
+                      <div className="flex items-center gap-2 text-text-primary font-semibold">
+                        {category}
+                        {expandedCategories.includes(category) 
+                          ? <ChevronUp className="w-4 h-4 text-text-tertiary" />
+                          : <ChevronDown className="w-4 h-4 text-text-tertiary" />
+                        }
+                      </div>
+                    </button>
+                    
+                    {expandedCategories.includes(category) && (
+                      <div className="divide-y divide-border-primary/30">
+                        {COMPARISON_MATRIX.filter(f => f.category === category).map((row, idx) => (
+                          <div key={idx} className="grid grid-cols-5 gap-4 p-4 hover:bg-bg-tertiary/30 transition-colors">
+                            <div className="text-sm text-text-secondary">{row.feature[lang]}</div>
+                            {(['free', 'starter', 'pro', 'expert'] as PlanId[]).map((planId) => (
+                              <div key={planId} className={`flex justify-center ${planId === 'expert' && row.expertHighlight ? 'bg-amber-500/10 -mx-2 px-2 rounded' : ''}`}>
+                                {renderValue(row[planId])}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* CTA Row */}
+                <div className="grid grid-cols-5 gap-4 p-5 bg-bg-secondary">
+                  <div />
+                  {PLANS.map((plan) => {
+                    const isCurrent = plan.id === currentPlan;
+                    const isHigher = plan.order > currentPlanConfig.order;
+                    const isExpert = plan.id === 'expert';
+                    return (
+                      <div key={plan.id} className="flex justify-center">
+                        <button
+                          onClick={() => handleChangePlan(plan.id)}
+                          disabled={isCurrent || loading === plan.id || plan.id === 'free'}
+                          className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all ${
+                            isCurrent ? 'bg-green-500/20 text-green-400'
+                            : isHigher ? `bg-gradient-to-r ${plan.gradient} text-white hover:opacity-90 shadow-lg`
+                            : 'bg-bg-tertiary text-text-muted'
+                          }`}
+                        >
+                          {loading === plan.id ? <Loader2 className="w-4 h-4 animate-spin" />
+                            : isCurrent ? (language === 'fr' ? 'Actuel' : 'Current')
+                            : isHigher ? (language === 'fr' ? 'Choisir' : 'Select')
+                            : '-'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Cancel */}
+            {currentPlan !== 'free' && !subscriptionStatus?.cancel_at_period_end && (
+              <div className="text-center mb-8">
+                <button
+                  onClick={handleCancelSubscription}
+                  disabled={loading === 'cancel'}
+                  className="text-sm text-text-tertiary hover:text-red-400 transition-colors flex items-center gap-2 mx-auto"
+                >
+                  {loading === 'cancel' && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {language === 'fr' ? 'Annuler mon abonnement' : 'Cancel subscription'}
+                </button>
+              </div>
+            )}
+
+            {/* FAQ */}
+            <div className="card p-6 mb-8">
+              <h3 className="font-bold text-lg text-text-primary mb-5 flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-accent-primary" />
+                {language === 'fr' ? 'Questions fréquentes' : 'FAQ'}
+              </h3>
+              <div className="grid md:grid-cols-2 gap-6 text-sm">
+                <div className="space-y-1">
+                  <p className="font-semibold text-text-primary">{language === 'fr' ? "Comment fonctionne l'API ?" : 'How does the API work?'}</p>
+                  <p className="text-text-secondary">{language === 'fr' ? 'Générez votre clé API dans Paramètres. Documentation complète disponible.' : 'Generate your API key in Settings. Full documentation available.'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold text-text-primary">{language === 'fr' ? "Comment fonctionne l'upgrade ?" : 'How does upgrade work?'}</p>
+                  <p className="text-text-secondary">{language === 'fr' ? 'Vous êtes facturé la différence au prorata. Nouveaux avantages instantanés.' : 'You pay the prorated difference. New benefits are instant.'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold text-text-primary">{language === 'fr' ? 'Puis-je annuler ?' : 'Can I cancel?'}</p>
+                  <p className="text-text-secondary">{language === 'fr' ? 'Oui, à tout moment. Accès maintenu jusqu\'à fin de période payée.' : 'Yes, anytime. Access kept until paid period ends.'}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold text-text-primary">{language === 'fr' ? 'Moyens de paiement ?' : 'Payment methods?'}</p>
+                  <p className="text-text-secondary">{language === 'fr' ? 'Toutes cartes bancaires via Stripe. Paiements sécurisés.' : 'All cards via Stripe. Secure payments.'}</p>
+                </div>
               </div>
             </div>
-          )}
 
-          {/* Cancel */}
-          {currentPlan !== 'free' && !subscriptionStatus?.cancel_at_period_end && (
-            <div className="text-center mb-8">
-              <button
-                onClick={handleCancelSubscription}
-                disabled={loading === 'cancel'}
-                className="text-sm text-text-tertiary hover:text-red-400 transition-colors flex items-center gap-2 mx-auto"
-              >
-                {loading === 'cancel' && <Loader2 className="w-4 h-4 animate-spin" />}
-                {language === 'fr' ? 'Annuler mon abonnement' : 'Cancel subscription'}
-              </button>
+            {/* Contact */}
+            <div className="text-center text-sm text-text-tertiary">
+              {language === 'fr' ? 'Questions ? ' : 'Questions? '}
+              <a href="mailto:contact@deepsightsynthesis.com" className="text-accent-primary hover:underline">
+                contact@deepsightsynthesis.com
+              </a>
             </div>
-          )}
-
-          {/* FAQ */}
-          <div className="card p-6 mb-8">
-            <h3 className="font-bold text-lg text-text-primary mb-5 flex items-center gap-2">
-              <BookOpen className="w-5 h-5 text-accent-primary" />
-              {language === 'fr' ? 'Questions fréquentes' : 'FAQ'}
-            </h3>
-            <div className="grid md:grid-cols-2 gap-6 text-sm">
-              <div className="space-y-1">
-                <p className="font-semibold text-text-primary">{language === 'fr' ? "Comment fonctionne l'upgrade ?" : 'How does upgrade work?'}</p>
-                <p className="text-text-secondary">{language === 'fr' ? 'Vous êtes facturé la différence au prorata. Nouveaux avantages instantanés.' : 'You pay the prorated difference. New benefits are instant.'}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="font-semibold text-text-primary">{language === 'fr' ? 'Comment fonctionne le downgrade ?' : 'How does downgrade work?'}</p>
-                <p className="text-text-secondary">{language === 'fr' ? 'Vous gardez vos avantages jusqu\'à la fin de la période. Changement au renouvellement.' : 'Keep benefits until period end. Change at renewal.'}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="font-semibold text-text-primary">{language === 'fr' ? 'Puis-je annuler ?' : 'Can I cancel?'}</p>
-                <p className="text-text-secondary">{language === 'fr' ? 'Oui, à tout moment. Accès maintenu jusqu\'à fin de période payée.' : 'Yes, anytime. Access kept until paid period ends.'}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="font-semibold text-text-primary">{language === 'fr' ? 'Moyens de paiement ?' : 'Payment methods?'}</p>
-                <p className="text-text-secondary">{language === 'fr' ? 'Toutes cartes bancaires via Stripe. Paiements sécurisés.' : 'All cards via Stripe. Secure payments.'}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Contact */}
-          <div className="text-center text-sm text-text-tertiary">
-            {language === 'fr' ? 'Questions ? ' : 'Questions? '}
-            <a href="mailto:contact@deepsightsynthesis.com" className="text-accent-primary hover:underline">
-              contact@deepsightsynthesis.com
-            </a>
           </div>
         </div>
       </main>
