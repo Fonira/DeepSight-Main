@@ -1,11 +1,15 @@
 /**
  * ╔════════════════════════════════════════════════════════════════════════════════════╗
  * ║  🎯 PLAN PRIVILEGES — Configuration centralisée des privilèges par plan            ║
- * ║  v2.0 — Système robuste et cohérent                                                ║
+ * ║  v2.1 — ALIGNÉ avec UpgradePage et Backend                                         ║
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  * 
  * Ce fichier est LA SOURCE DE VÉRITÉ pour tous les privilèges.
  * Toute modification des fonctionnalités doit être faite ICI.
+ * 
+ * ⚠️ DOIT RESTER SYNCHRONISÉ AVEC:
+ * - Backend: src/core/config.py (PLAN_LIMITS)
+ * - Frontend: src/pages/UpgradePage.tsx
  */
 
 export type PlanId = 'free' | 'starter' | 'pro' | 'expert';
@@ -28,6 +32,12 @@ export interface PlanLimits {
   
   // Export
   maxExportsPerDay: number;       // 0 = désactivé, -1 = illimité
+  
+  // Web Search
+  webSearchMonthly: number;       // 0 = désactivé, -1 = illimité
+  
+  // Historique
+  historyDays: number;            // -1 = illimité
 }
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
@@ -38,6 +48,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     maxPlaylistVideos: 0,
     maxPlaylists: 0,
     maxExportsPerDay: 0,
+    webSearchMonthly: 0,
+    historyDays: 7,
   },
   starter: {
     monthlyAnalyses: 50,
@@ -46,22 +58,28 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     maxPlaylistVideos: 0,
     maxPlaylists: 0,
     maxExportsPerDay: 10,
+    webSearchMonthly: 20,  // ✅ CORRIGÉ: Starter a 20 recherches/mois
+    historyDays: 60,
   },
   pro: {
     monthlyAnalyses: 200,
     chatQuestionsPerVideo: -1,  // Illimité
     chatDailyLimit: -1,         // Illimité
-    maxPlaylistVideos: 10,
+    maxPlaylistVideos: 10,      // ✅ Aligné avec UpgradePage
     maxPlaylists: 20,
     maxExportsPerDay: -1,       // Illimité
+    webSearchMonthly: 100,
+    historyDays: 180,           // ✅ Aligné avec UpgradePage (180 jours)
   },
   expert: {
     monthlyAnalyses: -1,        // Illimité
     chatQuestionsPerVideo: -1,
     chatDailyLimit: -1,
-    maxPlaylistVideos: 50,
+    maxPlaylistVideos: 50,      // ✅ Aligné avec UpgradePage
     maxPlaylists: -1,           // Illimité
     maxExportsPerDay: -1,
+    webSearchMonthly: 500,
+    historyDays: -1,            // Illimité
   },
 };
 
@@ -155,12 +173,12 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     
     // Chat
     chatBasic: true,
-    chatWebSearch: false,
+    chatWebSearch: true,  // ✅ CORRIGÉ: Starter a web search (20/mois)
     chatSuggestedQuestions: true,
     
     // Fact-checking
     factCheckBasic: true,
-    factCheckAdvanced: false,
+    factCheckAdvanced: false,  // Fact-check avancé = Pro+
     
     // Recherche
     intelligentSearch: true,
@@ -256,8 +274,8 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     // Avancé
     apiAccess: true,
     prioritySupport: true,
-    dedicatedSupport: true,
-    training: true,
+    dedicatedSupport: false,  // Non implémenté
+    training: false,          // Non implémenté
   },
 };
 
@@ -299,16 +317,17 @@ export const PLANS_INFO: PlanInfo[] = [
     description: { fr: 'Pour les power users', en: 'For power users' },
     price: 999,
     priceDisplay: { fr: '9,99 €/mois', en: '€9.99/month' },
-    badge: { fr: 'Recommandé', en: 'Recommended' },
+    badge: { fr: 'Populaire', en: 'Popular' },
     popular: true,
     order: 2,
   },
   {
     id: 'expert',
     name: { fr: 'Expert', en: 'Expert' },
-    description: { fr: 'Pour les organisations', en: 'For organizations' },
+    description: { fr: 'Pour les professionnels', en: 'For professionals' },
     price: 1499,
     priceDisplay: { fr: '14,99 €/mois', en: '€14.99/month' },
+    badge: { fr: 'Recommandé', en: 'Recommended' },
     order: 3,
   },
 ];
@@ -396,6 +415,12 @@ export function getFeatureListForDisplay(plan: PlanId, language: 'fr' | 'en'): A
     ? (language === 'fr' ? 'Chat illimité' : 'Unlimited chat')
     : (language === 'fr' ? `Chat (${limits.chatQuestionsPerVideo} questions/vidéo)` : `Chat (${limits.chatQuestionsPerVideo} questions/video)`);
   
+  const webSearchText = limits.webSearchMonthly === 0
+    ? (language === 'fr' ? 'Recherche web' : 'Web search')
+    : limits.webSearchMonthly === -1
+    ? (language === 'fr' ? 'Recherche web illimitée' : 'Unlimited web search')
+    : (language === 'fr' ? `Recherche web (${limits.webSearchMonthly}/mois)` : `Web search (${limits.webSearchMonthly}/mo)`);
+  
   return [
     { 
       text: analysesText, 
@@ -415,7 +440,7 @@ export function getFeatureListForDisplay(plan: PlanId, language: 'fr' | 'en'): A
       included: features.chatBasic 
     },
     { 
-      text: language === 'fr' ? 'Recherche web (chat)' : 'Web search (chat)', 
+      text: webSearchText, 
       included: features.chatWebSearch,
       highlight: features.chatWebSearch
     },
@@ -457,10 +482,6 @@ export function getFeatureListForDisplay(plan: PlanId, language: 'fr' | 'en'): A
     { 
       text: language === 'fr' ? 'Support prioritaire' : 'Priority support', 
       included: features.prioritySupport 
-    },
-    { 
-      text: language === 'fr' ? 'Support dédié' : 'Dedicated support', 
-      included: features.dedicatedSupport 
     },
   ].filter(f => f.included || plan !== 'free'); // Pour free, ne montrer que ce qui est inclus
 }
