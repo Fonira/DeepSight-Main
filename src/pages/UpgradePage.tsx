@@ -71,7 +71,7 @@ const PLANS: PlanConfig[] = [
       { text: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, included: true },
       { text: { fr: 'Chat (20 questions/vidéo)', en: 'Chat (20 questions/video)' }, included: true },
       { text: { fr: 'Export PDF', en: 'PDF export' }, included: true },
-      { text: { fr: 'Recherche web (Perplexity)', en: 'Web search (Perplexity)' }, included: false },
+      { text: { fr: 'Recherche web (20/mois)', en: 'Web search (20/mo)' }, included: true, highlight: true },
       { text: { fr: 'Playlists & corpus', en: 'Playlists & corpus' }, included: false },
     ],
   },
