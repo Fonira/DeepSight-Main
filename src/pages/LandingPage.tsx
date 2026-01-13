@@ -1,6 +1,8 @@
 /**
- * DEEP SIGHT v5.0 — Landing Page
- * Design académique sobre pour chercheurs, journalistes et étudiants
+ * ╔════════════════════════════════════════════════════════════════════════════════════╗
+ * ║  🚀 DEEP SIGHT LANDING PAGE v6.0 — Optimisée Conversion                             ║
+ * ║  Design académique + Pricing aligné avec UpgradePage                                ║
+ * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
 import React, { useState, useEffect } from "react";
@@ -9,18 +11,21 @@ import {
   Play, ArrowRight, Check, X, Sparkles,
   Youtube, Brain, Shield, MessageSquare, FileText,
   Zap, BookOpen, Search, BarChart3, Globe, Clock,
-  ChevronRight, Users, GraduationCap, Newspaper
+  ChevronRight, Users, GraduationCap, Newspaper,
+  Star, Crown, Rocket, TrendingUp
 } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../hooks/useAuth";
 import DoodleBackground from "../components/DoodleBackground";
 
-// === Logo Deep Sight avec image et SVG fallback ===
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎨 LOGO COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const Logo: React.FC<{ className?: string }> = ({ className = "" }) => {
   const [imageError, setImageError] = React.useState(false);
   
-  // SVG du logo Deep Sight (œil stylisé avec play button)
   const LogoSVG = () => (
     <svg viewBox="0 0 100 100" className="w-full h-full">
       <defs>
@@ -48,7 +53,6 @@ const Logo: React.FC<{ className?: string }> = ({ className = "" }) => {
   return (
     <div className={`flex items-center gap-3 ${className}`}>
       <div className="relative w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center group">
-        {/* Halo subtil au hover - couleurs métalliques */}
         <div 
           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl"
           style={{
@@ -77,76 +81,105 @@ const Logo: React.FC<{ className?: string }> = ({ className = "" }) => {
   );
 };
 
-// === Données des plans ===
-const getPlans = (language: string) => [
+// ═══════════════════════════════════════════════════════════════════════════════
+// 📊 PLANS CONFIGURATION — ALIGNÉ AVEC planPrivileges.ts et UpgradePage
+// ═══════════════════════════════════════════════════════════════════════════════
+
+type PlanId = 'free' | 'starter' | 'pro' | 'expert';
+
+interface PlanConfig {
+  id: PlanId;
+  name: { fr: string; en: string };
+  description: { fr: string; en: string };
+  price: number;
+  icon: React.ElementType;
+  gradient: string;
+  iconBg: string;
+  popular?: boolean;
+  recommended?: boolean;
+  features: Array<{
+    text: { fr: string; en: string };
+    included: boolean;
+    highlight?: boolean;
+  }>;
+}
+
+const PLANS: PlanConfig[] = [
   {
-    id: "free",
-    name: "Découverte",
-    price: "0",
-    period: language === 'fr' ? '/mois' : '/month',
-    description: language === 'fr' ? 'Pour explorer la plateforme' : 'To explore the platform',
+    id: 'free',
+    name: { fr: 'Découverte', en: 'Discovery' },
+    description: { fr: 'Pour explorer', en: 'To explore' },
+    price: 0,
+    icon: Zap,
+    gradient: 'from-slate-500 to-slate-600',
+    iconBg: 'bg-slate-500',
     features: [
-      { text: language === 'fr' ? '5 analyses par mois' : '5 analyses per month', included: true },
-      { text: language === 'fr' ? 'Résumés structurés' : 'Structured summaries', included: true },
-      { text: language === 'fr' ? 'Chat contextuel limité' : 'Limited contextual chat', included: true },
-      { text: 'Fact-checking', included: false },
-      { text: language === 'fr' ? 'Export documents' : 'Document export', included: false },
+      { text: { fr: '5 analyses/mois', en: '5 analyses/month' }, included: true },
+      { text: { fr: 'Synthèse express', en: 'Express summary' }, included: true },
+      { text: { fr: 'Chat basique (5 questions)', en: 'Basic chat (5 questions)' }, included: true },
+      { text: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, included: false },
+      { text: { fr: 'Recherche web', en: 'Web search' }, included: false },
+      { text: { fr: 'Export PDF', en: 'PDF export' }, included: false },
     ],
-    cta: language === 'fr' ? 'Commencer gratuitement' : 'Start for free',
-    highlighted: false,
   },
   {
-    id: "starter",
-    name: "Starter",
-    price: "4.99",
-    period: "€",
-    description: language === 'fr' ? 'Pour une utilisation régulière' : 'For regular use',
+    id: 'starter',
+    name: { fr: 'Starter', en: 'Starter' },
+    description: { fr: 'Pour les réguliers', en: 'For regular users' },
+    price: 4.99,
+    icon: Star,
+    gradient: 'from-blue-500 to-blue-600',
+    iconBg: 'bg-blue-500',
     features: [
-      { text: language === 'fr' ? '50 analyses par mois' : '50 analyses per month', included: true },
-      { text: language === 'fr' ? 'Résumés avancés' : 'Advanced summaries', included: true },
-      { text: language === 'fr' ? 'Chat illimité' : 'Unlimited chat', included: true },
-      { text: 'Fact-checking', included: true },
-      { text: 'Export PDF & Markdown', included: true },
+      { text: { fr: '50 analyses/mois', en: '50 analyses/month' }, included: true },
+      { text: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, included: true },
+      { text: { fr: 'Chat (20 questions/vidéo)', en: 'Chat (20 questions/video)' }, included: true },
+      { text: { fr: 'Export PDF', en: 'PDF export' }, included: true },
+      { text: { fr: 'Recherche web (20/mois)', en: 'Web search (20/mo)' }, included: true, highlight: true },
+      { text: { fr: 'Playlists & corpus', en: 'Playlists & corpus' }, included: false },
     ],
-    cta: language === 'fr' ? 'Choisir Starter' : 'Choose Starter',
-    highlighted: false,
   },
   {
-    id: "pro",
-    name: "Pro",
-    price: "9.99",
-    period: "€",
-    description: language === 'fr' ? 'Pour les professionnels exigeants' : 'For demanding professionals',
+    id: 'pro',
+    name: { fr: 'Pro', en: 'Pro' },
+    description: { fr: 'Pour les power users', en: 'For power users' },
+    price: 9.99,
+    icon: Crown,
+    gradient: 'from-violet-500 to-purple-600',
+    iconBg: 'bg-violet-500',
+    popular: true,
     features: [
-      { text: language === 'fr' ? '200 analyses par mois' : '200 analyses per month', included: true },
-      { text: language === 'fr' ? 'Analyses de playlists' : 'Playlist analysis', included: true },
-      { text: language === 'fr' ? 'Recherche web (Perplexity)' : 'Web search (Perplexity)', included: true },
-      { text: language === 'fr' ? 'Fact-checking avancé' : 'Advanced fact-checking', included: true },
-      { text: language === 'fr' ? 'Tous les exports' : 'All exports', included: true },
+      { text: { fr: '200 analyses/mois', en: '200 analyses/month' }, included: true },
+      { text: { fr: 'Chat illimité', en: 'Unlimited chat' }, included: true, highlight: true },
+      { text: { fr: 'Recherche web (100/mois)', en: 'Web search (100/mo)' }, included: true, highlight: true },
+      { text: { fr: 'Playlists (10 vidéos)', en: 'Playlists (10 videos)' }, included: true },
+      { text: { fr: 'Export PDF + Markdown', en: 'PDF + Markdown export' }, included: true },
+      { text: { fr: 'Lecture audio TTS', en: 'TTS audio' }, included: true },
     ],
-    cta: language === 'fr' ? 'Choisir Pro' : 'Choose Pro',
-    highlighted: true,
-    badge: language === 'fr' ? 'Recommandé' : 'Recommended',
   },
   {
-    id: "expert",
-    name: "Expert",
-    price: "14.99",
-    period: "€",
-    description: language === 'fr' ? 'Pour les organisations' : 'For organizations',
+    id: 'expert',
+    name: { fr: 'Expert', en: 'Expert' },
+    description: { fr: 'Pour les professionnels', en: 'For professionals' },
+    price: 14.99,
+    icon: Rocket,
+    gradient: 'from-amber-500 to-orange-500',
+    iconBg: 'bg-amber-500',
+    recommended: true,
     features: [
-      { text: language === 'fr' ? 'Analyses illimitées' : 'Unlimited analyses', included: true },
-      { text: language === 'fr' ? 'API access' : 'API access', included: true },
-      { text: language === 'fr' ? 'Support prioritaire' : 'Priority support', included: true },
-      { text: language === 'fr' ? 'Corpus personnalisés' : 'Custom corpus', included: true },
-      { text: language === 'fr' ? 'Intégrations avancées' : 'Advanced integrations', included: true },
+      { text: { fr: 'Analyses illimitées', en: 'Unlimited analyses' }, included: true, highlight: true },
+      { text: { fr: 'Tout Pro inclus', en: 'All Pro features' }, included: true },
+      { text: { fr: 'Playlists (50 vidéos)', en: 'Playlists (50 videos)' }, included: true, highlight: true },
+      { text: { fr: 'Recherche web (500/mois)', en: 'Web search (500/mo)' }, included: true, highlight: true },
+      { text: { fr: '+ Accès API REST', en: '+ REST API Access' }, included: true, highlight: true },
     ],
-    cta: language === 'fr' ? 'Contacter' : 'Contact us',
-    highlighted: false,
   },
 ];
 
-// === Features principales ===
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎯 FEATURES PRINCIPALES
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const getFeatures = (language: string) => [
   {
     icon: Brain,
@@ -178,7 +211,10 @@ const getFeatures = (language: string) => [
   },
 ];
 
-// === Audiences cibles ===
+// ═══════════════════════════════════════════════════════════════════════════════
+// 👥 AUDIENCES CIBLES
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const getAudiences = (language: string) => [
   {
     icon: GraduationCap,
@@ -203,190 +239,149 @@ const getAudiences = (language: string) => [
   },
 ];
 
-export const LandingPage: React.FC = () => {
-  const { t, language } = useLanguage();
-  const { isDark, toggleTheme } = useTheme();
-  const { isAuthenticated } = useAuth();
-  const navigate = useNavigate();
+// ═══════════════════════════════════════════════════════════════════════════════
+// 📊 STATS HERO
+// ═══════════════════════════════════════════════════════════════════════════════
 
-  const plans = getPlans(language);
+const stats = [
+  { value: '5min', label: { fr: 'par vidéo', en: 'per video' } },
+  { value: '98%', label: { fr: 'précision', en: 'accuracy' } },
+  { value: '24/7', label: { fr: 'disponible', en: 'available' } },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🚀 LANDING PAGE COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const LandingPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { language } = useLanguage();
+  const { theme } = useTheme();
+  const { user, isLoading } = useAuth();
+  const lang = language as 'fr' | 'en';
+
   const features = getFeatures(language);
   const audiences = getAudiences(language);
 
+  // Redirect si déjà connecté
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!isLoading && user) {
       navigate('/dashboard');
     }
-  }, [isAuthenticated, navigate]);
+  }, [user, isLoading, navigate]);
 
   return (
-    <div className="min-h-screen bg-bg-primary relative">
-      <DoodleBackground variant="default" density={50} />
-      {/* === Navigation === */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border-subtle bg-bg-primary/80 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-bg-primary relative overflow-hidden">
+      {/* Background */}
+      <DoodleBackground density={0.3} opacity={0.15} />
+
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+      {/* HEADER */}
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-bg-primary/80 border-b border-border-subtle">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Logo />
           
           <div className="flex items-center gap-4">
-            {/* Theme toggle */}
-            <button
-              onClick={toggleTheme}
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-bg-hover transition-all"
-              aria-label="Toggle theme"
-            >
-              {isDark ? (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              )}
-            </button>
-            
             <button
               onClick={() => navigate('/login')}
-              className="text-sm font-medium text-text-secondary hover:text-text-primary transition-colors"
+              className="text-sm text-text-secondary hover:text-text-primary transition-colors"
             >
               {language === 'fr' ? 'Connexion' : 'Sign in'}
             </button>
-            
             <button
               onClick={() => navigate('/login')}
-              className="btn btn-primary text-sm"
+              className="btn btn-primary text-sm px-5 py-2"
             >
-              {language === 'fr' ? 'Commencer' : 'Get started'}
+              {language === 'fr' ? 'Commencer' : 'Get Started'}
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
-      </nav>
+      </header>
 
-      {/* === Hero Section === */}
-      <section className="pt-32 pb-20 px-6">
-        <div className="max-w-4xl mx-auto text-center">
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+      {/* HERO SECTION */}
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+      <section className="relative py-24 px-6">
+        <div className="max-w-5xl mx-auto text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-primary-muted border border-accent-primary/20 mb-8 animate-fadeInUp">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent-primary/10 border border-accent-primary/20 mb-8">
             <Sparkles className="w-4 h-4 text-accent-primary" />
-            <span className="text-sm font-medium text-accent-primary">
-              {language === 'fr' ? 'Analyse vidéo par IA' : 'AI-powered video analysis'}
+            <span className="text-sm text-accent-primary font-medium">
+              {language === 'fr' ? 'Analyse vidéo par IA' : 'AI Video Analysis'}
             </span>
           </div>
 
-          {/* Titre principal */}
-          <h1 className="font-display text-display-lg mb-6 animate-fadeInUp stagger-1">
-            {language === 'fr' ? (
-              <>
-                Transformez vos vidéos<br />
-                <span className="text-gradient">en connaissances</span>
-              </>
-            ) : (
-              <>
-                Transform your videos<br />
-                <span className="text-gradient">into knowledge</span>
-              </>
-            )}
+          {/* Headline */}
+          <h1 className="font-display text-display-lg mb-6 leading-tight">
+            {language === 'fr' ? 'Transformez vos vidéos' : 'Transform your videos'}
+            <br />
+            <span className="text-accent-primary">
+              {language === 'fr' ? 'en connaissances' : 'into knowledge'}
+            </span>
           </h1>
 
-          {/* 🎬 VIDÉO DU LOGO ANIMÉ - En grand au centre */}
-          <div className="relative my-12 animate-fadeInUp stagger-2">
-            {/* Glow effect derrière la vidéo */}
-            <div 
-              className="absolute inset-0 rounded-full opacity-40"
-              style={{
-                background: 'radial-gradient(circle, rgba(74, 144, 217, 0.4) 0%, rgba(212, 165, 116, 0.3) 30%, rgba(123, 75, 160, 0.2) 60%, transparent 80%)',
-                filter: 'blur(60px)',
-                transform: 'scale(1.2)',
-              }}
-            />
-            
-            {/* Vidéo du logo */}
-            <div className="relative z-10 flex justify-center">
-              <video
-                className="w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 object-contain"
-                src="/logo-animation.mp4"
-                autoPlay
-                loop
-                muted
-                playsInline
-                style={{
-                  filter: 'drop-shadow(0 0 40px rgba(74, 144, 217, 0.3)) drop-shadow(0 0 30px rgba(212, 165, 116, 0.2))'
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Sous-titre */}
-          <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-10 animate-fadeInUp stagger-3">
+          {/* Subheadline */}
+          <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-10">
             {language === 'fr'
               ? 'Deep Sight analyse, synthétise et vérifie le contenu de vos vidéos YouTube. Conçu pour les chercheurs, journalistes et professionnels exigeants.'
-              : 'Deep Sight analyzes, synthesizes and verifies your YouTube video content. Designed for researchers, journalists and demanding professionals.'}
+              : 'Deep Sight analyzes, synthesizes and verifies your YouTube video content. Built for demanding researchers, journalists and professionals.'}
           </p>
 
-          {/* CTA principal */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fadeInUp stagger-4">
+          {/* CTAs */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
             <button
               onClick={() => navigate('/login')}
-              className="btn btn-accent px-8 py-3 text-base"
+              className="btn btn-accent px-8 py-3.5 text-base shadow-lg shadow-accent-primary/25"
             >
               {language === 'fr' ? 'Essayer gratuitement' : 'Try for free'}
               <ArrowRight className="w-5 h-5" />
             </button>
-            <button
-              onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}
-              className="btn btn-ghost px-6 py-3 text-base"
+            <a
+              href="#features"
+              className="text-text-secondary hover:text-text-primary transition-colors flex items-center gap-2"
             >
               {language === 'fr' ? 'En savoir plus' : 'Learn more'}
+              <ChevronRight className="w-4 h-4" />
+            </a>
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center justify-center gap-12">
+            {stats.map((stat, index) => (
+              <div key={index} className="text-center">
+                <div className="font-display text-2xl font-semibold text-text-primary">
+                  {stat.value}
+                </div>
+                <div className="text-sm text-text-tertiary">
+                  {stat.label[lang]}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+      {/* DEMO VIDEO SECTION */}
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+      <section className="py-12 px-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="card-elevated rounded-2xl overflow-hidden aspect-video bg-bg-tertiary flex items-center justify-center border border-border-subtle">
+            <button className="w-20 h-20 rounded-full bg-bg-secondary border border-border-subtle flex items-center justify-center hover:scale-105 transition-transform">
+              <Play className="w-8 h-8 text-text-secondary ml-1" />
             </button>
           </div>
-
-          {/* Stats rapides */}
-          <div className="flex items-center justify-center gap-8 mt-16 pt-8 border-t border-border-subtle animate-fadeInUp stagger-5">
-            <div className="text-center">
-              <div className="text-2xl font-display font-semibold text-text-primary">5min</div>
-              <div className="text-sm text-text-tertiary">{language === 'fr' ? 'par vidéo' : 'per video'}</div>
-            </div>
-            <div className="w-px h-10 bg-border-subtle" />
-            <div className="text-center">
-              <div className="text-2xl font-display font-semibold text-text-primary">98%</div>
-              <div className="text-sm text-text-tertiary">{language === 'fr' ? 'précision' : 'accuracy'}</div>
-            </div>
-            <div className="w-px h-10 bg-border-subtle" />
-            <div className="text-center">
-              <div className="text-2xl font-display font-semibold text-text-primary">24/7</div>
-              <div className="text-sm text-text-tertiary">{language === 'fr' ? 'disponible' : 'available'}</div>
-            </div>
-          </div>
+          <p className="text-center text-sm text-text-tertiary mt-4">
+            {language === 'fr' ? 'Aperçu de l\'interface' : 'Interface preview'}
+          </p>
         </div>
       </section>
 
-      {/* === Demo Preview === */}
-      <section className="py-16 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="card-elevated p-2 rounded-2xl">
-            <div className="rounded-xl bg-bg-tertiary aspect-video flex items-center justify-center relative overflow-hidden">
-              {/* Placeholder pour démo */}
-              <div className="absolute inset-0 bg-gradient-to-br from-accent-primary/5 to-purple-500/5" />
-              <div className="text-center z-10">
-                <div className="w-20 h-20 rounded-full bg-bg-elevated border border-border-default flex items-center justify-center mx-auto mb-4 shadow-lg">
-                  <Play className="w-8 h-8 text-accent-primary ml-1" />
-                </div>
-                <p className="text-text-tertiary text-sm">
-                  {language === 'fr' ? 'Aperçu de l\'interface' : 'Interface preview'}
-                </p>
-              </div>
-              {/* Grid décorative */}
-              <div className="absolute inset-0 opacity-[0.03]" style={{
-                backgroundImage: `linear-gradient(var(--text-primary) 1px, transparent 1px), linear-gradient(90deg, var(--text-primary) 1px, transparent 1px)`,
-                backgroundSize: '40px 40px'
-              }} />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* === Features === */}
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+      {/* FEATURES SECTION */}
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
       <section id="features" className="py-20 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
@@ -400,14 +395,13 @@ export const LandingPage: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, index) => (
               <div
                 key={feature.title}
-                className="card p-6 hover:border-accent-primary/30 transition-all group"
-                style={{ animationDelay: `${index * 100}ms` }}
+                className="card p-6 hover:border-accent-primary/30 transition-all"
               >
-                <div className="w-12 h-12 rounded-xl bg-accent-primary-muted flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-4">
                   <feature.icon className="w-6 h-6 text-accent-primary" />
                 </div>
                 <h3 className="text-lg font-semibold text-text-primary mb-2">
@@ -422,7 +416,9 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* === Pour qui ? === */}
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+      {/* AUDIENCES SECTION */}
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
       <section className="py-20 px-6 bg-bg-secondary/50">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
@@ -437,11 +433,8 @@ export const LandingPage: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {audiences.map((audience, index) => (
-              <div
-                key={audience.title}
-                className="text-center p-8"
-              >
+            {audiences.map((audience) => (
+              <div key={audience.title} className="text-center p-8">
                 <div className="w-16 h-16 rounded-2xl bg-bg-tertiary border border-border-subtle flex items-center justify-center mx-auto mb-6">
                   <audience.icon className="w-7 h-7 text-accent-primary" />
                 </div>
@@ -457,7 +450,9 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* === Pricing === */}
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+      {/* PRICING SECTION — STYLE UPGRADE PAGE */}
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
       <section id="pricing" className="py-20 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-16">
@@ -472,78 +467,119 @@ export const LandingPage: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {plans.map((plan) => (
-              <div
-                key={plan.id}
-                className={`card p-6 relative transition-all ${
-                  plan.highlighted
-                    ? 'border-accent-primary ring-1 ring-accent-primary/20'
-                    : ''
-                }`}
-              >
-                {plan.badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-accent-primary text-white text-xs font-medium">
-                    {plan.badge}
-                  </div>
-                )}
-
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-text-primary mb-1">
-                    {plan.name}
-                  </h3>
-                  <p className="text-sm text-text-tertiary">
-                    {plan.description}
-                  </p>
-                </div>
-
-                <div className="mb-6">
-                  <span className="text-3xl font-display font-semibold text-text-primary">
-                    {plan.price}
-                  </span>
-                  <span className="text-text-tertiary text-sm ml-1">
-                    {plan.period}
-                  </span>
-                </div>
-
-                <div className="space-y-3 mb-6">
-                  {plan.features.map((feature, i) => (
-                    <div
-                      key={i}
-                      className={`flex items-start gap-3 text-sm ${
-                        feature.included ? 'text-text-secondary' : 'text-text-muted line-through'
-                      }`}
-                    >
-                      {feature.included ? (
-                        <Check className="w-4 h-4 text-accent-success mt-0.5 flex-shrink-0" />
-                      ) : (
-                        <X className="w-4 h-4 text-text-muted mt-0.5 flex-shrink-0" />
-                      )}
-                      <span>{feature.text}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={() => navigate('/login')}
-                  className={`w-full py-2.5 rounded-lg font-medium text-sm transition-all ${
-                    plan.highlighted
-                      ? 'btn-primary'
-                      : 'btn-secondary'
+            {PLANS.map((plan) => {
+              const Icon = plan.icon;
+              const isPopular = plan.popular;
+              const isRecommended = plan.recommended;
+              
+              return (
+                <div
+                  key={plan.id}
+                  className={`card p-6 relative transition-all hover:scale-[1.02] ${
+                    isPopular
+                      ? 'border-violet-500/50 ring-1 ring-violet-500/20 shadow-lg shadow-violet-500/10'
+                      : isRecommended
+                      ? 'border-amber-500/50 ring-1 ring-amber-500/20 shadow-lg shadow-amber-500/10'
+                      : ''
                   }`}
                 >
-                  {plan.cta}
-                </button>
-              </div>
-            ))}
+                  {/* Badge */}
+                  {isPopular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-violet-500 text-white text-xs font-medium">
+                      {language === 'fr' ? 'Populaire' : 'Popular'}
+                    </div>
+                  )}
+                  {isRecommended && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-amber-500 text-white text-xs font-medium">
+                      {language === 'fr' ? 'Recommandé' : 'Recommended'}
+                    </div>
+                  )}
+
+                  {/* Header */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className={`w-10 h-10 rounded-xl ${plan.iconBg} flex items-center justify-center`}>
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-text-primary">
+                        {plan.name[lang]}
+                      </h3>
+                      <p className="text-xs text-text-tertiary">
+                        {plan.description[lang]}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Price */}
+                  <div className="mb-6">
+                    <span className="text-3xl font-display font-semibold text-text-primary">
+                      {plan.price === 0 ? '0' : plan.price.toFixed(2).replace('.', ',')}
+                    </span>
+                    <span className="text-text-tertiary text-sm ml-1">
+                      €/{language === 'fr' ? 'mois' : 'month'}
+                    </span>
+                  </div>
+
+                  {/* Features */}
+                  <div className="space-y-3 mb-6">
+                    {plan.features.map((feature, i) => (
+                      <div
+                        key={i}
+                        className={`flex items-start gap-3 text-sm ${
+                          feature.included 
+                            ? feature.highlight 
+                              ? 'text-accent-primary font-medium' 
+                              : 'text-text-secondary'
+                            : 'text-text-muted line-through'
+                        }`}
+                      >
+                        {feature.included ? (
+                          <Check className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+                            feature.highlight ? 'text-accent-primary' : 'text-accent-success'
+                          }`} />
+                        ) : (
+                          <X className="w-4 h-4 text-text-muted mt-0.5 flex-shrink-0" />
+                        )}
+                        <span>{feature.text[lang]}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* CTA */}
+                  <button
+                    onClick={() => navigate('/login')}
+                    className={`w-full py-2.5 rounded-xl font-medium text-sm transition-all ${
+                      isPopular
+                        ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:opacity-90 shadow-lg'
+                        : isRecommended
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 shadow-lg'
+                        : 'btn-secondary'
+                    }`}
+                  >
+                    {plan.price === 0
+                      ? (language === 'fr' ? 'Commencer gratuitement' : 'Start for free')
+                      : (language === 'fr' ? `Choisir ${plan.name.fr}` : `Choose ${plan.name.en}`)}
+                  </button>
+                </div>
+              );
+            })}
           </div>
+
+          {/* Garantie */}
+          <p className="text-center text-sm text-text-tertiary mt-8">
+            {language === 'fr' 
+              ? '✓ Sans engagement • ✓ Annulation facile • ✓ Paiement sécurisé Stripe'
+              : '✓ No commitment • ✓ Easy cancellation • ✓ Secure Stripe payment'}
+          </p>
         </div>
       </section>
 
-      {/* === CTA Final === */}
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+      {/* CTA FINAL */}
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
       <section className="py-20 px-6">
         <div className="max-w-3xl mx-auto text-center">
           <div className="card-elevated p-12 rounded-2xl relative overflow-hidden">
-            {/* Background gradient */}
             <div className="absolute inset-0 bg-gradient-to-br from-accent-primary/10 to-purple-500/10" />
             
             <div className="relative z-10">
@@ -567,7 +603,9 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* === Footer === */}
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+      {/* FOOTER */}
+      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
       <footer className="py-12 px-6 border-t border-border-subtle">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
