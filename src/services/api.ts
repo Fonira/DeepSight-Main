@@ -163,9 +163,13 @@ export interface ChatSource {
 }
 
 export interface DiscoveryResponse {
-  videos: VideoCandidate[];
-  query?: string;
-  source?: string;
+  query: string;
+  reformulated_queries: string[];
+  candidates: VideoCandidate[];
+  total_searched: number;
+  languages_searched: string[];
+  search_duration_ms: number;
+  tournesol_available: boolean;
 }
 
 export interface VideoCandidate {
@@ -175,10 +179,16 @@ export interface VideoCandidate {
   channel_id?: string;
   thumbnail_url?: string;
   duration?: number;
+  duration_seconds?: number;
   view_count?: number;
   publish_date?: string;
   description?: string;
   tournesol_score?: number;
+  quality_score?: number;
+  academic_score?: number;
+  freshness_score?: number;
+  engagement_score?: number;
+  language?: string;
 }
 
 export interface ReliabilityResult {
@@ -635,14 +645,31 @@ export const videoApi = {
     return request(`/api/videos/concepts/${summaryId}/enriched`);
   },
 
+  /**
+   * 🔍 Découverte intelligente de vidéos YouTube
+   * GRATUIT - Ne consomme pas de crédits
+   * Recherche multilingue avec scoring qualité
+   */
   async discover(
     query: string,
-    options?: { limit?: number; source?: string }
+    options?: { 
+      limit?: number; 
+      languages?: string[];
+      minQuality?: number;
+      targetDuration?: 'short' | 'medium' | 'long' | 'default';
+    }
   ): Promise<DiscoveryResponse> {
-    const params = new URLSearchParams({ q: query });
-    if (options?.limit) params.set('limit', String(options.limit));
-    if (options?.source) params.set('source', options.source);
-    return request(`/api/videos/discover?${params}`);
+    return request('/api/videos/discover', {
+      method: 'POST',
+      body: {
+        query,
+        max_results: options?.limit || 20,
+        languages: options?.languages || ['fr', 'en'],
+        min_quality: options?.minQuality || 30,
+        target_duration: options?.targetDuration || 'default',
+      },
+      timeout: 30000,
+    });
   },
 
   async factCheck(summaryId: number): Promise<FactCheckResult[]> {
