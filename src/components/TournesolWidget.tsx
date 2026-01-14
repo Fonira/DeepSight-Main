@@ -858,15 +858,6 @@ export const TournesolMini: React.FC<{
   const effectiveScore = getEffectiveScore();
   const hasAnyData = data && (effectiveScore !== null || (data.n_comparisons && data.n_comparisons > 0));
   
-  // 🔍 DEBUG: Log les valeurs calculées
-    data_exists: !!data,
-    tournesol_score: data?.tournesol_score,
-    criteria_scores_count: data?.criteria_scores?.length || 0,
-    n_comparisons: data?.n_comparisons,
-    effectiveScore,
-    hasAnyData
-  });
-  
   // Si pas sur Tournesol, afficher un badge "Non évalué"
   if (!hasAnyData) {
     return (
