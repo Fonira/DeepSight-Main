@@ -26,7 +26,7 @@ import { ConceptsGlossary } from "../components/ConceptsGlossary";
 import { videoApi, chatApi, reliabilityApi, ApiError } from "../services/api";
 import type { Summary, TaskStatus, ChatQuota, DiscoveryResponse, VideoCandidate, ReliabilityResult, EnrichedConcept, EnrichedConceptsResponse } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
-import { useLanguage } from "../contexts/LanguageContext";
+import { useTranslation } from '../hooks/useTranslation';
 import { YouTubePlayer, YouTubePlayerRef } from "../components/YouTubePlayer";
 import { createTimecodeMarkdownComponents, TimecodeInfo } from "../components/TimecodeRenderer";
 import { TournesolWidget, TournesolMini } from "../components/TournesolWidget";
@@ -99,7 +99,7 @@ const getCategoryInfo = (cat: string) => CATEGORIES.find(c => c.id === cat) || {
 
 export const DashboardPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
-  const { language, t } = useLanguage();
+  const { t, language } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   
   // États principaux
@@ -211,7 +211,6 @@ export const DashboardPage: React.FC = () => {
       try {
         const data = await reliabilityApi.getReliability(selectedSummary.id);
         setReliabilityData(data);
-        console.log('🕐 Reliability data loaded:', data.fact_check_lite?.overall_confidence);
       } catch (err) {
         console.warn('Failed to load reliability data:', err);
         // Silencieux - ne pas afficher d'erreur à l'utilisateur
@@ -234,7 +233,6 @@ export const DashboardPage: React.FC = () => {
       setConcepts(data.concepts || []);
       setConceptsProvider(data.provider || 'none');
       setConceptsCategories(data.categories || {});
-      console.log(`🏷️ Loaded ${data.count} enriched concepts for summary ${summaryId} (${data.provider})`);
     } catch (err) {
       console.warn('Failed to load enriched concepts:', err);
       setConcepts([]);
@@ -260,13 +258,11 @@ export const DashboardPage: React.FC = () => {
     setLoadingMessage(language === 'fr' ? 'Chargement de l\'analyse...' : 'Loading analysis...');
     
     try {
-      console.log(`📜 Loading summary ${summaryId} from history...`);
       const summary = await videoApi.getSummary(summaryId);
       
       if (summary) {
         setSelectedSummary(summary);
         setVideoUrl(`https://youtube.com/watch?v=${summary.video_id}`);
-        console.log(`✅ Summary loaded: ${summary.video_title}`);
       }
     } catch (err) {
       console.error('Error loading summary:', err);
@@ -320,7 +316,6 @@ export const DashboardPage: React.FC = () => {
       if (!selectedSummary?.id) return;
       
       try {
-        console.log(`💬 Loading chat history for summary ${selectedSummary.id}...`);
         const history = await chatApi.getHistory(selectedSummary.id);
         
         // L'API retourne maintenant directement un tableau normalisé
@@ -337,9 +332,7 @@ export const DashboardPage: React.FC = () => {
           }));
           
           setChatMessages(formattedMessages);
-          console.log(`✅ Loaded ${formattedMessages.length} chat messages from history`);
         } else {
-          console.log(`ℹ️ No chat history found for summary ${selectedSummary.id}`);
           setChatMessages([]);
         }
       } catch (err) {
@@ -397,7 +390,8 @@ export const DashboardPage: React.FC = () => {
           category, 
           mode, 
           selectedModel,
-          isExpertUser && deepResearchEnabled
+          isExpertUser && deepResearchEnabled,
+          language  // 🌐 Langue de l'interface pour le résumé
         );
         
         // Cas 1: Analyse déjà en cache
@@ -476,7 +470,8 @@ export const DashboardPage: React.FC = () => {
         category, 
         mode, 
         selectedModel,
-        isExpertUser && deepResearchEnabled
+        isExpertUser && deepResearchEnabled,
+        language  // 🌐 Langue de l'interface pour le résumé
       );
       
       if (response.status === "completed" && response.result?.summary_id) {
@@ -508,12 +503,10 @@ export const DashboardPage: React.FC = () => {
     let attempts = 0;
     const maxAttempts = 180; // 9 minutes max
     
-    console.log(`🔄 [POLL] Starting for task: ${taskId}`);
     
     while (attempts < maxAttempts && pollingRef.current) {
       try {
         const status: TaskStatus = await videoApi.getTaskStatus(taskId);
-        console.log(`🔄 [POLL] ${attempts}: status=${status.status}, progress=${status.progress}, msg=${status.message?.substring(0, 40)}`);
         
         if (status.status === "completed" && status.result) {
           setLoadingProgress(95);
@@ -575,14 +568,12 @@ export const DashboardPage: React.FC = () => {
     setChatLoading(true);
     
     try {
-      console.log(`💬 Sending chat message to summary ${selectedSummary.id}...`);
       const response = await chatApi.send(
         selectedSummary.id,
         message,
         isProUser && webSearchEnabled
       );
       
-      console.log(`✅ Chat response received:`, response);
       
       // Vérifier que la réponse existe
       if (!response || !response.response) {
@@ -598,7 +589,6 @@ export const DashboardPage: React.FC = () => {
       };
       
       setChatMessages(prev => [...prev, assistantMsg]);
-      console.log(`✅ Assistant message added to chat`);
       
       // Rafraîchir quota
       try {

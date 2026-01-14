@@ -204,7 +204,6 @@ export function useAuth(): UseAuthReturn {
       refreshInProgressRef.current = false;
       setCachedUser(null);
       localStorage.removeItem(LOCAL_USER_KEY);
-      console.log('🗑️ User cache cleared');
     }
     
     // Check debounce seulement si pas force

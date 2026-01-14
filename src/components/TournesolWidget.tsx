@@ -163,7 +163,6 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
   useEffect(() => {
     const fetchTournesolData = async () => {
       if (!videoId) {
-        console.log('🌻 Tournesol: No videoId provided');
         setLoading(false);
         return;
       }
@@ -171,7 +170,6 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
       // Nettoyer le videoId
       const cleanVideoId = videoId.trim().replace(/^yt:/, '');
       
-      console.log(`🌻 Tournesol: Fetching data for video ${cleanVideoId}`);
       
       setLoading(true);
       setError(null);
@@ -180,7 +178,6 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
         // Utiliser le proxy backend Deep Sight
         const apiUrl = import.meta.env.VITE_API_URL || 'https://backen-deep-sight-test-production.up.railway.app';
         const url = `${apiUrl}/api/tournesol/video/${cleanVideoId}`;
-        console.log(`🌻 Tournesol: URL = ${url}`);
         
         const response = await fetch(url, { 
           headers: { 
@@ -188,14 +185,12 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
           },
         });
         
-        console.log(`🌻 Tournesol: Response status = ${response.status}`);
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
         
         const result = await response.json();
-        console.log('🌻 Tournesol: Result received', result);
         
         if (result.found && result.data) {
           setData(result.data);
@@ -203,7 +198,6 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
           setData(null);
         }
       } catch (err: any) {
-        console.log('🌻 Tournesol: API Error:', err?.message || err);
         setError('unavailable');
       } finally {
         setLoading(false);
@@ -803,7 +797,6 @@ export const TournesolMini: React.FC<{
         return;
       }
       
-      console.log(`🌻 TournesolMini: Fetching for ${cleanVideoId}`);
       
       try {
         // Utiliser le proxy backend Deep Sight
@@ -811,33 +804,22 @@ export const TournesolMini: React.FC<{
         const url = `${apiUrl}/api/tournesol/video/${cleanVideoId}`;
         
         // 🔍 DEBUG: Afficher l'URL appelée
-        console.log(`🌻 TournesolMini: API URL = ${apiUrl}`);
-        console.log(`🌻 TournesolMini: Full URL = ${url}`);
         
         const response = await fetch(url, { 
           headers: { 'Accept': 'application/json' }
         });
         
-        console.log(`🌻 TournesolMini: Response ${response.status}`);
         
         if (response.ok) {
           const result = await response.json();
           // 🔍 DEBUG: Log détaillé pour comprendre la structure
-          console.log('🌻 TournesolMini: Full Result:', JSON.stringify(result, null, 2));
-          console.log('🌻 TournesolMini: found =', result.found);
-          console.log('🌻 TournesolMini: data =', result.data);
           
           if (result.found && result.data) {
-            console.log('🌻 TournesolMini: tournesol_score =', result.data.tournesol_score);
-            console.log('🌻 TournesolMini: n_comparisons =', result.data.n_comparisons);
-            console.log('🌻 TournesolMini: criteria_scores =', result.data.criteria_scores);
             setData(result.data);
           } else {
-            console.log('🌻 TournesolMini: ❌ No data found!');
           }
         }
       } catch (err) {
-        console.log('🌻 TournesolMini: Error', err);
       } finally {
         setLoading(false);
       }
@@ -877,7 +859,6 @@ export const TournesolMini: React.FC<{
   const hasAnyData = data && (effectiveScore !== null || (data.n_comparisons && data.n_comparisons > 0));
   
   // 🔍 DEBUG: Log les valeurs calculées
-  console.log('🌻 TournesolMini: RENDER CHECK:', {
     data_exists: !!data,
     tournesol_score: data?.tournesol_score,
     criteria_scores_count: data?.criteria_scores?.length || 0,
@@ -888,7 +869,6 @@ export const TournesolMini: React.FC<{
   
   // Si pas sur Tournesol, afficher un badge "Non évalué"
   if (!hasAnyData) {
-    console.log('🌻 TournesolMini: ❌ Showing "Non évalué" because hasAnyData =', hasAnyData);
     return (
       <a
         href={`https://tournesol.app/comparison?uidA=yt:${videoId}`}

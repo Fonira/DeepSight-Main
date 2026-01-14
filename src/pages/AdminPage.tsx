@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
 import { 
@@ -66,7 +66,7 @@ const PLAN_CONFIG: Record<string, { color: string; bg: string; label: string }> 
 
 export const AdminPage: React.FC = () => {
   const { user, isAdmin } = useAuth();
-  const { language } = useLanguage();
+  const { t, language } = useTranslation();
   const navigate = useNavigate();
   
   // Récupérer le token depuis localStorage

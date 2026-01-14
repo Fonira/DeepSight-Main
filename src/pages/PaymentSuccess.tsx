@@ -1,21 +1,19 @@
 /**
- * DEEP SIGHT v6.0 — Payment Success Page
- * ✅ Confirme le paiement via API + Affiche le nouveau plan
+ * DEEP SIGHT v6.1 — Payment Success Page
+ * ✅ Utilise le système i18n centralisé
  */
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { billingApi } from '../services/api';
-import { CheckCircle, ArrowRight, Sparkles, Loader2, Crown, RefreshCw, AlertCircle, XCircle } from 'lucide-react';
+import { CheckCircle, ArrowRight, Sparkles, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import DoodleBackground from '../components/DoodleBackground';
 
-// Clear le cache utilisateur dans localStorage
 function clearUserCache() {
   try {
     localStorage.removeItem('cached_user');
-    console.log('🗑️ User cache cleared');
   } catch (err) {
     console.error('Error clearing cache:', err);
   }
@@ -25,53 +23,40 @@ export const PaymentSuccess: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, refreshUser } = useAuth();
-  const { language } = useLanguage();
+  const { t, language } = useTranslation();
   
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
   const [confirmedPlan, setConfirmedPlan] = useState<string | null>(null);
   const [creditsAdded, setCreditsAdded] = useState<number>(0);
 
-  // Récupérer les params de l'URL
   const sessionId = searchParams.get('session_id');
   const planFromUrl = searchParams.get('plan');
 
   useEffect(() => {
     const confirmPayment = async () => {
-      // Clear le cache immédiatement
       clearUserCache();
       
       if (!sessionId) {
-        console.log('⚠️ No session_id in URL, skipping confirmation');
-        // Pas de session_id, juste refresh l'utilisateur
         await refreshUser(true);
         setStatus('success');
         setConfirmedPlan(planFromUrl);
         return;
       }
 
-      console.log('🔍 Confirming checkout session:', sessionId);
-
       try {
-        // Appeler l'API pour confirmer le checkout
         const result = await billingApi.confirmCheckout(sessionId);
-        
-        console.log('✅ Confirmation result:', result);
 
         if (result.success) {
           setStatus('success');
           setConfirmedPlan(result.plan || planFromUrl);
           setCreditsAdded(result.credits_added || 0);
           setMessage(result.message);
-          
-          // Refresh l'utilisateur pour avoir les données à jour
           await refreshUser(true);
         } else {
-          // Paiement pas encore complété
           setStatus('loading');
-          setMessage(result.message || 'Paiement en cours de traitement...');
+          setMessage(result.message || t.payment.processing);
           
-          // Réessayer après 3 secondes
           setTimeout(async () => {
             try {
               const retryResult = await billingApi.confirmCheckout(sessionId);
@@ -82,7 +67,7 @@ export const PaymentSuccess: React.FC = () => {
                 await refreshUser(true);
               } else {
                 setStatus('error');
-                setMessage('Le paiement n\'a pas pu être confirmé. Contactez le support.');
+                setMessage(t.errors.generic);
               }
             } catch {
               setStatus('error');
@@ -92,9 +77,7 @@ export const PaymentSuccess: React.FC = () => {
       } catch (err: any) {
         console.error('❌ Confirmation error:', err);
         setStatus('error');
-        setMessage(err.message || 'Erreur lors de la confirmation');
-        
-        // En cas d'erreur, on affiche quand même le plan de l'URL
+        setMessage(err.message || t.errors.generic);
         if (planFromUrl) {
           setConfirmedPlan(planFromUrl);
         }
@@ -104,7 +87,6 @@ export const PaymentSuccess: React.FC = () => {
     confirmPayment();
   }, [sessionId]);
 
-  // Retry manuel
   const handleRetry = async () => {
     setStatus('loading');
     clearUserCache();
@@ -131,12 +113,11 @@ export const PaymentSuccess: React.FC = () => {
     }
   };
 
-  // Labels et couleurs des plans
   const planLabels: Record<string, string> = {
-    free: 'Découverte',
-    starter: 'Starter',
-    pro: 'Pro',
-    expert: 'Expert',
+    free: t.upgrade.plans.free.name,
+    starter: t.upgrade.plans.starter.name,
+    pro: t.upgrade.plans.pro.name,
+    expert: t.upgrade.plans.expert.name,
   };
 
   const planColors: Record<string, string> = {
@@ -160,7 +141,6 @@ export const PaymentSuccess: React.FC = () => {
     expert: 'bg-amber-500/10',
   };
 
-  // Plan à afficher
   const displayPlan = confirmedPlan || user?.plan || planFromUrl;
 
   return (
@@ -176,12 +156,10 @@ export const PaymentSuccess: React.FC = () => {
                 <Loader2 className="w-10 h-10 text-accent-primary animate-spin" />
               </div>
               <h1 className="font-display text-2xl text-text-primary mb-3">
-                {language === 'fr' ? 'Confirmation en cours...' : 'Confirming payment...'}
+                {t.payment.processing}
               </h1>
               <p className="text-text-secondary">
-                {language === 'fr' 
-                  ? 'Veuillez patienter pendant que nous activons votre abonnement.'
-                  : 'Please wait while we activate your subscription.'}
+                {t.payment.redirecting}
               </p>
             </>
           )}
@@ -194,10 +172,9 @@ export const PaymentSuccess: React.FC = () => {
               </div>
 
               <h1 className="font-display text-2xl text-text-primary mb-3">
-                {language === 'fr' ? 'Paiement réussi !' : 'Payment successful!'}
+                {t.payment.success.title}
               </h1>
 
-              {/* Plan Badge */}
               {displayPlan && displayPlan !== 'free' && (
                 <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full ${planBgColors[displayPlan]} mb-4`}>
                   <span className="text-xl">{planEmojis[displayPlan] || '⭐'}</span>
@@ -207,50 +184,45 @@ export const PaymentSuccess: React.FC = () => {
                 </div>
               )}
 
-              {/* Credits Added */}
               {creditsAdded > 0 && (
                 <p className="text-emerald-400 font-medium mb-4">
-                  +{creditsAdded} crédits ajoutés à votre compte !
+                  +{creditsAdded} {t.success.creditsAdded}
                 </p>
               )}
 
               <p className="text-text-secondary mb-8">
-                {language === 'fr'
-                  ? 'Votre abonnement est maintenant actif. Profitez de toutes les fonctionnalités Deep Sight.'
-                  : 'Your subscription is now active. Enjoy all Deep Sight features.'}
+                {t.payment.success.subtitle}
               </p>
 
-              {/* Features unlocked */}
               <div className="bg-bg-tertiary rounded-xl p-4 mb-8 border border-border-subtle">
                 <div className="flex items-center gap-2 text-accent-primary mb-3">
                   <Sparkles className="w-5 h-5" />
                   <span className="font-medium">
-                    {language === 'fr' ? 'Fonctionnalités débloquées' : 'Features unlocked'}
+                    {t.upgrade.features}
                   </span>
                 </div>
                 <ul className="text-sm text-text-secondary text-left space-y-2">
                   <li className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-emerald-500" />
-                    {language === 'fr' ? 'Analyses supplémentaires' : 'Additional analyses'}
+                    {t.upgrade.features_list.unlimitedAnalyses}
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-emerald-500" />
-                    {language === 'fr' ? 'Fonctionnalités premium' : 'Premium features'}
+                    {t.upgrade.features_list.allExports}
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-emerald-500" />
-                    {language === 'fr' ? 'Support prioritaire' : 'Priority support'}
+                    {t.upgrade.features_list.prioritySupport}
                   </li>
                 </ul>
               </div>
 
-              {/* CTAs */}
               <div className="space-y-3">
                 <button
                   onClick={() => navigate('/dashboard')}
                   className="btn btn-primary w-full py-3 flex items-center justify-center gap-2"
                 >
-                  {language === 'fr' ? 'Commencer à analyser' : 'Start analyzing'}
+                  {t.payment.success.backToDashboard}
                   <ArrowRight className="w-5 h-5" />
                 </button>
                 
@@ -258,7 +230,7 @@ export const PaymentSuccess: React.FC = () => {
                   onClick={() => navigate('/upgrade')}
                   className="btn btn-secondary w-full py-2.5 flex items-center justify-center gap-2 text-sm"
                 >
-                  {language === 'fr' ? 'Voir mon abonnement' : 'View my subscription'}
+                  {t.settings.manageSubscription}
                 </button>
               </div>
             </>
@@ -272,19 +244,11 @@ export const PaymentSuccess: React.FC = () => {
               </div>
 
               <h1 className="font-display text-2xl text-text-primary mb-3">
-                {language === 'fr' ? 'Confirmation en attente' : 'Confirmation pending'}
+                {t.upgrade.processing}
               </h1>
 
               <p className="text-text-secondary mb-4">
-                {message || (language === 'fr' 
-                  ? 'La confirmation du paiement prend plus de temps que prévu.'
-                  : 'Payment confirmation is taking longer than expected.')}
-              </p>
-
-              <p className="text-sm text-text-tertiary mb-6">
-                {language === 'fr' 
-                  ? 'Votre paiement a été reçu. L\'activation peut prendre quelques minutes.'
-                  : 'Your payment was received. Activation may take a few minutes.'}
+                {message || t.errors.generic}
               </p>
 
               <div className="space-y-3">
@@ -293,21 +257,19 @@ export const PaymentSuccess: React.FC = () => {
                   className="btn btn-primary w-full py-3 flex items-center justify-center gap-2"
                 >
                   <RefreshCw className="w-5 h-5" />
-                  {language === 'fr' ? 'Réessayer' : 'Try again'}
+                  {t.common.retry}
                 </button>
                 
                 <button
                   onClick={() => navigate('/dashboard')}
                   className="btn btn-secondary w-full py-2.5 text-sm"
                 >
-                  {language === 'fr' ? 'Aller au dashboard' : 'Go to dashboard'}
+                  {t.payment.success.backToDashboard}
                 </button>
               </div>
 
               <p className="text-xs text-text-tertiary mt-4">
-                {language === 'fr' 
-                  ? 'Problème ? Contactez '
-                  : 'Issue? Contact '}
+                {t.footer.contact}:{' '}
                 <a href="mailto:contact@deepsightsynthesis.com" className="text-accent-primary hover:underline">
                   contact@deepsightsynthesis.com
                 </a>

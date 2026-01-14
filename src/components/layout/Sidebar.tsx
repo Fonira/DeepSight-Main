@@ -1,7 +1,7 @@
 /**
- * DEEP SIGHT v5.1 — Sidebar
+ * DEEP SIGHT v5.2 — Sidebar
  * Navigation latérale sobre et fonctionnelle
- * 🆕 Logo cliquable vers la page principale
+ * ✅ Utilise le système i18n centralisé
  */
 
 import React from "react";
@@ -16,20 +16,19 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  HelpCircle,
   ExternalLink,
   Shield,
   Scale,
   BarChart3
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
-import { useLanguage } from "../../contexts/LanguageContext";
+import { useTranslation } from "../../hooks/useTranslation";
 
 // === Logo cliquable vers la page principale ===
 const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({ collapsed, onClick }) => {
   const [imageError, setImageError] = React.useState(false);
+  const { t } = useTranslation();
   
-  // SVG du logo Deep Sight (œil stylisé avec play button)
   const LogoSVG = () => (
     <svg viewBox="0 0 100 100" className="w-full h-full">
       <defs>
@@ -46,13 +45,10 @@ const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({ collaps
           </feMerge>
         </filter>
       </defs>
-      {/* Cercles concentriques (œil) */}
       <circle cx="50" cy="50" r="45" fill="none" stroke="url(#logoGradient)" strokeWidth="3" opacity="0.8" filter="url(#glow)"/>
       <circle cx="50" cy="50" r="32" fill="none" stroke="url(#logoGradient)" strokeWidth="2.5" opacity="0.9"/>
       <circle cx="50" cy="50" r="20" fill="none" stroke="url(#logoGradient)" strokeWidth="2"/>
-      {/* Triangle play au centre */}
       <polygon points="45,38 45,62 65,50" fill="url(#logoGradient)" filter="url(#glow)"/>
-      {/* Point lumineux */}
       <circle cx="62" cy="38" r="4" fill="#06B6D4" opacity="0.9"/>
     </svg>
   );
@@ -61,10 +57,9 @@ const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({ collaps
     <button 
       onClick={onClick}
       className="flex items-center gap-3 group cursor-pointer hover:opacity-90 transition-all"
-      title="Retour à l'accueil"
+      title={t.nav.dashboard}
     >
       <div className="relative w-10 h-10 flex-shrink-0 rounded-xl overflow-hidden flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-        {/* Halo au hover */}
         <div 
           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
           style={{
@@ -162,16 +157,16 @@ interface UserCardProps {
 
 const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
   const { user, logout } = useAuth();
-  const { language } = useLanguage();
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   if (!user) return null;
 
   const planLabels: Record<string, string> = {
-    free: '🆓 Découverte',
-    starter: '⚡ Starter',
-    pro: '⭐ Pro',
-    expert: '👑 Expert',
+    free: `🆓 ${t.upgrade.plans.free.name}`,
+    starter: `⚡ ${t.upgrade.plans.starter.name}`,
+    pro: `⭐ ${t.upgrade.plans.pro.name}`,
+    expert: `👑 ${t.upgrade.plans.expert.name}`,
     unlimited: '👑 Admin',
   };
 
@@ -198,9 +193,7 @@ const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
     navigate('/');
   };
 
-  // Formater les crédits
   const formatCredits = (credits: number) => {
-    // Toujours afficher la valeur exacte avec séparateur de milliers
     return credits.toLocaleString();
   };
 
@@ -210,7 +203,7 @@ const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
         <button
           onClick={handleLogout}
           className="w-full p-2 rounded-lg hover:bg-bg-hover transition-colors"
-          title={language === 'fr' ? 'Déconnexion' : 'Sign out'}
+          title={t.nav.logout}
         >
           <div className={`w-8 h-8 rounded-full ${planBgColors[currentPlan]} flex items-center justify-center ${planColors[currentPlan]} font-medium text-sm`}>
             {user.email?.charAt(0).toUpperCase() || 'U'}
@@ -229,7 +222,7 @@ const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-text-primary truncate">
-              {user.email?.split('@')[0] || 'Utilisateur'}
+              {user.email?.split('@')[0] || 'User'}
             </p>
             <p className={`text-xs font-semibold ${planColors[currentPlan]}`}>
               {planLabels[currentPlan]}
@@ -237,13 +230,12 @@ const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
           </div>
         </div>
 
-        {/* Crédits restants */}
         {user.credits !== undefined && (
           <div className="mb-3 p-2 rounded-lg bg-bg-hover">
             <div className="flex items-center justify-between text-xs mb-1">
               <span className="text-text-tertiary flex items-center gap-1">
                 <Sparkles className="w-3 h-3" />
-                {language === 'fr' ? 'Crédits' : 'Credits'}
+                {t.dashboard.credits}
               </span>
               <span className={`font-bold ${planColors[currentPlan]}`}>
                 {formatCredits(user.credits)}
@@ -265,7 +257,6 @@ const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex items-center gap-2">
           {currentPlan === 'free' && (
             <button
@@ -273,12 +264,13 @@ const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
               className="flex-1 px-3 py-1.5 rounded-lg bg-accent-primary text-white text-xs font-medium hover:bg-accent-primary-hover transition-colors flex items-center justify-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Upgrade
+              {t.nav.upgrade}
             </button>
           )}
           <button
             onClick={handleLogout}
             className="px-3 py-1.5 rounded-lg bg-bg-hover text-text-secondary text-xs font-medium hover:text-text-primary transition-colors"
+            title={t.nav.logout}
           >
             <LogOut className="w-3.5 h-3.5" />
           </button>
@@ -295,17 +287,15 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle }) => {
-  const { language } = useLanguage();
+  const { t } = useTranslation();
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const isProUser = user?.plan === 'pro' || user?.plan === 'expert';
   
-  // Admin: soit via is_admin du backend, soit par email direct (fallback)
   const ADMIN_EMAIL = "maximeleparc3@gmail.com";
   const isUserAdmin = isAdmin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
-  // Navigation vers la page principale
   const handleLogoClick = () => {
     navigate('/dashboard');
   };
@@ -334,19 +324,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle })
         <NavItem
           to="/dashboard"
           icon={LayoutDashboard}
-          label={language === 'fr' ? 'Analyse' : 'Analysis'}
+          label={t.nav.analysis}
           collapsed={collapsed}
         />
         <NavItem
           to="/history"
           icon={History}
-          label={language === 'fr' ? 'Historique' : 'History'}
+          label={t.nav.history}
           collapsed={collapsed}
         />
         <NavItem
           to="/playlists"
           icon={ListVideo}
-          label="Playlists"
+          label={t.nav.playlists}
           collapsed={collapsed}
           badge={isProUser ? undefined : "Pro"}
         />
@@ -356,42 +346,40 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle })
         <NavItem
           to="/settings"
           icon={Settings}
-          label={language === 'fr' ? 'Paramètres' : 'Settings'}
+          label={t.nav.settings}
           collapsed={collapsed}
         />
         <NavItem
           to="/upgrade"
           icon={CreditCard}
-          label={language === 'fr' ? 'Abonnement' : 'Subscription'}
+          label={t.nav.subscription}
           collapsed={collapsed}
         />
         <NavItem
           to="/usage"
           icon={BarChart3}
-          label={language === 'fr' ? 'Mon compte' : 'My Account'}
+          label={t.nav.myAccount}
           collapsed={collapsed}
         />
 
-        {/* Admin - visible uniquement pour les admins */}
         {isUserAdmin && (
           <>
             <div className="h-px bg-border-subtle my-4" />
             <NavItem
               to="/admin"
               icon={Shield}
-              label="Admin"
+              label={t.nav.admin}
               collapsed={collapsed}
               badge="🔐"
             />
           </>
         )}
 
-        {/* Mentions légales */}
         <div className="h-px bg-border-subtle my-4" />
         <NavItem
           to="/legal"
           icon={Scale}
-          label={language === 'fr' ? 'Mentions légales' : 'Legal'}
+          label={t.nav.legal}
           collapsed={collapsed}
         />
       </nav>

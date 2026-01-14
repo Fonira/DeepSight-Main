@@ -14,7 +14,7 @@ import {
   ChevronRight, Users, GraduationCap, Newspaper,
   Star, Crown, Rocket, TrendingUp
 } from "lucide-react";
-import { useLanguage } from "../contexts/LanguageContext";
+import { useTranslation } from '../hooks/useTranslation';
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../hooks/useAuth";
 import DoodleBackground from "../components/DoodleBackground";
@@ -255,7 +255,7 @@ const stats = [
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { language } = useLanguage();
+  const { t, language } = useTranslation();
   const { theme } = useTheme();
   const { user, isLoading } = useAuth();
   const lang = language as 'fr' | 'en';

@@ -12,7 +12,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
 import SmartInputBar, { SmartInputValue } from '../components/SmartInputBar';
@@ -55,7 +55,7 @@ const MODES = [
 
 export const PlaylistPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
-  const { language } = useLanguage();
+  const { t, language } = useTranslation();
   const navigate = useNavigate();
   
   // UI State
@@ -141,7 +141,6 @@ export const PlaylistPage: React.FC = () => {
           const isRecent = parsed.savedAt && (Date.now() - parsed.savedAt) < 24 * 60 * 60 * 1000;
           if (parsed && parsed.status === 'completed' && isRecent) {
             setProgress(parsed);
-            console.log('📥 Restored last playlist result');
           }
         }
       } catch (e) {
@@ -166,7 +165,6 @@ export const PlaylistPage: React.FC = () => {
       setAnalyzing(true);
       
       try {
-        console.log(`🔍 Discovering videos for: "${smartInput.searchQuery}"`);
         
         const discovery = await videoApi.discover(
           smartInput.searchQuery,
@@ -257,7 +255,6 @@ export const PlaylistPage: React.FC = () => {
         ? `Corpus: ${smartInput.searchQuery.substring(0, 50)}`
         : (language === 'fr' ? 'Corpus personnalisé' : 'Custom Corpus');
       
-      console.log(`📦 Creating corpus "${corpusName}" with ${urls.length} videos`);
       
       // Lancer l'analyse du corpus via l'API
       const task = await playlistApi.analyzeCorpus(urls, {

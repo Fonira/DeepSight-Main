@@ -33,7 +33,7 @@ import {
   BookOpen
 } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
 import { getAccessToken } from '../services/api';
 
@@ -291,7 +291,7 @@ function FeatureItem({ enabled, label }: { enabled: boolean; label: string }) {
 
 export default function UsageDashboard() {
   const navigate = useNavigate();
-  const { language } = useLanguage();
+  const { t, language } = useTranslation();
   const { user, refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
 

@@ -1,16 +1,17 @@
 /**
- * DEEP SIGHT v5.0 — Payment Cancel Page
+ * DEEP SIGHT v5.1 — Payment Cancel Page
+ * ✅ Utilise le système i18n centralisé
  */
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { XCircle, ArrowLeft, MessageCircle } from 'lucide-react';
 import DoodleBackground from '../components/DoodleBackground';
 
 export const PaymentCancel: React.FC = () => {
   const navigate = useNavigate();
-  const { language } = useLanguage();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-bg-primary flex items-center justify-center p-6 relative">
@@ -24,14 +25,12 @@ export const PaymentCancel: React.FC = () => {
 
           {/* Title */}
           <h1 className="font-display text-2xl mb-3">
-            {language === 'fr' ? 'Paiement annulé' : 'Payment cancelled'}
+            {t.payment.cancel.title}
           </h1>
 
           {/* Description */}
           <p className="text-text-secondary mb-8">
-            {language === 'fr'
-              ? 'Le paiement a été annulé. Aucun montant n\'a été débité de votre compte.'
-              : 'The payment has been cancelled. No amount has been charged to your account.'}
+            {t.payment.cancel.subtitle}
           </p>
 
           {/* Actions */}
@@ -41,7 +40,7 @@ export const PaymentCancel: React.FC = () => {
               className="btn btn-primary w-full py-3"
             >
               <ArrowLeft className="w-5 h-5" />
-              {language === 'fr' ? 'Retour aux offres' : 'Back to plans'}
+              {t.payment.cancel.backToPlans}
             </button>
 
             <a
@@ -49,7 +48,7 @@ export const PaymentCancel: React.FC = () => {
               className="btn btn-ghost w-full py-3"
             >
               <MessageCircle className="w-5 h-5" />
-              {language === 'fr' ? 'Besoin d\'aide ?' : 'Need help?'}
+              {t.footer.help}
             </a>
           </div>
         </div>

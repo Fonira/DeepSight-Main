@@ -21,7 +21,7 @@ import {
   AlertCircle, X, Send, Globe, Bot, User,
   Minimize2, Maximize2, ExternalLink
 } from "lucide-react";
-import { useLanguage } from "../contexts/LanguageContext";
+import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
 import { Sidebar } from "../components/layout/Sidebar";
 import { TournesolMini } from "../components/TournesolWidget";
@@ -271,7 +271,6 @@ const useHistoryApi = () => {
   // 🆕 Récupérer l'historique du chat vidéo
   const getChatHistoryVideo = async (summaryId: number): Promise<ChatMessage[]> => {
     try {
-      console.log(`💬 [History] Loading chat history for video ${summaryId}...`);
       const response = await fetch(`${API_URL}/chat/${summaryId}/history`, {
         headers: getAuthHeaders(),
       });
@@ -282,7 +281,6 @@ const useHistoryApi = () => {
       const data = await response.json();
       // Le backend retourne { messages: [...], quota_info: {...} }
       const messages = data.messages || data || [];
-      console.log(`✅ [History] Loaded ${messages.length} messages for video ${summaryId}`);
       return messages.map((m: any, i: number) => ({
         id: m.id?.toString() || `history-${i}-${Date.now()}`,
         role: m.role,
@@ -310,7 +308,6 @@ const useHistoryApi = () => {
   // 🆕 Récupérer l'historique du chat playlist/corpus
   const getChatHistoryPlaylist = async (playlistId: string): Promise<ChatMessage[]> => {
     try {
-      console.log(`💬 [History] Loading chat history for playlist ${playlistId}...`);
       const response = await fetch(`${API_URL}/playlists/${playlistId}/chat/history`, {
         headers: getAuthHeaders(),
       });
@@ -321,7 +318,6 @@ const useHistoryApi = () => {
       const data = await response.json();
       // Le backend peut retourner { messages: [...] } ou directement [...]
       const messages = data.messages || data || [];
-      console.log(`✅ [History] Loaded ${messages.length} messages for playlist ${playlistId}`);
       return messages.map((m: any, i: number) => ({
         id: m.id?.toString() || `history-${i}-${Date.now()}`,
         role: m.role,
@@ -359,7 +355,7 @@ const useHistoryApi = () => {
 export const History: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { language } = useLanguage();
+  const { t, language } = useTranslation();
   const { user } = useAuth();
   const api = useHistoryApi();
 

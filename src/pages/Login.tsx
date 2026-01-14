@@ -1,15 +1,16 @@
 /**
- * DEEP SIGHT v5.0 — Login Page
+ * DEEP SIGHT v5.1 — Login Page
  * Authentification sobre et professionnelle
+ * ✅ Utilise le système i18n centralisé
  */
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useTranslation } from '../hooks/useTranslation';
 import { useTheme } from '../contexts/ThemeContext';
 import DoodleBackground from '../components/DoodleBackground';
-import { Mail, Lock, Loader2, ArrowLeft, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 // === Logo ===
 const Logo: React.FC = () => (
@@ -41,7 +42,7 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, loginWithGoogle, register, verifyEmail, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { language } = useLanguage();
+  const { t, language } = useTranslation();
   const { isDark, toggleTheme } = useTheme();
 
   const [isRegister, setIsRegister] = useState(false);
@@ -87,10 +88,8 @@ export const Login: React.FC = () => {
 
     try {
       if (isRegister) {
-        // Utiliser la partie avant @ de l'email comme username
         const username = email.split('@')[0];
         await register(username, email, password);
-        // Afficher le formulaire de vérification
         setVerificationEmail(email);
         setShowVerification(true);
         setSuccess(language === 'fr' 
@@ -100,15 +99,13 @@ export const Login: React.FC = () => {
         await login(email, password);
       }
     } catch (err: any) {
-      // Gérer différents formats d'erreur
-      let errorMessage = language === 'fr' ? 'Une erreur est survenue' : 'An error occurred';
+      let errorMessage = t.errors.generic;
       
       if (err?.message && typeof err.message === 'string') {
         errorMessage = err.message;
       } else if (err?.detail && typeof err.detail === 'string') {
         errorMessage = err.detail;
       } else if (err?.detail && Array.isArray(err.detail)) {
-        // FastAPI validation errors
         errorMessage = err.detail.map((e: any) => e.msg || e.message || String(e)).join(', ');
       } else if (typeof err === 'string') {
         errorMessage = err;
@@ -161,7 +158,7 @@ export const Login: React.FC = () => {
     try {
       await loginWithGoogle();
     } catch (err: any) {
-      setError(err.message || (language === 'fr' ? 'Erreur de connexion Google' : 'Google login error'));
+      setError(err.message || t.errors.generic);
       setLoading(false);
     }
   };
@@ -178,6 +175,7 @@ export const Login: React.FC = () => {
   return (
     <div className="min-h-screen bg-bg-primary flex relative">
       <DoodleBackground variant="default" density={50} />
+      
       {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 xl:w-2/5 bg-bg-secondary border-r border-border-subtle flex-col justify-between p-12 relative z-10">
         <div>
@@ -186,76 +184,50 @@ export const Login: React.FC = () => {
         
         <div className="space-y-6">
           <h1 className="font-display text-display-sm">
-            {language === 'fr' 
-              ? 'Transformez vos vidéos en connaissances' 
-              : 'Transform videos into knowledge'}
+            {t.landing.hero.title} <span className="text-accent-primary">{t.landing.hero.titleHighlight}</span>
           </h1>
           <p className="text-text-secondary text-lg leading-relaxed">
-            {language === 'fr'
-              ? 'Analyse intelligente, fact-checking automatique et chat contextuel pour les chercheurs, journalistes et professionnels.'
-              : 'Smart analysis, automatic fact-checking and contextual chat for researchers, journalists and professionals.'}
+            {t.auth.subtitle}
           </p>
         </div>
 
-        <div className="flex items-center gap-4">
-          <button
-            onClick={toggleTheme}
-            className="text-text-tertiary hover:text-text-primary transition-colors"
-          >
-            {isDark ? '☀️' : '🌙'}
-          </button>
-          <span className="text-text-muted text-sm">© 2024 Deep Sight</span>
+        <div className="text-text-muted text-sm">
+          {t.footer.copyright}
         </div>
       </div>
 
-      {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-6">
+      {/* Right Panel - Auth Form */}
+      <div className="flex-1 flex items-center justify-center p-8 relative z-10">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex justify-center mb-8">
+          <div className="lg:hidden mb-8 text-center">
             <Logo />
           </div>
 
-          {/* Back button */}
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-text-tertiary hover:text-text-primary text-sm mb-8 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {language === 'fr' ? 'Retour' : 'Back'}
-          </button>
-
-          <div className="mb-8">
+          {/* Title */}
+          <div className="text-center mb-8">
             <h2 className="font-display text-2xl mb-2">
-              {showVerification 
-                ? (language === 'fr' ? 'Vérification' : 'Verification')
-                : isRegister 
-                  ? (language === 'fr' ? 'Créer un compte' : 'Create account')
-                  : (language === 'fr' ? 'Connexion' : 'Sign in')}
+              {isRegister ? t.auth.createAccount : t.auth.welcomeBack}
             </h2>
-            <p className="text-text-secondary text-sm">
-              {showVerification
-                ? (language === 'fr' ? 'Entrez le code reçu par email' : 'Enter the code received by email')
-                : isRegister
-                  ? (language === 'fr' ? 'Commencez gratuitement avec Deep Sight' : 'Get started with Deep Sight for free')
-                  : (language === 'fr' ? 'Accédez à votre espace d\'analyse' : 'Access your analysis workspace')}
+            <p className="text-text-secondary">
+              {isRegister 
+                ? (language === 'fr' ? 'Créez votre compte Deep Sight' : 'Create your Deep Sight account')
+                : (language === 'fr' ? 'Connectez-vous à votre compte' : 'Sign in to your account')}
             </p>
           </div>
 
-          {/* Google Login - Masquer pendant la vérification */}
+          {/* Google Auth */}
           {!showVerification && (
+          <>
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-bg-tertiary border border-border-default text-text-primary font-medium hover:bg-bg-hover transition-all disabled:opacity-50 mb-6"
+            className="w-full btn btn-secondary py-3 text-base flex items-center justify-center gap-3 mb-6"
           >
             <GoogleIcon className="w-5 h-5" />
-            {language === 'fr' ? 'Continuer avec Google' : 'Continue with Google'}
+            {t.auth.loginWithGoogle}
           </button>
-          )}
 
-          {/* Divider - Masquer pendant la vérification */}
-          {!showVerification && (
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-border-subtle" />
@@ -266,6 +238,7 @@ export const Login: React.FC = () => {
               </span>
             </div>
           </div>
+          </>
           )}
 
           {/* Error/Success Messages */}
@@ -325,7 +298,7 @@ export const Login: React.FC = () => {
                   {loading ? (
                     <Loader2 className="w-5 h-5 animate-spin" />
                   ) : (
-                    language === 'fr' ? 'Vérifier' : 'Verify'
+                    t.common.confirm
                   )}
                 </button>
               </form>
@@ -339,7 +312,7 @@ export const Login: React.FC = () => {
                 }}
                 className="w-full text-center text-sm text-text-tertiary hover:text-text-primary transition-colors"
               >
-                {language === 'fr' ? '← Retour à la connexion' : '← Back to login'}
+                ← {t.common.back}
               </button>
             </div>
           ) : (
@@ -348,7 +321,7 @@ export const Login: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-2">
-                Email
+                {t.auth.email}
               </label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
@@ -365,7 +338,7 @@ export const Login: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-2">
-                {language === 'fr' ? 'Mot de passe' : 'Password'}
+                {t.auth.password}
               </label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted" />
@@ -414,9 +387,9 @@ export const Login: React.FC = () => {
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : isRegister ? (
-                language === 'fr' ? 'Créer mon compte' : 'Create account'
+                t.auth.createAccount
               ) : (
-                language === 'fr' ? 'Se connecter' : 'Sign in'
+                t.auth.signIn
               )}
             </button>
           </form>
@@ -425,22 +398,22 @@ export const Login: React.FC = () => {
           <p className="text-center text-sm text-text-tertiary mt-6">
             {isRegister ? (
               <>
-                {language === 'fr' ? 'Déjà un compte ?' : 'Already have an account?'}{' '}
+                {t.auth.hasAccount}{' '}
                 <button
                   onClick={() => { setIsRegister(false); setError(null); }}
                   className="text-accent-primary hover:text-accent-primary-hover font-medium"
                 >
-                  {language === 'fr' ? 'Se connecter' : 'Sign in'}
+                  {t.auth.signIn}
                 </button>
               </>
             ) : (
               <>
-                {language === 'fr' ? 'Pas encore de compte ?' : "Don't have an account?"}{' '}
+                {t.auth.noAccount}{' '}
                 <button
                   onClick={() => { setIsRegister(true); setError(null); }}
                   className="text-accent-primary hover:text-accent-primary-hover font-medium"
                 >
-                  {language === 'fr' ? 'Créer un compte' : 'Create account'}
+                  {t.auth.createAccount}
                 </button>
               </>
             )}

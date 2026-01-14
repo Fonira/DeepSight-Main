@@ -539,18 +539,33 @@ export const authApi = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const videoApi = {
+  /**
+   * 🎬 Analyse une vidéo YouTube
+   * @param url - URL YouTube
+   * @param category - Catégorie (auto, tech, science, etc.)
+   * @param mode - Mode d'analyse (accessible, standard, expert)
+   * @param model - Modèle IA (mistral-small, medium, large)
+   * @param deepResearch - Recherche approfondie (Expert only)
+   * @param lang - Langue pour le résumé (fr/en) - IMPORTANT: doit être la langue de l'interface
+   */
   async analyze(
     url: string,
-    options?: {
-      language?: string;
-      mode?: string;
-      category?: string;
-      model?: string;
-    }
+    category?: string,
+    mode?: string,
+    model?: string,
+    deepResearch?: boolean,
+    lang?: string
   ): Promise<{ task_id: string; status: string; result?: { summary_id: number } }> {
     return request('/api/videos/analyze', {
       method: 'POST',
-      body: { url, ...options },
+      body: { 
+        url, 
+        category: category || 'auto',
+        mode: mode || 'standard',
+        model: model || 'mistral-small-latest',
+        deep_research: deepResearch || false,
+        lang: lang || 'fr'  // 🌐 Langue du résumé
+      },
       timeout: 300000,
     });
   },
@@ -793,7 +808,7 @@ export const playlistApi = {
 
   async analyze(
     url: string,
-    options?: { language?: string; mode?: string; category?: string }
+    options?: { lang?: string; mode?: string; category?: string; maxVideos?: number }
   ): Promise<{ task_id: string; status: string }> {
     return request('/api/playlists/analyze', {
       method: 'POST',
@@ -804,7 +819,7 @@ export const playlistApi = {
 
   async analyzeCorpus(
     urls: string[],
-    options?: { language?: string; mode?: string; name?: string }
+    options?: { lang?: string; mode?: string; name?: string }
   ): Promise<{ task_id: string; status: string }> {
     return request('/api/playlists/analyze-corpus', {
       method: 'POST',

@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useTranslation } from '../hooks/useTranslation';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Sidebar } from '../components/layout/Sidebar';
@@ -44,7 +45,8 @@ interface ApiKeyState {
 
 export const Settings: React.FC = () => {
   const { user, logout } = useAuth();
-  const { language, setLanguage } = useLanguage();
+  const { t, language } = useTranslation();
+  const { setLanguage } = useLanguage();
   const { isDark, toggleTheme } = useTheme();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
@@ -60,7 +62,9 @@ export const Settings: React.FC = () => {
   });
 
   const isExpert = user?.plan === 'expert' || user?.plan === 'unlimited';
-  const t = useCallback((fr: string, en: string) => language === 'fr' ? fr : en, [language]);
+  
+  // Helper pour les traductions inline (utilisé pour les textes dynamiques)
+  const tr = useCallback((fr: string, en: string) => language === 'fr' ? fr : en, [language]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 📡 Fetch API Key Status
@@ -76,7 +80,7 @@ export const Settings: React.FC = () => {
       } catch (err) {
         setApiKey(prev => ({ 
           ...prev, 
-          error: t('Impossible de charger le statut API', 'Failed to load API status'),
+          error: tr('Impossible de charger le statut API', 'Failed to load API status'),
           loading: false 
         }));
       }
@@ -104,7 +108,7 @@ export const Settings: React.FC = () => {
     } catch (err: any) {
       setApiKey(prev => ({
         ...prev,
-        error: err?.message || t('Erreur lors de la génération', 'Generation failed'),
+        error: err?.message || tr('Erreur lors de la génération', 'Generation failed'),
         loading: false,
       }));
     }
@@ -129,7 +133,7 @@ export const Settings: React.FC = () => {
     } catch (err: any) {
       setApiKey(prev => ({
         ...prev,
-        error: err?.message || t('Erreur lors de la régénération', 'Regeneration failed'),
+        error: err?.message || tr('Erreur lors de la régénération', 'Regeneration failed'),
         loading: false,
       }));
     }
@@ -153,7 +157,7 @@ export const Settings: React.FC = () => {
     } catch (err: any) {
       setApiKey(prev => ({
         ...prev,
-        error: err?.message || t('Erreur lors de la révocation', 'Revocation failed'),
+        error: err?.message || tr('Erreur lors de la révocation', 'Revocation failed'),
         loading: false,
       }));
     }
@@ -173,7 +177,7 @@ export const Settings: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return t('Jamais', 'Never');
+    if (!dateStr) return tr('Jamais', 'Never');
     return new Date(dateStr).toLocaleDateString(language, {
       day: 'numeric',
       month: 'short',
@@ -200,9 +204,9 @@ export const Settings: React.FC = () => {
             {/* Header */}
             {/* ═══════════════════════════════════════════════════════════════════ */}
             <header className="mb-8">
-              <h1 className="font-display text-2xl mb-2">{t('Paramètres', 'Settings')}</h1>
+              <h1 className="font-display text-2xl mb-2">{tr('Paramètres', 'Settings')}</h1>
               <p className="text-text-secondary text-sm">
-                {t('Gérez votre compte et vos préférences.', 'Manage your account and preferences.')}
+                {tr('Gérez votre compte et vos préférences.', 'Manage your account and preferences.')}
               </p>
             </header>
 
@@ -213,7 +217,7 @@ export const Settings: React.FC = () => {
               <div className="panel-header">
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
                   <User className="w-5 h-5 text-accent-primary" />
-                  {t('Profil', 'Profile')}
+                  {tr('Profil', 'Profile')}
                 </h2>
               </div>
               <div className="panel-body space-y-4">
@@ -225,13 +229,13 @@ export const Settings: React.FC = () => {
                     </div>
                     <span className="badge badge-success">
                       <Check className="w-3 h-3" />
-                      {t('Vérifié', 'Verified')}
+                      {tr('Vérifié', 'Verified')}
                     </span>
                   </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-2">
-                    {t('Abonnement', 'Subscription')}
+                    {tr('Abonnement', 'Subscription')}
                   </label>
                   <div className="flex items-center gap-3">
                     <div className="px-4 py-2.5 rounded-lg bg-bg-tertiary border border-border-subtle text-text-primary capitalize flex-1">
@@ -254,7 +258,7 @@ export const Settings: React.FC = () => {
               <div className="panel-header border-amber-500/20">
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
                   <Key className="w-5 h-5 text-amber-500" />
-                  {t('Accès API', 'API Access')}
+                  {tr('Accès API', 'API Access')}
                   <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
                     Expert
                   </span>
@@ -276,7 +280,7 @@ export const Settings: React.FC = () => {
                       className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium hover:opacity-90 transition-opacity"
                     >
                       <Zap className="w-4 h-4" />
-                      {t('Passer à Expert', 'Upgrade to Expert')}
+                      {tr('Passer à Expert', 'Upgrade to Expert')}
                     </a>
                   </div>
                 ) : apiKey.loading && !apiKey.status ? (
@@ -300,7 +304,7 @@ export const Settings: React.FC = () => {
                       <div className="p-4 rounded-lg bg-success/10 border border-success/30 space-y-3">
                         <div className="flex items-center gap-2 text-success font-medium">
                           <Check className="w-4 h-4" />
-                          {t('Nouvelle clé générée !', 'New key generated!')}
+                          {tr('Nouvelle clé générée !', 'New key generated!')}
                         </div>
                         <div className="flex items-center gap-2">
                           <code className="flex-1 px-3 py-2 rounded bg-bg-tertiary font-mono text-sm overflow-x-auto">
@@ -336,17 +340,17 @@ export const Settings: React.FC = () => {
                       <div className="flex items-center justify-between p-3 rounded-lg bg-bg-tertiary">
                         <div className="flex items-center gap-3">
                           <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                          <span className="text-sm">{t('Clé API active', 'API Key active')}</span>
+                          <span className="text-sm">{tr('Clé API active', 'API Key active')}</span>
                         </div>
                         <span className="text-xs text-text-tertiary">
-                          {t('Créée le', 'Created')} {formatDate(apiKey.status.created_at)}
+                          {tr('Créée le', 'Created')} {formatDate(apiKey.status.created_at)}
                         </span>
                       </div>
                     )}
 
                     {apiKey.status?.last_used && (
                       <p className="text-xs text-text-tertiary">
-                        {t('Dernière utilisation:', 'Last used:')} {formatDate(apiKey.status.last_used)}
+                        {tr('Dernière utilisation:', 'Last used:')} {formatDate(apiKey.status.last_used)}
                       </p>
                     )}
 
@@ -355,8 +359,8 @@ export const Settings: React.FC = () => {
                       <div className="p-4 rounded-lg bg-warning/10 border border-warning/30">
                         <p className="text-sm text-warning mb-3">
                           {apiKey.confirmAction === 'regenerate' 
-                            ? t('⚠️ La régénération révoquera votre clé actuelle. Continuer ?', '⚠️ Regenerating will revoke your current key. Continue?')
-                            : t('⚠️ Cette action est irréversible. Êtes-vous sûr ?', '⚠️ This action is irreversible. Are you sure?')
+                            ? tr('⚠️ La régénération révoquera votre clé actuelle. Continuer ?', '⚠️ Regenerating will revoke your current key. Continue?')
+                            : tr('⚠️ Cette action est irréversible. Êtes-vous sûr ?', '⚠️ This action is irreversible. Are you sure?')
                           }
                         </p>
                         <div className="flex gap-2">
@@ -364,10 +368,10 @@ export const Settings: React.FC = () => {
                             onClick={apiKey.confirmAction === 'regenerate' ? handleRegenerateKey : handleRevokeKey}
                             className="px-4 py-2 rounded-lg bg-warning text-white text-sm font-medium"
                           >
-                            {t('Confirmer', 'Confirm')}
+                            {tr('Confirmer', 'Confirm')}
                           </button>
                           <button onClick={cancelConfirm} className="px-4 py-2 rounded-lg bg-bg-tertiary text-sm">
-                            {t('Annuler', 'Cancel')}
+                            {tr('Annuler', 'Cancel')}
                           </button>
                         </div>
                       </div>
@@ -383,7 +387,7 @@ export const Settings: React.FC = () => {
                             className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent-primary text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
                           >
                             {apiKey.loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
-                            {t('Générer une clé API', 'Generate API Key')}
+                            {tr('Générer une clé API', 'Generate API Key')}
                           </button>
                         ) : (
                           <>
@@ -393,7 +397,7 @@ export const Settings: React.FC = () => {
                               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-bg-tertiary border border-border-default hover:bg-bg-hover transition-colors text-sm disabled:opacity-50"
                             >
                               <RefreshCw className="w-4 h-4" />
-                              {t('Régénérer', 'Regenerate')}
+                              {tr('Régénérer', 'Regenerate')}
                             </button>
                             <button
                               onClick={handleRevokeKey}
@@ -401,7 +405,7 @@ export const Settings: React.FC = () => {
                               className="flex items-center gap-2 px-4 py-2 rounded-lg text-error hover:bg-error/10 transition-colors text-sm disabled:opacity-50"
                             >
                               <Trash2 className="w-4 h-4" />
-                              {t('Révoquer', 'Revoke')}
+                              {tr('Révoquer', 'Revoke')}
                             </button>
                           </>
                         )}
@@ -415,7 +419,7 @@ export const Settings: React.FC = () => {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-sm text-accent-primary hover:underline"
                     >
-                      {t('Documentation API', 'API Documentation')}
+                      {tr('Documentation API', 'API Documentation')}
                       <ExternalLink className="w-3 h-3" />
                     </a>
                   </div>
@@ -430,16 +434,16 @@ export const Settings: React.FC = () => {
               <div className="panel-header">
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
                   <Globe className="w-5 h-5 text-accent-primary" />
-                  {t('Préférences', 'Preferences')}
+                  {tr('Préférences', 'Preferences')}
                 </h2>
               </div>
               <div className="panel-body space-y-6">
                 {/* Theme */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-text-primary">{t('Thème', 'Theme')}</p>
+                    <p className="font-medium text-text-primary">{tr('Thème', 'Theme')}</p>
                     <p className="text-sm text-text-tertiary">
-                      {t('Choisissez entre clair et sombre', 'Choose between light and dark')}
+                      {tr('Choisissez entre clair et sombre', 'Choose between light and dark')}
                     </p>
                   </div>
                   <button
@@ -463,8 +467,8 @@ export const Settings: React.FC = () => {
                 {/* Language */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-text-primary">{t('Langue', 'Language')}</p>
-                    <p className="text-sm text-text-tertiary">{t("Langue de l'interface", 'Interface language')}</p>
+                    <p className="font-medium text-text-primary">{tr('Langue', 'Language')}</p>
+                    <p className="text-sm text-text-tertiary">{tr("Langue de l'interface", 'Interface language')}</p>
                   </div>
                   <select
                     value={language}
@@ -485,7 +489,7 @@ export const Settings: React.FC = () => {
               <div className="panel-header">
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
                   <Shield className="w-5 h-5 text-accent-primary" />
-                  {t('Sécurité', 'Security')}
+                  {tr('Sécurité', 'Security')}
                 </h2>
               </div>
               <div className="panel-body space-y-4">
@@ -494,10 +498,10 @@ export const Settings: React.FC = () => {
                     <Key className="w-5 h-5 text-text-tertiary" />
                     <div>
                       <p className="font-medium text-text-primary">
-                        {t('Changer le mot de passe', 'Change password')}
+                        {tr('Changer le mot de passe', 'Change password')}
                       </p>
                       <p className="text-sm text-text-tertiary">
-                        {t('Modifiez votre mot de passe', 'Update your password')}
+                        {tr('Modifiez votre mot de passe', 'Update your password')}
                       </p>
                     </div>
                   </div>
@@ -510,9 +514,9 @@ export const Settings: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <LogOut className="w-5 h-5 text-text-tertiary" />
                     <div>
-                      <p className="font-medium text-text-primary">{t('Déconnexion', 'Sign out')}</p>
+                      <p className="font-medium text-text-primary">{tr('Déconnexion', 'Sign out')}</p>
                       <p className="text-sm text-text-tertiary">
-                        {t('Se déconnecter de Deep Sight', 'Sign out of Deep Sight')}
+                        {tr('Se déconnecter de Deep Sight', 'Sign out of Deep Sight')}
                       </p>
                     </div>
                   </div>
@@ -527,7 +531,7 @@ export const Settings: React.FC = () => {
               <div className="panel-header border-error/20">
                 <h2 className="font-semibold text-error flex items-center gap-2">
                   <AlertCircle className="w-5 h-5" />
-                  {t('Zone dangereuse', 'Danger Zone')}
+                  {tr('Zone dangereuse', 'Danger Zone')}
                 </h2>
               </div>
               <div className="panel-body">
@@ -535,9 +539,9 @@ export const Settings: React.FC = () => {
                   <div className="flex items-center gap-3">
                     <Trash2 className="w-5 h-5 text-error" />
                     <div>
-                      <p className="font-medium text-error">{t('Supprimer mon compte', 'Delete my account')}</p>
+                      <p className="font-medium text-error">{tr('Supprimer mon compte', 'Delete my account')}</p>
                       <p className="text-sm text-text-tertiary">
-                        {t('Cette action est irréversible', 'This action is irreversible')}
+                        {tr('Cette action est irréversible', 'This action is irreversible')}
                       </p>
                     </div>
                   </div>
