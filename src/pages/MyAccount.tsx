@@ -1,14 +1,15 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════════════════╗
- * ║  DEEP SIGHT v6.0 — My Account Page                                            ║
+ * ║  DEEP SIGHT v6.1 — My Account Page                                            ║
  * ║  Gestion du compte: profil, abonnement, sécurité, API keys                    ║
- * ║  ✨ Restructuré - Paramètres app séparés dans Settings                        ║
+ * ║  ✨ Optimisé avec sons et structure cohérente                                 ║
  * ╚══════════════════════════════════════════════════════════════════════════════╝
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
+import { useSounds } from '../hooks/useSounds';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
 import { billingApi } from '../services/api';
@@ -16,7 +17,7 @@ import {
   User, Shield, Key, Trash2, LogOut, Check, 
   AlertCircle, Loader2, Eye, EyeOff, Copy, RefreshCw, Lock,
   ExternalLink, Mail, Calendar, Crown, CreditCard, Sparkles,
-  ChevronRight, Clock, Hash, AlertTriangle
+  ChevronRight, Hash, AlertTriangle
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -47,6 +48,7 @@ interface ApiKeyState {
 export const MyAccount: React.FC = () => {
   const { user, logout } = useAuth();
   const { language } = useTranslation();
+  const { play } = useSounds();
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
@@ -109,15 +111,18 @@ export const MyAccount: React.FC = () => {
         loading: false,
         showKey: true,
       }));
+      play('success');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : tr('Erreur lors de la génération', 'Generation failed');
       setApiKey(prev => ({ ...prev, error: message, loading: false }));
+      play('error');
     }
   };
 
   const handleRegenerateKey = async () => {
     if (apiKey.confirmAction !== 'regenerate') {
       setApiKey(prev => ({ ...prev, confirmAction: 'regenerate' }));
+      play('warning');
       return;
     }
     
@@ -131,15 +136,18 @@ export const MyAccount: React.FC = () => {
         loading: false,
         showKey: true,
       }));
+      play('success');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : tr('Erreur lors de la régénération', 'Regeneration failed');
       setApiKey(prev => ({ ...prev, error: message, loading: false }));
+      play('error');
     }
   };
 
   const handleRevokeKey = async () => {
     if (apiKey.confirmAction !== 'revoke') {
       setApiKey(prev => ({ ...prev, confirmAction: 'revoke' }));
+      play('warning');
       return;
     }
     
@@ -152,9 +160,11 @@ export const MyAccount: React.FC = () => {
         newKey: null,
         loading: false,
       }));
+      play('success');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : tr('Erreur lors de la révocation', 'Revocation failed');
       setApiKey(prev => ({ ...prev, error: message, loading: false }));
+      play('error');
     }
   };
 
@@ -162,10 +172,14 @@ export const MyAccount: React.FC = () => {
     if (!apiKey.newKey) return;
     await navigator.clipboard.writeText(apiKey.newKey);
     setApiKey(prev => ({ ...prev, copied: true }));
+    play('success');
     setTimeout(() => setApiKey(prev => ({ ...prev, copied: false })), 2000);
   };
 
-  const cancelConfirm = () => setApiKey(prev => ({ ...prev, confirmAction: null }));
+  const cancelConfirm = () => {
+    setApiKey(prev => ({ ...prev, confirmAction: null }));
+    play('click');
+  };
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 🎨 Helpers
@@ -181,6 +195,7 @@ export const MyAccount: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    play('click');
     await logout();
     navigate('/');
   };
@@ -275,7 +290,7 @@ export const MyAccount: React.FC = () => {
                   label={tr('Identifiant', 'User ID')} 
                   value={
                     <span className="font-mono text-xs bg-bg-tertiary px-2 py-1 rounded">
-                      {user?.id?.slice(0, 8)}...
+                      {user?.id?.slice(0, 8) || '---'}...
                     </span>
                   } 
                 />
@@ -321,7 +336,7 @@ export const MyAccount: React.FC = () => {
               </div>
               <div className="panel-body space-y-4">
                 {/* Current Plan Summary */}
-                <div className={`p-4 rounded-xl ${currentPlan.bgColor} border border-${currentPlan.color}/20`}>
+                <div className={`p-4 rounded-xl ${currentPlan.bgColor}`}>
                   <div className="flex items-center justify-between">
                     <div>
                       <p className={`font-semibold ${currentPlan.color} flex items-center gap-2`}>
@@ -337,6 +352,7 @@ export const MyAccount: React.FC = () => {
                     {user?.plan !== 'expert' && user?.plan !== 'unlimited' && (
                       <Link
                         to="/upgrade"
+                        onClick={() => play('click')}
                         className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors"
                       >
                         <Sparkles className="w-4 h-4" />
@@ -349,6 +365,7 @@ export const MyAccount: React.FC = () => {
                 {/* Manage Subscription Button */}
                 <Link
                   to="/upgrade"
+                  onClick={() => play('click')}
                   className="flex items-center justify-between p-4 rounded-lg bg-bg-tertiary border border-border-subtle hover:bg-bg-hover transition-colors"
                 >
                   <div className="flex items-center gap-3">
@@ -389,6 +406,7 @@ export const MyAccount: React.FC = () => {
                     </p>
                     <Link
                       to="/upgrade"
+                      onClick={() => play('click')}
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/10 text-purple-400 text-sm font-medium hover:bg-purple-500/20 transition-colors"
                     >
                       <Crown className="w-4 h-4" />
@@ -412,22 +430,25 @@ export const MyAccount: React.FC = () => {
                           {tr('🎉 Votre nouvelle clé API:', '🎉 Your new API key:')}
                         </p>
                         <div className="flex items-center gap-2">
-                          <code className="flex-1 px-3 py-2 rounded bg-bg-primary border border-border-default font-mono text-sm break-all">
+                          <code className="flex-1 px-3 py-2 rounded bg-bg-primary border border-border-default font-mono text-sm break-all text-text-primary">
                             {apiKey.showKey ? apiKey.newKey : '•'.repeat(40)}
                           </code>
                           <button
-                            onClick={() => setApiKey(prev => ({ ...prev, showKey: !prev.showKey }))}
+                            onClick={() => {
+                              setApiKey(prev => ({ ...prev, showKey: !prev.showKey }));
+                              play('click');
+                            }}
                             className="p-2 rounded-lg hover:bg-bg-hover transition-colors"
                             title={apiKey.showKey ? tr('Masquer', 'Hide') : tr('Afficher', 'Show')}
                           >
-                            {apiKey.showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            {apiKey.showKey ? <EyeOff className="w-4 h-4 text-text-tertiary" /> : <Eye className="w-4 h-4 text-text-tertiary" />}
                           </button>
                           <button
                             onClick={copyToClipboard}
                             className="p-2 rounded-lg hover:bg-bg-hover transition-colors"
                             title={tr('Copier', 'Copy')}
                           >
-                            {apiKey.copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+                            {apiKey.copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4 text-text-tertiary" />}
                           </button>
                         </div>
                         <p className="text-xs text-text-tertiary mt-2">
@@ -605,7 +626,10 @@ export const MyAccount: React.FC = () => {
               <div className="panel-body">
                 {!showDeleteConfirm ? (
                   <button 
-                    onClick={() => setShowDeleteConfirm(true)}
+                    onClick={() => {
+                      setShowDeleteConfirm(true);
+                      play('warning');
+                    }}
                     className="w-full flex items-center justify-between p-4 rounded-lg bg-error/5 border border-error/20 hover:bg-error/10 transition-colors text-left"
                   >
                     <div className="flex items-center gap-3">
@@ -639,7 +663,7 @@ export const MyAccount: React.FC = () => {
                     <div className="flex gap-2">
                       <button
                         disabled={deleteConfirmText !== (language === 'fr' ? 'SUPPRIMER' : 'DELETE')}
-                        className="px-4 py-2 rounded-lg bg-error text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 rounded-lg bg-error text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-error/90 transition-colors"
                       >
                         {tr('Supprimer définitivement', 'Delete permanently')}
                       </button>
@@ -647,6 +671,7 @@ export const MyAccount: React.FC = () => {
                         onClick={() => {
                           setShowDeleteConfirm(false);
                           setDeleteConfirmText('');
+                          play('click');
                         }}
                         className="px-4 py-2 rounded-lg bg-bg-tertiary text-sm hover:bg-bg-hover transition-colors"
                       >
