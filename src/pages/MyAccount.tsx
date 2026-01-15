@@ -1,7 +1,8 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════════════════╗
- * ║  DEEP SIGHT v5.5 — My Account Page                                            ║
- * ║  Gestion du compte utilisateur: profil, mot de passe, API keys, sécurité      ║
+ * ║  DEEP SIGHT v6.0 — My Account Page                                            ║
+ * ║  Gestion du compte: profil, abonnement, sécurité, API keys                    ║
+ * ║  ✨ Restructuré - Paramètres app séparés dans Settings                        ║
  * ╚══════════════════════════════════════════════════════════════════════════════╝
  */
 
@@ -14,13 +15,13 @@ import { billingApi } from '../services/api';
 import { 
   User, Shield, Key, Trash2, LogOut, Check, 
   AlertCircle, Loader2, Eye, EyeOff, Copy, RefreshCw, Lock,
-  Zap, ExternalLink, AlertTriangle, Mail, Calendar, Crown,
-  CreditCard, BarChart3
+  ExternalLink, Mail, Calendar, Crown, CreditCard, Sparkles,
+  ChevronRight, Clock, Hash, AlertTriangle
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🔐 Types & Interfaces
+// 🔐 Types
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface ApiKeyStatus {
@@ -45,7 +46,8 @@ interface ApiKeyState {
 
 export const MyAccount: React.FC = () => {
   const { user, logout } = useAuth();
-  const { t, language } = useTranslation();
+  const { language } = useTranslation();
+  const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   // 🔑 API Key State
@@ -59,8 +61,9 @@ export const MyAccount: React.FC = () => {
     confirmAction: null,
   });
 
-  // État pour suppression de compte
+  // États UI
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   const isExpert = user?.plan === 'expert' || user?.plan === 'unlimited';
   
@@ -108,11 +111,7 @@ export const MyAccount: React.FC = () => {
       }));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : tr('Erreur lors de la génération', 'Generation failed');
-      setApiKey(prev => ({
-        ...prev,
-        error: message,
-        loading: false,
-      }));
+      setApiKey(prev => ({ ...prev, error: message, loading: false }));
     }
   };
 
@@ -134,11 +133,7 @@ export const MyAccount: React.FC = () => {
       }));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : tr('Erreur lors de la régénération', 'Regeneration failed');
-      setApiKey(prev => ({
-        ...prev,
-        error: message,
-        loading: false,
-      }));
+      setApiKey(prev => ({ ...prev, error: message, loading: false }));
     }
   };
 
@@ -159,11 +154,7 @@ export const MyAccount: React.FC = () => {
       }));
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : tr('Erreur lors de la révocation', 'Revocation failed');
-      setApiKey(prev => ({
-        ...prev,
-        error: message,
-        loading: false,
-      }));
+      setApiKey(prev => ({ ...prev, error: message, loading: false }));
     }
   };
 
@@ -177,31 +168,52 @@ export const MyAccount: React.FC = () => {
   const cancelConfirm = () => setApiKey(prev => ({ ...prev, confirmAction: null }));
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // 🎨 Render Helpers
+  // 🎨 Helpers
   // ─────────────────────────────────────────────────────────────────────────────
 
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return tr('Jamais', 'Never');
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return tr('Non disponible', 'Not available');
     return new Date(dateStr).toLocaleDateString(language, {
       day: 'numeric',
-      month: 'short',
+      month: 'long',
       year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
     });
   };
 
-  const getPlanBadge = () => {
-    const plan = user?.plan || 'free';
-    const badges: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
-      free: { bg: 'bg-gray-500/20', text: 'text-gray-400', icon: null },
-      starter: { bg: 'bg-blue-500/20', text: 'text-blue-400', icon: <Zap className="w-3 h-3" /> },
-      pro: { bg: 'bg-purple-500/20', text: 'text-purple-400', icon: <Crown className="w-3 h-3" /> },
-      expert: { bg: 'bg-amber-500/20', text: 'text-amber-400', icon: <Zap className="w-3 h-3" /> },
-      unlimited: { bg: 'bg-gradient-to-r from-amber-500 to-orange-500', text: 'text-white', icon: <Crown className="w-3 h-3" /> },
-    };
-    return badges[plan] || badges.free;
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
   };
+
+  // Plan info
+  const planConfig: Record<string, { label: string; color: string; bgColor: string; icon: string }> = {
+    free: { label: tr('Gratuit', 'Free'), color: 'text-gray-400', bgColor: 'bg-gray-500/10', icon: '🆓' },
+    starter: { label: 'Starter', color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', icon: '⚡' },
+    pro: { label: 'Pro', color: 'text-amber-400', bgColor: 'bg-amber-500/10', icon: '⭐' },
+    expert: { label: 'Expert', color: 'text-purple-400', bgColor: 'bg-purple-500/10', icon: '👑' },
+    unlimited: { label: 'Admin', color: 'text-yellow-400', bgColor: 'bg-yellow-500/10', icon: '👑' },
+  };
+
+  const currentPlan = planConfig[user?.plan || 'free'];
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 🎨 Info Row Component
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const InfoRow: React.FC<{
+    icon: React.ElementType;
+    label: string;
+    value: string | React.ReactNode;
+    iconColor?: string;
+  }> = ({ icon: Icon, label, value, iconColor = 'text-text-tertiary' }) => (
+    <div className="flex items-center justify-between py-3">
+      <div className="flex items-center gap-3">
+        <Icon className={`w-4 h-4 ${iconColor}`} />
+        <span className="text-text-secondary text-sm">{label}</span>
+      </div>
+      <span className="text-text-primary font-medium text-sm">{value}</span>
+    </div>
+  );
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // 🖼️ Render
@@ -212,159 +224,195 @@ export const MyAccount: React.FC = () => {
       <DoodleBackground variant="default" density={50} />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       
-      <main className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
+      <main 
+        id="main-content"
+        className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}
+      >
         <div className="min-h-screen p-6 lg:p-8">
           <div className="max-w-2xl mx-auto space-y-6">
             
             {/* ═══════════════════════════════════════════════════════════════════ */}
-            {/* Header */}
+            {/* Header avec Avatar */}
             {/* ═══════════════════════════════════════════════════════════════════ */}
             <header className="mb-8">
-              <h1 className="font-display text-2xl mb-2">{tr('Mon compte', 'My Account')}</h1>
-              <p className="text-text-secondary text-sm">
-                {tr('Gérez vos informations personnelles et la sécurité de votre compte.', 
-                    'Manage your personal information and account security.')}
-              </p>
+              <div className="flex items-center gap-4">
+                <div className={`w-16 h-16 rounded-2xl ${currentPlan.bgColor} flex items-center justify-center ${currentPlan.color} text-2xl font-bold shadow-lg`}>
+                  {user?.email?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <div>
+                  <h1 className="font-display text-2xl text-text-primary flex items-center gap-2">
+                    {tr('Mon compte', 'My Account')}
+                  </h1>
+                  <p className="text-text-secondary text-sm flex items-center gap-2 mt-1">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${currentPlan.bgColor} ${currentPlan.color}`}>
+                      {currentPlan.icon} {currentPlan.label}
+                    </span>
+                    <span className="text-text-tertiary">•</span>
+                    <span>{user?.email}</span>
+                  </p>
+                </div>
+              </div>
             </header>
 
             {/* ═══════════════════════════════════════════════════════════════════ */}
-            {/* Profile Information */}
+            {/* 👤 Informations du compte */}
             {/* ═══════════════════════════════════════════════════════════════════ */}
             <section className="card">
               <div className="panel-header">
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
                   <User className="w-5 h-5 text-accent-primary" />
-                  {tr('Informations du profil', 'Profile Information')}
+                  {tr('Informations du compte', 'Account Information')}
                 </h2>
               </div>
-              <div className="panel-body space-y-4">
-                {/* Email */}
-                <div className="flex items-center justify-between p-4 rounded-lg bg-bg-tertiary">
-                  <div className="flex items-center gap-3">
-                    <Mail className="w-5 h-5 text-text-tertiary" />
-                    <div>
-                      <p className="text-sm text-text-tertiary">{tr('Adresse email', 'Email address')}</p>
-                      <p className="font-medium text-text-primary">{user?.email || 'Non défini'}</p>
-                    </div>
-                  </div>
-                  <span className="badge badge-success text-xs">
-                    <Check className="w-3 h-3" />
-                    {tr('Vérifié', 'Verified')}
-                  </span>
-                </div>
-
-                {/* Plan */}
-                <div className="flex items-center justify-between p-4 rounded-lg bg-bg-tertiary">
-                  <div className="flex items-center gap-3">
-                    <CreditCard className="w-5 h-5 text-text-tertiary" />
-                    <div>
-                      <p className="text-sm text-text-tertiary">{tr('Abonnement', 'Subscription')}</p>
-                      <p className="font-medium text-text-primary capitalize">{user?.plan || 'Free'}</p>
-                    </div>
-                  </div>
-                  <span className={`badge ${getPlanBadge().bg} ${getPlanBadge().text} flex items-center gap-1`}>
-                    {getPlanBadge().icon}
-                    {(user?.plan || 'free').charAt(0).toUpperCase() + (user?.plan || 'free').slice(1)}
-                  </span>
-                </div>
-
-                {/* Credits */}
-                <div className="flex items-center justify-between p-4 rounded-lg bg-bg-tertiary">
-                  <div className="flex items-center gap-3">
-                    <BarChart3 className="w-5 h-5 text-text-tertiary" />
-                    <div>
-                      <p className="text-sm text-text-tertiary">{tr('Crédits restants', 'Remaining credits')}</p>
-                      <p className="font-medium text-text-primary">
-                        {user?.analysis_count !== undefined 
-                          ? `${user.analysis_count} / ${user.analysis_limit || '∞'}`
-                          : tr('Non disponible', 'Not available')
-                        }
-                      </p>
-                    </div>
-                  </div>
-                  <Link 
-                    to="/usage"
-                    className="text-sm text-accent-primary hover:underline"
-                  >
-                    {tr('Voir détails', 'View details')}
-                  </Link>
-                </div>
-
-                {/* Member since */}
-                <div className="flex items-center justify-between p-4 rounded-lg bg-bg-tertiary">
-                  <div className="flex items-center gap-3">
-                    <Calendar className="w-5 h-5 text-text-tertiary" />
-                    <div>
-                      <p className="text-sm text-text-tertiary">{tr('Membre depuis', 'Member since')}</p>
-                      <p className="font-medium text-text-primary">
-                        {user?.created_at 
-                          ? new Date(user.created_at).toLocaleDateString(language, { month: 'long', year: 'numeric' })
-                          : tr('Inconnu', 'Unknown')
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </div>
+              <div className="panel-body divide-y divide-border-subtle">
+                <InfoRow 
+                  icon={Mail} 
+                  label={tr('Email', 'Email')} 
+                  value={user?.email || '-'} 
+                />
+                <InfoRow 
+                  icon={Hash} 
+                  label={tr('Identifiant', 'User ID')} 
+                  value={
+                    <span className="font-mono text-xs bg-bg-tertiary px-2 py-1 rounded">
+                      {user?.id?.slice(0, 8)}...
+                    </span>
+                  } 
+                />
+                <InfoRow 
+                  icon={Calendar} 
+                  label={tr('Membre depuis', 'Member since')} 
+                  value={formatDate(user?.created_at)} 
+                />
+                <InfoRow 
+                  icon={Crown} 
+                  iconColor={currentPlan.color}
+                  label={tr('Abonnement', 'Subscription')} 
+                  value={
+                    <span className={`font-semibold ${currentPlan.color}`}>
+                      {currentPlan.icon} {currentPlan.label}
+                    </span>
+                  } 
+                />
+                {user?.credits !== undefined && (
+                  <InfoRow 
+                    icon={Sparkles} 
+                    iconColor="text-amber-400"
+                    label={tr('Crédits restants', 'Remaining credits')} 
+                    value={
+                      <span className="font-bold text-amber-400">
+                        {user.credits.toLocaleString()}
+                      </span>
+                    } 
+                  />
+                )}
               </div>
             </section>
 
             {/* ═══════════════════════════════════════════════════════════════════ */}
-            {/* 🔑 API Access Section (Expert Only) */}
+            {/* 💳 Abonnement */}
             {/* ═══════════════════════════════════════════════════════════════════ */}
-            <section className="card border-amber-500/30">
-              <div className="panel-header border-amber-500/20">
+            <section className="card">
+              <div className="panel-header">
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
-                  <Key className="w-5 h-5 text-amber-500" />
-                  {tr('Accès API', 'API Access')}
-                  <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                    Expert
-                  </span>
+                  <CreditCard className="w-5 h-5 text-accent-primary" />
+                  {tr('Abonnement & Facturation', 'Subscription & Billing')}
+                </h2>
+              </div>
+              <div className="panel-body space-y-4">
+                {/* Current Plan Summary */}
+                <div className={`p-4 rounded-xl ${currentPlan.bgColor} border border-${currentPlan.color}/20`}>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className={`font-semibold ${currentPlan.color} flex items-center gap-2`}>
+                        {currentPlan.icon} Plan {currentPlan.label}
+                      </p>
+                      <p className="text-sm text-text-tertiary mt-1">
+                        {user?.plan === 'free' 
+                          ? tr('Fonctionnalités de base', 'Basic features')
+                          : tr('Toutes les fonctionnalités incluses', 'All features included')
+                        }
+                      </p>
+                    </div>
+                    {user?.plan !== 'expert' && user?.plan !== 'unlimited' && (
+                      <Link
+                        to="/upgrade"
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        {tr('Améliorer', 'Upgrade')}
+                      </Link>
+                    )}
+                  </div>
+                </div>
+
+                {/* Manage Subscription Button */}
+                <Link
+                  to="/upgrade"
+                  className="flex items-center justify-between p-4 rounded-lg bg-bg-tertiary border border-border-subtle hover:bg-bg-hover transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <CreditCard className="w-5 h-5 text-text-tertiary" />
+                    <div>
+                      <p className="font-medium text-text-primary">{tr('Gérer l\'abonnement', 'Manage subscription')}</p>
+                      <p className="text-sm text-text-tertiary">{tr('Voir les plans et options', 'View plans and options')}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-text-tertiary" />
+                </Link>
+              </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════════════════════════════ */}
+            {/* 🔑 API Keys (Expert only) */}
+            {/* ═══════════════════════════════════════════════════════════════════ */}
+            <section className="card">
+              <div className="panel-header">
+                <h2 className="font-semibold text-text-primary flex items-center gap-2">
+                  <Key className="w-5 h-5 text-accent-primary" />
+                  {tr('Clés API', 'API Keys')}
+                  {isExpert && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400">
+                      Expert
+                    </span>
+                  )}
                 </h2>
               </div>
               <div className="panel-body">
                 {!isExpert ? (
-                  /* ─── Non-Expert: Upgrade Prompt ─── */
                   <div className="text-center py-6">
-                    <Lock className="w-12 h-12 mx-auto text-text-tertiary mb-4" />
-                    <p className="text-text-secondary mb-4">
-                      {tr("L'accès API REST est réservé au plan Expert.", 
-                          'REST API access is exclusive to Expert plan.')}
+                    <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto mb-3">
+                      <Lock className="w-6 h-6 text-purple-400" />
+                    </div>
+                    <p className="text-text-secondary mb-3">
+                      {tr('L\'accès API est réservé aux abonnés Expert.', 'API access is available for Expert subscribers.')}
                     </p>
                     <Link
                       to="/upgrade"
-                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium hover:opacity-90 transition-opacity"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/10 text-purple-400 text-sm font-medium hover:bg-purple-500/20 transition-colors"
                     >
-                      <Zap className="w-4 h-4" />
+                      <Crown className="w-4 h-4" />
                       {tr('Passer à Expert', 'Upgrade to Expert')}
                     </Link>
                   </div>
-                ) : apiKey.loading && !apiKey.status ? (
-                  /* ─── Loading ─── */
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-accent-primary" />
-                  </div>
                 ) : (
-                  /* ─── Expert: API Key Management ─── */
                   <div className="space-y-4">
-                    {/* Error Display */}
+                    {/* Error Message */}
                     {apiKey.error && (
-                      <div className="flex items-center gap-2 p-3 rounded-lg bg-error/10 text-error text-sm">
-                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                        {apiKey.error}
+                      <div className="p-3 rounded-lg bg-error/10 border border-error/30 flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-error flex-shrink-0" />
+                        <p className="text-sm text-error">{apiKey.error}</p>
                       </div>
                     )}
 
                     {/* New Key Display */}
                     {apiKey.newKey && (
                       <div className="p-4 rounded-lg bg-success/10 border border-success/30">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Check className="w-5 h-5 text-success" />
-                          <span className="font-medium text-success">
-                            {tr('Clé générée avec succès !', 'Key generated successfully!')}
-                          </span>
-                        </div>
+                        <p className="text-sm text-success mb-2 font-medium">
+                          {tr('🎉 Votre nouvelle clé API:', '🎉 Your new API key:')}
+                        </p>
                         <div className="flex items-center gap-2">
-                          <code className="flex-1 px-3 py-2 rounded bg-bg-tertiary font-mono text-sm overflow-x-auto">
+                          <code className="flex-1 px-3 py-2 rounded bg-bg-primary border border-border-default font-mono text-sm break-all">
                             {apiKey.showKey ? apiKey.newKey : '•'.repeat(40)}
                           </code>
                           <button
@@ -382,28 +430,32 @@ export const MyAccount: React.FC = () => {
                             {apiKey.copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
                           </button>
                         </div>
-                        <p className="mt-3 text-xs text-warning flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          {tr('Copiez cette clé maintenant. Elle ne sera plus affichée.',
-                              'Copy this key now. It won\'t be shown again.')}
+                        <p className="text-xs text-text-tertiary mt-2">
+                          {tr('⚠️ Copiez cette clé maintenant. Elle ne sera plus visible après.', 
+                              '⚠️ Copy this key now. It won\'t be shown again.')}
                         </p>
                       </div>
                     )}
 
-                    {/* Key Status */}
+                    {/* API Key Status */}
                     <div className="flex items-center justify-between p-4 rounded-lg bg-bg-tertiary">
-                      <div>
-                        <p className="font-medium text-text-primary">
-                          {tr('Statut de la clé', 'Key Status')}
-                        </p>
-                        <p className="text-sm text-text-tertiary">
-                          {apiKey.status?.has_api_key 
-                            ? tr(`Créée le ${formatDate(apiKey.status.created_at)}`,
-                                `Created on ${formatDate(apiKey.status.created_at)}`)
-                            : tr('Aucune clé active', 'No active key')}
-                        </p>
+                      <div className="flex items-center gap-3">
+                        <Key className="w-5 h-5 text-text-tertiary" />
+                        <div>
+                          <p className="font-medium text-text-primary">{tr('Clé API', 'API Key')}</p>
+                          <p className="text-sm text-text-tertiary">
+                            {apiKey.status?.has_api_key
+                              ? tr(`Créée le ${formatDate(apiKey.status.created_at)}`,
+                                  `Created on ${formatDate(apiKey.status.created_at)}`)
+                              : tr('Aucune clé active', 'No active key')}
+                          </p>
+                        </div>
                       </div>
-                      <span className={`badge ${apiKey.status?.has_api_key ? 'badge-success' : 'badge-warning'}`}>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        apiKey.status?.has_api_key 
+                          ? 'bg-success/10 text-success' 
+                          : 'bg-warning/10 text-warning'
+                      }`}>
                         {apiKey.status?.has_api_key ? tr('Active', 'Active') : tr('Inactive', 'Inactive')}
                       </span>
                     </div>
@@ -411,21 +463,25 @@ export const MyAccount: React.FC = () => {
                     {/* Confirmation Dialog */}
                     {apiKey.confirmAction && (
                       <div className="p-4 rounded-lg bg-warning/10 border border-warning/30">
-                        <p className="text-sm text-warning mb-3">
+                        <p className="text-sm text-warning mb-3 flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4" />
                           {apiKey.confirmAction === 'regenerate'
-                            ? tr('⚠️ Régénérer la clé invalidera l\'ancienne. Continuer ?',
-                                '⚠️ Regenerating will invalidate the old key. Continue?')
-                            : tr('⚠️ Révoquer la clé désactivera l\'accès API. Continuer ?',
-                                '⚠️ Revoking will disable API access. Continue?')}
+                            ? tr('Régénérer la clé invalidera l\'ancienne. Continuer ?',
+                                'Regenerating will invalidate the old key. Continue?')
+                            : tr('Révoquer la clé désactivera l\'accès API. Continuer ?',
+                                'Revoking will disable API access. Continue?')}
                         </p>
                         <div className="flex gap-2">
                           <button
                             onClick={apiKey.confirmAction === 'regenerate' ? handleRegenerateKey : handleRevokeKey}
-                            className="px-4 py-2 rounded-lg bg-warning text-white text-sm font-medium"
+                            className="px-4 py-2 rounded-lg bg-warning text-white text-sm font-medium hover:opacity-90 transition-opacity"
                           >
                             {tr('Confirmer', 'Confirm')}
                           </button>
-                          <button onClick={cancelConfirm} className="px-4 py-2 rounded-lg bg-bg-tertiary text-sm">
+                          <button 
+                            onClick={cancelConfirm} 
+                            className="px-4 py-2 rounded-lg bg-bg-tertiary text-sm hover:bg-bg-hover transition-colors"
+                          >
                             {tr('Annuler', 'Cancel')}
                           </button>
                         </div>
@@ -483,7 +539,7 @@ export const MyAccount: React.FC = () => {
             </section>
 
             {/* ═══════════════════════════════════════════════════════════════════ */}
-            {/* Security Section */}
+            {/* 🔒 Sécurité */}
             {/* ═══════════════════════════════════════════════════════════════════ */}
             <section className="card">
               <div className="panel-header">
@@ -492,27 +548,35 @@ export const MyAccount: React.FC = () => {
                   {tr('Sécurité', 'Security')}
                 </h2>
               </div>
-              <div className="panel-body space-y-4">
-                {/* Change Password - Désactivé car Google OAuth */}
-                <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-bg-tertiary border border-border-subtle opacity-60">
+              <div className="panel-body space-y-3">
+                {/* Mot de passe (Google OAuth) */}
+                <div className="flex items-center justify-between p-4 rounded-lg bg-bg-tertiary border border-border-subtle opacity-60">
                   <div className="flex items-center gap-3">
                     <Key className="w-5 h-5 text-text-tertiary" />
                     <div>
                       <p className="font-medium text-text-primary">
-                        {tr('Changer le mot de passe', 'Change password')}
+                        {tr('Mot de passe', 'Password')}
                       </p>
                       <p className="text-sm text-text-tertiary">
                         {tr('Connexion via Google - pas de mot de passe', 'Google sign-in - no password')}
                       </p>
                     </div>
                   </div>
-                  <Lock className="w-4 h-4 text-text-tertiary" />
+                  <div className="flex items-center gap-2 text-text-tertiary">
+                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                      <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    <Lock className="w-4 h-4" />
+                  </div>
                 </div>
 
-                {/* Sign out */}
+                {/* Déconnexion */}
                 <button
-                  onClick={() => logout()}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-bg-tertiary border border-border-subtle hover:bg-bg-hover transition-colors text-left"
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-between p-4 rounded-lg bg-bg-tertiary border border-border-subtle hover:bg-bg-hover transition-colors text-left"
                 >
                   <div className="flex items-center gap-3">
                     <LogOut className="w-5 h-5 text-text-tertiary" />
@@ -523,12 +587,13 @@ export const MyAccount: React.FC = () => {
                       </p>
                     </div>
                   </div>
+                  <ChevronRight className="w-5 h-5 text-text-tertiary" />
                 </button>
               </div>
             </section>
 
             {/* ═══════════════════════════════════════════════════════════════════ */}
-            {/* Danger Zone */}
+            {/* ⚠️ Zone dangereuse */}
             {/* ═══════════════════════════════════════════════════════════════════ */}
             <section className="card border-error/20">
               <div className="panel-header border-error/20">
@@ -541,7 +606,7 @@ export const MyAccount: React.FC = () => {
                 {!showDeleteConfirm ? (
                   <button 
                     onClick={() => setShowDeleteConfirm(true)}
-                    className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-error-muted border border-error/20 hover:bg-error/20 transition-colors text-left"
+                    className="w-full flex items-center justify-between p-4 rounded-lg bg-error/5 border border-error/20 hover:bg-error/10 transition-colors text-left"
                   >
                     <div className="flex items-center gap-3">
                       <Trash2 className="w-5 h-5 text-error" />
@@ -552,22 +617,38 @@ export const MyAccount: React.FC = () => {
                         </p>
                       </div>
                     </div>
+                    <ChevronRight className="w-5 h-5 text-error/50" />
                   </button>
                 ) : (
                   <div className="p-4 rounded-lg bg-error/10 border border-error/30">
-                    <p className="text-sm text-error mb-4">
+                    <p className="text-sm text-error mb-4 flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                       {tr('⚠️ Êtes-vous sûr de vouloir supprimer votre compte ? Toutes vos données seront perdues définitivement.',
                           '⚠️ Are you sure you want to delete your account? All your data will be permanently lost.')}
                     </p>
+                    <p className="text-sm text-text-tertiary mb-3">
+                      {tr('Tapez "SUPPRIMER" pour confirmer:', 'Type "DELETE" to confirm:')}
+                    </p>
+                    <input
+                      type="text"
+                      value={deleteConfirmText}
+                      onChange={(e) => setDeleteConfirmText(e.target.value)}
+                      placeholder={language === 'fr' ? 'SUPPRIMER' : 'DELETE'}
+                      className="w-full px-3 py-2 rounded-lg bg-bg-primary border border-error/30 text-text-primary text-sm mb-3 focus:outline-none focus:border-error"
+                    />
                     <div className="flex gap-2">
                       <button
-                        className="px-4 py-2 rounded-lg bg-error text-white text-sm font-medium"
+                        disabled={deleteConfirmText !== (language === 'fr' ? 'SUPPRIMER' : 'DELETE')}
+                        className="px-4 py-2 rounded-lg bg-error text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {tr('Supprimer définitivement', 'Delete permanently')}
                       </button>
                       <button 
-                        onClick={() => setShowDeleteConfirm(false)}
-                        className="px-4 py-2 rounded-lg bg-bg-tertiary text-sm"
+                        onClick={() => {
+                          setShowDeleteConfirm(false);
+                          setDeleteConfirmText('');
+                        }}
+                        className="px-4 py-2 rounded-lg bg-bg-tertiary text-sm hover:bg-bg-hover transition-colors"
                       >
                         {tr('Annuler', 'Cancel')}
                       </button>
