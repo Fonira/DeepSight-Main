@@ -43,6 +43,7 @@ export const Settings: React.FC = () => {
   const { language } = useTranslation();
   const { setLanguage } = useLanguage();
   const { isDark, toggleTheme } = useTheme();
+  // 🎵 Sons
   const { play, playDemo } = useSounds();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isPlayingDemo, setIsPlayingDemo] = useState(false);

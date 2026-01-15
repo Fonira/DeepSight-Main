@@ -48,9 +48,11 @@ interface ApiKeyState {
 export const MyAccount: React.FC = () => {
   const { user, logout } = useAuth();
   const { language } = useTranslation();
-  const { play } = useSounds();
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  
+  // 🎵 Sons
+  const { play } = useSounds();
   
   // 🔑 API Key State
   const [apiKey, setApiKey] = useState<ApiKeyState>({
