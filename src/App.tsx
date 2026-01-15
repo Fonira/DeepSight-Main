@@ -27,6 +27,7 @@ import PlaylistPage from "./pages/PlaylistPage";
 import History from "./pages/History";
 import UpgradePage from "./pages/UpgradePage";
 import Settings from "./pages/Settings";
+import MyAccount from "./pages/MyAccount";
 import AdminPage from "./pages/AdminPage";
 import LegalPage from "./pages/LegalPage";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -100,6 +101,7 @@ const AppRoutes = () => {
                 <Route path="/upgrade" element={<UpgradePage />} />
                 <Route path="/usage" element={<UsageDashboard />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/account" element={<MyAccount />} />
                 <Route path="/admin" element={<AdminPage />} />
               </Route>
 

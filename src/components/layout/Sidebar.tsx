@@ -19,7 +19,8 @@ import {
   ExternalLink,
   Shield,
   Scale,
-  BarChart3
+  BarChart3,
+  User
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
@@ -287,7 +288,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle }) => {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -350,6 +351,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle })
           collapsed={collapsed}
         />
         <NavItem
+          to="/account"
+          icon={User}
+          label={t.nav.myAccount}
+          collapsed={collapsed}
+        />
+        <NavItem
           to="/upgrade"
           icon={CreditCard}
           label={t.nav.subscription}
@@ -358,7 +365,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle })
         <NavItem
           to="/usage"
           icon={BarChart3}
-          label={t.nav.myAccount}
+          label={t.nav.usage || (language === 'fr' ? 'Utilisation' : 'Usage')}
           collapsed={collapsed}
         />
 

@@ -1,190 +1,74 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════════════════╗
  * ║  DEEP SIGHT v5.5 — Settings Page                                              ║
- * ║  Paramètres utilisateur avec gestion API Keys (Plan Expert)                   ║
+ * ║  Paramètres de l'application: thème, langue, notifications, affichage         ║
  * ╚══════════════════════════════════════════════════════════════════════════════╝
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
-import { billingApi } from '../services/api';
 import { 
-  User, Globe, Moon, Sun, Shield, Key, Trash2, LogOut, Check, 
-  AlertCircle, Loader2, Eye, EyeOff, Copy, RefreshCw, Lock,
-  Zap, ExternalLink, AlertTriangle
+  Settings as SettingsIcon, Globe, Moon, Sun, Monitor, Bell, BellOff,
+  Type, Palette, Volume2, VolumeX, Keyboard, Info, Check, RotateCcw,
+  Sparkles, BookOpen
 } from 'lucide-react';
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 🔐 Types & Interfaces
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface ApiKeyStatus {
-  has_api_key: boolean;
-  created_at: string | null;
-  last_used: string | null;
-}
-
-interface ApiKeyState {
-  status: ApiKeyStatus | null;
-  newKey: string | null;
-  loading: boolean;
-  error: string | null;
-  showKey: boolean;
-  copied: boolean;
-  confirmAction: 'regenerate' | 'revoke' | null;
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎨 Component
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const Settings: React.FC = () => {
-  const { user, logout } = useAuth();
-  const { t, language } = useTranslation();
+  const { language } = useTranslation();
   const { setLanguage } = useLanguage();
   const { isDark, toggleTheme } = useTheme();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
-  // 🔑 API Key State (optimisé avec un seul état)
-  const [apiKey, setApiKey] = useState<ApiKeyState>({
-    status: null,
-    newKey: null,
-    loading: false,
-    error: null,
-    showKey: false,
-    copied: false,
-    confirmAction: null,
-  });
+  // Préférences locales (stockées dans localStorage)
+  const [preferences, setPreferences] = useState(() => ({
+    notifications: localStorage.getItem('deepsight_notifications') !== 'false',
+    autoPlay: localStorage.getItem('deepsight_autoplay') !== 'false',
+    defaultMode: localStorage.getItem('deepsight_default_mode') || 'standard',
+    soundEffects: localStorage.getItem('deepsight_sounds') !== 'false',
+    compactView: localStorage.getItem('deepsight_compact') === 'true',
+    showTournesol: localStorage.getItem('deepsight_tournesol') !== 'false',
+  }));
 
-  const isExpert = user?.plan === 'expert' || user?.plan === 'unlimited';
+  // Saved state for feedback
+  const [saved, setSaved] = useState<string | null>(null);
   
-  // Helper pour les traductions inline (utilisé pour les textes dynamiques)
+  // Helper pour les traductions inline
   const tr = useCallback((fr: string, en: string) => language === 'fr' ? fr : en, [language]);
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // 📡 Fetch API Key Status
+  // 💾 Save Preference
   // ─────────────────────────────────────────────────────────────────────────────
   
-  useEffect(() => {
-    if (!isExpert) return;
-    
-    const fetchStatus = async () => {
-      try {
-        const status = await billingApi.getApiKeyStatus();
-        setApiKey(prev => ({ ...prev, status, loading: false }));
-      } catch (err) {
-        setApiKey(prev => ({ 
-          ...prev, 
-          error: tr('Impossible de charger le statut API', 'Failed to load API status'),
-          loading: false 
-        }));
-      }
+  const savePreference = (key: string, value: boolean | string) => {
+    localStorage.setItem(`deepsight_${key}`, String(value));
+    setPreferences(prev => ({ ...prev, [key]: value }));
+    setSaved(key);
+    setTimeout(() => setSaved(null), 1500);
+  };
+
+  const resetToDefaults = () => {
+    const defaults = {
+      notifications: true,
+      autoPlay: true,
+      defaultMode: 'standard',
+      soundEffects: true,
+      compactView: false,
+      showTournesol: true,
     };
-    
-    setApiKey(prev => ({ ...prev, loading: true }));
-    fetchStatus();
-  }, [isExpert, t]);
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // 🔧 API Key Actions
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  const handleGenerateKey = async () => {
-    setApiKey(prev => ({ ...prev, loading: true, error: null }));
-    try {
-      const response = await billingApi.generateApiKey();
-      setApiKey(prev => ({
-        ...prev,
-        newKey: response.api_key,
-        status: { has_api_key: true, created_at: new Date().toISOString(), last_used: null },
-        loading: false,
-        showKey: true,
-      }));
-    } catch (err: any) {
-      setApiKey(prev => ({
-        ...prev,
-        error: err?.message || tr('Erreur lors de la génération', 'Generation failed'),
-        loading: false,
-      }));
-    }
-  };
-
-  const handleRegenerateKey = async () => {
-    if (apiKey.confirmAction !== 'regenerate') {
-      setApiKey(prev => ({ ...prev, confirmAction: 'regenerate' }));
-      return;
-    }
-    
-    setApiKey(prev => ({ ...prev, loading: true, error: null, confirmAction: null }));
-    try {
-      const response = await billingApi.regenerateApiKey();
-      setApiKey(prev => ({
-        ...prev,
-        newKey: response.api_key,
-        status: { has_api_key: true, created_at: new Date().toISOString(), last_used: null },
-        loading: false,
-        showKey: true,
-      }));
-    } catch (err: any) {
-      setApiKey(prev => ({
-        ...prev,
-        error: err?.message || tr('Erreur lors de la régénération', 'Regeneration failed'),
-        loading: false,
-      }));
-    }
-  };
-
-  const handleRevokeKey = async () => {
-    if (apiKey.confirmAction !== 'revoke') {
-      setApiKey(prev => ({ ...prev, confirmAction: 'revoke' }));
-      return;
-    }
-    
-    setApiKey(prev => ({ ...prev, loading: true, error: null, confirmAction: null }));
-    try {
-      await billingApi.revokeApiKey();
-      setApiKey(prev => ({
-        ...prev,
-        status: { has_api_key: false, created_at: null, last_used: null },
-        newKey: null,
-        loading: false,
-      }));
-    } catch (err: any) {
-      setApiKey(prev => ({
-        ...prev,
-        error: err?.message || tr('Erreur lors de la révocation', 'Revocation failed'),
-        loading: false,
-      }));
-    }
-  };
-
-  const copyToClipboard = async () => {
-    if (!apiKey.newKey) return;
-    await navigator.clipboard.writeText(apiKey.newKey);
-    setApiKey(prev => ({ ...prev, copied: true }));
-    setTimeout(() => setApiKey(prev => ({ ...prev, copied: false })), 2000);
-  };
-
-  const cancelConfirm = () => setApiKey(prev => ({ ...prev, confirmAction: null }));
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // 🎨 Render Helpers
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return tr('Jamais', 'Never');
-    return new Date(dateStr).toLocaleDateString(language, {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+    Object.entries(defaults).forEach(([key, value]) => {
+      localStorage.setItem(`deepsight_${key}`, String(value));
     });
+    setPreferences(defaults);
+    setSaved('all');
+    setTimeout(() => setSaved(null), 1500);
   };
 
   // ═══════════════════════════════════════════════════════════════════════════════
@@ -204,348 +88,316 @@ export const Settings: React.FC = () => {
             {/* Header */}
             {/* ═══════════════════════════════════════════════════════════════════ */}
             <header className="mb-8">
-              <h1 className="font-display text-2xl mb-2">{tr('Paramètres', 'Settings')}</h1>
+              <h1 className="font-display text-2xl mb-2 flex items-center gap-3">
+                <SettingsIcon className="w-7 h-7 text-accent-primary" />
+                {tr('Paramètres', 'Settings')}
+              </h1>
               <p className="text-text-secondary text-sm">
-                {tr('Gérez votre compte et vos préférences.', 'Manage your account and preferences.')}
+                {tr("Personnalisez l'apparence et le comportement de Deep Sight.", 
+                    'Customize the appearance and behavior of Deep Sight.')}
               </p>
             </header>
 
             {/* ═══════════════════════════════════════════════════════════════════ */}
-            {/* Profile Section */}
+            {/* Appearance Section */}
             {/* ═══════════════════════════════════════════════════════════════════ */}
             <section className="card">
               <div className="panel-header">
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
-                  <User className="w-5 h-5 text-accent-primary" />
-                  {tr('Profil', 'Profile')}
+                  <Palette className="w-5 h-5 text-accent-primary" />
+                  {tr('Apparence', 'Appearance')}
                 </h2>
               </div>
-              <div className="panel-body space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">Email</label>
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 px-4 py-2.5 rounded-lg bg-bg-tertiary border border-border-subtle text-text-primary">
-                      {user?.email || 'Non défini'}
-                    </div>
-                    <span className="badge badge-success">
-                      <Check className="w-3 h-3" />
-                      {tr('Vérifié', 'Verified')}
-                    </span>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">
-                    {tr('Abonnement', 'Subscription')}
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <div className="px-4 py-2.5 rounded-lg bg-bg-tertiary border border-border-subtle text-text-primary capitalize flex-1">
-                      {user?.plan || 'Free'}
-                    </div>
-                    {isExpert && (
-                      <span className="badge bg-gradient-to-r from-amber-500 to-orange-500 text-white">
-                        <Zap className="w-3 h-3" /> Expert
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* ═══════════════════════════════════════════════════════════════════ */}
-            {/* 🔑 API Access Section (Expert Only) */}
-            {/* ═══════════════════════════════════════════════════════════════════ */}
-            <section className="card border-amber-500/30">
-              <div className="panel-header border-amber-500/20">
-                <h2 className="font-semibold text-text-primary flex items-center gap-2">
-                  <Key className="w-5 h-5 text-amber-500" />
-                  {tr('Accès API', 'API Access')}
-                  <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400">
-                    Expert
-                  </span>
-                </h2>
-              </div>
-              <div className="panel-body">
-                {!isExpert ? (
-                  /* ─── Non-Expert: Upgrade Prompt ─── */
-                  <div className="text-center py-6">
-                    <Lock className="w-12 h-12 mx-auto text-text-tertiary mb-4" />
-                    <p className="text-text-secondary mb-4">
-                      {t(
-                        "L'accès API REST est réservé au plan Expert.",
-                        'REST API access is exclusive to Expert plan.'
-                      )}
-                    </p>
-                    <a
-                      href="/upgrade"
-                      className="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium hover:opacity-90 transition-opacity"
-                    >
-                      <Zap className="w-4 h-4" />
-                      {tr('Passer à Expert', 'Upgrade to Expert')}
-                    </a>
-                  </div>
-                ) : apiKey.loading && !apiKey.status ? (
-                  /* ─── Loading ─── */
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-accent-primary" />
-                  </div>
-                ) : (
-                  /* ─── Expert: API Key Management ─── */
-                  <div className="space-y-4">
-                    {/* Error Display */}
-                    {apiKey.error && (
-                      <div className="flex items-center gap-2 p-3 rounded-lg bg-error/10 text-error text-sm">
-                        <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                        {apiKey.error}
-                      </div>
-                    )}
-
-                    {/* New Key Display (shown only once after generation) */}
-                    {apiKey.newKey && (
-                      <div className="p-4 rounded-lg bg-success/10 border border-success/30 space-y-3">
-                        <div className="flex items-center gap-2 text-success font-medium">
-                          <Check className="w-4 h-4" />
-                          {tr('Nouvelle clé générée !', 'New key generated!')}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <code className="flex-1 px-3 py-2 rounded bg-bg-tertiary font-mono text-sm overflow-x-auto">
-                            {apiKey.showKey ? apiKey.newKey : '•'.repeat(48)}
-                          </code>
-                          <button
-                            onClick={() => setApiKey(prev => ({ ...prev, showKey: !prev.showKey }))}
-                            className="p-2 rounded hover:bg-bg-hover transition-colors"
-                            title={apiKey.showKey ? 'Hide' : 'Show'}
-                          >
-                            {apiKey.showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                          <button
-                            onClick={copyToClipboard}
-                            className="p-2 rounded hover:bg-bg-hover transition-colors"
-                            title="Copy"
-                          >
-                            {apiKey.copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
-                          </button>
-                        </div>
-                        <p className="text-xs text-warning flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          {t(
-                            'Copiez cette clé maintenant. Elle ne sera plus jamais affichée.',
-                            'Copy this key now. It will never be shown again.'
-                          )}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Status Info */}
-                    {apiKey.status?.has_api_key && !apiKey.newKey && (
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-bg-tertiary">
-                        <div className="flex items-center gap-3">
-                          <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                          <span className="text-sm">{tr('Clé API active', 'API Key active')}</span>
-                        </div>
-                        <span className="text-xs text-text-tertiary">
-                          {tr('Créée le', 'Created')} {formatDate(apiKey.status.created_at)}
-                        </span>
-                      </div>
-                    )}
-
-                    {apiKey.status?.last_used && (
-                      <p className="text-xs text-text-tertiary">
-                        {tr('Dernière utilisation:', 'Last used:')} {formatDate(apiKey.status.last_used)}
-                      </p>
-                    )}
-
-                    {/* Confirmation Dialogs */}
-                    {apiKey.confirmAction && (
-                      <div className="p-4 rounded-lg bg-warning/10 border border-warning/30">
-                        <p className="text-sm text-warning mb-3">
-                          {apiKey.confirmAction === 'regenerate' 
-                            ? tr('⚠️ La régénération révoquera votre clé actuelle. Continuer ?', '⚠️ Regenerating will revoke your current key. Continue?')
-                            : tr('⚠️ Cette action est irréversible. Êtes-vous sûr ?', '⚠️ This action is irreversible. Are you sure?')
-                          }
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={apiKey.confirmAction === 'regenerate' ? handleRegenerateKey : handleRevokeKey}
-                            className="px-4 py-2 rounded-lg bg-warning text-white text-sm font-medium"
-                          >
-                            {tr('Confirmer', 'Confirm')}
-                          </button>
-                          <button onClick={cancelConfirm} className="px-4 py-2 rounded-lg bg-bg-tertiary text-sm">
-                            {tr('Annuler', 'Cancel')}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    {!apiKey.confirmAction && (
-                      <div className="flex flex-wrap gap-3">
-                        {!apiKey.status?.has_api_key ? (
-                          <button
-                            onClick={handleGenerateKey}
-                            disabled={apiKey.loading}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent-primary text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
-                          >
-                            {apiKey.loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
-                            {tr('Générer une clé API', 'Generate API Key')}
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              onClick={handleRegenerateKey}
-                              disabled={apiKey.loading}
-                              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-bg-tertiary border border-border-default hover:bg-bg-hover transition-colors text-sm disabled:opacity-50"
-                            >
-                              <RefreshCw className="w-4 h-4" />
-                              {tr('Régénérer', 'Regenerate')}
-                            </button>
-                            <button
-                              onClick={handleRevokeKey}
-                              disabled={apiKey.loading}
-                              className="flex items-center gap-2 px-4 py-2 rounded-lg text-error hover:bg-error/10 transition-colors text-sm disabled:opacity-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              {tr('Révoquer', 'Revoke')}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Documentation Link */}
-                    <a
-                      href="https://docs.deepsightsynthesis.com/api"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-sm text-accent-primary hover:underline"
-                    >
-                      {tr('Documentation API', 'API Documentation')}
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* ═══════════════════════════════════════════════════════════════════ */}
-            {/* Preferences Section */}
-            {/* ═══════════════════════════════════════════════════════════════════ */}
-            <section className="card">
-              <div className="panel-header">
-                <h2 className="font-semibold text-text-primary flex items-center gap-2">
-                  <Globe className="w-5 h-5 text-accent-primary" />
-                  {tr('Préférences', 'Preferences')}
-                </h2>
-              </div>
-              <div className="panel-body space-y-6">
-                {/* Theme */}
+              <div className="panel-body space-y-5">
+                
+                {/* Theme Toggle */}
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-text-primary">{tr('Thème', 'Theme')}</p>
-                    <p className="text-sm text-text-tertiary">
-                      {tr('Choisissez entre clair et sombre', 'Choose between light and dark')}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    {isDark ? <Moon className="w-5 h-5 text-indigo-400" /> : <Sun className="w-5 h-5 text-amber-500" />}
+                    <div>
+                      <p className="font-medium text-text-primary">{tr('Thème', 'Theme')}</p>
+                      <p className="text-sm text-text-tertiary">
+                        {isDark ? tr('Mode sombre activé', 'Dark mode enabled') : tr('Mode clair activé', 'Light mode enabled')}
+                      </p>
+                    </div>
                   </div>
                   <button
                     onClick={toggleTheme}
-                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-bg-tertiary border border-border-default hover:bg-bg-hover transition-colors"
+                    className={`relative w-14 h-8 rounded-full transition-colors ${
+                      isDark ? 'bg-indigo-600' : 'bg-amber-400'
+                    }`}
                   >
-                    {isDark ? (
-                      <>
-                        <Moon className="w-4 h-4 text-accent-primary" />
-                        <span className="text-sm">Dark</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sun className="w-4 h-4 text-accent-secondary" />
-                        <span className="text-sm">Light</span>
-                      </>
-                    )}
+                    <span className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-transform ${
+                      isDark ? 'left-7' : 'left-1'
+                    }`}>
+                      {isDark ? <Moon className="w-4 h-4 m-1 text-indigo-600" /> : <Sun className="w-4 h-4 m-1 text-amber-500" />}
+                    </span>
                   </button>
                 </div>
 
-                {/* Language */}
+                {/* Language Selector */}
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium text-text-primary">{tr('Langue', 'Language')}</p>
-                    <p className="text-sm text-text-tertiary">{tr("Langue de l'interface", 'Interface language')}</p>
+                  <div className="flex items-center gap-3">
+                    <Globe className="w-5 h-5 text-text-tertiary" />
+                    <div>
+                      <p className="font-medium text-text-primary">{tr('Langue', 'Language')}</p>
+                      <p className="text-sm text-text-tertiary">{tr("Langue de l'interface et des résumés", 'Interface and summaries language')}</p>
+                    </div>
                   </div>
-                  <select
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value as 'fr' | 'en')}
-                    className="px-4 py-2 rounded-lg bg-bg-tertiary border border-border-default text-text-primary text-sm"
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setLanguage('fr')}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        language === 'fr' 
+                          ? 'bg-accent-primary text-white' 
+                          : 'bg-bg-tertiary hover:bg-bg-hover text-text-secondary'
+                      }`}
+                    >
+                      🇫🇷 FR
+                    </button>
+                    <button
+                      onClick={() => setLanguage('en')}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                        language === 'en' 
+                          ? 'bg-accent-primary text-white' 
+                          : 'bg-bg-tertiary hover:bg-bg-hover text-text-secondary'
+                      }`}
+                    >
+                      🇬🇧 EN
+                    </button>
+                  </div>
+                </div>
+
+                {/* Compact View */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Type className="w-5 h-5 text-text-tertiary" />
+                    <div>
+                      <p className="font-medium text-text-primary">{tr('Vue compacte', 'Compact view')}</p>
+                      <p className="text-sm text-text-tertiary">{tr('Réduire les espacements', 'Reduce spacing')}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => savePreference('compactView', !preferences.compactView)}
+                    className={`relative w-12 h-7 rounded-full transition-colors ${
+                      preferences.compactView ? 'bg-accent-primary' : 'bg-bg-tertiary border border-border-default'
+                    }`}
                   >
-                    <option value="fr">🇫🇷 Français</option>
-                    <option value="en">🇬🇧 English</option>
-                  </select>
+                    <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform ${
+                      preferences.compactView ? 'left-5' : 'left-0.5'
+                    }`} />
+                  </button>
                 </div>
               </div>
             </section>
 
             {/* ═══════════════════════════════════════════════════════════════════ */}
-            {/* Security Section */}
+            {/* Analysis Preferences */}
             {/* ═══════════════════════════════════════════════════════════════════ */}
             <section className="card">
               <div className="panel-header">
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-accent-primary" />
-                  {tr('Sécurité', 'Security')}
+                  <Sparkles className="w-5 h-5 text-accent-primary" />
+                  {tr('Analyse', 'Analysis')}
                 </h2>
               </div>
-              <div className="panel-body space-y-4">
-                <button className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-bg-tertiary border border-border-subtle hover:bg-bg-hover transition-colors text-left">
+              <div className="panel-body space-y-5">
+                
+                {/* Default Analysis Mode */}
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Key className="w-5 h-5 text-text-tertiary" />
+                    <BookOpen className="w-5 h-5 text-text-tertiary" />
                     <div>
-                      <p className="font-medium text-text-primary">
-                        {tr('Changer le mot de passe', 'Change password')}
-                      </p>
-                      <p className="text-sm text-text-tertiary">
-                        {tr('Modifiez votre mot de passe', 'Update your password')}
-                      </p>
+                      <p className="font-medium text-text-primary">{tr('Mode par défaut', 'Default mode')}</p>
+                      <p className="text-sm text-text-tertiary">{tr('Mode de résumé préféré', 'Preferred summary mode')}</p>
                     </div>
                   </div>
-                </button>
+                  <select
+                    value={preferences.defaultMode}
+                    onChange={(e) => savePreference('defaultMode', e.target.value)}
+                    className="px-3 py-2 rounded-lg bg-bg-tertiary border border-border-default text-text-primary text-sm"
+                  >
+                    <option value="accessible">{tr('Express (30s)', 'Express (30s)')}</option>
+                    <option value="standard">{tr('Standard (2-4 min)', 'Standard (2-4 min)')}</option>
+                    <option value="expert">{tr('Approfondi (5-10 min)', 'Deep (5-10 min)')}</option>
+                  </select>
+                </div>
 
-                <button
-                  onClick={() => logout()}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-bg-tertiary border border-border-subtle hover:bg-bg-hover transition-colors text-left"
-                >
+                {/* Auto-play videos */}
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <LogOut className="w-5 h-5 text-text-tertiary" />
+                    <Monitor className="w-5 h-5 text-text-tertiary" />
                     <div>
-                      <p className="font-medium text-text-primary">{tr('Déconnexion', 'Sign out')}</p>
-                      <p className="text-sm text-text-tertiary">
-                        {tr('Se déconnecter de Deep Sight', 'Sign out of Deep Sight')}
-                      </p>
+                      <p className="font-medium text-text-primary">{tr('Lecture automatique', 'Auto-play')}</p>
+                      <p className="text-sm text-text-tertiary">{tr('Lire les vidéos automatiquement', 'Play videos automatically')}</p>
                     </div>
                   </div>
-                </button>
+                  <button
+                    onClick={() => savePreference('autoPlay', !preferences.autoPlay)}
+                    className={`relative w-12 h-7 rounded-full transition-colors ${
+                      preferences.autoPlay ? 'bg-accent-primary' : 'bg-bg-tertiary border border-border-default'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform ${
+                      preferences.autoPlay ? 'left-5' : 'left-0.5'
+                    }`} />
+                  </button>
+                </div>
+
+                {/* Show Tournesol scores */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="w-5 h-5 text-yellow-500" />
+                    <div>
+                      <p className="font-medium text-text-primary">{tr('Score Tournesol', 'Tournesol Score')}</p>
+                      <p className="text-sm text-text-tertiary">{tr('Afficher les scores éthiques', 'Show ethical scores')}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => savePreference('showTournesol', !preferences.showTournesol)}
+                    className={`relative w-12 h-7 rounded-full transition-colors ${
+                      preferences.showTournesol ? 'bg-yellow-500' : 'bg-bg-tertiary border border-border-default'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform ${
+                      preferences.showTournesol ? 'left-5' : 'left-0.5'
+                    }`} />
+                  </button>
+                </div>
               </div>
             </section>
 
             {/* ═══════════════════════════════════════════════════════════════════ */}
-            {/* Danger Zone */}
+            {/* Notifications & Sounds */}
             {/* ═══════════════════════════════════════════════════════════════════ */}
-            <section className="card border-error/20">
-              <div className="panel-header border-error/20">
-                <h2 className="font-semibold text-error flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5" />
-                  {tr('Zone dangereuse', 'Danger Zone')}
+            <section className="card">
+              <div className="panel-header">
+                <h2 className="font-semibold text-text-primary flex items-center gap-2">
+                  <Bell className="w-5 h-5 text-accent-primary" />
+                  {tr('Notifications', 'Notifications')}
+                </h2>
+              </div>
+              <div className="panel-body space-y-5">
+                
+                {/* Browser Notifications */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {preferences.notifications ? <Bell className="w-5 h-5 text-text-tertiary" /> : <BellOff className="w-5 h-5 text-text-tertiary" />}
+                    <div>
+                      <p className="font-medium text-text-primary">{tr('Notifications navigateur', 'Browser notifications')}</p>
+                      <p className="text-sm text-text-tertiary">{tr('Alertes quand une analyse est prête', 'Alerts when analysis is ready')}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => savePreference('notifications', !preferences.notifications)}
+                    className={`relative w-12 h-7 rounded-full transition-colors ${
+                      preferences.notifications ? 'bg-accent-primary' : 'bg-bg-tertiary border border-border-default'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform ${
+                      preferences.notifications ? 'left-5' : 'left-0.5'
+                    }`} />
+                  </button>
+                </div>
+
+                {/* Sound Effects */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {preferences.soundEffects ? <Volume2 className="w-5 h-5 text-text-tertiary" /> : <VolumeX className="w-5 h-5 text-text-tertiary" />}
+                    <div>
+                      <p className="font-medium text-text-primary">{tr('Effets sonores', 'Sound effects')}</p>
+                      <p className="text-sm text-text-tertiary">{tr('Sons de notification', 'Notification sounds')}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => savePreference('soundEffects', !preferences.soundEffects)}
+                    className={`relative w-12 h-7 rounded-full transition-colors ${
+                      preferences.soundEffects ? 'bg-accent-primary' : 'bg-bg-tertiary border border-border-default'
+                    }`}
+                  >
+                    <span className={`absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-transform ${
+                      preferences.soundEffects ? 'left-5' : 'left-0.5'
+                    }`} />
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════════════════════════════ */}
+            {/* Keyboard Shortcuts Info */}
+            {/* ═══════════════════════════════════════════════════════════════════ */}
+            <section className="card">
+              <div className="panel-header">
+                <h2 className="font-semibold text-text-primary flex items-center gap-2">
+                  <Keyboard className="w-5 h-5 text-accent-primary" />
+                  {tr('Raccourcis clavier', 'Keyboard Shortcuts')}
                 </h2>
               </div>
               <div className="panel-body">
-                <button className="w-full flex items-center justify-between px-4 py-3 rounded-lg bg-error-muted border border-error/20 hover:bg-error/20 transition-colors text-left">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex items-center justify-between p-2 rounded bg-bg-tertiary">
+                    <span className="text-text-secondary">{tr('Nouvelle analyse', 'New analysis')}</span>
+                    <kbd className="px-2 py-1 rounded bg-bg-primary border border-border-default text-xs">Ctrl+N</kbd>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded bg-bg-tertiary">
+                    <span className="text-text-secondary">{tr('Recherche', 'Search')}</span>
+                    <kbd className="px-2 py-1 rounded bg-bg-primary border border-border-default text-xs">Ctrl+K</kbd>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded bg-bg-tertiary">
+                    <span className="text-text-secondary">{tr('Copier résumé', 'Copy summary')}</span>
+                    <kbd className="px-2 py-1 rounded bg-bg-primary border border-border-default text-xs">Ctrl+C</kbd>
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded bg-bg-tertiary">
+                    <span className="text-text-secondary">{tr('Exporter', 'Export')}</span>
+                    <kbd className="px-2 py-1 rounded bg-bg-primary border border-border-default text-xs">Ctrl+E</kbd>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════════════════════════════ */}
+            {/* Reset to Defaults */}
+            {/* ═══════════════════════════════════════════════════════════════════ */}
+            <section className="card border-border-subtle">
+              <div className="panel-body">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Trash2 className="w-5 h-5 text-error" />
+                    <RotateCcw className="w-5 h-5 text-text-tertiary" />
                     <div>
-                      <p className="font-medium text-error">{tr('Supprimer mon compte', 'Delete my account')}</p>
-                      <p className="text-sm text-text-tertiary">
-                        {tr('Cette action est irréversible', 'This action is irreversible')}
-                      </p>
+                      <p className="font-medium text-text-primary">{tr('Réinitialiser', 'Reset to defaults')}</p>
+                      <p className="text-sm text-text-tertiary">{tr('Restaurer les paramètres par défaut', 'Restore default settings')}</p>
                     </div>
                   </div>
-                </button>
+                  <button
+                    onClick={resetToDefaults}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-bg-tertiary border border-border-default hover:bg-bg-hover transition-colors text-sm"
+                  >
+                    {saved === 'all' ? <Check className="w-4 h-4 text-success" /> : <RotateCcw className="w-4 h-4" />}
+                    {saved === 'all' ? tr('Réinitialisé !', 'Reset!') : tr('Réinitialiser', 'Reset')}
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            {/* ═══════════════════════════════════════════════════════════════════ */}
+            {/* App Info */}
+            {/* ═══════════════════════════════════════════════════════════════════ */}
+            <section className="card bg-bg-tertiary/50">
+              <div className="panel-body">
+                <div className="flex items-center justify-between text-sm text-text-tertiary">
+                  <div className="flex items-center gap-2">
+                    <Info className="w-4 h-4" />
+                    <span>Deep Sight v5.5.0</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <a href="https://deepsightsynthesis.com/changelog" className="hover:text-accent-primary transition-colors">
+                      {tr('Nouveautés', 'Changelog')}
+                    </a>
+                    <a href="https://deepsightsynthesis.com/help" className="hover:text-accent-primary transition-colors">
+                      {tr('Aide', 'Help')}
+                    </a>
+                  </div>
+                </div>
               </div>
             </section>
 

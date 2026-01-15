@@ -182,13 +182,19 @@ export interface VideoCandidate {
   duration_seconds?: number;
   view_count?: number;
   publish_date?: string;
+  published_at?: string;  // 🆕 Format ISO
   description?: string;
   tournesol_score?: number;
   quality_score?: number;
   academic_score?: number;
   freshness_score?: number;
   engagement_score?: number;
-  language?: string;
+  clickbait_penalty?: number;  // 🆕 Pénalité clickbait
+  language?: string;  // 🆕 Langue détectée de la vidéo
+  is_tournesol_pick?: boolean;  // 🆕 Flag Tournesol
+  matched_query_terms?: string[];  // 🆕 Termes de recherche trouvés
+  detected_sources?: number;  // 🆕 Nombre de sources détectées
+  content_type?: string;  // 🆕 Type de contenu
 }
 
 export interface ReliabilityResult {
@@ -646,9 +652,11 @@ export const videoApi = {
   },
 
   /**
-   * 🔍 Découverte intelligente de vidéos YouTube
+   * 🔍 Découverte intelligente de vidéos YouTube v4.0
    * GRATUIT - Ne consomme pas de crédits
-   * Recherche multilingue avec scoring qualité
+   * Recherche multilingue parallèle avec scoring qualité
+   * 
+   * 🆕 v4.0: Timeout augmenté à 120s, plus de résultats (30-50)
    */
   async discover(
     query: string,
@@ -663,12 +671,12 @@ export const videoApi = {
       method: 'POST',
       body: {
         query,
-        max_results: options?.limit || 20,
+        max_results: options?.limit || 30,  // 🆕 Augmenté de 20 à 30
         languages: options?.languages || ['fr', 'en'],
-        min_quality: options?.minQuality || 30,
+        min_quality: options?.minQuality || 25,  // 🆕 Réduit pour plus de résultats
         target_duration: options?.targetDuration || 'default',
       },
-      timeout: 30000,
+      timeout: 120000,  // 🆕 Augmenté de 30s à 120s pour recherches parallèles
     });
   },
 
