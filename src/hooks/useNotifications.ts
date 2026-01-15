@@ -1,5 +1,5 @@
 /**
- * 🔔 useNotifications Hook v1.0
+ * 🔔 useNotifications Hook v2.0
  * 
  * Hook React pour recevoir les notifications en temps réel via SSE.
  * Gère automatiquement :
@@ -7,10 +7,12 @@
  * - Reconnexion automatique en cas de déconnexion
  * - Notifications navigateur (avec permission)
  * - Notifications in-app via Toast
+ * - 🎵 Sons de notification corporate (Web Audio API)
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useSounds } from './useSounds';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://deepsight-backend-production.up.railway.app';
 
@@ -40,6 +42,7 @@ interface UseNotificationsOptions {
 
 export function useNotifications(options: UseNotificationsOptions = {}) {
   const { token, isAuthenticated } = useAuth();
+  const { play } = useSounds();
   const [isConnected, setIsConnected] = useState(false);
   const [notifications, setNotifications] = useState<DeepSightNotification[]>([]);
   const [browserPermission, setBrowserPermission] = useState<NotificationPermission>('default');
@@ -105,6 +108,25 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
     console.log('🔔 Notification received:', notification);
 
+    // 🎵 Jouer un son selon le type de notification
+    switch (notification.type) {
+      case 'analysis_complete':
+        play('complete'); // Son de célébration pour analyse terminée
+        break;
+      case 'analysis_error':
+        play('error'); // Son d'erreur
+        break;
+      case 'info':
+        play('notification'); // Son de notification standard
+        break;
+      case 'test':
+        play('notification');
+        break;
+      case 'connected':
+        // Pas de son pour la connexion
+        break;
+    }
+
     // Ajouter à la liste
     setNotifications(prev => [notification, ...prev].slice(0, 50));
 
@@ -120,7 +142,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         notification.data.video_title || 'Vidéo'
       );
     }
-  }, [showBrowserNotification, options]);
+  }, [showBrowserNotification, options, play]);
 
   // Connexion SSE
   const connect = useCallback(() => {

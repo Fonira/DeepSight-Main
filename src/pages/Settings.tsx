@@ -1,8 +1,8 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════════════════╗
- * ║  DEEP SIGHT v6.0 — Settings Page                                              ║
- * ║  Paramètres de l'application: thème, langue, notifications, préférences       ║
- * ║  ✨ Optimisé et restructuré - Mon compte séparé                               ║
+ * ║  DEEP SIGHT v6.1 — Settings Page                                              ║
+ * ║  Paramètres complets avec système de sons corporate intégré                   ║
+ * ║  🎵 Sons Web Audio API - 🎨 Thème - 🌍 Langue - ⚡ Préférences               ║
  * ╚══════════════════════════════════════════════════════════════════════════════╝
  */
 
@@ -10,13 +10,14 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from '../hooks/useTranslation';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useSounds } from '../hooks/useSounds';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
 import { 
   Settings as SettingsIcon, Globe, Moon, Sun, Bell, BellOff,
   Volume2, VolumeX, Keyboard, Info, Check, RotateCcw,
-  Sparkles, BookOpen, Monitor, Zap, Download,
-  ExternalLink, Palette, SlidersHorizontal, Layout
+  Sparkles, BookOpen, Monitor, Zap, Download, Play,
+  ExternalLink, Palette, SlidersHorizontal, Layout, Music
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -42,7 +43,9 @@ export const Settings: React.FC = () => {
   const { language } = useTranslation();
   const { setLanguage } = useLanguage();
   const { isDark, toggleTheme } = useTheme();
+  const { play, playDemo } = useSounds();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isPlayingDemo, setIsPlayingDemo] = useState(false);
   
   // Préférences locales (stockées dans localStorage)
   const [preferences, setPreferences] = useState<Preferences>(() => ({
@@ -63,15 +66,21 @@ export const Settings: React.FC = () => {
   const tr = useCallback((fr: string, en: string) => language === 'fr' ? fr : en, [language]);
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // 💾 Save Preference
+  // 💾 Save Preference avec son
   // ─────────────────────────────────────────────────────────────────────────────
   
   const savePreference = useCallback((key: keyof Preferences, value: boolean | string) => {
     localStorage.setItem(`deepsight_${key}`, String(value));
     setPreferences(prev => ({ ...prev, [key]: value }));
     setSaved(key);
+    
+    // Jouer un son de confirmation (sauf si on désactive les sons)
+    if (key !== 'soundEffects' || value === true) {
+      play('toggle');
+    }
+    
     setTimeout(() => setSaved(null), 1500);
-  }, []);
+  }, [play]);
 
   const resetToDefaults = useCallback(() => {
     const defaults: Preferences = {
@@ -91,14 +100,26 @@ export const Settings: React.FC = () => {
     
     setPreferences(defaults);
     setSaved('all');
+    play('success');
     setTimeout(() => setSaved(null), 1500);
-  }, []);
+  }, [play]);
 
   // Appliquer le mode compact au body
   useEffect(() => {
     document.body.classList.toggle('compact-mode', preferences.compactView);
     document.body.classList.toggle('reduce-motion', preferences.reduceMotion);
   }, [preferences.compactView, preferences.reduceMotion]);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 🎵 Demo des sons
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const handlePlayDemo = async () => {
+    if (isPlayingDemo) return;
+    setIsPlayingDemo(true);
+    await playDemo();
+    setIsPlayingDemo(false);
+  };
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 🎨 Toggle Component
@@ -210,7 +231,10 @@ export const Settings: React.FC = () => {
                   description={isDark ? tr('Mode sombre activé', 'Dark mode enabled') : tr('Mode clair activé', 'Light mode enabled')}
                 >
                   <button
-                    onClick={toggleTheme}
+                    onClick={() => {
+                      toggleTheme();
+                      play('toggle');
+                    }}
                     className={`relative w-14 h-8 rounded-full transition-colors ${
                       isDark ? 'bg-indigo-600' : 'bg-amber-400'
                     }`}
@@ -231,7 +255,10 @@ export const Settings: React.FC = () => {
                 >
                   <div className="flex gap-1 p-1 rounded-lg bg-bg-tertiary">
                     <button
-                      onClick={() => setLanguage('fr')}
+                      onClick={() => {
+                        setLanguage('fr');
+                        play('click');
+                      }}
                       className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                         language === 'fr' 
                           ? 'bg-accent-primary text-white shadow-sm' 
@@ -241,7 +268,10 @@ export const Settings: React.FC = () => {
                       🇫🇷 FR
                     </button>
                     <button
-                      onClick={() => setLanguage('en')}
+                      onClick={() => {
+                        setLanguage('en');
+                        play('click');
+                      }}
                       className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                         language === 'en' 
                           ? 'bg-accent-primary text-white shadow-sm' 
@@ -282,7 +312,7 @@ export const Settings: React.FC = () => {
             </section>
 
             {/* ═══════════════════════════════════════════════════════════════════ */}
-            {/* 🔔 Notifications */}
+            {/* 🔔 Notifications & Sons */}
             {/* ═══════════════════════════════════════════════════════════════════ */}
             <section className="card">
               <div className="panel-header">
@@ -310,7 +340,7 @@ export const Settings: React.FC = () => {
                 <SettingRow
                   icon={preferences.soundEffects ? Volume2 : VolumeX}
                   title={tr('Effets sonores', 'Sound effects')}
-                  description={tr('Sons de notification et feedback', 'Notification and feedback sounds')}
+                  description={tr('Sons de notification corporate doux', 'Soft corporate notification sounds')}
                 >
                   <Toggle
                     enabled={preferences.soundEffects}
@@ -318,11 +348,42 @@ export const Settings: React.FC = () => {
                     saved={saved === 'soundEffects'}
                   />
                 </SettingRow>
+
+                {/* Bouton de test des sons */}
+                {preferences.soundEffects && (
+                  <div className="py-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Music className="w-5 h-5 text-text-tertiary" />
+                        <div>
+                          <p className="font-medium text-text-primary">{tr('Tester les sons', 'Test sounds')}</p>
+                          <p className="text-sm text-text-tertiary">{tr('Écouter un aperçu des sons', 'Listen to a preview of sounds')}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handlePlayDemo}
+                        disabled={isPlayingDemo}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                          isPlayingDemo 
+                            ? 'bg-accent-primary/20 text-accent-primary cursor-wait' 
+                            : 'bg-accent-primary text-white hover:bg-accent-primary-hover'
+                        }`}
+                      >
+                        <Play className={`w-4 h-4 ${isPlayingDemo ? 'animate-pulse' : ''}`} />
+                        {isPlayingDemo ? tr('Lecture...', 'Playing...') : tr('Écouter', 'Play')}
+                      </button>
+                    </div>
+                    <p className="text-xs text-text-muted mt-2 ml-8">
+                      {tr('🎵 Sons générés par synthèse audio - aucun fichier externe', 
+                          '🎵 Sounds generated by audio synthesis - no external files')}
+                    </p>
+                  </div>
+                )}
               </div>
             </section>
 
             {/* ═══════════════════════════════════════════════════════════════════ */}
-            {/* ⚡ Analyse */}
+            {/* ⚡ Préférences d'analyse */}
             {/* ═══════════════════════════════════════════════════════════════════ */}
             <section className="card">
               <div className="panel-header">
@@ -341,7 +402,10 @@ export const Settings: React.FC = () => {
                 >
                   <select
                     value={preferences.defaultMode}
-                    onChange={(e) => savePreference('defaultMode', e.target.value)}
+                    onChange={(e) => {
+                      savePreference('defaultMode', e.target.value);
+                      play('click');
+                    }}
                     className="px-3 py-2 rounded-lg bg-bg-tertiary border border-border-default text-text-primary text-sm cursor-pointer hover:border-accent-primary/50 transition-colors"
                   >
                     <option value="accessible">{tr('Express (30s)', 'Express (30s)')}</option>
@@ -469,7 +533,7 @@ export const Settings: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-medium text-text-primary">Deep Sight</p>
-                      <p className="text-sm text-text-tertiary">v6.0.0 • {tr('Analyse YouTube par IA', 'AI-powered YouTube analysis')}</p>
+                      <p className="text-sm text-text-tertiary">v6.1.0 • {tr('Analyse YouTube par IA', 'AI-powered YouTube analysis')}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 text-sm">

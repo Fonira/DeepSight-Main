@@ -1,5 +1,5 @@
 /**
- * 🔄 BACKGROUND ANALYSIS CONTEXT v1.0
+ * 🔄 BACKGROUND ANALYSIS CONTEXT v2.0
  * ═══════════════════════════════════════════════════════════════════════════════
  * Permet de lancer des analyses qui continuent même si on change de page
  * 
@@ -7,12 +7,14 @@
  * - Analyses vidéo en arrière-plan
  * - Analyses playlist en arrière-plan
  * - Notifications de progression
+ * - 🎵 Sons de notification (Web Audio API)
  * - Persistance dans la session
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { videoApi, playlistApi, TaskStatus, PlaylistTaskStatus, Summary } from '../services/api';
+import { useSounds } from '../hooks/useSounds';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
@@ -91,7 +93,11 @@ const BackgroundAnalysisContext = createContext<BackgroundAnalysisContextType | 
 export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tasks, setTasks] = useState<AnalysisTask[]>([]);
   const [hasNewCompletedTask, setHasNewCompletedTask] = useState(false);
+  const [hasNewFailedTask, setHasNewFailedTask] = useState(false);
   const pollingIntervals = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  
+  // 🎵 Sons de notification
+  const { play } = useSounds();
 
   // Nettoyer les intervals au démontage
   useEffect(() => {
@@ -99,6 +105,21 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
       pollingIntervals.current.forEach(interval => clearInterval(interval));
     };
   }, []);
+
+  // 🎵 Jouer un son quand une tâche est terminée
+  useEffect(() => {
+    if (hasNewCompletedTask) {
+      play('complete');
+    }
+  }, [hasNewCompletedTask, play]);
+
+  // 🎵 Jouer un son quand une tâche échoue
+  useEffect(() => {
+    if (hasNewFailedTask) {
+      play('error');
+      setHasNewFailedTask(false);
+    }
+  }, [hasNewFailedTask, play]);
 
   // Calculer le nombre de tâches actives
   const activeTasksCount = tasks.filter(t => t.status === 'pending' || t.status === 'processing').length;
@@ -253,6 +274,7 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
             } else if (status.status === 'failed') {
               clearInterval(interval);
               pollingIntervals.current.delete(localId);
+              setHasNewFailedTask(true);
               
               return {
                 ...videoTask,
@@ -293,6 +315,7 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
             } else if (status.status === 'failed') {
               clearInterval(interval);
               pollingIntervals.current.delete(localId);
+              setHasNewFailedTask(true);
               
               return {
                 ...playlistTask,
