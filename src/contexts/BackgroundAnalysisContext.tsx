@@ -7,14 +7,12 @@
  * - Analyses vidéo en arrière-plan
  * - Analyses playlist en arrière-plan
  * - Notifications de progression
- * - 🎵 Sons de notification (Web Audio API)
  * - Persistance dans la session
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { videoApi, playlistApi, TaskStatus, PlaylistTaskStatus, Summary } from '../services/api';
-import { useSounds } from '../hooks/useSounds';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
@@ -95,9 +93,6 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
   const [hasNewCompletedTask, setHasNewCompletedTask] = useState(false);
   const [hasNewFailedTask, setHasNewFailedTask] = useState(false);
   const pollingIntervals = useRef<Map<string, NodeJS.Timeout>>(new Map());
-  
-  // 🎵 Sons de notification
-  const { play } = useSounds();
 
   // Nettoyer les intervals au démontage
   useEffect(() => {
@@ -105,21 +100,6 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
       pollingIntervals.current.forEach(interval => clearInterval(interval));
     };
   }, []);
-
-  // 🎵 Jouer un son quand une tâche est terminée
-  useEffect(() => {
-    if (hasNewCompletedTask) {
-      play('complete');
-    }
-  }, [hasNewCompletedTask, play]);
-
-  // 🎵 Jouer un son quand une tâche échoue
-  useEffect(() => {
-    if (hasNewFailedTask) {
-      play('error');
-      setHasNewFailedTask(false);
-    }
-  }, [hasNewFailedTask, play]);
 
   // Calculer le nombre de tâches actives
   const activeTasksCount = tasks.filter(t => t.status === 'pending' || t.status === 'processing').length;
