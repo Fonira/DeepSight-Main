@@ -266,7 +266,7 @@ export const MyAccount: React.FC = () => {
                 <InfoRow 
                   icon={Hash} 
                   label={tr('Identifiant', 'User ID')} 
-                  value={<span className="font-mono text-xs bg-bg-tertiary px-2 py-1 rounded">{user?.id?.slice(0, 8) || '---'}...</span>} 
+                  value={<span className="font-mono text-xs bg-bg-tertiary px-2 py-1 rounded">{user?.id ? String(user.id).slice(0, 8) : '---'}...</span>} 
                 />
                 <InfoRow icon={Calendar} label={tr('Membre depuis', 'Member since')} value={formatDate(user?.created_at)} />
                 <InfoRow 
