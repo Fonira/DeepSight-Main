@@ -449,7 +449,8 @@ export const History: React.FC = () => {
       setVideosTotal(videosRes.total || videosRes.length);
       setStats(statsRes);
 
-      if (isProUser) {
+      // Charger les playlists pour tous les utilisateurs (affichage de l'historique)
+      try {
         const playlistsRes = await api.fetchPlaylists({
           page: playlistsPage,
           per_page: perPage,
@@ -457,6 +458,10 @@ export const History: React.FC = () => {
         });
         setPlaylists(playlistsRes.items || playlistsRes);
         setPlaylistsTotal(playlistsRes.total || playlistsRes.length);
+      } catch (playlistErr) {
+        console.warn("Playlists not available:", playlistErr);
+        setPlaylists([]);
+        setPlaylistsTotal(0);
       }
     } catch (err) {
       console.error("History load error:", err);
@@ -464,7 +469,7 @@ export const History: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [videosPage, playlistsPage, selectedCategory, searchQuery, isProUser, language]);
+  }, [videosPage, playlistsPage, selectedCategory, searchQuery, language]);
 
   useEffect(() => {
     loadData();
@@ -784,33 +789,34 @@ export const History: React.FC = () => {
                     {stats?.total_videos || 0}
                   </span>
                 </button>
-                {isProUser && (
-                  <button
-                    onClick={() => setActiveTab("playlists")}
-                    className={`pb-3 px-4 text-sm font-medium border-b-2 transition-all flex items-center gap-2 ${
-                      activeTab === "playlists"
-                        ? "border-purple-500 text-purple-600 dark:text-purple-400"
-                        : "border-transparent text-text-tertiary hover:text-text-primary"
-                    }`}
-                  >
-                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                      activeTab === "playlists" 
-                        ? "bg-purple-500 text-white" 
-                        : "bg-purple-100 dark:bg-purple-900/30 text-purple-600"
-                    }`}>
-                      <Layers className="w-3.5 h-3.5" />
-                    </div>
-                    <span>Playlists</span>
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      activeTab === "playlists"
-                        ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
-                        : "bg-bg-tertiary text-text-muted"
-                    }`}>
-                      {stats?.total_playlists || 0}
-                    </span>
+                {/* Onglet Playlists - Toujours visible */}
+                <button
+                  onClick={() => setActiveTab("playlists")}
+                  className={`pb-3 px-4 text-sm font-medium border-b-2 transition-all flex items-center gap-2 ${
+                    activeTab === "playlists"
+                      ? "border-purple-500 text-purple-600 dark:text-purple-400"
+                      : "border-transparent text-text-tertiary hover:text-text-primary"
+                  }`}
+                >
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                    activeTab === "playlists"
+                      ? "bg-purple-500 text-white"
+                      : "bg-purple-100 dark:bg-purple-900/30 text-purple-600"
+                  }`}>
+                    <Layers className="w-3.5 h-3.5" />
+                  </div>
+                  <span>Playlists</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    activeTab === "playlists"
+                      ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                      : "bg-bg-tertiary text-text-muted"
+                  }`}>
+                    {stats?.total_playlists || 0}
+                  </span>
+                  {!isProUser && (
                     <span className="badge bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs border-0">Pro</span>
-                  </button>
-                )}
+                  )}
+                </button>
               </div>
             </header>
 
