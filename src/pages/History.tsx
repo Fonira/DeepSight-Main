@@ -1311,55 +1311,150 @@ const PlaylistCard: React.FC<{
   onChat: () => void;
   onDelete: () => void;
 }> = ({ playlist, language, onView, onChat, onDelete }) => {
+  const progressPercent = playlist.num_videos > 0
+    ? Math.round((playlist.num_processed / playlist.num_videos) * 100)
+    : 0;
+  const isComplete = playlist.status === 'completed';
+  const hasMetaAnalysis = playlist.has_meta_analysis;
+
   return (
-    <div 
-      className="card p-4 hover:border-accent-primary/30 transition-all cursor-pointer group"
+    <div
+      className="card overflow-hidden hover:border-purple-400/50 dark:hover:border-purple-500/50 transition-all cursor-pointer group hover:shadow-lg hover:shadow-purple-500/10"
       onClick={onView}
     >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-            <Layers className="w-5 h-5 text-purple-600" />
+      {/* Thumbnail ou gradient */}
+      <div className="relative h-32 bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500">
+        {playlist.thumbnail_url ? (
+          <img
+            src={playlist.thumbnail_url}
+            alt={playlist.playlist_title}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Layers className="w-12 h-12 text-white/30" />
           </div>
-          <div>
-            <h3 className="font-medium text-text-primary line-clamp-1 group-hover:text-accent-primary transition-colors">
-              {playlist.playlist_title}
-            </h3>
-            <p className="text-xs text-text-tertiary">
-              {playlist.num_processed}/{playlist.num_videos} {language === 'fr' ? 'vidéos' : 'videos'}
-            </p>
-          </div>
-        </div>
-      </div>
-      <div className="flex items-center justify-between text-xs text-text-muted">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5" />
-            {formatDuration(playlist.total_duration)}
+        )}
+
+        {/* Overlay gradient */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+        {/* Stats badges en haut */}
+        <div className="absolute top-2 left-2 right-2 flex items-center justify-between">
+          <span className="px-2 py-1 rounded-lg bg-black/50 backdrop-blur-sm text-white text-xs font-medium flex items-center gap-1">
+            <Video className="w-3 h-3" />
+            {playlist.num_videos}
           </span>
-          <span>{(playlist.total_words / 1000).toFixed(0)}k {language === 'fr' ? 'mots' : 'words'}</span>
+          {hasMetaAnalysis && (
+            <span className="px-2 py-1 rounded-lg bg-purple-500/80 backdrop-blur-sm text-white text-xs font-medium flex items-center gap-1">
+              <Brain className="w-3 h-3" />
+              {language === 'fr' ? 'Méta' : 'Meta'}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-1">
+
+        {/* Actions en haut à droite */}
+        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={(e) => { e.stopPropagation(); onChat(); }}
-            className="p-1.5 rounded text-text-tertiary hover:text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
-            title={language === 'fr' ? 'Chat Corpus' : 'Corpus Chat'}
+            className="p-1.5 rounded-lg bg-black/50 backdrop-blur-sm text-white hover:bg-purple-500 transition-colors"
+            title={language === 'fr' ? 'Chat Corpus IA' : 'AI Corpus Chat'}
           >
-            <MessageCircle className="w-3.5 h-3.5" />
+            <MessageCircle className="w-4 h-4" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            className="p-1.5 rounded text-text-tertiary hover:text-error hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            className="p-1.5 rounded-lg bg-black/50 backdrop-blur-sm text-white hover:bg-red-500 transition-colors"
+            title={language === 'fr' ? 'Supprimer' : 'Delete'}
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Titre en bas de l'image */}
+        <div className="absolute bottom-2 left-2 right-2">
+          <h3 className="font-semibold text-white text-sm line-clamp-2 drop-shadow-lg">
+            {playlist.playlist_title}
+          </h3>
+        </div>
       </div>
-      <div className="mt-2 pt-2 border-t border-border-subtle flex items-center justify-between">
-        <span className={`badge text-xs ${playlist.status === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
-          {playlist.status}
-        </span>
-        <span className="text-xs text-text-muted">{formatRelativeDate(playlist.created_at, language)}</span>
+
+      {/* Contenu */}
+      <div className="p-3">
+        {/* Barre de progression */}
+        <div className="mb-3">
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className="text-text-tertiary">
+              {language === 'fr' ? 'Progression' : 'Progress'}
+            </span>
+            <span className={`font-medium ${isComplete ? 'text-green-600 dark:text-green-400' : 'text-purple-600 dark:text-purple-400'}`}>
+              {playlist.num_processed}/{playlist.num_videos} ({progressPercent}%)
+            </span>
+          </div>
+          <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                isComplete
+                  ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                  : 'bg-gradient-to-r from-purple-500 to-pink-500'
+              }`}
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Stats en ligne */}
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="text-center p-2 rounded-lg bg-bg-secondary">
+            <div className="flex items-center justify-center gap-1 text-purple-600 dark:text-purple-400">
+              <Clock className="w-3 h-3" />
+            </div>
+            <p className="text-xs font-medium text-text-primary mt-0.5">
+              {formatDuration(playlist.total_duration)}
+            </p>
+          </div>
+          <div className="text-center p-2 rounded-lg bg-bg-secondary">
+            <div className="flex items-center justify-center gap-1 text-blue-600 dark:text-blue-400">
+              <FileText className="w-3 h-3" />
+            </div>
+            <p className="text-xs font-medium text-text-primary mt-0.5">
+              {(playlist.total_words / 1000).toFixed(0)}k
+            </p>
+          </div>
+          <div className="text-center p-2 rounded-lg bg-bg-secondary">
+            <div className="flex items-center justify-center gap-1 text-pink-600 dark:text-pink-400">
+              <BarChart2 className="w-3 h-3" />
+            </div>
+            <p className="text-xs font-medium text-text-primary mt-0.5">
+              {playlist.num_processed > 0
+                ? Math.round(playlist.total_words / playlist.num_processed).toLocaleString()
+                : 0
+              }
+            </p>
+          </div>
+        </div>
+
+        {/* Footer avec status et date */}
+        <div className="flex items-center justify-between pt-2 border-t border-border-subtle">
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+            isComplete
+              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+              : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+          }`}>
+            {isComplete ? (
+              <Check className="w-3 h-3" />
+            ) : (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            )}
+            {isComplete
+              ? (language === 'fr' ? 'Terminé' : 'Complete')
+              : (language === 'fr' ? 'En cours' : 'Processing')
+            }
+          </span>
+          <span className="text-xs text-text-muted">
+            {formatRelativeDate(playlist.created_at, language)}
+          </span>
+        </div>
       </div>
     </div>
   );
