@@ -1,6 +1,8 @@
 /**
- * DEEP SIGHT v5.0 — Dashboard Page
+ * DEEP SIGHT v5.1 — Dashboard Page
  * Interface d'analyse complète avec design académique sobre
+ * 
+ * 🆕 v5.1: Ajout estimation temps pour vidéos simples
  * 
  * FONCTIONNALITÉS CONSERVÉES:
  * - ▶️ Player YouTube intégré avec timecodes cliquables
@@ -14,7 +16,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  Play, Video, Send, ChevronDown, Loader2, Clock,
+  Play, Video, Send, ChevronDown, Loader2, Clock, Timer,
   Star, Download, Globe, Sparkles, BookOpen, Shield,
   ExternalLink, Copy, Check, MessageCircle, X, Bot,
   AlertCircle, Minimize2, Maximize2, RefreshCw, Pause,
@@ -773,32 +775,62 @@ export const DashboardPage: React.FC = () => {
               )}
             </div>
 
-            {/* Loading State */}
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            {/* 🆕 Loading State AMÉLIORÉ — Avec estimation de temps */}
+            {/* ═══════════════════════════════════════════════════════════════ */}
             {loading && (
               <div className="card p-8 mb-6 animate-fadeIn">
                 <div className="flex flex-col items-center text-center">
-                  {/* Icon */}
-                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6 bg-accent-primary-muted">
+                  {/* Icon avec animation améliorée */}
+                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6 bg-accent-primary-muted relative">
                     <Loader2 className="w-10 h-10 text-accent-primary animate-spin" />
+                    {/* Effet de pulsation */}
+                    <div className="absolute inset-0 rounded-2xl bg-accent-primary/10 animate-ping" style={{ animationDuration: '2s' }} />
                   </div>
                   
-                  {/* Message */}
-                  <p className="text-text-primary font-semibold text-lg mb-4">{loadingMessage}</p>
+                  {/* Message principal */}
+                  <p className="text-text-primary font-semibold text-lg mb-2">{loadingMessage}</p>
                   
-                  {/* Progress bar */}
+                  {/* 🆕 Estimation de temps */}
+                  <p className="text-sm text-text-muted mb-4 flex items-center gap-1">
+                    <Timer className="w-4 h-4" />
+                    {language === 'fr' 
+                      ? "Généralement quelques secondes à 1 minute" 
+                      : "Usually a few seconds to 1 minute"}
+                  </p>
+                  
+                  {/* Progress bar améliorée */}
                   <div className="w-full max-w-md mb-4">
-                    <div className="h-3 rounded-full overflow-hidden bg-bg-tertiary">
+                    <div className="h-3 rounded-full overflow-hidden bg-bg-tertiary relative">
+                      {/* Fond animé */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-accent-primary/5 via-accent-primary/20 to-accent-primary/5 animate-pulse" />
+                      {/* Barre de progression */}
                       <div
-                        className="h-full rounded-full transition-all duration-700 ease-out bg-accent-primary"
+                        className="h-full rounded-full transition-all duration-700 ease-out bg-gradient-to-r from-accent-primary to-purple-500 relative overflow-hidden"
                         style={{ width: `${loadingProgress}%` }}
-                      />
+                      >
+                        {/* Effet shimmer */}
+                        <div 
+                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                          style={{ animation: 'shimmer 2s infinite' }}
+                        />
+                      </div>
                     </div>
                   </div>
                   
-                  {/* Percentage */}
-                  <p className="text-sm font-medium text-text-tertiary">
+                  {/* Pourcentage */}
+                  <p className="text-sm font-medium text-text-tertiary tabular-nums">
                     {loadingProgress}%
                   </p>
+                  
+                  {/* 🆕 Message informatif pour longues vidéos */}
+                  {loadingProgress > 30 && loadingProgress < 90 && (
+                    <p className="text-xs text-text-muted mt-3 max-w-sm">
+                      {language === 'fr' 
+                        ? "💡 Les vidéos longues (>30min) peuvent prendre plus de temps."
+                        : "💡 Long videos (>30min) may take longer."}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
@@ -1195,7 +1227,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* 🔍 Modal Découverte Intelligente */}
       <VideoDiscoveryModal
-        isOpen={showDiscoveryModal}
+        isOpen={showDiscoveryModal}A
         onClose={() => setShowDiscoveryModal(false)}
         discovery={discoveryResult}
         onSelectVideo={handleSelectDiscoveredVideo}
@@ -1218,6 +1250,14 @@ export const DashboardPage: React.FC = () => {
           categories={conceptsCategories}
         />
       )}
+
+      {/* 🆕 CSS pour l'animation shimmer */}
+      <style>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
     </div>
   );
 };
