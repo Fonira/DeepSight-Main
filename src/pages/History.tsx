@@ -19,7 +19,10 @@ import {
   ChevronRight, Clock, Video, Layers,
   Grid, List, RefreshCw, BarChart2, Loader2,
   AlertCircle, X, Send, Globe, Bot, User,
-  Minimize2, Maximize2, ExternalLink
+  Minimize2, Maximize2, ExternalLink,
+  // 🆕 Toolbar icons
+  Copy, Check, GraduationCap, Brain, Tags, Headphones,
+  Download, FileText, FileDown, ChevronDown
 } from "lucide-react";
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
@@ -29,6 +32,12 @@ import { createTimecodeMarkdownComponents } from "../components/TimecodeRenderer
 import { FloatingChatWindow } from "../components/FloatingChatWindow";
 import DoodleBackground from "../components/DoodleBackground";
 import { ThumbnailImage, isRawTextVideo } from "../components/ThumbnailImage";
+// 🆕 Toolbar components
+import { CitationExport } from "../components/CitationExport";
+import { StudyToolsModal } from "../components/StudyToolsModal";
+import { KeywordsModal } from "../components/KeywordsModal";
+import { AudioPlayer } from "../components/AudioPlayer";
+import { videoApi } from "../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🌐 API CONFIGURATION
@@ -1370,7 +1379,46 @@ const PlaylistDetailView: React.FC<{
   const videos = playlist.videos || [];
   const [expandedVideoId, setExpandedVideoId] = useState<string | null>(null);
   const [metaExpanded, setMetaExpanded] = useState(false);  // 🆕 État pour expand méta-analyse
-  
+
+  // 🆕 États pour la toolbar (Copy, Cite, Study, Keywords, Listen, Export)
+  const [copied, setCopied] = useState(false);
+  const [showCitationModal, setShowCitationModal] = useState(false);
+  const [showStudyToolsModal, setShowStudyToolsModal] = useState(false);
+  const [showKeywordsModal, setShowKeywordsModal] = useState(false);
+  const [showAudioPlayer, setShowAudioPlayer] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  // 🆕 Handler: Copy
+  const handleCopy = async () => {
+    if (!selectedVideo?.summary_content) return;
+    await navigator.clipboard.writeText(selectedVideo.summary_content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  // 🆕 Handler: Export
+  const handleExport = async (format: 'pdf' | 'md' | 'txt') => {
+    if (!selectedVideo?.id) return;
+    setExporting(true);
+    setShowExportMenu(false);
+
+    try {
+      const blob = await videoApi.exportSummary(selectedVideo.id, format);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const ext = format === 'md' ? 'md' : format;
+      a.download = `${selectedVideo.video_title || 'analyse'}.${ext}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export error:', err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Timecode components pour les résumés
   const getTimecodeComponents = useCallback((videoId?: string) => {
     return createTimecodeMarkdownComponents({
@@ -1419,10 +1467,16 @@ const PlaylistDetailView: React.FC<{
               <ChevronRight className="w-4 h-4 rotate-180" />
               {language === 'fr' ? 'Retour à la playlist' : 'Back to playlist'}
             </button>
-            <button onClick={() => onChatVideo(selectedVideo)} className="btn btn-primary">
-              <MessageCircle className="w-4 h-4" />
-              {language === 'fr' ? 'Chat Vidéo' : 'Video Chat'}
-            </button>
+            <a
+              href={`https://www.youtube.com/watch?v=${selectedVideo.video_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-secondary"
+            >
+              <Play className="w-4 h-4" />
+              {language === 'fr' ? 'Voir sur YouTube' : 'Watch on YouTube'}
+              <ExternalLink className="w-3 h-3" />
+            </a>
           </div>
 
           <div className="flex gap-6">
@@ -1481,23 +1535,166 @@ const PlaylistDetailView: React.FC<{
           </div>
         </div>
 
-        {/* Summary Content */}
-        <div className="card p-6">
-          <h2 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
-            📄 {language === 'fr' ? 'Résumé' : 'Summary'}
-          </h2>
-          {selectedVideo.summary_content ? (
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <ReactMarkdown components={getTimecodeComponents(selectedVideo.video_id)}>
-                {selectedVideo.summary_content}
-              </ReactMarkdown>
+        {/* Summary Content with Full Toolbar */}
+        <div className="card">
+          {/* 🆕 Toolbar avec toutes les fonctionnalités */}
+          <div className="panel-header border-b border-border-subtle p-4">
+            <h3 className="font-semibold text-text-primary flex items-center gap-2">
+              📄 {language === 'fr' ? 'Analyse' : 'Analysis'}
+            </h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Copy */}
+              <button
+                onClick={handleCopy}
+                className="btn btn-ghost text-xs"
+              >
+                {copied ? <Check className="w-4 h-4 text-accent-success" /> : <Copy className="w-4 h-4" />}
+                {copied ? (language === 'fr' ? 'Copié' : 'Copied') : (language === 'fr' ? 'Copier' : 'Copy')}
+              </button>
+
+              {/* 🎓 Citation académique */}
+              <button
+                onClick={() => setShowCitationModal(true)}
+                className="btn btn-ghost text-xs"
+                title={language === 'fr' ? 'Générer une citation académique' : 'Generate academic citation'}
+              >
+                <GraduationCap className="w-4 h-4" />
+                {language === 'fr' ? 'Citer' : 'Cite'}
+              </button>
+
+              {/* 📚 Outils d'étude (fiches + mindmap) */}
+              <button
+                onClick={() => setShowStudyToolsModal(true)}
+                className="btn btn-ghost text-xs"
+                title={language === 'fr' ? 'Fiches de révision et arbre pédagogique' : 'Study cards and concept map'}
+              >
+                <Brain className="w-4 h-4" />
+                {language === 'fr' ? 'Réviser' : 'Study'}
+              </button>
+
+              {/* 🏷️ Mots-clés */}
+              <button
+                onClick={() => setShowKeywordsModal(true)}
+                className="btn btn-ghost text-xs"
+                title={language === 'fr' ? 'Voir les mots-clés extraits' : 'View extracted keywords'}
+              >
+                <Tags className="w-4 h-4" />
+                {language === 'fr' ? 'Mots-clés' : 'Keywords'}
+              </button>
+
+              {/* 🎙️ Écouter (TTS) */}
+              <button
+                onClick={() => setShowAudioPlayer(!showAudioPlayer)}
+                className={`btn ${showAudioPlayer ? 'btn-primary' : 'btn-ghost'} text-xs`}
+                title={language === 'fr' ? 'Écouter le résumé (synthèse vocale)' : 'Listen to summary (text-to-speech)'}
+              >
+                <Headphones className="w-4 h-4" />
+                {language === 'fr' ? 'Écouter' : 'Listen'}
+              </button>
+
+              {/* Export */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  className="btn btn-ghost text-xs"
+                  disabled={exporting}
+                >
+                  {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Export
+                  <ChevronDown className="w-3 h-3" />
+                </button>
+                {showExportMenu && (
+                  <div className="absolute right-0 top-full mt-1 w-40 bg-bg-elevated border border-border-default rounded-lg shadow-lg z-10 py-1">
+                    <button
+                      onClick={() => handleExport('pdf')}
+                      className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" /> PDF
+                    </button>
+                    <button
+                      onClick={() => handleExport('md')}
+                      className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                    >
+                      <FileDown className="w-4 h-4" /> Markdown
+                    </button>
+                    <button
+                      onClick={() => handleExport('txt')}
+                      className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                    >
+                      <FileText className="w-4 h-4" /> Texte
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat toggle */}
+              <button
+                onClick={() => onChatVideo(selectedVideo)}
+                className="btn btn-secondary text-xs"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Chat
+              </button>
             </div>
-          ) : (
-            <p className="text-text-tertiary italic">
-              {language === 'fr' ? 'Aucun résumé disponible.' : 'No summary available.'}
-            </p>
+          </div>
+
+          {/* 🎙️ Lecteur Audio TTS */}
+          {showAudioPlayer && (
+            <div className="p-4 border-b border-border-subtle animate-fadeIn">
+              <AudioPlayer
+                summaryId={selectedVideo.id}
+                title={selectedVideo.video_title || (language === 'fr' ? 'Résumé audio' : 'Audio summary')}
+                language={selectedVideo.lang === 'en' ? 'en' : 'fr'}
+                variant="full"
+              />
+            </div>
           )}
+
+          {/* Summary Content */}
+          <div className="p-6">
+            {selectedVideo.summary_content ? (
+              <div className="prose prose-sm dark:prose-invert max-w-none">
+                <ReactMarkdown components={getTimecodeComponents(selectedVideo.video_id)}>
+                  {selectedVideo.summary_content}
+                </ReactMarkdown>
+              </div>
+            ) : (
+              <p className="text-text-tertiary italic">
+                {language === 'fr' ? 'Aucun résumé disponible.' : 'No summary available.'}
+              </p>
+            )}
+          </div>
         </div>
+
+        {/* 🆕 Modals pour les outils */}
+        {/* Citation Modal */}
+        <CitationExport
+          isOpen={showCitationModal}
+          onClose={() => setShowCitationModal(false)}
+          videoTitle={selectedVideo.video_title}
+          videoChannel={selectedVideo.video_channel}
+          videoUrl={`https://www.youtube.com/watch?v=${selectedVideo.video_id}`}
+          analysisDate={new Date().toISOString()}
+          language={language as 'fr' | 'en'}
+        />
+
+        {/* Study Tools Modal */}
+        <StudyToolsModal
+          isOpen={showStudyToolsModal}
+          onClose={() => setShowStudyToolsModal(false)}
+          summaryId={selectedVideo.id}
+          videoTitle={selectedVideo.video_title}
+          language={language as 'fr' | 'en'}
+        />
+
+        {/* Keywords Modal */}
+        <KeywordsModal
+          isOpen={showKeywordsModal}
+          onClose={() => setShowKeywordsModal(false)}
+          summaryId={selectedVideo.id}
+          videoTitle={selectedVideo.video_title}
+          language={language as 'fr' | 'en'}
+        />
 
         {/* Navigation entre vidéos */}
         {(() => {
