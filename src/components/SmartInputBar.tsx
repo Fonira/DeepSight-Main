@@ -1,11 +1,10 @@
 /**
- * 🔮 SMART INPUT BAR v4.0 (No Audio)
+ * 🔮 SMART INPUT BAR v4.1 - FIX PLAYLIST URL
  * Barre d'entrée ultra-intelligente avec détection automatique
- * 
- * ✨ 3 MODES:
- * - 🔗 URL YouTube → Analyse directe
- * - 📝 Texte brut (>200 chars) → Analyse comme document
- * - 🔍 Recherche → Découverte intelligente via Invidious (GRATUIT, sans API key)
+ *
+ * ✨ FIX v4.1:
+ * - Ajout pattern youtube.com/playlist?list= pour playlists
+ * - Meilleure détection des URLs de playlists
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
@@ -46,12 +45,17 @@ interface SmartInputBarProps {
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════
 
+// 🔧 FIX: Ajout des patterns de playlists YouTube
 const YOUTUBE_PATTERNS = [
   /youtube\.com\/watch\?v=/i,
   /youtu\.be\//i,
   /youtube\.com\/embed\//i,
   /youtube\.com\/shorts\//i,
   /youtube\.com\/live\//i,
+  // 🆕 PATTERNS PLAYLISTS
+  /youtube\.com\/playlist\?list=/i,
+  /youtube\.com\/watch\?.*list=/i,  // vidéo avec playlist
+  /[?&]list=[A-Za-z0-9_-]+/i,       // paramètre list= dans l'URL
 ];
 
 const SEARCH_LANGUAGES = [
@@ -87,7 +91,7 @@ const MODE_CONFIG = {
     hoverBorder: 'hover:border-red-500/50',
     focusBorder: 'focus-within:border-red-500/60',
     gradient: 'from-red-500 to-rose-600',
-    placeholder: { fr: 'https://youtube.com/watch?v=...', en: 'https://youtube.com/watch?v=...' },
+    placeholder: { fr: 'https://youtube.com/watch?v=... ou playlist?list=...', en: 'https://youtube.com/watch?v=... or playlist?list=...' },
   },
   text: {
     icon: FileText,
@@ -108,26 +112,26 @@ const MODE_CONFIG = {
 
 const detectInputMode = (input: string): InputMode => {
   if (!input || input.trim().length === 0) return 'search';
-  
+
   const trimmed = input.trim();
-  
-  // Check YouTube URL first
+
+  // 🔧 FIX: Check YouTube URL first (inclut playlists)
   for (const pattern of YOUTUBE_PATTERNS) {
     if (pattern.test(trimmed)) {
       return 'url';
     }
   }
-  
+
   // Non-YouTube URLs → treat as search query
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     return 'search';
   }
-  
+
   // Long text (>200 chars) → text mode
   if (trimmed.length > 200) {
     return 'text';
   }
-  
+
   // Short text → search mode
   return 'search';
 };
@@ -159,10 +163,10 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   const [autoDetected, setAutoDetected] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modeSelectorRef = useRef<HTMLDivElement>(null);
-  
+
   const config = MODE_CONFIG[value.mode];
   const ModeIcon = config.icon;
-  
+
   // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
@@ -171,7 +175,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
       textareaRef.current.style.height = `${newHeight}px`;
     }
   }, [value]);
-  
+
   // Close mode selector on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -182,7 +186,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-  
+
   // Handle input change with auto-detection
   const handleInputChange = useCallback((text: string) => {
     if (autoDetected) {
@@ -192,7 +196,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
         mode: detectedMode,
         searchLanguages: value.searchLanguages || ['fr', 'en'],
       };
-      
+
       switch (detectedMode) {
         case 'url':
           newValue.url = text;
@@ -210,7 +214,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
           newValue.rawText = undefined;
           break;
       }
-      
+
       onChange(newValue);
     } else {
       // Manual mode - keep current mode
@@ -223,50 +227,50 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
       onChange(newValue);
     }
   }, [value, onChange, autoDetected]);
-  
+
   // Manual mode selection
   const selectMode = useCallback((mode: InputMode) => {
     setAutoDetected(false);
     setShowModeSelector(false);
-    
+
     const currentText = getInputValue(value);
     const newValue: SmartInputValue = {
       mode,
       searchLanguages: value.searchLanguages || ['fr', 'en'],
     };
-    
+
     switch (mode) {
       case 'url': newValue.url = currentText; break;
-      case 'text': 
+      case 'text':
         newValue.rawText = currentText;
         newValue.textTitle = value.textTitle;
         newValue.textSource = value.textSource;
         break;
       case 'search': newValue.searchQuery = currentText; break;
     }
-    
+
     onChange(newValue);
   }, [value, onChange]);
-  
+
   // Toggle language selection
   const toggleLanguage = useCallback((code: string) => {
     const current = value.searchLanguages || ['fr', 'en'];
     const updated = current.includes(code)
       ? current.filter(c => c !== code)
       : [...current, code];
-    
+
     if (updated.length === 0) return; // At least one language required
-    
+
     onChange({ ...value, searchLanguages: updated });
   }, [value, onChange]);
-  
+
   // Handle submit
   const handleSubmit = useCallback(() => {
     const inputVal = getInputValue(value);
     if (!inputVal.trim() || loading || disabled) return;
     onSubmit();
   }, [value, loading, disabled, onSubmit]);
-  
+
   // Keyboard handling
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -274,26 +278,26 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
       handleSubmit();
     }
   }, [handleSubmit]);
-  
+
   // Computed values
   const inputVal = getInputValue(value);
   const canSubmit = inputVal.trim().length > 0 && !loading && !disabled;
   const isTextMode = value.mode === 'text';
   const isSearchMode = value.mode === 'search';
   const charCount = inputVal.length;
-  
+
   // Credit info
   const creditCost = value.mode === 'search' ? 0 : 1;
   const hasEnoughCredits = creditCost === 0 || userCredits >= creditCost;
-  
+
   return (
     <div className="space-y-3">
       {/* Main Input Area */}
       <div className={`relative rounded-xl border-2 transition-all duration-300 bg-bg-secondary/50 backdrop-blur-sm ${config.borderColor} ${config.focusBorder}`}>
-        
+
         {/* Mode Badge + Input */}
         <div className="flex items-start gap-3 p-4">
-          
+
           {/* Mode Selector */}
           <div className="relative" ref={modeSelectorRef}>
             <button
@@ -308,7 +312,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
               </span>
               <ChevronDown className={`w-3 h-3 transition-transform ${showModeSelector ? 'rotate-180' : ''}`} />
             </button>
-            
+
             {/* Mode Dropdown */}
             {showModeSelector && (
               <div className="absolute top-full left-0 mt-2 w-56 bg-bg-elevated border border-border-default rounded-xl shadow-xl z-50 overflow-hidden">
@@ -317,14 +321,14 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
                     const modeConf = MODE_CONFIG[mode];
                     const Icon = modeConf.icon;
                     const isActive = value.mode === mode;
-                    
+
                     return (
                       <button
                         key={mode}
                         onClick={() => selectMode(mode)}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                          isActive 
-                            ? `${modeConf.bgColor} ${modeConf.textColor}` 
+                          isActive
+                            ? `${modeConf.bgColor} ${modeConf.textColor}`
                             : 'hover:bg-bg-tertiary text-text-secondary hover:text-text-primary'
                         }`}
                       >
@@ -332,7 +336,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
                         <div className="flex-1 text-left">
                           <div className="text-sm font-medium">{modeConf.label[language]}</div>
                           <div className="text-xs opacity-70">
-                            {mode === 'url' && (language === 'fr' ? 'Vidéo YouTube' : 'YouTube video')}
+                            {mode === 'url' && (language === 'fr' ? 'Vidéo ou playlist YouTube' : 'YouTube video or playlist')}
                             {mode === 'text' && (language === 'fr' ? 'Article, notes...' : 'Article, notes...')}
                             {mode === 'search' && (language === 'fr' ? 'Découverte intelligente 🆓' : 'Smart discovery 🆓')}
                           </div>
@@ -342,7 +346,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
                     );
                   })}
                 </div>
-                
+
                 {/* Auto-detect toggle */}
                 <div className="border-t border-border-subtle px-3 py-2">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -361,7 +365,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
               </div>
             )}
           </div>
-          
+
           {/* Input Area */}
           <div className="flex-1 min-w-0">
             <textarea
@@ -376,7 +380,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
               rows={1}
             />
           </div>
-          
+
           {/* Submit Button */}
           <button
             type="button"
@@ -395,10 +399,10 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
             )}
           </button>
         </div>
-        
+
         {/* Bottom Bar - Context Info */}
         <div className="flex items-center justify-between px-4 py-2 border-t border-border-subtle bg-bg-tertiary/30 text-xs">
-          
+
           {/* Left: Mode hint */}
           <div className="flex items-center gap-2 text-text-muted">
             {autoDetected && (
@@ -407,20 +411,20 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
                 <span>{language === 'fr' ? 'Détection auto' : 'Auto-detect'}</span>
               </>
             )}
-            
+
             {isSearchMode && (
               <span className={`ml-2 px-2 py-0.5 rounded-full ${config.bgColor} ${config.textColor}`}>
                 {language === 'fr' ? '🆓 Gratuit' : '🆓 Free'}
               </span>
             )}
           </div>
-          
+
           {/* Right: Stats */}
           <div className="flex items-center gap-3 text-text-muted">
             {isTextMode && charCount > 0 && (
               <span>{charCount.toLocaleString()} {language === 'fr' ? 'caractères' : 'chars'}</span>
             )}
-            
+
             {creditCost > 0 && (
               <span className={hasEnoughCredits ? '' : 'text-red-400'}>
                 {creditCost} crédit{creditCost > 1 ? 's' : ''}
@@ -429,11 +433,11 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
           </div>
         </div>
       </div>
-      
+
       {/* Expanded Options */}
       {(isTextMode || (isSearchMode && showLanguageSelector)) && (
         <div className="flex flex-wrap items-center gap-3 px-1">
-          
+
           {/* Text Mode: Title & Source */}
           {isTextMode && (
             <>
@@ -453,7 +457,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
               />
             </>
           )}
-          
+
           {/* Search Mode: Language Selector */}
           {isSearchMode && showLanguageSelector && (
             <div className="flex items-center gap-2">
@@ -482,13 +486,13 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
           )}
         </div>
       )}
-      
+
       {/* Search Mode Info Banner */}
       {isSearchMode && inputVal.length > 0 && (
         <div className="flex items-center gap-2 px-4 py-2 bg-violet-500/10 border border-violet-500/20 rounded-lg text-sm text-violet-300">
           <Info className="w-4 h-4 flex-shrink-0" />
           <span>
-            {language === 'fr' 
+            {language === 'fr'
               ? 'La recherche utilise Invidious (sans clé API). Les meilleures vidéos seront classées par qualité académique.'
               : 'Search uses Invidious (no API key). Best videos will be ranked by academic quality.'}
           </span>
