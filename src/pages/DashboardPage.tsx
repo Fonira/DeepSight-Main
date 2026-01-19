@@ -14,8 +14,9 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
+  ListVideo,
   Play, Video, Send, ChevronDown, Loader2, Clock, Timer,
   Star, Download, Globe, Sparkles, BookOpen, Shield,
   ExternalLink, Copy, Check, MessageCircle, X, Bot,
@@ -99,9 +100,22 @@ const formatReadingTime = (wordCount: number): string => `${Math.ceil(wordCount 
 
 const getCategoryInfo = (cat: string) => CATEGORIES.find(c => c.id === cat) || { emoji: "📄", name: cat };
 
+// 🆕 Helper pour détecter si une URL est une playlist
+const isPlaylistUrl = (url: string): boolean => {
+  if (!url) return false;
+  // Playlist pure: youtube.com/playlist?list=XXX
+  if (/youtube\.com\/playlist\?list=/i.test(url)) return true;
+  // URL avec paramètre list mais SANS video_id (watch?list=XXX sans v=)
+  if (/youtube\.com\/watch\?.*list=/i.test(url) && !/[?&]v=/i.test(url)) return true;
+  // URL qui est UNIQUEMENT un paramètre list (pas de vidéo)
+  if (/^https?:\/\/[^/]*youtube[^/]*\/.*[?&]list=[A-Za-z0-9_-]+$/i.test(url) && !/[?&]v=/i.test(url)) return true;
+  return false;
+};
+
 export const DashboardPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const { t, language } = useTranslation();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
   // États principaux
@@ -150,7 +164,10 @@ export const DashboardPage: React.FC = () => {
   const [conceptsCategories, setConceptsCategories] = useState<Record<string, { label: string; icon: string; count: number }>>({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showTournesolDetails, setShowTournesolDetails] = useState(false);
-  
+
+  // 🆕 État pour détection de playlist
+  const [playlistDetected, setPlaylistDetected] = useState(false);
+
   // 🕐 États Freshness & Fact-Check LITE
   const [reliabilityData, setReliabilityData] = useState<ReliabilityResult | null>(null);
   const [reliabilityLoading, setReliabilityLoading] = useState(false);
@@ -348,24 +365,31 @@ export const DashboardPage: React.FC = () => {
   }, [selectedSummary?.id]);
 
   // === Analyse vidéo ===
-  
+
   const handleAnalyze = async () => {
     // Validation selon le mode
     if (smartInput.mode === 'url' && !smartInput.url?.trim()) return;
     if (smartInput.mode === 'text' && !smartInput.rawText?.trim()) return;
     if (smartInput.mode === 'search' && !smartInput.searchQuery?.trim()) return;
-    
+
+    // 🆕 Détection de playlist - redirection vers page Playlists
+    if (smartInput.mode === 'url' && isPlaylistUrl(smartInput.url || '')) {
+      setPlaylistDetected(true);
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    setPlaylistDetected(false);
     setLoadingProgress(0);
     setChatMessages([]);
     setChatOpen(false);
-    
+
     try {
       // === MODE SEARCH: Découverte intelligente ===
       if (smartInput.mode === 'search') {
         setLoadingMessage(language === 'fr' ? "Recherche intelligente..." : "Smart search...");
-        
+
         const discovery = await videoApi.discover(
           smartInput.searchQuery!,
           {
@@ -375,13 +399,13 @@ export const DashboardPage: React.FC = () => {
             targetDuration: 'default'
           }
         );
-        
+
         setDiscoveryResult(discovery);
         setShowDiscoveryModal(true);
         setLoading(false);
         return;
       }
-      
+
       // === MODE URL: Analyse classique ===
       if (smartInput.mode === 'url') {
         setVideoUrl(smartInput.url || '');
@@ -852,6 +876,43 @@ export const DashboardPage: React.FC = () => {
                   >
                     <X className="w-4 h-4" />
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* 🆕 Playlist Detected Alert - Redirection vers page Playlists */}
+            {playlistDetected && (
+              <div className="card p-5 mb-6 border-violet-500/30 bg-violet-500/10 animate-fadeIn">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                    <ListVideo className="w-6 h-6 text-violet-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-text-primary font-semibold mb-1">
+                      {language === 'fr' ? '📋 URL de playlist détectée' : '📋 Playlist URL detected'}
+                    </h3>
+                    <p className="text-text-secondary text-sm mb-4">
+                      {language === 'fr'
+                        ? "Cette URL correspond à une playlist YouTube. Pour analyser plusieurs vidéos d'une playlist, utilisez la page dédiée aux playlists."
+                        : "This URL corresponds to a YouTube playlist. To analyze multiple videos from a playlist, use the dedicated playlists page."}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        onClick={() => navigate('/playlists')}
+                        className="btn btn-primary"
+                      >
+                        <ListVideo className="w-4 h-4" />
+                        {language === 'fr' ? 'Aller aux Playlists' : 'Go to Playlists'}
+                      </button>
+                      <button
+                        onClick={() => setPlaylistDetected(false)}
+                        className="btn btn-secondary"
+                      >
+                        <X className="w-4 h-4" />
+                        {language === 'fr' ? 'Fermer' : 'Close'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
