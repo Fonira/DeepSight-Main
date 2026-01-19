@@ -476,7 +476,7 @@ export const PlaylistPage: React.FC = () => {
                 onChange={setSmartInput}
                 onSubmit={handleSubmit}
                 loading={analyzing}
-                creditsRemaining={userCredits}
+                userCredits={userCredits}
                 placeholder={
                   smartInput.mode === 'url'
                     ? "https://www.youtube.com/playlist?list=..."
