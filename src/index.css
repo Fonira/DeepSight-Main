@@ -721,3 +721,22 @@
     color: black;
   }
 }
+/* Animation shimmer pour la barre de progression */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Transition fluide pour les nombres */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  transition: all 0.3s ease-out;
+}
