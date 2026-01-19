@@ -1,25 +1,29 @@
 {
   "name": "deepsight-frontend",
   "private": true,
-  "version": "5.2.0",
+  "version": "7.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "analyze": "vite-bundle-visualizer"
   },
   "dependencies": {
     "@sentry/react": "^8.0.0",
     "@supabase/supabase-js": "^2.57.4",
+    "@tanstack/react-query": "^5.17.0",
+    "@tanstack/react-virtual": "^3.0.2",
     "lucide-react": "^0.344.0",
     "mermaid": "^10.9.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
     "react-router-dom": "^6.20.1",
-    "remark-gfm": "^4.0.0"
+    "remark-gfm": "^4.0.0",
+    "zustand": "^4.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
@@ -32,6 +36,7 @@
     "eslint-plugin-react-refresh": "^0.4.11",
     "globals": "^15.9.0",
     "postcss": "^8.4.35",
+    "rollup-plugin-visualizer": "^5.12.0",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
