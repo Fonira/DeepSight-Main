@@ -732,19 +732,22 @@ export const videoApi = {
     return response.blob();
   },
 
-  async getHistory(params?: { page?: number; limit?: number; search?: string }): Promise<HistoryResponse> {
+    async getHistory(params?: { limit?: number; page?: number }): Promise<{
+    items: Summary[];
+    total: number;
+  }> {
     const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.set('page', String(params.page));
     if (params?.limit) queryParams.set('limit', String(params.limit));
-    if (params?.search) queryParams.set('search', params.search);
+    if (params?.page) queryParams.set('page', String(params.page));
     const query = queryParams.toString();
-    return request(`/api/history${query ? `?${query}` : ''}`);
+    try {
+      return await request(`/api/history/playlists${query ? `?${query}` : ''}`);
+    } catch (error) {
+      console.warn('Playlist history not available');
+      return { items: [], total: 0 };
+    }
   },
 
-  async deleteSummary(summaryId: number): Promise<{ success: boolean }> {
-    return request(`/api/history/${summaryId}`, { method: 'DELETE' });
-  },
-};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 💬 CHAT API
