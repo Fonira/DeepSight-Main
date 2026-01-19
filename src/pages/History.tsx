@@ -1481,7 +1481,7 @@ const PlaylistDetailView: React.FC<{
   const [expandedVideoId, setExpandedVideoId] = useState<string | null>(null);
   const [metaExpanded, setMetaExpanded] = useState(false);  // 🆕 État pour expand méta-analyse
 
-  // 🆕 États pour la toolbar (Copy, Cite, Study, Keywords, Listen, Export)
+  // 🆕 États pour la toolbar vidéo (Copy, Cite, Study, Keywords, Listen, Export)
   const [copied, setCopied] = useState(false);
   const [showCitationModal, setShowCitationModal] = useState(false);
   const [showStudyToolsModal, setShowStudyToolsModal] = useState(false);
@@ -1490,12 +1490,49 @@ const PlaylistDetailView: React.FC<{
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  // 🆕 Handler: Copy
+  // 🆕 États pour la toolbar méta-analyse
+  const [metaCopied, setMetaCopied] = useState(false);
+  const [metaShowExportMenu, setMetaShowExportMenu] = useState(false);
+  const [metaExporting, setMetaExporting] = useState(false);
+
+  // 🆕 Handler: Copy vidéo
   const handleCopy = async () => {
     if (!selectedVideo?.summary_content) return;
     await navigator.clipboard.writeText(selectedVideo.summary_content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // 🆕 Handler: Copy méta-analyse
+  const handleMetaCopy = async () => {
+    if (!playlist.meta_analysis) return;
+    await navigator.clipboard.writeText(playlist.meta_analysis);
+    setMetaCopied(true);
+    setTimeout(() => setMetaCopied(false), 2000);
+  };
+
+  // 🆕 Handler: Export méta-analyse
+  const handleMetaExport = async (format: 'md' | 'txt') => {
+    if (!playlist.meta_analysis) return;
+    setMetaExporting(true);
+    setMetaShowExportMenu(false);
+
+    try {
+      const content = playlist.meta_analysis;
+      const blob = new Blob([content], { type: format === 'md' ? 'text/markdown' : 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `meta-analyse-${playlist.playlist_title.replace(/[^a-z0-9]/gi, '_').substring(0, 30)}.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export error:', err);
+    } finally {
+      setMetaExporting(false);
+    }
   };
 
   // 🆕 Handler: Export
@@ -2082,8 +2119,65 @@ const PlaylistDetailView: React.FC<{
             </p>
           </div>
           
+          {/* 🆕 Toolbar Méta-analyse - affiché quand expanded */}
+          {metaExpanded && (
+            <div className="p-4 border-b border-purple-500/20 bg-purple-50/50 dark:bg-purple-900/10 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-sm text-purple-600 dark:text-purple-400 font-medium">
+                {language === 'fr' ? 'Outils de synthèse' : 'Synthesis tools'}
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Copy */}
+                <button
+                  onClick={handleMetaCopy}
+                  className="btn btn-ghost text-xs"
+                >
+                  {metaCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                  {metaCopied ? (language === 'fr' ? 'Copié' : 'Copied') : (language === 'fr' ? 'Copier' : 'Copy')}
+                </button>
+
+                {/* Export */}
+                <div className="relative">
+                  <button
+                    onClick={() => setMetaShowExportMenu(!metaShowExportMenu)}
+                    className="btn btn-ghost text-xs"
+                    disabled={metaExporting}
+                  >
+                    {metaExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    Export
+                    <ChevronDown className="w-3 h-3" />
+                  </button>
+                  {metaShowExportMenu && (
+                    <div className="absolute right-0 top-full mt-1 w-40 bg-bg-elevated border border-border-default rounded-lg shadow-lg z-10 py-1">
+                      <button
+                        onClick={() => handleMetaExport('md')}
+                        className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                      >
+                        <FileDown className="w-4 h-4" /> Markdown
+                      </button>
+                      <button
+                        onClick={() => handleMetaExport('txt')}
+                        className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" /> Texte
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Chat Corpus */}
+                <button
+                  onClick={onChat}
+                  className="btn btn-primary text-xs"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  {language === 'fr' ? 'Chat Corpus' : 'Corpus Chat'}
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Contenu de la méta-analyse - EXPANDABLE */}
-          <div 
+          <div
             className={`transition-all duration-500 ease-in-out overflow-hidden ${
               metaExpanded ? 'max-h-[5000px] opacity-100' : 'max-h-40 opacity-90'
             }`}
