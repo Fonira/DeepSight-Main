@@ -665,33 +665,46 @@ export const PlaylistPage: React.FC = () => {
 
                 {/* Actions après complétion */}
                 {isCompleted && (
-                  <div className="mt-4 pt-4 border-t border-border-subtle flex items-center gap-3">
-                    <button
-                      onClick={() => {
-                        const pid = (progress as ExtendedPlaylistTaskStatus).result?.playlist_id ||
-                                   (progress as ExtendedPlaylistTaskStatus).playlist_id;
-                        if (pid) {
-                          navigate(`/history?playlist=${pid}`);
-                        } else {
-                          navigate('/history');
-                        }
-                      }}
-                      className="btn btn-primary"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      {language === 'fr' ? 'Voir les synthèses' : 'View summaries'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setProgress(null);
-                        setDisplayPercent(0);
-                        localStorage.removeItem('deepsight_last_playlist');
-                      }}
-                      className="btn btn-ghost text-text-muted"
-                    >
-                      <X className="w-4 h-4" />
-                      {language === 'fr' ? 'Fermer' : 'Close'}
-                    </button>
+                  <div className="mt-4 pt-4 border-t border-border-subtle">
+                    {/* Message de succès */}
+                    <div className="mb-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                      <p className="text-green-400 text-sm">
+                        {language === 'fr'
+                          ? `✅ Analyse terminée ! ${(progress as ExtendedPlaylistTaskStatus).result?.num_videos || totalVideos} vidéos analysées avec succès.`
+                          : `✅ Analysis complete! ${(progress as ExtendedPlaylistTaskStatus).result?.num_videos || totalVideos} videos analyzed successfully.`}
+                      </p>
+                    </div>
+
+                    {/* Boutons d'action */}
+                    <div className="flex flex-wrap items-center gap-3">
+                      <button
+                        onClick={() => {
+                          const pid = (progress as ExtendedPlaylistTaskStatus).result?.playlist_id ||
+                                     (progress as ExtendedPlaylistTaskStatus).playlist_id;
+                          if (pid) {
+                            navigate(`/history?playlist=${pid}`);
+                          } else {
+                            navigate('/history');
+                          }
+                        }}
+                        className="btn btn-primary"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        {language === 'fr' ? 'Voir les détails & outils' : 'View details & tools'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setProgress(null);
+                          setDisplayPercent(0);
+                          setSmartInput({ mode: 'url', searchLanguages: ['fr', 'en'] });
+                          localStorage.removeItem('deepsight_last_playlist');
+                        }}
+                        className="btn btn-secondary"
+                      >
+                        <Rocket className="w-4 h-4" />
+                        {language === 'fr' ? 'Nouvelle analyse' : 'New analysis'}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
