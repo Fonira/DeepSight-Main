@@ -1,15 +1,14 @@
 /**
- * 🎬 DEEP SIGHT v5.0 — Playlist Page
- * Création de playlists intelligentes par URL ou recherche
+ * 🎬 DEEP SIGHT v5.2 — Playlist Page avec PROGRESSION DYNAMIQUE + ESTIMATION TEMPS
  * 
- * ✨ FONCTIONNALITÉS:
- * - 🔗 URL YouTube Playlist → Analyse multiple
- * - 🔍 Recherche intelligente → Création de corpus personnalisé
- * - 📊 Slider 2-20 vidéos pour le mode recherche
- * - 🌻 Scoring qualité + Tournesol
+ * ✨ FIX v5.2:
+ * - Support de progress ET progress_percent
+ * - Animation fluide du pourcentage
+ * - Estimation du temps restant
+ * - Messages d'étape dynamiques
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
@@ -23,7 +22,8 @@ import {
   ListVideo, Play, Loader2, AlertCircle, Clock, 
   ChevronRight, Zap, Crown, Lock, ExternalLink, CheckCircle,
   RefreshCw, History, Settings2, Search, Sparkles, X,
-  ListPlus, GraduationCap, TrendingUp
+  ListPlus, GraduationCap, TrendingUp, FileText, Save, BarChart3,
+  Timer
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -37,6 +37,68 @@ interface PlaylistHistoryItem {
   analyzed_count: number;
   created_at: string;
   thumbnail_url?: string;
+}
+
+// Type étendu pour la progression
+interface ExtendedPlaylistTaskStatus extends PlaylistTaskStatus {
+  progress_percent?: number;
+  completed_videos?: number;
+  current_step?: string;
+  playlist_id?: string;
+  playlist_title?: string;
+  estimated_time_remaining?: string;
+  result?: {
+    playlist_id?: string;
+    num_videos?: number;
+    total_duration?: number;
+    total_words?: number;
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════════
+
+function getProgressPercent(status: ExtendedPlaylistTaskStatus | null): number {
+  if (!status) return 0;
+  return status.progress_percent ?? status.progress ?? 0;
+}
+
+function getCompletedVideos(status: ExtendedPlaylistTaskStatus | null): number {
+  if (!status) return 0;
+  return status.completed_videos ?? Math.max(0, (status.current_video ?? 1) - 1);
+}
+
+// Estimation du temps pour l'affichage initial
+function estimatePlaylistTime(videoCount: number, language: string): string {
+  // Estimation: ~1-3 min par vidéo (moyenne 2 min)
+  const minMinutes = videoCount;
+  const maxMinutes = videoCount * 3;
+  
+  if (language === 'fr') {
+    if (videoCount <= 3) return "⏱️ Estimation : quelques minutes";
+    if (videoCount <= 10) return `⏱️ Estimation : ${minMinutes}-${maxMinutes} minutes`;
+    if (videoCount <= 20) return `⏱️ Estimation : ${minMinutes}-${maxMinutes} minutes (~${Math.round(maxMinutes/60*10)/10}h max)`;
+    return `⏱️ Estimation : ${Math.round(minMinutes/60*10)/10}-${Math.round(maxMinutes/60*10)/10} heures`;
+  } else {
+    if (videoCount <= 3) return "⏱️ Estimate: a few minutes";
+    if (videoCount <= 10) return `⏱️ Estimate: ${minMinutes}-${maxMinutes} minutes`;
+    if (videoCount <= 20) return `⏱️ Estimate: ${minMinutes}-${maxMinutes} minutes (~${Math.round(maxMinutes/60*10)/10}h max)`;
+    return `⏱️ Estimate: ${Math.round(minMinutes/60*10)/10}-${Math.round(maxMinutes/60*10)/10} hours`;
+  }
+}
+
+function getStepIcon(step: string) {
+  switch (step) {
+    case 'fetching': return <Play className="w-4 h-4" />;
+    case 'transcript': return <FileText className="w-4 h-4" />;
+    case 'category': return <BarChart3 className="w-4 h-4" />;
+    case 'summary': return <Sparkles className="w-4 h-4 animate-pulse" />;
+    case 'saving': return <Save className="w-4 h-4" />;
+    case 'meta': return <Sparkles className="w-4 h-4 animate-pulse" />;
+    case 'done': return <CheckCircle className="w-4 h-4" />;
+    default: return <Loader2 className="w-4 h-4 animate-spin" />;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -71,9 +133,13 @@ export const PlaylistPage: React.FC = () => {
   // Analysis State
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState<PlaylistTaskStatus | null>(null);
+  const [progress, setProgress] = useState<ExtendedPlaylistTaskStatus | null>(null);
   
-  // Discovery State (for search mode)
+  // Animation du pourcentage
+  const [displayPercent, setDisplayPercent] = useState(0);
+  const targetPercent = getProgressPercent(progress);
+  
+  // Discovery State
   const [discoveryResult, setDiscoveryResult] = useState<DiscoveryResponse | null>(null);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [selectedVideos, setSelectedVideos] = useState<VideoCandidate[]>([]);
@@ -83,8 +149,8 @@ export const PlaylistPage: React.FC = () => {
   const [loadingHistory, setLoadingHistory] = useState(true);
   
   // Options
-  const [videoCount, setVideoCount] = useState(5); // For search mode: 2-20
-  const [maxVideos, setMaxVideos] = useState(10);  // For URL mode
+  const [videoCount, setVideoCount] = useState(5);
+  const [maxVideos, setMaxVideos] = useState(10);
   const [mode, setMode] = useState<'accessible' | 'standard' | 'expert'>('standard');
 
   // User info
@@ -92,10 +158,31 @@ export const PlaylistPage: React.FC = () => {
   const userCredits = user?.credits || 0;
   
   // ═══════════════════════════════════════════════════════════════════
+  // ANIMATION DU POURCENTAGE
+  // ═══════════════════════════════════════════════════════════════════
+  
+  useEffect(() => {
+    if (displayPercent < targetPercent) {
+      const step = Math.max(1, Math.ceil((targetPercent - displayPercent) / 8));
+      const timer = setTimeout(() => {
+        setDisplayPercent(prev => Math.min(prev + step, targetPercent));
+      }, 50);
+      return () => clearTimeout(timer);
+    } else if (displayPercent > targetPercent) {
+      setDisplayPercent(targetPercent);
+    }
+  }, [targetPercent, displayPercent]);
+  
+  useEffect(() => {
+    if (!progress) {
+      setDisplayPercent(0);
+    }
+  }, [progress]);
+  
+  // ═══════════════════════════════════════════════════════════════════
   // EFFECTS
   // ═══════════════════════════════════════════════════════════════════
   
-  // Load history
   const loadHistory = useCallback(async () => {
     try {
       setLoadingHistory(true);
@@ -108,14 +195,13 @@ export const PlaylistPage: React.FC = () => {
     }
   }, []);
 
-  // Charger l'historique pour TOUS les utilisateurs authentifiés
   useEffect(() => {
     if (user) {
       loadHistory();
     }
   }, [user, loadHistory]);
   
-  // === PERSISTANCE: Sauvegarder le dernier résultat de playlist ===
+  // Persistance
   useEffect(() => {
     if (progress && progress.status === 'completed') {
       try {
@@ -129,15 +215,12 @@ export const PlaylistPage: React.FC = () => {
     }
   }, [progress]);
   
-  // === PERSISTANCE: Restaurer le dernier résultat au démarrage ===
   useEffect(() => {
-    // Ne restaurer que si pas déjà en analyse et pas de résultat
     if (!analyzing && !progress) {
       try {
         const saved = localStorage.getItem('deepsight_last_playlist');
         if (saved) {
           const parsed = JSON.parse(saved);
-          // Vérifier que c'est un résultat valide et pas trop vieux (< 24h)
           const isRecent = parsed.savedAt && (Date.now() - parsed.savedAt) < 24 * 60 * 60 * 1000;
           if (parsed && parsed.status === 'completed' && isRecent) {
             setProgress(parsed);
@@ -147,25 +230,23 @@ export const PlaylistPage: React.FC = () => {
         console.warn('Failed to restore playlist result');
       }
     }
-  }, []); // Seulement au montage
+  }, []);
   
   // ═══════════════════════════════════════════════════════════════════
   // HANDLERS
   // ═══════════════════════════════════════════════════════════════════
   
-  // Main submit handler
   const handleSubmit = async () => {
     setError(null);
     setProgress(null);
+    setDisplayPercent(0);
     
-    // SEARCH MODE: Launch discovery
     if (smartInput.mode === 'search') {
       if (!smartInput.searchQuery?.trim()) return;
       
       setAnalyzing(true);
       
       try {
-        
         const discovery = await videoApi.discover(
           smartInput.searchQuery,
           {
@@ -190,7 +271,6 @@ export const PlaylistPage: React.FC = () => {
       return;
     }
     
-    // URL MODE: Direct playlist analysis
     if (smartInput.mode === 'url' && smartInput.url?.trim()) {
       const playlistId = extractPlaylistId(smartInput.url);
       if (!playlistId) {
@@ -204,17 +284,16 @@ export const PlaylistPage: React.FC = () => {
     }
   };
   
-  // Extract playlist ID from URL
   const extractPlaylistId = (url: string): string | null => {
     const match = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
     return match ? match[1] : null;
   };
   
-  // Analyze playlist by URL
   const analyzePlaylist = async (url: string) => {
     setAnalyzing(true);
     setError(null);
     setProgress(null);
+    setDisplayPercent(0);
     
     try {
       const task = await playlistApi.analyze(url, {
@@ -223,7 +302,6 @@ export const PlaylistPage: React.FC = () => {
         lang: language
       });
       
-      // Start polling
       await pollPlaylistTask(task.task_id);
       
     } catch (err) {
@@ -235,7 +313,6 @@ export const PlaylistPage: React.FC = () => {
     }
   };
   
-  // Analyze selected videos from discovery - CRÉER UN CORPUS
   const handleSelectVideos = async (videos: VideoCandidate[]) => {
     setShowDiscoveryModal(false);
     setSelectedVideos(videos);
@@ -245,28 +322,23 @@ export const PlaylistPage: React.FC = () => {
     setAnalyzing(true);
     setError(null);
     setProgress(null);
+    setDisplayPercent(0);
     
     try {
-      // Construire les URLs des vidéos sélectionnées
       const urls = videos.map(v => `https://youtube.com/watch?v=${v.video_id}`);
       
-      // Créer un nom de corpus basé sur la recherche
       const corpusName = smartInput.searchQuery 
         ? `Corpus: ${smartInput.searchQuery.substring(0, 50)}`
         : (language === 'fr' ? 'Corpus personnalisé' : 'Custom Corpus');
       
-      
-      // Lancer l'analyse du corpus via l'API
       const task = await playlistApi.analyzeCorpus(urls, {
         name: corpusName,
         mode,
         lang: language
       });
       
-      // Suivre la progression
       await pollPlaylistTask(task.task_id);
       
-      // Sauvegarder le dernier corpus analysé
       localStorage.setItem('deepsight_last_corpus', JSON.stringify({
         name: corpusName,
         videoCount: videos.length,
@@ -282,14 +354,14 @@ export const PlaylistPage: React.FC = () => {
     }
   };
   
-  // Poll playlist task status
+  // Polling plus fréquent (2s)
   const pollPlaylistTask = async (taskId: string) => {
-    const maxAttempts = 120;
+    const maxAttempts = 180;
     let attempts = 0;
     
     while (attempts < maxAttempts) {
       try {
-        const status = await playlistApi.getStatus(taskId);
+        const status = await playlistApi.getStatus(taskId) as ExtendedPlaylistTaskStatus;
         setProgress(status);
         
         if (status.status === 'completed') {
@@ -302,7 +374,7 @@ export const PlaylistPage: React.FC = () => {
           throw new Error(status.error || 'Analysis failed');
         }
         
-        await new Promise(r => setTimeout(r, 3000));
+        await new Promise(r => setTimeout(r, 2000));
         attempts++;
         
       } catch (err) {
@@ -313,236 +385,125 @@ export const PlaylistPage: React.FC = () => {
     throw new Error('Timeout');
   };
   
-  // Navigate to video analysis
   const navigateToAnalysis = (summaryId: number) => {
     navigate(`/dashboard?id=${summaryId}`);
   };
   
   // ═══════════════════════════════════════════════════════════════════
-  // COMPUTED
+  // RENDER
   // ═══════════════════════════════════════════════════════════════════
   
-  const isSearchMode = smartInput.mode === 'search';
-  const isUrlMode = smartInput.mode === 'url';
   const playlistId = smartInput.url ? extractPlaylistId(smartInput.url) : null;
-  
-  // Credit estimation
-  const estimatedCredits = isSearchMode ? videoCount : maxVideos;
-  const hasEnoughCredits = userCredits >= estimatedCredits;
-  
-  // ═══════════════════════════════════════════════════════════════════
-  // RENDER: Non-Pro users
-  // ═══════════════════════════════════════════════════════════════════
-  
-  if (!isProUser) {
-    return (
-      <div className="min-h-screen bg-bg-primary relative">
-        <DoodleBackground variant="default" density={50} />
-        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        
-        <main className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
-          <div className="min-h-screen flex items-center justify-center p-6">
-            <div className="text-center max-w-md">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-600/20 flex items-center justify-center mx-auto mb-6">
-                <Lock className="w-10 h-10 text-amber-500" />
-              </div>
-              <h2 className="font-display text-2xl text-text-primary mb-3">
-                {language === 'fr' ? 'Fonctionnalité Pro' : 'Pro Feature'}
-              </h2>
-              <p className="text-text-secondary mb-6">
-                {language === 'fr'
-                  ? 'L\'analyse de playlists et la création de corpus sont réservées aux utilisateurs Pro et Expert.'
-                  : 'Playlist analysis and corpus creation are reserved for Pro and Expert users.'}
-              </p>
-              <button
-                onClick={() => navigate('/upgrade')}
-                className="btn btn-accent px-8 py-3"
-              >
-                <Crown className="w-5 h-5" />
-                {language === 'fr' ? 'Passer à Pro' : 'Upgrade to Pro'}
-              </button>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-  
-  // ═══════════════════════════════════════════════════════════════════
-  // RENDER: Main
-  // ═══════════════════════════════════════════════════════════════════
-  
+  const completedVideos = getCompletedVideos(progress);
+  const totalVideos = progress?.total_videos || 0;
+  const currentStep = (progress as ExtendedPlaylistTaskStatus)?.current_step || '';
+  const estimatedTime = (progress as ExtendedPlaylistTaskStatus)?.estimated_time_remaining;
+  const isProcessing = progress?.status === 'processing' || progress?.status === 'pending';
+  const isCompleted = progress?.status === 'completed';
+
   return (
-    <div className="min-h-screen bg-bg-primary relative">
-      <DoodleBackground variant="default" density={50} />
+    <div className="flex min-h-screen bg-bg-primary">
+      <DoodleBackground />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       
-      <main className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
-        <div className="min-h-screen p-6 lg:p-8">
-          <div className="max-w-4xl mx-auto">
-            
-            {/* ═══════════════════════════════════════════════════════════════ */}
-            {/* HEADER */}
-            {/* ═══════════════════════════════════════════════════════════════ */}
-            
-            <header className="mb-8">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                  <ListVideo className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h1 className="font-display text-2xl text-text-primary">
-                    {language === 'fr' ? 'Analyse de corpus' : 'Corpus Analysis'}
-                  </h1>
-                  <p className="text-text-secondary text-sm">
-                    {language === 'fr' 
-                      ? 'Playlist YouTube ou recherche intelligente de vidéos'
-                      : 'YouTube playlist or intelligent video search'}
-                  </p>
-                </div>
+      <main className="flex-1 overflow-x-hidden">
+        <div className="container max-w-4xl mx-auto px-4 py-8">
+          
+          {/* HEADER */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                <Sparkles className="w-6 h-6 text-white" />
               </div>
-            </header>
-
-            {/* ═══════════════════════════════════════════════════════════════ */}
-            {/* SMART INPUT */}
-            {/* ═══════════════════════════════════════════════════════════════ */}
+              <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
+                {language === 'fr' ? 'Analyse de corpus' : 'Corpus Analysis'}
+              </h1>
+            </div>
+            <p className="text-text-secondary">
+              {language === 'fr' 
+                ? 'Playlist YouTube ou recherche intelligente de vidéos'
+                : 'YouTube playlist or intelligent video search'}
+            </p>
+          </div>
+          
+          <div className="space-y-6">
             
-            <div className="card p-6 mb-6">
+            {/* INPUT BAR */}
+            <div className="card p-6">
               <SmartInputBar
                 value={smartInput}
                 onChange={setSmartInput}
                 onSubmit={handleSubmit}
                 loading={analyzing}
-                disabled={analyzing}
-                userCredits={userCredits}
-                language={language as 'fr' | 'en'}
-                showLanguageSelector={true}
+                creditsRemaining={userCredits}
+                placeholder={
+                  smartInput.mode === 'url'
+                    ? "https://www.youtube.com/playlist?list=..."
+                    : (language === 'fr' ? "Rechercher des vidéos..." : "Search for videos...")
+                }
               />
               
-              {/* Options Panel */}
-              <div className="mt-4 pt-4 border-t border-border-subtle">
+              {/* Options */}
+              <div className="mt-4 flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-text-muted">MAX VIDÉOS</span>
+                  <select 
+                    value={maxVideos}
+                    onChange={(e) => setMaxVideos(Number(e.target.value))}
+                    className="bg-bg-tertiary border border-border-subtle rounded px-2 py-1 text-sm"
+                  >
+                    {[5, 10, 15, 20, 30, 50].map(n => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                </div>
                 
-                {/* Search Mode: Video Count Slider */}
-                {isSearchMode && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-text-primary flex items-center gap-2">
-                        <ListPlus className="w-4 h-4 text-violet-400" />
-                        {language === 'fr' ? 'Nombre de vidéos à analyser' : 'Number of videos to analyze'}
-                      </label>
-                      <span className="text-lg font-bold text-violet-400">{videoCount}</span>
-                    </div>
-                    
-                    <div className="relative">
-                      <input
-                        type="range"
-                        min="2"
-                        max="20"
-                        value={videoCount}
-                        onChange={(e) => setVideoCount(parseInt(e.target.value))}
-                        className="w-full h-2 bg-bg-tertiary rounded-lg appearance-none cursor-pointer accent-violet-500"
-                        style={{
-                          background: `linear-gradient(to right, rgb(139, 92, 246) 0%, rgb(139, 92, 246) ${((videoCount - 2) / 18) * 100}%, rgb(55, 65, 81) ${((videoCount - 2) / 18) * 100}%, rgb(55, 65, 81) 100%)`
-                        }}
-                      />
-                      {/* All numbers from 2 to 20 */}
-                      <div className="flex justify-between text-xs text-text-muted mt-1 px-0.5">
-                        {Array.from({ length: 19 }, (_, i) => i + 2).map((n) => (
-                          <span 
-                            key={n} 
-                            className={`cursor-pointer hover:text-violet-400 transition-colors ${n === videoCount ? 'text-violet-400 font-bold' : ''}`}
-                            onClick={() => setVideoCount(n)}
-                          >
-                            {n}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* Credit estimation */}
-                    <div className={`flex items-center gap-2 text-sm ${hasEnoughCredits ? 'text-text-secondary' : 'text-red-400'}`}>
-                      <Zap className="w-4 h-4" />
-                      <span>
-                        {language === 'fr' 
-                          ? `Coût estimé: ${videoCount} crédits`
-                          : `Estimated cost: ${videoCount} credits`}
-                      </span>
-                      {!hasEnoughCredits && (
-                        <span className="text-red-400">
-                          ({language === 'fr' ? 'crédits insuffisants' : 'insufficient credits'})
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                
-                {/* URL Mode: Max Videos Selector */}
-                {isUrlMode && (
-                  <div className="flex flex-wrap items-center gap-4">
-                    {/* Max Videos */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-text-tertiary uppercase tracking-wider font-medium">
-                        {language === 'fr' ? 'Max vidéos' : 'Max videos'}
-                      </span>
-                      <select
-                        value={maxVideos}
-                        onChange={(e) => setMaxVideos(parseInt(e.target.value))}
-                        className="bg-bg-tertiary border border-border-default rounded-lg px-3 py-1.5 text-sm text-text-primary cursor-pointer"
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-text-muted">MODE</span>
+                  <div className="flex gap-1">
+                    {MODES.map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => setMode(m.id)}
+                        className={`px-3 py-1 rounded text-sm transition-colors ${
+                          mode === m.id 
+                            ? 'bg-accent-primary text-white' 
+                            : 'bg-bg-tertiary text-text-secondary hover:bg-bg-secondary'
+                        }`}
                       >
-                        {[5, 10, 15, 20, 30, 50].map(n => (
-                          <option key={n} value={n}>{n}</option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    {/* Mode */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-text-tertiary uppercase tracking-wider font-medium">Mode</span>
-                      <div className="flex rounded-lg bg-bg-tertiary p-1">
-                        {MODES.map((m) => (
-                          <button
-                            key={m.id}
-                            onClick={() => setMode(m.id)}
-                            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                              mode === m.id
-                                ? 'bg-bg-elevated text-text-primary shadow-sm'
-                                : 'text-text-tertiary hover:text-text-secondary'
-                            }`}
-                            title={m.desc[language]}
-                          >
-                            {m.name[language]}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    {/* URL Validation */}
-                    {smartInput.url && (
-                      <div className={`flex items-center gap-2 text-sm ${playlistId ? 'text-green-500' : 'text-amber-500'}`}>
-                        {playlistId ? (
-                          <>
-                            <CheckCircle className="w-4 h-4" />
-                            <span>Playlist: {playlistId.substring(0, 15)}...</span>
-                          </>
-                        ) : (
-                          <>
-                            <AlertCircle className="w-4 h-4" />
-                            <span>{language === 'fr' ? 'URL playlist invalide' : 'Invalid playlist URL'}</span>
-                          </>
-                        )}
-                      </div>
-                    )}
+                        {m.name[language as 'fr' | 'en']}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                {smartInput.mode === 'url' && playlistId && (
+                  <div className="flex items-center gap-2 text-sm text-green-400">
+                    <CheckCircle className="w-4 h-4" />
+                    <span>Playlist: {playlistId.substring(0, 15)}...</span>
                   </div>
                 )}
               </div>
+              
+              {/* 🆕 ESTIMATION DE TEMPS - Avant de lancer */}
+              {smartInput.mode === 'url' && playlistId && !analyzing && !progress && (
+                <div className="mt-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                  <div className="flex items-center gap-2 text-amber-400 text-sm">
+                    <Timer className="w-4 h-4" />
+                    <span>{estimatePlaylistTime(maxVideos, language)}</span>
+                  </div>
+                  <p className="text-xs text-text-muted mt-1">
+                    {language === 'fr' 
+                      ? "Les vidéos longues et les grandes playlists peuvent prendre plusieurs dizaines de minutes."
+                      : "Long videos and large playlists may take several tens of minutes."}
+                  </p>
+                </div>
+              )}
             </div>
-
-            {/* ═══════════════════════════════════════════════════════════════ */}
-            {/* ERROR MESSAGE */}
-            {/* ═══════════════════════════════════════════════════════════════ */}
             
+            {/* ERROR */}
             {error && (
-              <div className="card p-4 mb-6 border-red-500/30 bg-red-500/10">
+              <div className="card p-4 border-red-500/30 bg-red-500/10">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
@@ -554,54 +515,107 @@ export const PlaylistPage: React.FC = () => {
                 </div>
               </div>
             )}
-
+            
             {/* ═══════════════════════════════════════════════════════════════ */}
-            {/* PROGRESS */}
+            {/* PROGRESS CARD AMÉLIORÉE */}
             {/* ═══════════════════════════════════════════════════════════════ */}
             
             {progress && (
-              <div className="card p-6 mb-6">
+              <div className={`card p-6 transition-all duration-300 ${
+                isCompleted ? 'border-green-500/30 bg-green-500/5' : 'border-violet-500/30'
+              }`}>
                 <div className="flex items-center gap-4 mb-4">
-                  {progress.status === 'completed' ? (
-                    <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
-                      <CheckCircle className="w-6 h-6 text-green-400" />
-                    </div>
-                  ) : (
-                    <div className="w-12 h-12 rounded-full bg-violet-500/20 flex items-center justify-center">
-                      <Loader2 className="w-6 h-6 text-violet-400 animate-spin" />
-                    </div>
-                  )}
-                  
-                  <div className="flex-1">
-                    <h3 className="font-medium text-text-primary">
-                      {progress.playlist_title || (language === 'fr' ? 'Analyse en cours...' : 'Analyzing...')}
-                    </h3>
-                    <p className="text-sm text-text-secondary">
-                      {progress.current_video || `${progress.completed_videos || 0}/${progress.total_videos || 0} vidéos`}
-                    </p>
+                  {/* Icône */}
+                  <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                    isCompleted ? 'bg-green-500/20' : 'bg-violet-500/20'
+                  }`}>
+                    {isCompleted ? (
+                      <CheckCircle className="w-7 h-7 text-green-400" />
+                    ) : (
+                      <Loader2 className="w-7 h-7 text-violet-400 animate-spin" />
+                    )}
                   </div>
                   
-                  <span className="text-2xl font-bold text-violet-400">
-                    {progress.progress_percent || 0}%
-                  </span>
+                  {/* Titre et message */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-text-primary truncate">
+                      {(progress as ExtendedPlaylistTaskStatus).playlist_title || 
+                       (language === 'fr' ? 'Analyse en cours...' : 'Analyzing...')}
+                    </h3>
+                    <div className="flex items-center gap-2 text-sm text-text-secondary">
+                      {isProcessing && getStepIcon(currentStep)}
+                      <span className="truncate">
+                        {progress.message || `${completedVideos}/${totalVideos} vidéos`}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Pourcentage */}
+                  <div className="text-right">
+                    <span className={`text-3xl font-bold tabular-nums transition-colors ${
+                      isCompleted ? 'text-green-400' : 'text-violet-400'
+                    }`}>
+                      {displayPercent}%
+                    </span>
+                    {totalVideos > 0 && (
+                      <p className="text-xs text-text-muted">
+                        {completedVideos}/{totalVideos} {language === 'fr' ? 'vidéos' : 'videos'}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 
-                {/* Progress Bar */}
-                <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
+                {/* Barre de progression */}
+                <div className="relative h-3 bg-bg-tertiary rounded-full overflow-hidden">
+                  {isProcessing && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-purple-500/20 to-violet-500/10 animate-pulse" />
+                  )}
                   <div 
-                    className="h-full bg-gradient-to-r from-violet-500 to-purple-600 transition-all duration-500"
-                    style={{ width: `${progress.progress_percent || 0}%` }}
-                  />
+                    className={`h-full rounded-full transition-all duration-500 ease-out relative overflow-hidden ${
+                      isCompleted 
+                        ? 'bg-gradient-to-r from-green-500 to-emerald-400' 
+                        : 'bg-gradient-to-r from-violet-600 via-purple-500 to-violet-600'
+                    }`}
+                    style={{ width: `${displayPercent}%` }}
+                  >
+                    {isProcessing && (
+                      <div 
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                        style={{ animation: 'shimmer 2s infinite' }}
+                      />
+                    )}
+                  </div>
                 </div>
                 
-                {progress.status === 'completed' && (
+                {/* 🆕 ESTIMATION TEMPS RESTANT */}
+                {isProcessing && estimatedTime && (
+                  <div className="mt-3 flex items-center gap-2 text-xs text-text-muted">
+                    <Timer className="w-3 h-3" />
+                    <span>
+                      {language === 'fr' ? 'Temps restant estimé : ' : 'Estimated time remaining: '}
+                      {estimatedTime}
+                    </span>
+                  </div>
+                )}
+                
+                {/* 🆕 RAPPEL POUR LONGUES PLAYLISTS */}
+                {isProcessing && totalVideos > 5 && displayPercent < 50 && (
+                  <div className="mt-3 p-2 bg-amber-500/10 rounded text-xs text-amber-400">
+                    {language === 'fr' 
+                      ? "💡 Les playlists avec de longues vidéos peuvent prendre plusieurs minutes. Vous pouvez laisser cette page ouverte."
+                      : "💡 Playlists with long videos may take several minutes. You can leave this page open."}
+                  </div>
+                )}
+                
+                {/* Actions après complétion */}
+                {isCompleted && (
                   <div className="mt-4 pt-4 border-t border-border-subtle flex items-center gap-3">
                     <button
                       onClick={() => {
-                        // Naviguer vers les résultats de la playlist
-                        const playlistId = progress.result?.playlist_id || progress.playlist_id;
-                        if (playlistId) {
-                          navigate(`/history?playlist=${playlistId}`);
+                        const pid = (progress as ExtendedPlaylistTaskStatus).result?.playlist_id || 
+                                   (progress as ExtendedPlaylistTaskStatus).playlist_id;
+                        if (pid) {
+                          navigate(`/history?playlist=${pid}`);
                         } else {
                           navigate('/history');
                         }
@@ -614,6 +628,7 @@ export const PlaylistPage: React.FC = () => {
                     <button
                       onClick={() => {
                         setProgress(null);
+                        setDisplayPercent(0);
                         localStorage.removeItem('deepsight_last_playlist');
                       }}
                       className="btn btn-ghost text-text-muted"
@@ -625,11 +640,8 @@ export const PlaylistPage: React.FC = () => {
                 )}
               </div>
             )}
-
-            {/* ═══════════════════════════════════════════════════════════════ */}
-            {/* HISTORY */}
-            {/* ═══════════════════════════════════════════════════════════════ */}
             
+            {/* HISTORY */}
             {!analyzing && !progress && (
               <div className="card">
                 <div className="p-4 border-b border-border-subtle flex items-center justify-between">
@@ -698,10 +710,7 @@ export const PlaylistPage: React.FC = () => {
         </div>
       </main>
 
-      {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* DISCOVERY MODAL */}
-      {/* ═══════════════════════════════════════════════════════════════════ */}
-      
       <VideoDiscoveryModal
         isOpen={showDiscoveryModal}
         onClose={() => setShowDiscoveryModal(false)}
@@ -712,9 +721,17 @@ export const PlaylistPage: React.FC = () => {
         userCredits={userCredits}
         allowMultiple={true}
         maxSelection={videoCount}
-        preSelectTop={videoCount}  // 🆕 Pre-select top videos automatically
+        preSelectTop={videoCount}
         language={language as 'fr' | 'en'}
       />
+      
+      {/* CSS shimmer */}
+      <style>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
     </div>
   );
 };
