@@ -1740,12 +1740,12 @@ const PlaylistDetailView: React.FC<{
           </div>
 
           {/* 🎙️ Lecteur Audio TTS */}
-          {showAudioPlayer && (
+          {showAudioPlayer && selectedVideo && selectedVideo.id && (
             <div className="p-4 border-b border-border-subtle animate-fadeIn">
               <AudioPlayer
                 summaryId={selectedVideo.id}
                 title={selectedVideo.video_title || (language === 'fr' ? 'Résumé audio' : 'Audio summary')}
-                language={selectedVideo.lang === 'en' ? 'en' : 'fr'}
+                language={(selectedVideo.lang === 'en' ? 'en' : 'fr') as 'fr' | 'en'}
                 variant="full"
               />
             </div>
@@ -1772,10 +1772,12 @@ const PlaylistDetailView: React.FC<{
         <CitationExport
           isOpen={showCitationModal}
           onClose={() => setShowCitationModal(false)}
-          videoTitle={selectedVideo.video_title}
-          videoChannel={selectedVideo.video_channel}
-          videoUrl={`https://www.youtube.com/watch?v=${selectedVideo.video_id}`}
-          analysisDate={new Date().toISOString()}
+          video={{
+            title: selectedVideo.video_title,
+            channel: selectedVideo.video_channel,
+            videoId: selectedVideo.video_id,
+            duration: selectedVideo.video_duration,
+          }}
           language={language as 'fr' | 'en'}
         />
 
@@ -1788,12 +1790,14 @@ const PlaylistDetailView: React.FC<{
           language={language as 'fr' | 'en'}
         />
 
-        {/* Keywords Modal */}
+        {/* Keywords Modal - Note: concepts to be loaded from API */}
         <KeywordsModal
           isOpen={showKeywordsModal}
           onClose={() => setShowKeywordsModal(false)}
-          summaryId={selectedVideo.id}
           videoTitle={selectedVideo.video_title}
+          tags={[]}
+          concepts={[]}
+          loading={false}
           language={language as 'fr' | 'en'}
         />
 
