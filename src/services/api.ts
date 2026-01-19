@@ -904,7 +904,12 @@ export const playlistApi = {
     if (params?.limit) queryParams.set('limit', String(params.limit));
     if (params?.page) queryParams.set('page', String(params.page));
     const query = queryParams.toString();
-    return request(`/api/playlists/history${query ? `?${query}` : ''}`);
+    try {
+      return await request(`/api/history/playlists${query ? `?${query}` : ''}`);
+    } catch (error) {
+      console.warn('Playlist history not available');
+      return { items: [], total: 0 };
+    }
   },
 };
 
