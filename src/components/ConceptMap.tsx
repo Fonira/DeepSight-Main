@@ -36,6 +36,8 @@ interface ConceptMapData {
   learning_path: string[];
   generated_at?: string;
   source_video?: string;
+  requested_depth?: number;
+  with_details?: boolean;
 }
 
 interface ConceptMapProps {

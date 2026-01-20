@@ -1,19 +1,21 @@
 /**
- * DEEP SIGHT — Study Tools Modal
+ * DEEP SIGHT — Study Tools Modal v2.0
  * Modal combinant fiches de révision et arbres pédagogiques
- * 
+ *
  * FONCTIONNALITÉS:
- * - 🎓 Génération de fiches de révision
- * - 🌳 Génération d'arbres pédagogiques
+ * - 🎓 Génération de fiches de révision avec nombre de questions configurable
+ * - 🌳 Génération d'arbres pédagogiques avec profondeur variable
+ * - 💰 Affichage des coûts en crédits
+ * - 🎯 Génération de questions supplémentaires
  * - 📊 Affichage des résultats
  * - 📥 Export des contenus
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X, Loader2, GraduationCap, GitBranch, Sparkles,
   AlertCircle, BookOpen, Brain, Download, ChevronRight,
-  Zap
+  Zap, Settings, Plus, Minus, Info, Lock, Crown
 } from 'lucide-react';
 import { StudyCard } from './StudyCard';
 import { ConceptMap } from './ConceptMap';
@@ -28,10 +30,24 @@ interface StudyToolsModalProps {
   summaryId: number;
   videoTitle: string;
   language?: 'fr' | 'en';
+  userPlan?: string;
+  userCredits?: number;
+}
+
+interface StudyLimits {
+  quiz_questions: number;
+  mindmap_depth: number;
+  can_generate_more: boolean;
+  daily_limit: number;
+}
+
+interface CostPreview {
+  total: number;
+  breakdown: Record<string, number>;
 }
 
 type ToolType = 'card' | 'mindmap' | 'all';
-type ViewMode = 'select' | 'loading' | 'results';
+type ViewMode = 'select' | 'options' | 'loading' | 'results';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🌐 API
@@ -47,38 +63,100 @@ const getAuthHeaders = () => {
   };
 };
 
-const generateStudyCard = async (summaryId: number) => {
+// Récupérer les limites du plan
+const fetchStudyLimits = async (): Promise<{ limits: StudyLimits }> => {
+  const response = await fetch(`${API_URL}/videos/study/limits`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Erreur lors de la récupération des limites');
+  }
+  return response.json();
+};
+
+// Prévisualiser le coût
+const fetchCostPreview = async (
+  tool: string,
+  questionCount: number,
+  depthLevel: number,
+  withDetails: boolean
+): Promise<{ cost: CostPreview; can_afford: boolean }> => {
+  const params = new URLSearchParams({
+    tool,
+    question_count: questionCount.toString(),
+    depth_level: depthLevel.toString(),
+    with_detailed_concepts: withDetails.toString(),
+  });
+  const response = await fetch(`${API_URL}/videos/study/cost-preview?${params}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Erreur lors du calcul du coût');
+  }
+  return response.json();
+};
+
+const generateStudyCard = async (summaryId: number, questionCount: number) => {
   const response = await fetch(`${API_URL}/videos/study/${summaryId}/card`, {
     method: 'POST',
     headers: getAuthHeaders(),
+    body: JSON.stringify({ question_count: questionCount }),
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Erreur inconnue' }));
-    throw new Error(error.detail || `Erreur ${response.status}`);
+    throw new Error(typeof error.detail === 'string' ? error.detail : error.detail?.message || `Erreur ${response.status}`);
   }
   return response.json();
 };
 
-const generateConceptMap = async (summaryId: number) => {
+const generateConceptMap = async (summaryId: number, depthLevel: number, withDetails: boolean) => {
   const response = await fetch(`${API_URL}/videos/study/${summaryId}/mindmap`, {
     method: 'POST',
     headers: getAuthHeaders(),
+    body: JSON.stringify({ depth_level: depthLevel, with_detailed_concepts: withDetails }),
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Erreur inconnue' }));
-    throw new Error(error.detail || `Erreur ${response.status}`);
+    throw new Error(typeof error.detail === 'string' ? error.detail : error.detail?.message || `Erreur ${response.status}`);
   }
   return response.json();
 };
 
-const generateAllMaterials = async (summaryId: number) => {
+const generateAllMaterials = async (
+  summaryId: number,
+  questionCount: number,
+  depthLevel: number,
+  withDetails: boolean
+) => {
   const response = await fetch(`${API_URL}/videos/study/${summaryId}/all`, {
     method: 'POST',
     headers: getAuthHeaders(),
+    body: JSON.stringify({
+      question_count: questionCount,
+      depth_level: depthLevel,
+      with_detailed_concepts: withDetails,
+    }),
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: 'Erreur inconnue' }));
-    throw new Error(error.detail || `Erreur ${response.status}`);
+    throw new Error(typeof error.detail === 'string' ? error.detail : error.detail?.message || `Erreur ${response.status}`);
+  }
+  return response.json();
+};
+
+const generateAdditionalQuestions = async (
+  summaryId: number,
+  existingQuestions: any[],
+  count: number
+) => {
+  const response = await fetch(`${API_URL}/videos/study/${summaryId}/additional-questions`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ existing_questions: existingQuestions, count }),
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Erreur inconnue' }));
+    throw new Error(typeof error.detail === 'string' ? error.detail : error.detail?.message || `Erreur ${response.status}`);
   }
   return response.json();
 };
@@ -92,7 +170,9 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
   onClose,
   summaryId,
   videoTitle,
-  language = 'fr'
+  language = 'fr',
+  userPlan = 'free',
+  userCredits = 0
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('select');
   const [selectedTool, setSelectedTool] = useState<ToolType | null>(null);
@@ -102,36 +182,104 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
   const [conceptMapData, setConceptMapData] = useState<any>(null);
   const [activeResultTab, setActiveResultTab] = useState<'card' | 'map'>('card');
 
-  const handleGenerate = async (tool: ToolType) => {
+  // Options configurables
+  const [questionCount, setQuestionCount] = useState(5);
+  const [depthLevel, setDepthLevel] = useState(3);
+  const [withDetails, setWithDetails] = useState(false);
+
+  // Limites et coûts
+  const [limits, setLimits] = useState<StudyLimits | null>(null);
+  const [costPreview, setCostPreview] = useState<CostPreview | null>(null);
+  const [canAfford, setCanAfford] = useState(true);
+  const [credits, setCredits] = useState(userCredits);
+
+  // Charger les limites au montage
+  useEffect(() => {
+    if (isOpen) {
+      fetchStudyLimits()
+        .then((data) => {
+          setLimits(data.limits);
+          // Ajuster les valeurs par défaut selon les limites
+          setQuestionCount(Math.min(5, data.limits.quiz_questions));
+          setDepthLevel(Math.min(3, data.limits.mindmap_depth));
+        })
+        .catch((err) => console.error('Error fetching limits:', err));
+    }
+  }, [isOpen]);
+
+  // Mettre à jour le coût quand les options changent
+  useEffect(() => {
+    if (selectedTool && viewMode === 'options') {
+      const toolParam = selectedTool === 'card' ? 'study_card' : selectedTool === 'mindmap' ? 'concept_map' : 'study_all';
+      fetchCostPreview(toolParam, questionCount, depthLevel, withDetails)
+        .then((data) => {
+          setCostPreview(data.cost);
+          setCanAfford(data.can_afford);
+        })
+        .catch((err) => console.error('Error fetching cost:', err));
+    }
+  }, [selectedTool, questionCount, depthLevel, withDetails, viewMode]);
+
+  const handleSelectTool = (tool: ToolType) => {
     setSelectedTool(tool);
+    setViewMode('options');
+  };
+
+  const handleGenerate = async () => {
+    if (!selectedTool) return;
+
     setViewMode('loading');
     setLoading(true);
     setError(null);
 
     try {
-      if (tool === 'card') {
-        const result = await generateStudyCard(summaryId);
+      if (selectedTool === 'card') {
+        const result = await generateStudyCard(summaryId, questionCount);
         setStudyCardData(result.study_card);
+        setCredits(result.credits_remaining);
         setActiveResultTab('card');
-      } else if (tool === 'mindmap') {
-        const result = await generateConceptMap(summaryId);
+      } else if (selectedTool === 'mindmap') {
+        const result = await generateConceptMap(summaryId, depthLevel, withDetails);
         setConceptMapData(result.concept_map);
+        setCredits(result.credits_remaining);
         setActiveResultTab('map');
-      } else if (tool === 'all') {
-        const result = await generateAllMaterials(summaryId);
+      } else if (selectedTool === 'all') {
+        const result = await generateAllMaterials(summaryId, questionCount, depthLevel, withDetails);
         if (result.materials.study_card) {
           setStudyCardData(result.materials.study_card);
         }
         if (result.materials.concept_map) {
           setConceptMapData(result.materials.concept_map);
         }
+        setCredits(result.credits_remaining);
         setActiveResultTab('card');
       }
       setViewMode('results');
     } catch (err: any) {
       console.error('Generation error:', err);
       setError(err.message || 'Erreur lors de la génération');
-      setViewMode('select');
+      setViewMode('options');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGenerateMoreQuestions = async () => {
+    if (!studyCardData?.quiz || !limits?.can_generate_more) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await generateAdditionalQuestions(summaryId, studyCardData.quiz, 5);
+      // Ajouter les nouvelles questions au quiz existant
+      setStudyCardData({
+        ...studyCardData,
+        quiz: [...studyCardData.quiz, ...result.new_questions],
+      });
+      setCredits(result.credits_remaining);
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la génération');
     } finally {
       setLoading(false);
     }
@@ -142,7 +290,12 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
     setSelectedTool(null);
     setStudyCardData(null);
     setConceptMapData(null);
+    setCostPreview(null);
     setError(null);
+  };
+
+  const handleBackToOptions = () => {
+    setViewMode('options');
   };
 
   const texts = {
@@ -152,22 +305,33 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
       selectTool: 'Choisissez un outil',
       studyCard: 'Fiche de révision',
       studyCardDesc: 'Points clés, définitions, quiz interactif et questions de compréhension',
-      studyCardCost: '1 crédit',
       conceptMap: 'Arbre pédagogique',
       conceptMapDesc: 'Visualisation des concepts et de leurs relations en mindmap',
-      conceptMapCost: '1 crédit',
       allTools: 'Pack complet',
-      allToolsDesc: 'Fiche de révision + Arbre pédagogique en une génération',
-      allToolsCost: '2 crédits',
+      allToolsDesc: 'Fiche de révision + Arbre pédagogique (réduction 15%)',
       generating: 'Génération en cours...',
       generatingCard: 'Création de la fiche de révision...',
       generatingMap: 'Construction de l\'arbre pédagogique...',
       generatingAll: 'Génération des outils d\'étude...',
       backToSelect: 'Générer autre chose',
+      backToOptions: 'Modifier les options',
       error: 'Erreur',
       results: 'Résultats',
       tabCard: 'Fiche de révision',
       tabMap: 'Arbre pédagogique',
+      configureOptions: 'Configurez vos options',
+      questionCount: 'Nombre de questions QCM',
+      depthLevel: 'Profondeur du mindmap',
+      withDetails: 'Descriptions détaillées',
+      credits: 'crédits',
+      estimatedCost: 'Coût estimé',
+      generate: 'Générer',
+      insufficientCredits: 'Crédits insuffisants',
+      upgradeRequired: 'Passez à un plan supérieur pour plus d\'options',
+      generateMore: 'Générer 5 questions de plus',
+      moreQuestionsLocked: 'Disponible à partir du plan Starter',
+      discount: 'réduction',
+      yourCredits: 'Vos crédits',
     },
     en: {
       title: 'Study Tools',
@@ -175,22 +339,33 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
       selectTool: 'Choose a tool',
       studyCard: 'Study Card',
       studyCardDesc: 'Key points, definitions, interactive quiz and comprehension questions',
-      studyCardCost: '1 credit',
       conceptMap: 'Concept Map',
       conceptMapDesc: 'Visualization of concepts and their relationships as a mindmap',
-      conceptMapCost: '1 credit',
       allTools: 'Complete Pack',
-      allToolsDesc: 'Study Card + Concept Map in one generation',
-      allToolsCost: '2 credits',
+      allToolsDesc: 'Study Card + Concept Map (15% discount)',
       generating: 'Generating...',
       generatingCard: 'Creating study card...',
       generatingMap: 'Building concept map...',
       generatingAll: 'Generating study tools...',
       backToSelect: 'Generate something else',
+      backToOptions: 'Modify options',
       error: 'Error',
       results: 'Results',
       tabCard: 'Study Card',
       tabMap: 'Concept Map',
+      configureOptions: 'Configure your options',
+      questionCount: 'Number of quiz questions',
+      depthLevel: 'Mindmap depth',
+      withDetails: 'Detailed descriptions',
+      credits: 'credits',
+      estimatedCost: 'Estimated cost',
+      generate: 'Generate',
+      insufficientCredits: 'Insufficient credits',
+      upgradeRequired: 'Upgrade your plan for more options',
+      generateMore: 'Generate 5 more questions',
+      moreQuestionsLocked: 'Available from Starter plan',
+      discount: 'discount',
+      yourCredits: 'Your credits',
     }
   };
 
@@ -250,12 +425,17 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
           {/* Selection View */}
           {viewMode === 'select' && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-text-primary mb-4">{t.selectTool}</h3>
-              
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-text-primary">{t.selectTool}</h3>
+                <span className="text-sm text-text-secondary">
+                  {t.yourCredits}: <strong className="text-accent-primary">{credits}</strong>
+                </span>
+              </div>
+
               <div className="grid gap-4 md:grid-cols-3">
                 {/* Study Card */}
                 <button
-                  onClick={() => handleGenerate('card')}
+                  onClick={() => handleSelectTool('card')}
                   className="p-5 bg-bg-secondary hover:bg-bg-hover border border-border-subtle hover:border-accent-primary rounded-xl text-left transition-all group"
                 >
                   <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
@@ -263,15 +443,20 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                   </div>
                   <h4 className="font-semibold text-text-primary mb-1">{t.studyCard}</h4>
                   <p className="text-sm text-text-secondary mb-3">{t.studyCardDesc}</p>
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                    <Zap className="w-3 h-3" />
-                    {t.studyCardCost}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      <Zap className="w-3 h-3" />
+                      20+ {t.credits}
+                    </span>
+                    <span className="text-xs text-text-muted">
+                      max {limits?.quiz_questions || 5} questions
+                    </span>
+                  </div>
                 </button>
 
                 {/* Concept Map */}
                 <button
-                  onClick={() => handleGenerate('mindmap')}
+                  onClick={() => handleSelectTool('mindmap')}
                   className="p-5 bg-bg-secondary hover:bg-bg-hover border border-border-subtle hover:border-accent-primary rounded-xl text-left transition-all group"
                 >
                   <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
@@ -279,15 +464,20 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                   </div>
                   <h4 className="font-semibold text-text-primary mb-1">{t.conceptMap}</h4>
                   <p className="text-sm text-text-secondary mb-3">{t.conceptMapDesc}</p>
-                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                    <Zap className="w-3 h-3" />
-                    {t.conceptMapCost}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      <Zap className="w-3 h-3" />
+                      25+ {t.credits}
+                    </span>
+                    <span className="text-xs text-text-muted">
+                      max {limits?.mindmap_depth || 3} niveaux
+                    </span>
+                  </div>
                 </button>
 
                 {/* All Tools */}
                 <button
-                  onClick={() => handleGenerate('all')}
+                  onClick={() => handleSelectTool('all')}
                   className="p-5 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 hover:from-purple-100 hover:to-indigo-100 dark:hover:from-purple-900/30 dark:hover:to-indigo-900/30 border border-purple-200 dark:border-purple-800 hover:border-purple-400 rounded-xl text-left transition-all group"
                 >
                   <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
@@ -295,15 +485,185 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                   </div>
                   <h4 className="font-semibold text-text-primary mb-1 flex items-center gap-2">
                     {t.allTools}
-                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-purple-600 text-white rounded">BEST</span>
+                    <span className="px-1.5 py-0.5 text-[10px] font-bold bg-purple-600 text-white rounded">-15%</span>
                   </h4>
                   <p className="text-sm text-text-secondary mb-3">{t.allToolsDesc}</p>
                   <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
                     <Zap className="w-3 h-3" />
-                    {t.allToolsCost}
+                    38+ {t.credits}
                   </span>
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Options View */}
+          {viewMode === 'options' && selectedTool && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-text-primary flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  {t.configureOptions}
+                </h3>
+                <button
+                  onClick={handleReset}
+                  className="text-sm text-text-secondary hover:text-text-primary"
+                >
+                  ← {t.backToSelect}
+                </button>
+              </div>
+
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Quiz Questions (pour card et all) */}
+                {(selectedTool === 'card' || selectedTool === 'all') && (
+                  <div className="p-4 bg-bg-secondary rounded-xl border border-border-subtle">
+                    <label className="block text-sm font-medium text-text-primary mb-3">
+                      <Brain className="w-4 h-4 inline mr-2" />
+                      {t.questionCount}
+                    </label>
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => setQuestionCount(Math.max(3, questionCount - 1))}
+                        disabled={questionCount <= 3}
+                        className="p-2 rounded-lg bg-bg-tertiary hover:bg-bg-hover disabled:opacity-50"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="text-2xl font-bold text-accent-primary w-12 text-center">
+                        {questionCount}
+                      </span>
+                      <button
+                        onClick={() => setQuestionCount(Math.min(limits?.quiz_questions || 15, questionCount + 1))}
+                        disabled={questionCount >= (limits?.quiz_questions || 15)}
+                        className="p-2 rounded-lg bg-bg-tertiary hover:bg-bg-hover disabled:opacity-50"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {questionCount >= (limits?.quiz_questions || 15) && (
+                      <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                        <Lock className="w-3 h-3" />
+                        Max pour votre plan ({userPlan})
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Mindmap Depth (pour mindmap et all) */}
+                {(selectedTool === 'mindmap' || selectedTool === 'all') && (
+                  <div className="p-4 bg-bg-secondary rounded-xl border border-border-subtle">
+                    <label className="block text-sm font-medium text-text-primary mb-3">
+                      <GitBranch className="w-4 h-4 inline mr-2" />
+                      {t.depthLevel}
+                    </label>
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => setDepthLevel(Math.max(2, depthLevel - 1))}
+                        disabled={depthLevel <= 2}
+                        className="p-2 rounded-lg bg-bg-tertiary hover:bg-bg-hover disabled:opacity-50"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="text-2xl font-bold text-green-600 w-12 text-center">
+                        {depthLevel}
+                      </span>
+                      <button
+                        onClick={() => setDepthLevel(Math.min(limits?.mindmap_depth || 5, depthLevel + 1))}
+                        disabled={depthLevel >= (limits?.mindmap_depth || 5)}
+                        className="p-2 rounded-lg bg-bg-tertiary hover:bg-bg-hover disabled:opacity-50"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {depthLevel >= (limits?.mindmap_depth || 5) && (
+                      <p className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                        <Lock className="w-3 h-3" />
+                        Max pour votre plan ({userPlan})
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Detailed Concepts (pour mindmap et all) */}
+                {(selectedTool === 'mindmap' || selectedTool === 'all') && (
+                  <div className="p-4 bg-bg-secondary rounded-xl border border-border-subtle">
+                    <label className="flex items-center justify-between cursor-pointer">
+                      <span className="text-sm font-medium text-text-primary flex items-center gap-2">
+                        <Info className="w-4 h-4" />
+                        {t.withDetails}
+                      </span>
+                      <button
+                        onClick={() => setWithDetails(!withDetails)}
+                        className={`relative w-12 h-6 rounded-full transition-colors ${
+                          withDetails ? 'bg-accent-primary' : 'bg-bg-tertiary'
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                            withDetails ? 'left-7' : 'left-1'
+                          }`}
+                        />
+                      </button>
+                    </label>
+                    <p className="text-xs text-text-muted mt-2">
+                      +15 crédits pour des descriptions détaillées
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Cost Preview */}
+              <div className="p-4 bg-gradient-to-r from-accent-primary/10 to-purple-500/10 rounded-xl border border-accent-primary/20">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-text-secondary">{t.estimatedCost}</p>
+                    <p className="text-3xl font-bold text-accent-primary">
+                      {costPreview?.total || '...'} <span className="text-base font-normal">{t.credits}</span>
+                    </p>
+                    {selectedTool === 'all' && costPreview?.breakdown?.discount && (
+                      <p className="text-xs text-green-600">
+                        -{costPreview.breakdown.discount} crédits (15% {t.discount})
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-text-secondary">{t.yourCredits}</p>
+                    <p className={`text-2xl font-bold ${canAfford ? 'text-green-600' : 'text-red-500'}`}>
+                      {credits}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Generate Button */}
+              <button
+                onClick={handleGenerate}
+                disabled={!canAfford || loading}
+                className={`w-full py-4 rounded-xl font-semibold text-lg transition-all flex items-center justify-center gap-2 ${
+                  canAfford
+                    ? 'bg-accent-primary hover:bg-accent-primary-hover text-white'
+                    : 'bg-gray-300 dark:bg-gray-700 text-gray-500 cursor-not-allowed'
+                }`}
+              >
+                {canAfford ? (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    {t.generate} ({costPreview?.total || '...'} {t.credits})
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-5 h-5" />
+                    {t.insufficientCredits}
+                  </>
+                )}
+              </button>
+
+              {!canAfford && (
+                <p className="text-center text-sm text-amber-600 flex items-center justify-center gap-2">
+                  <Crown className="w-4 h-4" />
+                  {t.upgradeRequired}
+                </p>
+              )}
             </div>
           )}
 
@@ -333,6 +693,13 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
           {/* Results View */}
           {viewMode === 'results' && (
             <div>
+              {/* Header with credits */}
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm text-text-secondary">
+                  {t.yourCredits}: <strong className="text-accent-primary">{credits}</strong>
+                </span>
+              </div>
+
               {/* Tabs if both are available */}
               {studyCardData && conceptMapData && (
                 <div className="flex items-center gap-1 p-1 bg-bg-secondary rounded-lg mb-6">
@@ -346,6 +713,7 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                   >
                     <BookOpen className="w-4 h-4" />
                     {t.tabCard}
+                    <span className="text-xs text-text-muted">({studyCardData?.quiz?.length || 0} Q)</span>
                   </button>
                   <button
                     onClick={() => setActiveResultTab('map')}
@@ -363,7 +731,44 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
 
               {/* Study Card Results */}
               {activeResultTab === 'card' && studyCardData && (
-                <StudyCard data={studyCardData} language={language} />
+                <>
+                  <StudyCard
+                    data={studyCardData}
+                    language={language}
+                    onGenerateMore={handleGenerateMoreQuestions}
+                    canGenerateMore={limits?.can_generate_more ?? false}
+                    isGenerating={loading}
+                  />
+
+                  {/* Generate More Questions Button */}
+                  {limits?.can_generate_more ? (
+                    <div className="mt-4 p-4 bg-bg-secondary rounded-xl border border-border-subtle">
+                      <button
+                        onClick={handleGenerateMoreQuestions}
+                        disabled={loading || credits < 30}
+                        className="w-full py-3 rounded-lg bg-accent-primary hover:bg-accent-primary-hover text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                      >
+                        {loading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Plus className="w-4 h-4" />
+                        )}
+                        {t.generateMore}
+                        <span className="text-xs opacity-75">(30 {t.credits})</span>
+                      </button>
+                      <p className="text-xs text-text-muted text-center mt-2">
+                        Total actuel: {studyCardData?.quiz?.length || 0} questions
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-4 p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+                      <p className="text-sm text-amber-700 dark:text-amber-400 flex items-center gap-2">
+                        <Lock className="w-4 h-4" />
+                        {t.moreQuestionsLocked}
+                      </p>
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Concept Map Results */}
@@ -372,7 +777,7 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
               )}
 
               {/* Back button */}
-              <div className="mt-6 pt-4 border-t border-border-subtle">
+              <div className="mt-6 pt-4 border-t border-border-subtle flex gap-3">
                 <button
                   onClick={handleReset}
                   className="btn btn-secondary"

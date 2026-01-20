@@ -47,6 +47,12 @@ export interface PlanLimits {
 
   // Équipe
   teamMembers: number;            // 1 = solo, -1 = illimité
+
+  // 📚 Outils d'étude (Quiz & Mindmaps)
+  studyQuizQuestions: number;     // Max questions par quiz
+  studyMindmapDepth: number;      // Max profondeur mindmap
+  studyCanGenerateMore: boolean;  // Peut générer des questions supplémentaires
+  studyDailyLimit: number;        // Générations par jour, -1 = illimité
 }
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
@@ -66,6 +72,11 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     historyDays: 3,               // Seulement 3 jours !
     apiRequestsDaily: 0,
     teamMembers: 1,
+    // Outils d'étude
+    studyQuizQuestions: 3,
+    studyMindmapDepth: 2,
+    studyCanGenerateMore: false,
+    studyDailyLimit: 2,
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -84,6 +95,11 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     historyDays: 90,              // 3 mois
     apiRequestsDaily: 0,
     teamMembers: 1,
+    // Outils d'étude - KILLER FEATURE
+    studyQuizQuestions: 5,
+    studyMindmapDepth: 3,
+    studyCanGenerateMore: false,
+    studyDailyLimit: 5,
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -102,6 +118,11 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     historyDays: 60,
     apiRequestsDaily: 0,
     teamMembers: 1,
+    // Outils d'étude
+    studyQuizQuestions: 7,
+    studyMindmapDepth: 3,
+    studyCanGenerateMore: true,   // ⭐ Peut générer plus de questions
+    studyDailyLimit: 10,
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -120,6 +141,11 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     historyDays: 180,             // 6 mois
     apiRequestsDaily: 0,          // Pas d'API (différenciateur Équipe)
     teamMembers: 1,
+    // Outils d'étude
+    studyQuizQuestions: 10,
+    studyMindmapDepth: 4,
+    studyCanGenerateMore: true,
+    studyDailyLimit: 50,
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -138,6 +164,11 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     historyDays: -1,              // Illimité
     apiRequestsDaily: 1000,       // ⭐ API activée
     teamMembers: 5,               // ⭐ Multi-utilisateurs
+    // Outils d'étude - ILLIMITÉ
+    studyQuizQuestions: 15,
+    studyMindmapDepth: 5,
+    studyCanGenerateMore: true,
+    studyDailyLimit: -1,          // Illimité
   },
 };
 
@@ -709,6 +740,26 @@ export function calculateTimeSaved(videoDurationSeconds: number): {
 }
 
 /**
+ * Obtient les limites des outils d'étude pour un plan
+ */
+export function getStudyToolsLimits(plan: PlanId | string | undefined): {
+  quizQuestions: number;
+  mindmapDepth: number;
+  canGenerateMore: boolean;
+  dailyLimit: number;
+} {
+  const planId = normalizePlanId(plan as string);
+  const limits = PLAN_LIMITS[planId];
+
+  return {
+    quizQuestions: limits.studyQuizQuestions,
+    mindmapDepth: limits.studyMindmapDepth,
+    canGenerateMore: limits.studyCanGenerateMore,
+    dailyLimit: limits.studyDailyLimit,
+  };
+}
+
+/**
  * Génère la liste des fonctionnalités pour l'affichage
  */
 export function getFeatureListForDisplay(plan: PlanId, language: 'fr' | 'en'): Array<{
@@ -773,4 +824,5 @@ export default {
   shouldShowLowCreditsAlert,
   shouldShowUpgradePrompt,
   calculateTimeSaved,
+  getStudyToolsLimits,
 };

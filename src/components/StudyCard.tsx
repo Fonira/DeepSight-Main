@@ -67,6 +67,9 @@ interface StudyCardProps {
   data: StudyCardData;
   language?: 'fr' | 'en';
   onExport?: (format: 'pdf' | 'md') => void;
+  onGenerateMore?: () => void;
+  canGenerateMore?: boolean;
+  isGenerating?: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -115,7 +118,10 @@ const getQuestionTypeLabel = (type: string, lang: string) => {
 export const StudyCard: React.FC<StudyCardProps> = ({
   data,
   language = 'fr',
-  onExport
+  onExport,
+  onGenerateMore,
+  canGenerateMore = false,
+  isGenerating = false
 }) => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['key_points', 'quiz']));
   const [revealedAnswers, setRevealedAnswers] = useState<Set<number>>(new Set());
