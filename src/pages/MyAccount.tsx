@@ -15,7 +15,7 @@ import {
   User, Shield, Key, Trash2, LogOut, Check,
   AlertCircle, Loader2, Eye, EyeOff, Copy, RefreshCw, Lock,
   ExternalLink, Mail, Calendar, Crown, CreditCard, Sparkles,
-  ChevronRight, Hash, AlertTriangle, Zap, X, Clock,
+  ChevronRight, Hash, AlertTriangle, Zap, Clock,
   MessageSquare, Search, FileText, Download, Headphones,
   Users, Code, GraduationCap, Brain, BookOpen
 } from 'lucide-react';
@@ -24,12 +24,7 @@ import {
   PLAN_LIMITS,
   PLANS_INFO,
   normalizePlanId,
-  hasFeature,
-  getLimit,
-  isUnlimited,
-  type PlanId,
-  type PlanFeatures,
-  type PlanLimits
+  type PlanId
 } from '../config/planPrivileges';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -106,7 +101,7 @@ export const MyAccount: React.FC = () => {
     
     setApiKey(prev => ({ ...prev, loading: true }));
     fetchStatus();
-  }, [isExpert, tr]);
+  }, [isTeamOrHigher, tr]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 🔧 API Key Actions
