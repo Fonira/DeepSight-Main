@@ -137,6 +137,61 @@ interface ExclusiveFeature {
   badge?: { fr: string; en: string };
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 💬 TÉMOIGNAGES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface Testimonial {
+  text: { fr: string; en: string };
+  author: string;
+  role: { fr: string; en: string };
+  avatar: string;
+  plan: PlanId;
+}
+
+const TESTIMONIALS: Testimonial[] = [
+  {
+    text: {
+      fr: "En tant qu'étudiant en médecine, Deep Sight m'a fait gagner 10h/semaine sur mes révisions. Les fiches automatiques sont incroyables !",
+      en: "As a medical student, Deep Sight saves me 10h/week on revision. The automatic flashcards are incredible!"
+    },
+    author: "Marie L.",
+    role: { fr: "L3 Médecine", en: "Medical Student" },
+    avatar: "🎓",
+    plan: 'student'
+  },
+  {
+    text: {
+      fr: "J'analyse les vidéos de mes concurrents en 2 min au lieu de 2h. Indispensable pour ma veille !",
+      en: "I analyze competitor videos in 2 min instead of 2h. Essential for my research!"
+    },
+    author: "Thomas B.",
+    role: { fr: "YouTuber, 150k abonnés", en: "YouTuber, 150k subscribers" },
+    avatar: "🎬",
+    plan: 'pro'
+  },
+  {
+    text: {
+      fr: "L'API Expert m'a permis d'intégrer l'analyse vidéo dans notre workflow de formation. ROI immédiat.",
+      en: "The Expert API let me integrate video analysis into our training workflow. Immediate ROI."
+    },
+    author: "Sophie M.",
+    role: { fr: "Responsable Formation, CAC 40", en: "Training Manager, Fortune 500" },
+    avatar: "💼",
+    plan: 'expert'
+  },
+  {
+    text: {
+      fr: "Les cartes mentales automatiques ont transformé ma façon de prendre des notes. Je recommande à tous les étudiants !",
+      en: "The automatic mind maps have transformed how I take notes. I recommend it to all students!"
+    },
+    author: "Lucas D.",
+    role: { fr: "Prépa HEC", en: "Business School Prep" },
+    avatar: "📚",
+    plan: 'student'
+  },
+];
+
 const EXPERT_EXCLUSIVES: ExclusiveFeature[] = [
   {
     icon: Key,
@@ -620,6 +675,105 @@ export const UpgradePage: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Testimonials Section */}
+                <div className="mb-12">
+                  <div className="text-center mb-8">
+                    <h2 className="text-2xl font-bold text-text-primary mb-2">
+                      {language === 'fr' ? 'Ils nous font confiance' : 'They trust us'}
+                    </h2>
+                    <p className="text-text-secondary">
+                      {language === 'fr'
+                        ? 'Découvrez comment Deep Sight transforme leur quotidien'
+                        : 'Discover how Deep Sight transforms their daily life'}
+                    </p>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {TESTIMONIALS.map((testimonial, idx) => {
+                      const planConfig = PLANS.find(p => p.id === testimonial.plan);
+                      return (
+                        <div
+                          key={idx}
+                          className="card p-6 hover:scale-[1.02] transition-transform cursor-pointer"
+                          onClick={() => handleChangePlan(testimonial.plan)}
+                        >
+                          <div className="flex items-start gap-4">
+                            <div className="text-4xl">{testimonial.avatar}</div>
+                            <div className="flex-1">
+                              <p className="text-text-secondary italic mb-3">
+                                "{testimonial.text[lang]}"
+                              </p>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-semibold text-text-primary">{testimonial.author}</p>
+                                  <p className="text-sm text-text-tertiary">{testimonial.role[lang]}</p>
+                                </div>
+                                {planConfig && (
+                                  <div className={`px-3 py-1 rounded-full bg-gradient-to-r ${planConfig.gradient} text-white text-xs font-medium`}>
+                                    {planConfig.name[lang]}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Student Highlight Section */}
+                {currentPlan === 'free' && (
+                  <div className="card p-8 mb-12 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/30">
+                    <div className="flex flex-col md:flex-row items-center gap-8">
+                      <div className="flex-1">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-sm font-medium mb-4">
+                          <GraduationCap className="w-4 h-4" />
+                          {language === 'fr' ? 'Spécial Étudiants' : 'Student Special'}
+                        </div>
+                        <h2 className="text-2xl font-bold text-text-primary mb-3">
+                          {language === 'fr' ? 'Révisez 10x plus vite' : 'Study 10x faster'}
+                        </h2>
+                        <p className="text-text-secondary mb-4">
+                          {language === 'fr'
+                            ? 'Transformez n\'importe quelle vidéo éducative en fiches de révision, cartes mentales et flashcards. Idéal pour les révisions d\'examens.'
+                            : 'Transform any educational video into study notes, mind maps and flashcards. Perfect for exam preparation.'}
+                        </p>
+                        <ul className="space-y-2 mb-6">
+                          {[
+                            { fr: '✓ 40 analyses/mois', en: '✓ 40 analyses/month' },
+                            { fr: '✓ Fiches de révision automatiques', en: '✓ Automatic study flashcards' },
+                            { fr: '✓ Cartes mentales interactives', en: '✓ Interactive mind maps' },
+                            { fr: '✓ Export pour Notion/Obsidian', en: '✓ Export for Notion/Obsidian' },
+                            { fr: '✓ Lecture audio TTS', en: '✓ TTS audio playback' },
+                          ].map((item, idx) => (
+                            <li key={idx} className="text-sm text-green-300">{item[lang]}</li>
+                          ))}
+                        </ul>
+                        <button
+                          onClick={() => handleChangePlan('student')}
+                          disabled={loading === 'student'}
+                          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold shadow-lg shadow-green-500/25 hover:opacity-90 transition-opacity"
+                        >
+                          {loading === 'student' ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                          ) : (
+                            <>
+                              <GraduationCap className="w-5 h-5" />
+                              {language === 'fr' ? 'Commencer à 2,99€/mois' : 'Start at €2.99/month'}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <div className="hidden md:block">
+                        <div className="w-48 h-48 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-2xl shadow-green-500/30">
+                          <GraduationCap className="w-24 h-24 text-white" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 

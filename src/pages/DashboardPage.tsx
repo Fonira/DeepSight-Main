@@ -51,6 +51,7 @@ import { AudioPlayer } from "../components/AudioPlayer";
 import { CreditAlert } from "../components/CreditAlert";
 import { AnalysisValueDisplay } from "../components/AnalysisValueDisplay";
 import { UpgradePromptModal } from "../components/UpgradePromptModal";
+import { FreeTrialLimitModal } from "../components/FreeTrialLimitModal";
 
 interface ChatMessage {
   id: string;
@@ -165,6 +166,9 @@ export const DashboardPage: React.FC = () => {
   // 💰 Monetization states
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeLimitType, setUpgradeLimitType] = useState<'credits' | 'chat' | 'analysis'>('credits');
+  const [showFreeTrialModal, setShowFreeTrialModal] = useState(false);
+  const [analysisCountThisMonth, setAnalysisCountThisMonth] = useState(0);
+  const [lastAnalysisTimeSaved, setLastAnalysisTimeSaved] = useState(0);
   const [concepts, setConcepts] = useState<EnrichedConcept[]>([]);
   const [conceptsLoading, setConceptsLoading] = useState(false);
   const [conceptsProvider, setConceptsProvider] = useState<string>('none');
@@ -556,6 +560,19 @@ export const DashboardPage: React.FC = () => {
           setPlayerVisible(false);
           setLoadingProgress(100);
           await refreshUser(true);
+
+          // 💰 Show friction modal for free users after analysis
+          if (user?.plan === 'free') {
+            const newCount = analysisCountThisMonth + 1;
+            setAnalysisCountThisMonth(newCount);
+            // Calculate time saved (video duration - 45 seconds analysis time)
+            const videoDuration = (status.result as any)?.video_duration || 600;
+            setLastAnalysisTimeSaved(Math.max(0, videoDuration - 45));
+            // Show modal after 2nd analysis or later
+            if (newCount >= 2) {
+              setTimeout(() => setShowFreeTrialModal(true), 1500);
+            }
+          }
           return;
         } else if (status.status === "failed") {
           throw new Error(status.error || (language === 'fr' ? "L'analyse a échoué" : "Analysis failed"));
@@ -1343,6 +1360,15 @@ export const DashboardPage: React.FC = () => {
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         limitType={upgradeLimitType}
+      />
+
+      {/* 💰 Free Trial Limit Modal - Shows after free analyses */}
+      <FreeTrialLimitModal
+        isOpen={showFreeTrialModal}
+        onClose={() => setShowFreeTrialModal(false)}
+        analysisCount={analysisCountThisMonth}
+        maxFreeAnalyses={4}
+        timeSavedSeconds={lastAnalysisTimeSaved}
       />
 
       {/* 🆕 CSS pour l'animation shimmer */}
