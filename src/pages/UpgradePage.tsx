@@ -10,11 +10,11 @@ import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
-import { 
-  Check, X, Sparkles, Zap, Star, Crown, Loader2, 
+import {
+  Check, X, Sparkles, Zap, Star, Crown, Loader2,
   ArrowUp, ArrowDown, AlertCircle, RefreshCw,
-  BookOpen, ChevronDown, ChevronUp, Key, 
-  Infinity, Database, ListVideo, Headphones
+  BookOpen, ChevronDown, ChevronUp, Key,
+  Infinity, Database, ListVideo, Headphones, GraduationCap
 } from 'lucide-react';
 import { billingApi } from '../services/api';
 
@@ -22,7 +22,7 @@ import { billingApi } from '../services/api';
 // 📊 CONFIGURATION DES PLANS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type PlanId = 'free' | 'starter' | 'pro' | 'expert';
+type PlanId = 'free' | 'student' | 'starter' | 'pro' | 'expert';
 
 interface PlanFeature {
   text: { fr: string; en: string };
@@ -51,12 +51,28 @@ const PLANS: PlanConfig[] = [
     order: 0,
     gradient: 'from-slate-500 to-slate-600',
     features: [
-      { text: { fr: '5 analyses/mois', en: '5 analyses/month' }, included: true },
+      { text: { fr: '4 analyses/mois', en: '4 analyses/month' }, included: true },
       { text: { fr: 'Synthèse express', en: 'Express summary' }, included: true },
-      { text: { fr: 'Chat basique (5 questions)', en: 'Basic chat (5 questions)' }, included: true },
-      { text: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, included: false },
-      { text: { fr: 'Recherche web', en: 'Web search' }, included: false },
-      { text: { fr: 'Export PDF', en: 'PDF export' }, included: false },
+      { text: { fr: 'Chat basique (3 questions)', en: 'Basic chat (3 questions)' }, included: true },
+      { text: { fr: 'Historique 3 jours', en: '3 days history' }, included: true },
+      { text: { fr: 'Outils d\'étude', en: 'Study tools' }, included: false },
+      { text: { fr: 'Export', en: 'Export' }, included: false },
+    ],
+  },
+  {
+    id: 'student',
+    name: { fr: 'Étudiant', en: 'Student' },
+    description: { fr: 'Pour réviser efficacement', en: 'For effective studying' },
+    price: 2.99,
+    order: 1,
+    gradient: 'from-green-500 to-emerald-600',
+    features: [
+      { text: { fr: '40 analyses/mois', en: '40 analyses/month' }, included: true },
+      { text: { fr: 'Flashcards & cartes mentales', en: 'Flashcards & mind maps' }, included: true, highlight: true },
+      { text: { fr: 'Chat (15 questions/vidéo)', en: 'Chat (15 questions/video)' }, included: true },
+      { text: { fr: 'Export PDF & Markdown', en: 'PDF & Markdown export' }, included: true },
+      { text: { fr: 'Lecture audio TTS', en: 'TTS audio playback' }, included: true },
+      { text: { fr: 'Historique 90 jours', en: '90 days history' }, included: true },
     ],
   },
   {
@@ -64,7 +80,7 @@ const PLANS: PlanConfig[] = [
     name: { fr: 'Starter', en: 'Starter' },
     description: { fr: 'Pour les réguliers', en: 'For regular users' },
     price: 4.99,
-    order: 1,
+    order: 2,
     gradient: 'from-blue-500 to-blue-600',
     features: [
       { text: { fr: '50 analyses/mois', en: '50 analyses/month' }, included: true },
@@ -81,7 +97,7 @@ const PLANS: PlanConfig[] = [
     description: { fr: 'Pour les power users', en: 'For power users' },
     price: 9.99,
     popular: true,
-    order: 2,
+    order: 3,
     gradient: 'from-violet-500 to-purple-600',
     features: [
       { text: { fr: '200 analyses/mois', en: '200 analyses/month' }, included: true },
@@ -99,7 +115,7 @@ const PLANS: PlanConfig[] = [
     description: { fr: 'Pour les professionnels', en: 'For professionals' },
     price: 14.99,
     recommended: true,
-    order: 3,
+    order: 4,
     gradient: 'from-amber-500 to-orange-500',
     features: [
       { text: { fr: 'Analyses illimitées', en: 'Unlimited analyses' }, included: true, highlight: true },
@@ -158,44 +174,51 @@ interface ComparisonRow {
   category: string;
   feature: { fr: string; en: string };
   free: string | boolean;
+  student: string | boolean;
   starter: string | boolean;
   pro: string | boolean;
   expert: string | boolean;
   expertHighlight?: boolean;
+  studentHighlight?: boolean;
 }
 
 const COMPARISON_MATRIX: ComparisonRow[] = [
   // Limites
-  { category: '📊 Limites', feature: { fr: 'Analyses/mois', en: 'Analyses/month' }, free: '5', starter: '50', pro: '200', expert: '∞', expertHighlight: true },
-  { category: '📊 Limites', feature: { fr: 'Durée max vidéo', en: 'Max video length' }, free: '1h', starter: '2h', pro: '4h', expert: '∞', expertHighlight: true },
-  { category: '📊 Limites', feature: { fr: 'Questions chat/vidéo', en: 'Chat questions/video' }, free: '5', starter: '20', pro: '∞', expert: '∞' },
-  { category: '📊 Limites', feature: { fr: 'Historique', en: 'History' }, free: '7 jours', starter: '60 jours', pro: '180 jours', expert: '∞', expertHighlight: true },
-  
+  { category: '📊 Limites', feature: { fr: 'Analyses/mois', en: 'Analyses/month' }, free: '4', student: '40', starter: '50', pro: '200', expert: '∞', expertHighlight: true },
+  { category: '📊 Limites', feature: { fr: 'Durée max vidéo', en: 'Max video length' }, free: '1h', student: '2h', starter: '2h', pro: '4h', expert: '∞', expertHighlight: true },
+  { category: '📊 Limites', feature: { fr: 'Questions chat/vidéo', en: 'Chat questions/video' }, free: '3', student: '15', starter: '20', pro: '∞', expert: '∞' },
+  { category: '📊 Limites', feature: { fr: 'Historique', en: 'History' }, free: '3 jours', student: '90 jours', starter: '60 jours', pro: '180 jours', expert: '∞', studentHighlight: true, expertHighlight: true },
+
   // Analyse
-  { category: '🔬 Analyse', feature: { fr: 'Synthèse express', en: 'Express summary' }, free: true, starter: true, pro: true, expert: true },
-  { category: '🔬 Analyse', feature: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, free: false, starter: true, pro: true, expert: true },
-  { category: '🔬 Analyse', feature: { fr: 'Glossaire concepts', en: 'Concepts glossary' }, free: false, starter: true, pro: true, expert: true },
-  
+  { category: '🔬 Analyse', feature: { fr: 'Synthèse express', en: 'Express summary' }, free: true, student: true, starter: true, pro: true, expert: true },
+  { category: '🔬 Analyse', feature: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, free: false, student: true, starter: true, pro: true, expert: true },
+  { category: '🔬 Analyse', feature: { fr: 'Glossaire concepts', en: 'Concepts glossary' }, free: false, student: true, starter: true, pro: true, expert: true },
+
+  // Outils d'étude
+  { category: '🎓 Étude', feature: { fr: 'Flashcards', en: 'Flashcards' }, free: false, student: true, starter: true, pro: true, expert: true, studentHighlight: true },
+  { category: '🎓 Étude', feature: { fr: 'Cartes mentales', en: 'Mind maps' }, free: false, student: true, starter: true, pro: true, expert: true, studentHighlight: true },
+  { category: '🎓 Étude', feature: { fr: 'Export citations', en: 'Citation export' }, free: false, student: true, starter: true, pro: true, expert: true, studentHighlight: true },
+
   // Chat & Recherche
-  { category: '💬 Chat & Recherche', feature: { fr: 'Chat IA', en: 'AI Chat' }, free: true, starter: true, pro: true, expert: true },
-  { category: '💬 Chat & Recherche', feature: { fr: 'Recherche web (Perplexity)', en: 'Web search (Perplexity)' }, free: false, starter: '20/mois', pro: '100/mois', expert: '500/mois', expertHighlight: true },
-  
+  { category: '💬 Chat & Recherche', feature: { fr: 'Chat IA', en: 'AI Chat' }, free: true, student: true, starter: true, pro: true, expert: true },
+  { category: '💬 Chat & Recherche', feature: { fr: 'Recherche web (Perplexity)', en: 'Web search (Perplexity)' }, free: false, student: '10/mois', starter: '20/mois', pro: '100/mois', expert: '500/mois', expertHighlight: true },
+
   // Playlists
-  { category: '📚 Playlists', feature: { fr: 'Analyse de playlists', en: 'Playlist analysis' }, free: false, starter: false, pro: '10 vidéos', expert: '50 vidéos', expertHighlight: true },
-  
+  { category: '📚 Playlists', feature: { fr: 'Analyse de playlists', en: 'Playlist analysis' }, free: false, student: false, starter: false, pro: '10 vidéos', expert: '50 vidéos', expertHighlight: true },
+
   // Export
-  { category: '📄 Export', feature: { fr: 'Export PDF', en: 'PDF export' }, free: false, starter: true, pro: true, expert: true },
-  { category: '📄 Export', feature: { fr: 'Export Markdown', en: 'Markdown export' }, free: false, starter: false, pro: true, expert: true },
-  
+  { category: '📄 Export', feature: { fr: 'Export PDF', en: 'PDF export' }, free: false, student: true, starter: true, pro: true, expert: true },
+  { category: '📄 Export', feature: { fr: 'Export Markdown', en: 'Markdown export' }, free: false, student: true, starter: false, pro: true, expert: true },
+
   // Audio
-  { category: '🎧 Audio', feature: { fr: 'Lecture audio TTS', en: 'TTS audio' }, free: false, starter: false, pro: true, expert: true },
-  
+  { category: '🎧 Audio', feature: { fr: 'Lecture audio TTS', en: 'TTS audio' }, free: false, student: true, starter: false, pro: true, expert: true, studentHighlight: true },
+
   // API
-  { category: '🔌 API', feature: { fr: 'Accès API REST', en: 'REST API access' }, free: false, starter: false, pro: false, expert: '1000 req/jour', expertHighlight: true },
-  
+  { category: '🔌 API', feature: { fr: 'Accès API REST', en: 'REST API access' }, free: false, student: false, starter: false, pro: false, expert: '1000 req/jour', expertHighlight: true },
+
   // Support
-  { category: '🛟 Support', feature: { fr: 'Support email', en: 'Email support' }, free: true, starter: true, pro: true, expert: true },
-  { category: '🛟 Support', feature: { fr: 'Support prioritaire', en: 'Priority support' }, free: false, starter: false, pro: true, expert: true },
+  { category: '🛟 Support', feature: { fr: 'Support email', en: 'Email support' }, free: true, student: true, starter: true, pro: true, expert: true },
+  { category: '🛟 Support', feature: { fr: 'Support prioritaire', en: 'Priority support' }, free: false, student: false, starter: false, pro: true, expert: true },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -221,7 +244,7 @@ export const UpgradePage: React.FC = () => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState<{ plan: PlanId; action: 'upgrade' | 'downgrade' } | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['📊 Limites', '🔌 API']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['📊 Limites', '🎓 Étude', '🔌 API']);
 
   const currentPlan = (user?.plan || 'free') as PlanId;
   const currentPlanConfig = PLANS.find(p => p.id === currentPlan) || PLANS[0];
@@ -310,6 +333,7 @@ export const UpgradePage: React.FC = () => {
   const getPlanIcon = (planId: PlanId) => {
     switch (planId) {
       case 'free': return Zap;
+      case 'student': return GraduationCap;
       case 'starter': return Star;
       case 'pro': return Crown;
       case 'expert': return Sparkles;
@@ -601,9 +625,9 @@ export const UpgradePage: React.FC = () => {
 
             {/* Table View */}
             {viewMode === 'table' && (
-              <div className="card overflow-hidden mb-12">
+              <div className="card overflow-hidden mb-12 overflow-x-auto">
                 {/* Header */}
-                <div className="grid grid-cols-5 gap-4 p-5 bg-bg-secondary border-b border-border-primary">
+                <div className="grid grid-cols-6 gap-3 p-5 bg-bg-secondary border-b border-border-primary min-w-[800px]">
                   <div className="font-semibold text-text-secondary">
                     {language === 'fr' ? 'Fonctionnalités' : 'Features'}
                   </div>
@@ -611,13 +635,14 @@ export const UpgradePage: React.FC = () => {
                     const Icon = getPlanIcon(plan.id);
                     const isCurrent = plan.id === currentPlan;
                     const isExpert = plan.id === 'expert';
+                    const isStudent = plan.id === 'student';
                     return (
-                      <div key={plan.id} className={`text-center ${isExpert ? 'bg-amber-500/5 -mx-2 px-2 py-2 rounded-lg' : ''}`}>
-                        <div className={`inline-flex w-12 h-12 rounded-xl bg-gradient-to-br ${plan.gradient} items-center justify-center mb-2 shadow-lg`}>
-                          <Icon className="w-6 h-6 text-white" />
+                      <div key={plan.id} className={`text-center ${isExpert ? 'bg-amber-500/5 -mx-1 px-1 py-2 rounded-lg' : ''} ${isStudent ? 'bg-green-500/5 -mx-1 px-1 py-2 rounded-lg' : ''}`}>
+                        <div className={`inline-flex w-10 h-10 rounded-xl bg-gradient-to-br ${plan.gradient} items-center justify-center mb-2 shadow-lg`}>
+                          <Icon className="w-5 h-5 text-white" />
                         </div>
-                        <div className="font-bold text-text-primary">{plan.name[lang]}</div>
-                        <div className="text-sm text-text-tertiary">{plan.price === 0 ? '0€' : `${plan.price.toFixed(2).replace('.', ',')}€`}</div>
+                        <div className="font-bold text-text-primary text-sm">{plan.name[lang]}</div>
+                        <div className="text-xs text-text-tertiary">{plan.price === 0 ? '0€' : `${plan.price.toFixed(2).replace('.', ',')}€`}</div>
                         {isCurrent && (
                           <div className="text-xs text-green-400 mt-1 flex items-center justify-center gap-1">
                             <Check className="w-3 h-3" /> {language === 'fr' ? 'Actuel' : 'Current'}
@@ -628,6 +653,11 @@ export const UpgradePage: React.FC = () => {
                             {language === 'fr' ? '⭐ Recommandé' : '⭐ Recommended'}
                           </div>
                         )}
+                        {isStudent && !isCurrent && (
+                          <div className="text-xs text-green-400 mt-1">
+                            {language === 'fr' ? '🎓 Étudiants' : '🎓 Students'}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -635,29 +665,29 @@ export const UpgradePage: React.FC = () => {
 
                 {/* Features by category */}
                 {categories.map((category) => (
-                  <div key={category} className="border-b border-border-primary last:border-b-0">
+                  <div key={category} className="border-b border-border-primary last:border-b-0 min-w-[800px]">
                     <button
-                      onClick={() => setExpandedCategories(prev => 
+                      onClick={() => setExpandedCategories(prev =>
                         prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
                       )}
-                      className="w-full grid grid-cols-5 gap-4 p-4 bg-bg-tertiary/50 hover:bg-bg-tertiary transition-colors"
+                      className="w-full grid grid-cols-6 gap-3 p-4 bg-bg-tertiary/50 hover:bg-bg-tertiary transition-colors"
                     >
                       <div className="flex items-center gap-2 text-text-primary font-semibold">
                         {category}
-                        {expandedCategories.includes(category) 
+                        {expandedCategories.includes(category)
                           ? <ChevronUp className="w-4 h-4 text-text-tertiary" />
                           : <ChevronDown className="w-4 h-4 text-text-tertiary" />
                         }
                       </div>
                     </button>
-                    
+
                     {expandedCategories.includes(category) && (
                       <div className="divide-y divide-border-primary/30">
                         {COMPARISON_MATRIX.filter(f => f.category === category).map((row, idx) => (
-                          <div key={idx} className="grid grid-cols-5 gap-4 p-4 hover:bg-bg-tertiary/30 transition-colors">
+                          <div key={idx} className="grid grid-cols-6 gap-3 p-4 hover:bg-bg-tertiary/30 transition-colors">
                             <div className="text-sm text-text-secondary">{row.feature[lang]}</div>
-                            {(['free', 'starter', 'pro', 'expert'] as PlanId[]).map((planId) => (
-                              <div key={planId} className={`flex justify-center ${planId === 'expert' && row.expertHighlight ? 'bg-amber-500/10 -mx-2 px-2 rounded' : ''}`}>
+                            {(['free', 'student', 'starter', 'pro', 'expert'] as PlanId[]).map((planId) => (
+                              <div key={planId} className={`flex justify-center ${planId === 'expert' && row.expertHighlight ? 'bg-amber-500/10 -mx-1 px-1 rounded' : ''} ${planId === 'student' && row.studentHighlight ? 'bg-green-500/10 -mx-1 px-1 rounded' : ''}`}>
                                 {renderValue(row[planId])}
                               </div>
                             ))}
@@ -669,7 +699,7 @@ export const UpgradePage: React.FC = () => {
                 ))}
 
                 {/* CTA Row */}
-                <div className="grid grid-cols-5 gap-4 p-5 bg-bg-secondary">
+                <div className="grid grid-cols-6 gap-3 p-5 bg-bg-secondary min-w-[800px]">
                   <div />
                   {PLANS.map((plan) => {
                     const isCurrent = plan.id === currentPlan;
@@ -679,7 +709,7 @@ export const UpgradePage: React.FC = () => {
                         <button
                           onClick={() => handleChangePlan(plan.id)}
                           disabled={isCurrent || loading === plan.id || plan.id === 'free'}
-                          className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all ${
+                          className={`px-4 py-2 rounded-xl font-medium text-xs transition-all ${
                             isCurrent ? 'bg-green-500/20 text-green-400'
                             : isHigher ? `bg-gradient-to-r ${plan.gradient} text-white hover:opacity-90 shadow-lg`
                             : 'bg-bg-tertiary text-text-muted'

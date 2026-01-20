@@ -47,6 +47,10 @@ import { FreshnessIndicator } from "../components/FreshnessIndicator";
 import { FactCheckLite } from "../components/FactCheckLite";
 // 🎙️ Audio Player TTS
 import { AudioPlayer } from "../components/AudioPlayer";
+// 💰 Monetization components
+import { CreditAlert } from "../components/CreditAlert";
+import { AnalysisValueDisplay } from "../components/AnalysisValueDisplay";
+import { UpgradePromptModal } from "../components/UpgradePromptModal";
 
 interface ChatMessage {
   id: string;
@@ -158,6 +162,9 @@ export const DashboardPage: React.FC = () => {
   const [showStudyToolsModal, setShowStudyToolsModal] = useState(false);
   const [showKeywordsModal, setShowKeywordsModal] = useState(false);
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
+  // 💰 Monetization states
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeLimitType, setUpgradeLimitType] = useState<'credits' | 'chat' | 'analysis'>('credits');
   const [concepts, setConcepts] = useState<EnrichedConcept[]>([]);
   const [conceptsLoading, setConceptsLoading] = useState(false);
   const [conceptsProvider, setConceptsProvider] = useState<string>('none');
@@ -1212,9 +1219,20 @@ export const DashboardPage: React.FC = () => {
                     
                     {/* 📚 Glossaire des concepts clés */}
                     <div className="mt-6">
-                      <ConceptsGlossary 
+                      <ConceptsGlossary
                         summaryId={selectedSummary.id}
                         language={language}
+                      />
+                    </div>
+
+                    {/* 💰 Analysis Value Display - Shows time saved */}
+                    <div className="mt-6 not-prose">
+                      <AnalysisValueDisplay
+                        videoDuration={selectedSummary.video_duration || 0}
+                        keyPointsCount={selectedSummary.summary_content?.split('##').length - 1 || 0}
+                        conceptsCount={concepts.length}
+                        showUpgradeCTA={user?.plan === 'free' || user?.plan === 'student'}
+                        compact={false}
                       />
                     </div>
                   </div>
@@ -1311,6 +1329,21 @@ export const DashboardPage: React.FC = () => {
           categories={conceptsCategories}
         />
       )}
+
+      {/* 💰 Credit Alert - Shows when credits are low */}
+      <CreditAlert
+        warningThreshold={50}
+        criticalThreshold={10}
+        position="top"
+        compact={false}
+      />
+
+      {/* 💰 Upgrade Prompt Modal */}
+      <UpgradePromptModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        limitType={upgradeLimitType}
+      />
 
       {/* 🆕 CSS pour l'animation shimmer */}
       <style>{`

@@ -12,7 +12,7 @@
  * - Frontend: src/pages/UpgradePage.tsx
  */
 
-export type PlanId = 'free' | 'starter' | 'pro' | 'expert';
+export type PlanId = 'free' | 'student' | 'starter' | 'pro' | 'expert';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 LIMITES PAR PLAN
@@ -42,14 +42,25 @@ export interface PlanLimits {
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   free: {
-    monthlyAnalyses: 5,
-    chatQuestionsPerVideo: 5,
+    monthlyAnalyses: 4,           // 🔽 Réduit (était 5)
+    chatQuestionsPerVideo: 3,     // 🔽 Réduit (était 5)
     chatDailyLimit: 10,
     maxPlaylistVideos: 0,
     maxPlaylists: 0,
     maxExportsPerDay: 0,
     webSearchMonthly: 0,
-    historyDays: 7,
+    historyDays: 3,               // 🔽 Réduit (était 7)
+  },
+  student: {
+    // 🎓 NOUVEAU: Plan Étudiant
+    monthlyAnalyses: 40,
+    chatQuestionsPerVideo: 15,
+    chatDailyLimit: 50,
+    maxPlaylistVideos: 0,
+    maxPlaylists: 0,
+    maxExportsPerDay: 5,
+    webSearchMonthly: 10,
+    historyDays: 90,
   },
   starter: {
     monthlyAnalyses: 50,
@@ -132,38 +143,77 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     summaryDetailed: false,
     summaryTimestamps: true,
     summaryConcepts: false,
-    
+
     // Chat
     chatBasic: true,
     chatWebSearch: false,
     chatSuggestedQuestions: false,
-    
+
     // Fact-checking
     factCheckBasic: false,
     factCheckAdvanced: false,
-    
+
     // Recherche
     intelligentSearch: false,
-    
+
     // Playlists
     playlists: false,
     corpus: false,
-    
+
     // Export
     exportPdf: false,
     exportMarkdown: false,
     exportTxt: false,
-    
+
     // Audio
     ttsAudio: false,
-    
+
     // Avancé
     apiAccess: false,
     prioritySupport: false,
     dedicatedSupport: false,
     training: false,
   },
-  
+
+  student: {
+    // 🎓 NOUVEAU: Plan Étudiant - Focus outils d'étude
+    // Résumés
+    summaryExpress: true,
+    summaryDetailed: true,
+    summaryTimestamps: true,
+    summaryConcepts: true,         // ✅ Concepts pour l'apprentissage
+
+    // Chat
+    chatBasic: true,
+    chatWebSearch: true,           // ✅ Recherche web basique
+    chatSuggestedQuestions: true,
+
+    // Fact-checking
+    factCheckBasic: true,
+    factCheckAdvanced: false,
+
+    // Recherche
+    intelligentSearch: true,
+
+    // Playlists
+    playlists: false,
+    corpus: false,
+
+    // Export
+    exportPdf: true,               // ✅ Export PDF pour les cours
+    exportMarkdown: true,          // ✅ Markdown pour prise de notes
+    exportTxt: true,
+
+    // Audio
+    ttsAudio: true,                // ✅ TTS pour réviser en écoutant
+
+    // Avancé
+    apiAccess: false,
+    prioritySupport: false,
+    dedicatedSupport: false,
+    training: false,
+  },
+
   starter: {
     // Résumés
     summaryExpress: true,
@@ -304,12 +354,21 @@ export const PLANS_INFO: PlanInfo[] = [
     order: 0,
   },
   {
+    id: 'student',
+    name: { fr: 'Étudiant', en: 'Student' },
+    description: { fr: 'Pour réviser efficacement', en: 'For effective studying' },
+    price: 299,
+    priceDisplay: { fr: '2,99 €/mois', en: '€2.99/month' },
+    badge: { fr: 'Étudiants', en: 'Students' },
+    order: 1,
+  },
+  {
     id: 'starter',
     name: { fr: 'Starter', en: 'Starter' },
     description: { fr: 'Pour les réguliers', en: 'For regular users' },
     price: 499,
     priceDisplay: { fr: '4,99 €/mois', en: '€4.99/month' },
-    order: 1,
+    order: 2,
   },
   {
     id: 'pro',
@@ -319,7 +378,7 @@ export const PLANS_INFO: PlanInfo[] = [
     priceDisplay: { fr: '9,99 €/mois', en: '€9.99/month' },
     badge: { fr: 'Populaire', en: 'Popular' },
     popular: true,
-    order: 2,
+    order: 3,
   },
   {
     id: 'expert',
@@ -328,7 +387,7 @@ export const PLANS_INFO: PlanInfo[] = [
     price: 1499,
     priceDisplay: { fr: '14,99 €/mois', en: '€14.99/month' },
     badge: { fr: 'Recommandé', en: 'Recommended' },
-    order: 3,
+    order: 4,
   },
 ];
 
@@ -387,7 +446,7 @@ export function isPlanHigher(currentPlan: PlanId | string, targetPlan: PlanId | 
  * Obtient le plan minimum requis pour une fonctionnalité
  */
 export function getMinPlanForFeature(feature: keyof PlanFeatures): PlanId {
-  const planOrder: PlanId[] = ['free', 'starter', 'pro', 'expert'];
+  const planOrder: PlanId[] = ['free', 'student', 'starter', 'pro', 'expert'];
   for (const plan of planOrder) {
     if (PLAN_FEATURES[plan][feature]) {
       return plan;
