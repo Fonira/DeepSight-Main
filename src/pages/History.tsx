@@ -1490,10 +1490,14 @@ const PlaylistDetailView: React.FC<{
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
 
-  // 🆕 États pour la toolbar méta-analyse
+  // 🆕 États pour la toolbar méta-analyse (tous les outils)
   const [metaCopied, setMetaCopied] = useState(false);
   const [metaShowExportMenu, setMetaShowExportMenu] = useState(false);
   const [metaExporting, setMetaExporting] = useState(false);
+  const [metaShowCitationModal, setMetaShowCitationModal] = useState(false);
+  const [metaShowStudyToolsModal, setMetaShowStudyToolsModal] = useState(false);
+  const [metaShowKeywordsModal, setMetaShowKeywordsModal] = useState(false);
+  const [metaShowAudioPlayer, setMetaShowAudioPlayer] = useState(false);
 
   // 🆕 Handler: Copy vidéo
   const handleCopy = async () => {
@@ -2119,12 +2123,12 @@ const PlaylistDetailView: React.FC<{
             </p>
           </div>
           
-          {/* 🆕 Toolbar Méta-analyse - affiché quand expanded */}
+          {/* 🆕 Toolbar Méta-analyse COMPLET - affiché quand expanded */}
           {metaExpanded && (
-            <div className="p-4 border-b border-purple-500/20 bg-purple-50/50 dark:bg-purple-900/10 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-sm text-purple-600 dark:text-purple-400 font-medium">
-                {language === 'fr' ? 'Outils de synthèse' : 'Synthesis tools'}
-              </span>
+            <div className="p-4 border-b border-border-subtle flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-semibold text-text-primary flex items-center gap-2">
+                📄 {language === 'fr' ? 'Analyse' : 'Analysis'}
+              </h3>
               <div className="flex flex-wrap items-center gap-2">
                 {/* Copy */}
                 <button
@@ -2135,12 +2139,51 @@ const PlaylistDetailView: React.FC<{
                   {metaCopied ? (language === 'fr' ? 'Copié' : 'Copied') : (language === 'fr' ? 'Copier' : 'Copy')}
                 </button>
 
+                {/* 🎓 Citation académique */}
+                <button
+                  onClick={() => setMetaShowCitationModal(true)}
+                  className="btn btn-ghost text-xs"
+                  title={language === 'fr' ? 'Générer une citation académique' : 'Generate academic citation'}
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  {language === 'fr' ? 'Citer' : 'Cite'}
+                </button>
+
+                {/* 📚 Outils d'étude */}
+                <button
+                  onClick={() => setMetaShowStudyToolsModal(true)}
+                  className="btn btn-ghost text-xs"
+                  title={language === 'fr' ? 'Fiches de révision et arbre pédagogique' : 'Study cards and concept map'}
+                >
+                  <Brain className="w-4 h-4" />
+                  {language === 'fr' ? 'Réviser' : 'Study'}
+                </button>
+
+                {/* 🏷️ Mots-clés */}
+                <button
+                  onClick={() => setMetaShowKeywordsModal(true)}
+                  className="btn btn-ghost text-xs"
+                  title={language === 'fr' ? 'Voir les mots-clés extraits' : 'View extracted keywords'}
+                >
+                  <Tags className="w-4 h-4" />
+                  {language === 'fr' ? 'Mots-clés' : 'Keywords'}
+                </button>
+
+                {/* 🎙️ Écouter (TTS) */}
+                <button
+                  onClick={() => setMetaShowAudioPlayer(!metaShowAudioPlayer)}
+                  className={`btn ${metaShowAudioPlayer ? 'btn-primary' : 'btn-ghost'} text-xs`}
+                  title={language === 'fr' ? 'Écouter la méta-analyse (synthèse vocale)' : 'Listen to meta-analysis (text-to-speech)'}
+                >
+                  <Headphones className="w-4 h-4" />
+                  {language === 'fr' ? 'Écouter' : 'Listen'}
+                </button>
+
                 {/* Export */}
                 <div className="relative">
                   <button
                     onClick={() => setMetaShowExportMenu(!metaShowExportMenu)}
                     className="btn btn-ghost text-xs"
-                    disabled={metaExporting}
                   >
                     {metaExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                     Export
@@ -2167,12 +2210,24 @@ const PlaylistDetailView: React.FC<{
                 {/* Chat Corpus */}
                 <button
                   onClick={onChat}
-                  className="btn btn-primary text-xs"
+                  className="btn btn-secondary text-xs"
                 >
                   <MessageCircle className="w-4 h-4" />
-                  {language === 'fr' ? 'Chat Corpus' : 'Corpus Chat'}
+                  Chat
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* 🎙️ Lecteur Audio TTS pour méta-analyse */}
+          {metaShowAudioPlayer && metaExpanded && (
+            <div className="p-4 border-b border-border-subtle bg-bg-secondary/30">
+              <AudioPlayer
+                playlistId={playlist.playlist_id}
+                title={language === 'fr' ? 'Méta-analyse audio' : 'Audio meta-analysis'}
+                language={language as 'fr' | 'en'}
+                variant="full"
+              />
             </div>
           )}
 
@@ -2235,12 +2290,48 @@ const PlaylistDetailView: React.FC<{
             {language === 'fr' ? 'Méta-analyse non disponible' : 'Meta-analysis not available'}
           </h3>
           <p className="text-sm text-text-tertiary">
-            {language === 'fr' 
+            {language === 'fr'
               ? 'La méta-analyse sera générée une fois toutes les vidéos analysées.'
               : 'Meta-analysis will be generated once all videos are analyzed.'}
           </p>
         </div>
       )}
+
+      {/* 🆕 Modals pour la méta-analyse */}
+      {/* Citation Modal pour méta-analyse */}
+      <CitationExport
+        isOpen={metaShowCitationModal}
+        onClose={() => setMetaShowCitationModal(false)}
+        video={{
+          title: `Méta-analyse: ${playlist.playlist_title}`,
+          channel: 'Deep Sight - Corpus Analysis',
+          videoId: playlist.playlist_id,
+          duration: playlist.total_duration,
+        }}
+        language={language as 'fr' | 'en'}
+      />
+
+      {/* Study Tools Modal pour méta-analyse - utilise le premier video ID */}
+      {videos.length > 0 && videos[0].id && (
+        <StudyToolsModal
+          isOpen={metaShowStudyToolsModal}
+          onClose={() => setMetaShowStudyToolsModal(false)}
+          summaryId={videos[0].id}
+          videoTitle={`Méta-analyse: ${playlist.playlist_title}`}
+          language={language as 'fr' | 'en'}
+        />
+      )}
+
+      {/* Keywords Modal pour méta-analyse */}
+      <KeywordsModal
+        isOpen={metaShowKeywordsModal}
+        onClose={() => setMetaShowKeywordsModal(false)}
+        videoTitle={`Méta-analyse: ${playlist.playlist_title}`}
+        tags={[]}
+        concepts={[]}
+        loading={false}
+        language={language as 'fr' | 'en'}
+      />
     </div>
   );
 };
