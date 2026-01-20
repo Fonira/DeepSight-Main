@@ -23,6 +23,7 @@ const PLAN_GLOW_COLORS: Record<string, string> = {
   expert: "rgba(168, 85, 247, 0.5)",
   pro: "rgba(255, 107, 53, 0.4)",
   starter: "rgba(0, 255, 255, 0.3)",
+  student: "rgba(16, 185, 129, 0.3)",
   free: "rgba(212, 165, 116, 0.2)",
 };
 
@@ -31,6 +32,7 @@ const PLAN_BORDER_COLORS: Record<string, string> = {
   expert: "#A855F7",
   pro: "#FF6B35",
   starter: "#00FFFF",
+  student: "#10b981",
   free: "#D4A574",
 };
 
@@ -41,7 +43,7 @@ const PLAN_BORDER_COLORS: Record<string, string> = {
 interface SidebarUserCardProps {
   username: string;
   credits: number;
-  plan?: "free" | "starter" | "pro" | "expert" | "unlimited";
+  plan?: "free" | "student" | "starter" | "pro" | "expert" | "unlimited";
   avatarUrl?: string | null;
   onLogout: () => void;
 }
@@ -106,6 +108,7 @@ export const SidebarUserCard: React.FC<SidebarUserCardProps> = ({
         case "expert": return "EXPERT";
         case "pro": return "PRO";
         case "starter": return "STARTER";
+        case "student": return "STUDENT";
         default: return "FREE";
       }
     })(),

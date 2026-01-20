@@ -222,7 +222,7 @@ export const detectVolatileTopics = (
 // 💳 PLANS & LIMITES (aligné avec Streamlit PLAN_LIMITS)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type PlanType = 'free' | 'starter' | 'pro' | 'expert' | 'unlimited';
+export type PlanType = 'free' | 'student' | 'starter' | 'pro' | 'expert' | 'unlimited';
 
 export interface PlanConfig {
   id: PlanType;
@@ -245,19 +245,36 @@ export interface PlanConfig {
 export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
   free: {
     id: "free",
-    name_fr: "Gratuit",
-    name_en: "Free",
+    name_fr: "Découverte",
+    name_en: "Discovery",
     icon: "🆓",
     color: "#888888",
     price: 0,
-    monthly_credits: 10,
+    monthly_credits: 4,
     chat_daily_limit: 10,
-    chat_per_video_limit: 5,
+    chat_per_video_limit: 3,
     web_search_monthly: 0,
     web_search_enabled: false,
     can_use_playlists: false,
     max_playlist_videos: 0,
-    history_days: 7,
+    history_days: 3,
+    models: ["mistral-small-latest"],
+  },
+  student: {
+    id: "student",
+    name_fr: "Étudiant",
+    name_en: "Student",
+    icon: "🎓",
+    color: "#10b981",
+    price: 299,
+    monthly_credits: 40,
+    chat_daily_limit: 50,
+    chat_per_video_limit: 15,
+    web_search_monthly: 0,
+    web_search_enabled: false,
+    can_use_playlists: false,
+    max_playlist_videos: 0,
+    history_days: 90,
     models: ["mistral-small-latest"],
   },
   starter: {
