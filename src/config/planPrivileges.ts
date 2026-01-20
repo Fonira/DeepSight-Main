@@ -1,18 +1,19 @@
 /**
  * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  🎯 PLAN PRIVILEGES — Configuration centralisée des privilèges par plan            ║
- * ║  v2.1 — ALIGNÉ avec UpgradePage et Backend                                         ║
+ * ║  🎯 PLAN PRIVILEGES — v4.0 NOUVELLE STRATÉGIE DE MONÉTISATION                      ║
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
- * 
- * Ce fichier est LA SOURCE DE VÉRITÉ pour tous les privilèges.
- * Toute modification des fonctionnalités doit être faite ICI.
- * 
- * ⚠️ DOIT RESTER SYNCHRONISÉ AVEC:
- * - Backend: src/core/config.py (PLAN_LIMITS)
- * - Frontend: src/pages/UpgradePage.tsx
+ *
+ * 🎯 STRATÉGIE DE CONVERSION:
+ * - Free: Maximum friction (3 analyses, 3 jours historique)
+ * - Étudiant: Prix attractif 2.99€, focus outils d'étude
+ * - Starter: Équilibré pour particuliers 5.99€
+ * - Pro: Créateurs & professionnels 12.99€ (POPULAIRE)
+ * - Équipe: Entreprises & laboratoires 29.99€
+ *
+ * ⚠️ SYNCHRONISÉ AVEC: backend/src/core/config.py
  */
 
-export type PlanId = 'free' | 'student' | 'starter' | 'pro' | 'expert';
+export type PlanId = 'free' | 'student' | 'starter' | 'pro' | 'team';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 LIMITES PAR PLAN
@@ -21,76 +22,122 @@ export type PlanId = 'free' | 'student' | 'starter' | 'pro' | 'expert';
 export interface PlanLimits {
   // Analyses
   monthlyAnalyses: number;        // -1 = illimité
-  
+  monthlyCredits: number;
+  maxVideoDuration: number;       // en secondes, -1 = illimité
+
   // Chat
   chatQuestionsPerVideo: number;  // -1 = illimité
   chatDailyLimit: number;         // -1 = illimité
-  
+
   // Playlists
   maxPlaylistVideos: number;      // 0 = désactivé
-  maxPlaylists: number;           // 0 = désactivé
-  
+  maxPlaylists: number;           // 0 = désactivé, -1 = illimité
+
   // Export
   maxExportsPerDay: number;       // 0 = désactivé, -1 = illimité
-  
+
   // Web Search
   webSearchMonthly: number;       // 0 = désactivé, -1 = illimité
-  
+
   // Historique
   historyDays: number;            // -1 = illimité
+
+  // API
+  apiRequestsDaily: number;       // 0 = désactivé, -1 = illimité
+
+  // Équipe
+  teamMembers: number;            // 1 = solo, -1 = illimité
 }
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🆓 FREE — Maximum friction pour conversion
+  // ═══════════════════════════════════════════════════════════════════════════
   free: {
-    monthlyAnalyses: 4,           // 🔽 Réduit (était 5)
-    chatQuestionsPerVideo: 3,     // 🔽 Réduit (était 5)
+    monthlyAnalyses: 3,           // Seulement 3 analyses !
+    monthlyCredits: 150,
+    maxVideoDuration: 600,        // 10 min max
+    chatQuestionsPerVideo: 3,
     chatDailyLimit: 10,
     maxPlaylistVideos: 0,
     maxPlaylists: 0,
     maxExportsPerDay: 0,
     webSearchMonthly: 0,
-    historyDays: 3,               // 🔽 Réduit (était 7)
+    historyDays: 3,               // Seulement 3 jours !
+    apiRequestsDaily: 0,
+    teamMembers: 1,
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎓 ÉTUDIANT — 2.99€/mois - Focus apprentissage
+  // ═══════════════════════════════════════════════════════════════════════════
   student: {
-    // 🎓 NOUVEAU: Plan Étudiant
     monthlyAnalyses: 40,
+    monthlyCredits: 2000,
+    maxVideoDuration: 7200,       // 2h max
     chatQuestionsPerVideo: 15,
     chatDailyLimit: 50,
-    maxPlaylistVideos: 0,
-    maxPlaylists: 0,
-    maxExportsPerDay: 5,
-    webSearchMonthly: 10,
-    historyDays: 90,
-  },
-  starter: {
-    monthlyAnalyses: 50,
-    chatQuestionsPerVideo: 20,
-    chatDailyLimit: 50,
-    maxPlaylistVideos: 0,
+    maxPlaylistVideos: 0,         // Pas de playlists (différenciateur Pro)
     maxPlaylists: 0,
     maxExportsPerDay: 10,
-    webSearchMonthly: 20,  // ✅ CORRIGÉ: Starter a 20 recherches/mois
+    webSearchMonthly: 10,
+    historyDays: 90,              // 3 mois
+    apiRequestsDaily: 0,
+    teamMembers: 1,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ⚡ STARTER — 5.99€/mois - Particuliers
+  // ═══════════════════════════════════════════════════════════════════════════
+  starter: {
+    monthlyAnalyses: 60,
+    monthlyCredits: 3000,
+    maxVideoDuration: 7200,       // 2h max
+    chatQuestionsPerVideo: 20,
+    chatDailyLimit: 100,
+    maxPlaylistVideos: 0,         // Pas de playlists (différenciateur Pro)
+    maxPlaylists: 0,
+    maxExportsPerDay: 20,
+    webSearchMonthly: 20,
     historyDays: 60,
+    apiRequestsDaily: 0,
+    teamMembers: 1,
   },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ⭐ PRO — 12.99€/mois - Créateurs & Professionnels (POPULAIRE)
+  // ═══════════════════════════════════════════════════════════════════════════
   pro: {
-    monthlyAnalyses: 200,
-    chatQuestionsPerVideo: -1,  // Illimité
-    chatDailyLimit: -1,         // Illimité
-    maxPlaylistVideos: 10,      // ✅ Aligné avec UpgradePage
-    maxPlaylists: 20,
-    maxExportsPerDay: -1,       // Illimité
+    monthlyAnalyses: 300,
+    monthlyCredits: 15000,
+    maxVideoDuration: 14400,      // 4h max
+    chatQuestionsPerVideo: -1,    // Illimité
+    chatDailyLimit: -1,           // Illimité
+    maxPlaylistVideos: 20,        // ⭐ Playlists activées
+    maxPlaylists: 10,
+    maxExportsPerDay: -1,         // Illimité
     webSearchMonthly: 100,
-    historyDays: 180,           // ✅ Aligné avec UpgradePage (180 jours)
+    historyDays: 180,             // 6 mois
+    apiRequestsDaily: 0,          // Pas d'API (différenciateur Équipe)
+    teamMembers: 1,
   },
-  expert: {
-    monthlyAnalyses: -1,        // Illimité
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 👥 ÉQUIPE — 29.99€/mois - Entreprises & Laboratoires
+  // ═══════════════════════════════════════════════════════════════════════════
+  team: {
+    monthlyAnalyses: 1000,
+    monthlyCredits: 50000,
+    maxVideoDuration: -1,         // Illimité
     chatQuestionsPerVideo: -1,
     chatDailyLimit: -1,
-    maxPlaylistVideos: 50,      // ✅ Aligné avec UpgradePage
-    maxPlaylists: -1,           // Illimité
+    maxPlaylistVideos: 100,
+    maxPlaylists: -1,             // Illimité
     maxExportsPerDay: -1,
-    webSearchMonthly: 500,
-    historyDays: -1,            // Illimité
+    webSearchMonthly: -1,         // Illimité
+    historyDays: -1,              // Illimité
+    apiRequestsDaily: 1000,       // ⭐ API activée
+    teamMembers: 5,               // ⭐ Multi-utilisateurs
   },
 };
 
@@ -100,232 +147,252 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
 
 export interface PlanFeatures {
   // Résumés
-  summaryExpress: boolean;        // Synthèse express (30s)
-  summaryDetailed: boolean;       // Analyse détaillée
-  summaryTimestamps: boolean;     // Timestamps cliquables
-  summaryConcepts: boolean;       // Glossaire des concepts
-  
+  summaryExpress: boolean;
+  summaryDetailed: boolean;
+  summaryTimestamps: boolean;
+  summaryConcepts: boolean;
+
   // Chat
-  chatBasic: boolean;             // Chat basique
-  chatWebSearch: boolean;         // Recherche web dans le chat
-  chatSuggestedQuestions: boolean; // Questions suggérées
-  
+  chatBasic: boolean;
+  chatWebSearch: boolean;
+  chatSuggestedQuestions: boolean;
+
   // Fact-checking
-  factCheckBasic: boolean;        // Fact-check basique
-  factCheckAdvanced: boolean;     // Fact-check avancé (Perplexity)
-  
+  factCheckBasic: boolean;
+  factCheckAdvanced: boolean;
+
   // Recherche
-  intelligentSearch: boolean;     // Recherche intelligente de vidéos
-  
+  intelligentSearch: boolean;
+
   // Playlists & Corpus
-  playlists: boolean;             // Analyse de playlists
-  corpus: boolean;                // Corpus personnalisés
-  
+  playlists: boolean;
+  corpus: boolean;
+
+  // Outils d'étude (⭐ KILLER FEATURE Étudiant)
+  flashcards: boolean;
+  conceptMaps: boolean;
+  citationExport: boolean;
+  bibtexExport: boolean;
+
   // Export
   exportPdf: boolean;
   exportMarkdown: boolean;
   exportTxt: boolean;
-  
+  exportWatermark: boolean;  // true = watermark ajouté
+
   // Audio
-  ttsAudio: boolean;              // Lecture audio TTS
-  
+  ttsAudio: boolean;
+
   // Avancé
-  apiAccess: boolean;             // Accès API
-  prioritySupport: boolean;       // Support prioritaire
-  dedicatedSupport: boolean;      // Support dédié
-  training: boolean;              // Formation incluse
+  apiAccess: boolean;
+  prioritySupport: boolean;
+  sharedWorkspace: boolean;
+  slackIntegration: boolean;
+  teamsIntegration: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🆓 FREE — Minimum pour tester
+  // ═══════════════════════════════════════════════════════════════════════════
   free: {
-    // Résumés
     summaryExpress: true,
     summaryDetailed: false,
     summaryTimestamps: true,
     summaryConcepts: false,
 
-    // Chat
     chatBasic: true,
     chatWebSearch: false,
     chatSuggestedQuestions: false,
 
-    // Fact-checking
     factCheckBasic: false,
     factCheckAdvanced: false,
 
-    // Recherche
     intelligentSearch: false,
 
-    // Playlists
     playlists: false,
     corpus: false,
 
-    // Export
+    flashcards: false,
+    conceptMaps: false,
+    citationExport: false,
+    bibtexExport: false,
+
     exportPdf: false,
     exportMarkdown: false,
-    exportTxt: false,
+    exportTxt: true,
+    exportWatermark: true,  // Watermark sur exports
 
-    // Audio
     ttsAudio: false,
 
-    // Avancé
     apiAccess: false,
     prioritySupport: false,
-    dedicatedSupport: false,
-    training: false,
+    sharedWorkspace: false,
+    slackIntegration: false,
+    teamsIntegration: false,
   },
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🎓 ÉTUDIANT — Focus outils d'apprentissage
+  // ═══════════════════════════════════════════════════════════════════════════
   student: {
-    // 🎓 NOUVEAU: Plan Étudiant - Focus outils d'étude
-    // Résumés
     summaryExpress: true,
     summaryDetailed: true,
     summaryTimestamps: true,
-    summaryConcepts: true,         // ✅ Concepts pour l'apprentissage
+    summaryConcepts: true,
 
-    // Chat
     chatBasic: true,
-    chatWebSearch: true,           // ✅ Recherche web basique
+    chatWebSearch: true,
     chatSuggestedQuestions: true,
 
-    // Fact-checking
     factCheckBasic: true,
     factCheckAdvanced: false,
 
-    // Recherche
     intelligentSearch: true,
 
-    // Playlists
-    playlists: false,
+    playlists: false,           // Différenciateur Pro
     corpus: false,
 
-    // Export
-    exportPdf: true,               // ✅ Export PDF pour les cours
-    exportMarkdown: true,          // ✅ Markdown pour prise de notes
-    exportTxt: true,
+    // ⭐ KILLER FEATURES ÉTUDIANT
+    flashcards: true,
+    conceptMaps: true,
+    citationExport: true,
+    bibtexExport: true,
 
-    // Audio
-    ttsAudio: true,                // ✅ TTS pour réviser en écoutant
-
-    // Avancé
-    apiAccess: false,
-    prioritySupport: false,
-    dedicatedSupport: false,
-    training: false,
-  },
-
-  starter: {
-    // Résumés
-    summaryExpress: true,
-    summaryDetailed: true,
-    summaryTimestamps: true,
-    summaryConcepts: true,
-    
-    // Chat
-    chatBasic: true,
-    chatWebSearch: true,  // ✅ CORRIGÉ: Starter a web search (20/mois)
-    chatSuggestedQuestions: true,
-    
-    // Fact-checking
-    factCheckBasic: true,
-    factCheckAdvanced: false,  // Fact-check avancé = Pro+
-    
-    // Recherche
-    intelligentSearch: true,
-    
-    // Playlists
-    playlists: false,
-    corpus: false,
-    
-    // Export
     exportPdf: true,
-    exportMarkdown: false,
-    exportTxt: false,
-    
-    // Audio
-    ttsAudio: false,
-    
-    // Avancé
+    exportMarkdown: true,       // Pour Notion/Obsidian
+    exportTxt: true,
+    exportWatermark: false,
+
+    ttsAudio: true,             // Pour réviser en écoutant
+
     apiAccess: false,
     prioritySupport: false,
-    dedicatedSupport: false,
-    training: false,
+    sharedWorkspace: false,
+    slackIntegration: false,
+    teamsIntegration: false,
   },
-  
-  pro: {
-    // Résumés
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ⚡ STARTER — Pour les particuliers
+  // ═══════════════════════════════════════════════════════════════════════════
+  starter: {
     summaryExpress: true,
     summaryDetailed: true,
     summaryTimestamps: true,
     summaryConcepts: true,
-    
-    // Chat
+
     chatBasic: true,
     chatWebSearch: true,
     chatSuggestedQuestions: true,
-    
-    // Fact-checking
+
+    factCheckBasic: true,
+    factCheckAdvanced: false,
+
+    intelligentSearch: true,
+
+    playlists: false,           // Différenciateur Pro
+    corpus: false,
+
+    flashcards: true,
+    conceptMaps: true,
+    citationExport: true,
+    bibtexExport: false,        // Différenciateur Étudiant
+
+    exportPdf: true,
+    exportMarkdown: false,      // Différenciateur Pro
+    exportTxt: true,
+    exportWatermark: false,
+
+    ttsAudio: false,            // Différenciateur Pro
+
+    apiAccess: false,
+    prioritySupport: false,
+    sharedWorkspace: false,
+    slackIntegration: false,
+    teamsIntegration: false,
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ⭐ PRO — Pour créateurs et professionnels
+  // ═══════════════════════════════════════════════════════════════════════════
+  pro: {
+    summaryExpress: true,
+    summaryDetailed: true,
+    summaryTimestamps: true,
+    summaryConcepts: true,
+
+    chatBasic: true,
+    chatWebSearch: true,
+    chatSuggestedQuestions: true,
+
     factCheckBasic: true,
     factCheckAdvanced: true,
-    
-    // Recherche
+
     intelligentSearch: true,
-    
-    // Playlists
+
+    // ⭐ PLAYLISTS ACTIVÉES
     playlists: true,
     corpus: false,
-    
-    // Export
+
+    flashcards: true,
+    conceptMaps: true,
+    citationExport: true,
+    bibtexExport: true,
+
     exportPdf: true,
     exportMarkdown: true,
     exportTxt: true,
-    
-    // Audio
+    exportWatermark: false,
+
     ttsAudio: true,
-    
-    // Avancé
-    apiAccess: false,
+
+    apiAccess: false,           // Différenciateur Équipe
     prioritySupport: true,
-    dedicatedSupport: false,
-    training: false,
+    sharedWorkspace: false,
+    slackIntegration: false,
+    teamsIntegration: false,
   },
-  
-  expert: {
-    // Résumés
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 👥 ÉQUIPE — Pour entreprises et laboratoires
+  // ═══════════════════════════════════════════════════════════════════════════
+  team: {
     summaryExpress: true,
     summaryDetailed: true,
     summaryTimestamps: true,
     summaryConcepts: true,
-    
-    // Chat
+
     chatBasic: true,
     chatWebSearch: true,
     chatSuggestedQuestions: true,
-    
-    // Fact-checking
+
     factCheckBasic: true,
     factCheckAdvanced: true,
-    
-    // Recherche
+
     intelligentSearch: true,
-    
-    // Playlists
+
     playlists: true,
     corpus: true,
-    
-    // Export
+
+    flashcards: true,
+    conceptMaps: true,
+    citationExport: true,
+    bibtexExport: true,
+
     exportPdf: true,
     exportMarkdown: true,
     exportTxt: true,
-    
-    // Audio
+    exportWatermark: false,
+
     ttsAudio: true,
-    
-    // Avancé
+
+    // ⭐ FEATURES ÉQUIPE
     apiAccess: true,
     prioritySupport: true,
-    dedicatedSupport: false,  // Non implémenté
-    training: false,          // Non implémenté
+    sharedWorkspace: true,
+    slackIntegration: true,
+    teamsIntegration: true,
   },
 };
 
@@ -337,57 +404,169 @@ export interface PlanInfo {
   id: PlanId;
   name: { fr: string; en: string };
   description: { fr: string; en: string };
-  price: number;  // en centimes (0 = gratuit)
+  price: number;  // en centimes
   priceDisplay: { fr: string; en: string };
   badge?: { fr: string; en: string };
   popular?: boolean;
-  order: number;  // Pour le tri
+  recommended?: boolean;
+  color: string;
+  icon: string;
+  gradient: string;
+  order: number;
+  // Pour la conversion
+  targetAudience: { fr: string; en: string };
+  killerFeature: { fr: string; en: string };
 }
 
 export const PLANS_INFO: PlanInfo[] = [
   {
     id: 'free',
-    name: { fr: 'Découverte', en: 'Discovery' },
-    description: { fr: 'Pour explorer', en: 'To explore' },
+    name: { fr: 'Gratuit', en: 'Free' },
+    description: { fr: 'Pour découvrir', en: 'To discover' },
     price: 0,
-    priceDisplay: { fr: '0 €/mois', en: '€0/month' },
+    priceDisplay: { fr: '0€', en: 'Free' },
+    color: '#6B7280',
+    icon: 'Zap',
+    gradient: 'from-gray-500 to-gray-600',
     order: 0,
+    targetAudience: { fr: 'Curieux', en: 'Curious' },
+    killerFeature: { fr: '3 analyses gratuites', en: '3 free analyses' },
   },
   {
     id: 'student',
     name: { fr: 'Étudiant', en: 'Student' },
     description: { fr: 'Pour réviser efficacement', en: 'For effective studying' },
     price: 299,
-    priceDisplay: { fr: '2,99 €/mois', en: '€2.99/month' },
-    badge: { fr: 'Étudiants', en: 'Students' },
+    priceDisplay: { fr: '2,99€/mois', en: '€2.99/mo' },
+    badge: { fr: '🎓 Étudiants', en: '🎓 Students' },
+    color: '#10B981',
+    icon: 'GraduationCap',
+    gradient: 'from-emerald-500 to-green-600',
     order: 1,
+    targetAudience: { fr: 'Étudiants & Apprenants', en: 'Students & Learners' },
+    killerFeature: { fr: 'Flashcards & Cartes mentales', en: 'Flashcards & Mind maps' },
   },
   {
     id: 'starter',
     name: { fr: 'Starter', en: 'Starter' },
-    description: { fr: 'Pour les réguliers', en: 'For regular users' },
-    price: 499,
-    priceDisplay: { fr: '4,99 €/mois', en: '€4.99/month' },
+    description: { fr: 'Pour les utilisateurs réguliers', en: 'For regular users' },
+    price: 599,
+    priceDisplay: { fr: '5,99€/mois', en: '€5.99/mo' },
+    color: '#3B82F6',
+    icon: 'Zap',
+    gradient: 'from-blue-500 to-blue-600',
     order: 2,
+    targetAudience: { fr: 'Particuliers', en: 'Individuals' },
+    killerFeature: { fr: '60 analyses/mois', en: '60 analyses/month' },
   },
   {
     id: 'pro',
     name: { fr: 'Pro', en: 'Pro' },
-    description: { fr: 'Pour les power users', en: 'For power users' },
-    price: 999,
-    priceDisplay: { fr: '9,99 €/mois', en: '€9.99/month' },
-    badge: { fr: 'Populaire', en: 'Popular' },
+    description: { fr: 'Pour les créateurs & professionnels', en: 'For creators & professionals' },
+    price: 1299,
+    priceDisplay: { fr: '12,99€/mois', en: '€12.99/mo' },
+    badge: { fr: '⭐ Populaire', en: '⭐ Popular' },
     popular: true,
+    color: '#8B5CF6',
+    icon: 'Crown',
+    gradient: 'from-violet-500 to-purple-600',
     order: 3,
+    targetAudience: { fr: 'Créateurs & Profs', en: 'Creators & Teachers' },
+    killerFeature: { fr: 'Playlists (20 vidéos)', en: 'Playlists (20 videos)' },
   },
   {
-    id: 'expert',
-    name: { fr: 'Expert', en: 'Expert' },
-    description: { fr: 'Pour les professionnels', en: 'For professionals' },
-    price: 1499,
-    priceDisplay: { fr: '14,99 €/mois', en: '€14.99/month' },
-    badge: { fr: 'Recommandé', en: 'Recommended' },
+    id: 'team',
+    name: { fr: 'Équipe', en: 'Team' },
+    description: { fr: 'Pour les entreprises & laboratoires', en: 'For businesses & labs' },
+    price: 2999,
+    priceDisplay: { fr: '29,99€/mois', en: '€29.99/mo' },
+    badge: { fr: '🏢 Entreprises', en: '🏢 Business' },
+    recommended: true,
+    color: '#F59E0B',
+    icon: 'Users',
+    gradient: 'from-amber-500 to-orange-500',
     order: 4,
+    targetAudience: { fr: 'Entreprises & Labos', en: 'Businesses & Labs' },
+    killerFeature: { fr: 'API + 5 utilisateurs', en: 'API + 5 users' },
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎯 TRIGGERS DE CONVERSION
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const CONVERSION_TRIGGERS = {
+  // Pop-up après X analyses gratuites
+  freeAnalysisWarning: 2,      // Avertissement à 2 analyses
+  freeAnalysisLimit: 3,        // Blocage à 3 analyses
+
+  // Pop-up quand crédits bas
+  lowCreditsWarningPercent: 20,
+  lowCreditsCriticalPercent: 5,
+
+  // Valeur affichée après analyse
+  showTimeSaved: true,
+  showEquivalentPages: true,
+
+  // Essai gratuit
+  trialEnabled: true,
+  trialDays: 7,
+  trialPlan: 'pro' as PlanId,
+  trialRequiresCard: false,
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 💬 TÉMOIGNAGES PAR PERSONA
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface Testimonial {
+  text: { fr: string; en: string };
+  author: string;
+  role: { fr: string; en: string };
+  avatar: string;
+  plan: PlanId;
+}
+
+export const TESTIMONIALS: Testimonial[] = [
+  {
+    text: {
+      fr: "En tant qu'étudiant en médecine, Deep Sight m'a fait gagner 10h/semaine sur mes révisions. Les fiches automatiques sont incroyables !",
+      en: "As a medical student, Deep Sight saves me 10h/week on revision. The automatic flashcards are incredible!"
+    },
+    author: "Marie L.",
+    role: { fr: "L3 Médecine", en: "Medical Student" },
+    avatar: "🎓",
+    plan: 'student'
+  },
+  {
+    text: {
+      fr: "Les cartes mentales automatiques ont transformé ma façon de prendre des notes. Je recommande à tous les étudiants !",
+      en: "The automatic mind maps have transformed how I take notes. I recommend it to all students!"
+    },
+    author: "Lucas D.",
+    role: { fr: "Prépa HEC", en: "Business School Prep" },
+    avatar: "📚",
+    plan: 'student'
+  },
+  {
+    text: {
+      fr: "J'analyse les vidéos de mes concurrents en 2 min au lieu de 2h. Indispensable pour ma veille !",
+      en: "I analyze competitor videos in 2 min instead of 2h. Essential for my research!"
+    },
+    author: "Thomas B.",
+    role: { fr: "YouTuber, 150k abonnés", en: "YouTuber, 150k subscribers" },
+    avatar: "🎬",
+    plan: 'pro'
+  },
+  {
+    text: {
+      fr: "L'API m'a permis d'intégrer l'analyse vidéo dans notre workflow de formation. ROI immédiat.",
+      en: "The API let me integrate video analysis into our training workflow. Immediate ROI."
+    },
+    author: "Sophie M.",
+    role: { fr: "Responsable Formation, CAC 40", en: "Training Manager, Fortune 500" },
+    avatar: "💼",
+    plan: 'team'
   },
 ];
 
@@ -396,10 +575,39 @@ export const PLANS_INFO: PlanInfo[] = [
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
+ * Normalise un nom de plan vers un PlanId valide
+ */
+export function normalizePlanId(plan: string | undefined): PlanId {
+  if (!plan) return 'free';
+
+  const normalized = plan.toLowerCase().trim();
+
+  // Mapping des anciens plans vers les nouveaux
+  const planMapping: Record<string, PlanId> = {
+    'free': 'free',
+    'gratuit': 'free',
+    'découverte': 'free',
+    'decouverte': 'free',
+    'discovery': 'free',
+    'student': 'student',
+    'étudiant': 'student',
+    'etudiant': 'student',
+    'starter': 'starter',
+    'pro': 'pro',
+    'team': 'team',
+    'équipe': 'team',
+    'equipe': 'team',
+    'expert': 'team',  // Expert → Team
+  };
+
+  return planMapping[normalized] || 'free';
+}
+
+/**
  * Vérifie si un plan a accès à une fonctionnalité
  */
 export function hasFeature(plan: PlanId | string | undefined, feature: keyof PlanFeatures): boolean {
-  const planId = (plan || 'free').toLowerCase() as PlanId;
+  const planId = normalizePlanId(plan as string);
   return PLAN_FEATURES[planId]?.[feature] ?? false;
 }
 
@@ -407,7 +615,7 @@ export function hasFeature(plan: PlanId | string | undefined, feature: keyof Pla
  * Obtient une limite pour un plan
  */
 export function getLimit(plan: PlanId | string | undefined, limit: keyof PlanLimits): number {
-  const planId = (plan || 'free').toLowerCase() as PlanId;
+  const planId = normalizePlanId(plan as string);
   return PLAN_LIMITS[planId]?.[limit] ?? 0;
 }
 
@@ -422,7 +630,7 @@ export function isUnlimited(plan: PlanId | string | undefined, limit: keyof Plan
  * Obtient les infos d'un plan
  */
 export function getPlanInfo(plan: PlanId | string | undefined): PlanInfo {
-  const planId = (plan || 'free').toLowerCase() as PlanId;
+  const planId = normalizePlanId(plan as string);
   return PLANS_INFO.find(p => p.id === planId) || PLANS_INFO[0];
 }
 
@@ -446,13 +654,58 @@ export function isPlanHigher(currentPlan: PlanId | string, targetPlan: PlanId | 
  * Obtient le plan minimum requis pour une fonctionnalité
  */
 export function getMinPlanForFeature(feature: keyof PlanFeatures): PlanId {
-  const planOrder: PlanId[] = ['free', 'student', 'starter', 'pro', 'expert'];
+  const planOrder: PlanId[] = ['free', 'student', 'starter', 'pro', 'team'];
   for (const plan of planOrder) {
     if (PLAN_FEATURES[plan][feature]) {
       return plan;
     }
   }
-  return 'expert'; // Si aucun plan ne l'a, c'est expert
+  return 'team';
+}
+
+/**
+ * Vérifie si l'utilisateur doit voir une alerte de crédits bas
+ */
+export function shouldShowLowCreditsAlert(
+  currentCredits: number,
+  maxCredits: number
+): 'none' | 'warning' | 'critical' {
+  if (maxCredits <= 0) return 'none';
+  const percent = (currentCredits / maxCredits) * 100;
+  if (percent <= CONVERSION_TRIGGERS.lowCreditsCriticalPercent) return 'critical';
+  if (percent <= CONVERSION_TRIGGERS.lowCreditsWarningPercent) return 'warning';
+  return 'none';
+}
+
+/**
+ * Vérifie si l'utilisateur free a atteint la limite d'analyses
+ */
+export function shouldShowUpgradePrompt(
+  plan: PlanId | string,
+  analysesUsed: number
+): 'none' | 'warning' | 'blocked' {
+  const planId = normalizePlanId(plan as string);
+  if (planId !== 'free') return 'none';
+  if (analysesUsed >= CONVERSION_TRIGGERS.freeAnalysisLimit) return 'blocked';
+  if (analysesUsed >= CONVERSION_TRIGGERS.freeAnalysisWarning) return 'warning';
+  return 'none';
+}
+
+/**
+ * Calcule le temps économisé par l'analyse (pour affichage)
+ */
+export function calculateTimeSaved(videoDurationSeconds: number): {
+  minutes: number;
+  equivalent: string;
+} {
+  // On estime que l'utilisateur économise ~80% du temps de visionnage
+  const minutesSaved = Math.round((videoDurationSeconds * 0.8) / 60);
+  const pagesEquivalent = Math.round(videoDurationSeconds / 180); // ~3 min de vidéo = 1 page de notes
+
+  return {
+    minutes: minutesSaved,
+    equivalent: pagesEquivalent > 0 ? `${pagesEquivalent} pages` : '1 page',
+  };
 }
 
 /**
@@ -465,84 +718,37 @@ export function getFeatureListForDisplay(plan: PlanId, language: 'fr' | 'en'): A
 }> {
   const features = PLAN_FEATURES[plan];
   const limits = PLAN_LIMITS[plan];
-  
-  const analysesText = limits.monthlyAnalyses === -1 
+
+  const analysesText = limits.monthlyAnalyses === -1
     ? (language === 'fr' ? 'Analyses illimitées' : 'Unlimited analyses')
     : (language === 'fr' ? `${limits.monthlyAnalyses} analyses/mois` : `${limits.monthlyAnalyses} analyses/month`);
-  
+
   const chatText = limits.chatQuestionsPerVideo === -1
     ? (language === 'fr' ? 'Chat illimité' : 'Unlimited chat')
     : (language === 'fr' ? `Chat (${limits.chatQuestionsPerVideo} questions/vidéo)` : `Chat (${limits.chatQuestionsPerVideo} questions/video)`);
-  
+
   const webSearchText = limits.webSearchMonthly === 0
     ? (language === 'fr' ? 'Recherche web' : 'Web search')
     : limits.webSearchMonthly === -1
     ? (language === 'fr' ? 'Recherche web illimitée' : 'Unlimited web search')
     : (language === 'fr' ? `Recherche web (${limits.webSearchMonthly}/mois)` : `Web search (${limits.webSearchMonthly}/mo)`);
-  
+
+  const playlistText = limits.maxPlaylistVideos === 0
+    ? (language === 'fr' ? 'Playlists' : 'Playlists')
+    : (language === 'fr' ? `Playlists (${limits.maxPlaylistVideos} vidéos)` : `Playlists (${limits.maxPlaylistVideos} videos)`);
+
   return [
-    { 
-      text: analysesText, 
-      included: true,
-      highlight: limits.monthlyAnalyses === -1 
-    },
-    { 
-      text: language === 'fr' ? 'Résumés structurés' : 'Structured summaries', 
-      included: features.summaryExpress 
-    },
-    { 
-      text: language === 'fr' ? 'Analyse détaillée' : 'Detailed analysis', 
-      included: features.summaryDetailed 
-    },
-    { 
-      text: chatText, 
-      included: features.chatBasic 
-    },
-    { 
-      text: webSearchText, 
-      included: features.chatWebSearch,
-      highlight: features.chatWebSearch
-    },
-    { 
-      text: language === 'fr' ? 'Fact-checking' : 'Fact-checking', 
-      included: features.factCheckBasic 
-    },
-    { 
-      text: language === 'fr' ? 'Fact-checking avancé' : 'Advanced fact-checking', 
-      included: features.factCheckAdvanced,
-      highlight: features.factCheckAdvanced
-    },
-    { 
-      text: language === 'fr' ? 'Recherche intelligente' : 'Intelligent search', 
-      included: features.intelligentSearch 
-    },
-    { 
-      text: language === 'fr' ? 'Playlists & corpus' : 'Playlists & corpus', 
-      included: features.playlists,
-      highlight: features.playlists
-    },
-    { 
-      text: language === 'fr' ? 'Export PDF' : 'PDF export', 
-      included: features.exportPdf 
-    },
-    { 
-      text: language === 'fr' ? 'Export Markdown & TXT' : 'Markdown & TXT export', 
-      included: features.exportMarkdown 
-    },
-    { 
-      text: language === 'fr' ? 'Lecture audio TTS' : 'TTS audio playback', 
-      included: features.ttsAudio 
-    },
-    { 
-      text: language === 'fr' ? 'Accès API' : 'API access', 
-      included: features.apiAccess,
-      highlight: features.apiAccess
-    },
-    { 
-      text: language === 'fr' ? 'Support prioritaire' : 'Priority support', 
-      included: features.prioritySupport 
-    },
-  ].filter(f => f.included || plan !== 'free'); // Pour free, ne montrer que ce qui est inclus
+    { text: analysesText, included: true, highlight: limits.monthlyAnalyses === -1 },
+    { text: chatText, included: features.chatBasic },
+    { text: webSearchText, included: features.chatWebSearch, highlight: features.chatWebSearch },
+    { text: language === 'fr' ? 'Flashcards & Cartes mentales' : 'Flashcards & Mind maps', included: features.flashcards, highlight: features.flashcards && plan === 'student' },
+    { text: playlistText, included: features.playlists, highlight: features.playlists },
+    { text: language === 'fr' ? 'Export PDF' : 'PDF export', included: features.exportPdf },
+    { text: language === 'fr' ? 'Export Markdown' : 'Markdown export', included: features.exportMarkdown },
+    { text: language === 'fr' ? 'Lecture audio TTS' : 'TTS audio playback', included: features.ttsAudio },
+    { text: language === 'fr' ? 'Accès API' : 'API access', included: features.apiAccess, highlight: features.apiAccess },
+    { text: language === 'fr' ? `${limits.teamMembers} utilisateur${limits.teamMembers > 1 ? 's' : ''}` : `${limits.teamMembers} user${limits.teamMembers > 1 ? 's' : ''}`, included: limits.teamMembers > 1, highlight: limits.teamMembers > 1 },
+  ].filter(f => f.included || plan !== 'free');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -553,6 +759,8 @@ export default {
   PLAN_LIMITS,
   PLAN_FEATURES,
   PLANS_INFO,
+  CONVERSION_TRIGGERS,
+  TESTIMONIALS,
   hasFeature,
   getLimit,
   isUnlimited,
@@ -561,4 +769,8 @@ export default {
   isPlanHigher,
   getMinPlanForFeature,
   getFeatureListForDisplay,
+  normalizePlanId,
+  shouldShowLowCreditsAlert,
+  shouldShowUpgradePrompt,
+  calculateTimeSaved,
 };

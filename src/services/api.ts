@@ -27,7 +27,7 @@ export interface User {
   username: string;
   email: string;
   email_verified: boolean;
-  plan: 'free' | 'starter' | 'pro' | 'expert';
+  plan: 'free' | 'student' | 'starter' | 'pro' | 'expert';
   credits: number;
   credits_monthly: number;
   is_admin: boolean;
@@ -935,11 +935,35 @@ export interface SubscriptionStatus {
   next_plan: string | null;
 }
 
+export interface TrialEligibility {
+  eligible: boolean;
+  reason?: string;
+  trial_days: number;
+  trial_plan: string;
+}
+
 export const billingApi = {
-  async createCheckout(plan: string): Promise<{ checkout_url: string; session_id: string }> {
+  async createCheckout(plan: string, trialDays?: number): Promise<{ checkout_url: string; session_id: string }> {
     return request('/api/billing/create-checkout', {
       method: 'POST',
-      body: { plan_id: plan },
+      body: { plan_id: plan, trial_days: trialDays },
+    });
+  },
+
+  /**
+   * 🆓 Vérifie si l'utilisateur peut bénéficier d'un essai gratuit
+   */
+  async checkTrialEligibility(): Promise<TrialEligibility> {
+    return request('/api/billing/trial-eligibility');
+  },
+
+  /**
+   * 🆓 Démarre un essai gratuit Pro de 7 jours
+   */
+  async startProTrial(): Promise<{ checkout_url: string; session_id: string }> {
+    return request('/api/billing/create-checkout', {
+      method: 'POST',
+      body: { plan_id: 'pro', trial_days: 7 },
     });
   },
 

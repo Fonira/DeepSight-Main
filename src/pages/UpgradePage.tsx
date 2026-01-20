@@ -1,7 +1,14 @@
 /**
  * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  💎 UPGRADE PAGE v3.1 — Features réellement implémentées uniquement                 ║
+ * ║  💎 UPGRADE PAGE v4.0 — NOUVELLE STRATÉGIE DE MONÉTISATION                         ║
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
+ *
+ * 🎯 Plans:
+ * - Gratuit (0€): Maximum friction
+ * - Étudiant (2.99€): Focus outils d'étude
+ * - Starter (5.99€): Particuliers
+ * - Pro (12.99€): Créateurs & Professionnels (POPULAIRE)
+ * - Équipe (29.99€): Entreprises & Laboratoires
  */
 
 import React, { useState, useEffect } from 'react';
@@ -11,215 +18,38 @@ import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
 import {
-  Check, X, Sparkles, Zap, Star, Crown, Loader2,
+  Check, X, Sparkles, Zap, Crown, Loader2,
   ArrowUp, ArrowDown, AlertCircle, RefreshCw,
   BookOpen, ChevronDown, ChevronUp, Key,
-  Infinity, Database, ListVideo, Headphones, GraduationCap
+  Infinity, ListVideo, Headphones, GraduationCap,
+  Gift, Clock, Shield, Users, Brain, FileText,
+  Star, Lightbulb, TrendingUp
 } from 'lucide-react';
 import { billingApi } from '../services/api';
+import {
+  PLANS_INFO,
+  PLAN_LIMITS,
+  PLAN_FEATURES,
+  TESTIMONIALS,
+  CONVERSION_TRIGGERS,
+  normalizePlanId,
+  type PlanId,
+} from '../config/planPrivileges';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📊 CONFIGURATION DES PLANS
+// 🎯 ICÔNES PAR PLAN
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type PlanId = 'free' | 'student' | 'starter' | 'pro' | 'expert';
-
-interface PlanFeature {
-  text: { fr: string; en: string };
-  included: boolean;
-  highlight?: boolean;
-}
-
-interface PlanConfig {
-  id: PlanId;
-  name: { fr: string; en: string };
-  description: { fr: string; en: string };
-  price: number;
-  popular?: boolean;
-  recommended?: boolean;
-  order: number;
-  gradient: string;
-  features: PlanFeature[];
-}
-
-const PLANS: PlanConfig[] = [
-  {
-    id: 'free',
-    name: { fr: 'Découverte', en: 'Discovery' },
-    description: { fr: 'Pour explorer', en: 'To explore' },
-    price: 0,
-    order: 0,
-    gradient: 'from-slate-500 to-slate-600',
-    features: [
-      { text: { fr: '4 analyses/mois', en: '4 analyses/month' }, included: true },
-      { text: { fr: 'Synthèse express', en: 'Express summary' }, included: true },
-      { text: { fr: 'Chat basique (3 questions)', en: 'Basic chat (3 questions)' }, included: true },
-      { text: { fr: 'Historique 3 jours', en: '3 days history' }, included: true },
-      { text: { fr: 'Outils d\'étude', en: 'Study tools' }, included: false },
-      { text: { fr: 'Export', en: 'Export' }, included: false },
-    ],
-  },
-  {
-    id: 'student',
-    name: { fr: 'Étudiant', en: 'Student' },
-    description: { fr: 'Pour réviser efficacement', en: 'For effective studying' },
-    price: 2.99,
-    order: 1,
-    gradient: 'from-green-500 to-emerald-600',
-    features: [
-      { text: { fr: '40 analyses/mois', en: '40 analyses/month' }, included: true },
-      { text: { fr: 'Flashcards & cartes mentales', en: 'Flashcards & mind maps' }, included: true, highlight: true },
-      { text: { fr: 'Chat (15 questions/vidéo)', en: 'Chat (15 questions/video)' }, included: true },
-      { text: { fr: 'Export PDF & Markdown', en: 'PDF & Markdown export' }, included: true },
-      { text: { fr: 'Lecture audio TTS', en: 'TTS audio playback' }, included: true },
-      { text: { fr: 'Historique 90 jours', en: '90 days history' }, included: true },
-    ],
-  },
-  {
-    id: 'starter',
-    name: { fr: 'Starter', en: 'Starter' },
-    description: { fr: 'Pour les réguliers', en: 'For regular users' },
-    price: 4.99,
-    order: 2,
-    gradient: 'from-blue-500 to-blue-600',
-    features: [
-      { text: { fr: '50 analyses/mois', en: '50 analyses/month' }, included: true },
-      { text: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, included: true },
-      { text: { fr: 'Chat (20 questions/vidéo)', en: 'Chat (20 questions/video)' }, included: true },
-      { text: { fr: 'Export PDF', en: 'PDF export' }, included: true },
-      { text: { fr: 'Recherche web (20/mois)', en: 'Web search (20/mo)' }, included: true, highlight: true },
-      { text: { fr: 'Playlists & corpus', en: 'Playlists & corpus' }, included: false },
-    ],
-  },
-  {
-    id: 'pro',
-    name: { fr: 'Pro', en: 'Pro' },
-    description: { fr: 'Pour les power users', en: 'For power users' },
-    price: 9.99,
-    popular: true,
-    order: 3,
-    gradient: 'from-violet-500 to-purple-600',
-    features: [
-      { text: { fr: '200 analyses/mois', en: '200 analyses/month' }, included: true },
-      { text: { fr: 'Chat illimité', en: 'Unlimited chat' }, included: true, highlight: true },
-      { text: { fr: 'Recherche web (100/mois)', en: 'Web search (100/mo)' }, included: true, highlight: true },
-      { text: { fr: 'Playlists (10 vidéos)', en: 'Playlists (10 videos)' }, included: true },
-      { text: { fr: 'Export PDF + Markdown', en: 'PDF + Markdown export' }, included: true },
-      { text: { fr: 'Lecture audio TTS', en: 'TTS audio' }, included: true },
-      { text: { fr: 'Accès API', en: 'API access' }, included: false },
-    ],
-  },
-  {
-    id: 'expert',
-    name: { fr: 'Expert', en: 'Expert' },
-    description: { fr: 'Pour les professionnels', en: 'For professionals' },
-    price: 14.99,
-    recommended: true,
-    order: 4,
-    gradient: 'from-amber-500 to-orange-500',
-    features: [
-      { text: { fr: 'Analyses illimitées', en: 'Unlimited analyses' }, included: true, highlight: true },
-      { text: { fr: 'Tout Pro inclus', en: 'All Pro features' }, included: true },
-      { text: { fr: 'Playlists (50 vidéos)', en: 'Playlists (50 videos)' }, included: true, highlight: true },
-      { text: { fr: 'Recherche web (500/mois)', en: 'Web search (500/mo)' }, included: true, highlight: true },
-    ],
-  },
-];
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 🌟 AVANTAGES EXPERT (uniquement features implémentées)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface ExclusiveFeature {
-  icon: React.ElementType;
-  title: { fr: string; en: string };
-  description: { fr: string; en: string };
-  badge?: { fr: string; en: string };
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 💬 TÉMOIGNAGES
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface Testimonial {
-  text: { fr: string; en: string };
-  author: string;
-  role: { fr: string; en: string };
-  avatar: string;
-  plan: PlanId;
-}
-
-const TESTIMONIALS: Testimonial[] = [
-  {
-    text: {
-      fr: "En tant qu'étudiant en médecine, Deep Sight m'a fait gagner 10h/semaine sur mes révisions. Les fiches automatiques sont incroyables !",
-      en: "As a medical student, Deep Sight saves me 10h/week on revision. The automatic flashcards are incredible!"
-    },
-    author: "Marie L.",
-    role: { fr: "L3 Médecine", en: "Medical Student" },
-    avatar: "🎓",
-    plan: 'student'
-  },
-  {
-    text: {
-      fr: "J'analyse les vidéos de mes concurrents en 2 min au lieu de 2h. Indispensable pour ma veille !",
-      en: "I analyze competitor videos in 2 min instead of 2h. Essential for my research!"
-    },
-    author: "Thomas B.",
-    role: { fr: "YouTuber, 150k abonnés", en: "YouTuber, 150k subscribers" },
-    avatar: "🎬",
-    plan: 'pro'
-  },
-  {
-    text: {
-      fr: "L'API Expert m'a permis d'intégrer l'analyse vidéo dans notre workflow de formation. ROI immédiat.",
-      en: "The Expert API let me integrate video analysis into our training workflow. Immediate ROI."
-    },
-    author: "Sophie M.",
-    role: { fr: "Responsable Formation, CAC 40", en: "Training Manager, Fortune 500" },
-    avatar: "💼",
-    plan: 'expert'
-  },
-  {
-    text: {
-      fr: "Les cartes mentales automatiques ont transformé ma façon de prendre des notes. Je recommande à tous les étudiants !",
-      en: "The automatic mind maps have transformed how I take notes. I recommend it to all students!"
-    },
-    author: "Lucas D.",
-    role: { fr: "Prépa HEC", en: "Business School Prep" },
-    avatar: "📚",
-    plan: 'student'
-  },
-];
-
-const EXPERT_EXCLUSIVES: ExclusiveFeature[] = [
-  {
-    icon: Key,
-    title: { fr: 'Accès API REST', en: 'REST API Access' },
-    description: { fr: 'Intégrez Deep Sight dans vos applications (1000 req/jour)', en: 'Integrate Deep Sight into your apps (1000 req/day)' },
-    badge: { fr: 'NOUVEAU', en: 'NEW' },
-  },
-  {
-    icon: Infinity,
-    title: { fr: 'Analyses illimitées', en: 'Unlimited Analyses' },
-    description: { fr: 'Aucune limite mensuelle sur les analyses', en: 'No monthly limit on analyses' },
-  },
-  {
-    icon: ListVideo,
-    title: { fr: 'Playlists étendues', en: 'Extended Playlists' },
-    description: { fr: 'Jusqu\'à 50 vidéos par playlist (vs 10 pour Pro)', en: 'Up to 50 videos per playlist (vs 10 for Pro)' },
-  },
-  {
-    icon: Database,
-    title: { fr: '500 recherches web/mois', en: '500 Web Searches/mo' },
-    description: { fr: '5x plus de recherches Perplexity que Pro', en: '5x more Perplexity searches than Pro' },
-  },
-  {
-    icon: Headphones,
-    title: { fr: 'Support prioritaire', en: 'Priority Support' },
-    description: { fr: 'Assistance email avec réponse rapide', en: 'Fast email support response' },
-  },
-];
+const getPlanIcon = (planId: PlanId) => {
+  switch (planId) {
+    case 'free': return Zap;
+    case 'student': return GraduationCap;
+    case 'starter': return Star;
+    case 'pro': return Crown;
+    case 'team': return Users;
+    default: return Zap;
+  }
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📋 MATRICE DE COMPARAISON
@@ -232,48 +62,131 @@ interface ComparisonRow {
   student: string | boolean;
   starter: string | boolean;
   pro: string | boolean;
-  expert: string | boolean;
-  expertHighlight?: boolean;
-  studentHighlight?: boolean;
+  team: string | boolean;
+  highlight?: PlanId;
 }
 
 const COMPARISON_MATRIX: ComparisonRow[] = [
   // Limites
-  { category: '📊 Limites', feature: { fr: 'Analyses/mois', en: 'Analyses/month' }, free: '4', student: '40', starter: '50', pro: '200', expert: '∞', expertHighlight: true },
-  { category: '📊 Limites', feature: { fr: 'Durée max vidéo', en: 'Max video length' }, free: '1h', student: '2h', starter: '2h', pro: '4h', expert: '∞', expertHighlight: true },
-  { category: '📊 Limites', feature: { fr: 'Questions chat/vidéo', en: 'Chat questions/video' }, free: '3', student: '15', starter: '20', pro: '∞', expert: '∞' },
-  { category: '📊 Limites', feature: { fr: 'Historique', en: 'History' }, free: '3 jours', student: '90 jours', starter: '60 jours', pro: '180 jours', expert: '∞', studentHighlight: true, expertHighlight: true },
-
-  // Analyse
-  { category: '🔬 Analyse', feature: { fr: 'Synthèse express', en: 'Express summary' }, free: true, student: true, starter: true, pro: true, expert: true },
-  { category: '🔬 Analyse', feature: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, free: false, student: true, starter: true, pro: true, expert: true },
-  { category: '🔬 Analyse', feature: { fr: 'Glossaire concepts', en: 'Concepts glossary' }, free: false, student: true, starter: true, pro: true, expert: true },
+  { category: '📊 Limites', feature: { fr: 'Analyses/mois', en: 'Analyses/month' }, free: '3', student: '40', starter: '60', pro: '300', team: '1000', highlight: 'team' },
+  { category: '📊 Limites', feature: { fr: 'Durée max vidéo', en: 'Max video length' }, free: '10 min', student: '2h', starter: '2h', pro: '4h', team: '∞', highlight: 'team' },
+  { category: '📊 Limites', feature: { fr: 'Questions chat/vidéo', en: 'Chat questions/video' }, free: '3', student: '15', starter: '20', pro: '∞', team: '∞' },
+  { category: '📊 Limites', feature: { fr: 'Historique', en: 'History' }, free: '3 jours', student: '90 jours', starter: '60 jours', pro: '180 jours', team: '∞', highlight: 'team' },
 
   // Outils d'étude
-  { category: '🎓 Étude', feature: { fr: 'Flashcards', en: 'Flashcards' }, free: false, student: true, starter: true, pro: true, expert: true, studentHighlight: true },
-  { category: '🎓 Étude', feature: { fr: 'Cartes mentales', en: 'Mind maps' }, free: false, student: true, starter: true, pro: true, expert: true, studentHighlight: true },
-  { category: '🎓 Étude', feature: { fr: 'Export citations', en: 'Citation export' }, free: false, student: true, starter: true, pro: true, expert: true, studentHighlight: true },
+  { category: '🎓 Outils d\'étude', feature: { fr: 'Flashcards automatiques', en: 'Auto flashcards' }, free: false, student: true, starter: true, pro: true, team: true, highlight: 'student' },
+  { category: '🎓 Outils d\'étude', feature: { fr: 'Cartes mentales', en: 'Mind maps' }, free: false, student: true, starter: true, pro: true, team: true, highlight: 'student' },
+  { category: '🎓 Outils d\'étude', feature: { fr: 'Citations académiques', en: 'Academic citations' }, free: false, student: true, starter: true, pro: true, team: true, highlight: 'student' },
+  { category: '🎓 Outils d\'étude', feature: { fr: 'Export BibTeX', en: 'BibTeX export' }, free: false, student: true, starter: false, pro: true, team: true, highlight: 'student' },
 
   // Chat & Recherche
-  { category: '💬 Chat & Recherche', feature: { fr: 'Chat IA', en: 'AI Chat' }, free: true, student: true, starter: true, pro: true, expert: true },
-  { category: '💬 Chat & Recherche', feature: { fr: 'Recherche web (Perplexity)', en: 'Web search (Perplexity)' }, free: false, student: '10/mois', starter: '20/mois', pro: '100/mois', expert: '500/mois', expertHighlight: true },
+  { category: '💬 Chat & Recherche', feature: { fr: 'Chat IA', en: 'AI Chat' }, free: true, student: true, starter: true, pro: true, team: true },
+  { category: '💬 Chat & Recherche', feature: { fr: 'Questions suggérées', en: 'Suggested questions' }, free: false, student: true, starter: true, pro: true, team: true },
+  { category: '💬 Chat & Recherche', feature: { fr: 'Recherche web (Perplexity)', en: 'Web search (Perplexity)' }, free: false, student: '10/mois', starter: '20/mois', pro: '100/mois', team: '∞', highlight: 'pro' },
 
   // Playlists
-  { category: '📚 Playlists', feature: { fr: 'Analyse de playlists', en: 'Playlist analysis' }, free: false, student: false, starter: false, pro: '10 vidéos', expert: '50 vidéos', expertHighlight: true },
+  { category: '📚 Playlists', feature: { fr: 'Analyse de playlists', en: 'Playlist analysis' }, free: false, student: false, starter: false, pro: '20 vidéos', team: '100 vidéos', highlight: 'pro' },
+  { category: '📚 Playlists', feature: { fr: 'Nombre de playlists', en: 'Number of playlists' }, free: false, student: false, starter: false, pro: '10', team: '∞', highlight: 'pro' },
 
   // Export
-  { category: '📄 Export', feature: { fr: 'Export PDF', en: 'PDF export' }, free: false, student: true, starter: true, pro: true, expert: true },
-  { category: '📄 Export', feature: { fr: 'Export Markdown', en: 'Markdown export' }, free: false, student: true, starter: false, pro: true, expert: true },
+  { category: '📄 Export', feature: { fr: 'Export PDF', en: 'PDF export' }, free: false, student: true, starter: true, pro: true, team: true },
+  { category: '📄 Export', feature: { fr: 'Export Markdown', en: 'Markdown export' }, free: false, student: true, starter: false, pro: true, team: true, highlight: 'student' },
+  { category: '📄 Export', feature: { fr: 'Watermark', en: 'Watermark' }, free: true, student: false, starter: false, pro: false, team: false },
 
   // Audio
-  { category: '🎧 Audio', feature: { fr: 'Lecture audio TTS', en: 'TTS audio' }, free: false, student: true, starter: false, pro: true, expert: true, studentHighlight: true },
+  { category: '🎧 Audio', feature: { fr: 'Lecture audio TTS', en: 'TTS audio' }, free: false, student: true, starter: false, pro: true, team: true, highlight: 'student' },
 
-  // API
-  { category: '🔌 API', feature: { fr: 'Accès API REST', en: 'REST API access' }, free: false, student: false, starter: false, pro: false, expert: '1000 req/jour', expertHighlight: true },
+  // API & Équipe
+  { category: '🔌 API & Équipe', feature: { fr: 'Accès API REST', en: 'REST API access' }, free: false, student: false, starter: false, pro: false, team: '1000 req/jour', highlight: 'team' },
+  { category: '🔌 API & Équipe', feature: { fr: 'Multi-utilisateurs', en: 'Multi-users' }, free: false, student: false, starter: false, pro: false, team: '5 utilisateurs', highlight: 'team' },
+  { category: '🔌 API & Équipe', feature: { fr: 'Workspace partagé', en: 'Shared workspace' }, free: false, student: false, starter: false, pro: false, team: true, highlight: 'team' },
 
   // Support
-  { category: '🛟 Support', feature: { fr: 'Support email', en: 'Email support' }, free: true, student: true, starter: true, pro: true, expert: true },
-  { category: '🛟 Support', feature: { fr: 'Support prioritaire', en: 'Priority support' }, free: false, student: false, starter: false, pro: true, expert: true },
+  { category: '🛟 Support', feature: { fr: 'Support email', en: 'Email support' }, free: true, student: true, starter: true, pro: true, team: true },
+  { category: '🛟 Support', feature: { fr: 'Support prioritaire', en: 'Priority support' }, free: false, student: false, starter: false, pro: true, team: true, highlight: 'pro' },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🌟 AVANTAGES EXCLUSIFS PAR PLAN
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface ExclusiveFeature {
+  icon: React.ElementType;
+  title: { fr: string; en: string };
+  description: { fr: string; en: string };
+  badge?: { fr: string; en: string };
+}
+
+const STUDENT_EXCLUSIVES: ExclusiveFeature[] = [
+  {
+    icon: Brain,
+    title: { fr: 'Flashcards automatiques', en: 'Auto Flashcards' },
+    description: { fr: 'Générez des fiches de révision en un clic', en: 'Generate study cards in one click' },
+    badge: { fr: 'KILLER FEATURE', en: 'KILLER FEATURE' },
+  },
+  {
+    icon: Lightbulb,
+    title: { fr: 'Cartes mentales', en: 'Mind Maps' },
+    description: { fr: 'Visualisez les concepts et leurs liens', en: 'Visualize concepts and their connections' },
+  },
+  {
+    icon: FileText,
+    title: { fr: 'Citations académiques', en: 'Academic Citations' },
+    description: { fr: 'Export BibTeX pour vos dissertations', en: 'BibTeX export for your papers' },
+  },
+  {
+    icon: Headphones,
+    title: { fr: 'Lecture audio TTS', en: 'TTS Audio' },
+    description: { fr: 'Révisez en écoutant vos résumés', en: 'Review by listening to your summaries' },
+  },
+];
+
+const PRO_EXCLUSIVES: ExclusiveFeature[] = [
+  {
+    icon: ListVideo,
+    title: { fr: 'Playlists (20 vidéos)', en: 'Playlists (20 videos)' },
+    description: { fr: 'Analysez des séries de vidéos d\'un coup', en: 'Analyze video series at once' },
+    badge: { fr: 'EXCLUSIF', en: 'EXCLUSIVE' },
+  },
+  {
+    icon: Infinity,
+    title: { fr: 'Chat illimité', en: 'Unlimited Chat' },
+    description: { fr: 'Posez autant de questions que vous voulez', en: 'Ask as many questions as you want' },
+  },
+  {
+    icon: TrendingUp,
+    title: { fr: '100 recherches web/mois', en: '100 Web searches/mo' },
+    description: { fr: 'Recherche Perplexity intégrée', en: 'Integrated Perplexity search' },
+  },
+  {
+    icon: Shield,
+    title: { fr: 'Support prioritaire', en: 'Priority Support' },
+    description: { fr: 'Réponse rapide par email', en: 'Fast email response' },
+  },
+];
+
+const TEAM_EXCLUSIVES: ExclusiveFeature[] = [
+  {
+    icon: Key,
+    title: { fr: 'Accès API REST', en: 'REST API Access' },
+    description: { fr: '1000 requêtes/jour pour vos intégrations', en: '1000 requests/day for your integrations' },
+    badge: { fr: 'NOUVEAU', en: 'NEW' },
+  },
+  {
+    icon: Users,
+    title: { fr: '5 utilisateurs', en: '5 Users' },
+    description: { fr: 'Collaborez en équipe', en: 'Collaborate as a team' },
+  },
+  {
+    icon: ListVideo,
+    title: { fr: 'Playlists (100 vidéos)', en: 'Playlists (100 videos)' },
+    description: { fr: '5x plus que Pro', en: '5x more than Pro' },
+  },
+  {
+    icon: Infinity,
+    title: { fr: 'Recherche web illimitée', en: 'Unlimited Web Search' },
+    description: { fr: 'Aucune limite mensuelle', en: 'No monthly limit' },
+  },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -290,7 +203,7 @@ interface SubscriptionStatus {
 
 export const UpgradePage: React.FC = () => {
   const { user, refreshUser } = useAuth();
-  const { t, language } = useTranslation();
+  const { language } = useTranslation();
   const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
@@ -299,10 +212,12 @@ export const UpgradePage: React.FC = () => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState<{ plan: PlanId; action: 'upgrade' | 'downgrade' } | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['📊 Limites', '🎓 Étude', '🔌 API']);
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['📊 Limites', '🎓 Outils d\'étude', '🔌 API & Équipe']);
+  const [trialEligible, setTrialEligible] = useState(false);
+  const [trialLoading, setTrialLoading] = useState(false);
 
-  const currentPlan = (user?.plan || 'free') as PlanId;
-  const currentPlanConfig = PLANS.find(p => p.id === currentPlan) || PLANS[0];
+  const currentPlan = normalizePlanId(user?.plan);
+  const currentPlanConfig = PLANS_INFO.find(p => p.id === currentPlan) || PLANS_INFO[0];
   const lang = language as 'fr' | 'en';
 
   useEffect(() => {
@@ -311,6 +226,13 @@ export const UpgradePage: React.FC = () => {
         await refreshUser(true);
         const status = await billingApi.getSubscriptionStatus();
         setSubscriptionStatus(status);
+
+        try {
+          const eligibility = await billingApi.checkTrialEligibility();
+          setTrialEligible(eligibility.eligible);
+        } catch (e) {
+          console.log('Trial eligibility check failed:', e);
+        }
       } catch (err) {
         console.error('Error loading data:', err);
       }
@@ -320,17 +242,32 @@ export const UpgradePage: React.FC = () => {
 
   const categories = [...new Set(COMPARISON_MATRIX.map(r => r.category))];
 
+  const handleStartTrial = async () => {
+    setTrialLoading(true);
+    setError(null);
+    try {
+      const result = await billingApi.startProTrial();
+      if (result.checkout_url) {
+        window.location.href = result.checkout_url;
+      }
+    } catch (err: any) {
+      setError(err?.message || (language === 'fr' ? 'Erreur lors du démarrage de l\'essai' : 'Error starting trial'));
+    } finally {
+      setTrialLoading(false);
+    }
+  };
+
   const handleChangePlan = async (newPlanId: PlanId) => {
     if (newPlanId === currentPlan) return;
-    
-    const newPlanConfig = PLANS.find(p => p.id === newPlanId)!;
+
+    const newPlanConfig = PLANS_INFO.find(p => p.id === newPlanId)!;
     const isUpgrade = newPlanConfig.order > currentPlanConfig.order;
-    
+
     if (!isUpgrade && currentPlan !== 'free') {
       setShowConfirmModal({ plan: newPlanId, action: 'downgrade' });
       return;
     }
-    
+
     await executeChangePlan(newPlanId, isUpgrade ? 'upgrade' : 'downgrade');
   };
 
@@ -350,7 +287,7 @@ export const UpgradePage: React.FC = () => {
       } else {
         const result = await billingApi.changePlan(newPlanId);
         if (result.success) {
-          setSuccess(language === 'fr' 
+          setSuccess(language === 'fr'
             ? 'Plan modifié ! Changement effectif au prochain renouvellement.'
             : 'Plan changed! Takes effect at next renewal.');
           await refreshUser(true);
@@ -366,14 +303,14 @@ export const UpgradePage: React.FC = () => {
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm(language === 'fr' 
+    if (!confirm(language === 'fr'
       ? 'Êtes-vous sûr de vouloir annuler ? Vous garderez vos avantages jusqu\'à la fin de la période payée.'
       : 'Are you sure? You\'ll keep benefits until paid period ends.')) return;
-    
+
     setLoading('cancel');
     try {
       await billingApi.cancelSubscription();
-      setSuccess(language === 'fr' 
+      setSuccess(language === 'fr'
         ? 'Abonnement annulé. Accès maintenu jusqu\'à la fin de la période.'
         : 'Subscription cancelled. Access kept until period end.');
       const status = await billingApi.getSubscriptionStatus();
@@ -385,21 +322,93 @@ export const UpgradePage: React.FC = () => {
     }
   };
 
-  const getPlanIcon = (planId: PlanId) => {
-    switch (planId) {
-      case 'free': return Zap;
-      case 'student': return GraduationCap;
-      case 'starter': return Star;
-      case 'pro': return Crown;
-      case 'expert': return Sparkles;
-    }
+  const renderValue = (value: string | boolean, highlight?: PlanId, currentCol?: PlanId) => {
+    const isHighlighted = highlight === currentCol;
+    if (value === true) return <Check className={`w-5 h-5 ${isHighlighted ? 'text-green-400' : 'text-green-400'}`} />;
+    if (value === false) return <X className="w-5 h-5 text-gray-500" />;
+    if (value === '∞') return <Infinity className={`w-5 h-5 ${isHighlighted ? 'text-amber-400' : 'text-violet-400'}`} />;
+    return <span className={`text-sm ${isHighlighted ? 'text-amber-300 font-medium' : 'text-text-secondary'}`}>{value}</span>;
   };
 
-  const renderValue = (value: string | boolean) => {
-    if (value === true) return <Check className="w-5 h-5 text-green-400" />;
-    if (value === false) return <X className="w-5 h-5 text-gray-500" />;
-    if (value === '∞') return <Infinity className="w-5 h-5 text-amber-400" />;
-    return <span className="text-sm text-text-secondary">{value}</span>;
+  // Récupérer les features pour chaque plan
+  const getFeatures = (planId: PlanId) => {
+    const limits = PLAN_LIMITS[planId];
+    const features = PLAN_FEATURES[planId];
+
+    const result = [
+      {
+        text: limits.monthlyAnalyses === -1
+          ? (lang === 'fr' ? 'Analyses illimitées' : 'Unlimited analyses')
+          : (lang === 'fr' ? `${limits.monthlyAnalyses} analyses/mois` : `${limits.monthlyAnalyses} analyses/mo`),
+        included: true,
+        highlight: limits.monthlyAnalyses >= 300
+      },
+      {
+        text: limits.chatQuestionsPerVideo === -1
+          ? (lang === 'fr' ? 'Chat illimité' : 'Unlimited chat')
+          : (lang === 'fr' ? `Chat (${limits.chatQuestionsPerVideo} q/vidéo)` : `Chat (${limits.chatQuestionsPerVideo} q/video)`),
+        included: true
+      },
+    ];
+
+    if (features.flashcards) {
+      result.push({
+        text: lang === 'fr' ? 'Flashcards & Cartes mentales' : 'Flashcards & Mind maps',
+        included: true,
+        highlight: planId === 'student'
+      });
+    }
+
+    if (features.playlists) {
+      result.push({
+        text: lang === 'fr' ? `Playlists (${limits.maxPlaylistVideos} vidéos)` : `Playlists (${limits.maxPlaylistVideos} videos)`,
+        included: true,
+        highlight: true
+      });
+    }
+
+    if (limits.webSearchMonthly > 0 || limits.webSearchMonthly === -1) {
+      result.push({
+        text: limits.webSearchMonthly === -1
+          ? (lang === 'fr' ? 'Recherche web illimitée' : 'Unlimited web search')
+          : (lang === 'fr' ? `Recherche web (${limits.webSearchMonthly}/mois)` : `Web search (${limits.webSearchMonthly}/mo)`),
+        included: true,
+        highlight: limits.webSearchMonthly >= 100
+      });
+    }
+
+    if (features.exportPdf) {
+      result.push({ text: lang === 'fr' ? 'Export PDF' : 'PDF export', included: true });
+    }
+
+    if (features.ttsAudio) {
+      result.push({ text: lang === 'fr' ? 'Lecture audio TTS' : 'TTS audio', included: true });
+    }
+
+    if (features.apiAccess) {
+      result.push({
+        text: lang === 'fr' ? `API (${limits.apiRequestsDaily} req/jour)` : `API (${limits.apiRequestsDaily} req/day)`,
+        included: true,
+        highlight: true
+      });
+    }
+
+    if (limits.teamMembers > 1) {
+      result.push({
+        text: lang === 'fr' ? `${limits.teamMembers} utilisateurs` : `${limits.teamMembers} users`,
+        included: true,
+        highlight: true
+      });
+    }
+
+    // Ajouter les features non incluses pour free
+    if (planId === 'free') {
+      result.push({ text: lang === 'fr' ? 'Historique 3 jours' : '3 days history', included: true });
+      result.push({ text: lang === 'fr' ? 'Outils d\'étude' : 'Study tools', included: false });
+      result.push({ text: 'Export', included: false });
+    }
+
+    return result;
   };
 
   return (
@@ -417,7 +426,7 @@ export const UpgradePage: React.FC = () => {
                 {language === 'fr' ? 'Choisissez votre plan' : 'Choose your plan'}
               </h1>
               <p className="text-text-secondary max-w-2xl mx-auto">
-                {language === 'fr' 
+                {language === 'fr'
                   ? 'Débloquez des fonctionnalités puissantes pour analyser le contenu vidéo.'
                   : 'Unlock powerful features to analyze video content.'}
               </p>
@@ -429,7 +438,7 @@ export const UpgradePage: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <AlertCircle className="w-5 h-5 text-amber-400" />
                   <span className="text-amber-300 text-sm">
-                    {language === 'fr' 
+                    {language === 'fr'
                       ? `Abonnement annulé. Accès jusqu'au ${new Date(subscriptionStatus.current_period_end!).toLocaleDateString()}`
                       : `Subscription cancelled. Access until ${new Date(subscriptionStatus.current_period_end!).toLocaleDateString()}`}
                   </span>
@@ -460,28 +469,91 @@ export const UpgradePage: React.FC = () => {
               </div>
             )}
 
+            {/* 🆓 Pro Trial Banner */}
+            {trialEligible && currentPlan === 'free' && (
+              <div className="card p-6 mb-8 bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-fuchsia-500/10 border-violet-500/30 overflow-hidden relative">
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-violet-500/20 rounded-full blur-3xl" />
+                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-fuchsia-500/20 rounded-full blur-3xl" />
+
+                <div className="relative flex flex-col md:flex-row items-center gap-6">
+                  <div className="flex-shrink-0">
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-xl shadow-violet-500/30">
+                      <Gift className="w-10 h-10 text-white" />
+                    </div>
+                  </div>
+
+                  <div className="flex-1 text-center md:text-left">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 text-violet-400 text-xs font-semibold mb-2">
+                      <Sparkles className="w-3 h-3" />
+                      {language === 'fr' ? 'Offre limitée' : 'Limited offer'}
+                    </div>
+                    <h2 className="text-2xl font-bold text-text-primary mb-2">
+                      {language === 'fr' ? 'Essayez Pro gratuitement pendant 7 jours' : 'Try Pro free for 7 days'}
+                    </h2>
+                    <p className="text-text-secondary mb-4 max-w-xl">
+                      {language === 'fr'
+                        ? 'Accédez à toutes les fonctionnalités Pro : 300 analyses/mois, chat illimité, playlists, et bien plus. Sans engagement.'
+                        : 'Access all Pro features: 300 analyses/month, unlimited chat, playlists, and more. No commitment.'}
+                    </p>
+
+                    <div className="flex flex-wrap gap-2 mb-4 justify-center md:justify-start">
+                      {[
+                        { icon: Crown, text: language === 'fr' ? '300 analyses' : '300 analyses' },
+                        { icon: Infinity, text: language === 'fr' ? 'Chat illimité' : 'Unlimited chat' },
+                        { icon: ListVideo, text: language === 'fr' ? 'Playlists' : 'Playlists' },
+                        { icon: Clock, text: language === 'fr' ? '7 jours gratuits' : '7 days free' },
+                      ].map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-bg-tertiary/50 text-text-secondary text-xs">
+                          <item.icon className="w-3 h-3 text-violet-400" />
+                          {item.text}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex-shrink-0">
+                    <button
+                      onClick={handleStartTrial}
+                      disabled={trialLoading}
+                      className="px-8 py-4 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold text-lg shadow-xl shadow-violet-500/30 hover:opacity-90 transition-all flex items-center gap-2"
+                    >
+                      {trialLoading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <>
+                          <Gift className="w-5 h-5" />
+                          {language === 'fr' ? 'Commencer l\'essai' : 'Start free trial'}
+                        </>
+                      )}
+                    </button>
+                    <p className="text-xs text-text-tertiary mt-2 text-center">
+                      {language === 'fr' ? 'Annulez à tout moment' : 'Cancel anytime'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* View Toggle */}
             <div className="flex justify-center mb-8">
               <div className="inline-flex bg-bg-tertiary rounded-xl p-1">
                 <button
                   onClick={() => setViewMode('cards')}
-                  className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
-                    viewMode === 'cards' 
-                      ? 'bg-accent-primary text-white shadow-lg' 
-                      : 'text-text-secondary hover:text-text-primary'
-                  }`}
+                  className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'cards'
+                    ? 'bg-accent-primary text-white shadow-lg'
+                    : 'text-text-secondary hover:text-text-primary'
+                    }`}
                 >
-                  🃏 {language === 'fr' ? 'Cartes' : 'Cards'}
+                  {language === 'fr' ? '🃏 Cartes' : '🃏 Cards'}
                 </button>
                 <button
                   onClick={() => setViewMode('table')}
-                  className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${
-                    viewMode === 'table' 
-                      ? 'bg-accent-primary text-white shadow-lg' 
-                      : 'text-text-secondary hover:text-text-primary'
-                  }`}
+                  className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'table'
+                    ? 'bg-accent-primary text-white shadow-lg'
+                    : 'text-text-secondary hover:text-text-primary'
+                    }`}
                 >
-                  📊 {language === 'fr' ? 'Comparaison' : 'Comparison'}
+                  {language === 'fr' ? '📊 Comparaison' : '📊 Comparison'}
                 </button>
               </div>
             </div>
@@ -489,209 +561,309 @@ export const UpgradePage: React.FC = () => {
             {/* Cards View */}
             {viewMode === 'cards' && (
               <>
-                {/* Plan Cards */}
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-                  {PLANS.map((plan) => {
+                {/* Plan Cards - 5 colonnes */}
+                <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4 mb-12">
+                  {PLANS_INFO.map((plan) => {
                     const Icon = getPlanIcon(plan.id);
                     const isCurrent = plan.id === currentPlan;
                     const isHigher = plan.order > currentPlanConfig.order;
                     const isLower = plan.order < currentPlanConfig.order;
-                    const isExpert = plan.id === 'expert';
+                    const features = getFeatures(plan.id);
 
                     return (
                       <div
                         key={plan.id}
-                        className={`card relative overflow-hidden transition-all duration-300 hover:scale-[1.02] ${
-                          isCurrent ? 'ring-2 ring-green-500/50' : ''
-                        } ${isExpert ? 'ring-2 ring-amber-500/50 shadow-xl shadow-amber-500/10' : ''}`}
+                        className={`card relative overflow-hidden transition-all duration-300 hover:scale-[1.02] ${isCurrent ? 'ring-2 ring-green-500/50' : ''
+                          } ${plan.popular ? 'ring-2 ring-violet-500/50 shadow-xl shadow-violet-500/10' : ''
+                          } ${plan.recommended ? 'ring-2 ring-amber-500/50 shadow-xl shadow-amber-500/10' : ''}`}
                       >
                         {/* Badge */}
-                        {plan.popular && !isExpert && (
+                        {plan.badge && !isCurrent && (
                           <div className="absolute -top-0 -right-0">
-                            <div className="bg-violet-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
-                              {language === 'fr' ? 'Populaire' : 'Popular'}
-                            </div>
-                          </div>
-                        )}
-                        {isExpert && (
-                          <div className="absolute -top-0 -right-0">
-                            <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl flex items-center gap-1">
-                              <Sparkles className="w-3 h-3" />
-                              {language === 'fr' ? 'Recommandé' : 'Recommended'}
+                            <div className={`${plan.popular ? 'bg-violet-500' : plan.recommended ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-emerald-500'
+                              } text-white text-[10px] font-bold px-2 py-1 rounded-bl-xl`}>
+                              {plan.badge[lang]}
                             </div>
                           </div>
                         )}
                         {isCurrent && (
-                          <div className="absolute top-3 left-3">
-                            <div className="bg-green-500/20 text-green-400 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
-                              <Check className="w-3 h-3" />
-                              {language === 'fr' ? 'Plan actuel' : 'Current plan'}
+                          <div className="absolute top-2 left-2">
+                            <div className="bg-green-500/20 text-green-400 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Check className="w-2.5 h-2.5" />
+                              {language === 'fr' ? 'Actuel' : 'Current'}
                             </div>
                           </div>
                         )}
 
-                        <div className="p-6 pt-10">
+                        <div className="p-4 pt-8">
                           {/* Icon & Name */}
-                          <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-5 shadow-lg`}>
-                            <Icon className="w-8 h-8 text-white" />
+                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-4 shadow-lg`}>
+                            <Icon className="w-6 h-6 text-white" />
                           </div>
 
-                          <h3 className="text-2xl font-bold text-text-primary mb-1">{plan.name[lang]}</h3>
-                          <p className="text-sm text-text-tertiary mb-5">{plan.description[lang]}</p>
+                          <h3 className="text-xl font-bold text-text-primary mb-0.5">{plan.name[lang]}</h3>
+                          <p className="text-xs text-text-tertiary mb-3">{plan.description[lang]}</p>
 
                           {/* Price */}
-                          <div className="mb-6">
-                            <span className="text-4xl font-display font-bold text-text-primary">
-                              {plan.price === 0 ? '0' : plan.price.toFixed(2).replace('.', ',')}
+                          <div className="mb-4">
+                            <span className="text-3xl font-display font-bold text-text-primary">
+                              {plan.price === 0 ? '0' : (plan.price / 100).toFixed(2).replace('.', ',')}
                             </span>
-                            <span className="text-text-tertiary ml-1">€/{language === 'fr' ? 'mois' : 'mo'}</span>
+                            <span className="text-text-tertiary text-sm ml-1">€/{language === 'fr' ? 'mois' : 'mo'}</span>
                           </div>
 
                           {/* Key Features */}
-                          <div className="space-y-3 mb-6 min-h-[180px]">
-                            {plan.features.map((feature, idx) => (
-                              <div key={idx} className="flex items-center gap-3 text-sm">
-                                <div className={`w-6 h-6 rounded-full ${
-                                  feature.included 
-                                    ? feature.highlight 
-                                      ? 'bg-amber-500/20' 
-                                      : 'bg-green-500/20' 
-                                    : 'bg-gray-500/20'
-                                } flex items-center justify-center`}>
-                                  {feature.included 
-                                    ? <Check className={`w-3.5 h-3.5 ${feature.highlight ? 'text-amber-400' : 'text-green-400'}`} /> 
-                                    : <X className="w-3.5 h-3.5 text-gray-500" />}
+                          <div className="space-y-2 mb-4 min-h-[140px]">
+                            {features.slice(0, 6).map((feature, idx) => (
+                              <div key={idx} className="flex items-center gap-2 text-xs">
+                                <div className={`w-4 h-4 rounded-full ${feature.included
+                                  ? feature.highlight
+                                    ? 'bg-amber-500/20'
+                                    : 'bg-green-500/20'
+                                  : 'bg-gray-500/20'
+                                  } flex items-center justify-center flex-shrink-0`}>
+                                  {feature.included
+                                    ? <Check className={`w-2.5 h-2.5 ${feature.highlight ? 'text-amber-400' : 'text-green-400'}`} />
+                                    : <X className="w-2.5 h-2.5 text-gray-500" />}
                                 </div>
                                 <span className={`${feature.included ? 'text-text-secondary' : 'text-text-muted line-through'} ${feature.highlight ? 'font-medium text-amber-300' : ''}`}>
-                                  {feature.text[lang]}
+                                  {feature.text}
                                 </span>
                               </div>
                             ))}
                           </div>
 
-                          {/* Expert API Badge */}
-                          {isExpert && (
-                            <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20">
-                              <div className="flex items-center gap-2 text-amber-400 text-sm font-medium mb-1">
-                                <Key className="w-4 h-4" />
-                                {language === 'fr' ? '+ Accès API REST' : '+ REST API Access'}
-                              </div>
-                              <p className="text-xs text-text-tertiary">
-                                {language === 'fr' 
-                                  ? '1000 requêtes/jour pour vos intégrations'
-                                  : '1000 requests/day for your integrations'}
-                              </p>
-                            </div>
-                          )}
-
                           {/* CTA */}
-                          <button
-                            onClick={() => handleChangePlan(plan.id)}
-                            disabled={isCurrent || loading === plan.id || plan.id === 'free'}
-                            className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
-                              isCurrent
+                          {trialEligible && plan.id === 'pro' && currentPlan === 'free' ? (
+                            <button
+                              onClick={handleStartTrial}
+                              disabled={trialLoading}
+                              className="w-full py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:opacity-90 shadow-lg"
+                            >
+                              {trialLoading ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Gift className="w-4 h-4" />
+                                  {language === 'fr' ? '7 jours gratuits' : '7-day free trial'}
+                                </>
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleChangePlan(plan.id)}
+                              disabled={isCurrent || loading === plan.id || plan.id === 'free'}
+                              className={`w-full py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 ${isCurrent
                                 ? 'bg-green-500/20 text-green-400 cursor-default'
                                 : isHigher
-                                ? `bg-gradient-to-r ${plan.gradient} text-white hover:opacity-90 shadow-lg`
-                                : isLower
-                                ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30'
-                                : 'bg-bg-tertiary text-text-muted cursor-not-allowed'
-                            }`}
-                          >
-                            {loading === plan.id ? (
-                              <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : isCurrent ? (
-                              <><Check className="w-5 h-5" /> {language === 'fr' ? 'Plan actuel' : 'Current plan'}</>
-                            ) : isHigher ? (
-                              <><ArrowUp className="w-5 h-5" /> {language === 'fr' ? `Passer à ${plan.name[lang]}` : `Upgrade to ${plan.name[lang]}`}</>
-                            ) : isLower ? (
-                              <><ArrowDown className="w-5 h-5" /> {language === 'fr' ? 'Rétrograder' : 'Downgrade'}</>
-                            ) : (
-                              language === 'fr' ? 'Plan gratuit' : 'Free plan'
-                            )}
-                          </button>
+                                  ? `bg-gradient-to-r ${plan.gradient} text-white hover:opacity-90 shadow-lg`
+                                  : isLower
+                                    ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30'
+                                    : 'bg-bg-tertiary text-text-muted cursor-not-allowed'
+                                }`}
+                            >
+                              {loading === plan.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : isCurrent ? (
+                                <><Check className="w-4 h-4" /> {language === 'fr' ? 'Actuel' : 'Current'}</>
+                              ) : isHigher ? (
+                                <><ArrowUp className="w-4 h-4" /> {language === 'fr' ? 'Choisir' : 'Select'}</>
+                              ) : isLower ? (
+                                <><ArrowDown className="w-4 h-4" /> {language === 'fr' ? 'Rétrograder' : 'Downgrade'}</>
+                              ) : (
+                                language === 'fr' ? 'Gratuit' : 'Free'
+                              )}
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
 
-                {/* Expert Benefits Section */}
-                <div className="card p-8 mb-12 bg-gradient-to-br from-amber-500/5 to-orange-500/5 border-amber-500/20">
-                  <div className="text-center mb-8">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/20 text-amber-400 text-sm font-semibold mb-4">
-                      <Sparkles className="w-4 h-4" />
-                      {language === 'fr' ? 'Avantages Expert' : 'Expert Benefits'}
-                    </div>
-                    <h2 className="text-2xl font-bold text-text-primary mb-2">
-                      {language === 'fr' ? 'Pourquoi choisir Expert ?' : 'Why choose Expert?'}
-                    </h2>
-                    <p className="text-text-secondary max-w-2xl mx-auto">
-                      {language === 'fr' 
-                        ? 'Le plan Expert offre des limites étendues et un accès API pour les professionnels.'
-                        : 'The Expert plan offers extended limits and API access for professionals.'}
-                    </p>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-5">
-                    {EXPERT_EXCLUSIVES.map((feature, idx) => {
-                      const Icon = feature.icon;
-                      return (
-                        <div key={idx} className="p-5 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-amber-500/30 transition-colors">
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                              <Icon className="w-5 h-5 text-amber-400" />
-                            </div>
-                            {feature.badge && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
-                                {feature.badge[lang]}
-                              </span>
-                            )}
-                          </div>
-                          <h3 className="font-semibold text-text-primary mb-1 text-sm">{feature.title[lang]}</h3>
-                          <p className="text-xs text-text-tertiary">{feature.description[lang]}</p>
+                {/* Section Étudiant */}
+                {currentPlan === 'free' && (
+                  <div className="card p-8 mb-8 bg-gradient-to-br from-emerald-500/10 to-green-500/10 border-emerald-500/30">
+                    <div className="flex flex-col md:flex-row items-center gap-8">
+                      <div className="flex-1">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-sm font-medium mb-4">
+                          <GraduationCap className="w-4 h-4" />
+                          {language === 'fr' ? 'Spécial Étudiants' : 'Student Special'}
                         </div>
-                      );
-                    })}
-                  </div>
+                        <h2 className="text-2xl font-bold text-text-primary mb-3">
+                          {language === 'fr' ? 'Révisez 10x plus vite' : 'Study 10x faster'}
+                        </h2>
+                        <p className="text-text-secondary mb-4">
+                          {language === 'fr'
+                            ? 'Transformez n\'importe quelle vidéo éducative en fiches de révision, cartes mentales et flashcards.'
+                            : 'Transform any educational video into study notes, mind maps and flashcards.'}
+                        </p>
 
-                  {/* CTA Expert */}
-                  {currentPlan !== 'expert' && (
-                    <div className="text-center mt-8">
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                          {STUDENT_EXCLUSIVES.map((feature, idx) => {
+                            const Icon = feature.icon;
+                            return (
+                              <div key={idx} className="flex items-start gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                                  <Icon className="w-4 h-4 text-emerald-400" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-text-primary">{feature.title[lang]}</p>
+                                  <p className="text-xs text-text-tertiary">{feature.description[lang]}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <button
+                          onClick={() => handleChangePlan('student')}
+                          disabled={loading === 'student'}
+                          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-semibold shadow-lg shadow-emerald-500/25 hover:opacity-90 transition-opacity"
+                        >
+                          {loading === 'student' ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                          ) : (
+                            <>
+                              <GraduationCap className="w-5 h-5" />
+                              {language === 'fr' ? 'Commencer à 2,99€/mois' : 'Start at €2.99/month'}
+                            </>
+                          )}
+                        </button>
+                      </div>
+                      <div className="hidden md:block">
+                        <div className="w-40 h-40 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-2xl shadow-emerald-500/30">
+                          <GraduationCap className="w-20 h-20 text-white" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Section Pro */}
+                {(currentPlan === 'free' || currentPlan === 'student' || currentPlan === 'starter') && (
+                  <div className="card p-8 mb-8 bg-gradient-to-br from-violet-500/10 to-purple-500/10 border-violet-500/30">
+                    <div className="text-center mb-8">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/20 text-violet-400 text-sm font-semibold mb-4">
+                        <Crown className="w-4 h-4" />
+                        {language === 'fr' ? 'Le plus populaire' : 'Most Popular'}
+                      </div>
+                      <h2 className="text-2xl font-bold text-text-primary mb-2">
+                        {language === 'fr' ? 'Pourquoi choisir Pro ?' : 'Why choose Pro?'}
+                      </h2>
+                    </div>
+
+                    <div className="grid md:grid-cols-4 gap-4 mb-8">
+                      {PRO_EXCLUSIVES.map((feature, idx) => {
+                        const Icon = feature.icon;
+                        return (
+                          <div key={idx} className="p-4 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-violet-500/30 transition-colors">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
+                                <Icon className="w-5 h-5 text-violet-400" />
+                              </div>
+                              {feature.badge && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400">
+                                  {feature.badge[lang]}
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="font-semibold text-text-primary mb-1 text-sm">{feature.title[lang]}</h3>
+                            <p className="text-xs text-text-tertiary">{feature.description[lang]}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="text-center">
                       <button
-                        onClick={() => handleChangePlan('expert')}
-                        disabled={loading === 'expert'}
-                        className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold shadow-lg shadow-amber-500/25 hover:opacity-90 transition-opacity"
+                        onClick={() => handleChangePlan('pro')}
+                        disabled={loading === 'pro'}
+                        className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold shadow-lg shadow-violet-500/25 hover:opacity-90 transition-opacity"
                       >
-                        {loading === 'expert' ? (
+                        {loading === 'pro' ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
                           <>
-                            <Sparkles className="w-5 h-5" />
-                            {language === 'fr' ? 'Passer à Expert — 14,99€/mois' : 'Upgrade to Expert — €14.99/mo'}
+                            <Crown className="w-5 h-5" />
+                            {language === 'fr' ? 'Passer à Pro — 12,99€/mois' : 'Upgrade to Pro — €12.99/mo'}
                           </>
                         )}
                       </button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
-                {/* Testimonials Section */}
+                {/* Section Équipe */}
+                {currentPlan !== 'team' && (
+                  <div className="card p-8 mb-8 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/30">
+                    <div className="text-center mb-8">
+                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/20 text-amber-400 text-sm font-semibold mb-4">
+                        <Users className="w-4 h-4" />
+                        {language === 'fr' ? 'Pour les équipes' : 'For Teams'}
+                      </div>
+                      <h2 className="text-2xl font-bold text-text-primary mb-2">
+                        {language === 'fr' ? 'Besoin de plus ?' : 'Need more?'}
+                      </h2>
+                      <p className="text-text-secondary max-w-2xl mx-auto">
+                        {language === 'fr'
+                          ? 'Le plan Équipe offre l\'API, le multi-utilisateurs et des limites étendues.'
+                          : 'The Team plan offers API access, multi-users and extended limits.'}
+                      </p>
+                    </div>
+
+                    <div className="grid md:grid-cols-4 gap-4 mb-8">
+                      {TEAM_EXCLUSIVES.map((feature, idx) => {
+                        const Icon = feature.icon;
+                        return (
+                          <div key={idx} className="p-4 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-amber-500/30 transition-colors">
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                                <Icon className="w-5 h-5 text-amber-400" />
+                              </div>
+                              {feature.badge && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                                  {feature.badge[lang]}
+                                </span>
+                              )}
+                            </div>
+                            <h3 className="font-semibold text-text-primary mb-1 text-sm">{feature.title[lang]}</h3>
+                            <p className="text-xs text-text-tertiary">{feature.description[lang]}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="text-center">
+                      <button
+                        onClick={() => handleChangePlan('team')}
+                        disabled={loading === 'team'}
+                        className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold shadow-lg shadow-amber-500/25 hover:opacity-90 transition-opacity"
+                      >
+                        {loading === 'team' ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <>
+                            <Users className="w-5 h-5" />
+                            {language === 'fr' ? 'Passer à Équipe — 29,99€/mois' : 'Upgrade to Team — €29.99/mo'}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Témoignages */}
                 <div className="mb-12">
                   <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-text-primary mb-2">
                       {language === 'fr' ? 'Ils nous font confiance' : 'They trust us'}
                     </h2>
-                    <p className="text-text-secondary">
-                      {language === 'fr'
-                        ? 'Découvrez comment Deep Sight transforme leur quotidien'
-                        : 'Discover how Deep Sight transforms their daily life'}
-                    </p>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-6">
                     {TESTIMONIALS.map((testimonial, idx) => {
-                      const planConfig = PLANS.find(p => p.id === testimonial.plan);
+                      const planConfig = PLANS_INFO.find(p => p.id === testimonial.plan);
                       return (
                         <div
                           key={idx}
@@ -701,13 +873,13 @@ export const UpgradePage: React.FC = () => {
                           <div className="flex items-start gap-4">
                             <div className="text-4xl">{testimonial.avatar}</div>
                             <div className="flex-1">
-                              <p className="text-text-secondary italic mb-3">
+                              <p className="text-text-secondary italic mb-3 text-sm">
                                 "{testimonial.text[lang]}"
                               </p>
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <p className="font-semibold text-text-primary">{testimonial.author}</p>
-                                  <p className="text-sm text-text-tertiary">{testimonial.role[lang]}</p>
+                                  <p className="font-semibold text-text-primary text-sm">{testimonial.author}</p>
+                                  <p className="text-xs text-text-tertiary">{testimonial.role[lang]}</p>
                                 </div>
                                 {planConfig && (
                                   <div className={`px-3 py-1 rounded-full bg-gradient-to-r ${planConfig.gradient} text-white text-xs font-medium`}>
@@ -722,58 +894,6 @@ export const UpgradePage: React.FC = () => {
                     })}
                   </div>
                 </div>
-
-                {/* Student Highlight Section */}
-                {currentPlan === 'free' && (
-                  <div className="card p-8 mb-12 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/30">
-                    <div className="flex flex-col md:flex-row items-center gap-8">
-                      <div className="flex-1">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-sm font-medium mb-4">
-                          <GraduationCap className="w-4 h-4" />
-                          {language === 'fr' ? 'Spécial Étudiants' : 'Student Special'}
-                        </div>
-                        <h2 className="text-2xl font-bold text-text-primary mb-3">
-                          {language === 'fr' ? 'Révisez 10x plus vite' : 'Study 10x faster'}
-                        </h2>
-                        <p className="text-text-secondary mb-4">
-                          {language === 'fr'
-                            ? 'Transformez n\'importe quelle vidéo éducative en fiches de révision, cartes mentales et flashcards. Idéal pour les révisions d\'examens.'
-                            : 'Transform any educational video into study notes, mind maps and flashcards. Perfect for exam preparation.'}
-                        </p>
-                        <ul className="space-y-2 mb-6">
-                          {[
-                            { fr: '✓ 40 analyses/mois', en: '✓ 40 analyses/month' },
-                            { fr: '✓ Fiches de révision automatiques', en: '✓ Automatic study flashcards' },
-                            { fr: '✓ Cartes mentales interactives', en: '✓ Interactive mind maps' },
-                            { fr: '✓ Export pour Notion/Obsidian', en: '✓ Export for Notion/Obsidian' },
-                            { fr: '✓ Lecture audio TTS', en: '✓ TTS audio playback' },
-                          ].map((item, idx) => (
-                            <li key={idx} className="text-sm text-green-300">{item[lang]}</li>
-                          ))}
-                        </ul>
-                        <button
-                          onClick={() => handleChangePlan('student')}
-                          disabled={loading === 'student'}
-                          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold shadow-lg shadow-green-500/25 hover:opacity-90 transition-opacity"
-                        >
-                          {loading === 'student' ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                          ) : (
-                            <>
-                              <GraduationCap className="w-5 h-5" />
-                              {language === 'fr' ? 'Commencer à 2,99€/mois' : 'Start at €2.99/month'}
-                            </>
-                          )}
-                        </button>
-                      </div>
-                      <div className="hidden md:block">
-                        <div className="w-48 h-48 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-2xl shadow-green-500/30">
-                          <GraduationCap className="w-24 h-24 text-white" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </>
             )}
 
@@ -781,35 +901,23 @@ export const UpgradePage: React.FC = () => {
             {viewMode === 'table' && (
               <div className="card overflow-hidden mb-12 overflow-x-auto">
                 {/* Header */}
-                <div className="grid grid-cols-6 gap-3 p-5 bg-bg-secondary border-b border-border-primary min-w-[800px]">
-                  <div className="font-semibold text-text-secondary">
+                <div className="grid grid-cols-6 gap-2 p-4 bg-bg-secondary border-b border-border-primary min-w-[900px]">
+                  <div className="font-semibold text-text-secondary text-sm">
                     {language === 'fr' ? 'Fonctionnalités' : 'Features'}
                   </div>
-                  {PLANS.map((plan) => {
+                  {PLANS_INFO.map((plan) => {
                     const Icon = getPlanIcon(plan.id);
                     const isCurrent = plan.id === currentPlan;
-                    const isExpert = plan.id === 'expert';
-                    const isStudent = plan.id === 'student';
                     return (
-                      <div key={plan.id} className={`text-center ${isExpert ? 'bg-amber-500/5 -mx-1 px-1 py-2 rounded-lg' : ''} ${isStudent ? 'bg-green-500/5 -mx-1 px-1 py-2 rounded-lg' : ''}`}>
-                        <div className={`inline-flex w-10 h-10 rounded-xl bg-gradient-to-br ${plan.gradient} items-center justify-center mb-2 shadow-lg`}>
-                          <Icon className="w-5 h-5 text-white" />
+                      <div key={plan.id} className={`text-center ${plan.popular ? 'bg-violet-500/5 -mx-1 px-1 py-2 rounded-lg' : ''} ${plan.recommended ? 'bg-amber-500/5 -mx-1 px-1 py-2 rounded-lg' : ''}`}>
+                        <div className={`inline-flex w-8 h-8 rounded-lg bg-gradient-to-br ${plan.gradient} items-center justify-center mb-1 shadow-lg`}>
+                          <Icon className="w-4 h-4 text-white" />
                         </div>
-                        <div className="font-bold text-text-primary text-sm">{plan.name[lang]}</div>
-                        <div className="text-xs text-text-tertiary">{plan.price === 0 ? '0€' : `${plan.price.toFixed(2).replace('.', ',')}€`}</div>
+                        <div className="font-bold text-text-primary text-xs">{plan.name[lang]}</div>
+                        <div className="text-[10px] text-text-tertiary">{plan.price === 0 ? '0€' : `${(plan.price / 100).toFixed(2).replace('.', ',')}€`}</div>
                         {isCurrent && (
-                          <div className="text-xs text-green-400 mt-1 flex items-center justify-center gap-1">
-                            <Check className="w-3 h-3" /> {language === 'fr' ? 'Actuel' : 'Current'}
-                          </div>
-                        )}
-                        {isExpert && !isCurrent && (
-                          <div className="text-xs text-amber-400 mt-1">
-                            {language === 'fr' ? '⭐ Recommandé' : '⭐ Recommended'}
-                          </div>
-                        )}
-                        {isStudent && !isCurrent && (
-                          <div className="text-xs text-green-400 mt-1">
-                            {language === 'fr' ? '🎓 Étudiants' : '🎓 Students'}
+                          <div className="text-[10px] text-green-400 mt-1 flex items-center justify-center gap-1">
+                            <Check className="w-2.5 h-2.5" /> {language === 'fr' ? 'Actuel' : 'Current'}
                           </div>
                         )}
                       </div>
@@ -819,14 +927,14 @@ export const UpgradePage: React.FC = () => {
 
                 {/* Features by category */}
                 {categories.map((category) => (
-                  <div key={category} className="border-b border-border-primary last:border-b-0 min-w-[800px]">
+                  <div key={category} className="border-b border-border-primary last:border-b-0 min-w-[900px]">
                     <button
                       onClick={() => setExpandedCategories(prev =>
                         prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
                       )}
-                      className="w-full grid grid-cols-6 gap-3 p-4 bg-bg-tertiary/50 hover:bg-bg-tertiary transition-colors"
+                      className="w-full grid grid-cols-6 gap-2 p-3 bg-bg-tertiary/50 hover:bg-bg-tertiary transition-colors"
                     >
-                      <div className="flex items-center gap-2 text-text-primary font-semibold">
+                      <div className="flex items-center gap-2 text-text-primary font-semibold text-sm">
                         {category}
                         {expandedCategories.includes(category)
                           ? <ChevronUp className="w-4 h-4 text-text-tertiary" />
@@ -838,11 +946,11 @@ export const UpgradePage: React.FC = () => {
                     {expandedCategories.includes(category) && (
                       <div className="divide-y divide-border-primary/30">
                         {COMPARISON_MATRIX.filter(f => f.category === category).map((row, idx) => (
-                          <div key={idx} className="grid grid-cols-6 gap-3 p-4 hover:bg-bg-tertiary/30 transition-colors">
-                            <div className="text-sm text-text-secondary">{row.feature[lang]}</div>
-                            {(['free', 'student', 'starter', 'pro', 'expert'] as PlanId[]).map((planId) => (
-                              <div key={planId} className={`flex justify-center ${planId === 'expert' && row.expertHighlight ? 'bg-amber-500/10 -mx-1 px-1 rounded' : ''} ${planId === 'student' && row.studentHighlight ? 'bg-green-500/10 -mx-1 px-1 rounded' : ''}`}>
-                                {renderValue(row[planId])}
+                          <div key={idx} className="grid grid-cols-6 gap-2 p-3 hover:bg-bg-tertiary/30 transition-colors">
+                            <div className="text-xs text-text-secondary">{row.feature[lang]}</div>
+                            {(['free', 'student', 'starter', 'pro', 'team'] as PlanId[]).map((planId) => (
+                              <div key={planId} className={`flex justify-center ${row.highlight === planId ? 'bg-amber-500/10 -mx-1 px-1 rounded' : ''}`}>
+                                {renderValue(row[planId], row.highlight, planId)}
                               </div>
                             ))}
                           </div>
@@ -853,9 +961,9 @@ export const UpgradePage: React.FC = () => {
                 ))}
 
                 {/* CTA Row */}
-                <div className="grid grid-cols-6 gap-3 p-5 bg-bg-secondary min-w-[800px]">
+                <div className="grid grid-cols-6 gap-2 p-4 bg-bg-secondary min-w-[900px]">
                   <div />
-                  {PLANS.map((plan) => {
+                  {PLANS_INFO.map((plan) => {
                     const isCurrent = plan.id === currentPlan;
                     const isHigher = plan.order > currentPlanConfig.order;
                     return (
@@ -863,16 +971,15 @@ export const UpgradePage: React.FC = () => {
                         <button
                           onClick={() => handleChangePlan(plan.id)}
                           disabled={isCurrent || loading === plan.id || plan.id === 'free'}
-                          className={`px-4 py-2 rounded-xl font-medium text-xs transition-all ${
-                            isCurrent ? 'bg-green-500/20 text-green-400'
+                          className={`px-3 py-1.5 rounded-lg font-medium text-[10px] transition-all ${isCurrent ? 'bg-green-500/20 text-green-400'
                             : isHigher ? `bg-gradient-to-r ${plan.gradient} text-white hover:opacity-90 shadow-lg`
-                            : 'bg-bg-tertiary text-text-muted'
-                          }`}
+                              : 'bg-bg-tertiary text-text-muted'
+                            }`}
                         >
-                          {loading === plan.id ? <Loader2 className="w-4 h-4 animate-spin" />
+                          {loading === plan.id ? <Loader2 className="w-3 h-3 animate-spin" />
                             : isCurrent ? (language === 'fr' ? 'Actuel' : 'Current')
-                            : isHigher ? (language === 'fr' ? 'Choisir' : 'Select')
-                            : '-'}
+                              : isHigher ? (language === 'fr' ? 'Choisir' : 'Select')
+                                : '-'}
                         </button>
                       </div>
                     );
@@ -903,8 +1010,8 @@ export const UpgradePage: React.FC = () => {
               </h3>
               <div className="grid md:grid-cols-2 gap-6 text-sm">
                 <div className="space-y-1">
-                  <p className="font-semibold text-text-primary">{language === 'fr' ? "Comment fonctionne l'API ?" : 'How does the API work?'}</p>
-                  <p className="text-text-secondary">{language === 'fr' ? 'Générez votre clé API dans Paramètres. Documentation disponible.' : 'Generate your API key in Settings. Documentation available.'}</p>
+                  <p className="font-semibold text-text-primary">{language === 'fr' ? "Comment fonctionne l'essai gratuit ?" : 'How does the free trial work?'}</p>
+                  <p className="text-text-secondary">{language === 'fr' ? '7 jours Pro gratuits, sans carte bancaire. Annulez à tout moment.' : '7 days Pro free, no credit card. Cancel anytime.'}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="font-semibold text-text-primary">{language === 'fr' ? "Comment fonctionne l'upgrade ?" : 'How does upgrade work?'}</p>
@@ -941,9 +1048,9 @@ export const UpgradePage: React.FC = () => {
               {language === 'fr' ? 'Confirmer le changement' : 'Confirm change'}
             </h3>
             <p className="text-text-secondary text-sm mb-5">
-              {language === 'fr' 
-                ? `Passer au plan ${PLANS.find(p => p.id === showConfirmModal.plan)?.name[lang]} ? Vos avantages actuels restent actifs jusqu'à la fin de la période.`
-                : `Switch to ${PLANS.find(p => p.id === showConfirmModal.plan)?.name[lang]}? Current benefits stay active until period end.`}
+              {language === 'fr'
+                ? `Passer au plan ${PLANS_INFO.find(p => p.id === showConfirmModal.plan)?.name[lang]} ? Vos avantages actuels restent actifs jusqu'à la fin de la période.`
+                : `Switch to ${PLANS_INFO.find(p => p.id === showConfirmModal.plan)?.name[lang]}? Current benefits stay active until period end.`}
             </p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setShowConfirmModal(null)} className="btn-secondary">
