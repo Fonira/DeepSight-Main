@@ -11,12 +11,26 @@ import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
 import { billingApi } from '../services/api';
-import { 
-  User, Shield, Key, Trash2, LogOut, Check, 
+import {
+  User, Shield, Key, Trash2, LogOut, Check,
   AlertCircle, Loader2, Eye, EyeOff, Copy, RefreshCw, Lock,
   ExternalLink, Mail, Calendar, Crown, CreditCard, Sparkles,
-  ChevronRight, Hash, AlertTriangle
+  ChevronRight, Hash, AlertTriangle, Zap, X, Clock,
+  MessageSquare, Search, FileText, Download, Headphones,
+  Users, Code, GraduationCap, Brain, BookOpen
 } from 'lucide-react';
+import {
+  PLAN_FEATURES,
+  PLAN_LIMITS,
+  PLANS_INFO,
+  normalizePlanId,
+  hasFeature,
+  getLimit,
+  isUnlimited,
+  type PlanId,
+  type PlanFeatures,
+  type PlanLimits
+} from '../config/planPrivileges';
 import { Link, useNavigate } from 'react-router-dom';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -64,7 +78,8 @@ export const MyAccount: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
-  const isExpert = user?.plan === 'expert' || user?.plan === 'unlimited';
+  const isTeamOrHigher = user?.plan === 'team' || user?.plan === 'expert' || user?.plan === 'unlimited';
+  const userPlanId = normalizePlanId(user?.plan);
   
   // Helper pour les traductions inline
   const tr = useCallback((fr: string, en: string) => language === 'fr' ? fr : en, [language]);
@@ -74,7 +89,7 @@ export const MyAccount: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────────
   
   useEffect(() => {
-    if (!isExpert) return;
+    if (!isTeamOrHigher) return;
     
     const fetchStatus = async () => {
       try {
@@ -186,16 +201,243 @@ export const MyAccount: React.FC = () => {
     navigate('/');
   };
 
-  // Plan info
+  // Plan info - v4.0 (Free, Student, Starter, Pro, Team)
   const planConfig: Record<string, { label: string; color: string; bgColor: string; icon: string }> = {
     free: { label: tr('Gratuit', 'Free'), color: 'text-gray-400', bgColor: 'bg-gray-500/10', icon: '🆓' },
-    starter: { label: 'Starter', color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', icon: '⚡' },
-    pro: { label: 'Pro', color: 'text-amber-400', bgColor: 'bg-amber-500/10', icon: '⭐' },
-    expert: { label: 'Expert', color: 'text-purple-400', bgColor: 'bg-purple-500/10', icon: '👑' },
+    student: { label: tr('Étudiant', 'Student'), color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', icon: '🎓' },
+    starter: { label: 'Starter', color: 'text-blue-400', bgColor: 'bg-blue-500/10', icon: '⚡' },
+    pro: { label: 'Pro', color: 'text-violet-400', bgColor: 'bg-violet-500/10', icon: '⭐' },
+    team: { label: tr('Équipe', 'Team'), color: 'text-amber-400', bgColor: 'bg-amber-500/10', icon: '👥' },
+    expert: { label: tr('Équipe', 'Team'), color: 'text-amber-400', bgColor: 'bg-amber-500/10', icon: '👥' }, // Rétrocompatibilité
     unlimited: { label: 'Admin', color: 'text-yellow-400', bgColor: 'bg-yellow-500/10', icon: '👑' },
   };
 
   const currentPlan = planConfig[user?.plan || 'free'];
+
+  // Génère la liste des privilèges pour affichage
+  const getPrivilegesForDisplay = useCallback((planId: PlanId) => {
+    const features = PLAN_FEATURES[planId];
+    const limits = PLAN_LIMITS[planId];
+
+    return [
+      // Analyses
+      {
+        id: 'analyses',
+        label: tr('Analyses mensuelles', 'Monthly analyses'),
+        value: limits.monthlyAnalyses === -1 ? tr('Illimité', 'Unlimited') : `${limits.monthlyAnalyses}`,
+        icon: Zap,
+        included: true,
+        highlight: limits.monthlyAnalyses === -1,
+      },
+      {
+        id: 'credits',
+        label: tr('Crédits mensuels', 'Monthly credits'),
+        value: `${limits.monthlyCredits.toLocaleString()}`,
+        icon: Sparkles,
+        included: true,
+      },
+      {
+        id: 'duration',
+        label: tr('Durée max vidéo', 'Max video duration'),
+        value: limits.maxVideoDuration === -1 ? tr('Illimité', 'Unlimited') : `${Math.floor(limits.maxVideoDuration / 60)} min`,
+        icon: Clock,
+        included: true,
+      },
+      // Chat
+      {
+        id: 'chat',
+        label: tr('Questions chat/vidéo', 'Chat questions/video'),
+        value: limits.chatQuestionsPerVideo === -1 ? tr('Illimité', 'Unlimited') : `${limits.chatQuestionsPerVideo}`,
+        icon: MessageSquare,
+        included: features.chatBasic,
+      },
+      {
+        id: 'websearch',
+        label: tr('Recherche web', 'Web search'),
+        value: limits.webSearchMonthly === 0 ? '—' : limits.webSearchMonthly === -1 ? tr('Illimité', 'Unlimited') : `${limits.webSearchMonthly}/mois`,
+        icon: Search,
+        included: features.chatWebSearch,
+        highlight: features.chatWebSearch,
+      },
+      // Outils d'étude
+      {
+        id: 'flashcards',
+        label: 'Flashcards',
+        value: features.flashcards ? '✓' : '—',
+        icon: GraduationCap,
+        included: features.flashcards,
+        highlight: features.flashcards && planId === 'student',
+      },
+      {
+        id: 'mindmaps',
+        label: tr('Cartes mentales', 'Mind maps'),
+        value: features.conceptMaps ? '✓' : '—',
+        icon: Brain,
+        included: features.conceptMaps,
+        highlight: features.conceptMaps && planId === 'student',
+      },
+      // Playlists
+      {
+        id: 'playlists',
+        label: 'Playlists',
+        value: limits.maxPlaylists === 0 ? '—' : limits.maxPlaylists === -1 ? tr('Illimité', 'Unlimited') : `${limits.maxPlaylists} (${limits.maxPlaylistVideos} vidéos)`,
+        icon: BookOpen,
+        included: features.playlists,
+        highlight: features.playlists,
+      },
+      // Export
+      {
+        id: 'exportPdf',
+        label: 'Export PDF',
+        value: features.exportPdf ? '✓' : '—',
+        icon: FileText,
+        included: features.exportPdf,
+      },
+      {
+        id: 'exportMd',
+        label: 'Export Markdown',
+        value: features.exportMarkdown ? '✓' : '—',
+        icon: Download,
+        included: features.exportMarkdown,
+      },
+      // Audio
+      {
+        id: 'tts',
+        label: tr('Lecture audio TTS', 'TTS Audio'),
+        value: features.ttsAudio ? '✓' : '—',
+        icon: Headphones,
+        included: features.ttsAudio,
+      },
+      // Historique
+      {
+        id: 'history',
+        label: tr('Historique', 'History'),
+        value: limits.historyDays === -1 ? tr('Illimité', 'Unlimited') : `${limits.historyDays} ${tr('jours', 'days')}`,
+        icon: Clock,
+        included: true,
+      },
+      // API & Team
+      {
+        id: 'api',
+        label: tr('Accès API', 'API Access'),
+        value: features.apiAccess ? `${limits.apiRequestsDaily}/jour` : '—',
+        icon: Code,
+        included: features.apiAccess,
+        highlight: features.apiAccess,
+      },
+      {
+        id: 'team',
+        label: tr('Utilisateurs', 'Users'),
+        value: limits.teamMembers === 1 ? '1' : `${limits.teamMembers}`,
+        icon: Users,
+        included: limits.teamMembers > 1,
+        highlight: limits.teamMembers > 1,
+      },
+    ];
+  }, [tr]);
+
+  // Obtient les fonctionnalités manquantes (plans supérieurs)
+  const getMissingFeatures = useCallback((currentPlanId: PlanId) => {
+    const planOrder: PlanId[] = ['free', 'student', 'starter', 'pro', 'team'];
+    const currentIndex = planOrder.indexOf(currentPlanId);
+
+    const missingFeatures: Array<{
+      feature: string;
+      requiredPlan: PlanId;
+      planLabel: string;
+      icon: React.ElementType;
+    }> = [];
+
+    // Parcourir les plans supérieurs
+    for (let i = currentIndex + 1; i < planOrder.length; i++) {
+      const higherPlan = planOrder[i];
+      const higherFeatures = PLAN_FEATURES[higherPlan];
+      const currentFeatures = PLAN_FEATURES[currentPlanId];
+      const planInfo = PLANS_INFO.find(p => p.id === higherPlan);
+
+      // Vérifier chaque fonctionnalité
+      if (!currentFeatures.flashcards && higherFeatures.flashcards) {
+        missingFeatures.push({
+          feature: tr('Flashcards', 'Flashcards'),
+          requiredPlan: higherPlan,
+          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
+          icon: GraduationCap,
+        });
+      }
+      if (!currentFeatures.conceptMaps && higherFeatures.conceptMaps) {
+        missingFeatures.push({
+          feature: tr('Cartes mentales', 'Mind maps'),
+          requiredPlan: higherPlan,
+          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
+          icon: Brain,
+        });
+      }
+      if (!currentFeatures.playlists && higherFeatures.playlists) {
+        missingFeatures.push({
+          feature: tr('Playlists', 'Playlists'),
+          requiredPlan: higherPlan,
+          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
+          icon: BookOpen,
+        });
+      }
+      if (!currentFeatures.chatWebSearch && higherFeatures.chatWebSearch) {
+        missingFeatures.push({
+          feature: tr('Recherche web', 'Web search'),
+          requiredPlan: higherPlan,
+          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
+          icon: Search,
+        });
+      }
+      if (!currentFeatures.exportPdf && higherFeatures.exportPdf) {
+        missingFeatures.push({
+          feature: 'Export PDF',
+          requiredPlan: higherPlan,
+          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
+          icon: FileText,
+        });
+      }
+      if (!currentFeatures.exportMarkdown && higherFeatures.exportMarkdown) {
+        missingFeatures.push({
+          feature: 'Export Markdown',
+          requiredPlan: higherPlan,
+          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
+          icon: Download,
+        });
+      }
+      if (!currentFeatures.ttsAudio && higherFeatures.ttsAudio) {
+        missingFeatures.push({
+          feature: tr('Lecture audio TTS', 'TTS Audio'),
+          requiredPlan: higherPlan,
+          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
+          icon: Headphones,
+        });
+      }
+      if (!currentFeatures.apiAccess && higherFeatures.apiAccess) {
+        missingFeatures.push({
+          feature: tr('Accès API', 'API Access'),
+          requiredPlan: higherPlan,
+          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
+          icon: Code,
+        });
+      }
+      if (!currentFeatures.prioritySupport && higherFeatures.prioritySupport) {
+        missingFeatures.push({
+          feature: tr('Support prioritaire', 'Priority support'),
+          requiredPlan: higherPlan,
+          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
+          icon: Shield,
+        });
+      }
+    }
+
+    // Dédupliquer (garder le premier plan qui offre la fonctionnalité)
+    const seen = new Set<string>();
+    return missingFeatures.filter(f => {
+      if (seen.has(f.feature)) return false;
+      seen.add(f.feature);
+      return true;
+    });
+  }, [tr, language]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 🎨 Info Row Component
@@ -286,6 +528,96 @@ export const MyAccount: React.FC = () => {
               </div>
             </section>
 
+            {/* ═══════════════════════════════════════════════════════════════════════════
+                🎯 PRIVILÈGES DU PLAN - Nouvelle section v4.0
+            ═══════════════════════════════════════════════════════════════════════════ */}
+            <section className="card">
+              <div className="panel-header">
+                <h2 className="font-semibold text-text-primary flex items-center gap-2">
+                  <Crown className="w-5 h-5 text-accent-primary" />
+                  {tr('Privilèges de votre plan', 'Your Plan Privileges')}
+                  <span className={`ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${currentPlan.bgColor} ${currentPlan.color}`}>
+                    {currentPlan.icon} {currentPlan.label}
+                  </span>
+                </h2>
+              </div>
+              <div className="panel-body">
+                {/* Grille des privilèges inclus */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {getPrivilegesForDisplay(userPlanId).map((privilege) => (
+                    <div
+                      key={privilege.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                        privilege.included
+                          ? privilege.highlight
+                            ? 'bg-accent-primary/10 border border-accent-primary/30'
+                            : 'bg-bg-tertiary border border-border-subtle'
+                          : 'bg-bg-secondary/50 opacity-50'
+                      }`}
+                    >
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                        privilege.included
+                          ? privilege.highlight
+                            ? 'bg-accent-primary/20 text-accent-primary'
+                            : 'bg-bg-hover text-text-secondary'
+                          : 'bg-bg-tertiary text-text-tertiary'
+                      }`}>
+                        <privilege.icon className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${privilege.included ? 'text-text-primary' : 'text-text-tertiary'}`}>
+                          {privilege.label}
+                        </p>
+                        <p className={`text-xs ${privilege.highlight ? 'text-accent-primary font-medium' : 'text-text-tertiary'}`}>
+                          {privilege.included ? privilege.value : '—'}
+                        </p>
+                      </div>
+                      {privilege.included && (
+                        <Check className={`w-4 h-4 flex-shrink-0 ${privilege.highlight ? 'text-accent-primary' : 'text-success'}`} />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Fonctionnalités des plans supérieurs */}
+                {getMissingFeatures(userPlanId).length > 0 && (
+                  <div className="mt-6 pt-6 border-t border-border-subtle">
+                    <h3 className="text-sm font-semibold text-text-secondary mb-4 flex items-center gap-2">
+                      <Lock className="w-4 h-4" />
+                      {tr('Débloquez avec un plan supérieur', 'Unlock with a higher plan')}
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {getMissingFeatures(userPlanId).map((missing, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-3 p-3 rounded-lg bg-bg-secondary/30 border border-dashed border-border-subtle hover:border-accent-primary/30 transition-colors group"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center text-text-tertiary group-hover:text-accent-primary transition-colors">
+                            <missing.icon className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-text-secondary truncate">{missing.feature}</p>
+                            <p className="text-xs text-text-tertiary">
+                              {tr('Disponible dès', 'Available from')} <span className="text-accent-primary font-medium">{missing.planLabel}</span>
+                            </p>
+                          </div>
+                          <Lock className="w-3 h-3 text-text-tertiary flex-shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                    <Link
+                      to="/upgrade"
+                      className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-accent-primary to-purple-600 text-white font-medium hover:opacity-90 transition-opacity"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      {tr('Voir tous les plans', 'See all plans')}
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </section>
+
             {/* Abonnement */}
             <section className="card">
               <div className="panel-header">
@@ -308,7 +640,7 @@ export const MyAccount: React.FC = () => {
                         }
                       </p>
                     </div>
-                    {user?.plan !== 'expert' && user?.plan !== 'unlimited' && (
+                    {user?.plan !== 'team' && user?.plan !== 'expert' && user?.plan !== 'unlimited' && (
                       <Link to="/upgrade" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors">
                         <Sparkles className="w-4 h-4" />
                         {tr('Améliorer', 'Upgrade')}
@@ -336,21 +668,21 @@ export const MyAccount: React.FC = () => {
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
                   <Key className="w-5 h-5 text-accent-primary" />
                   {tr('Clés API', 'API Keys')}
-                  {isExpert && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400">Expert</span>}
+                  {isTeamOrHigher && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400">Team</span>}
                 </h2>
               </div>
               <div className="panel-body">
-                {!isExpert ? (
+                {!isTeamOrHigher ? (
                   <div className="text-center py-6">
-                    <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto mb-3">
-                      <Lock className="w-6 h-6 text-purple-400" />
+                    <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-3">
+                      <Lock className="w-6 h-6 text-amber-400" />
                     </div>
                     <p className="text-text-secondary mb-3">
-                      {tr('L\'accès API est réservé aux abonnés Expert.', 'API access is available for Expert subscribers.')}
+                      {tr('L\'accès API est réservé aux abonnés Équipe (29.99€/mois).', 'API access is available for Team subscribers (€29.99/mo).')}
                     </p>
-                    <Link to="/upgrade" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/10 text-purple-400 text-sm font-medium hover:bg-purple-500/20 transition-colors">
-                      <Crown className="w-4 h-4" />
-                      {tr('Passer à Expert', 'Upgrade to Expert')}
+                    <Link to="/upgrade" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/10 text-amber-400 text-sm font-medium hover:bg-amber-500/20 transition-colors">
+                      <Users className="w-4 h-4" />
+                      {tr('Passer à Équipe', 'Upgrade to Team')}
                     </Link>
                   </div>
                 ) : (

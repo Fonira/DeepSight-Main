@@ -41,8 +41,8 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
   const credits = user?.credits ?? 0;
   const plan = user?.plan || 'free';
 
-  // Don't show for unlimited plans
-  if (plan === 'unlimited' || plan === 'expert') {
+  // Don't show for unlimited/team plans (high credit limits)
+  if (plan === 'unlimited' || plan === 'team' || plan === 'expert') {
     return null;
   }
 

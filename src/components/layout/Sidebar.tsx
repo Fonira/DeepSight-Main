@@ -292,7 +292,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle })
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
-  const isProUser = user?.plan === 'pro' || user?.plan === 'expert';
+  const isProUser = user?.plan === 'pro' || user?.plan === 'team' || user?.plan === 'expert' || user?.plan === 'unlimited';
   
   const ADMIN_EMAIL = "maximeleparc3@gmail.com";
   const isUserAdmin = isAdmin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();

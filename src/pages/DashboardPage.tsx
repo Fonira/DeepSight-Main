@@ -192,9 +192,9 @@ export const DashboardPage: React.FC = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<boolean>(false);
 
-  const isProUser = user?.plan === "pro" || user?.plan === "expert";
-  const isExpertUser = user?.plan === "expert" || user?.plan === "unlimited";
-  const isStarterPlus = user?.plan === "starter" || user?.plan === "pro" || user?.plan === "expert" || user?.plan === "unlimited";
+  const isProUser = user?.plan === "pro" || user?.plan === "team" || user?.plan === "expert";
+  const isTeamOrHigher = user?.plan === "team" || user?.plan === "expert" || user?.plan === "unlimited";
+  const isStarterPlus = user?.plan === "student" || user?.plan === "starter" || user?.plan === "pro" || user?.plan === "team" || user?.plan === "expert" || user?.plan === "unlimited";
   
   // 🆕 Configuration des modèles selon le plan
   const availableModels = useMemo(() => {
@@ -202,10 +202,10 @@ export const DashboardPage: React.FC = () => {
     const models = [
       { id: 'mistral-small-latest', name: 'Mistral Small', desc: language === 'fr' ? 'Rapide' : 'Fast', icon: '⚡' }
     ];
-    if (['starter', 'pro', 'expert', 'unlimited'].includes(plan)) {
+    if (['student', 'starter', 'pro', 'team', 'expert', 'unlimited'].includes(plan)) {
       models.push({ id: 'mistral-medium-latest', name: 'Mistral Medium', desc: language === 'fr' ? 'Équilibré' : 'Balanced', icon: '⚖️' });
     }
-    if (['pro', 'expert', 'unlimited'].includes(plan)) {
+    if (['pro', 'team', 'expert', 'unlimited'].includes(plan)) {
       models.push({ id: 'mistral-large-latest', name: 'Mistral Large', desc: language === 'fr' ? 'Puissant' : 'Powerful', icon: '🚀' });
     }
     return models;

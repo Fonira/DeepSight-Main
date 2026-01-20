@@ -133,10 +133,10 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [estimate, setEstimate] = useState<TTSEstimate | null>(null);
 
-  // Vérifier si l'utilisateur peut utiliser TTS
+  // Vérifier si l'utilisateur peut utiliser TTS (Student+ ont accès)
   const canUseTTS = user?.plan !== 'free';
-  // Vérifier si l'utilisateur peut utiliser OpenAI HD (Pro/Expert)
-  const canUseOpenAI = user?.plan === 'pro' || user?.plan === 'expert';
+  // Vérifier si l'utilisateur peut utiliser OpenAI HD (Pro/Team/Expert)
+  const canUseOpenAI = user?.plan === 'pro' || user?.plan === 'team' || user?.plan === 'expert' || user?.plan === 'unlimited';
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // 🎙️ GÉNÉRATION AUDIO

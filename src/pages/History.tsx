@@ -406,7 +406,7 @@ export const History: React.FC = () => {
   const [clearType, setClearType] = useState<'all' | 'videos' | 'playlists'>('all');
   const [clearLoading, setClearLoading] = useState(false);
 
-  const isProUser = user?.plan === "pro" || user?.plan === "expert" || user?.plan === "unlimited";
+  const isProUser = user?.plan === "pro" || user?.plan === "team" || user?.plan === "expert" || user?.plan === "unlimited";
 
   // 🎯 Composants Markdown avec timecodes cliquables (ouvrent YouTube)
   const getTimecodeComponents = useCallback((videoId?: string) => {

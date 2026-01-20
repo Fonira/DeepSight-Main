@@ -189,8 +189,8 @@ export const PlaylistPage: React.FC = () => {
   const [maxVideos, setMaxVideos] = useState(10);
   const [mode, setMode] = useState<'accessible' | 'standard' | 'expert'>('accessible');
 
-  // User info
-  const isProUser = user?.plan === 'pro' || user?.plan === 'expert' || user?.plan === 'unlimited';
+  // User info - Pro/Team/Expert/Unlimited can use playlists
+  const isProUser = user?.plan === 'pro' || user?.plan === 'team' || user?.plan === 'expert' || user?.plan === 'unlimited';
   const userCredits = user?.credits || 0;
 
   // ═══════════════════════════════════════════════════════════════════

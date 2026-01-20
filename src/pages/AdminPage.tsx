@@ -55,14 +55,16 @@ type TabType = 'dashboard' | 'users' | 'stats' | 'logs';
 
 const ADMIN_EMAIL = "maximeleparc3@gmail.com";
 
-// Plan colors and labels
+// Plan colors and labels - v4.0 (Free, Student, Starter, Pro, Team)
 const PLAN_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
   free: { color: 'text-gray-500', bg: 'bg-gray-100', label: 'Free' },
-  student: { color: 'text-emerald-600', bg: 'bg-emerald-100', label: 'Student' },
-  starter: { color: 'text-green-600', bg: 'bg-green-100', label: 'Starter' },
-  pro: { color: 'text-blue-600', bg: 'bg-blue-100', label: 'Pro' },
-  expert: { color: 'text-purple-600', bg: 'bg-purple-100', label: 'Expert' },
-  unlimited: { color: 'text-amber-600', bg: 'bg-amber-100', label: 'Unlimited' },
+  student: { color: 'text-emerald-600', bg: 'bg-emerald-100', label: 'Student (€2.99)' },
+  starter: { color: 'text-blue-600', bg: 'bg-blue-100', label: 'Starter (€5.99)' },
+  pro: { color: 'text-violet-600', bg: 'bg-violet-100', label: 'Pro (€12.99)' },
+  team: { color: 'text-amber-600', bg: 'bg-amber-100', label: 'Team (€29.99)' },
+  // Rétrocompatibilité
+  expert: { color: 'text-amber-600', bg: 'bg-amber-100', label: 'Team (€29.99)' },
+  unlimited: { color: 'text-yellow-600', bg: 'bg-yellow-100', label: 'Unlimited' },
 };
 
 export const AdminPage: React.FC = () => {
@@ -471,10 +473,10 @@ export const AdminPage: React.FC = () => {
                         >
                           <option value="">{language === 'fr' ? 'Tous les plans' : 'All plans'}</option>
                           <option value="free">Free</option>
-                          <option value="student">Student</option>
-                          <option value="starter">Starter</option>
-                          <option value="pro">Pro</option>
-                          <option value="expert">Expert</option>
+                          <option value="student">Student (€2.99)</option>
+                          <option value="starter">Starter (€5.99)</option>
+                          <option value="pro">Pro (€12.99)</option>
+                          <option value="team">Team (€29.99)</option>
                         </select>
                         <span className="text-text-secondary self-center">
                           {usersTotal} {language === 'fr' ? 'utilisateurs' : 'users'}
@@ -712,12 +714,12 @@ export const AdminPage: React.FC = () => {
                 onChange={(e) => setEditPlan(e.target.value)}
                 className="w-full px-4 py-2 rounded-lg border border-border-subtle bg-bg-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
               >
-                <option value="free">Free</option>
-                <option value="student">Student (€2.99)</option>
-                <option value="starter">Starter (€4.99)</option>
-                <option value="pro">Pro (€9.99)</option>
-                <option value="expert">Expert (€14.99)</option>
-                <option value="unlimited">Unlimited</option>
+                <option value="free">Free (€0)</option>
+                <option value="student">Student (€2.99/mois)</option>
+                <option value="starter">Starter (€5.99/mois)</option>
+                <option value="pro">Pro (€12.99/mois)</option>
+                <option value="team">Team (€29.99/mois)</option>
+                <option value="unlimited">Unlimited (Admin)</option>
               </select>
             </div>
             
