@@ -27,6 +27,8 @@ import { videoApi, chatApi, studyApi, exportApi } from '../services/api';
 import { Header, Card, Badge, Button } from '../components';
 import { QuizComponent, MindMapComponent } from '../components/study';
 import type { QuizQuestion, MindMapData, MindMapNode } from '../components/study';
+import { ExportOptions } from '../components/export';
+import { AudioPlayer } from '../components/audio';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { formatDuration, formatDate } from '../utils/formatters';
 import type { RootStackParamList, AnalysisSummary, ChatMessage } from '../types';
@@ -81,6 +83,12 @@ export const AnalysisScreen: React.FC = () => {
   // Active study tool
   type StudyToolType = 'flashcards' | 'quiz' | 'mindmap' | null;
   const [activeStudyTool, setActiveStudyTool] = useState<StudyToolType>(null);
+
+  // Export modal state
+  const [showExportModal, setShowExportModal] = useState(false);
+
+  // Audio player state
+  const [showAudioPlayer, setShowAudioPlayer] = useState(false);
 
   // Load analysis data
   const loadAnalysis = useCallback(async () => {
@@ -690,6 +698,22 @@ export const AnalysisScreen: React.FC = () => {
 
               <TouchableOpacity
                 style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
+                onPress={() => setShowExportModal(true)}
+              >
+                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.accentSecondary}20` }]}>
+                  <Ionicons name="download-outline" size={28} color={colors.accentSecondary} />
+                </View>
+                <View style={styles.toolInfo}>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Exporter</Text>
+                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
+                    PDF, Markdown ou texte brut
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
                 onPress={handleShare}
               >
                 <View style={[styles.toolIconContainer, { backgroundColor: `${colors.textTertiary}20` }]}>
@@ -715,6 +739,27 @@ export const AnalysisScreen: React.FC = () => {
                   <Text style={[styles.toolName, { color: colors.textPrimary }]}>Copier</Text>
                   <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
                     Copiez le contenu dans le presse-papiers
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+
+              {/* Audio Section */}
+              <Text style={[styles.toolsSectionTitle, { color: colors.textPrimary }]}>
+                Audio
+              </Text>
+
+              <TouchableOpacity
+                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
+                onPress={() => setShowAudioPlayer(true)}
+              >
+                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.accentInfo}20` }]}>
+                  <Ionicons name="volume-high-outline" size={28} color={colors.accentInfo} />
+                </View>
+                <View style={styles.toolInfo}>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Écouter</Text>
+                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
+                    Écoutez le résumé avec TTS
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -795,6 +840,26 @@ export const AnalysisScreen: React.FC = () => {
             />
           )}
         </View>
+      )}
+
+      {/* Export Modal */}
+      {summary && (
+        <ExportOptions
+          visible={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          summaryId={summary.id}
+          title={summary.title}
+        />
+      )}
+
+      {/* Audio Player Modal */}
+      {summary && (
+        <AudioPlayer
+          visible={showAudioPlayer}
+          onClose={() => setShowAudioPlayer(false)}
+          text={summary.content || ''}
+          title={summary.title}
+        />
       )}
     </View>
   );
