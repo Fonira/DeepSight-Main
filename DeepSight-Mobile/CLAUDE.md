@@ -92,12 +92,14 @@ DeepSight-Mobile/
 
 ## Problème Critique : Google OAuth
 
-### Situation Actuelle
+### Situation Actuelle (Mise à jour 21/01/2026)
 
-L'app mobile utilise `expo-auth-session` pour Google OAuth :
+L'app mobile utilise maintenant `expo-auth-session/providers/google` pour obtenir un access token directement de Google, puis l'échange avec notre backend.
+
+**Flux actuel :**
 1. L'utilisateur clique "Continuer avec Google"
-2. Expo ouvre le navigateur Google
-3. Google retourne un `access_token` à l'app
+2. `Google.useAuthRequest()` ouvre le flux OAuth Google
+3. Google retourne un `access_token` directement à l'app
 4. L'app envoie ce token à `/api/auth/google/token` pour l'échanger contre des tokens de session
 
 **PROBLÈME** : L'endpoint `/api/auth/google/token` **n'existe pas** sur le backend v3 !
@@ -107,17 +109,32 @@ L'app mobile utilise `expo-auth-session` pour Google OAuth :
 Ajouter au backend Python (FastAPI) :
 
 ```python
+from google.oauth2 import id_token
+from google.auth.transport import requests
+
 @router.post("/auth/google/token")
 async def google_token_login(request: GoogleTokenRequest):
     """
     Échange un Google access token contre des tokens de session.
     Utilisé par l'app mobile qui obtient le token directement via expo-auth-session.
     """
-    # 1. Vérifier le token avec l'API Google
-    google_user_info = await verify_google_token(request.access_token)
+    # 1. Vérifier le token avec l'API Google (userinfo endpoint)
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            'https://www.googleapis.com/oauth2/v3/userinfo',
+            headers={'Authorization': f'Bearer {request.access_token}'}
+        )
+        if response.status_code != 200:
+            raise HTTPException(status_code=401, detail="Invalid Google token")
+        google_user_info = response.json()
 
     # 2. Trouver ou créer l'utilisateur
-    user = await get_or_create_user_from_google(google_user_info)
+    user = await get_or_create_user_from_google(
+        email=google_user_info['email'],
+        name=google_user_info.get('name'),
+        picture=google_user_info.get('picture'),
+        google_id=google_user_info['sub']
+    )
 
     # 3. Générer les tokens de session
     access_token = create_access_token(user)
@@ -136,6 +153,11 @@ L'URI de redirection autorisée doit inclure :
 ```
 https://auth.expo.io/@maximeadmin/deepsight
 ```
+
+Pour le client ID web (utilisé par Expo Go) :
+- Type: Application Web
+- Origines JavaScript autorisées: `https://auth.expo.io`
+- URIs de redirection: `https://auth.expo.io/@maximeadmin/deepsight`
 
 ---
 
