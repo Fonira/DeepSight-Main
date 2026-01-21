@@ -1,45 +1,60 @@
-# Dependencies
-node_modules/
+# ═══════════════════════════════════════════════════════════════════════════
+# DEEPSIGHT MONOREPO - .gitignore
+# ═══════════════════════════════════════════════════════════════════════════
 
-# Build output
-dist/
-build/
+# ─── Frontend ───
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
 
-# Environment files
-.env
-.env.local
-.env.*.local
+# ─── Backend ───
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/.env
+backend/venv/
+backend/.venv/
 
-# IDE
-.vscode/
+# ─── Mobile ───
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/*.jks
+mobile/*.p8
+mobile/*.p12
+mobile/*.key
+mobile/*.mobileprovision
+mobile/*.orig.*
+
+# ─── IDE ───
 .idea/
+.vscode/
 *.swp
 *.swo
 
-# OS
+# ─── OS ───
 .DS_Store
 Thumbs.db
 
-# Logs
+# ─── Logs ───
 *.log
 npm-debug.log*
 
-# Cache
+# ─── Cache ───
 .cache/
 .parcel-cache/
 .eslintcache
 
-# Testing
+# ─── Testing ───
 coverage/
 
-# Mobile app specific
-DeepSight-Mobile/node_modules/
-DeepSight-Mobile/.expo/
-DeepSight-Mobile/dist/
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-*.orig.*
-web-build/
+# ─── Secrets ───
+.env
+.env.*
+!.env.example
+*.pem
+credentials.json
+play-store-credentials.json
