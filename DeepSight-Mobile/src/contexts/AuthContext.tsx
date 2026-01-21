@@ -1,11 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
-import * as Google from 'expo-auth-session/providers/google';
 import * as Linking from 'expo-linking';
 import { authApi, ApiError } from '../services/api';
 import { tokenStorage, userStorage } from '../utils/storage';
-import { GOOGLE_CLIENT_ID, API_BASE_URL } from '../constants/config';
 import type { User } from '../types';
 
 // Complete any pending auth sessions
@@ -39,86 +36,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isAuthenticated = user !== null;
 
-  // Configure redirect URI for OAuth callback
-  const redirectUri = AuthSession.makeRedirectUri({
-    scheme: 'deepsight',
-    path: 'auth/callback',
-  });
-
-  // Google OAuth configuration using expo-auth-session/providers/google
-  // This directly interacts with Google, bypassing our backend for the OAuth flow
-  const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
-    webClientId: GOOGLE_CLIENT_ID,
-    scopes: ['profile', 'email'],
-    // Request both access token and ID token
-    responseType: 'token',
-  });
-
-  // Handle Google OAuth response from the Google provider
-  useEffect(() => {
-    const handleGoogleResponse = async () => {
-      if (googleResponse?.type === 'success') {
-        const { authentication } = googleResponse;
-        console.log('=== Google OAuth Success ===');
-        console.log('Access token received:', !!authentication?.accessToken);
-        console.log('ID token received:', !!authentication?.idToken);
-
-        if (authentication?.accessToken) {
-          setIsLoading(true);
-          setError(null);
-
-          try {
-            // Try to exchange the Google access token with our backend
-            console.log('Sending Google access token to backend...');
-
-            // Try the token endpoint first (preferred for mobile)
-            try {
-              const authResponse = await authApi.googleTokenLogin(authentication.accessToken);
-              console.log('Token exchange successful via /api/auth/google/token!');
-
-              if (authResponse?.user) {
-                setUser(authResponse.user);
-                await userStorage.setUser(authResponse.user);
-                console.log('Google login complete! User:', authResponse.user.email);
-              }
-              return;
-            } catch (tokenErr) {
-              console.log('Token endpoint failed (might not exist):', tokenErr instanceof Error ? tokenErr.message : 'Unknown error');
-
-              // If token endpoint doesn't exist, we need an alternative
-              // The backend needs to implement /api/auth/google/token for mobile OAuth
-              throw new Error(
-                'L\'endpoint d\'authentification Google mobile n\'est pas disponible. ' +
-                'Veuillez contacter l\'administrateur pour activer /api/auth/google/token sur le backend.'
-              );
-            }
-          } catch (err) {
-            console.error('Google auth failed:', err);
-            const message = err instanceof ApiError
-              ? err.message
-              : err instanceof Error
-                ? err.message
-                : 'Échec de la connexion Google';
-            setError(message);
-          } finally {
-            setIsLoading(false);
-          }
-        }
-      } else if (googleResponse?.type === 'error') {
-        console.error('Google OAuth error:', googleResponse.error);
-        setError('Authentification Google échouée: ' + (googleResponse.error?.message || 'Erreur inconnue'));
-        setIsLoading(false);
-      } else if (googleResponse?.type === 'dismiss' || googleResponse?.type === 'cancel') {
-        console.log('Google OAuth cancelled/dismissed by user');
-        setIsLoading(false);
-      }
-    };
-
-    if (googleResponse) {
-      handleGoogleResponse();
-    }
-  }, [googleResponse]);
+  // Create redirect URI for the mobile app
+  const redirectUri = Linking.createURL('auth/callback');
 
   // Initialize auth state
   useEffect(() => {
@@ -142,55 +61,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
   }, []);
 
-  // Handle deep links for OAuth callback (used when backend redirects to mobile)
+  // Handle deep links for OAuth callback
   useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
-      console.log('Deep link received:', event.url);
+      console.log('=== Deep link received ===');
+      console.log('URL:', event.url);
 
       try {
         const url = new URL(event.url);
+        console.log('Pathname:', url.pathname);
+        console.log('Search params:', url.search);
 
         // Check if this is an auth callback
-        if (url.pathname.includes('auth/callback') || url.host === 'auth') {
+        if (url.pathname.includes('auth/callback') || url.pathname.includes('auth') || event.url.includes('auth/callback')) {
           const accessToken = url.searchParams.get('access_token');
           const refreshToken = url.searchParams.get('refresh_token');
-          const code = url.searchParams.get('code');
           const errorParam = url.searchParams.get('error');
 
+          console.log('Access token received:', !!accessToken);
+          console.log('Refresh token received:', !!refreshToken);
+          console.log('Error param:', errorParam);
+
           if (errorParam) {
-            console.error('OAuth error from deep link:', errorParam);
+            console.error('OAuth error from callback:', errorParam);
             setError('Authentification Google échouée: ' + errorParam);
             setIsLoading(false);
             return;
           }
 
-          // If we received tokens directly
           if (accessToken && refreshToken) {
-            console.log('Received session tokens from deep link');
+            console.log('Saving tokens and fetching user...');
+            setIsLoading(true);
             await tokenStorage.setTokens(accessToken, refreshToken);
+
+            // Fetch user data
             const userData = await authApi.getMe();
             setUser(userData);
             await userStorage.setUser(userData);
-            console.log('User authenticated via deep link:', userData.email);
+            console.log('Google login successful! User:', userData.email);
             setIsLoading(false);
-            return;
-          }
-
-          // If we received a code, exchange it
-          if (code) {
-            console.log('Received authorization code from deep link');
-            setIsLoading(true);
-            try {
-              const authResponse = await authApi.googleCallback(code);
-              setUser(authResponse.user);
-              await userStorage.setUser(authResponse.user);
-              console.log('Google login successful via code exchange!');
-            } catch (err) {
-              console.error('Code exchange failed:', err);
-              setError('Échec de l\'échange du code d\'autorisation');
-            } finally {
-              setIsLoading(false);
-            }
           }
         }
       } catch (err) {
@@ -205,6 +114,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Check for initial URL (app opened from deep link)
     Linking.getInitialURL().then((url) => {
       if (url) {
+        console.log('Initial URL detected:', url);
         handleDeepLink({ url });
       }
     });
@@ -232,75 +142,79 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const loginWithGoogle = useCallback(async () => {
     console.log('=== loginWithGoogle called ===');
-    console.log('Using Google provider directly (recommended for Expo Go)');
-    console.log('Google request ready:', !!googleRequest);
-    console.log('Redirect URI:', redirectUri);
+    console.log('Mobile redirect URI:', redirectUri);
 
     setError(null);
+    setIsLoading(true);
 
-    // Use the Google provider which works better in Expo Go
-    if (googleRequest) {
-      try {
-        setIsLoading(true);
-        console.log('Opening Google OAuth prompt...');
-        const result = await promptGoogleAsync();
-        console.log('Google OAuth result type:', result?.type);
-        // Response handling is done in useEffect above
-      } catch (err) {
-        console.error('Google OAuth prompt error:', err);
-        setError(err instanceof Error ? err.message : 'Échec de la connexion Google');
-        setIsLoading(false);
+    try {
+      // Step 1: Get the Google OAuth URL from backend
+      // Backend will use its own callback URL, then redirect to our redirectUri with tokens
+      console.log('Step 1: Getting auth URL from backend...');
+      const { url: authUrl } = await authApi.googleLogin(redirectUri);
+      console.log('Auth URL received:', authUrl?.substring(0, 100) + '...');
+
+      if (!authUrl) {
+        throw new Error('Impossible d\'obtenir l\'URL d\'authentification Google');
       }
-    } else {
-      // Fallback: try the backend-based OAuth flow
-      console.log('Google request not ready, trying backend OAuth flow...');
-      setIsLoading(true);
 
-      try {
-        // Get OAuth URL from backend
-        const { url: authUrl } = await authApi.googleLogin(redirectUri);
+      // Step 2: Open browser for Google OAuth
+      // The flow is:
+      // 1. Browser opens Google login
+      // 2. User authenticates
+      // 3. Google redirects to backend callback
+      // 4. Backend exchanges code for tokens
+      // 5. Backend redirects to our redirectUri with tokens
+      console.log('Step 2: Opening browser...');
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+      console.log('Browser result type:', result.type);
 
-        if (!authUrl) {
-          throw new Error('Impossible d\'obtenir l\'URL d\'authentification Google');
+      if (result.type === 'success' && result.url) {
+        console.log('Step 3: Processing callback URL...');
+        console.log('Callback URL:', result.url);
+
+        const callbackUrl = new URL(result.url);
+        const accessToken = callbackUrl.searchParams.get('access_token');
+        const refreshToken = callbackUrl.searchParams.get('refresh_token');
+        const errorParam = callbackUrl.searchParams.get('error');
+
+        if (errorParam) {
+          console.error('OAuth error:', errorParam);
+          setError('Authentification Google échouée: ' + errorParam);
+          setIsLoading(false);
+          return;
         }
 
-        console.log('Opening browser for OAuth:', authUrl.substring(0, 80) + '...');
-        const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-        console.log('Browser result type:', result.type);
+        if (accessToken && refreshToken) {
+          console.log('Tokens received! Saving...');
+          await tokenStorage.setTokens(accessToken, refreshToken);
 
-        if (result.type === 'success' && result.url) {
-          const callbackUrl = new URL(result.url);
-          const code = callbackUrl.searchParams.get('code');
-          const errorParam = callbackUrl.searchParams.get('error');
-
-          if (errorParam) {
-            setError('Authentification Google annulée ou échouée');
-            return;
-          }
-
-          if (code) {
-            console.log('Exchanging authorization code...');
-            const authResponse = await authApi.googleCallback(code);
-            setUser(authResponse.user);
-            await userStorage.setUser(authResponse.user);
-            console.log('Google login successful!');
-          }
-        } else if (result.type !== 'cancel' && result.type !== 'dismiss') {
-          console.log('Unexpected OAuth result:', result.type);
+          const userData = await authApi.getMe();
+          setUser(userData);
+          await userStorage.setUser(userData);
+          console.log('Google login successful! User:', userData.email);
+        } else {
+          console.error('No tokens in callback URL');
+          console.log('URL params:', callbackUrl.search);
+          setError('Erreur: tokens manquants dans la réponse');
         }
-      } catch (err) {
-        console.error('Backend OAuth flow failed:', err);
-        const message = err instanceof ApiError
+      } else if (result.type === 'cancel' || result.type === 'dismiss') {
+        console.log('User cancelled OAuth');
+      } else {
+        console.log('Unexpected result type:', result.type);
+      }
+    } catch (err) {
+      console.error('Google login error:', err);
+      const message = err instanceof ApiError
+        ? err.message
+        : err instanceof Error
           ? err.message
-          : err instanceof Error
-            ? err.message
-            : 'Échec de la connexion Google';
-        setError(message);
-      } finally {
-        setIsLoading(false);
-      }
+          : 'Échec de la connexion Google';
+      setError(message);
+    } finally {
+      setIsLoading(false);
     }
-  }, [googleRequest, promptGoogleAsync, redirectUri]);
+  }, [redirectUri]);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
     setIsLoading(true);

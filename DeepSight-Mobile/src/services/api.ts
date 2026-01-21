@@ -243,11 +243,22 @@ export const authApi = {
   },
 
   async googleLogin(redirectUri?: string): Promise<{ url: string }> {
-    return request('/api/auth/google/login', {
-      method: 'POST',
-      body: redirectUri ? { redirect_uri: redirectUri, platform: 'mobile' } : undefined,
+    // Backend expects GET with query params and returns {auth_url: "..."}
+    const params = new URLSearchParams();
+    if (redirectUri) {
+      params.append('redirect_uri', redirectUri);
+      params.append('platform', 'mobile');
+    }
+    const queryString = params.toString();
+    const endpoint = queryString ? `/api/auth/google/login?${queryString}` : '/api/auth/google/login';
+
+    const response = await request<{ auth_url: string }>(endpoint, {
+      method: 'GET',
       requiresAuth: false,
     });
+
+    // Normalize response to always have 'url' property
+    return { url: response.auth_url };
   },
 
   async googleCallback(code: string): Promise<{ access_token: string; refresh_token: string; user: User }> {
