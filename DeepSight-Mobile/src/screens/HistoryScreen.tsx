@@ -153,7 +153,7 @@ export const HistoryScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <Header title="Historique" />
 
       {/* Search Bar */}

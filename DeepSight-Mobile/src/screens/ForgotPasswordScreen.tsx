@@ -67,7 +67,7 @@ export const ForgotPasswordScreen: React.FC = () => {
 
   if (emailSent) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
@@ -98,7 +98,7 @@ export const ForgotPasswordScreen: React.FC = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

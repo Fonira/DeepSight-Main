@@ -187,7 +187,7 @@ export const UpgradeScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <Header title="Abonnements" showBack />
 
       <ScrollView
@@ -204,7 +204,7 @@ export const UpgradeScreen: React.FC = () => {
 
       {/* Bottom CTA */}
       {selectedPlan && selectedPlan !== currentPlan && (
-        <View style={[styles.bottomCta, { backgroundColor: colors.bgPrimary, paddingBottom: insets.bottom + Spacing.md }]}>
+        <View style={[styles.bottomCta, { backgroundColor: 'transparent', paddingBottom: insets.bottom + Spacing.md }]}>
           <Button
             title={`Passer à ${PLANS.find(p => p.id === selectedPlan)?.name}`}
             onPress={handleUpgrade}

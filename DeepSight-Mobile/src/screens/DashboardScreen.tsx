@@ -109,7 +109,7 @@ export const DashboardScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <Header showLogo rightAction={{ icon: 'notifications-outline', onPress: () => {} }} />
 
       <ScrollView
