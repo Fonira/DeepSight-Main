@@ -1,12 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
+import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
 import { authApi, ApiError } from '../services/api';
 import { tokenStorage, userStorage } from '../utils/storage';
 import type { User } from '../types';
 
 // Complete any pending auth sessions
 WebBrowser.maybeCompleteAuthSession();
+
+// Google OAuth Client ID (same as web)
+const GOOGLE_CLIENT_ID_WEB = '763654536492-8hkdd3n31tqeodnhcak6ef8asu4v287j.apps.googleusercontent.com';
 
 interface AuthContextType {
   user: User | null;
@@ -36,48 +40,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isAuthenticated = user !== null;
 
-  // Handle deep links for OAuth callback
+  // Configure Google Auth redirect URI
+  const redirectUri = makeRedirectUri({
+    scheme: 'deepsight',
+    path: 'auth/callback',
+  });
+
+  console.log('Google Auth redirect URI:', redirectUri);
+
+  // Use Google auth request hook
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: GOOGLE_CLIENT_ID_WEB,
+    redirectUri,
+  });
+
+  // Handle Google auth response
   useEffect(() => {
-    const handleDeepLink = async (event: { url: string }) => {
-      console.log('Deep link received:', event.url);
-
-      // Parse the URL to extract the code parameter
-      const url = new URL(event.url);
-      const code = url.searchParams.get('code');
-
-      if (code) {
-        console.log('Got authorization code from deep link');
+    const handleGoogleResponse = async () => {
+      if (response?.type === 'success' && response.authentication?.accessToken) {
         setIsLoading(true);
         setError(null);
         try {
-          const response = await authApi.googleCallback(code);
-          setUser(response.user);
-          await userStorage.setUser(response.user);
+          console.log('Got Google access token, exchanging with backend...');
+          // Send the Google access token to our backend
+          const result = await authApi.googleTokenLogin(response.authentication.accessToken);
+          setUser(result.user);
+          await userStorage.setUser(result.user);
           console.log('Google login successful');
         } catch (err) {
-          console.error('Google callback error:', err);
+          console.error('Google token exchange error:', err);
           const message = err instanceof ApiError ? err.message : 'Google login failed';
           setError(message);
         } finally {
           setIsLoading(false);
         }
+      } else if (response?.type === 'error') {
+        console.error('Google auth error:', response.error);
+        setError(response.error?.message || 'Google authentication failed');
+        setIsLoading(false);
+      } else if (response?.type === 'cancel') {
+        console.log('User cancelled Google login');
+        setIsLoading(false);
       }
     };
 
-    // Listen for incoming links
-    const subscription = Linking.addEventListener('url', handleDeepLink);
-
-    // Check if app was opened via a link
-    Linking.getInitialURL().then((url) => {
-      if (url) {
-        handleDeepLink({ url });
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, []);
+    handleGoogleResponse();
+  }, [response]);
 
   // Initialize auth state
   useEffect(() => {
@@ -118,54 +126,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const loginWithGoogle = useCallback(async () => {
+    if (!request) {
+      console.error('Google auth request not ready');
+      setError('Google authentication is not ready. Please try again.');
+      return;
+    }
+
     setError(null);
     setIsLoading(true);
 
     try {
-      // Get the redirect URI for the mobile app
-      const redirectUri = Linking.createURL('auth/callback');
-      console.log('Mobile redirect URI:', redirectUri);
+      console.log('Starting Google OAuth flow...');
+      const result = await promptAsync();
+      console.log('Google OAuth prompt result:', result.type);
 
-      // Get Google OAuth URL from backend with mobile redirect
-      const { url } = await authApi.googleLogin(redirectUri);
-      console.log('Opening Google OAuth URL:', url);
-
-      // Open the Google OAuth URL in a browser
-      const result = await WebBrowser.openAuthSessionAsync(url, redirectUri);
-      console.log('WebBrowser result:', result.type);
-
-      if (result.type === 'success' && result.url) {
-        // Parse the callback URL to get the code
-        const callbackUrl = new URL(result.url);
-        const code = callbackUrl.searchParams.get('code');
-
-        if (code) {
-          console.log('Got authorization code, exchanging...');
-          const response = await authApi.googleCallback(code);
-          setUser(response.user);
-          await userStorage.setUser(response.user);
-          console.log('Google login successful');
-        } else {
-          throw new Error('No authorization code received');
-        }
-      } else if (result.type === 'cancel') {
-        console.log('User cancelled Google login');
-        // Don't show error for user cancellation
-      } else {
-        throw new Error('Google authentication failed');
+      // The response will be handled by the useEffect above
+      if (result.type !== 'success') {
+        setIsLoading(false);
       }
     } catch (err) {
       console.error('Google login error:', err);
-      const message = err instanceof ApiError
-        ? err.message
-        : err instanceof Error
-          ? err.message
-          : 'Google login failed';
+      const message = err instanceof Error ? err.message : 'Google login failed';
       setError(message);
-    } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [request, promptAsync]);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
     setIsLoading(true);
