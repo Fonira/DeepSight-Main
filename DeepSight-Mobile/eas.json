@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 7.0.0"
+    "version": ">= 7.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -8,33 +9,53 @@
       "distribution": "internal",
       "ios": {
         "simulator": true
+      },
+      "env": {
+        "APP_ENV": "development"
       }
     },
     "preview": {
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_ENV": "preview"
       }
     },
     "production": {
+      "autoIncrement": true,
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "image": "latest"
       },
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "image": "latest"
+      },
+      "env": {
+        "APP_ENV": "production"
       }
     }
   },
   "submit": {
     "production": {
       "ios": {
-        "appleId": "your-apple-id@email.com",
-        "ascAppId": "your-app-store-connect-app-id",
-        "appleTeamId": "your-team-id"
+        "appleId": "contact@deepsight.app",
+        "ascAppId": "6740000000",
+        "appleTeamId": "XXXXXXXXXX",
+        "sku": "com.deepsight.app",
+        "language": "fr-FR",
+        "companyName": "Deep Sight",
+        "appName": "Deep Sight"
       },
       "android": {
-        "serviceAccountKeyPath": "./google-services.json",
-        "track": "production"
+        "serviceAccountKeyPath": "./play-store-credentials.json",
+        "track": "production",
+        "releaseStatus": "completed"
       }
     }
   }
