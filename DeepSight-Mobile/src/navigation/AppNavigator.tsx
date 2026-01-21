@@ -13,11 +13,15 @@ import {
   LoginScreen,
   RegisterScreen,
   ForgotPasswordScreen,
+  VerifyEmailScreen,
   DashboardScreen,
   HistoryScreen,
   PlaylistsScreen,
   ProfileScreen,
   SettingsScreen,
+  AccountScreen,
+  UpgradeScreen,
+  UsageScreen,
 } from '../screens';
 import { Typography, Spacing, BorderRadius } from '../constants/theme';
 import type { RootStackParamList, MainTabParamList } from '../types';
@@ -122,7 +126,7 @@ const AuthStack: React.FC = () => {
       />
       <Stack.Screen
         name="VerifyEmail"
-        component={LoginScreen} // Placeholder
+        component={VerifyEmailScreen}
       />
     </Stack.Navigator>
   );
@@ -155,15 +159,15 @@ const MainStack: React.FC = () => {
       />
       <Stack.Screen
         name="Account"
-        component={ProfileScreen} // Placeholder
+        component={AccountScreen}
       />
       <Stack.Screen
         name="Upgrade"
-        component={ProfileScreen} // Placeholder
+        component={UpgradeScreen}
       />
       <Stack.Screen
         name="Usage"
-        component={ProfileScreen} // Placeholder
+        component={UsageScreen}
       />
     </Stack.Navigator>
   );
