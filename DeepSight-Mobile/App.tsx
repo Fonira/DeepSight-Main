@@ -5,12 +5,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AuthProvider } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
+import { DoodleBackground } from './src/components/backgrounds';
 import { QUERY_CONFIG } from './src/constants/config';
+import { Colors } from './src/constants/theme';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -27,15 +29,16 @@ const queryClient = new QueryClient({
   },
 });
 
-// App content with theme-aware status bar
+// App content with theme-aware status bar and background
 const AppContent: React.FC = () => {
-  const { isDark } = useTheme();
+  const { isDark, colors } = useTheme();
 
   return (
-    <>
+    <View style={[styles.appContainer, { backgroundColor: colors.bgPrimary }]}>
+      <DoodleBackground density="medium" />
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <AppNavigator />
-    </>
+    </View>
   );
 };
 
@@ -94,6 +97,9 @@ export default function App() {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  appContainer: {
     flex: 1,
   },
 });
