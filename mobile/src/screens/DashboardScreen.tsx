@@ -13,8 +13,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -25,7 +26,11 @@ import { ANALYSIS_MODES, ANALYSIS_CATEGORIES, AI_MODELS } from '../constants/con
 import { isValidYouTubeUrl, formatCredits } from '../utils/formatters';
 import type { RootStackParamList, MainTabParamList, AnalysisSummary } from '../types';
 
-type DashboardNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTabs'>;
+// Composite type for navigating to both tab screens and stack screens
+type DashboardNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, 'Dashboard'>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
 
 export const DashboardScreen: React.FC = () => {
   const { colors } = useTheme();
@@ -285,7 +290,7 @@ export const DashboardScreen: React.FC = () => {
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
                 Analyses récentes
               </Text>
-              <TouchableOpacity onPress={() => (navigation as any).navigate('History')}>
+              <TouchableOpacity onPress={() => navigation.navigate('History')}>
                 <Text style={[styles.seeAllText, { color: colors.accentPrimary }]}>
                   Voir tout
                 </Text>

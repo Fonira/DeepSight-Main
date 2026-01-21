@@ -11,6 +11,7 @@ import { AuthProvider } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { DoodleBackground } from './src/components/backgrounds';
+import { ErrorBoundary } from './src/components/common';
 import { QUERY_CONFIG } from './src/constants/config';
 import { Colors } from './src/constants/theme';
 
@@ -85,11 +86,19 @@ export default function App() {
     <GestureHandlerRootView style={styles.container} onLayout={onLayoutRootView}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <ThemeProvider>
-            <AuthProvider>
-              <AppContent />
-            </AuthProvider>
-          </ThemeProvider>
+          <ErrorBoundary
+            onError={(error, errorInfo) => {
+              // Log error to console in development
+              console.error('App Error:', error, errorInfo);
+              // In production, you would send this to an error tracking service
+            }}
+          >
+            <ThemeProvider>
+              <AuthProvider>
+                <AppContent />
+              </AuthProvider>
+            </ThemeProvider>
+          </ErrorBoundary>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

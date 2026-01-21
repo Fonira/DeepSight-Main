@@ -30,14 +30,52 @@ interface TournesolWidgetProps {
   compact?: boolean;
 }
 
-// Simulated Tournesol API (replace with real API when available)
+// Tournesol API integration
 const fetchTournesolScore = async (videoId: string): Promise<TournesolScore | null> => {
-  // In production, this would call the real Tournesol API
-  // For now, we return null to indicate no score available
-  // const response = await fetch(`https://tournesol.app/api/v2/poll/videos/entities/yt:${videoId}`);
+  try {
+    const response = await fetch(
+      `https://tournesol.app/api/v2/polls/videos/entities/yt:${videoId}`,
+      {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      }
+    );
 
-  // Return null for videos not in Tournesol database
-  return null;
+    if (!response.ok) {
+      // Video not found in Tournesol database (404) or other error
+      return null;
+    }
+
+    const data = await response.json();
+
+    // Extract scores from Tournesol API response
+    // The API returns criteria_scores array with different criteria
+    const criteriaScores = data.criteria_scores || [];
+
+    const getScore = (name: string): number => {
+      const criterion = criteriaScores.find((c: any) => c.criteria === name);
+      // Tournesol scores are typically -100 to 100, normalize to 0-100
+      return criterion ? Math.round((criterion.score + 100) / 2) : 50;
+    };
+
+    return {
+      score: data.tournesol_score ? Math.round((data.tournesol_score + 100) / 2) : 50,
+      reliability: getScore('reliability'),
+      importance: getScore('importance'),
+      engaging: getScore('engaging'),
+      pedagogy: getScore('pedagogy'),
+      layman_friendly: getScore('layman_friendly'),
+      diversity_inclusion: getScore('diversity_inclusion'),
+      backfire_risk: getScore('backfire_risk'),
+      better_habits: getScore('better_habits'),
+      entertaining_relaxing: getScore('entertaining_relaxing'),
+    };
+  } catch (error) {
+    console.log('Tournesol API error:', error);
+    return null;
+  }
 };
 
 export const TournesolWidget: React.FC<TournesolWidgetProps> = ({

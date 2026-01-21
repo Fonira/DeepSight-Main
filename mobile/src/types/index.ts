@@ -228,13 +228,12 @@ export interface ConceptEdge {
   label?: string;
 }
 
-// Quiz Types
+// Quiz Types (matches API response and QuizComponent)
 export interface QuizQuestion {
-  id: string;
   question: string;
   options: string[];
-  correctAnswer: number;
-  explanation?: string;
+  correct: number;
+  explanation: string;
 }
 
 export interface QuizResult {
