@@ -38,34 +38,59 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isAuthenticated = user !== null;
 
-  // Google OAuth configuration
+  // Get the redirect URI for Expo
+  const redirectUri = AuthSession.makeRedirectUri({
+    scheme: 'deepsight',
+    path: 'auth/callback',
+  });
+
+  // Google OAuth configuration with Expo proxy
   const [request, response, promptAsync] = Google.useAuthRequest({
     clientId: GOOGLE_CLIENT_ID,
     scopes: ['openid', 'profile', 'email'],
+    redirectUri,
   });
 
   // Handle Google OAuth response
   useEffect(() => {
     const handleGoogleResponse = async () => {
-      if (response?.type === 'success' && response.authentication) {
+      console.log('Google OAuth response:', response?.type);
+
+      if (response?.type === 'success') {
         setIsLoading(true);
         setError(null);
         try {
-          // Send the access token to backend to create session
-          const backendResponse = await authApi.googleTokenLogin(response.authentication.accessToken);
-          setUser(backendResponse.user);
-          await userStorage.setUser(backendResponse.user);
+          // Get the authorization code or access token
+          const { authentication, params } = response;
+
+          if (authentication?.accessToken) {
+            // We got an access token - send to backend
+            console.log('Got access token, sending to backend...');
+            const backendResponse = await authApi.googleTokenLogin(authentication.accessToken);
+            setUser(backendResponse.user);
+            await userStorage.setUser(backendResponse.user);
+          } else if (params?.code) {
+            // We got an authorization code - exchange via backend
+            console.log('Got authorization code, exchanging via backend...');
+            const backendResponse = await authApi.googleCallback(params.code);
+            setUser(backendResponse.user);
+            await userStorage.setUser(backendResponse.user);
+          } else {
+            throw new Error('No authentication data received from Google');
+          }
         } catch (err) {
-          const message = err instanceof ApiError ? err.message : 'Google login failed';
+          console.error('Google login error:', err);
+          const message = err instanceof ApiError ? err.message : 'Google login failed. Please try again.';
           setError(message);
         } finally {
           setIsLoading(false);
         }
       } else if (response?.type === 'error') {
+        console.error('Google OAuth error:', response.error);
         setError(response.error?.message || 'Google login failed');
         setIsLoading(false);
       } else if (response?.type === 'cancel' || response?.type === 'dismiss') {
-        setError('Google login was cancelled');
+        // User cancelled - just reset loading state, don't show error
         setIsLoading(false);
       }
     };
@@ -114,17 +139,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const loginWithGoogle = useCallback(async () => {
-    setIsLoading(true);
     setError(null);
+
+    if (!request) {
+      setError('Google login is not available. Please try again later.');
+      return;
+    }
+
+    setIsLoading(true);
     try {
-      await promptAsync();
+      console.log('Starting Google OAuth with redirect URI:', redirectUri);
+      const result = await promptAsync();
+      console.log('promptAsync result:', result?.type);
+
+      // If cancelled or dismissed, reset loading state
+      if (result?.type === 'cancel' || result?.type === 'dismiss') {
+        setIsLoading(false);
+      }
+      // Success/error are handled by the useEffect above
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Google login failed';
+      console.error('Google login error:', err);
+      const message = err instanceof Error ? err.message : 'Google login failed';
       setError(message);
       setIsLoading(false);
-      throw err;
     }
-  }, [promptAsync]);
+  }, [promptAsync, request, redirectUri]);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
     setIsLoading(true);
