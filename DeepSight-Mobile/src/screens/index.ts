@@ -10,3 +10,4 @@ export { SettingsScreen } from './SettingsScreen';
 export { AccountScreen } from './AccountScreen';
 export { UpgradeScreen } from './UpgradeScreen';
 export { UsageScreen } from './UsageScreen';
+export { AnalysisScreen } from './AnalysisScreen';

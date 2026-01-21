@@ -22,6 +22,7 @@ import {
   AccountScreen,
   UpgradeScreen,
   UsageScreen,
+  AnalysisScreen,
 } from '../screens';
 import { Typography, Spacing, BorderRadius } from '../constants/theme';
 import type { RootStackParamList, MainTabParamList } from '../types';
@@ -147,7 +148,7 @@ const MainStack: React.FC = () => {
       <Stack.Screen name="MainTabs" component={MainTabs} />
       <Stack.Screen
         name="Analysis"
-        component={DashboardScreen} // Placeholder - use dedicated AnalysisScreen
+        component={AnalysisScreen}
         options={{
           animation: 'slide_from_bottom',
           presentation: 'modal',

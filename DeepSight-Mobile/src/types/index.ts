@@ -78,6 +78,7 @@ export interface AnalysisStatus {
   message?: string;
   result?: AnalysisSummary;
   error?: string;
+  summary_id?: string;
 }
 
 // Chat Types
