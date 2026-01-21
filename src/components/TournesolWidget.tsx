@@ -176,7 +176,7 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
       
       try {
         // Utiliser le proxy backend Deep Sight
-        const apiUrl = import.meta.env.VITE_API_URL || 'https://backen-deep-sight-test-production.up.railway.app';
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://deep-sight-backend-v3-production.up.railway.app';
         const url = `${apiUrl}/api/tournesol/video/${cleanVideoId}`;
         
         const response = await fetch(url, { 
@@ -716,7 +716,7 @@ export const TournesolBadge: React.FC<{ videoId: string; className?: string }> =
     const fetchScore = async () => {
       try {
         // Utiliser le proxy backend Deep Sight
-        const apiUrl = import.meta.env.VITE_API_URL || 'https://backen-deep-sight-test-production.up.railway.app';
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://deep-sight-backend-v3-production.up.railway.app';
         const response = await fetch(
           `${apiUrl}/api/tournesol/video/${videoId}`,
           { headers: { 'Accept': 'application/json' } }
@@ -800,7 +800,7 @@ export const TournesolMini: React.FC<{
       
       try {
         // Utiliser le proxy backend Deep Sight
-        const apiUrl = import.meta.env.VITE_API_URL || 'https://backen-deep-sight-test-production.up.railway.app';
+        const apiUrl = import.meta.env.VITE_API_URL || 'https://deep-sight-backend-v3-production.up.railway.app';
         const url = `${apiUrl}/api/tournesol/video/${cleanVideoId}`;
         
         // 🔍 DEBUG: Afficher l'URL appelée
