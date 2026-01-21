@@ -69,7 +69,7 @@ export const HistoryScreen: React.FC = () => {
 
   useEffect(() => {
     loadAnalyses(1, true);
-  }, [searchQuery, showFavoritesOnly]);
+  }, [loadAnalyses]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -147,7 +147,7 @@ export const HistoryScreen: React.FC = () => {
             : 'Analysez votre première vidéo YouTube pour commencer'
         }
         actionLabel={!showFavoritesOnly && !searchQuery ? 'Analyser une vidéo' : undefined}
-        onAction={!showFavoritesOnly && !searchQuery ? () => navigation.navigate('MainTabs') : undefined}
+        onAction={!showFavoritesOnly && !searchQuery ? () => (navigation as any).navigate('Dashboard') : undefined}
       />
     );
   };

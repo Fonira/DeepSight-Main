@@ -23,7 +23,7 @@ import { Header, VideoCard, Button, Card, Badge, Avatar } from '../components';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
 import { ANALYSIS_MODES, ANALYSIS_CATEGORIES, AI_MODELS } from '../constants/config';
 import { isValidYouTubeUrl, formatCredits } from '../utils/formatters';
-import type { RootStackParamList, AnalysisSummary } from '../types';
+import type { RootStackParamList, MainTabParamList, AnalysisSummary } from '../types';
 
 type DashboardNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTabs'>;
 
@@ -285,7 +285,7 @@ export const DashboardScreen: React.FC = () => {
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
                 Analyses récentes
               </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('MainTabs')}>
+              <TouchableOpacity onPress={() => (navigation as any).navigate('History')}>
                 <Text style={[styles.seeAllText, { color: colors.accentPrimary }]}>
                   Voir tout
                 </Text>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -36,6 +36,11 @@ export const RegisterScreen: React.FC = () => {
     password: '',
     confirmPassword: '',
   });
+
+  // Clear any stale errors when screen loads
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
 
   const validateForm = (): boolean => {
     const newErrors = {

@@ -12,9 +12,12 @@ import { useTheme } from '../contexts/ThemeContext';
 import {
   LoginScreen,
   RegisterScreen,
+  ForgotPasswordScreen,
   DashboardScreen,
   HistoryScreen,
+  PlaylistsScreen,
   ProfileScreen,
+  SettingsScreen,
 } from '../screens';
 import { Typography, Spacing, BorderRadius } from '../constants/theme';
 import type { RootStackParamList, MainTabParamList } from '../types';
@@ -87,7 +90,7 @@ const MainTabs: React.FC = () => {
       />
       <Tab.Screen
         name="Playlists"
-        component={HistoryScreen} // Placeholder - use dedicated PlaylistsScreen
+        component={PlaylistsScreen}
         options={{ tabBarLabel: 'Playlists' }}
       />
       <Tab.Screen
@@ -115,7 +118,7 @@ const AuthStack: React.FC = () => {
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen
         name="ForgotPassword"
-        component={LoginScreen} // Placeholder
+        component={ForgotPasswordScreen}
       />
       <Stack.Screen
         name="VerifyEmail"
@@ -148,7 +151,7 @@ const MainStack: React.FC = () => {
       />
       <Stack.Screen
         name="Settings"
-        component={ProfileScreen} // Placeholder
+        component={SettingsScreen}
       />
       <Stack.Screen
         name="Account"
