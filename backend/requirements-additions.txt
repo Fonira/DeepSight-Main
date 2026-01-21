@@ -1,0 +1,23 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🆕 NOUVELLES DÉPENDANCES POUR L'OPTIMISATION
+# À ajouter à votre requirements.txt existant
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Redis (cache + sessions)
+redis>=5.0.0
+
+# Celery (tâches asynchrones)
+celery>=5.3.0
+celery[redis]>=5.3.0
+
+# Compression
+brotli>=1.1.0
+
+# Métriques et monitoring
+prometheus-client>=0.19.0
+
+# SSE (Server-Sent Events)
+sse-starlette>=1.8.2
+
+# WebSocket amélioré
+websockets>=12.0
