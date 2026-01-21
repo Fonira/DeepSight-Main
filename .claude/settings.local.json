@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git cherry-pick:*)",
+      "Bash(git reset:*)",
+      "Bash(grep:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx vite build)",
+      "Bash(python -c:*)",
+      "Bash(python -m py_compile:*)",
+      "Bash(git pull:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(git fetch:*)",
+      "Bash(gh repo create:*)",
+      "Bash(where:*)",
+      "Bash(curl:*)",
+      "Bash(winget install:*)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/GitHub CLI\")",
+      "Bash(gh:*)",
+      "Bash(npm install:*)",
+      "Bash(xargs:*)",
+      "Bash(git submodule update:*)",
+      "Bash(git rm:*)"
+    ]
+  }
+}
