@@ -55,8 +55,8 @@ export const LoginScreen: React.FC = () => {
     if (!password) {
       setPasswordError('Le mot de passe est requis');
       isValid = false;
-    } else if (password.length < 6) {
-      setPasswordError('Minimum 6 caractères');
+    } else if (password.length < 8) {
+      setPasswordError('Minimum 8 caractères');
       isValid = false;
     } else {
       setPasswordError('');
@@ -79,7 +79,8 @@ export const LoginScreen: React.FC = () => {
     try {
       await loginWithGoogle();
     } catch (err) {
-      Alert.alert('Erreur', 'La connexion avec Google a échoué');
+      // Error is displayed via the error state from AuthContext
+      // No need to show an alert as the error banner will appear
     }
   };
 

@@ -40,6 +40,8 @@ export const AnalysisScreen: React.FC = () => {
   const route = useRoute<AnalysisRouteProp>();
   const insets = useSafeAreaInsets();
   const chatScrollRef = useRef<FlatList>(null);
+  const pollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMountedRef = useRef(true);
 
   const { summaryId, videoUrl } = route.params || {};
 
@@ -98,8 +100,10 @@ export const AnalysisScreen: React.FC = () => {
       } else if (status.status === 'processing') {
         setAnalysisProgress(status.progress || 0);
         setAnalysisStatus(status.message || 'Analyse en cours...');
-        // Poll for updates
-        setTimeout(() => loadAnalysis(), 2000);
+        // Poll for updates with cleanup ref
+        if (isMountedRef.current) {
+          pollingTimeoutRef.current = setTimeout(() => loadAnalysis(), 2000);
+        }
       } else if (status.status === 'failed') {
         setError(status.error || 'L\'analyse a échoué');
       }
@@ -126,6 +130,18 @@ export const AnalysisScreen: React.FC = () => {
       setIsLoading(false);
     }
   }, [summaryId]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      if (pollingTimeoutRef.current) {
+        clearTimeout(pollingTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     loadAnalysis();

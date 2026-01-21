@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,13 @@ import {
   Platform,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Button, Input } from '../components/ui';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import type { RootStackParamList } from '../types';
@@ -22,13 +22,18 @@ type ForgotPasswordNavigationProp = NativeStackNavigationProp<RootStackParamList
 
 export const ForgotPasswordScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { forgotPassword, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<ForgotPasswordNavigationProp>();
   const insets = useSafeAreaInsets();
 
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+
+  // Clear errors on mount
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
 
   const validateEmail = (): boolean => {
     if (!email.trim()) {
@@ -46,12 +51,14 @@ export const ForgotPasswordScreen: React.FC = () => {
   const handleResetPassword = async () => {
     if (!validateEmail()) return;
 
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      await forgotPassword(email);
       setEmailSent(true);
-    }, 1500);
+    } catch (err) {
+      // Error is handled by AuthContext, but we still show success
+      // to prevent email enumeration attacks
+      setEmailSent(true);
+    }
   };
 
   const handleBackToLogin = () => {

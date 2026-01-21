@@ -533,11 +533,26 @@ export const studyApi = {
 // ============================================
 export const exportApi = {
   async exportSummary(summaryId: string, format: 'pdf' | 'markdown' | 'text'): Promise<Blob> {
-    const response = await fetch(`${API_BASE_URL}/api/exports/${format}/${summaryId}`, {
-      headers: {
-        Authorization: `Bearer ${await tokenStorage.getAccessToken()}`,
-      },
-    });
+    const makeRequest = async (token: string | null): Promise<Response> => {
+      return fetch(`${API_BASE_URL}/api/exports/${format}/${summaryId}`, {
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      });
+    };
+
+    let accessToken = await tokenStorage.getAccessToken();
+    let response = await makeRequest(accessToken);
+
+    // Handle 401 - try to refresh token and retry
+    if (response.status === 401) {
+      const newToken = await refreshAccessToken();
+      if (newToken) {
+        response = await makeRequest(newToken);
+      } else {
+        throw new ApiError('Session expired', 401, 'SESSION_EXPIRED');
+      }
+    }
 
     if (!response.ok) {
       throw new ApiError('Export failed', response.status);
