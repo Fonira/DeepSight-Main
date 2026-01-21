@@ -21,7 +21,9 @@ module.exports = function(api) {
             '@/assets': './src/assets'
           }
         }
-      ]
+      ],
+      // Reanimated plugin must be listed last
+      'react-native-reanimated/plugin'
     ]
   };
 };
