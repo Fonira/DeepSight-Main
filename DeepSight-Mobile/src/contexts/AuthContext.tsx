@@ -1,14 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
 import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
 import { authApi, ApiError } from '../services/api';
 import { tokenStorage, userStorage } from '../utils/storage';
-import { GOOGLE_CLIENT_ID } from '../constants/config';
 import type { User } from '../types';
 
 // Complete any pending auth sessions
 WebBrowser.maybeCompleteAuthSession();
+
+// Google OAuth Client IDs
+// Web Client ID - used for Expo Go proxy auth (configured with redirect URI: https://auth.expo.io/@maximeadmin/deepsight)
+const GOOGLE_CLIENT_ID_WEB = '763654536492-8hkdd3n31tqeodnhcak6ef8asu4v287j.apps.googleusercontent.com';
+// For Expo Go, the web client ID works with useProxy: true
 
 interface AuthContextType {
   user: User | null;
@@ -38,66 +42,69 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const isAuthenticated = user !== null;
 
-  // Get the redirect URI for Expo
-  const redirectUri = AuthSession.makeRedirectUri({
+  // Configure Google Auth redirect URI
+  // For Expo Go: automatically uses Expo's auth proxy
+  // For standalone builds: uses deepsight://auth/callback
+  const redirectUri = makeRedirectUri({
     scheme: 'deepsight',
     path: 'auth/callback',
   });
 
-  // Google OAuth configuration with Expo proxy
+  console.log('=== Google OAuth Debug ===');
+  console.log('Redirect URI:', redirectUri);
+
+  // Use Google auth request hook
+  // webClientId is used for all platforms in Expo Go
+  // Make sure https://auth.expo.io/@maximeadmin/deepsight is added as authorized redirect URI in Google Cloud Console
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: GOOGLE_CLIENT_ID,
-    scopes: ['openid', 'profile', 'email'],
+    webClientId: GOOGLE_CLIENT_ID_WEB,
     redirectUri,
   });
 
-  // Handle Google OAuth response
+  // Log request status for debugging
+  useEffect(() => {
+    console.log('=== Google Auth Request Status ===');
+    console.log('Request ready:', !!request);
+    if (request) {
+      console.log('Auth URL:', request.url);
+      console.log('Client ID:', request.clientId);
+      console.log('Redirect URI from request:', request.redirectUri);
+    } else {
+      console.log('Request is null - Google OAuth not initialized');
+    }
+  }, [request]);
+
+  // Handle Google auth response
   useEffect(() => {
     const handleGoogleResponse = async () => {
-      console.log('Google OAuth response:', response?.type);
-
-      if (response?.type === 'success') {
+      if (response?.type === 'success' && response.authentication?.accessToken) {
         setIsLoading(true);
         setError(null);
         try {
-          // Get the authorization code or access token
-          const { authentication, params } = response;
-
-          if (authentication?.accessToken) {
-            // We got an access token - send to backend
-            console.log('Got access token, sending to backend...');
-            const backendResponse = await authApi.googleTokenLogin(authentication.accessToken);
-            setUser(backendResponse.user);
-            await userStorage.setUser(backendResponse.user);
-          } else if (params?.code) {
-            // We got an authorization code - exchange via backend
-            console.log('Got authorization code, exchanging via backend...');
-            const backendResponse = await authApi.googleCallback(params.code);
-            setUser(backendResponse.user);
-            await userStorage.setUser(backendResponse.user);
-          } else {
-            throw new Error('No authentication data received from Google');
-          }
+          console.log('Got Google access token, exchanging with backend...');
+          // Send the Google access token to our backend
+          const result = await authApi.googleTokenLogin(response.authentication.accessToken);
+          setUser(result.user);
+          await userStorage.setUser(result.user);
+          console.log('Google login successful');
         } catch (err) {
-          console.error('Google login error:', err);
-          const message = err instanceof ApiError ? err.message : 'Google login failed. Please try again.';
+          console.error('Google token exchange error:', err);
+          const message = err instanceof ApiError ? err.message : 'Google login failed';
           setError(message);
         } finally {
           setIsLoading(false);
         }
       } else if (response?.type === 'error') {
-        console.error('Google OAuth error:', response.error);
-        setError(response.error?.message || 'Google login failed');
+        console.error('Google auth error:', response.error);
+        setError(response.error?.message || 'Google authentication failed');
         setIsLoading(false);
-      } else if (response?.type === 'cancel' || response?.type === 'dismiss') {
-        // User cancelled - just reset loading state, don't show error
+      } else if (response?.type === 'cancel') {
+        console.log('User cancelled Google login');
         setIsLoading(false);
       }
     };
 
-    if (response) {
-      handleGoogleResponse();
-    }
+    handleGoogleResponse();
   }, [response]);
 
   // Initialize auth state
@@ -139,31 +146,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const loginWithGoogle = useCallback(async () => {
-    setError(null);
+    console.log('=== loginWithGoogle called ===');
+    console.log('Request object exists:', !!request);
 
     if (!request) {
-      setError('Google login is not available. Please try again later.');
+      console.error('Google auth request not ready');
+      setError('L\'authentification Google n\'est pas prête. Veuillez réessayer.');
       return;
     }
 
+    setError(null);
     setIsLoading(true);
-    try {
-      console.log('Starting Google OAuth with redirect URI:', redirectUri);
-      const result = await promptAsync();
-      console.log('promptAsync result:', result?.type);
 
-      // If cancelled or dismissed, reset loading state
-      if (result?.type === 'cancel' || result?.type === 'dismiss') {
+    try {
+      console.log('Starting Google OAuth flow...');
+      console.log('Redirect URI:', redirectUri);
+      console.log('Auth URL:', request.url);
+
+      // promptAsync will open the browser for OAuth
+      const result = await promptAsync();
+      console.log('Google OAuth prompt result type:', result.type);
+
+      if (result.type === 'error') {
+        console.error('OAuth error:', result.error);
+        setError(result.error?.message || 'Erreur d\'authentification Google');
+        setIsLoading(false);
+      } else if (result.type === 'dismiss' || result.type === 'cancel') {
+        console.log('User cancelled or dismissed OAuth');
         setIsLoading(false);
       }
-      // Success/error are handled by the useEffect above
+      // Success case is handled by the useEffect watching 'response'
     } catch (err) {
-      console.error('Google login error:', err);
-      const message = err instanceof Error ? err.message : 'Google login failed';
+      console.error('Google login exception:', err);
+      const message = err instanceof Error ? err.message : 'Échec de la connexion Google';
       setError(message);
       setIsLoading(false);
     }
-  }, [promptAsync, request, redirectUri]);
+  }, [request, promptAsync, redirectUri]);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
     setIsLoading(true);

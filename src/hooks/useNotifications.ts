@@ -13,7 +13,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://deepsight-backend-production.up.railway.app';
+const API_URL = import.meta.env.VITE_API_URL || 'https://deep-sight-backend-v3-production.up.railway.app';
 
 export interface DeepSightNotification {
   type: 'analysis_complete' | 'analysis_error' | 'info' | 'test' | 'connected' | 'heartbeat';

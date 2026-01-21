@@ -234,7 +234,7 @@ export const AnalysisScreen: React.FC = () => {
   // Render loading state
   if (isLoading && analysisProgress < 100) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         <Header title="Analyse" showBack />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accentPrimary} />
@@ -264,7 +264,7 @@ export const AnalysisScreen: React.FC = () => {
   // Render error state
   if (error) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         <Header title="Analyse" showBack />
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color={colors.accentError} />
@@ -286,7 +286,7 @@ export const AnalysisScreen: React.FC = () => {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <Header
         title="Analyse"
         showBack

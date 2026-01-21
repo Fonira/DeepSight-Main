@@ -96,7 +96,7 @@ export const VerifyEmailScreen: React.FC = () => {
   // Success screen
   if (verificationSuccess) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         <View
           style={[
             styles.content,
@@ -127,7 +127,7 @@ export const VerifyEmailScreen: React.FC = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <View
         style={[
           styles.content,
