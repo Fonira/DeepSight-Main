@@ -4,6 +4,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ViewStyle,
+  StyleProp,
   TouchableOpacityProps,
 } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -13,7 +14,7 @@ interface CardProps extends TouchableOpacityProps {
   children: ReactNode;
   variant?: 'default' | 'elevated' | 'outlined';
   padding?: 'none' | 'sm' | 'md' | 'lg';
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
   pressable?: boolean;
 }
 
