@@ -263,6 +263,19 @@ export const authApi = {
     return response;
   },
 
+  async googleTokenLogin(accessToken: string): Promise<{ access_token: string; refresh_token: string; user: User }> {
+    const response = await request<{ access_token: string; refresh_token: string; user: User }>(
+      '/api/auth/google/token',
+      {
+        method: 'POST',
+        body: { access_token: accessToken },
+        requiresAuth: false,
+      }
+    );
+    await tokenStorage.setTokens(response.access_token, response.refresh_token);
+    return response;
+  },
+
   async getMe(): Promise<User> {
     return request('/api/auth/me');
   },

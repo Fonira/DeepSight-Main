@@ -1,6 +1,9 @@
 // API Configuration
 export const API_BASE_URL = 'https://deep-sight-backend-v3-production.up.railway.app';
 
+// Google OAuth Configuration
+export const GOOGLE_CLIENT_ID = '763654536492-8hkdd3n31tqeodnhcak6ef8asu4v287j.apps.googleusercontent.com';
+
 // App Configuration
 export const APP_NAME = 'Deep Sight';
 export const APP_VERSION = '1.0.0';

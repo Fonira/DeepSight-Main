@@ -1,9 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
+import * as AuthSession from 'expo-auth-session';
+import * as Google from 'expo-auth-session/providers/google';
 import { authApi, ApiError } from '../services/api';
 import { tokenStorage, userStorage } from '../utils/storage';
+import { GOOGLE_CLIENT_ID } from '../constants/config';
 import type { User } from '../types';
+
+// Complete any pending auth sessions
+WebBrowser.maybeCompleteAuthSession();
 
 interface AuthContextType {
   user: User | null;
@@ -32,6 +37,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
 
   const isAuthenticated = user !== null;
+
+  // Google OAuth configuration
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId: GOOGLE_CLIENT_ID,
+    scopes: ['openid', 'profile', 'email'],
+  });
+
+  // Handle Google OAuth response
+  useEffect(() => {
+    const handleGoogleResponse = async () => {
+      if (response?.type === 'success' && response.authentication) {
+        setIsLoading(true);
+        setError(null);
+        try {
+          // Send the access token to backend to create session
+          const backendResponse = await authApi.googleTokenLogin(response.authentication.accessToken);
+          setUser(backendResponse.user);
+          await userStorage.setUser(backendResponse.user);
+        } catch (err) {
+          const message = err instanceof ApiError ? err.message : 'Google login failed';
+          setError(message);
+        } finally {
+          setIsLoading(false);
+        }
+      } else if (response?.type === 'error') {
+        setError(response.error?.message || 'Google login failed');
+        setIsLoading(false);
+      } else if (response?.type === 'cancel' || response?.type === 'dismiss') {
+        setError('Google login was cancelled');
+        setIsLoading(false);
+      }
+    };
+
+    if (response) {
+      handleGoogleResponse();
+    }
+  }, [response]);
 
   // Initialize auth state
   useEffect(() => {
@@ -75,41 +117,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      // Get the mobile redirect URI
-      const mobileRedirectUri = Linking.createURL('/auth/callback');
-
-      // Request OAuth URL with mobile redirect
-      const { url } = await authApi.googleLogin(mobileRedirectUri);
-
-      // Open browser for Google OAuth
-      const result = await WebBrowser.openAuthSessionAsync(
-        url,
-        mobileRedirectUri
-      );
-
-      if (result.type === 'success' && result.url) {
-        // Extract code from callback URL
-        const parsedUrl = Linking.parse(result.url);
-        const code = parsedUrl.queryParams?.code as string;
-
-        if (code) {
-          const response = await authApi.googleCallback(code);
-          setUser(response.user);
-          await userStorage.setUser(response.user);
-        } else {
-          throw new Error('No authorization code received');
-        }
-      } else if (result.type === 'cancel') {
-        setError('Google login was cancelled');
-      }
+      await promptAsync();
     } catch (err) {
       const message = err instanceof ApiError ? err.message : 'Google login failed';
       setError(message);
-      throw err;
-    } finally {
       setIsLoading(false);
+      throw err;
     }
-  }, []);
+  }, [promptAsync]);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
     setIsLoading(true);

@@ -27,9 +27,9 @@ export const Colors = {
   borderLight: '#3F3F46',
 
   // Gradients
-  gradientPrimary: ['#6366F1', '#8B5CF6'],
-  gradientSecondary: ['#F59E0B', '#EF4444'],
-  gradientDark: ['#0a0a0b', '#111113'],
+  gradientPrimary: ['#6366F1', '#8B5CF6'] as const,
+  gradientSecondary: ['#F59E0B', '#EF4444'] as const,
+  gradientDark: ['#0a0a0b', '#111113'] as const,
 
   // Light theme (for reference)
   light: {
