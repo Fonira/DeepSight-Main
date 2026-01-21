@@ -242,44 +242,13 @@ export const authApi = {
     return response;
   },
 
-  async googleLogin(redirectUri?: string): Promise<{ url: string }> {
-    // Backend expects GET with query params and returns {auth_url: "..."}
-    const params = new URLSearchParams();
-    if (redirectUri) {
-      params.append('redirect_uri', redirectUri);
-      params.append('platform', 'mobile');
-    }
-    const queryString = params.toString();
-    const endpoint = queryString ? `/api/auth/google/login?${queryString}` : '/api/auth/google/login';
-
-    const response = await request<{ auth_url: string }>(endpoint, {
-      method: 'GET',
-      requiresAuth: false,
-    });
-
-    // Normalize response to always have 'url' property
-    return { url: response.auth_url };
-  },
-
-  async googleCallback(code: string): Promise<{ access_token: string; refresh_token: string; user: User }> {
-    const response = await request<{ access_token: string; refresh_token: string; user: User }>(
-      '/api/auth/google/callback',
-      {
-        method: 'POST',
-        body: { code },
-        requiresAuth: false,
-      }
-    );
-    await tokenStorage.setTokens(response.access_token, response.refresh_token);
-    return response;
-  },
-
-  async googleTokenLogin(accessToken: string): Promise<{ access_token: string; refresh_token: string; user: User }> {
+  // Google OAuth: exchange Google access token for session tokens
+  async googleTokenLogin(googleAccessToken: string): Promise<{ access_token: string; refresh_token: string; user: User }> {
     const response = await request<{ access_token: string; refresh_token: string; user: User }>(
       '/api/auth/google/token',
       {
         method: 'POST',
-        body: { access_token: accessToken },
+        body: { access_token: googleAccessToken },
         requiresAuth: false,
       }
     );
