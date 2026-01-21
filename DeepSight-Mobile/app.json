@@ -50,10 +50,17 @@
         }
       ]
     ],
+    "owner": "maximeadmin",
     "extra": {
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "deepsight"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/maximeadmin/deepsight"
     }
   }
 }
