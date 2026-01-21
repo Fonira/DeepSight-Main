@@ -1,0 +1,459 @@
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  TextInput,
+  FlatList,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Animated,
+  Dimensions,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '../../contexts/ThemeContext';
+import { chatApi } from '../../services/api';
+import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+import type { ChatMessage } from '../../types';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+interface FloatingChatProps {
+  summaryId: string;
+  videoTitle?: string;
+  initialMessages?: ChatMessage[];
+  onMessagesUpdate?: (messages: ChatMessage[]) => void;
+}
+
+export const FloatingChat: React.FC<FloatingChatProps> = ({
+  summaryId,
+  videoTitle,
+  initialMessages = [],
+  onMessagesUpdate,
+}) => {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const scrollRef = useRef<FlatList>(null);
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Pulse animation for unread badge
+  useEffect(() => {
+    if (unreadCount > 0) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.2,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.setValue(1);
+    }
+  }, [unreadCount]);
+
+  // Open/close animation
+  useEffect(() => {
+    Animated.spring(scaleAnim, {
+      toValue: isOpen ? 1 : 0,
+      friction: 8,
+      tension: 40,
+      useNativeDriver: true,
+    }).start();
+  }, [isOpen]);
+
+  const handleOpen = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setIsOpen(true);
+    setUnreadCount(0);
+  };
+
+  const handleClose = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setIsOpen(false);
+  };
+
+  const handleMinimize = () => {
+    setIsMinimized(!isMinimized);
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: input.trim(),
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    try {
+      const response = await chatApi.sendMessage(summaryId, userMessage.content);
+
+      const assistantMessage: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response.response,
+        timestamp: new Date().toISOString(),
+      };
+
+      setMessages(prev => {
+        const newMessages = [...prev, assistantMessage];
+        onMessagesUpdate?.(newMessages);
+        return newMessages;
+      });
+
+      if (!isOpen) {
+        setUnreadCount(prev => prev + 1);
+      }
+    } catch (err) {
+      // Remove failed message
+      setMessages(prev => prev.filter(m => m.id !== userMessage.id));
+      setInput(userMessage.content);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const suggestedQuestions = [
+    'Résume les points clés',
+    'Quels sont les concepts importants ?',
+    'Explique plus simplement',
+  ];
+
+  return (
+    <>
+      {/* Floating Button */}
+      <TouchableOpacity
+        style={[
+          styles.floatingButton,
+          {
+            backgroundColor: colors.accentPrimary,
+            bottom: insets.bottom + 100,
+          },
+        ]}
+        onPress={handleOpen}
+      >
+        <Ionicons name="chatbubble-ellipses" size={28} color="#FFFFFF" />
+
+        {unreadCount > 0 && (
+          <Animated.View
+            style={[
+              styles.unreadBadge,
+              { transform: [{ scale: pulseAnim }] },
+            ]}
+          >
+            <Text style={styles.unreadText}>{unreadCount}</Text>
+          </Animated.View>
+        )}
+      </TouchableOpacity>
+
+      {/* Chat Modal */}
+      <Modal
+        visible={isOpen}
+        animationType="none"
+        transparent
+        onRequestClose={handleClose}
+      >
+        <View style={styles.modalOverlay}>
+          <Animated.View
+            style={[
+              styles.chatContainer,
+              {
+                backgroundColor: colors.bgPrimary,
+                paddingBottom: insets.bottom,
+                transform: [{ scale: scaleAnim }],
+                opacity: scaleAnim,
+                maxHeight: isMinimized ? 60 : SCREEN_HEIGHT * 0.7,
+              },
+            ]}
+          >
+            {/* Header */}
+            <View style={[styles.header, { backgroundColor: colors.accentPrimary }]}>
+              <TouchableOpacity onPress={handleMinimize} style={styles.headerButton}>
+                <Ionicons
+                  name={isMinimized ? 'chevron-up' : 'chevron-down'}
+                  size={20}
+                  color="#FFFFFF"
+                />
+              </TouchableOpacity>
+
+              <View style={styles.headerTitle}>
+                <Ionicons name="chatbubble-ellipses" size={18} color="#FFFFFF" />
+                <Text style={styles.headerText} numberOfLines={1}>
+                  {videoTitle || 'Assistant IA'}
+                </Text>
+              </View>
+
+              <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
+                <Ionicons name="close" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
+
+            {!isMinimized && (
+              <KeyboardAvoidingView
+                style={styles.chatContent}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              >
+                {/* Messages */}
+                <FlatList
+                  ref={scrollRef}
+                  data={messages}
+                  keyExtractor={(item) => item.id}
+                  contentContainerStyle={styles.messagesList}
+                  onContentSizeChange={() => scrollRef.current?.scrollToEnd()}
+                  ListEmptyComponent={
+                    <View style={styles.emptyState}>
+                      <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+                        Posez vos questions
+                      </Text>
+                      <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                        Je suis là pour vous aider à comprendre cette vidéo
+                      </Text>
+
+                      {/* Suggested questions */}
+                      <View style={styles.suggestedContainer}>
+                        {suggestedQuestions.map((q, i) => (
+                          <TouchableOpacity
+                            key={i}
+                            style={[styles.suggestedButton, { borderColor: colors.border }]}
+                            onPress={() => {
+                              setInput(q);
+                            }}
+                          >
+                            <Text style={[styles.suggestedText, { color: colors.accentPrimary }]}>
+                              {q}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  }
+                  renderItem={({ item }) => (
+                    <View
+                      style={[
+                        styles.messageBubble,
+                        item.role === 'user' ? styles.userBubble : styles.assistantBubble,
+                        {
+                          backgroundColor:
+                            item.role === 'user' ? colors.accentPrimary : colors.bgSecondary,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.messageText,
+                          { color: item.role === 'user' ? '#FFFFFF' : colors.textPrimary },
+                        ]}
+                      >
+                        {item.content}
+                      </Text>
+                    </View>
+                  )}
+                />
+
+                {/* Input */}
+                <View style={[styles.inputContainer, { borderTopColor: colors.border }]}>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      { backgroundColor: colors.bgSecondary, color: colors.textPrimary },
+                    ]}
+                    placeholder="Votre question..."
+                    placeholderTextColor={colors.textMuted}
+                    value={input}
+                    onChangeText={setInput}
+                    multiline
+                    maxLength={500}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.sendButton,
+                      { backgroundColor: input.trim() ? colors.accentPrimary : colors.bgTertiary },
+                    ]}
+                    onPress={handleSend}
+                    disabled={!input.trim() || isLoading}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Ionicons name="send" size={18} color="#FFFFFF" />
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </KeyboardAvoidingView>
+            )}
+          </Animated.View>
+        </View>
+      </Modal>
+    </>
+  );
+};
+
+const styles = StyleSheet.create({
+  floatingButton: {
+    position: 'absolute',
+    right: Spacing.md,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  unreadBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: '#FF453A',
+    minWidth: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
+  },
+  unreadText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  chatContainer: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    overflow: 'hidden',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+  },
+  headerButton: {
+    padding: Spacing.xs,
+  },
+  headerTitle: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  headerText: {
+    color: '#FFFFFF',
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+  },
+  chatContent: {
+    flex: 1,
+  },
+  messagesList: {
+    padding: Spacing.md,
+    paddingBottom: Spacing.sm,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xl,
+  },
+  emptyTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    marginBottom: Spacing.sm,
+  },
+  emptyText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.body,
+    textAlign: 'center',
+  },
+  suggestedContainer: {
+    marginTop: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  suggestedButton: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+  },
+  suggestedText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.body,
+  },
+  messageBubble: {
+    maxWidth: '80%',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.sm,
+  },
+  userBubble: {
+    alignSelf: 'flex-end',
+    borderBottomRightRadius: 4,
+  },
+  assistantBubble: {
+    alignSelf: 'flex-start',
+    borderBottomLeftRadius: 4,
+  },
+  messageText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.body,
+    lineHeight: Typography.fontSize.sm * 1.5,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    padding: Spacing.md,
+    borderTopWidth: 1,
+    gap: Spacing.sm,
+  },
+  input: {
+    flex: 1,
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    maxHeight: 80,
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.body,
+  },
+  sendButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
+
+export default FloatingChat;

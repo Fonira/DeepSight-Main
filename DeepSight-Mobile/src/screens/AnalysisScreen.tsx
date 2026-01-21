@@ -29,6 +29,10 @@ import { QuizComponent, MindMapComponent } from '../components/study';
 import type { QuizQuestion, MindMapData, MindMapNode } from '../components/study';
 import { ExportOptions } from '../components/export';
 import { AudioPlayer } from '../components/audio';
+import { FactCheckButton } from '../components/factcheck';
+import { WebEnrichment } from '../components/enrichment';
+import { CitationExport } from '../components/citation';
+import { TournesolWidget } from '../components/tournesol';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { formatDuration, formatDate } from '../utils/formatters';
 import type { RootStackParamList, AnalysisSummary, ChatMessage } from '../types';
@@ -89,6 +93,9 @@ export const AnalysisScreen: React.FC = () => {
 
   // Audio player state
   const [showAudioPlayer, setShowAudioPlayer] = useState(false);
+
+  // Citation modal state
+  const [showCitationModal, setShowCitationModal] = useState(false);
 
   // Load analysis data
   const loadAnalysis = useCallback(async () => {
@@ -502,6 +509,13 @@ export const AnalysisScreen: React.FC = () => {
           <Text style={[styles.dateText, { color: colors.textMuted }]}>
             Analysé le {formatDate(summary?.createdAt || '')}
           </Text>
+
+          {/* Tournesol Widget */}
+          {summary?.videoId && (
+            <View style={{ marginTop: Spacing.lg }}>
+              <TournesolWidget videoId={summary.videoId} />
+            </View>
+          )}
         </ScrollView>
       )}
 
@@ -513,9 +527,18 @@ export const AnalysisScreen: React.FC = () => {
           {concepts.length > 0 ? (
             concepts.map((concept, index) => (
               <Card key={index} variant="elevated" style={styles.conceptCard}>
-                <Text style={[styles.conceptName, { color: colors.accentPrimary }]}>
-                  {concept.name}
-                </Text>
+                <View style={styles.conceptHeader}>
+                  <Text style={[styles.conceptName, { color: colors.accentPrimary, flex: 1 }]}>
+                    {concept.name}
+                  </Text>
+                  {summary && (
+                    <WebEnrichment
+                      summaryId={summary.id}
+                      conceptName={concept.name}
+                      compact
+                    />
+                  )}
+                </View>
                 <Text style={[styles.conceptDefinition, { color: colors.textSecondary }]}>
                   {concept.definition}
                 </Text>
@@ -691,6 +714,19 @@ export const AnalysisScreen: React.FC = () => {
                 <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
               </TouchableOpacity>
 
+              {/* Verification Section */}
+              <Text style={[styles.toolsSectionTitle, { color: colors.textPrimary }]}>
+                Vérification
+              </Text>
+
+              {summary && (
+                <>
+                  <FactCheckButton summaryId={summary.id} />
+                  <View style={{ height: Spacing.sm }} />
+                  <WebEnrichment summaryId={summary.id} />
+                </>
+              )}
+
               {/* Export Section */}
               <Text style={[styles.toolsSectionTitle, { color: colors.textPrimary }]}>
                 Exporter
@@ -739,6 +775,23 @@ export const AnalysisScreen: React.FC = () => {
                   <Text style={[styles.toolName, { color: colors.textPrimary }]}>Copier</Text>
                   <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
                     Copiez le contenu dans le presse-papiers
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+
+              {/* Citation Button */}
+              <TouchableOpacity
+                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
+                onPress={() => setShowCitationModal(true)}
+              >
+                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.accentPrimary}20` }]}>
+                  <Ionicons name="document-text-outline" size={28} color={colors.accentPrimary} />
+                </View>
+                <View style={styles.toolInfo}>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Citation</Text>
+                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
+                    APA, MLA, Chicago, Harvard
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -859,6 +912,20 @@ export const AnalysisScreen: React.FC = () => {
           onClose={() => setShowAudioPlayer(false)}
           text={summary.content || ''}
           title={summary.title}
+        />
+      )}
+
+      {/* Citation Modal */}
+      {summary && summary.videoInfo && (
+        <CitationExport
+          visible={showCitationModal}
+          onClose={() => setShowCitationModal(false)}
+          videoInfo={{
+            title: summary.title,
+            channel: summary.videoInfo.channel || 'Unknown',
+            publishedAt: summary.videoInfo.publishedAt,
+            videoId: summary.videoId || '',
+          }}
         />
       )}
     </View>
@@ -998,10 +1065,15 @@ const styles = StyleSheet.create({
   conceptCard: {
     marginBottom: Spacing.md,
   },
+  conceptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
   conceptName: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    marginBottom: Spacing.xs,
   },
   conceptDefinition: {
     fontSize: Typography.fontSize.sm,
