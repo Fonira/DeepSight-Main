@@ -4,11 +4,11 @@
     "slug": "deepsight",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/assets/images/icon.png",
+    "icon": "./src/assets/images/icon.svg",
     "scheme": "deepsight",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./src/assets/images/splash.png",
+      "image": "./src/assets/images/splash.svg",
       "resizeMode": "contain",
       "backgroundColor": "#0a0a0b"
     },
@@ -30,7 +30,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/images/adaptive-icon.png",
+        "foregroundImage": "./src/assets/images/adaptive-icon.svg",
         "backgroundColor": "#0a0a0b"
       },
       "package": "com.deepsight.app",
@@ -38,8 +38,7 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "static",
-      "favicon": "./src/assets/images/favicon.png"
+      "favicon": "./src/assets/images/icon.svg"
     },
     "plugins": [
       "expo-font",
@@ -51,9 +50,6 @@
         }
       ]
     ],
-    "experiments": {
-      "typedRoutes": true
-    },
     "extra": {
       "eas": {
         "projectId": "your-project-id"

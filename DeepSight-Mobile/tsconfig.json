@@ -4,24 +4,45 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@/components/*": ["src/components/*"],
-      "@/screens/*": ["src/screens/*"],
-      "@/services/*": ["src/services/*"],
-      "@/hooks/*": ["src/hooks/*"],
-      "@/contexts/*": ["src/contexts/*"],
-      "@/navigation/*": ["src/navigation/*"],
-      "@/constants/*": ["src/constants/*"],
-      "@/utils/*": ["src/utils/*"],
-      "@/assets/*": ["src/assets/*"]
+      "@/*": [
+        "src/*"
+      ],
+      "@/components/*": [
+        "src/components/*"
+      ],
+      "@/screens/*": [
+        "src/screens/*"
+      ],
+      "@/services/*": [
+        "src/services/*"
+      ],
+      "@/hooks/*": [
+        "src/hooks/*"
+      ],
+      "@/contexts/*": [
+        "src/contexts/*"
+      ],
+      "@/navigation/*": [
+        "src/navigation/*"
+      ],
+      "@/constants/*": [
+        "src/constants/*"
+      ],
+      "@/utils/*": [
+        "src/utils/*"
+      ],
+      "@/assets/*": [
+        "src/assets/*"
+      ]
     },
-    "types": ["react-native", "@types/react"]
+    "types": [
+      "react-native",
+      "@types/react"
+    ]
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "**/*.tsx"
   ],
   "exclude": [
     "node_modules"
