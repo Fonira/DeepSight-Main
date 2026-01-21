@@ -1,0 +1,66 @@
+{
+  "expo": {
+    "name": "Deep Sight",
+    "slug": "deepsight",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/images/icon.svg",
+    "scheme": "deepsight",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./src/assets/images/splash.svg",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0b"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.deepsight.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Deep Sight needs camera access to scan QR codes for video URLs.",
+        "NSMicrophoneUsageDescription": "Deep Sight needs microphone access for voice input.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "usesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./src/assets/images/adaptive-icon.svg",
+        "backgroundColor": "#0a0a0b"
+      },
+      "package": "com.deepsight.app",
+      "versionCode": 1
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./src/assets/images/icon.svg"
+    },
+    "plugins": [
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow Deep Sight to access your microphone for voice input."
+        }
+      ]
+    ],
+    "owner": "maximeadmin",
+    "extra": {
+      "eas": {
+        "projectId": "deepsight"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/maximeadmin/deepsight"
+    }
+  }
+}

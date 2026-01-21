@@ -1,0 +1,257 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import { Button, Input } from '../components/ui';
+import { Spacing, Typography, BorderRadius } from '../constants/theme';
+import type { RootStackParamList } from '../types';
+
+type ForgotPasswordNavigationProp = NativeStackNavigationProp<RootStackParamList, 'ForgotPassword'>;
+
+export const ForgotPasswordScreen: React.FC = () => {
+  const { colors } = useTheme();
+  const { forgotPassword, isLoading, error, clearError } = useAuth();
+  const navigation = useNavigation<ForgotPasswordNavigationProp>();
+  const insets = useSafeAreaInsets();
+
+  const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState('');
+  const [emailSent, setEmailSent] = useState(false);
+
+  // Clear errors on mount
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
+
+  const validateEmail = (): boolean => {
+    if (!email.trim()) {
+      setEmailError('L\'email est requis');
+      return false;
+    }
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setEmailError('Email invalide');
+      return false;
+    }
+    setEmailError('');
+    return true;
+  };
+
+  const handleResetPassword = async () => {
+    if (!validateEmail()) return;
+
+    try {
+      await forgotPassword(email);
+      setEmailSent(true);
+    } catch (err) {
+      // Error is handled by AuthContext, but we still show success
+      // to prevent email enumeration attacks
+      setEmailSent(true);
+    }
+  };
+
+  const handleBackToLogin = () => {
+    navigation.navigate('Login');
+  };
+
+  if (emailSent) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + Spacing.xxl, paddingBottom: insets.bottom + Spacing.xxl },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.successContainer}>
+            <View style={[styles.successIcon, { backgroundColor: `${colors.accentSuccess}15` }]}>
+              <Ionicons name="mail" size={48} color={colors.accentSuccess} />
+            </View>
+            <Text style={[styles.successTitle, { color: colors.textPrimary }]}>
+              Email envoyé !
+            </Text>
+            <Text style={[styles.successText, { color: colors.textSecondary }]}>
+              Si un compte existe avec l'adresse {email}, vous recevrez un email avec les instructions pour réinitialiser votre mot de passe.
+            </Text>
+            <Button
+              title="Retour à la connexion"
+              onPress={handleBackToLogin}
+              fullWidth
+              style={styles.backButton}
+            />
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingTop: insets.top + Spacing.xl, paddingBottom: insets.bottom + Spacing.xxl },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Back button */}
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButtonIcon}
+          >
+            <Ionicons name="chevron-back" size={28} color={colors.textPrimary} />
+          </TouchableOpacity>
+
+          <View style={[styles.iconContainer, { backgroundColor: `${colors.accentPrimary}15` }]}>
+            <Ionicons name="lock-closed-outline" size={32} color={colors.accentPrimary} />
+          </View>
+
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
+            Mot de passe oublié ?
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            Pas de souci ! Entrez votre email et nous vous enverrons un lien pour réinitialiser votre mot de passe.
+          </Text>
+
+          {/* Form */}
+          <View style={styles.form}>
+            <Input
+              label="Email"
+              placeholder="votre@email.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              leftIcon="mail-outline"
+              error={emailError}
+            />
+
+            <Button
+              title="Envoyer le lien"
+              onPress={handleResetPassword}
+              loading={isLoading}
+              fullWidth
+              style={styles.submitButton}
+            />
+          </View>
+
+          {/* Back to login */}
+          <TouchableOpacity onPress={handleBackToLogin} style={styles.loginLink}>
+            <Ionicons name="arrow-back" size={16} color={colors.accentPrimary} />
+            <Text style={[styles.loginLinkText, { color: colors.accentPrimary }]}>
+              Retour à la connexion
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: Spacing.xl,
+  },
+  backButtonIcon: {
+    alignSelf: 'flex-start',
+    marginBottom: Spacing.lg,
+    marginLeft: -Spacing.sm,
+  },
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: BorderRadius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    marginBottom: Spacing.lg,
+  },
+  title: {
+    fontSize: Typography.fontSize['2xl'],
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  subtitle: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.body,
+    textAlign: 'center',
+    marginBottom: Spacing.xxl,
+    lineHeight: Typography.fontSize.base * Typography.lineHeight.relaxed,
+    paddingHorizontal: Spacing.md,
+  },
+  form: {
+    marginBottom: Spacing.lg,
+  },
+  submitButton: {
+    marginTop: Spacing.md,
+  },
+  loginLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.xl,
+    gap: Spacing.xs,
+  },
+  loginLinkText: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bodyMedium,
+  },
+  successContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
+  },
+  successIcon: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.xl,
+  },
+  successTitle: {
+    fontSize: Typography.fontSize['2xl'],
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    textAlign: 'center',
+    marginBottom: Spacing.md,
+  },
+  successText: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.body,
+    textAlign: 'center',
+    marginBottom: Spacing.xxl,
+    lineHeight: Typography.fontSize.base * Typography.lineHeight.relaxed,
+  },
+  backButton: {
+    marginTop: Spacing.lg,
+  },
+});
+
+export default ForgotPasswordScreen;

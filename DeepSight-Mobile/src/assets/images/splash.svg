@@ -1,0 +1,53 @@
+<svg width="1284" height="2778" viewBox="0 0 1284 2778" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1284" height="2778" fill="#0a0a0b"/>
+
+  <!-- Gradient definitions -->
+  <defs>
+    <linearGradient id="eyeGradientSplash" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366F1"/>
+      <stop offset="100%" style="stop-color:#8B5CF6"/>
+    </linearGradient>
+    <linearGradient id="irisGradientSplash" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#818CF8"/>
+      <stop offset="100%" style="stop-color:#6366F1"/>
+    </linearGradient>
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6366F1"/>
+      <stop offset="100%" style="stop-color:#8B5CF6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Centered Eye Icon -->
+  <g transform="translate(642, 1200)">
+    <!-- Outer eye shape -->
+    <ellipse cx="0" cy="0" rx="200" ry="125" fill="url(#eyeGradientSplash)"/>
+
+    <!-- Inner white of eye -->
+    <ellipse cx="0" cy="0" rx="175" ry="106" fill="#FAFAF9"/>
+
+    <!-- Iris -->
+    <circle cx="0" cy="0" r="87" fill="url(#irisGradientSplash)"/>
+
+    <!-- Pupil -->
+    <circle cx="0" cy="0" r="44" fill="#0a0a0b"/>
+
+    <!-- Light reflection -->
+    <circle cx="-20" cy="-20" r="16" fill="#FFFFFF" opacity="0.8"/>
+    <circle cx="21" cy="-23" r="8" fill="#FFFFFF" opacity="0.5"/>
+
+    <!-- Top eyelid accent -->
+    <path d="M-180 -20 C-120 -100 -40 -130 0 -130 C40 -130 120 -100 180 -20"
+          stroke="#6366F1" stroke-width="8" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- Deep Sight Text -->
+  <text x="642" y="1480" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="600">
+    <tspan fill="#6366F1">Deep</tspan><tspan fill="#FAFAF9">Sight</tspan>
+  </text>
+
+  <!-- Tagline -->
+  <text x="642" y="1540" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#71717A">
+    Analyse de vidéos par IA
+  </text>
+</svg>
