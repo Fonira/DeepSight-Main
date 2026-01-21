@@ -1,0 +1,1263 @@
+"""
+╔════════════════════════════════════════════════════════════════════════════════════╗
+║  💳 BILLING ROUTER — Gestion des paiements et abonnements Stripe                   ║
+╚════════════════════════════════════════════════════════════════════════════════════╝
+"""
+
+import stripe
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
+from fastapi.responses import RedirectResponse
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
+
+from db.database import get_session, User, CreditTransaction
+from auth.dependencies import get_current_user
+from core.config import STRIPE_CONFIG, PLAN_LIMITS, FRONTEND_URL, get_stripe_key
+
+router = APIRouter()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📋 SCHEMAS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class CreateCheckoutRequest(BaseModel):
+    """Requête pour créer une session de paiement"""
+    plan: str  # starter, pro, expert
+    success_url: Optional[str] = None
+    cancel_url: Optional[str] = None
+
+
+class PlanInfoResponse(BaseModel):
+    """Informations sur un plan"""
+    name: str
+    price: int
+    credits: int
+    features: list
+
+
+class BillingInfoResponse(BaseModel):
+    """Informations de facturation de l'utilisateur"""
+    plan: str
+    credits: int
+    stripe_customer_id: Optional[str]
+    subscription_active: bool
+    next_renewal: Optional[datetime]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔧 HELPERS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def init_stripe():
+    """Initialise Stripe avec la bonne clé"""
+    key = get_stripe_key()
+    if key:
+        stripe.api_key = key
+        return True
+    return False
+
+
+async def get_or_create_stripe_customer(
+    user: User, 
+    session: AsyncSession,
+    force_recreate: bool = False
+) -> str:
+    """
+    🔧 Récupère ou crée un client Stripe.
+    Gère le cas où le client existe en mode test mais pas en mode live.
+    
+    Args:
+        user: L'utilisateur
+        session: Session DB
+        force_recreate: Force la recréation du client
+        
+    Returns:
+        L'ID du client Stripe
+    """
+    # Si pas d'ID existant ou force_recreate, créer directement
+    if not user.stripe_customer_id or force_recreate:
+        print(f"🆕 Creating new Stripe customer for user {user.id}", flush=True)
+        customer = stripe.Customer.create(
+            email=user.email,
+            name=user.username or user.email,
+            metadata={"user_id": str(user.id)}
+        )
+        user.stripe_customer_id = customer.id
+        await session.commit()
+        print(f"✅ Created Stripe customer: {customer.id}", flush=True)
+        return customer.id
+    
+    # Vérifier si le client existe
+    try:
+        customer = stripe.Customer.retrieve(user.stripe_customer_id)
+        if customer.get("deleted"):
+            raise stripe.error.InvalidRequestError("Customer deleted", None)
+        print(f"✅ Found existing Stripe customer: {user.stripe_customer_id}", flush=True)
+        return user.stripe_customer_id
+    except stripe.error.InvalidRequestError as e:
+        # Client n'existe pas (probablement créé en mode test)
+        print(f"⚠️ Stripe customer {user.stripe_customer_id} not found: {e}", flush=True)
+        print(f"🔄 Recreating customer for user {user.id}...", flush=True)
+        
+        customer = stripe.Customer.create(
+            email=user.email,
+            name=user.username or user.email,
+            metadata={"user_id": str(user.id)}
+        )
+        user.stripe_customer_id = customer.id
+        await session.commit()
+        print(f"✅ Recreated Stripe customer: {customer.id}", flush=True)
+        return customer.id
+
+
+def get_price_id(plan: str) -> Optional[str]:
+    """Retourne le price_id Stripe pour un plan"""
+    prices = STRIPE_CONFIG.get("PRICES", {})
+    plan_config = prices.get(plan)
+    
+    if not plan_config:
+        print(f"⚠️ Plan '{plan}' not found in PRICES config", flush=True)
+        return None
+    
+    test_mode = STRIPE_CONFIG.get("TEST_MODE", True)
+    
+    if test_mode:
+        price_id = plan_config.get("test") or plan_config.get("live")
+        print(f"💳 TEST MODE: Using price {price_id} for plan {plan}", flush=True)
+    else:
+        price_id = plan_config.get("live")
+        print(f"💳 LIVE MODE: Using price {price_id} for plan {plan}", flush=True)
+    
+    return price_id if price_id else None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 💰 ENDPOINTS BILLING
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/plans")
+async def get_plans():
+    """Retourne la liste des plans disponibles"""
+    plans = {}
+    for plan_id, limits in PLAN_LIMITS.items():
+        if plan_id in ["free", "unlimited"]:
+            continue
+        
+        plans[plan_id] = {
+            "name": limits.get("name", {}).get("fr", plan_id),
+            "price": limits.get("price", 0),
+            "price_display": limits.get("price_display", {}).get("fr", ""),
+            "credits": limits.get("monthly_credits", 0),
+            "features": {
+                "can_use_playlists": limits.get("can_use_playlists", False),
+                "max_playlist_videos": limits.get("max_playlist_videos", 0),
+                "chat_daily_limit": limits.get("chat_daily_limit", 0),
+                "web_search_enabled": limits.get("web_search_enabled", False),
+                "models": limits.get("models", [])
+            }
+        }
+    
+    return {"plans": plans}
+
+
+@router.get("/info", response_model=BillingInfoResponse)
+async def get_billing_info(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """Retourne les informations de facturation de l'utilisateur"""
+    subscription_active = False
+    next_renewal = None
+    
+    if current_user.stripe_subscription_id and init_stripe():
+        try:
+            subscription = stripe.Subscription.retrieve(current_user.stripe_subscription_id)
+            subscription_active = subscription.status == "active"
+            if subscription_active:
+                next_renewal = datetime.fromtimestamp(subscription.current_period_end)
+        except:
+            pass
+    
+    return BillingInfoResponse(
+        plan=current_user.plan or "free",
+        credits=current_user.credits or 0,
+        stripe_customer_id=current_user.stripe_customer_id,
+        subscription_active=subscription_active,
+        next_renewal=next_renewal
+    )
+
+
+@router.post("/checkout")
+async def create_checkout_session(
+    request: CreateCheckoutRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Crée une session de paiement Stripe Checkout.
+    Retourne l'URL de redirection vers Stripe.
+    """
+    if not STRIPE_CONFIG.get("ENABLED"):
+        raise HTTPException(status_code=400, detail="Stripe not enabled")
+    
+    if not init_stripe():
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+    
+    price_id = get_price_id(request.plan)
+    if not price_id:
+        raise HTTPException(status_code=400, detail=f"Invalid plan: {request.plan}")
+    
+    # Créer ou récupérer le client Stripe
+    if current_user.stripe_customer_id:
+        customer_id = current_user.stripe_customer_id
+    else:
+        customer = stripe.Customer.create(
+            email=current_user.email,
+            metadata={"user_id": str(current_user.id)}
+        )
+        customer_id = customer.id
+        current_user.stripe_customer_id = customer_id
+        await session.commit()
+    
+    # URLs de retour (avec plan pour affichage immédiat)
+    success_url = request.success_url or f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={request.plan}"
+    cancel_url = request.cancel_url or f"{FRONTEND_URL}/payment/cancel"
+    
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            customer=customer_id,
+            payment_method_types=["card"],
+            line_items=[{
+                "price": price_id,
+                "quantity": 1
+            }],
+            mode="subscription",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={
+                "user_id": str(current_user.id),
+                "plan": request.plan
+            }
+        )
+        
+        return {"checkout_url": checkout_session.url, "session_id": checkout_session.id}
+        
+    except stripe.error.StripeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# 🆕 Alias pour compatibilité avec le frontend
+class CreateCheckoutByPlanId(BaseModel):
+    """Requête avec plan_id (format frontend)"""
+    plan_id: str  # starter, pro, expert
+
+
+@router.post("/create-checkout")
+async def create_checkout_by_plan_id(
+    request: CreateCheckoutByPlanId,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🆕 Endpoint compatible avec le frontend.
+    Accepte plan_id au lieu de plan.
+    """
+    if not STRIPE_CONFIG.get("ENABLED"):
+        raise HTTPException(status_code=400, detail="Stripe not enabled")
+    
+    if not init_stripe():
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+    
+    price_id = get_price_id(request.plan_id)
+    if not price_id:
+        raise HTTPException(status_code=400, detail=f"Invalid plan: {request.plan_id}")
+    
+    # Créer ou récupérer le client Stripe
+    if current_user.stripe_customer_id:
+        customer_id = current_user.stripe_customer_id
+    else:
+        customer = stripe.Customer.create(
+            email=current_user.email,
+            name=current_user.username or current_user.email,
+            metadata={"user_id": str(current_user.id)}
+        )
+        customer_id = customer.id
+        current_user.stripe_customer_id = customer_id
+        await session.commit()
+    
+    # URLs de retour (avec plan pour affichage immédiat)
+    success_url = f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={request.plan_id}"
+    cancel_url = f"{FRONTEND_URL}/payment/cancel"
+    
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            customer=customer_id,
+            payment_method_types=["card"],
+            line_items=[{
+                "price": price_id,
+                "quantity": 1
+            }],
+            mode="subscription",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            allow_promotion_codes=True,  # Permet les codes promo
+            billing_address_collection="auto",
+            metadata={
+                "user_id": str(current_user.id),
+                "plan": request.plan_id
+            }
+        )
+        
+        print(f"💳 Checkout session created for user {current_user.id}, plan {request.plan_id}", flush=True)
+        
+        return {"checkout_url": checkout_session.url, "session_id": checkout_session.id}
+        
+    except stripe.error.StripeError as e:
+        print(f"❌ Stripe error: {e}", flush=True)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/portal")
+async def create_portal_session(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Crée une session du portail client Stripe.
+    Permet à l'utilisateur de gérer son abonnement.
+    """
+    if not init_stripe():
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+    
+    if not current_user.stripe_customer_id:
+        raise HTTPException(status_code=400, detail="No Stripe customer")
+    
+    try:
+        portal_session = stripe.billing_portal.Session.create(
+            customer=current_user.stripe_customer_id,
+            return_url=f"{FRONTEND_URL}/billing"
+        )
+        return {"portal_url": portal_session.url}
+        
+    except stripe.error.StripeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔄 CHANGEMENT DE PLAN (UPGRADE / DOWNGRADE)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class ChangePlanRequest(BaseModel):
+    """Requête pour changer de plan"""
+    new_plan: str  # starter, pro, expert
+
+
+class ChangePlanResponse(BaseModel):
+    """Réponse au changement de plan"""
+    success: bool
+    message: str
+    action: str  # "upgraded", "downgraded", "checkout_required"
+    checkout_url: Optional[str] = None
+    new_plan: Optional[str] = None
+    effective_date: Optional[str] = None
+
+
+@router.post("/change-plan", response_model=ChangePlanResponse)
+async def change_subscription_plan(
+    request: ChangePlanRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🔄 Change le plan d'abonnement de l'utilisateur (upgrade ou downgrade).
+    
+    - Si l'utilisateur n'a pas d'abonnement actif → redirige vers checkout
+    - Si upgrade → proration immédiate (facturé la différence)
+    - Si downgrade → effectif à la fin de la période actuelle
+    """
+    if not STRIPE_CONFIG.get("ENABLED"):
+        raise HTTPException(status_code=400, detail="Stripe not enabled")
+    
+    if not init_stripe():
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+    
+    new_plan = request.new_plan.lower()
+    current_plan = current_user.plan or "free"
+    
+    # Validation du nouveau plan
+    valid_plans = ["starter", "pro", "expert"]
+    if new_plan not in valid_plans:
+        raise HTTPException(status_code=400, detail=f"Invalid plan: {new_plan}")
+    
+    # Si même plan, rien à faire
+    if new_plan == current_plan:
+        return ChangePlanResponse(
+            success=True,
+            message="Vous êtes déjà sur ce plan",
+            action="no_change",
+            new_plan=current_plan
+        )
+    
+    # Si plan gratuit ou pas d'abonnement actif → checkout
+    if current_plan == "free" or not current_user.stripe_subscription_id:
+        print(f"📝 User {current_user.id} needs checkout (no active subscription)", flush=True)
+        
+        # Créer une session checkout
+        price_id = get_price_id(new_plan)
+        if not price_id:
+            raise HTTPException(status_code=400, detail=f"Invalid plan: {new_plan}")
+        
+        # 🔧 Utiliser la fonction helper qui gère le cas test/live
+        try:
+            customer_id = await get_or_create_stripe_customer(current_user, session)
+        except stripe.error.StripeError as e:
+            print(f"❌ Error creating Stripe customer: {e}", flush=True)
+            raise HTTPException(status_code=500, detail="Erreur lors de la création du client Stripe")
+        
+        checkout_session = stripe.checkout.Session.create(
+            customer=customer_id,
+            payment_method_types=["card"],
+            line_items=[{"price": price_id, "quantity": 1}],
+            mode="subscription",
+            success_url=f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={new_plan}",
+            cancel_url=f"{FRONTEND_URL}/upgrade",
+            allow_promotion_codes=True,
+            metadata={"user_id": str(current_user.id), "plan": new_plan}
+        )
+        
+        return ChangePlanResponse(
+            success=True,
+            message="Redirection vers le paiement...",
+            action="checkout_required",
+            checkout_url=checkout_session.url,
+            new_plan=new_plan
+        )
+    
+    # Récupérer l'abonnement actuel
+    try:
+        subscription = stripe.Subscription.retrieve(current_user.stripe_subscription_id)
+    except stripe.error.StripeError as e:
+        print(f"❌ Error retrieving subscription: {e}", flush=True)
+        raise HTTPException(status_code=400, detail="Subscription not found")
+    
+    if subscription.status not in ["active", "trialing"]:
+        raise HTTPException(status_code=400, detail="Subscription is not active")
+    
+    # Obtenir le nouveau price_id
+    new_price_id = get_price_id(new_plan)
+    if not new_price_id:
+        raise HTTPException(status_code=400, detail=f"Invalid plan: {new_plan}")
+    
+    # Déterminer si c'est un upgrade ou downgrade
+    plan_order = {"free": 0, "starter": 1, "pro": 2, "expert": 3}
+    is_upgrade = plan_order.get(new_plan, 0) > plan_order.get(current_plan, 0)
+    
+    try:
+        # Récupérer l'item d'abonnement actuel
+        subscription_item_id = subscription["items"]["data"][0]["id"]
+        
+        if is_upgrade:
+            # UPGRADE: Proration immédiate
+            print(f"⬆️ Upgrading user {current_user.id} from {current_plan} to {new_plan}", flush=True)
+            
+            updated_subscription = stripe.Subscription.modify(
+                current_user.stripe_subscription_id,
+                items=[{
+                    "id": subscription_item_id,
+                    "price": new_price_id,
+                }],
+                proration_behavior="create_prorations",  # Facture la différence immédiatement
+                payment_behavior="error_if_incomplete",
+            )
+            
+            # Mise à jour immédiate du plan
+            plan_limits = PLAN_LIMITS.get(new_plan, PLAN_LIMITS["free"])
+            credits_bonus = plan_limits.get("monthly_credits", 0) - PLAN_LIMITS.get(current_plan, {}).get("monthly_credits", 0)
+            
+            current_user.plan = new_plan
+            if credits_bonus > 0:
+                current_user.credits = (current_user.credits or 0) + credits_bonus
+                
+                # Transaction
+                transaction = CreditTransaction(
+                    user_id=current_user.id,
+                    amount=credits_bonus,
+                    balance_after=current_user.credits,
+                    transaction_type="upgrade",
+                    type="upgrade",
+                    description=f"Upgrade: {current_plan} → {new_plan}"
+                )
+                session.add(transaction)
+            
+            await session.commit()
+            
+            return ChangePlanResponse(
+                success=True,
+                message=f"Upgrade réussi ! Vous êtes maintenant sur le plan {new_plan.capitalize()}.",
+                action="upgraded",
+                new_plan=new_plan,
+                effective_date="immediate"
+            )
+        
+        else:
+            # DOWNGRADE: Effectif à la fin de la période
+            print(f"⬇️ Downgrading user {current_user.id} from {current_plan} to {new_plan}", flush=True)
+            
+            # Programmer le changement pour la fin de la période
+            updated_subscription = stripe.Subscription.modify(
+                current_user.stripe_subscription_id,
+                items=[{
+                    "id": subscription_item_id,
+                    "price": new_price_id,
+                }],
+                proration_behavior="none",  # Pas de proration pour downgrade
+                billing_cycle_anchor="unchanged",
+            )
+            
+            # La date de fin de période actuelle
+            end_date = datetime.fromtimestamp(subscription.current_period_end)
+            
+            return ChangePlanResponse(
+                success=True,
+                message=f"Votre plan passera à {new_plan.capitalize()} le {end_date.strftime('%d/%m/%Y')}. Vous gardez vos avantages actuels jusqu'à cette date.",
+                action="downgraded",
+                new_plan=new_plan,
+                effective_date=end_date.isoformat()
+            )
+            
+    except stripe.error.CardError as e:
+        print(f"❌ Card error: {e}", flush=True)
+        raise HTTPException(status_code=400, detail="Erreur de paiement. Veuillez vérifier votre carte.")
+    except stripe.error.StripeError as e:
+        print(f"❌ Stripe error: {e}", flush=True)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+class ConfirmCheckoutRequest(BaseModel):
+    """Requête pour confirmer un checkout"""
+    session_id: str
+
+
+@router.post("/confirm-checkout")
+async def confirm_checkout(
+    request: ConfirmCheckoutRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    ✅ Confirme un checkout Stripe et met à jour le plan de l'utilisateur.
+    
+    Utilisé comme fallback quand les webhooks ne fonctionnent pas.
+    Vérifie la session Stripe et met à jour le plan si le paiement est complet.
+    """
+    if not init_stripe():
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+    
+    try:
+        # Récupérer la session Stripe
+        checkout_session = stripe.checkout.Session.retrieve(
+            request.session_id,
+            expand=['subscription', 'customer']
+        )
+        
+        print(f"🔍 Confirming checkout session: {request.session_id}", flush=True)
+        print(f"📊 Session status: {checkout_session.status}", flush=True)
+        print(f"📊 Payment status: {checkout_session.payment_status}", flush=True)
+        
+        # Vérifier que le paiement est complet
+        if checkout_session.payment_status != "paid":
+            print(f"⚠️ Payment not completed: {checkout_session.payment_status}", flush=True)
+            return {
+                "success": False,
+                "message": "Paiement non complété",
+                "status": checkout_session.payment_status
+            }
+        
+        # Récupérer les métadonnées
+        metadata = checkout_session.metadata or {}
+        plan = metadata.get("plan")
+        user_id_from_session = metadata.get("user_id")
+        
+        # Vérifier que c'est bien le bon utilisateur
+        if user_id_from_session and int(user_id_from_session) != current_user.id:
+            print(f"⚠️ User mismatch: session={user_id_from_session}, current={current_user.id}", flush=True)
+            raise HTTPException(status_code=403, detail="Session does not belong to current user")
+        
+        # Récupérer les infos d'abonnement
+        customer_id = checkout_session.customer
+        if isinstance(customer_id, dict):
+            customer_id = customer_id.get("id")
+        
+        subscription_id = checkout_session.subscription
+        if isinstance(subscription_id, dict):
+            subscription_id = subscription_id.get("id")
+        
+        print(f"📋 Plan: {plan}, Customer: {customer_id}, Subscription: {subscription_id}", flush=True)
+        
+        # Vérifier si déjà mis à jour
+        if current_user.plan == plan and current_user.stripe_subscription_id == subscription_id:
+            print(f"ℹ️ User already on plan {plan}", flush=True)
+            return {
+                "success": True,
+                "message": f"Vous êtes déjà sur le plan {plan}",
+                "plan": plan,
+                "already_updated": True
+            }
+        
+        # Mettre à jour l'utilisateur
+        plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS.get("free", {}))
+        credits_to_add = plan_limits.get("monthly_credits", 0)
+        
+        old_plan = current_user.plan
+        current_user.plan = plan
+        current_user.credits = (current_user.credits or 0) + credits_to_add
+        current_user.stripe_customer_id = customer_id
+        current_user.stripe_subscription_id = subscription_id
+        
+        # Enregistrer la transaction
+        transaction = CreditTransaction(
+            user_id=current_user.id,
+            amount=credits_to_add,
+            balance_after=current_user.credits,
+            transaction_type="purchase",
+            type="purchase",
+            stripe_payment_id=checkout_session.payment_intent,
+            description=f"Subscription upgrade: {old_plan} → {plan}"
+        )
+        session.add(transaction)
+        
+        await session.commit()
+        
+        print(f"✅ User {current_user.id} upgraded from {old_plan} to {plan}, +{credits_to_add} credits", flush=True)
+        
+        return {
+            "success": True,
+            "message": f"Félicitations ! Vous êtes maintenant sur le plan {plan.capitalize()}.",
+            "plan": plan,
+            "credits_added": credits_to_add,
+            "new_credits": current_user.credits
+        }
+        
+    except stripe.error.InvalidRequestError as e:
+        print(f"❌ Invalid session: {e}", flush=True)
+        raise HTTPException(status_code=400, detail="Session invalide ou expirée")
+    except stripe.error.StripeError as e:
+        print(f"❌ Stripe error: {e}", flush=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/cancel")
+async def cancel_subscription(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🗑️ Annule l'abonnement de l'utilisateur.
+    L'abonnement reste actif jusqu'à la fin de la période payée.
+    """
+    if not init_stripe():
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+    
+    if not current_user.stripe_subscription_id:
+        raise HTTPException(status_code=400, detail="No active subscription")
+    
+    try:
+        # Annuler à la fin de la période (pas immédiatement)
+        subscription = stripe.Subscription.modify(
+            current_user.stripe_subscription_id,
+            cancel_at_period_end=True
+        )
+        
+        end_date = datetime.fromtimestamp(subscription.current_period_end)
+        
+        print(f"🗑️ Subscription canceled for user {current_user.id}, effective {end_date}", flush=True)
+        
+        return {
+            "success": True,
+            "message": f"Votre abonnement sera annulé le {end_date.strftime('%d/%m/%Y')}. Vous gardez vos avantages jusqu'à cette date.",
+            "end_date": end_date.isoformat()
+        }
+        
+    except stripe.error.StripeError as e:
+        print(f"❌ Error canceling subscription: {e}", flush=True)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/reactivate")
+async def reactivate_subscription(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🔄 Réactive un abonnement annulé (avant la fin de période).
+    """
+    if not init_stripe():
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+    
+    if not current_user.stripe_subscription_id:
+        raise HTTPException(status_code=400, detail="No subscription found")
+    
+    try:
+        subscription = stripe.Subscription.modify(
+            current_user.stripe_subscription_id,
+            cancel_at_period_end=False
+        )
+        
+        print(f"✅ Subscription reactivated for user {current_user.id}", flush=True)
+        
+        return {
+            "success": True,
+            "message": "Votre abonnement a été réactivé avec succès !"
+        }
+        
+    except stripe.error.StripeError as e:
+        print(f"❌ Error reactivating subscription: {e}", flush=True)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/subscription-status")
+async def get_subscription_status(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    📊 Retourne le statut détaillé de l'abonnement.
+    """
+    if not init_stripe():
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+    
+    result = {
+        "plan": current_user.plan or "free",
+        "has_subscription": bool(current_user.stripe_subscription_id),
+        "status": "none",
+        "cancel_at_period_end": False,
+        "current_period_end": None,
+        "next_plan": None
+    }
+    
+    if current_user.stripe_subscription_id:
+        try:
+            subscription = stripe.Subscription.retrieve(current_user.stripe_subscription_id)
+            result["status"] = subscription.status
+            result["cancel_at_period_end"] = subscription.cancel_at_period_end
+            result["current_period_end"] = datetime.fromtimestamp(subscription.current_period_end).isoformat()
+            
+            # Vérifier si un changement de plan est programmé
+            if subscription.get("schedule"):
+                schedule = stripe.SubscriptionSchedule.retrieve(subscription.schedule)
+                phases = schedule.get("phases", [])
+                if len(phases) > 1:
+                    next_phase = phases[1]
+                    next_price_id = next_phase["items"][0]["price"]
+                    # Trouver le plan correspondant
+                    for plan_name, plan_config in STRIPE_CONFIG["PRICES"].items():
+                        if plan_config.get("live") == next_price_id or plan_config.get("test") == next_price_id:
+                            result["next_plan"] = plan_name
+                            break
+                            
+        except stripe.error.StripeError as e:
+            print(f"⚠️ Error fetching subscription: {e}", flush=True)
+    
+    return result
+
+
+@router.get("/transactions")
+async def get_transactions(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """Retourne l'historique des transactions de l'utilisateur"""
+    result = await session.execute(
+        select(CreditTransaction)
+        .where(CreditTransaction.user_id == current_user.id)
+        .order_by(CreditTransaction.created_at.desc())
+        .limit(50)
+    )
+    transactions = result.scalars().all()
+    
+    return {"transactions": [
+        {
+            "id": t.id,
+            "amount": t.amount,
+            "balance_after": t.balance_after,
+            "type": t.transaction_type or t.type,
+            "description": t.description,
+            "created_at": t.created_at
+        }
+        for t in transactions
+    ]}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔔 WEBHOOK STRIPE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/webhook")
+async def stripe_webhook(
+    request: Request,
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Webhook Stripe pour gérer les événements de paiement.
+    IMPORTANT: Le body doit être lu en RAW pour la vérification de signature.
+    """
+    print("🔔 Webhook endpoint hit!", flush=True)
+    
+    if not init_stripe():
+        print("❌ Stripe not initialized", flush=True)
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+    
+    webhook_secret = STRIPE_CONFIG.get("WEBHOOK_SECRET")
+    if not webhook_secret:
+        print("❌ Webhook secret not configured", flush=True)
+        raise HTTPException(status_code=500, detail="Webhook secret not configured")
+    
+    # Lire le header de signature (plusieurs méthodes car FastAPI est capricieux)
+    stripe_signature = request.headers.get("stripe-signature") or request.headers.get("Stripe-Signature")
+    if not stripe_signature:
+        print("❌ No stripe-signature header found", flush=True)
+        print(f"📋 Available headers: {dict(request.headers)}", flush=True)
+        raise HTTPException(status_code=400, detail="Missing stripe-signature header")
+    
+    print(f"📝 Signature received: {stripe_signature[:50]}...", flush=True)
+    
+    # Lire le body RAW (obligatoire pour la signature)
+    payload = await request.body()
+    print(f"📦 Payload size: {len(payload)} bytes", flush=True)
+    
+    try:
+        event = stripe.Webhook.construct_event(
+            payload=payload,
+            sig_header=stripe_signature,
+            secret=webhook_secret
+        )
+        print(f"✅ Signature verified successfully", flush=True)
+    except stripe.error.SignatureVerificationError as e:
+        print(f"❌ Signature verification failed: {e}", flush=True)
+        raise HTTPException(status_code=401, detail="Invalid signature")
+    except Exception as e:
+        print(f"❌ Webhook error: {e}", flush=True)
+        raise HTTPException(status_code=400, detail=str(e))
+    
+    event_type = event["type"]
+    data = event["data"]["object"]
+    
+    print(f"🔔 Stripe webhook received: {event_type}", flush=True)
+    print(f"📊 Event data keys: {data.keys()}", flush=True)
+    
+    # Traiter les événements
+    if event_type == "checkout.session.completed":
+        print(f"💳 Processing checkout.session.completed...", flush=True)
+        await handle_checkout_completed(session, data)
+    
+    elif event_type == "customer.subscription.created":
+        print(f"📝 Processing customer.subscription.created...", flush=True)
+        await handle_subscription_created(session, data)
+    
+    elif event_type == "customer.subscription.updated":
+        print(f"🔄 Processing customer.subscription.updated...", flush=True)
+        await handle_subscription_updated(session, data)
+    
+    elif event_type == "customer.subscription.deleted":
+        print(f"🗑️ Processing customer.subscription.deleted...", flush=True)
+        await handle_subscription_deleted(session, data)
+    
+    elif event_type == "invoice.paid":
+        print(f"💰 Processing invoice.paid...", flush=True)
+        await handle_invoice_paid(session, data)
+    
+    elif event_type == "invoice.payment_failed":
+        print(f"⚠️ Processing invoice.payment_failed...", flush=True)
+        await handle_payment_failed(session, data)
+    
+    else:
+        print(f"ℹ️ Unhandled event type: {event_type}", flush=True)
+    
+    return {"received": True}
+
+
+# Route de test pour vérifier que l'endpoint est accessible
+@router.get("/webhook-test")
+async def webhook_test():
+    """Test endpoint to verify webhook route is accessible"""
+    webhook_secret = STRIPE_CONFIG.get("WEBHOOK_SECRET")
+    return {
+        "status": "ok",
+        "webhook_secret_configured": bool(webhook_secret),
+        "stripe_configured": bool(get_stripe_key())
+    }
+
+
+async def handle_checkout_completed(session: AsyncSession, data: dict):
+    """Gère la complétion d'un checkout"""
+    user_id = data.get("metadata", {}).get("user_id")
+    plan = data.get("metadata", {}).get("plan")
+    customer_id = data.get("customer")
+    subscription_id = data.get("subscription")
+    
+    print(f"📋 Checkout data: user_id={user_id}, plan={plan}, customer={customer_id}", flush=True)
+    
+    if not user_id or not plan:
+        print(f"⚠️ Checkout without user_id or plan", flush=True)
+        return
+    
+    result = await session.execute(
+        select(User).where(User.id == int(user_id))
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        print(f"⚠️ User {user_id} not found", flush=True)
+        return
+    
+    # Mettre à jour l'utilisateur
+    plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+    credits_to_add = plan_limits.get("monthly_credits", 0)
+    
+    user.plan = plan
+    user.credits = (user.credits or 0) + credits_to_add
+    user.stripe_customer_id = customer_id
+    user.stripe_subscription_id = subscription_id
+    
+    # Enregistrer la transaction
+    transaction = CreditTransaction(
+        user_id=user.id,
+        amount=credits_to_add,
+        balance_after=user.credits,
+        transaction_type="purchase",
+        type="purchase",
+        stripe_payment_id=data.get("payment_intent"),
+        description=f"Subscription: {plan}"
+    )
+    session.add(transaction)
+    
+    await session.commit()
+    print(f"✅ User {user_id} upgraded to {plan}, +{credits_to_add} credits", flush=True)
+
+
+async def handle_subscription_created(session: AsyncSession, data: dict):
+    """Gère la création d'un abonnement"""
+    customer_id = data.get("customer")
+    subscription_id = data.get("id")
+    
+    result = await session.execute(
+        select(User).where(User.stripe_customer_id == customer_id)
+    )
+    user = result.scalar_one_or_none()
+    
+    if user:
+        user.stripe_subscription_id = subscription_id
+        await session.commit()
+
+
+async def handle_subscription_updated(session: AsyncSession, data: dict):
+    """Gère la mise à jour d'un abonnement (upgrade/downgrade)"""
+    customer_id = data.get("customer")
+    status = data.get("status")
+    cancel_at_period_end = data.get("cancel_at_period_end", False)
+    
+    result = await session.execute(
+        select(User).where(User.stripe_customer_id == customer_id)
+    )
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        print(f"⚠️ User not found for customer {customer_id}", flush=True)
+        return
+    
+    # Récupérer le nouveau price_id
+    items = data.get("items", {}).get("data", [])
+    if items:
+        new_price_id = items[0].get("price", {}).get("id")
+        
+        # Trouver le plan correspondant
+        new_plan = None
+        for plan_name, plan_config in STRIPE_CONFIG.get("PRICES", {}).items():
+            if plan_config.get("live") == new_price_id or plan_config.get("test") == new_price_id:
+                new_plan = plan_name
+                break
+        
+        if new_plan and new_plan != user.plan:
+            old_plan = user.plan
+            user.plan = new_plan
+            
+            # Calculer la différence de crédits
+            old_credits = PLAN_LIMITS.get(old_plan, {}).get("monthly_credits", 0)
+            new_credits = PLAN_LIMITS.get(new_plan, {}).get("monthly_credits", 0)
+            
+            if new_credits > old_credits:
+                # Upgrade: ajouter la différence de crédits
+                credits_bonus = new_credits - old_credits
+                user.credits = (user.credits or 0) + credits_bonus
+                
+                transaction = CreditTransaction(
+                    user_id=user.id,
+                    amount=credits_bonus,
+                    balance_after=user.credits,
+                    transaction_type="upgrade",
+                    type="upgrade",
+                    description=f"Upgrade: {old_plan} → {new_plan}"
+                )
+                session.add(transaction)
+                print(f"⬆️ User {user.id} upgraded from {old_plan} to {new_plan}, +{credits_bonus} credits", flush=True)
+            else:
+                print(f"⬇️ User {user.id} downgraded from {old_plan} to {new_plan}", flush=True)
+            
+            await session.commit()
+    
+    if status == "canceled" or cancel_at_period_end:
+        print(f"⚠️ Subscription will be canceled for user {user.id}", flush=True)
+
+
+async def handle_subscription_deleted(session: AsyncSession, data: dict):
+    """Gère la suppression d'un abonnement"""
+    customer_id = data.get("customer")
+    
+    result = await session.execute(
+        select(User).where(User.stripe_customer_id == customer_id)
+    )
+    user = result.scalar_one_or_none()
+    
+    if user:
+        user.plan = "free"
+        user.stripe_subscription_id = None
+        await session.commit()
+        print(f"✅ User {user.id} downgraded to free", flush=True)
+
+
+async def handle_invoice_paid(session: AsyncSession, data: dict):
+    """Gère le paiement réussi d'une facture (renouvellement)"""
+    customer_id = data.get("customer")
+    subscription_id = data.get("subscription")
+    
+    if not subscription_id:
+        return
+    
+    result = await session.execute(
+        select(User).where(User.stripe_customer_id == customer_id)
+    )
+    user = result.scalar_one_or_none()
+    
+    if user and user.plan != "free":
+        # Ajouter les crédits mensuels
+        plan_limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
+        credits_to_add = plan_limits.get("monthly_credits", 0)
+        
+        user.credits = (user.credits or 0) + credits_to_add
+        
+        transaction = CreditTransaction(
+            user_id=user.id,
+            amount=credits_to_add,
+            balance_after=user.credits,
+            transaction_type="renewal",
+            type="renewal",
+            stripe_payment_id=data.get("payment_intent"),
+            description=f"Monthly renewal: {user.plan}"
+        )
+        session.add(transaction)
+        
+        await session.commit()
+        print(f"✅ User {user.id} renewed, +{credits_to_add} credits", flush=True)
+
+
+async def handle_payment_failed(session: AsyncSession, data: dict):
+    """Gère l'échec d'un paiement"""
+    customer_id = data.get("customer")
+    
+    result = await session.execute(
+        select(User).where(User.stripe_customer_id == customer_id)
+    )
+    user = result.scalar_one_or_none()
+    
+    if user:
+        print(f"⚠️ Payment failed for user {user.id}", flush=True)
+        # TODO: Envoyer un email de notification
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔑 API KEY MANAGEMENT — Endpoints pour le plan Expert
+# ═══════════════════════════════════════════════════════════════════════════════
+
+import secrets
+import hashlib
+
+def generate_api_key() -> str:
+    """Génère une nouvelle API key sécurisée"""
+    random_part = secrets.token_hex(24)
+    return f"ds_live_{random_part}"
+
+def hash_api_key(api_key: str) -> str:
+    """Hash une API key pour stockage sécurisé"""
+    return hashlib.sha256(api_key.encode()).hexdigest()
+
+
+class ApiKeyResponse(BaseModel):
+    """Réponse avec la clé API"""
+    api_key: str
+    created_at: datetime
+    message: str
+
+
+class ApiKeyStatusResponse(BaseModel):
+    """Status de la clé API"""
+    has_api_key: bool
+    created_at: Optional[datetime]
+    last_used: Optional[datetime]
+    plan_eligible: bool
+    current_plan: str
+
+
+@router.get("/api-key/status", response_model=ApiKeyStatusResponse)
+async def get_api_key_status(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🔑 Vérifier le status de la clé API de l'utilisateur.
+    Disponible uniquement pour le plan Expert.
+    """
+    plan_eligible = current_user.plan in ["expert", "unlimited"]
+    
+    return ApiKeyStatusResponse(
+        has_api_key=bool(current_user.api_key_hash),
+        created_at=current_user.api_key_created_at,
+        last_used=current_user.api_key_last_used,
+        plan_eligible=plan_eligible,
+        current_plan=current_user.plan or "free"
+    )
+
+
+@router.post("/api-key/generate", response_model=ApiKeyResponse)
+async def generate_user_api_key(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🔑 Générer une nouvelle clé API pour l'utilisateur.
+    
+    ⚠️ IMPORTANT: La clé complète n'est affichée QU'UNE SEULE FOIS.
+    Sauvegardez-la immédiatement car elle ne pourra plus être récupérée.
+    
+    Disponible uniquement pour le plan Expert.
+    """
+    # Vérifier le plan
+    if current_user.plan not in ["expert", "unlimited"]:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "plan_required",
+                "message": "API access requires Expert plan. Upgrade at /upgrade",
+                "current_plan": current_user.plan,
+                "required_plan": "expert"
+            }
+        )
+    
+    # Vérifier si une clé existe déjà
+    if current_user.api_key_hash:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "api_key_exists",
+                "message": "An API key already exists. Use /api-key/regenerate to create a new one."
+            }
+        )
+    
+    # Générer la nouvelle clé
+    new_api_key = generate_api_key()
+    key_hash = hash_api_key(new_api_key)
+    now = datetime.utcnow()
+    
+    # Sauvegarder le hash (pas la clé en clair!)
+    current_user.api_key_hash = key_hash
+    current_user.api_key_created_at = now
+    await session.commit()
+    
+    print(f"🔑 API key generated for user {current_user.id}", flush=True)
+    
+    return ApiKeyResponse(
+        api_key=new_api_key,
+        created_at=now,
+        message="⚠️ IMPORTANT: Save this key now! It will NOT be shown again."
+    )
+
+
+@router.post("/api-key/regenerate", response_model=ApiKeyResponse)
+async def regenerate_user_api_key(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🔄 Régénérer la clé API (révoque l'ancienne).
+    
+    ⚠️ ATTENTION: L'ancienne clé sera immédiatement invalidée.
+    Toutes les applications utilisant l'ancienne clé cesseront de fonctionner.
+    
+    Disponible uniquement pour le plan Expert.
+    """
+    # Vérifier le plan
+    if current_user.plan not in ["expert", "unlimited"]:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "plan_required",
+                "message": "API access requires Expert plan.",
+                "current_plan": current_user.plan
+            }
+        )
+    
+    # Générer la nouvelle clé
+    new_api_key = generate_api_key()
+    key_hash = hash_api_key(new_api_key)
+    now = datetime.utcnow()
+    
+    # Remplacer l'ancienne clé
+    old_existed = bool(current_user.api_key_hash)
+    current_user.api_key_hash = key_hash
+    current_user.api_key_created_at = now
+    current_user.api_key_last_used = None  # Reset last used
+    await session.commit()
+    
+    action = "regenerated" if old_existed else "generated"
+    print(f"🔑 API key {action} for user {current_user.id}", flush=True)
+    
+    return ApiKeyResponse(
+        api_key=new_api_key,
+        created_at=now,
+        message="⚠️ Old key revoked. Save this new key now! It will NOT be shown again."
+    )
+
+
+@router.delete("/api-key")
+async def revoke_api_key(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🗑️ Révoquer définitivement la clé API.
+    
+    La clé sera immédiatement invalidée et ne pourra plus être utilisée.
+    """
+    if not current_user.api_key_hash:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "no_api_key",
+                "message": "No API key exists for this account."
+            }
+        )
+    
+    # Supprimer la clé
+    current_user.api_key_hash = None
+    current_user.api_key_created_at = None
+    current_user.api_key_last_used = None
+    await session.commit()
+    
+    print(f"🗑️ API key revoked for user {current_user.id}", flush=True)
+    
+    return {
+        "success": True,
+        "message": "API key has been revoked successfully."
+    }
+
