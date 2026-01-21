@@ -10,89 +10,95 @@
 
 ## Travail Complété Cette Session
 
-### 1. Unification des Backend URLs
-- [x] Identifié 5 URLs backend différentes dans le code web
-- [x] Unifié tous vers `deep-sight-backend-v3-production.up.railway.app`
-- [x] Fichiers modifiés :
-  - `src/services/api.ts`
-  - `src/hooks/useNotifications.ts`
-  - `src/components/TournesolWidget.tsx` (corrigé typo "backen")
+### Phase 1 : Fondations (Commit: 2f677ee)
+- [x] Polices personnalisées (DM Sans, Cormorant, JetBrains Mono)
+- [x] Composant GlassCard avec expo-blur
+- [x] DoodleBackground animé avec Reanimated
 
-### 2. Google OAuth Mobile
-- [x] Analysé l'implémentation actuelle
-- [x] Identifié le problème : endpoint `/api/auth/google/token` manquant
-- [x] Amélioré le debugging dans `AuthContext.tsx`
-- [x] Supprimé le `useProxy` déprécié
-
-### 3. Configuration Email (Google Workspace)
-- [x] Guidé l'utilisateur pour créer des alias email
-- [x] Alias créés : contact@, support@, noreply@deepsightsynthesis.com
+### Phase 2 : Auth & Navigation (Commit: 77d55d9)
+- [x] **Google OAuth corrigé** - Passage du flux token au flux authorization code
+  - Suppression de `expo-auth-session/providers/google`
+  - Utilisation de `expo-linking` pour les redirections
+  - Backend fournit l'URL OAuth, mobile redirige et récupère le code
+- [x] **LandingScreen créé** - Écran d'accueil attrayant avec:
+  - Animation du logo (flottement + glow)
+  - Cards de features avec GlassCard
+  - Statistiques de la plateforme
+  - CTA vers inscription/connexion
+- [x] **FeatureValidator** - Système de validation automatique:
+  - Validation du stockage de tokens
+  - Test de connectivité backend
+  - Test des endpoints OAuth et Login
+- [x] **Navigation mise à jour** - Landing comme premier écran
 
 ---
 
-## Problèmes Bloquants
+## Architecture OAuth Actuelle
 
-### CRITIQUE : Google OAuth Backend
-**Statut**: NEEDS_BACKEND_FIX
-
-L'endpoint `/api/auth/google/token` n'existe pas sur le backend v3.
-Le mobile ne peut pas authentifier via Google tant que cet endpoint n'est pas ajouté.
-
-**Test effectué**:
-```bash
-curl -X POST https://deep-sight-backend-v3-production.up.railway.app/api/auth/google/token
-# Résultat: {"detail":"Not Found"}
+```
+Mobile App                    Backend                      Google
+    |                            |                           |
+    |---(1) POST /auth/google/login--->|                     |
+    |<--(2) {url: google_oauth_url}-----|                    |
+    |                            |                           |
+    |---(3) Open browser with url------------------------>   |
+    |<--(4) Redirect with ?code=xxx-----|                    |
+    |                            |                           |
+    |---(5) POST /auth/google/callback (code)-->|            |
+    |<--(6) {access_token, user}--------|                    |
 ```
 
-**Solution**: Ajouter l'endpoint au backend (voir CLAUDE.md pour le code)
+---
+
+## Fichiers Clés Modifiés
+
+| Fichier | Description |
+|---------|-------------|
+| `src/contexts/AuthContext.tsx` | OAuth code flow implementation |
+| `src/screens/LandingScreen.tsx` | Nouvel écran d'accueil |
+| `src/utils/FeatureValidator.ts` | Validation automatique |
+| `src/navigation/AppNavigator.tsx` | Landing intégré |
 
 ---
 
 ## Prochaines Tâches
 
-### Priorité Haute
-- [ ] Ajouter `/api/auth/google/token` au backend
-- [ ] Tester Google OAuth end-to-end
-- [ ] Compléter l'interface Playlists
+### À Implémenter (Parité Web)
+- [ ] Quiz interactif (`studyApi.generateQuiz`)
+- [ ] Mind Map SVG (`studyApi.generateMindmap`)
+- [ ] Flashcards (`studyApi.generateFlashcards`)
+- [ ] TTS Audio Player (`ttsApi.generateAudio`)
+- [ ] Fact-checking UI (`videoApi.factCheck`)
+- [ ] Export PDF/Markdown (`exportApi.exportSummary`)
+- [ ] Interface Playlists complète
+- [ ] Corpus Analysis
 
-### Priorité Moyenne
-- [ ] Implémenter Mind Map
-- [ ] Implémenter Quiz interactif
-- [ ] Ajouter Export PDF/Markdown
-
-### Priorité Basse
-- [ ] Charger polices personnalisées
-- [ ] TTS Audio Player
-- [ ] Fact-checking UI
+### Validation Requise
+- [ ] Tester Google OAuth sur appareil réel
+- [ ] Vérifier que l'email login fonctionne
+- [ ] Tester le FeatureValidator au démarrage
 
 ---
 
 ## Commits de cette Session
 
 ```
+77d55d9 - Phase 2: Fix Google OAuth, add LandingScreen, and FeatureValidator
+2f677ee - Phase 1: Add custom fonts, GlassCard, and animated DoodleBackground
+dfb324f - Add CLAUDE.md and PROGRESS_NOTES.md for autonomous development
 16f1a8f - Unify all backend URLs to deep-sight-backend-v3-production
-4b3f24f - Improve Google OAuth debugging and fix deprecated useProxy
 ```
-
----
-
-## Notes pour la Prochaine Session
-
-1. **Attendre** que l'endpoint `/api/auth/google/token` soit ajouté au backend
-2. Une fois le backend prêt, tester Google OAuth sur un vrai appareil
-3. L'utilisateur doit se connecter à Expo CLI (`npx expo login`) avec le compte `maximeadmin`
 
 ---
 
 ## Métriques
 
-- Fichiers créés : 0
-- Fichiers modifiés : 4
-- Lignes ajoutées : ~50
-- Lignes supprimées : ~15
-- Tests passés : N/A
+- Fichiers créés : 2 (LandingScreen, FeatureValidator)
+- Fichiers modifiés : 5
+- Lignes ajoutées : ~800
 - Erreurs TypeScript : 0
+- Commits : 4
 
 ---
 
-*Dernière mise à jour : 21/01/2026 16:00*
+*Dernière mise à jour : 21/01/2026*
