@@ -242,9 +242,10 @@ export const authApi = {
     return response;
   },
 
-  async googleLogin(): Promise<{ url: string }> {
+  async googleLogin(redirectUri?: string): Promise<{ url: string }> {
     return request('/api/auth/google/login', {
       method: 'POST',
+      body: redirectUri ? { redirect_uri: redirectUri, platform: 'mobile' } : undefined,
       requiresAuth: false,
     });
   },

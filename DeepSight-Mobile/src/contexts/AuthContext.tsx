@@ -75,12 +75,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const { url } = await authApi.googleLogin();
+      // Get the mobile redirect URI
+      const mobileRedirectUri = Linking.createURL('/auth/callback');
+
+      // Request OAuth URL with mobile redirect
+      const { url } = await authApi.googleLogin(mobileRedirectUri);
 
       // Open browser for Google OAuth
       const result = await WebBrowser.openAuthSessionAsync(
         url,
-        Linking.createURL('/auth/callback')
+        mobileRedirectUri
       );
 
       if (result.type === 'success' && result.url) {
