@@ -1,0 +1,82 @@
+import React, { ReactNode } from 'react';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ViewStyle,
+  TouchableOpacityProps,
+} from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
+import { BorderRadius, Spacing, Shadows } from '../../constants/theme';
+
+interface CardProps extends TouchableOpacityProps {
+  children: ReactNode;
+  variant?: 'default' | 'elevated' | 'outlined';
+  padding?: 'none' | 'sm' | 'md' | 'lg';
+  style?: ViewStyle;
+  pressable?: boolean;
+}
+
+export const Card: React.FC<CardProps> = ({
+  children,
+  variant = 'default',
+  padding = 'md',
+  style,
+  pressable = false,
+  onPress,
+  ...props
+}) => {
+  const { colors, isDark } = useTheme();
+
+  const paddingValues: Record<string, number> = {
+    none: 0,
+    sm: Spacing.sm,
+    md: Spacing.md,
+    lg: Spacing.lg,
+  };
+
+  const variantStyles: Record<string, ViewStyle> = {
+    default: {
+      backgroundColor: colors.bgCard,
+    },
+    elevated: {
+      backgroundColor: colors.bgElevated,
+      ...(isDark ? {} : Shadows.md),
+    },
+    outlined: {
+      backgroundColor: 'transparent',
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+  };
+
+  const cardStyle: ViewStyle = {
+    ...styles.card,
+    ...variantStyles[variant],
+    padding: paddingValues[padding],
+  };
+
+  if (pressable || onPress) {
+    return (
+      <TouchableOpacity
+        style={[cardStyle, style]}
+        onPress={onPress}
+        activeOpacity={0.7}
+        {...props}
+      >
+        {children}
+      </TouchableOpacity>
+    );
+  }
+
+  return <View style={[cardStyle, style]}>{children}</View>;
+};
+
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+  },
+});
+
+export default Card;

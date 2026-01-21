@@ -1,0 +1,180 @@
+import React from 'react';
+import {
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  ViewStyle,
+  TextStyle,
+  TouchableOpacityProps,
+} from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
+import { useTheme } from '../../contexts/ThemeContext';
+import { BorderRadius, Spacing, Typography, Colors } from '../../constants/theme';
+
+interface ButtonProps extends TouchableOpacityProps {
+  title: string;
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  size?: 'sm' | 'md' | 'lg';
+  loading?: boolean;
+  icon?: React.ReactNode;
+  iconPosition?: 'left' | 'right';
+  fullWidth?: boolean;
+  haptic?: boolean;
+}
+
+export const Button: React.FC<ButtonProps> = ({
+  title,
+  variant = 'primary',
+  size = 'md',
+  loading = false,
+  icon,
+  iconPosition = 'left',
+  fullWidth = false,
+  haptic = true,
+  disabled,
+  onPress,
+  style,
+  ...props
+}) => {
+  const { colors } = useTheme();
+
+  const handlePress = (event: any) => {
+    if (haptic && !disabled && !loading) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    onPress?.(event);
+  };
+
+  const sizeStyles: Record<string, { container: ViewStyle; text: TextStyle }> = {
+    sm: {
+      container: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md },
+      text: { fontSize: Typography.fontSize.sm },
+    },
+    md: {
+      container: { paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg },
+      text: { fontSize: Typography.fontSize.base },
+    },
+    lg: {
+      container: { paddingVertical: Spacing.lg, paddingHorizontal: Spacing.xl },
+      text: { fontSize: Typography.fontSize.lg },
+    },
+  };
+
+  const variantStyles: Record<string, { container: ViewStyle; text: TextStyle }> = {
+    primary: {
+      container: {},
+      text: { color: '#FFFFFF' },
+    },
+    secondary: {
+      container: { backgroundColor: colors.bgElevated },
+      text: { color: colors.textPrimary },
+    },
+    outline: {
+      container: {
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        borderColor: colors.border,
+      },
+      text: { color: colors.textPrimary },
+    },
+    ghost: {
+      container: { backgroundColor: 'transparent' },
+      text: { color: colors.accentPrimary },
+    },
+    danger: {
+      container: { backgroundColor: colors.accentError },
+      text: { color: '#FFFFFF' },
+    },
+  };
+
+  const containerStyle: ViewStyle = {
+    ...styles.container,
+    ...sizeStyles[size].container,
+    ...variantStyles[variant].container,
+    ...(fullWidth && { width: '100%' }),
+    ...(disabled && { opacity: 0.5 }),
+  };
+
+  const textStyle: TextStyle = {
+    ...styles.text,
+    ...sizeStyles[size].text,
+    ...variantStyles[variant].text,
+  };
+
+  const content = (
+    <>
+      {loading ? (
+        <ActivityIndicator
+          size="small"
+          color={variantStyles[variant].text.color}
+        />
+      ) : (
+        <>
+          {icon && iconPosition === 'left' && (
+            <Text style={styles.iconLeft}>{icon}</Text>
+          )}
+          <Text style={textStyle}>{title}</Text>
+          {icon && iconPosition === 'right' && (
+            <Text style={styles.iconRight}>{icon}</Text>
+          )}
+        </>
+      )}
+    </>
+  );
+
+  if (variant === 'primary') {
+    return (
+      <TouchableOpacity
+        onPress={handlePress}
+        disabled={disabled || loading}
+        activeOpacity={0.8}
+        style={[{ borderRadius: BorderRadius.lg }, fullWidth && { width: '100%' }, style]}
+        {...props}
+      >
+        <LinearGradient
+          colors={Colors.gradientPrimary}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[containerStyle, { backgroundColor: undefined }]}
+        >
+          {content}
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <TouchableOpacity
+      onPress={handlePress}
+      disabled={disabled || loading}
+      activeOpacity={0.7}
+      style={[containerStyle, style]}
+      {...props}
+    >
+      {content}
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: BorderRadius.lg,
+  },
+  text: {
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    textAlign: 'center',
+  },
+  iconLeft: {
+    marginRight: Spacing.sm,
+  },
+  iconRight: {
+    marginLeft: Spacing.sm,
+  },
+});
+
+export default Button;
