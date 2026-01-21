@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,38 +8,64 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  TextInput,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Header, Card, EmptyState } from '../components';
+import { playlistApi, videoApi } from '../services/api';
+import { Header, Card, EmptyState, Button, Badge } from '../components';
+import { GlassCard } from '../components/ui/GlassCard';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
-import type { Playlist } from '../types';
+import type { Playlist, RootStackParamList } from '../types';
 
-// Mock data for demonstration
-const MOCK_PLAYLISTS: Playlist[] = [];
+type PlaylistsNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const PlaylistsScreen: React.FC = () => {
   const { colors } = useTheme();
   const { user } = useAuth();
-  const navigation = useNavigation();
+  const navigation = useNavigation<PlaylistsNavigationProp>();
   const insets = useSafeAreaInsets();
 
-  const [playlists, setPlaylists] = useState<Playlist[]>(MOCK_PLAYLISTS);
-  const [isLoading, setIsLoading] = useState(false);
+  const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Create playlist modal
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [newPlaylistDescription, setNewPlaylistDescription] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Analyze playlist modal
+  const [showAnalyzeModal, setShowAnalyzeModal] = useState(false);
+  const [playlistUrl, setPlaylistUrl] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Load playlists from API
   const loadPlaylists = useCallback(async () => {
-    setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setPlaylists(MOCK_PLAYLISTS);
+    try {
+      const response = await playlistApi.getPlaylists();
+      setPlaylists(response.playlists || []);
+    } catch (err) {
+      console.error('Error loading playlists:', err);
+      // Don't show error alert on initial load failure
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   }, []);
+
+  useEffect(() => {
+    loadPlaylists();
+  }, [loadPlaylists]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -47,20 +73,110 @@ export const PlaylistsScreen: React.FC = () => {
     setRefreshing(false);
   }, [loadPlaylists]);
 
-  const handleCreatePlaylist = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  // Create a new playlist
+  const handleCreatePlaylist = async () => {
+    if (!newPlaylistName.trim()) {
+      Alert.alert('Erreur', 'Le nom de la playlist est requis');
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const newPlaylist = await playlistApi.createPlaylist(
+        newPlaylistName.trim(),
+        newPlaylistDescription.trim() || undefined
+      );
+      setPlaylists(prev => [newPlaylist, ...prev]);
+      setShowCreateModal(false);
+      setNewPlaylistName('');
+      setNewPlaylistDescription('');
+      Alert.alert('Succès', 'Playlist créée avec succès');
+    } catch (err) {
+      Alert.alert('Erreur', 'Impossible de créer la playlist');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // Analyze a YouTube playlist
+  const handleAnalyzePlaylist = async () => {
+    if (!playlistUrl.trim()) {
+      Alert.alert('Erreur', 'L\'URL de la playlist est requise');
+      return;
+    }
+
+    // Validate YouTube playlist URL
+    const isValidUrl = playlistUrl.includes('youtube.com/playlist') ||
+                       playlistUrl.includes('youtu.be') ||
+                       playlistUrl.includes('list=');
+
+    if (!isValidUrl) {
+      Alert.alert('Erreur', 'Veuillez entrer une URL de playlist YouTube valide');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      const result = await playlistApi.analyzePlaylist(playlistUrl.trim(), {
+        mode: 'detailed',
+        category: 'general',
+        model: 'gpt-4',
+        language: 'fr',
+      });
+
+      setShowAnalyzeModal(false);
+      setPlaylistUrl('');
+
+      // Navigate to analysis screen with task ID
+      navigation.navigate('Analysis', { summaryId: result.task_id });
+    } catch (err) {
+      Alert.alert('Erreur', 'Impossible d\'analyser la playlist');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Delete a playlist
+  const handleDeletePlaylist = (playlist: Playlist) => {
     Alert.alert(
-      'Nouvelle playlist',
-      'La création de playlists sera disponible prochainement.',
-      [{ text: 'OK' }]
+      'Supprimer la playlist',
+      `Êtes-vous sûr de vouloir supprimer "${playlist.name}" ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              await playlistApi.deletePlaylist(playlist.id);
+              setPlaylists(prev => prev.filter(p => p.id !== playlist.id));
+            } catch (err) {
+              Alert.alert('Erreur', 'Impossible de supprimer la playlist');
+            }
+          },
+        },
+      ]
     );
   };
 
   const handlePlaylistPress = (playlist: Playlist) => {
+    Haptics.selectionAsync();
+    // For now, show playlist details in alert
+    // In a full implementation, navigate to a playlist detail screen
     Alert.alert(
       playlist.name,
-      'L\'affichage des playlists sera disponible prochainement.',
-      [{ text: 'OK' }]
+      playlist.description || 'Aucune description',
+      [
+        { text: 'Fermer' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () => handleDeletePlaylist(playlist),
+        },
+      ]
     );
   };
 
@@ -68,17 +184,20 @@ export const PlaylistsScreen: React.FC = () => {
     ({ item }: { item: Playlist }) => (
       <TouchableOpacity
         onPress={() => handlePlaylistPress(item)}
+        onLongPress={() => handleDeletePlaylist(item)}
         activeOpacity={0.7}
       >
         <Card variant="elevated" style={styles.playlistCard}>
           <View style={styles.playlistContent}>
             <View style={[styles.playlistThumbnails, { backgroundColor: colors.bgElevated }]}>
-              {item.thumbnails.length > 0 ? (
+              {item.thumbnails && item.thumbnails.length > 0 ? (
                 <View style={styles.thumbnailGrid}>
-                  {item.thumbnails.slice(0, 4).map((_, index) => (
-                    <View
+                  {item.thumbnails.slice(0, 4).map((thumb, index) => (
+                    <Image
                       key={index}
-                      style={[styles.thumbnailPlaceholder, { backgroundColor: colors.bgTertiary }]}
+                      source={{ uri: thumb }}
+                      style={styles.thumbnailImage}
+                      contentFit="cover"
                     />
                   ))}
                 </View>
@@ -95,9 +214,9 @@ export const PlaylistsScreen: React.FC = () => {
                   {item.description}
                 </Text>
               )}
-              <Text style={[styles.playlistCount, { color: colors.textTertiary }]}>
-                {item.videoCount} vidéo{item.videoCount > 1 ? 's' : ''}
-              </Text>
+              <View style={styles.playlistMeta}>
+                <Badge label={`${item.videoCount} vidéo${item.videoCount > 1 ? 's' : ''}`} variant="default" />
+              </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
           </View>
@@ -113,9 +232,9 @@ export const PlaylistsScreen: React.FC = () => {
       <EmptyState
         icon="folder-outline"
         title="Aucune playlist"
-        description="Créez des playlists pour organiser vos analyses de vidéos YouTube."
+        description="Créez des playlists pour organiser vos analyses ou analysez directement une playlist YouTube."
         actionLabel="Créer une playlist"
-        onAction={handleCreatePlaylist}
+        onAction={() => setShowCreateModal(true)}
       />
     );
   };
@@ -126,9 +245,48 @@ export const PlaylistsScreen: React.FC = () => {
         title="Playlists"
         rightAction={{
           icon: 'add',
-          onPress: handleCreatePlaylist,
+          onPress: () => setShowCreateModal(true),
         }}
       />
+
+      {/* Action Buttons */}
+      <View style={styles.actionsContainer}>
+        <TouchableOpacity
+          style={[styles.actionCard, { backgroundColor: colors.bgElevated }]}
+          onPress={() => setShowAnalyzeModal(true)}
+        >
+          <View style={[styles.actionIcon, { backgroundColor: `${colors.accentPrimary}20` }]}>
+            <Ionicons name="play-circle" size={24} color={colors.accentPrimary} />
+          </View>
+          <View style={styles.actionInfo}>
+            <Text style={[styles.actionTitle, { color: colors.textPrimary }]}>
+              Analyser une playlist
+            </Text>
+            <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>
+              Entrez une URL YouTube
+            </Text>
+          </View>
+          <Ionicons name="arrow-forward" size={20} color={colors.textTertiary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionCard, { backgroundColor: colors.bgElevated }]}
+          onPress={() => setShowCreateModal(true)}
+        >
+          <View style={[styles.actionIcon, { backgroundColor: `${colors.accentSuccess}20` }]}>
+            <Ionicons name="add-circle" size={24} color={colors.accentSuccess} />
+          </View>
+          <View style={styles.actionInfo}>
+            <Text style={[styles.actionTitle, { color: colors.textPrimary }]}>
+              Nouvelle playlist
+            </Text>
+            <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>
+              Organisez vos analyses
+            </Text>
+          </View>
+          <Ionicons name="arrow-forward" size={20} color={colors.textTertiary} />
+        </TouchableOpacity>
+      </View>
 
       {/* Stats */}
       {playlists.length > 0 && (
@@ -136,13 +294,29 @@ export const PlaylistsScreen: React.FC = () => {
           <View style={[styles.statItem, { backgroundColor: colors.bgElevated }]}>
             <Ionicons name="folder" size={20} color={colors.accentPrimary} />
             <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-              {user?.total_playlists || playlists.length}
+              {playlists.length}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
               Playlists
             </Text>
           </View>
+          <View style={[styles.statItem, { backgroundColor: colors.bgElevated }]}>
+            <Ionicons name="videocam" size={20} color={colors.accentWarning} />
+            <Text style={[styles.statValue, { color: colors.textPrimary }]}>
+              {playlists.reduce((sum, p) => sum + p.videoCount, 0)}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
+              Vidéos
+            </Text>
+          </View>
         </View>
+      )}
+
+      {/* Section Title */}
+      {playlists.length > 0 && (
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+          Mes playlists
+        </Text>
       )}
 
       {/* Playlist List */}
@@ -172,6 +346,120 @@ export const PlaylistsScreen: React.FC = () => {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       )}
+
+      {/* Create Playlist Modal */}
+      <Modal
+        visible={showCreateModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCreateModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalContainer}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowCreateModal(false)}
+          />
+          <View style={[styles.modalContent, { backgroundColor: colors.bgSecondary }]}>
+            <View style={styles.modalHandle} />
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+              Nouvelle playlist
+            </Text>
+
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.bgElevated, color: colors.textPrimary }]}
+              placeholder="Nom de la playlist"
+              placeholderTextColor={colors.textMuted}
+              value={newPlaylistName}
+              onChangeText={setNewPlaylistName}
+              autoFocus
+            />
+
+            <TextInput
+              style={[styles.input, styles.textArea, { backgroundColor: colors.bgElevated, color: colors.textPrimary }]}
+              placeholder="Description (optionnel)"
+              placeholderTextColor={colors.textMuted}
+              value={newPlaylistDescription}
+              onChangeText={setNewPlaylistDescription}
+              multiline
+              numberOfLines={3}
+            />
+
+            <View style={styles.modalActions}>
+              <Button
+                title="Annuler"
+                variant="outline"
+                onPress={() => setShowCreateModal(false)}
+                style={styles.modalButton}
+              />
+              <Button
+                title="Créer"
+                onPress={handleCreatePlaylist}
+                loading={isCreating}
+                style={styles.modalButton}
+              />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Analyze Playlist Modal */}
+      <Modal
+        visible={showAnalyzeModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAnalyzeModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalContainer}
+        >
+          <TouchableOpacity
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowAnalyzeModal(false)}
+          />
+          <View style={[styles.modalContent, { backgroundColor: colors.bgSecondary }]}>
+            <View style={styles.modalHandle} />
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+              Analyser une playlist YouTube
+            </Text>
+
+            <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
+              Collez l'URL d'une playlist YouTube pour analyser toutes ses vidéos d'un coup.
+            </Text>
+
+            <TextInput
+              style={[styles.input, { backgroundColor: colors.bgElevated, color: colors.textPrimary }]}
+              placeholder="https://www.youtube.com/playlist?list=..."
+              placeholderTextColor={colors.textMuted}
+              value={playlistUrl}
+              onChangeText={setPlaylistUrl}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+            />
+
+            <View style={styles.modalActions}>
+              <Button
+                title="Annuler"
+                variant="outline"
+                onPress={() => setShowAnalyzeModal(false)}
+                style={styles.modalButton}
+              />
+              <Button
+                title="Analyser"
+                onPress={handleAnalyzePlaylist}
+                loading={isAnalyzing}
+                style={styles.modalButton}
+              />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -180,10 +468,41 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  actionsContainer: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+  },
+  actionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.md,
+  },
+  actionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionInfo: {
+    flex: 1,
+  },
+  actionTitle: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+  },
+  actionSubtitle: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.body,
+    marginTop: 2,
+  },
   statsContainer: {
     flexDirection: 'row',
     paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
+    paddingVertical: Spacing.sm,
     gap: Spacing.md,
   },
   statItem: {
@@ -201,6 +520,13 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
+  },
+  sectionTitle: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+    paddingBottom: Spacing.sm,
   },
   loadingContainer: {
     flex: 1,
@@ -237,7 +563,7 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  thumbnailPlaceholder: {
+  thumbnailImage: {
     width: '50%',
     height: '50%',
   },
@@ -256,9 +582,63 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
     marginBottom: Spacing.xs,
   },
-  playlistCount: {
-    fontSize: Typography.fontSize.xs,
+  playlistMeta: {
+    flexDirection: 'row',
+    marginTop: Spacing.xs,
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: Spacing.xxl,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: 'rgba(150,150,150,0.3)',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginVertical: Spacing.md,
+  },
+  modalTitle: {
+    fontSize: Typography.fontSize.xl,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    marginBottom: Spacing.md,
+  },
+  modalDescription: {
+    fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
+    marginBottom: Spacing.lg,
+    lineHeight: Typography.fontSize.sm * 1.5,
+  },
+  input: {
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.md,
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.body,
+    marginBottom: Spacing.md,
+  },
+  textArea: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  modalButton: {
+    flex: 1,
   },
 });
 

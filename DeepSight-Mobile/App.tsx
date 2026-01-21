@@ -49,13 +49,14 @@ export default function App() {
   useEffect(() => {
     async function prepare() {
       try {
-        // Pre-load fonts
+        // Pre-load custom fonts
         await Font.loadAsync({
-          // You can add custom fonts here
-          // 'DMSans-Regular': require('./src/assets/fonts/DMSans-Regular.ttf'),
-          // 'DMSans-Medium': require('./src/assets/fonts/DMSans-Medium.ttf'),
-          // 'DMSans-SemiBold': require('./src/assets/fonts/DMSans-SemiBold.ttf'),
-          // 'DMSans-Bold': require('./src/assets/fonts/DMSans-Bold.ttf'),
+          'DMSans-Regular': require('./src/assets/fonts/DMSans-Regular.ttf'),
+          'DMSans-Medium': require('./src/assets/fonts/DMSans-Medium.ttf'),
+          'DMSans-SemiBold': require('./src/assets/fonts/DMSans-SemiBold.ttf'),
+          'DMSans-Bold': require('./src/assets/fonts/DMSans-Bold.ttf'),
+          'Cormorant-Bold': require('./src/assets/fonts/CormorantGaramond-Bold.ttf'),
+          'JetBrainsMono-Regular': require('./src/assets/fonts/JetBrainsMono-Regular.ttf'),
         });
 
         // Artificially delay for a smoother experience

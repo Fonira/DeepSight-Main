@@ -8,7 +8,12 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "push": "node scripts/git-push.js",
+    "push:wait": "node scripts/git-push.js --wait",
+    "push:status": "node scripts/git-push-status.js",
+    "p": "node scripts/git-push.js",
+    "ps": "node scripts/git-push-status.js"
   },
   "dependencies": {
     "@sentry/react": "^8.0.0",

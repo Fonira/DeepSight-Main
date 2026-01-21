@@ -25,6 +25,14 @@ import { Image } from 'expo-image';
 import { useTheme } from '../contexts/ThemeContext';
 import { videoApi, chatApi, studyApi, exportApi } from '../services/api';
 import { Header, Card, Badge, Button } from '../components';
+import { QuizComponent, MindMapComponent } from '../components/study';
+import type { QuizQuestion, MindMapData, MindMapNode } from '../components/study';
+import { ExportOptions } from '../components/export';
+import { AudioPlayer } from '../components/audio';
+import { FactCheckButton } from '../components/factcheck';
+import { WebEnrichment } from '../components/enrichment';
+import { CitationExport } from '../components/citation';
+import { TournesolWidget } from '../components/tournesol';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { formatDuration, formatDate } from '../utils/formatters';
 import type { RootStackParamList, AnalysisSummary, ChatMessage } from '../types';
@@ -65,6 +73,29 @@ export const AnalysisScreen: React.FC = () => {
   const [currentFlashcardIndex, setCurrentFlashcardIndex] = useState(0);
   const [showFlashcardAnswer, setShowFlashcardAnswer] = useState(false);
   const [isLoadingTools, setIsLoadingTools] = useState(false);
+
+  // Quiz state
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
+  const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
+
+  // Mind Map state
+  const [mindMapData, setMindMapData] = useState<MindMapData | null>(null);
+  const [isLoadingMindMap, setIsLoadingMindMap] = useState(false);
+  const [showMindMap, setShowMindMap] = useState(false);
+
+  // Active study tool
+  type StudyToolType = 'flashcards' | 'quiz' | 'mindmap' | null;
+  const [activeStudyTool, setActiveStudyTool] = useState<StudyToolType>(null);
+
+  // Export modal state
+  const [showExportModal, setShowExportModal] = useState(false);
+
+  // Audio player state
+  const [showAudioPlayer, setShowAudioPlayer] = useState(false);
+
+  // Citation modal state
+  const [showCitationModal, setShowCitationModal] = useState(false);
 
   // Load analysis data
   const loadAnalysis = useCallback(async () => {
@@ -190,6 +221,7 @@ export const AnalysisScreen: React.FC = () => {
     if (!summary?.id || isLoadingTools) return;
 
     setIsLoadingTools(true);
+    setActiveStudyTool('flashcards');
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       const result = await studyApi.generateFlashcards(summary.id);
@@ -198,9 +230,100 @@ export const AnalysisScreen: React.FC = () => {
       setShowFlashcardAnswer(false);
     } catch (err) {
       Alert.alert('Erreur', 'Impossible de générer les flashcards');
+      setActiveStudyTool(null);
     } finally {
       setIsLoadingTools(false);
     }
+  };
+
+  // Generate Quiz
+  const handleGenerateQuiz = async () => {
+    if (!summary?.id || isLoadingQuiz) return;
+
+    setIsLoadingQuiz(true);
+    setActiveStudyTool('quiz');
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const result = await studyApi.generateQuiz(summary.id, 5);
+      // Transform API response to QuizQuestion format
+      const questions: QuizQuestion[] = (result.quiz || []).map((q: any) => ({
+        question: q.question,
+        options: q.options,
+        correct: q.correct,
+        explanation: q.explanation || '',
+      }));
+      setQuizQuestions(questions);
+      setShowQuiz(true);
+    } catch (err) {
+      Alert.alert('Erreur', 'Impossible de générer le quiz');
+      setActiveStudyTool(null);
+    } finally {
+      setIsLoadingQuiz(false);
+    }
+  };
+
+  // Generate Mind Map
+  const handleGenerateMindMap = async () => {
+    if (!summary?.id || isLoadingMindMap) return;
+
+    setIsLoadingMindMap(true);
+    setActiveStudyTool('mindmap');
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const result = await studyApi.generateMindmap(summary.id);
+
+      // Parse the mindmap response (assuming it returns structured data or text)
+      // If it's just text, we'll create a simple mind map from concepts
+      let mapData: MindMapData;
+
+      if (typeof result.mindmap === 'string') {
+        // Create mind map from concepts if mindmap is just text
+        const nodes: MindMapNode[] = [
+          { id: 'main', label: summary.title || 'Sujet principal', type: 'main' },
+        ];
+
+        // Add concepts as secondary nodes
+        concepts.slice(0, 6).forEach((concept, index) => {
+          nodes.push({
+            id: `secondary-${index}`,
+            label: concept.name,
+            type: 'secondary',
+          });
+        });
+
+        // Add more concepts as tertiary nodes
+        concepts.slice(6, 12).forEach((concept, index) => {
+          nodes.push({
+            id: `tertiary-${index}`,
+            label: concept.name,
+            type: 'tertiary',
+          });
+        });
+
+        mapData = {
+          title: summary.title || 'Carte Mentale',
+          nodes,
+        };
+      } else {
+        // Use structured response
+        mapData = result.mindmap as MindMapData;
+      }
+
+      setMindMapData(mapData);
+      setShowMindMap(true);
+    } catch (err) {
+      Alert.alert('Erreur', 'Impossible de générer la carte mentale');
+      setActiveStudyTool(null);
+    } finally {
+      setIsLoadingMindMap(false);
+    }
+  };
+
+  // Reset study tool
+  const handleResetStudyTool = () => {
+    setActiveStudyTool(null);
+    setShowQuiz(false);
+    setShowMindMap(false);
   };
 
   // Share summary
@@ -386,6 +509,13 @@ export const AnalysisScreen: React.FC = () => {
           <Text style={[styles.dateText, { color: colors.textMuted }]}>
             Analysé le {formatDate(summary?.createdAt || '')}
           </Text>
+
+          {/* Tournesol Widget */}
+          {summary?.videoId && (
+            <View style={{ marginTop: Spacing.lg }}>
+              <TournesolWidget videoId={summary.videoId} />
+            </View>
+          )}
         </ScrollView>
       )}
 
@@ -397,9 +527,18 @@ export const AnalysisScreen: React.FC = () => {
           {concepts.length > 0 ? (
             concepts.map((concept, index) => (
               <Card key={index} variant="elevated" style={styles.conceptCard}>
-                <Text style={[styles.conceptName, { color: colors.accentPrimary }]}>
-                  {concept.name}
-                </Text>
+                <View style={styles.conceptHeader}>
+                  <Text style={[styles.conceptName, { color: colors.accentPrimary, flex: 1 }]}>
+                    {concept.name}
+                  </Text>
+                  {summary && (
+                    <WebEnrichment
+                      summaryId={summary.id}
+                      conceptName={concept.name}
+                      compact
+                    />
+                  )}
+                </View>
                 <Text style={[styles.conceptDefinition, { color: colors.textSecondary }]}>
                   {concept.definition}
                 </Text>
@@ -485,74 +624,309 @@ export const AnalysisScreen: React.FC = () => {
       )}
 
       {activeTab === 'tools' && (
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
-        >
-          {/* Flashcards Section */}
-          <Text style={[styles.toolsTitle, { color: colors.textPrimary }]}>Flashcards</Text>
-
-          {flashcards.length === 0 ? (
-            <Button
-              title={isLoadingTools ? 'Génération...' : 'Générer des flashcards'}
-              onPress={handleGenerateFlashcards}
-              loading={isLoadingTools}
-              fullWidth
-              variant="outline"
-              style={styles.generateButton}
-            />
-          ) : (
-            <View style={styles.flashcardsContainer}>
-              <TouchableOpacity
-                style={[styles.flashcard, { backgroundColor: colors.bgElevated }]}
-                onPress={() => setShowFlashcardAnswer(!showFlashcardAnswer)}
-              >
-                <Text style={[styles.flashcardLabel, { color: colors.textTertiary }]}>
-                  {showFlashcardAnswer ? 'Réponse' : 'Question'} ({currentFlashcardIndex + 1}/{flashcards.length})
-                </Text>
-                <Text style={[styles.flashcardContent, { color: colors.textPrimary }]}>
-                  {showFlashcardAnswer
-                    ? flashcards[currentFlashcardIndex]?.back
-                    : flashcards[currentFlashcardIndex]?.front}
-                </Text>
-                <Text style={[styles.flashcardHint, { color: colors.textMuted }]}>
-                  Touchez pour retourner
-                </Text>
-              </TouchableOpacity>
-
-              <View style={styles.flashcardNav}>
-                <TouchableOpacity
-                  style={[styles.flashcardNavButton, { backgroundColor: colors.bgElevated }]}
-                  onPress={() => {
-                    setCurrentFlashcardIndex(Math.max(0, currentFlashcardIndex - 1));
-                    setShowFlashcardAnswer(false);
-                  }}
-                  disabled={currentFlashcardIndex === 0}
-                >
-                  <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.flashcardNavButton, { backgroundColor: colors.bgElevated }]}
-                  onPress={() => {
-                    setCurrentFlashcardIndex(Math.min(flashcards.length - 1, currentFlashcardIndex + 1));
-                    setShowFlashcardAnswer(false);
-                  }}
-                  disabled={currentFlashcardIndex === flashcards.length - 1}
-                >
-                  <Ionicons name="chevron-forward" size={24} color={colors.textPrimary} />
-                </TouchableOpacity>
-              </View>
-            </View>
+        <View style={styles.toolsContainer}>
+          {/* Back button when a tool is active */}
+          {activeStudyTool && (
+            <TouchableOpacity
+              style={[styles.backToTools, { backgroundColor: colors.bgElevated }]}
+              onPress={handleResetStudyTool}
+            >
+              <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+              <Text style={[styles.backToToolsText, { color: colors.textPrimary }]}>
+                Retour aux outils
+              </Text>
+            </TouchableOpacity>
           )}
 
-          {/* More tools coming soon */}
-          <View style={[styles.comingSoon, { borderColor: colors.border }]}>
-            <Ionicons name="construct-outline" size={24} color={colors.textTertiary} />
-            <Text style={[styles.comingSoonText, { color: colors.textSecondary }]}>
-              Plus d'outils bientôt : Quiz, Mind Maps, Export PDF
-            </Text>
-          </View>
-        </ScrollView>
+          {/* Tool Selection */}
+          {!activeStudyTool && (
+            <ScrollView
+              style={styles.content}
+              contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+            >
+              <Text style={[styles.toolsTitle, { color: colors.textPrimary }]}>
+                Outils d'étude
+              </Text>
+
+              {/* Flashcards Button */}
+              <TouchableOpacity
+                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
+                onPress={handleGenerateFlashcards}
+                disabled={isLoadingTools}
+              >
+                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.accentPrimary}20` }]}>
+                  <Ionicons name="albums-outline" size={28} color={colors.accentPrimary} />
+                </View>
+                <View style={styles.toolInfo}>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Flashcards</Text>
+                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
+                    Cartes de révision question/réponse
+                  </Text>
+                </View>
+                {isLoadingTools && <ActivityIndicator size="small" color={colors.accentPrimary} />}
+                {!isLoadingTools && flashcards.length > 0 && (
+                  <Badge label={`${flashcards.length}`} variant="primary" />
+                )}
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+
+              {/* Quiz Button */}
+              <TouchableOpacity
+                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
+                onPress={handleGenerateQuiz}
+                disabled={isLoadingQuiz}
+              >
+                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.accentWarning}20` }]}>
+                  <Ionicons name="help-circle-outline" size={28} color={colors.accentWarning} />
+                </View>
+                <View style={styles.toolInfo}>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Quiz</Text>
+                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
+                    Testez vos connaissances avec un quiz
+                  </Text>
+                </View>
+                {isLoadingQuiz && <ActivityIndicator size="small" color={colors.accentWarning} />}
+                {!isLoadingQuiz && quizQuestions.length > 0 && (
+                  <Badge label={`${quizQuestions.length}Q`} variant="warning" />
+                )}
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+
+              {/* Mind Map Button */}
+              <TouchableOpacity
+                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
+                onPress={handleGenerateMindMap}
+                disabled={isLoadingMindMap}
+              >
+                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.accentSuccess}20` }]}>
+                  <Ionicons name="git-network-outline" size={28} color={colors.accentSuccess} />
+                </View>
+                <View style={styles.toolInfo}>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Carte Mentale</Text>
+                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
+                    Visualisez les concepts en diagramme
+                  </Text>
+                </View>
+                {isLoadingMindMap && <ActivityIndicator size="small" color={colors.accentSuccess} />}
+                {!isLoadingMindMap && mindMapData && (
+                  <Badge label="Prêt" variant="success" />
+                )}
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+
+              {/* Verification Section */}
+              <Text style={[styles.toolsSectionTitle, { color: colors.textPrimary }]}>
+                Vérification
+              </Text>
+
+              {summary && (
+                <>
+                  <FactCheckButton summaryId={summary.id} />
+                  <View style={{ height: Spacing.sm }} />
+                  <WebEnrichment summaryId={summary.id} />
+                </>
+              )}
+
+              {/* Export Section */}
+              <Text style={[styles.toolsSectionTitle, { color: colors.textPrimary }]}>
+                Exporter
+              </Text>
+
+              <TouchableOpacity
+                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
+                onPress={() => setShowExportModal(true)}
+              >
+                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.accentSecondary}20` }]}>
+                  <Ionicons name="download-outline" size={28} color={colors.accentSecondary} />
+                </View>
+                <View style={styles.toolInfo}>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Exporter</Text>
+                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
+                    PDF, Markdown ou texte brut
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
+                onPress={handleShare}
+              >
+                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.textTertiary}20` }]}>
+                  <Ionicons name="share-outline" size={28} color={colors.textTertiary} />
+                </View>
+                <View style={styles.toolInfo}>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Partager</Text>
+                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
+                    Partagez le résumé avec vos apps
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
+                onPress={handleCopy}
+              >
+                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.textTertiary}20` }]}>
+                  <Ionicons name="copy-outline" size={28} color={colors.textTertiary} />
+                </View>
+                <View style={styles.toolInfo}>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Copier</Text>
+                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
+                    Copiez le contenu dans le presse-papiers
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+
+              {/* Citation Button */}
+              <TouchableOpacity
+                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
+                onPress={() => setShowCitationModal(true)}
+              >
+                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.accentPrimary}20` }]}>
+                  <Ionicons name="document-text-outline" size={28} color={colors.accentPrimary} />
+                </View>
+                <View style={styles.toolInfo}>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Citation</Text>
+                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
+                    APA, MLA, Chicago, Harvard
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+
+              {/* Audio Section */}
+              <Text style={[styles.toolsSectionTitle, { color: colors.textPrimary }]}>
+                Audio
+              </Text>
+
+              <TouchableOpacity
+                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
+                onPress={() => setShowAudioPlayer(true)}
+              >
+                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.accentInfo}20` }]}>
+                  <Ionicons name="volume-high-outline" size={28} color={colors.accentInfo} />
+                </View>
+                <View style={styles.toolInfo}>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Écouter</Text>
+                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
+                    Écoutez le résumé avec TTS
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+              </TouchableOpacity>
+            </ScrollView>
+          )}
+
+          {/* Flashcards Display */}
+          {activeStudyTool === 'flashcards' && flashcards.length > 0 && (
+            <ScrollView
+              style={styles.content}
+              contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+            >
+              <View style={styles.flashcardsContainer}>
+                <TouchableOpacity
+                  style={[styles.flashcard, { backgroundColor: colors.bgElevated }]}
+                  onPress={() => setShowFlashcardAnswer(!showFlashcardAnswer)}
+                >
+                  <Text style={[styles.flashcardLabel, { color: colors.textTertiary }]}>
+                    {showFlashcardAnswer ? 'Réponse' : 'Question'} ({currentFlashcardIndex + 1}/{flashcards.length})
+                  </Text>
+                  <Text style={[styles.flashcardContent, { color: colors.textPrimary }]}>
+                    {showFlashcardAnswer
+                      ? flashcards[currentFlashcardIndex]?.back
+                      : flashcards[currentFlashcardIndex]?.front}
+                  </Text>
+                  <Text style={[styles.flashcardHint, { color: colors.textMuted }]}>
+                    Touchez pour retourner
+                  </Text>
+                </TouchableOpacity>
+
+                <View style={styles.flashcardNav}>
+                  <TouchableOpacity
+                    style={[styles.flashcardNavButton, { backgroundColor: colors.bgElevated }]}
+                    onPress={() => {
+                      setCurrentFlashcardIndex(Math.max(0, currentFlashcardIndex - 1));
+                      setShowFlashcardAnswer(false);
+                    }}
+                    disabled={currentFlashcardIndex === 0}
+                  >
+                    <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.flashcardNavButton, { backgroundColor: colors.bgElevated }]}
+                    onPress={() => {
+                      setCurrentFlashcardIndex(Math.min(flashcards.length - 1, currentFlashcardIndex + 1));
+                      setShowFlashcardAnswer(false);
+                    }}
+                    disabled={currentFlashcardIndex === flashcards.length - 1}
+                  >
+                    <Ionicons name="chevron-forward" size={24} color={colors.textPrimary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </ScrollView>
+          )}
+
+          {/* Quiz Display */}
+          {activeStudyTool === 'quiz' && (
+            <QuizComponent
+              questions={quizQuestions}
+              isLoading={isLoadingQuiz}
+              onComplete={(score, total) => {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }}
+              onRetry={() => {
+                setQuizQuestions([]);
+                handleGenerateQuiz();
+              }}
+            />
+          )}
+
+          {/* Mind Map Display */}
+          {activeStudyTool === 'mindmap' && (
+            <MindMapComponent
+              data={mindMapData}
+              isLoading={isLoadingMindMap}
+            />
+          )}
+        </View>
+      )}
+
+      {/* Export Modal */}
+      {summary && (
+        <ExportOptions
+          visible={showExportModal}
+          onClose={() => setShowExportModal(false)}
+          summaryId={summary.id}
+          title={summary.title}
+        />
+      )}
+
+      {/* Audio Player Modal */}
+      {summary && (
+        <AudioPlayer
+          visible={showAudioPlayer}
+          onClose={() => setShowAudioPlayer(false)}
+          text={summary.content || ''}
+          title={summary.title}
+        />
+      )}
+
+      {/* Citation Modal */}
+      {summary && summary.videoInfo && (
+        <CitationExport
+          visible={showCitationModal}
+          onClose={() => setShowCitationModal(false)}
+          videoInfo={{
+            title: summary.title,
+            channel: summary.videoInfo.channel || 'Unknown',
+            publishedAt: summary.videoInfo.publishedAt,
+            videoId: summary.videoId || '',
+          }}
+        />
       )}
     </View>
   );
@@ -691,10 +1065,15 @@ const styles = StyleSheet.create({
   conceptCard: {
     marginBottom: Spacing.md,
   },
+  conceptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
   conceptName: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.bodySemiBold,
-    marginBottom: Spacing.xs,
   },
   conceptDefinition: {
     fontSize: Typography.fontSize.sm,
@@ -769,10 +1148,59 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  toolsContainer: {
+    flex: 1,
+  },
+  backToTools: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    marginHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  backToToolsText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.bodyMedium,
+  },
   toolsTitle: {
     fontSize: Typography.fontSize.lg,
     fontFamily: Typography.fontFamily.bodySemiBold,
     marginBottom: Spacing.md,
+  },
+  toolsSectionTitle: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.md,
+  },
+  toolCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.sm,
+    gap: Spacing.md,
+  },
+  toolIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toolInfo: {
+    flex: 1,
+  },
+  toolName: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    marginBottom: 2,
+  },
+  toolDescription: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.body,
   },
   generateButton: {
     marginBottom: Spacing.xl,
@@ -816,20 +1244,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  comingSoon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: Spacing.lg,
-    borderWidth: 1,
-    borderRadius: BorderRadius.lg,
-    borderStyle: 'dashed',
-    gap: Spacing.md,
-  },
-  comingSoonText: {
-    flex: 1,
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.body,
   },
 });
 

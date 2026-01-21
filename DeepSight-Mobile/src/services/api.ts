@@ -242,33 +242,13 @@ export const authApi = {
     return response;
   },
 
-  async googleLogin(redirectUri?: string): Promise<{ url: string }> {
-    return request('/api/auth/google/login', {
-      method: 'POST',
-      body: redirectUri ? { redirect_uri: redirectUri, platform: 'mobile' } : undefined,
-      requiresAuth: false,
-    });
-  },
-
-  async googleCallback(code: string): Promise<{ access_token: string; refresh_token: string; user: User }> {
-    const response = await request<{ access_token: string; refresh_token: string; user: User }>(
-      '/api/auth/google/callback',
-      {
-        method: 'POST',
-        body: { code },
-        requiresAuth: false,
-      }
-    );
-    await tokenStorage.setTokens(response.access_token, response.refresh_token);
-    return response;
-  },
-
-  async googleTokenLogin(accessToken: string): Promise<{ access_token: string; refresh_token: string; user: User }> {
+  // Google OAuth: exchange Google access token for session tokens
+  async googleTokenLogin(googleAccessToken: string): Promise<{ access_token: string; refresh_token: string; user: User }> {
     const response = await request<{ access_token: string; refresh_token: string; user: User }>(
       '/api/auth/google/token',
       {
         method: 'POST',
-        body: { access_token: accessToken },
+        body: { access_token: googleAccessToken },
         requiresAuth: false,
       }
     );
