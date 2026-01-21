@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = 'https://backend-search-v2-production.up.railway.app';
+export const API_BASE_URL = 'https://deep-sight-backend-v3-production.up.railway.app';
 
 // App Configuration
 export const APP_NAME = 'Deep Sight';
