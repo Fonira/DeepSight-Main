@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,29 +15,62 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Header, Card, Avatar, Button, Input } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
+import { userApi, authApi, ApiError } from '../services/api';
 
 export const AccountScreen: React.FC = () => {
   const { colors } = useTheme();
-  const { user } = useAuth();
+  const { user, refreshUser, logout, forgotPassword } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [username, setUsername] = useState(user?.username || '');
   const [email, setEmail] = useState(user?.email || '');
 
-  const handleSave = () => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Succès', 'Vos informations ont été mises à jour.');
-    setIsEditing(false);
+  const handleSave = async () => {
+    if (!username.trim()) {
+      Alert.alert('Erreur', 'Le nom d\'utilisateur ne peut pas être vide.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await userApi.updateProfile({ username: username.trim() });
+      await refreshUser();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Alert.alert('Succès', 'Vos informations ont été mises à jour.');
+      setIsEditing(false);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Erreur lors de la mise à jour';
+      Alert.alert('Erreur', message);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleChangePassword = () => {
+    if (!user?.email) {
+      Alert.alert('Erreur', 'Aucun email associé à ce compte.');
+      return;
+    }
+
     Alert.alert(
       'Changer le mot de passe',
-      'Un email vous sera envoyé pour réinitialiser votre mot de passe.',
+      `Un email sera envoyé à ${user.email} pour réinitialiser votre mot de passe.`,
       [
         { text: 'Annuler', style: 'cancel' },
-        { text: 'Envoyer', onPress: () => Alert.alert('Email envoyé', 'Vérifiez votre boîte mail.') },
+        {
+          text: 'Envoyer',
+          onPress: async () => {
+            try {
+              await forgotPassword(user.email);
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Alert.alert('Email envoyé', 'Vérifiez votre boîte mail pour réinitialiser votre mot de passe.');
+            } catch (err) {
+              Alert.alert('Erreur', 'Impossible d\'envoyer l\'email. Réessayez plus tard.');
+            }
+          }
+        },
       ]
     );
   };
@@ -44,13 +78,27 @@ export const AccountScreen: React.FC = () => {
   const handleDeleteAccount = () => {
     Alert.alert(
       'Supprimer le compte',
-      'Cette action est irréversible. Toutes vos données seront supprimées.',
+      'Cette action est irréversible. Toutes vos données seront supprimées définitivement.',
       [
         { text: 'Annuler', style: 'cancel' },
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: () => Alert.alert('Compte supprimé', 'Votre compte a été supprimé.'),
+          onPress: async () => {
+            try {
+              // Note: Backend may not have delete account endpoint yet
+              // For now, just log the user out
+              Alert.alert(
+                'Confirmation',
+                'Pour supprimer votre compte, veuillez contacter le support à support@deepsight.app',
+                [
+                  { text: 'OK', onPress: () => logout() }
+                ]
+              );
+            } catch (err) {
+              Alert.alert('Erreur', 'Impossible de supprimer le compte.');
+            }
+          },
         },
       ]
     );
@@ -96,6 +144,8 @@ export const AccountScreen: React.FC = () => {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 leftIcon="mail-outline"
+                editable={false}
+                hint="L'email ne peut pas être modifié"
               />
               <View style={styles.editActions}>
                 <Button
@@ -103,11 +153,14 @@ export const AccountScreen: React.FC = () => {
                   variant="outline"
                   onPress={() => setIsEditing(false)}
                   style={styles.editButton}
+                  disabled={isSaving}
                 />
                 <Button
-                  title="Enregistrer"
+                  title={isSaving ? "Enregistrement..." : "Enregistrer"}
                   onPress={handleSave}
                   style={styles.editButton}
+                  disabled={isSaving}
+                  loading={isSaving}
                 />
               </View>
             </>

@@ -2,7 +2,14 @@
 export const API_BASE_URL = 'https://deep-sight-backend-v3-production.up.railway.app';
 
 // Google OAuth Configuration
+// Web Client ID (used for Expo Go and web)
 export const GOOGLE_CLIENT_ID = '763654536492-8hkdd3n31tqeodnhcak6ef8asu4v287j.apps.googleusercontent.com';
+// Android Client ID (for standalone builds - create in Google Cloud Console)
+export const GOOGLE_ANDROID_CLIENT_ID = '763654536492-8hkdd3n31tqeodnhcak6ef8asu4v287j.apps.googleusercontent.com';
+// iOS Client ID (for standalone builds - create in Google Cloud Console)
+export const GOOGLE_IOS_CLIENT_ID = '763654536492-8hkdd3n31tqeodnhcak6ef8asu4v287j.apps.googleusercontent.com';
+// Expo Client ID (same as web for Expo Go)
+export const GOOGLE_EXPO_CLIENT_ID = GOOGLE_CLIENT_ID;
 
 // App Configuration
 export const APP_NAME = 'Deep Sight';

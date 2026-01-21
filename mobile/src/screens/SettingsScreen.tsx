@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,11 +11,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Header, Card } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
-import { ANALYSIS_MODES, AI_MODELS, LANGUAGES } from '../constants/config';
+import { ANALYSIS_MODES, AI_MODELS, LANGUAGES, STORAGE_KEYS } from '../constants/config';
+import { userApi } from '../services/api';
 
 interface SettingItemProps {
   icon: keyof typeof Ionicons.glyphMap;
@@ -66,19 +68,63 @@ const SettingItem: React.FC<SettingItemProps> = ({
 
 export const SettingsScreen: React.FC = () => {
   const { colors, isDark, toggleTheme } = useTheme();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
+  // Local state for settings
+  const [selectedMode, setSelectedMode] = useState(user?.default_mode || 'synthesis');
+  const [selectedModel, setSelectedModel] = useState(user?.default_model || 'gpt-4o-mini');
+  const [selectedLanguage, setSelectedLanguage] = useState('fr');
+
+  // Load saved settings on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const savedMode = await AsyncStorage.getItem('deepsight_default_mode');
+        const savedModel = await AsyncStorage.getItem('deepsight_default_model');
+        const savedLang = await AsyncStorage.getItem(STORAGE_KEYS.LANGUAGE);
+
+        if (savedMode) setSelectedMode(savedMode);
+        if (savedModel) setSelectedModel(savedModel);
+        if (savedLang) setSelectedLanguage(savedLang);
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    };
+    loadSettings();
+  }, []);
+
+  const savePreference = async (key: string, value: string) => {
+    try {
+      await AsyncStorage.setItem(key, value);
+      // Try to update on server if user is authenticated
+      if (user) {
+        try {
+          await userApi.updatePreferences({ [key]: value });
+          await refreshUser();
+        } catch {
+          // Server update failed, but local save succeeded
+        }
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) {
+      console.error('Failed to save preference:', error);
+      Alert.alert('Erreur', 'Impossible de sauvegarder le paramètre.');
+    }
+  };
+
   const handleSelectMode = () => {
-    const options = ANALYSIS_MODES.map(mode => mode.label);
     Alert.alert(
       'Mode d\'analyse par défaut',
       'Sélectionnez votre mode préféré',
       [
-        ...options.map(option => ({
-          text: option,
-          onPress: () => {},
+        ...ANALYSIS_MODES.map(mode => ({
+          text: mode.label,
+          onPress: async () => {
+            setSelectedMode(mode.id);
+            await savePreference('deepsight_default_mode', mode.id);
+          },
         })),
         { text: 'Annuler', style: 'cancel' as const },
       ]
@@ -86,14 +132,16 @@ export const SettingsScreen: React.FC = () => {
   };
 
   const handleSelectModel = () => {
-    const options = AI_MODELS.slice(0, 4).map(model => `${model.label} (${model.provider})`);
     Alert.alert(
       'Modèle IA par défaut',
       'Sélectionnez votre modèle préféré',
       [
-        ...options.map(option => ({
-          text: option,
-          onPress: () => {},
+        ...AI_MODELS.slice(0, 4).map(model => ({
+          text: `${model.label} (${model.provider})`,
+          onPress: async () => {
+            setSelectedModel(model.id);
+            await savePreference('deepsight_default_model', model.id);
+          },
         })),
         { text: 'Annuler', style: 'cancel' as const },
       ]
@@ -107,7 +155,10 @@ export const SettingsScreen: React.FC = () => {
       [
         ...LANGUAGES.map(lang => ({
           text: `${lang.flag} ${lang.label}`,
-          onPress: () => {},
+          onPress: async () => {
+            setSelectedLanguage(lang.code);
+            await savePreference(STORAGE_KEYS.LANGUAGE, lang.code);
+          },
         })),
         { text: 'Annuler', style: 'cancel' as const },
       ]
@@ -140,12 +191,12 @@ export const SettingsScreen: React.FC = () => {
   };
 
   const getDefaultModeLabel = () => {
-    const mode = ANALYSIS_MODES.find(m => m.id === (user?.default_mode || 'synthesis'));
+    const mode = ANALYSIS_MODES.find(m => m.id === selectedMode);
     return mode?.label || 'Synthèse';
   };
 
   const getDefaultModelLabel = () => {
-    const model = AI_MODELS.find(m => m.id === (user?.default_model || 'gpt-4o-mini'));
+    const model = AI_MODELS.find(m => m.id === selectedModel);
     return model?.label || 'GPT-4o Mini';
   };
 
@@ -213,7 +264,7 @@ export const SettingsScreen: React.FC = () => {
           <SettingItem
             icon="language-outline"
             label="Langue"
-            value="Français"
+            value={LANGUAGES.find(l => l.code === selectedLanguage)?.label || 'Français'}
             onPress={handleSelectLanguage}
           />
         </Card>

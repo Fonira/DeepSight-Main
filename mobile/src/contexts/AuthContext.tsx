@@ -1,9 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { Platform } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 import { authApi, ApiError } from '../services/api';
 import { tokenStorage, userStorage } from '../utils/storage';
-import { GOOGLE_CLIENT_ID } from '../constants/config';
+import {
+  GOOGLE_CLIENT_ID,
+  GOOGLE_ANDROID_CLIENT_ID,
+  GOOGLE_IOS_CLIENT_ID,
+  GOOGLE_EXPO_CLIENT_ID
+} from '../constants/config';
 import type { User } from '../types';
 
 // Required for web browser auth session
@@ -34,17 +40,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const isAuthenticated = user !== null;
 
   // Google OAuth setup - gets access token directly from Google
-  const [, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
+  // Uses platform-specific client IDs for native builds
+  const [request, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
     webClientId: GOOGLE_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+    iosClientId: GOOGLE_IOS_CLIENT_ID,
+    expoClientId: GOOGLE_EXPO_CLIENT_ID,
     scopes: ['profile', 'email'],
   });
 
   // Handle Google OAuth response
   useEffect(() => {
-    if (googleResponse?.type === 'success' && googleResponse.authentication?.accessToken) {
+    if (!googleResponse) return;
+
+    if (googleResponse.type === 'success' && googleResponse.authentication?.accessToken) {
       handleGoogleToken(googleResponse.authentication.accessToken);
-    } else if (googleResponse?.type === 'error') {
-      setError('Échec de la connexion Google');
+    } else if (googleResponse.type === 'cancel' || googleResponse.type === 'dismiss') {
+      // User cancelled - don't show error, just reset loading
+      setIsLoading(false);
+    } else if (googleResponse.type === 'error') {
+      console.error('Google OAuth error:', googleResponse.error);
+      setError('Échec de la connexion Google. Veuillez réessayer.');
       setIsLoading(false);
     }
   }, [googleResponse]);
@@ -107,14 +123,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loginWithGoogle = useCallback(async () => {
     setError(null);
+
+    // Check if Google auth request is ready
+    if (!request) {
+      setError('Configuration Google OAuth en cours. Veuillez réessayer.');
+      return;
+    }
+
     setIsLoading(true);
     try {
-      await promptGoogleAsync();
+      const result = await promptGoogleAsync();
+      // If result is null or user cancelled, the useEffect will handle it
+      if (!result) {
+        setIsLoading(false);
+      }
     } catch (err) {
-      setError('Impossible de lancer la connexion Google');
+      console.error('Google login error:', err);
+      setError('Impossible de lancer la connexion Google. Vérifiez votre connexion.');
       setIsLoading(false);
     }
-  }, [promptGoogleAsync]);
+  }, [request, promptGoogleAsync]);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
     setIsLoading(true);

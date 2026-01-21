@@ -11,16 +11,21 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { historyApi } from '../services/api';
 import { Header, VideoCard, EmptyState } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
-import type { RootStackParamList, AnalysisSummary, HistoryFilters } from '../types';
+import type { RootStackParamList, MainTabParamList, AnalysisSummary, HistoryFilters } from '../types';
 
-type HistoryNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTabs'>;
+// Composite type for navigating to both tab screens and stack screens
+type HistoryNavigationProp = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, 'History'>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
 
 export const HistoryScreen: React.FC = () => {
   const { colors } = useTheme();
@@ -147,7 +152,7 @@ export const HistoryScreen: React.FC = () => {
             : 'Analysez votre première vidéo YouTube pour commencer'
         }
         actionLabel={!showFavoritesOnly && !searchQuery ? 'Analyser une vidéo' : undefined}
-        onAction={!showFavoritesOnly && !searchQuery ? () => (navigation as any).navigate('Dashboard') : undefined}
+        onAction={!showFavoritesOnly && !searchQuery ? () => navigation.navigate('Dashboard') : undefined}
       />
     );
   };
