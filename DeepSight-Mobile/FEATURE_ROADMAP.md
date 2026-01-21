@@ -1,6 +1,6 @@
 # DeepSight Mobile - Feature Roadmap
 
-## Current Status: Phase 2 Complete
+## Current Status: Phase 5 Complete (Robust First Version)
 
 ### Legend
 - ✅ Implemented
@@ -35,9 +35,9 @@
 ### 3. Study Tools (Priority: HIGH)
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Flashcards | ✅ | Basic flip cards |
-| Quiz | ❌ | Need to implement |
-| Mind Map | ❌ | Need SVG renderer |
+| Flashcards | ✅ | Card flip with navigation |
+| Quiz | ✅ | Interactive with animations |
+| Mind Map | ✅ | SVG radial visualization |
 
 ### 4. History & Favorites (Priority: MEDIUM)
 | Feature | Status | Notes |
@@ -51,24 +51,25 @@
 ### 5. Playlists (Priority: MEDIUM)
 | Feature | Status | Notes |
 |---------|--------|-------|
-| List Playlists | ❌ | Stub only |
-| Create Playlist | ❌ | Not implemented |
-| Analyze Playlist | ❌ | Not implemented |
-| Corpus Analysis | ❌ | Not implemented |
+| List Playlists | ✅ | With stats |
+| Create Playlist | ✅ | Modal form |
+| Analyze Playlist | ✅ | YouTube URL analysis |
+| Corpus Analysis | ⏳ | Backend integration needed |
 
 ### 6. Export (Priority: LOW)
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Share Text | ✅ | Native share |
-| Export PDF | ❌ | Need implementation |
-| Export Markdown | ❌ | Need implementation |
+| Export PDF | ✅ | File system + sharing |
+| Export Markdown | ✅ | File system + sharing |
+| Export Text | ✅ | File system + sharing |
 
 ### 7. TTS / Audio (Priority: LOW)
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Generate Audio | ❌ | Need expo-av |
-| Voice Selection | ❌ | Not implemented |
-| Audio Player | ❌ | Not implemented |
+| Generate Audio | ✅ | Via ttsApi |
+| Voice Selection | ✅ | 6 voices available |
+| Audio Player | ✅ | Full controls |
 
 ### 8. Fact-Checking (Priority: LOW)
 | Feature | Status | Notes |
@@ -130,32 +131,36 @@
 | Get Summary | GET /api/videos/summary/{id} | ✅ |
 | Get Concepts | GET /api/videos/concepts/{id}/enriched | ✅ |
 | Chat | POST /api/chat/ask | ✅ |
-| Generate Quiz | POST /api/study/quiz/{id} | ⏳ |
-| Generate Mindmap | POST /api/study/mindmap/{id} | ⏳ |
+| Generate Quiz | POST /api/study/quiz/{id} | ✅ |
+| Generate Mindmap | POST /api/study/mindmap/{id} | ✅ |
 | Generate Flashcards | POST /api/study/flashcards/{id} | ✅ |
-| Generate TTS | POST /api/tts/generate | ⏳ |
+| Generate TTS | POST /api/tts/generate | ✅ |
+| Get Voices | GET /api/tts/voices | ✅ |
 | Fact-check | POST /api/videos/summary/{id}/fact-check | ⏳ |
-| Export | GET /api/exports/{format}/{id} | ⏳ |
-| Playlists | GET /api/playlists | ⏳ |
+| Export | GET /api/exports/{format}/{id} | ✅ |
+| Playlists | GET /api/playlists | ✅ |
+| Create Playlist | POST /api/playlists | ✅ |
+| Analyze Playlist | POST /api/playlists/analyze | ✅ |
 
 ---
 
-## Files to Create/Modify
+## Files Created/Modified
 
-### Phase 3 Files
-- `src/components/study/QuizComponent.tsx` - Quiz display
-- `src/components/study/MindMapComponent.tsx` - Mind map SVG
-- `src/screens/AnalysisScreen.tsx` - Add quiz/mindmap to tools tab
+### Phase 3 Files (✅ Complete)
+- `src/components/study/QuizComponent.tsx` - Interactive quiz with animations
+- `src/components/study/MindMapComponent.tsx` - SVG radial mind map
+- `src/components/study/index.ts` - Exports for study components
+- `src/screens/AnalysisScreen.tsx` - Integrated quiz/mindmap in tools tab
 
-### Phase 4 Files
-- `src/screens/PlaylistsScreen.tsx` - Full implementation
-- `src/screens/PlaylistDetailScreen.tsx` - New screen
-- `src/components/playlist/PlaylistCard.tsx` - Playlist item
+### Phase 4 Files (✅ Complete)
+- `src/screens/PlaylistsScreen.tsx` - Full implementation with API
+- `src/services/api.ts` - Added playlist API methods
 
-### Phase 5 Files
-- `src/components/ExportOptions.tsx` - Export modal
-- `src/components/AudioPlayer.tsx` - TTS player
-- `src/hooks/useAudioPlayer.ts` - Audio logic
+### Phase 5 Files (✅ Complete)
+- `src/components/export/ExportOptions.tsx` - Export modal (PDF/MD/TXT)
+- `src/components/export/index.ts` - Export component exports
+- `src/components/audio/AudioPlayer.tsx` - TTS player with voice selection
+- `src/components/audio/index.ts` - Audio component exports
 
 ---
 
@@ -171,4 +176,4 @@ Before each commit:
 
 ---
 
-*Last updated: 21 January 2026*
+*Last updated: 21 January 2026 - Phase 5 Complete*
