@@ -10,6 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import {
+  LandingScreen,
   LoginScreen,
   RegisterScreen,
   ForgotPasswordScreen,
@@ -119,6 +120,11 @@ const AuthStack: React.FC = () => {
         animation: 'slide_from_right',
       }}
     >
+      <Stack.Screen
+        name="Landing"
+        component={LandingScreen}
+        options={{ animation: 'fade' }}
+      />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen

@@ -176,6 +176,7 @@ export interface Subscription {
 // Navigation Types
 export type RootStackParamList = {
   // Auth screens
+  Landing: undefined;
   Login: undefined;
   Register: undefined;
   ForgotPassword: undefined;
