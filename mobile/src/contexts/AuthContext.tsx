@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { Platform } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 import { authApi, ApiError } from '../services/api';
 import { tokenStorage, userStorage } from '../utils/storage';
 import {
@@ -41,12 +42,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Google OAuth setup - gets access token directly from Google
   // Uses platform-specific client IDs for native builds
+  // IMPORTANT: Use Expo auth proxy for Expo Go compatibility
+  const redirectUri = makeRedirectUri({
+    scheme: 'deepsight',
+    path: 'oauth',
+    // Use Expo auth proxy - required for Expo Go
+    // This generates: https://auth.expo.io/@maximeadmin/deepsight
+    useProxy: true,
+  });
+
   const [request, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
     webClientId: GOOGLE_CLIENT_ID,
     androidClientId: GOOGLE_ANDROID_CLIENT_ID,
     iosClientId: GOOGLE_IOS_CLIENT_ID,
     expoClientId: GOOGLE_EXPO_CLIENT_ID,
     scopes: ['profile', 'email'],
+    redirectUri,
   });
 
   // Handle Google OAuth response
