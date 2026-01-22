@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { Platform } from 'react-native';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
+import { makeRedirectUri } from 'expo-auth-session';
 import { authApi, ApiError } from '../services/api';
 import { tokenStorage, userStorage } from '../utils/storage';
 import {
@@ -41,12 +42,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Google OAuth setup - gets access token directly from Google
   // Uses platform-specific client IDs for native builds
+  // IMPORTANT: Use Expo auth proxy for Expo Go compatibility
+  // The proxy URL must be registered in Google Cloud Console
+  const EXPO_PROXY_REDIRECT_URI = 'https://auth.expo.io/@maximeadmin/deepsight';
+
+  // Use proxy for Expo Go, native scheme for standalone builds
+  const redirectUri = __DEV__
+    ? EXPO_PROXY_REDIRECT_URI  // Expo Go uses proxy
+    : makeRedirectUri({ scheme: 'deepsight', path: 'oauth' });  // Standalone uses native
+
   const [request, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
     webClientId: GOOGLE_CLIENT_ID,
     androidClientId: GOOGLE_ANDROID_CLIENT_ID,
     iosClientId: GOOGLE_IOS_CLIENT_ID,
     expoClientId: GOOGLE_EXPO_CLIENT_ID,
     scopes: ['profile', 'email'],
+    redirectUri,
   });
 
   // Handle Google OAuth response
@@ -132,7 +143,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     setIsLoading(true);
     try {
-      const result = await promptGoogleAsync();
+      // Use proxy in dev mode (Expo Go) for proper redirect handling
+      const result = await promptGoogleAsync({ useProxy: __DEV__ });
       // If result is null or user cancelled, the useEffect will handle it
       if (!result) {
         setIsLoading(false);

@@ -15,6 +15,7 @@ from .schemas import (
     UserRegister, UserLogin, RefreshTokenRequest, VerifyEmailRequest,
     ResendVerificationRequest, ForgotPasswordRequest, ResetPasswordRequest,
     ChangePasswordRequest, UpdatePreferencesRequest, GoogleCallbackRequest,
+    GoogleTokenRequest,
     UserResponse, TokenResponse, AuthUrlResponse, MessageResponse, QuotaResponse
 )
 from .service import (
@@ -459,14 +460,50 @@ async def google_callback_post(
     
     # Créer ou connecter (avec session unique)
     success, user, message, session_token = await login_or_register_google_user(session, google_user)
-    
+
     if not success or not user:
         raise HTTPException(status_code=400, detail=message)
-    
+
     # Tokens JWT avec session_token
     access_token = create_access_token(user.id, user.is_admin, session_token)
     refresh_token = create_refresh_token(user.id, session_token)
-    
+
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        user=UserResponse.model_validate(user)
+    )
+
+
+@router.post("/google/token", response_model=TokenResponse)
+async def google_token_login(
+    data: GoogleTokenRequest,
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Google OAuth pour mobile (Expo).
+    Accepte directement un access_token Google (pas un code d'autorisation).
+    Le mobile obtient le token via expo-auth-session puis l'envoie ici.
+    """
+    # Récupérer les infos utilisateur avec le token Google
+    google_user = await get_google_user_info(data.access_token)
+
+    if not google_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid Google access token or could not get user info"
+        )
+
+    # Créer ou connecter (avec session unique)
+    success, user, message, session_token = await login_or_register_google_user(session, google_user)
+
+    if not success or not user:
+        raise HTTPException(status_code=400, detail=message)
+
+    # Tokens JWT avec session_token
+    access_token = create_access_token(user.id, user.is_admin, session_token)
+    refresh_token = create_refresh_token(user.id, session_token)
+
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
