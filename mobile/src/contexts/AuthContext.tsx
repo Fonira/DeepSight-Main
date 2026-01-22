@@ -43,13 +43,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Google OAuth setup - gets access token directly from Google
   // Uses platform-specific client IDs for native builds
   // IMPORTANT: Use Expo auth proxy for Expo Go compatibility
-  const redirectUri = makeRedirectUri({
-    scheme: 'deepsight',
-    path: 'oauth',
-    // Use Expo auth proxy - required for Expo Go
-    // This generates: https://auth.expo.io/@maximeadmin/deepsight
-    useProxy: true,
-  });
+  // The proxy URL must be registered in Google Cloud Console
+  const EXPO_PROXY_REDIRECT_URI = 'https://auth.expo.io/@maximeadmin/deepsight';
+
+  // Use proxy for Expo Go, native scheme for standalone builds
+  const redirectUri = __DEV__
+    ? EXPO_PROXY_REDIRECT_URI  // Expo Go uses proxy
+    : makeRedirectUri({ scheme: 'deepsight', path: 'oauth' });  // Standalone uses native
 
   const [request, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
     webClientId: GOOGLE_CLIENT_ID,
@@ -143,7 +143,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     setIsLoading(true);
     try {
-      const result = await promptGoogleAsync();
+      // Use proxy in dev mode (Expo Go) for proper redirect handling
+      const result = await promptGoogleAsync({ useProxy: __DEV__ });
       // If result is null or user cancelled, the useEffect will handle it
       if (!result) {
         setIsLoading(false);
