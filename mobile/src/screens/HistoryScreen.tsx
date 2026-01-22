@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -106,6 +107,31 @@ export const HistoryScreen: React.FC = () => {
     }
   };
 
+  const handleDeletePress = (summary: AnalysisSummary) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      'Supprimer l\'analyse',
+      `Voulez-vous supprimer "${summary.title}" ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await historyApi.deleteSummary(summary.id);
+              setAnalyses((prev) => prev.filter((item) => item.id !== summary.id));
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch (error) {
+              console.error('Failed to delete summary:', error);
+              Alert.alert('Erreur', 'Impossible de supprimer l\'analyse');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const toggleFavoritesFilter = () => {
     Haptics.selectionAsync();
     setShowFavoritesOnly(!showFavoritesOnly);
@@ -117,6 +143,7 @@ export const HistoryScreen: React.FC = () => {
         video={item}
         onPress={() => handleVideoPress(item)}
         onFavoritePress={() => handleFavoritePress(item)}
+        onLongPress={() => handleDeletePress(item)}
         isFavorite={item.isFavorite}
       />
     ),

@@ -18,6 +18,7 @@ interface VideoCardProps {
   video: AnalysisSummary | VideoInfo;
   onPress?: () => void;
   onFavoritePress?: () => void;
+  onLongPress?: () => void;
   isFavorite?: boolean;
   showMode?: boolean;
   compact?: boolean;
@@ -27,6 +28,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   video,
   onPress,
   onFavoritePress,
+  onLongPress,
   isFavorite = false,
   showMode = true,
   compact = false,
@@ -74,6 +76,8 @@ export const VideoCard: React.FC<VideoCardProps> = ({
     <TouchableOpacity
       style={[styles.container, { backgroundColor: colors.bgCard }]}
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={500}
       activeOpacity={0.7}
     >
       <View style={styles.thumbnailContainer}>
