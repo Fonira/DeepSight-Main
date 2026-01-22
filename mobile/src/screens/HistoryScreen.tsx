@@ -41,6 +41,13 @@ export const HistoryScreen: React.FC = () => {
   const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Filter options
+  const modes = ['Standard', 'Approfondi', 'Expert'];
+  const categories = ['Éducation', 'Science', 'Technologie', 'Divertissement', 'Actualités', 'Autre'];
 
   const loadAnalyses = useCallback(async (pageNum: number = 1, reset: boolean = false) => {
     if (pageNum === 1) {
@@ -53,6 +60,8 @@ export const HistoryScreen: React.FC = () => {
       const filters: HistoryFilters = {
         search: searchQuery || undefined,
         favoritesOnly: showFavoritesOnly || undefined,
+        mode: selectedMode || undefined,
+        category: selectedCategory || undefined,
       };
 
       const response = await historyApi.getHistory(pageNum, 20, filters);
@@ -71,7 +80,7 @@ export const HistoryScreen: React.FC = () => {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [searchQuery, showFavoritesOnly]);
+  }, [searchQuery, showFavoritesOnly, selectedMode, selectedCategory]);
 
   useEffect(() => {
     loadAnalyses(1, true);
@@ -225,7 +234,94 @@ export const HistoryScreen: React.FC = () => {
             color={showFavoritesOnly ? '#FFFFFF' : colors.textTertiary}
           />
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            { backgroundColor: colors.bgElevated, borderColor: colors.border },
+            showFilters && { backgroundColor: colors.accentSecondary, borderColor: colors.accentSecondary },
+          ]}
+          onPress={() => {
+            Haptics.selectionAsync();
+            setShowFilters(!showFilters);
+          }}
+        >
+          <Ionicons
+            name="options-outline"
+            size={20}
+            color={showFilters ? '#FFFFFF' : colors.textTertiary}
+          />
+        </TouchableOpacity>
       </View>
+
+      {/* Filter Chips */}
+      {showFilters && (
+        <View style={styles.filtersContainer}>
+          {/* Mode Filter */}
+          <View style={styles.filterRow}>
+            <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Mode:</Text>
+            <View style={styles.filterChips}>
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  { backgroundColor: !selectedMode ? colors.accentPrimary : colors.bgElevated },
+                ]}
+                onPress={() => setSelectedMode(null)}
+              >
+                <Text style={[styles.filterChipText, { color: !selectedMode ? '#FFFFFF' : colors.textSecondary }]}>
+                  Tous
+                </Text>
+              </TouchableOpacity>
+              {modes.map((mode) => (
+                <TouchableOpacity
+                  key={mode}
+                  style={[
+                    styles.filterChip,
+                    { backgroundColor: selectedMode === mode ? colors.accentPrimary : colors.bgElevated },
+                  ]}
+                  onPress={() => setSelectedMode(selectedMode === mode ? null : mode)}
+                >
+                  <Text style={[styles.filterChipText, { color: selectedMode === mode ? '#FFFFFF' : colors.textSecondary }]}>
+                    {mode}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Category Filter */}
+          <View style={styles.filterRow}>
+            <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Catégorie:</Text>
+            <View style={styles.filterChips}>
+              <TouchableOpacity
+                style={[
+                  styles.filterChip,
+                  { backgroundColor: !selectedCategory ? colors.accentPrimary : colors.bgElevated },
+                ]}
+                onPress={() => setSelectedCategory(null)}
+              >
+                <Text style={[styles.filterChipText, { color: !selectedCategory ? '#FFFFFF' : colors.textSecondary }]}>
+                  Toutes
+                </Text>
+              </TouchableOpacity>
+              {categories.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.filterChip,
+                    { backgroundColor: selectedCategory === cat ? colors.accentPrimary : colors.bgElevated },
+                  ]}
+                  onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
+                >
+                  <Text style={[styles.filterChipText, { color: selectedCategory === cat ? '#FFFFFF' : colors.textSecondary }]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Results Count */}
       {!isLoading && analyses.length > 0 && (
@@ -325,6 +421,32 @@ const styles = StyleSheet.create({
   loadingFooter: {
     paddingVertical: Spacing.lg,
     alignItems: 'center',
+  },
+  filtersContainer: {
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.md,
+  },
+  filterRow: {
+    marginBottom: Spacing.sm,
+  },
+  filterLabel: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.bodyMedium,
+    marginBottom: Spacing.xs,
+  },
+  filterChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.xs,
+  },
+  filterChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+  },
+  filterChipText: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.bodyMedium,
   },
 });
 
