@@ -484,16 +484,26 @@
   },
   "export": {
     "title": "Export analysis",
+    "exportSummary": "Export summary",
     "selectFormat": "Choose a format",
     "downloading": "Downloading...",
     "success": "Export successful!",
     "failed": "Export failed",
+    "fileSaved": "File saved",
+    "fileSavedAt": "File saved:",
+    "exportFailed": "Unable to export file",
+    "fileExtension": "File",
     "formats": {
       "txt": "Plain text (.txt)",
       "md": "Markdown (.md)",
       "pdf": "PDF document (.pdf)",
       "docx": "Word document (.docx)",
       "json": "JSON data (.json)"
+    },
+    "labels": {
+      "pdf": "PDF Document",
+      "markdown": "Markdown",
+      "text": "Plain text"
     },
     "options": {
       "includeSummary": "Include summary",
@@ -785,5 +795,44 @@
     "highlyRecommended": "Highly recommended",
     "whatIsTournesol": "What is Tournesol?",
     "tournesolDescription": "Tournesol is a collaborative platform that rates videos based on quality criteria."
+  },
+  "study": {
+    "quiz": {
+      "title": "Quiz",
+      "generating": "Generating quiz...",
+      "noQuestions": "No questions available",
+      "question": "Question",
+      "validate": "Validate",
+      "nextQuestion": "Next question",
+      "seeResults": "See results",
+      "completed": "Quiz completed!",
+      "correctAnswers": "correct answers",
+      "excellent": "Excellent work!",
+      "good": "Good job!",
+      "keepGoing": "Keep up the effort!",
+      "reviewContent": "Review the content and try again",
+      "retry": "Try again",
+      "reviewAnswers": "Review answers",
+      "explanation": "Explanation"
+    },
+    "mindmap": {
+      "title": "Mind Map",
+      "generating": "Generating mind map...",
+      "noData": "No mind map available",
+      "legend": "Legend",
+      "mainConcept": "Main concept",
+      "keyConcepts": "Key concepts",
+      "subConcepts": "Sub-concepts",
+      "conceptList": "Concept list"
+    },
+    "flashcards": {
+      "title": "Flashcards",
+      "generating": "Generating flashcards...",
+      "noCards": "No flashcards available",
+      "front": "Question",
+      "back": "Answer",
+      "tapToFlip": "Tap to flip",
+      "card": "Card"
+    }
   }
 }

@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { exportApi } from '../../services/api';
 
 type ExportFormat = 'pdf' | 'markdown' | 'text';
@@ -25,10 +26,10 @@ interface ExportOption {
   mimeType: string;
 }
 
-const exportOptions: ExportOption[] = [
-  { format: 'pdf', label: 'Document PDF', icon: 'document-text', extension: 'pdf', mimeType: 'application/pdf' },
-  { format: 'markdown', label: 'Markdown', icon: 'logo-markdown', extension: 'md', mimeType: 'text/markdown' },
-  { format: 'text', label: 'Texte brut', icon: 'document-outline', extension: 'txt', mimeType: 'text/plain' },
+const getExportOptions = (t: any): ExportOption[] => [
+  { format: 'pdf', label: t.export.labels.pdf, icon: 'document-text', extension: 'pdf', mimeType: 'application/pdf' },
+  { format: 'markdown', label: t.export.labels.markdown, icon: 'logo-markdown', extension: 'md', mimeType: 'text/markdown' },
+  { format: 'text', label: t.export.labels.text, icon: 'document-outline', extension: 'txt', mimeType: 'text/plain' },
 ];
 
 interface ExportOptionsProps {
@@ -45,7 +46,10 @@ export const ExportOptions: React.FC<ExportOptionsProps> = ({
   title = 'summary',
 }) => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const [loadingFormat, setLoadingFormat] = useState<ExportFormat | null>(null);
+
+  const exportOptions = getExportOptions(t);
 
   const handleExport = async (option: ExportOption) => {
     setLoadingFormat(option.format);
@@ -73,12 +77,12 @@ export const ExportOptions: React.FC<ExportOptionsProps> = ({
       if (canShare) {
         await Sharing.shareAsync(file.uri, {
           mimeType: option.mimeType,
-          dialogTitle: `Export ${option.label}`,
+          dialogTitle: `${t.export.title} ${option.label}`,
         });
       } else {
         Alert.alert(
-          'Fichier sauvegardé',
-          `Fichier sauvegardé: ${file.uri}`,
+          t.export.fileSaved,
+          `${t.export.fileSavedAt} ${file.uri}`,
           [{ text: 'OK' }]
         );
       }
@@ -87,8 +91,8 @@ export const ExportOptions: React.FC<ExportOptionsProps> = ({
     } catch (error) {
       console.error('Export error:', error);
       Alert.alert(
-        'Échec de l\'export',
-        error instanceof Error ? error.message : 'Impossible d\'exporter le fichier',
+        t.export.failed,
+        error instanceof Error ? error.message : t.export.exportFailed,
         [{ text: 'OK' }]
       );
     } finally {
@@ -179,7 +183,7 @@ export const ExportOptions: React.FC<ExportOptionsProps> = ({
       >
         <View style={styles.container} onStartShouldSetResponder={() => true}>
           <View style={styles.header}>
-            <Text style={styles.title}>Exporter le résumé</Text>
+            <Text style={styles.title}>{t.export.exportSummary}</Text>
             <TouchableOpacity style={styles.closeButton} onPress={onClose}>
               <Ionicons name="close" size={24} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -207,7 +211,7 @@ export const ExportOptions: React.FC<ExportOptionsProps> = ({
                   <View style={styles.optionContent}>
                     <Text style={styles.optionLabel}>{option.label}</Text>
                     <Text style={styles.optionSubtext}>
-                      Fichier .{option.extension}
+                      {t.export.fileExtension} .{option.extension}
                     </Text>
                   </View>
                   {isLoading ? (

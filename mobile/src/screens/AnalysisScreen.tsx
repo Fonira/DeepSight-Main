@@ -25,7 +25,7 @@ import { Image } from 'expo-image';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { videoApi, chatApi, studyApi, exportApi } from '../services/api';
-import { Header, Card, Badge, Button } from '../components';
+import { Header, Card, Badge, Button, YouTubePlayer } from '../components';
 import { QuizComponent, MindMapComponent } from '../components/study';
 import type { QuizQuestion, MindMapData, MindMapNode } from '../components/study';
 import { ExportOptions } from '../components/export';
@@ -98,6 +98,9 @@ export const AnalysisScreen: React.FC = () => {
 
   // Citation modal state
   const [showCitationModal, setShowCitationModal] = useState(false);
+
+  // Video player state
+  const [showExpandedPlayer, setShowExpandedPlayer] = useState(false);
 
   // Load analysis data
   const loadAnalysis = useCallback(async () => {
@@ -419,8 +422,11 @@ export const AnalysisScreen: React.FC = () => {
       />
 
       {/* Video Header */}
-      {summary && (
-        <TouchableOpacity onPress={handleOpenVideo} style={styles.videoHeader}>
+      {summary && !showExpandedPlayer && (
+        <TouchableOpacity
+          onPress={() => setShowExpandedPlayer(true)}
+          style={styles.videoHeader}
+        >
           <Image
             source={{ uri: summary.videoInfo?.thumbnail }}
             style={styles.thumbnail}
@@ -436,6 +442,28 @@ export const AnalysisScreen: React.FC = () => {
           </View>
           <Ionicons name="play-circle" size={32} color={colors.accentPrimary} />
         </TouchableOpacity>
+      )}
+
+      {/* Expanded YouTube Player */}
+      {summary && showExpandedPlayer && (
+        <View style={styles.expandedPlayerContainer}>
+          <TouchableOpacity
+            style={[styles.collapseButton, { backgroundColor: colors.bgTertiary }]}
+            onPress={() => setShowExpandedPlayer(false)}
+          >
+            <Ionicons name="chevron-up" size={20} color={colors.textSecondary} />
+            <Text style={[styles.collapseText, { color: colors.textSecondary }]}>
+              {t.chat.minimizeChat}
+            </Text>
+          </TouchableOpacity>
+          <YouTubePlayer
+            videoId={summary.videoId || ''}
+            title={summary.title}
+            channel={summary.videoInfo?.channel}
+            duration={summary.videoInfo?.duration}
+            thumbnail={summary.videoInfo?.thumbnail}
+          />
+        </View>
       )}
 
       {/* Tabs */}
@@ -1006,6 +1034,23 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
     marginTop: 2,
+  },
+  expandedPlayerContainer: {
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.sm,
+  },
+  collapseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.xs,
+    marginBottom: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    gap: Spacing.xs,
+  },
+  collapseText: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.body,
   },
   tabsContainer: {
     flexDirection: 'row',

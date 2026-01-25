@@ -19,6 +19,7 @@ import Animated, {
   FadeInDown,
 } from 'react-native-reanimated';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { GlassCard } from '../ui/GlassCard';
 import { Button } from '../ui/Button';
 import { Spacing, Typography, BorderRadius } from '../../constants/theme';
@@ -52,6 +53,7 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
   onRetry,
 }) => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
 
   const [state, setState] = useState<QuizState>({
     currentIndex: 0,
@@ -157,7 +159,7 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.accentPrimary} />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-          Génération du quiz...
+          {t.study.quiz.generating}
         </Text>
       </View>
     );
@@ -169,7 +171,7 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
       <View style={styles.emptyContainer}>
         <Ionicons name="help-circle-outline" size={48} color={colors.textTertiary} />
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-          Aucune question disponible
+          {t.study.quiz.noQuestions}
         </Text>
       </View>
     );
@@ -179,9 +181,9 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
   if (state.isComplete) {
     const percentage = Math.round((score / questions.length) * 100);
     const resultMessage =
-      percentage >= 80 ? 'Excellent travail !' :
-      percentage >= 60 ? 'Bon travail !' :
-      percentage >= 40 ? 'Continuez vos efforts !' : 'Révisez le contenu et réessayez';
+      percentage >= 80 ? t.study.quiz.excellent :
+      percentage >= 60 ? t.study.quiz.good :
+      percentage >= 40 ? t.study.quiz.keepGoing : t.study.quiz.reviewContent;
 
     return (
       <Animated.View entering={FadeIn.duration(300)} style={styles.resultsContainer}>
@@ -193,20 +195,20 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
               color={percentage >= 60 ? colors.accentWarning : colors.accentPrimary}
             />
             <Text style={[styles.resultsTitle, { color: colors.textPrimary }]}>
-              Quiz terminé !
+              {t.study.quiz.completed}
             </Text>
             <Text style={[styles.resultsScore, { color: colors.accentPrimary }]}>
               {score}/{questions.length}
             </Text>
             <Text style={[styles.resultsPercentage, { color: colors.textSecondary }]}>
-              {percentage}% de bonnes réponses
+              {percentage}% {t.study.quiz.correctAnswers}
             </Text>
             <Text style={[styles.resultsMessage, { color: colors.textTertiary }]}>
               {resultMessage}
             </Text>
 
             <Button
-              title="Recommencer"
+              title={t.study.quiz.retry}
               onPress={handleRetry}
               fullWidth
               style={styles.retryButton}
@@ -216,7 +218,7 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
 
         {/* Answer review */}
         <Text style={[styles.reviewTitle, { color: colors.textPrimary }]}>
-          Révision des réponses
+          {t.study.quiz.reviewAnswers}
         </Text>
         {state.answers.map((answer, index) => (
           <Animated.View
@@ -247,7 +249,7 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
       {/* Progress */}
       <View style={styles.progressSection}>
         <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-          Question {state.currentIndex + 1}/{questions.length}
+          {t.study.quiz.question} {state.currentIndex + 1}/{questions.length}
         </Text>
         <View style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}>
           <View
@@ -340,7 +342,7 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
             <View style={styles.explanationHeader}>
               <Ionicons name="bulb" size={20} color={colors.accentWarning} />
               <Text style={[styles.explanationTitle, { color: colors.accentWarning }]}>
-                Explication
+                {t.study.quiz.explanation}
               </Text>
             </View>
             <Text style={[styles.explanationText, { color: colors.textSecondary }]}>
@@ -354,14 +356,14 @@ export const QuizComponent: React.FC<QuizComponentProps> = ({
       <View style={styles.actionContainer}>
         {!state.showResult ? (
           <Button
-            title="Valider"
+            title={t.study.quiz.validate}
             onPress={handleValidate}
             disabled={state.selectedAnswer === null}
             fullWidth
           />
         ) : (
           <Button
-            title={state.currentIndex + 1 >= questions.length ? 'Voir les résultats' : 'Question suivante'}
+            title={state.currentIndex + 1 >= questions.length ? t.study.quiz.seeResults : t.study.quiz.nextQuestion}
             onPress={handleNext}
             fullWidth
             icon={<Ionicons name="arrow-forward" size={20} color="#FFFFFF" />}

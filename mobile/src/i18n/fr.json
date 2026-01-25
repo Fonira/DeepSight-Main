@@ -484,16 +484,26 @@
   },
   "export": {
     "title": "Exporter l'analyse",
+    "exportSummary": "Exporter le résumé",
     "selectFormat": "Choisissez un format",
     "downloading": "Téléchargement en cours...",
     "success": "Export réussi !",
     "failed": "Échec de l'export",
+    "fileSaved": "Fichier sauvegardé",
+    "fileSavedAt": "Fichier sauvegardé:",
+    "exportFailed": "Impossible d'exporter le fichier",
+    "fileExtension": "Fichier",
     "formats": {
       "txt": "Texte brut (.txt)",
       "md": "Markdown (.md)",
       "pdf": "Document PDF (.pdf)",
       "docx": "Document Word (.docx)",
       "json": "Données JSON (.json)"
+    },
+    "labels": {
+      "pdf": "Document PDF",
+      "markdown": "Markdown",
+      "text": "Texte brut"
     },
     "options": {
       "includeSummary": "Inclure la synthèse",
@@ -785,5 +795,44 @@
     "highlyRecommended": "Fortement recommandé",
     "whatIsTournesol": "Qu'est-ce que Tournesol ?",
     "tournesolDescription": "Tournesol est une plateforme collaborative qui évalue les vidéos selon des critères de qualité."
+  },
+  "study": {
+    "quiz": {
+      "title": "Quiz",
+      "generating": "Génération du quiz...",
+      "noQuestions": "Aucune question disponible",
+      "question": "Question",
+      "validate": "Valider",
+      "nextQuestion": "Question suivante",
+      "seeResults": "Voir les résultats",
+      "completed": "Quiz terminé !",
+      "correctAnswers": "de bonnes réponses",
+      "excellent": "Excellent travail !",
+      "good": "Bon travail !",
+      "keepGoing": "Continuez vos efforts !",
+      "reviewContent": "Révisez le contenu et réessayez",
+      "retry": "Recommencer",
+      "reviewAnswers": "Révision des réponses",
+      "explanation": "Explication"
+    },
+    "mindmap": {
+      "title": "Carte Mentale",
+      "generating": "Génération de la carte mentale...",
+      "noData": "Aucune carte mentale disponible",
+      "legend": "Légende",
+      "mainConcept": "Concept principal",
+      "keyConcepts": "Concepts clés",
+      "subConcepts": "Sous-concepts",
+      "conceptList": "Liste des concepts"
+    },
+    "flashcards": {
+      "title": "Flashcards",
+      "generating": "Génération des flashcards...",
+      "noCards": "Aucune flashcard disponible",
+      "front": "Question",
+      "back": "Réponse",
+      "tapToFlip": "Appuyez pour retourner",
+      "card": "Carte"
+    }
   }
 }

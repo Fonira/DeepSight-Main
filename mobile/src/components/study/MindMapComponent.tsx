@@ -10,6 +10,7 @@ import {
 import Svg, { Circle, Line, G, Text as SvgText } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { GlassCard } from '../ui/GlassCard';
 import { Spacing, Typography } from '../../constants/theme';
 
@@ -49,6 +50,7 @@ export const MindMapComponent: React.FC<MindMapComponentProps> = ({
   isLoading = false,
 }) => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
 
   // Calculate node positions using a simple radial layout
   const { nodePositions, lines, canvasSize } = useMemo(() => {
@@ -132,7 +134,7 @@ export const MindMapComponent: React.FC<MindMapComponentProps> = ({
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.accentPrimary} />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-          Génération de la carte mentale...
+          {t.study.mindmap.generating}
         </Text>
       </View>
     );
@@ -144,7 +146,7 @@ export const MindMapComponent: React.FC<MindMapComponentProps> = ({
       <View style={styles.emptyContainer}>
         <Ionicons name="git-network-outline" size={48} color={colors.textTertiary} />
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-          Aucune carte mentale disponible
+          {t.study.mindmap.noData}
         </Text>
       </View>
     );
@@ -187,7 +189,7 @@ export const MindMapComponent: React.FC<MindMapComponentProps> = ({
         {/* Title */}
         <GlassCard padding="md" borderRadius="md" style={styles.titleCard}>
           <Text style={[styles.title, { color: colors.textPrimary }]}>
-            {data.title || 'Carte Mentale'}
+            {data.title || t.study.mindmap.title}
           </Text>
         </GlassCard>
 
@@ -263,25 +265,25 @@ export const MindMapComponent: React.FC<MindMapComponentProps> = ({
         {/* Legend */}
         <GlassCard padding="md" borderRadius="md" style={styles.legendCard}>
           <Text style={[styles.legendTitle, { color: colors.textSecondary }]}>
-            Légende
+            {t.study.mindmap.legend}
           </Text>
           <View style={styles.legendItems}>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: colors.accentPrimary }]} />
               <Text style={[styles.legendLabel, { color: colors.textSecondary }]}>
-                Concept principal
+                {t.study.mindmap.mainConcept}
               </Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: colors.accentSecondary || colors.accentPrimary, opacity: 0.8 }]} />
               <Text style={[styles.legendLabel, { color: colors.textSecondary }]}>
-                Concepts clés
+                {t.study.mindmap.keyConcepts}
               </Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: colors.textTertiary }]} />
               <Text style={[styles.legendLabel, { color: colors.textSecondary }]}>
-                Sous-concepts
+                {t.study.mindmap.subConcepts}
               </Text>
             </View>
           </View>
@@ -290,7 +292,7 @@ export const MindMapComponent: React.FC<MindMapComponentProps> = ({
         {/* Full list */}
         <GlassCard padding="md" borderRadius="md" style={styles.listCard}>
           <Text style={[styles.listTitle, { color: colors.textPrimary }]}>
-            Liste des concepts
+            {t.study.mindmap.conceptList}
           </Text>
           {nodePositions.map((pos, index) => (
             <View key={`list-${index}`} style={styles.listItem}>
