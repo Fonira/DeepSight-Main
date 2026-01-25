@@ -84,14 +84,19 @@ function convertLocalWord(word: WordData, lang: string): LoadingWord {
 }
 
 function convertHistoryKeyword(keyword: HistoryKeyword): LoadingWord {
+  // Générer une définition contextuelle pour les mots-clés de l'historique
+  const contextDefinition = keyword.video_title
+    ? `Ce terme a été identifié comme concept clé dans votre analyse. Cliquez pour redécouvrir le contexte complet dans la vidéo "${keyword.video_title}".`
+    : 'Ce terme provient de vos analyses précédentes. Cliquez pour voir le contexte complet.';
+
+  const shortDef = keyword.video_title
+    ? `Concept clé identifié dans votre analyse. Cliquez pour voir le contexte.`
+    : 'Terme de vos analyses. Cliquez pour explorer.';
+
   return {
     term: keyword.term,
-    definition: keyword.video_title
-      ? `Mot-clé extrait de l'analyse "${keyword.video_title}"`
-      : 'Mot-clé de votre historique d\'analyses',
-    shortDefinition: keyword.video_title
-      ? `De: ${keyword.video_title.slice(0, 50)}${keyword.video_title.length > 50 ? '...' : ''}`
-      : 'Cliquez pour voir l\'analyse',
+    definition: contextDefinition,
+    shortDefinition: shortDef,
     category: keyword.category || 'history',
     source: 'history',
     summaryId: keyword.summary_id,
