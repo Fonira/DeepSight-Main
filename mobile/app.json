@@ -4,11 +4,11 @@
     "slug": "deepsight",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./src/assets/images/icon.svg",
+    "icon": "./src/assets/images/icon.png",
     "scheme": "deepsight",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./src/assets/images/splash.svg",
+      "image": "./src/assets/images/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#0a0a0b"
     },
@@ -30,7 +30,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./src/assets/images/adaptive-icon.svg",
+        "foregroundImage": "./src/assets/images/adaptive-icon.png",
         "backgroundColor": "#0a0a0b"
       },
       "package": "com.deepsight.app",
@@ -38,7 +38,7 @@
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./src/assets/images/icon.svg"
+      "favicon": "./src/assets/images/icon.png"
     },
     "plugins": [
       "expo-font",
