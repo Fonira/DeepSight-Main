@@ -52,16 +52,11 @@
       "@react-native-google-signin/google-signin"
     ],
     "owner": "maximeadmin",
-    "extra": {
-      "eas": {
-        "projectId": "deepsight"
-      }
-    },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/maximeadmin/deepsight"
+      "enabled": true
     }
   }
 }
