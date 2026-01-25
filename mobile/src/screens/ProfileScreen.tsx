@@ -14,6 +14,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Header, Card, Avatar, Badge } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { formatNumber } from '../utils/formatters';
@@ -77,18 +78,19 @@ const MenuItem: React.FC<MenuItemProps> = ({
 
 export const ProfileScreen: React.FC = () => {
   const { colors, isDark, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const { user, logout } = useAuth();
   const navigation = useNavigation<ProfileNavigationProp>();
   const insets = useSafeAreaInsets();
 
   const handleLogout = () => {
     Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      t.auth.signOut,
+      t.auth.signOutConfirm,
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Déconnexion',
+          text: t.auth.signOut,
           style: 'destructive',
           onPress: async () => {
             await logout();
@@ -111,7 +113,7 @@ export const ProfileScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <Header title="Profil" />
+      <Header title={t.nav.profile} />
 
       <ScrollView
         style={styles.scrollView}
@@ -124,7 +126,7 @@ export const ProfileScreen: React.FC = () => {
             <Avatar uri={user?.avatar_url} name={user?.username} size="xl" />
             <View style={styles.profileInfo}>
               <Text style={[styles.profileName, { color: colors.textPrimary }]}>
-                {user?.username || 'Utilisateur'}
+                {user?.username || t.admin.user}
               </Text>
               <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>
                 {user?.email}
@@ -144,7 +146,7 @@ export const ProfileScreen: React.FC = () => {
                 {formatNumber(user?.total_videos || 0)}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-                Vidéos
+                {t.playlists.videos}
               </Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
@@ -153,7 +155,7 @@ export const ProfileScreen: React.FC = () => {
                 {formatNumber(user?.total_words || 0)}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-                Mots
+                {t.admin.wordsGenerated}
               </Text>
             </View>
             <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
@@ -162,7 +164,7 @@ export const ProfileScreen: React.FC = () => {
                 {formatNumber(user?.total_playlists || 0)}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-                Playlists
+                {t.playlists.title}
               </Text>
             </View>
           </View>
@@ -170,23 +172,23 @@ export const ProfileScreen: React.FC = () => {
 
         {/* Account Section */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Compte
+          {t.settings.account}
         </Text>
         <Card variant="elevated" style={styles.menuCard}>
           <MenuItem
             icon="person-outline"
-            label="Mon compte"
+            label={t.settings.account}
             onPress={() => navigation.navigate('Account')}
           />
           <MenuItem
             icon="star-outline"
-            label="Mon abonnement"
+            label={t.settings.subscription}
             onPress={() => navigation.navigate('Upgrade')}
             rightBadge={getPlanLabel()}
           />
           <MenuItem
             icon="analytics-outline"
-            label="Utilisation"
+            label={t.settings.usage}
             onPress={() => navigation.navigate('Usage')}
             rightText={`${user?.credits || 0}/${user?.credits_monthly || 20}`}
           />
@@ -194,12 +196,12 @@ export const ProfileScreen: React.FC = () => {
 
         {/* Preferences Section */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Préférences
+          {t.settings.preferences}
         </Text>
         <Card variant="elevated" style={styles.menuCard}>
           <MenuItem
             icon="settings-outline"
-            label="Paramètres"
+            label={t.nav.settings}
             onPress={() => navigation.navigate('Settings')}
           />
           <TouchableOpacity
@@ -218,7 +220,7 @@ export const ProfileScreen: React.FC = () => {
                 />
               </View>
               <Text style={[styles.menuLabel, { color: colors.textPrimary }]}>
-                Mode sombre
+                {t.settings.darkMode}
               </Text>
             </View>
             <View style={[styles.toggle, { backgroundColor: isDark ? colors.accentPrimary : colors.bgTertiary }]}>
@@ -232,30 +234,30 @@ export const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
           <MenuItem
             icon="language-outline"
-            label="Langue"
+            label={t.settings.language}
             onPress={() => {}}
-            rightText="Français"
+            rightText={t.settings.language}
           />
         </Card>
 
         {/* Support Section */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Support
+          {t.settings.support}
         </Text>
         <Card variant="elevated" style={styles.menuCard}>
           <MenuItem
             icon="help-circle-outline"
-            label="Aide & FAQ"
+            label={t.settings.helpFaq}
             onPress={() => {}}
           />
           <MenuItem
             icon="chatbubble-outline"
-            label="Nous contacter"
+            label={t.settings.contactUs}
             onPress={() => {}}
           />
           <MenuItem
             icon="document-text-outline"
-            label="Mentions légales"
+            label={t.settings.termsOfService}
             onPress={() => {}}
           />
         </Card>
@@ -264,7 +266,7 @@ export const ProfileScreen: React.FC = () => {
         <Card variant="elevated" style={[styles.menuCard, { marginTop: Spacing.lg }]}>
           <MenuItem
             icon="log-out-outline"
-            label="Déconnexion"
+            label={t.auth.signOut}
             onPress={handleLogout}
             danger
           />

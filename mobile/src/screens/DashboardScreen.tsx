@@ -19,6 +19,7 @@ import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { videoApi, historyApi } from '../services/api';
 import { Header, VideoCard, Button, Card, Badge, Avatar } from '../components';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
@@ -35,6 +36,7 @@ type DashboardNavigationProp = CompositeNavigationProp<
 export const DashboardScreen: React.FC = () => {
   const { colors } = useTheme();
   const { user, refreshUser } = useAuth();
+  const { t } = useLanguage();
   const navigation = useNavigation<DashboardNavigationProp>();
   const insets = useSafeAreaInsets();
 
@@ -67,22 +69,22 @@ export const DashboardScreen: React.FC = () => {
 
   const handleAnalyze = async () => {
     if (!videoUrl.trim()) {
-      Alert.alert('Erreur', 'Veuillez entrer une URL YouTube');
+      Alert.alert(t.common.error, t.dashboard.pasteYoutubeUrl);
       return;
     }
 
     if (!isValidYouTubeUrl(videoUrl)) {
-      Alert.alert('Erreur', 'URL YouTube invalide');
+      Alert.alert(t.common.error, t.errors.invalidYoutubeUrl);
       return;
     }
 
     if (user && user.credits <= 0) {
       Alert.alert(
-        'Crédits insuffisants',
-        'Vous n\'avez plus de crédits. Passez à un plan supérieur pour continuer.',
+        t.errors.noCredits,
+        t.chat.upgradeForMore,
         [
-          { text: 'Annuler', style: 'cancel' },
-          { text: 'Upgrade', onPress: () => navigation.navigate('Upgrade') },
+          { text: t.common.cancel, style: 'cancel' },
+          { text: t.nav.upgrade, onPress: () => navigation.navigate('Upgrade') },
         ]
       );
       return;
@@ -103,7 +105,7 @@ export const DashboardScreen: React.FC = () => {
       navigation.navigate('Analysis', { videoUrl, summaryId: task_id });
       setVideoUrl('');
     } catch (error) {
-      Alert.alert('Erreur', 'Une erreur est survenue lors de l\'analyse');
+      Alert.alert(t.common.error, t.errors.generic);
     } finally {
       setIsAnalyzing(false);
     }
@@ -134,10 +136,10 @@ export const DashboardScreen: React.FC = () => {
           <View style={styles.welcomeHeader}>
             <View>
               <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>
-                Bonjour,
+                {t.auth.welcomeBack}
               </Text>
               <Text style={[styles.userName, { color: colors.textPrimary }]}>
-                {user?.username || 'Utilisateur'}
+                {user?.username || t.admin.user}
               </Text>
             </View>
             <TouchableOpacity onPress={() => navigation.navigate('Account')}>
@@ -155,7 +157,7 @@ export const DashboardScreen: React.FC = () => {
             >
               <View style={styles.creditsContent}>
                 <View>
-                  <Text style={styles.creditsLabel}>Crédits restants</Text>
+                  <Text style={styles.creditsLabel}>{t.dashboard.creditsRemaining}</Text>
                   <Text style={styles.creditsValue}>
                     {formatCredits(user?.credits || 0, user?.credits_monthly || 20)}
                   </Text>
@@ -174,7 +176,7 @@ export const DashboardScreen: React.FC = () => {
                   style={styles.upgradeButton}
                   onPress={() => navigation.navigate('Upgrade')}
                 >
-                  <Text style={styles.upgradeText}>Upgrade</Text>
+                  <Text style={styles.upgradeText}>{t.nav.upgrade}</Text>
                   <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
                 </TouchableOpacity>
               )}
@@ -185,14 +187,14 @@ export const DashboardScreen: React.FC = () => {
         {/* Analysis Input Section */}
         <View style={styles.analysisSection}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-            Analyser une vidéo
+            {t.dashboard.title}
           </Text>
 
           <View style={[styles.inputContainer, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
             <Ionicons name="logo-youtube" size={24} color="#FF0000" style={styles.inputIcon} />
             <TextInput
               style={[styles.input, { color: colors.textPrimary }]}
-              placeholder="Collez l'URL YouTube ici..."
+              placeholder={t.dashboard.placeholder}
               placeholderTextColor={colors.textMuted}
               value={videoUrl}
               onChangeText={setVideoUrl}
@@ -207,7 +209,7 @@ export const DashboardScreen: React.FC = () => {
           </View>
 
           {/* Mode Selection */}
-          <Text style={[styles.optionLabel, { color: colors.textSecondary }]}>Mode d'analyse</Text>
+          <Text style={[styles.optionLabel, { color: colors.textSecondary }]}>{t.dashboard.selectMode}</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -240,7 +242,7 @@ export const DashboardScreen: React.FC = () => {
           </ScrollView>
 
           {/* Category Selection */}
-          <Text style={[styles.optionLabel, { color: colors.textSecondary }]}>Catégorie</Text>
+          <Text style={[styles.optionLabel, { color: colors.textSecondary }]}>{t.dashboard.selectCategory}</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -274,7 +276,7 @@ export const DashboardScreen: React.FC = () => {
 
           {/* Analyze Button */}
           <Button
-            title={isAnalyzing ? 'Analyse en cours...' : 'Analyser'}
+            title={isAnalyzing ? t.dashboard.analyzing : t.dashboard.analyze}
             onPress={handleAnalyze}
             loading={isAnalyzing}
             fullWidth
@@ -288,11 +290,11 @@ export const DashboardScreen: React.FC = () => {
           <View style={styles.recentSection}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                Analyses récentes
+                {t.dashboard.recentAnalyses}
               </Text>
               <TouchableOpacity onPress={() => navigation.navigate('History')}>
                 <Text style={[styles.seeAllText, { color: colors.accentPrimary }]}>
-                  Voir tout
+                  {t.dashboard.viewAll}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -312,7 +314,7 @@ export const DashboardScreen: React.FC = () => {
         {/* Quick Stats */}
         <View style={styles.statsSection}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-            Vos statistiques
+            {t.admin.statistics}
           </Text>
           <View style={styles.statsGrid}>
             <Card variant="elevated" style={styles.statCard}>
@@ -321,7 +323,7 @@ export const DashboardScreen: React.FC = () => {
                 {user?.total_videos || 0}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-                Vidéos analysées
+                {t.admin.videosAnalyzed}
               </Text>
             </Card>
             <Card variant="elevated" style={styles.statCard}>
@@ -330,7 +332,7 @@ export const DashboardScreen: React.FC = () => {
                 {user?.total_words ? `${Math.round(user.total_words / 1000)}k` : '0'}
               </Text>
               <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-                Mots générés
+                {t.admin.wordsGenerated}
               </Text>
             </Card>
           </View>

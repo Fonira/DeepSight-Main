@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Header, Card, Badge, Button } from '../components';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
 
@@ -85,6 +86,7 @@ const PLANS: Plan[] = [
 
 export const UpgradeScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
 
@@ -107,8 +109,8 @@ export const UpgradeScreen: React.FC = () => {
     setTimeout(() => {
       setIsLoading(false);
       Alert.alert(
-        'Paiement',
-        'Le système de paiement sera disponible prochainement. Merci de votre intérêt !',
+        t.upgrade.title,
+        t.upgrade.comingSoon,
         [{ text: 'OK' }]
       );
     }, 1000);
@@ -138,7 +140,7 @@ export const UpgradeScreen: React.FC = () => {
                 colors={Colors.gradientPrimary}
                 style={styles.popularGradient}
               >
-                <Text style={styles.popularText}>Populaire</Text>
+                <Text style={styles.popularText}>{t.upgrade.popular}</Text>
               </LinearGradient>
             </View>
           )}
@@ -148,13 +150,13 @@ export const UpgradeScreen: React.FC = () => {
               {plan.name}
             </Text>
             {isCurrentPlan && (
-              <Badge label="Actuel" variant="primary" size="sm" />
+              <Badge label={t.upgrade.currentPlan} variant="primary" size="sm" />
             )}
           </View>
 
           <View style={styles.priceContainer}>
             <Text style={[styles.price, { color: colors.textPrimary }]}>
-              {plan.price === 0 ? 'Gratuit' : `${plan.price}€`}
+              {plan.price === 0 ? t.common.free : `${plan.price}€`}
             </Text>
             {plan.price > 0 && (
               <Text style={[styles.period, { color: colors.textTertiary }]}>
@@ -188,7 +190,7 @@ export const UpgradeScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <Header title="Abonnements" showBack />
+      <Header title={t.upgrade.title} showBack />
 
       <ScrollView
         style={styles.scrollView}
@@ -196,7 +198,7 @@ export const UpgradeScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          Choisissez le plan qui vous convient
+          {t.upgrade.choosePlan}
         </Text>
 
         {PLANS.map(renderPlanCard)}

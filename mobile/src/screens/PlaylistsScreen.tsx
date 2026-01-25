@@ -21,6 +21,7 @@ import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { playlistApi, videoApi } from '../services/api';
 import { Header, Card, EmptyState, Button, Badge } from '../components';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -32,6 +33,7 @@ type PlaylistsNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export const PlaylistsScreen: React.FC = () => {
   const { colors } = useTheme();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigation = useNavigation<PlaylistsNavigationProp>();
   const insets = useSafeAreaInsets();
 
@@ -76,7 +78,7 @@ export const PlaylistsScreen: React.FC = () => {
   // Create a new playlist
   const handleCreatePlaylist = async () => {
     if (!newPlaylistName.trim()) {
-      Alert.alert('Erreur', 'Le nom de la playlist est requis');
+      Alert.alert(t.common.error, t.playlists.playlistName);
       return;
     }
 
@@ -91,9 +93,9 @@ export const PlaylistsScreen: React.FC = () => {
       setShowCreateModal(false);
       setNewPlaylistName('');
       setNewPlaylistDescription('');
-      Alert.alert('Succès', 'Playlist créée avec succès');
+      Alert.alert(t.success.playlistCreated, t.success.playlistCreated);
     } catch (err) {
-      Alert.alert('Erreur', 'Impossible de créer la playlist');
+      Alert.alert(t.common.error, t.errors.generic);
     } finally {
       setIsCreating(false);
     }
@@ -102,7 +104,7 @@ export const PlaylistsScreen: React.FC = () => {
   // Analyze a YouTube playlist
   const handleAnalyzePlaylist = async () => {
     if (!playlistUrl.trim()) {
-      Alert.alert('Erreur', 'L\'URL de la playlist est requise');
+      Alert.alert(t.common.error, t.playlists.enterPlaylistUrl);
       return;
     }
 
@@ -112,7 +114,7 @@ export const PlaylistsScreen: React.FC = () => {
                        playlistUrl.includes('list=');
 
     if (!isValidUrl) {
-      Alert.alert('Erreur', 'Veuillez entrer une URL de playlist YouTube valide');
+      Alert.alert(t.common.error, t.errors.invalidUrl);
       return;
     }
 
@@ -132,7 +134,7 @@ export const PlaylistsScreen: React.FC = () => {
       // Navigate to analysis screen with task ID
       navigation.navigate('Analysis', { summaryId: result.task_id });
     } catch (err) {
-      Alert.alert('Erreur', 'Impossible d\'analyser la playlist');
+      Alert.alert(t.common.error, t.errors.generic);
     } finally {
       setIsAnalyzing(false);
     }
@@ -141,12 +143,12 @@ export const PlaylistsScreen: React.FC = () => {
   // Delete a playlist
   const handleDeletePlaylist = (playlist: Playlist) => {
     Alert.alert(
-      'Supprimer la playlist',
-      `Êtes-vous sûr de vouloir supprimer "${playlist.name}" ?`,
+      t.playlists.deletePlaylist,
+      t.playlists.deletePlaylistConfirm,
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t.common.delete,
           style: 'destructive',
           onPress: async () => {
             try {
@@ -154,7 +156,7 @@ export const PlaylistsScreen: React.FC = () => {
               await playlistApi.deletePlaylist(playlist.id);
               setPlaylists(prev => prev.filter(p => p.id !== playlist.id));
             } catch (err) {
-              Alert.alert('Erreur', 'Impossible de supprimer la playlist');
+              Alert.alert(t.common.error, t.errors.generic);
             }
           },
         },
@@ -168,11 +170,11 @@ export const PlaylistsScreen: React.FC = () => {
     // In a full implementation, navigate to a playlist detail screen
     Alert.alert(
       playlist.name,
-      playlist.description || 'Aucune description',
+      playlist.description || t.playlists.emptyDesc,
       [
-        { text: 'Fermer' },
+        { text: t.common.close },
         {
-          text: 'Supprimer',
+          text: t.common.delete,
           style: 'destructive',
           onPress: () => handleDeletePlaylist(playlist),
         },
@@ -215,7 +217,7 @@ export const PlaylistsScreen: React.FC = () => {
                 </Text>
               )}
               <View style={styles.playlistMeta}>
-                <Badge label={`${item.videoCount} vidéo${item.videoCount > 1 ? 's' : ''}`} variant="default" />
+                <Badge label={`${item.videoCount} ${t.playlists.videos}`} variant="default" />
               </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -231,9 +233,9 @@ export const PlaylistsScreen: React.FC = () => {
     return (
       <EmptyState
         icon="folder-outline"
-        title="Aucune playlist"
-        description="Créez des playlists pour organiser vos analyses ou analysez directement une playlist YouTube."
-        actionLabel="Créer une playlist"
+        title={t.playlists.empty}
+        description={t.playlists.emptyDesc}
+        actionLabel={t.playlists.create}
         onAction={() => setShowCreateModal(true)}
       />
     );
@@ -242,7 +244,7 @@ export const PlaylistsScreen: React.FC = () => {
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <Header
-        title="Playlists"
+        title={t.playlists.title}
         rightAction={{
           icon: 'add',
           onPress: () => setShowCreateModal(true),
@@ -260,10 +262,10 @@ export const PlaylistsScreen: React.FC = () => {
           </View>
           <View style={styles.actionInfo}>
             <Text style={[styles.actionTitle, { color: colors.textPrimary }]}>
-              Analyser une playlist
+              {t.playlists.analyzePlaylist}
             </Text>
             <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>
-              Entrez une URL YouTube
+              {t.playlists.enterPlaylistUrl}
             </Text>
           </View>
           <Ionicons name="arrow-forward" size={20} color={colors.textTertiary} />
@@ -278,10 +280,10 @@ export const PlaylistsScreen: React.FC = () => {
           </View>
           <View style={styles.actionInfo}>
             <Text style={[styles.actionTitle, { color: colors.textPrimary }]}>
-              Nouvelle playlist
+              {t.playlists.newPlaylist}
             </Text>
             <Text style={[styles.actionSubtitle, { color: colors.textSecondary }]}>
-              Organisez vos analyses
+              {t.playlists.subtitle}
             </Text>
           </View>
           <Ionicons name="arrow-forward" size={20} color={colors.textTertiary} />
@@ -297,7 +299,7 @@ export const PlaylistsScreen: React.FC = () => {
               {playlists.length}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-              Playlists
+              {t.playlists.title}
             </Text>
           </View>
           <View style={[styles.statItem, { backgroundColor: colors.bgElevated }]}>
@@ -306,7 +308,7 @@ export const PlaylistsScreen: React.FC = () => {
               {playlists.reduce((sum, p) => sum + p.videoCount, 0)}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-              Vidéos
+              {t.playlists.videos}
             </Text>
           </View>
         </View>
@@ -315,7 +317,7 @@ export const PlaylistsScreen: React.FC = () => {
       {/* Section Title */}
       {playlists.length > 0 && (
         <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-          Mes playlists
+          {t.playlists.myPlaylists}
         </Text>
       )}
 
@@ -366,12 +368,12 @@ export const PlaylistsScreen: React.FC = () => {
           <View style={[styles.modalContent, { backgroundColor: colors.bgSecondary }]}>
             <View style={styles.modalHandle} />
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              Nouvelle playlist
+              {t.playlists.newPlaylist}
             </Text>
 
             <TextInput
               style={[styles.input, { backgroundColor: colors.bgElevated, color: colors.textPrimary }]}
-              placeholder="Nom de la playlist"
+              placeholder={t.playlists.playlistName}
               placeholderTextColor={colors.textMuted}
               value={newPlaylistName}
               onChangeText={setNewPlaylistName}
@@ -380,7 +382,7 @@ export const PlaylistsScreen: React.FC = () => {
 
             <TextInput
               style={[styles.input, styles.textArea, { backgroundColor: colors.bgElevated, color: colors.textPrimary }]}
-              placeholder="Description (optionnel)"
+              placeholder={t.playlists.playlistDescription}
               placeholderTextColor={colors.textMuted}
               value={newPlaylistDescription}
               onChangeText={setNewPlaylistDescription}
@@ -390,13 +392,13 @@ export const PlaylistsScreen: React.FC = () => {
 
             <View style={styles.modalActions}>
               <Button
-                title="Annuler"
+                title={t.common.cancel}
                 variant="outline"
                 onPress={() => setShowCreateModal(false)}
                 style={styles.modalButton}
               />
               <Button
-                title="Créer"
+                title={t.common.create}
                 onPress={handleCreatePlaylist}
                 loading={isCreating}
                 style={styles.modalButton}
@@ -425,11 +427,11 @@ export const PlaylistsScreen: React.FC = () => {
           <View style={[styles.modalContent, { backgroundColor: colors.bgSecondary }]}>
             <View style={styles.modalHandle} />
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              Analyser une playlist YouTube
+              {t.playlists.analyzePlaylist}
             </Text>
 
             <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
-              Collez l'URL d'une playlist YouTube pour analyser toutes ses vidéos d'un coup.
+              {t.playlists.pastePlaylistUrl}
             </Text>
 
             <TextInput
@@ -445,13 +447,13 @@ export const PlaylistsScreen: React.FC = () => {
 
             <View style={styles.modalActions}>
               <Button
-                title="Annuler"
+                title={t.common.cancel}
                 variant="outline"
                 onPress={() => setShowAnalyzeModal(false)}
                 style={styles.modalButton}
               />
               <Button
-                title="Analyser"
+                title={t.common.analyze}
                 onPress={handleAnalyzePlaylist}
                 loading={isAnalyzing}
                 style={styles.modalButton}

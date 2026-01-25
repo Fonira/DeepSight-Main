@@ -14,6 +14,7 @@ import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Header, Card } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { ANALYSIS_MODES, AI_MODELS, LANGUAGES, STORAGE_KEYS } from '../constants/config';
@@ -69,13 +70,13 @@ const SettingItem: React.FC<SettingItemProps> = ({
 export const SettingsScreen: React.FC = () => {
   const { colors, isDark, toggleTheme } = useTheme();
   const { user, refreshUser } = useAuth();
+  const { language, setLanguage, t } = useLanguage();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
   // Local state for settings
   const [selectedMode, setSelectedMode] = useState(user?.default_mode || 'synthesis');
   const [selectedModel, setSelectedModel] = useState(user?.default_model || 'gpt-4o-mini');
-  const [selectedLanguage, setSelectedLanguage] = useState('fr');
 
   // Load saved settings on mount
   useEffect(() => {
@@ -83,11 +84,9 @@ export const SettingsScreen: React.FC = () => {
       try {
         const savedMode = await AsyncStorage.getItem('deepsight_default_mode');
         const savedModel = await AsyncStorage.getItem('deepsight_default_model');
-        const savedLang = await AsyncStorage.getItem(STORAGE_KEYS.LANGUAGE);
 
         if (savedMode) setSelectedMode(savedMode);
         if (savedModel) setSelectedModel(savedModel);
-        if (savedLang) setSelectedLanguage(savedLang);
       } catch (error) {
         console.error('Failed to load settings:', error);
       }
@@ -110,14 +109,14 @@ export const SettingsScreen: React.FC = () => {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error('Failed to save preference:', error);
-      Alert.alert('Erreur', 'Impossible de sauvegarder le paramètre.');
+      Alert.alert(t.common.error, t.errors?.saveFailed || 'Failed to save setting.');
     }
   };
 
   const handleSelectMode = () => {
     Alert.alert(
-      'Mode d\'analyse par défaut',
-      'Sélectionnez votre mode préféré',
+      t.settings.defaultMode,
+      t.settings.selectMode || 'Select your preferred mode',
       [
         ...ANALYSIS_MODES.map(mode => ({
           text: mode.label,
@@ -126,15 +125,15 @@ export const SettingsScreen: React.FC = () => {
             await savePreference('deepsight_default_mode', mode.id);
           },
         })),
-        { text: 'Annuler', style: 'cancel' as const },
+        { text: t.common.cancel, style: 'cancel' as const },
       ]
     );
   };
 
   const handleSelectModel = () => {
     Alert.alert(
-      'Modèle IA par défaut',
-      'Sélectionnez votre modèle préféré',
+      t.settings.defaultModel,
+      t.settings.selectModel || 'Select your preferred model',
       [
         ...AI_MODELS.slice(0, 4).map(model => ({
           text: `${model.label} (${model.provider})`,
@@ -143,47 +142,47 @@ export const SettingsScreen: React.FC = () => {
             await savePreference('deepsight_default_model', model.id);
           },
         })),
-        { text: 'Annuler', style: 'cancel' as const },
+        { text: t.common.cancel, style: 'cancel' as const },
       ]
     );
   };
 
   const handleSelectLanguage = () => {
     Alert.alert(
-      'Langue de l\'interface',
-      'Sélectionnez votre langue',
+      t.settings.language,
+      t.settings.selectLanguage || 'Select your language',
       [
         ...LANGUAGES.map(lang => ({
           text: `${lang.flag} ${lang.label}`,
           onPress: async () => {
-            setSelectedLanguage(lang.code);
-            await savePreference(STORAGE_KEYS.LANGUAGE, lang.code);
+            await setLanguage(lang.code as 'fr' | 'en');
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           },
         })),
-        { text: 'Annuler', style: 'cancel' as const },
+        { text: t.common.cancel, style: 'cancel' as const },
       ]
     );
   };
 
   const handleNotifications = () => {
     Alert.alert(
-      'Notifications',
-      'Les paramètres de notifications seront disponibles prochainement.',
-      [{ text: 'OK' }]
+      t.settings.notifications,
+      t.settings.notificationsComingSoon || 'Notification settings coming soon.',
+      [{ text: t.common.close || 'OK' }]
     );
   };
 
   const handleClearCache = () => {
     Alert.alert(
-      'Vider le cache',
-      'Êtes-vous sûr de vouloir vider le cache de l\'application ?',
+      t.settings.clearCache,
+      t.settings.clearCacheConfirm || 'Are you sure you want to clear the app cache?',
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Vider',
+          text: t.settings.clear || 'Clear',
           style: 'destructive',
           onPress: () => {
-            Alert.alert('Succès', 'Le cache a été vidé.');
+            Alert.alert(t.success?.generic || 'Success', t.settings.cacheClearedMessage || 'Cache has been cleared.');
           },
         },
       ]
@@ -202,7 +201,7 @@ export const SettingsScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <Header title="Paramètres" showBack />
+      <Header title={t.nav.settings} showBack />
 
       <ScrollView
         style={styles.scrollView}
@@ -211,18 +210,18 @@ export const SettingsScreen: React.FC = () => {
       >
         {/* Analysis Settings */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Analyse
+          {t.nav.analysis}
         </Text>
         <Card variant="elevated" style={styles.settingsCard}>
           <SettingItem
             icon="document-text-outline"
-            label="Mode par défaut"
+            label={t.settings.defaultMode}
             value={getDefaultModeLabel()}
             onPress={handleSelectMode}
           />
           <SettingItem
             icon="hardware-chip-outline"
-            label="Modèle IA"
+            label={t.settings.defaultModel}
             value={getDefaultModelLabel()}
             onPress={handleSelectModel}
           />
@@ -230,7 +229,7 @@ export const SettingsScreen: React.FC = () => {
 
         {/* Appearance Settings */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Apparence
+          {t.settings.appearance}
         </Text>
         <Card variant="elevated" style={styles.settingsCard}>
           <TouchableOpacity
@@ -249,7 +248,7 @@ export const SettingsScreen: React.FC = () => {
                 />
               </View>
               <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-                Mode sombre
+                {t.settings.darkMode}
               </Text>
             </View>
             <View style={[styles.toggle, { backgroundColor: isDark ? colors.accentPrimary : colors.bgTertiary }]}>
@@ -263,32 +262,32 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
           <SettingItem
             icon="language-outline"
-            label="Langue"
-            value={LANGUAGES.find(l => l.code === selectedLanguage)?.label || 'Français'}
+            label={t.settings.language}
+            value={LANGUAGES.find(l => l.code === language)?.label || 'Francais'}
             onPress={handleSelectLanguage}
           />
         </Card>
 
         {/* Notifications */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Notifications
+          {t.settings.notifications}
         </Text>
         <Card variant="elevated" style={styles.settingsCard}>
           <SettingItem
             icon="notifications-outline"
-            label="Gérer les notifications"
+            label={t.settings.manageNotifications || 'Manage notifications'}
             onPress={handleNotifications}
           />
         </Card>
 
         {/* Data & Storage */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Données et stockage
+          {t.settings.dataStorage || 'Data & Storage'}
         </Text>
         <Card variant="elevated" style={styles.settingsCard}>
           <SettingItem
             icon="trash-outline"
-            label="Vider le cache"
+            label={t.settings.clearCache}
             onPress={handleClearCache}
             showChevron={false}
           />
@@ -296,12 +295,12 @@ export const SettingsScreen: React.FC = () => {
 
         {/* App Info */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          À propos
+          {t.settings.about}
         </Text>
         <Card variant="elevated" style={styles.settingsCard}>
           <SettingItem
             icon="information-circle-outline"
-            label="Version"
+            label={t.settings.version}
             value="1.0.0"
             onPress={() => {}}
             showChevron={false}

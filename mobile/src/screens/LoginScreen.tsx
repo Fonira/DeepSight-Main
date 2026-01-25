@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Button, Input } from '../components/ui';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
 import type { RootStackParamList } from '../types';
@@ -24,6 +25,7 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, '
 
 export const LoginScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const { login, loginWithGoogle, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const insets = useSafeAreaInsets();
@@ -43,20 +45,20 @@ export const LoginScreen: React.FC = () => {
     clearError();
 
     if (!email.trim()) {
-      setEmailError('L\'email est requis');
+      setEmailError(t.common.required);
       isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      setEmailError('Email invalide');
+      setEmailError(t.errors.invalidUrl);
       isValid = false;
     } else {
       setEmailError('');
     }
 
     if (!password) {
-      setPasswordError('Le mot de passe est requis');
+      setPasswordError(t.common.required);
       isValid = false;
     } else if (password.length < 8) {
-      setPasswordError('Minimum 8 caractères');
+      setPasswordError(t.common.required);
       isValid = false;
     } else {
       setPasswordError('');
@@ -121,10 +123,10 @@ export const LoginScreen: React.FC = () => {
           </View>
 
           <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Bon retour !
+            {t.auth.welcomeBack}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Connectez-vous pour continuer
+            {t.auth.subtitle}
           </Text>
 
           {/* Error message */}
@@ -138,8 +140,8 @@ export const LoginScreen: React.FC = () => {
           {/* Form */}
           <View style={styles.form}>
             <Input
-              label="Email"
-              placeholder="votre@email.com"
+              label={t.auth.email}
+              placeholder="email@example.com"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -150,8 +152,8 @@ export const LoginScreen: React.FC = () => {
             />
 
             <Input
-              label="Mot de passe"
-              placeholder="Votre mot de passe"
+              label={t.auth.password}
+              placeholder={t.auth.password}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -162,12 +164,12 @@ export const LoginScreen: React.FC = () => {
 
             <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPassword}>
               <Text style={[styles.forgotPasswordText, { color: colors.accentPrimary }]}>
-                Mot de passe oublié ?
+                {t.settings.changePassword}
               </Text>
             </TouchableOpacity>
 
             <Button
-              title="Se connecter"
+              title={t.auth.signIn}
               onPress={handleLogin}
               loading={isLoading}
               fullWidth
@@ -178,13 +180,13 @@ export const LoginScreen: React.FC = () => {
           {/* Divider */}
           <View style={styles.divider}>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.textTertiary }]}>ou</Text>
+            <Text style={[styles.dividerText, { color: colors.textTertiary }]}>{t.common.or}</Text>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </View>
 
           {/* Social login */}
           <Button
-            title="Continuer avec Google"
+            title={t.auth.loginWithGoogle}
             variant="outline"
             onPress={handleGoogleLogin}
             fullWidth
@@ -194,11 +196,11 @@ export const LoginScreen: React.FC = () => {
           {/* Register link */}
           <View style={styles.registerContainer}>
             <Text style={[styles.registerText, { color: colors.textSecondary }]}>
-              Pas encore de compte ?{' '}
+              {t.auth.noAccount}{' '}
             </Text>
             <TouchableOpacity onPress={handleRegister}>
               <Text style={[styles.registerLink, { color: colors.accentPrimary }]}>
-                S'inscrire
+                {t.auth.signUp}
               </Text>
             </TouchableOpacity>
           </View>
