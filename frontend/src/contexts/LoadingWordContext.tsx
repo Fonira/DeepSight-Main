@@ -4,11 +4,12 @@
  * - Timer de 60 secondes pour rafraîchir automatiquement
  * - Cache local pour éviter les répétitions
  * - Support bilingue FR/EN
+ * - Fallback local quand l'API n'est pas disponible
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
-import { API_URL } from '../services/api';
 import { useLanguage } from './LanguageContext';
+import { DEFAULT_WORDS, getRandomWord, WordData } from '../data/defaultWords';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -19,7 +20,7 @@ export interface LoadingWord {
   definition: string;
   shortDefinition: string;
   category: string;
-  source: 'history' | 'curated';
+  source: 'history' | 'curated' | 'local';
   wikiUrl?: string;
 }
 
@@ -46,6 +47,21 @@ const REFRESH_INTERVAL = 60 * 1000;
 const displayedWords = new Set<string>();
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 🔄 HELPER: Convertir WordData local en LoadingWord
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function convertLocalWord(word: WordData, lang: string): LoadingWord {
+  return {
+    term: lang === 'fr' ? word.term : word.term_en,
+    definition: lang === 'fr' ? word.definition_fr : word.definition_en,
+    shortDefinition: lang === 'fr' ? word.short_fr : word.short_en,
+    category: word.category,
+    source: 'local',
+    wikiUrl: word.wiki_url,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 PROVIDER
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -59,7 +75,25 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   const isMountedRef = useRef(true);
 
   /**
-   * Récupère un mot aléatoire depuis l'API
+   * Utilise les données locales en fallback
+   */
+  const useLocalFallback = useCallback(() => {
+    const excludeList = Array.from(displayedWords).slice(-20);
+    const word = getRandomWord(excludeList);
+    const loadingWord = convertLocalWord(word, language);
+
+    setCurrentWord(loadingWord);
+    displayedWords.add(loadingWord.term);
+
+    // Limiter la taille du cache
+    if (displayedWords.size > 50) {
+      const iterator = displayedWords.values();
+      displayedWords.delete(iterator.next().value);
+    }
+  }, [language]);
+
+  /**
+   * Récupère un mot aléatoire depuis l'API ou fallback local
    */
   const fetchWord = useCallback(async () => {
     if (!isMountedRef.current) return;
@@ -70,6 +104,9 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
     try {
       // Construire la liste des mots à exclure (ceux déjà affichés)
       const excludeList = Array.from(displayedWords).slice(-20).join(',');
+
+      // Essayer l'API d'abord
+      const API_URL = import.meta.env.VITE_API_URL || 'https://deep-sight-backend-v3-production.up.railway.app';
       const url = `${API_URL}/api/words/random?lang=${language}${excludeList ? `&exclude=${excludeList}` : ''}`;
 
       const token = localStorage.getItem('access_token');
@@ -81,7 +118,15 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(url, { headers });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+
+      const response = await fetch(url, {
+        headers,
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
@@ -109,16 +154,17 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         }
       }
     } catch (err) {
+      // API échoue → utiliser les données locales
       if (isMountedRef.current) {
-        console.warn('[LoadingWord] Error fetching word:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        console.info('[LoadingWord] API unavailable, using local fallback');
+        useLocalFallback();
       }
     } finally {
       if (isMountedRef.current) {
         setIsLoading(false);
       }
     }
-  }, [language]);
+  }, [language, useLocalFallback]);
 
   /**
    * Rafraîchit le mot manuellement
@@ -159,10 +205,15 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
     setIsTimerActive(false);
   }, []);
 
-  // Fetch initial au montage
+  // Fetch initial au montage - utilise d'abord le local pour affichage immédiat
   useEffect(() => {
     isMountedRef.current = true;
-    fetchWord();
+
+    // Afficher immédiatement un mot local
+    useLocalFallback();
+
+    // Puis essayer l'API en background (pour les futures améliorations)
+    // fetchWord(); // Désactivé pour l'instant car l'API n'est pas déployée
 
     return () => {
       isMountedRef.current = false;
@@ -175,7 +226,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   // Re-fetch quand la langue change
   useEffect(() => {
     if (currentWord) {
-      fetchWord();
+      useLocalFallback(); // Utiliser le local pour un changement de langue instantané
     }
   }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
 
