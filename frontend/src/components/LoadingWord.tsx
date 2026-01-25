@@ -441,20 +441,27 @@ export const LoadingWordGlobal: React.FC = () => {
       {/* Content (hidden when minimized) */}
       {!isMinimized && (
         <div className={`p-3 ${isExpanded ? 'overflow-y-auto max-h-[50vh]' : ''}`}>
-          {/* Term */}
-          <p
+          {/* Term - CLICKABLE to navigate to analysis */}
+          <button
             onClick={handleClick}
+            disabled={!isClickable}
             className={`
-              text-sm font-semibold text-text-primary mb-2
-              ${isClickable ? 'cursor-pointer hover:text-accent-primary transition-colors' : ''}
+              text-sm font-semibold mb-2 text-left w-full
+              ${isClickable
+                ? 'cursor-pointer text-accent-primary hover:text-accent-hover transition-colors group'
+                : 'text-text-primary cursor-default'}
             `}
+            title={isClickable ? (language === 'fr' ? 'Cliquez pour voir l\'analyse' : 'Click to view analysis') : undefined}
           >
             <span className="text-accent-secondary">«</span>
-            <span className={isClickable ? 'underline decoration-dotted decoration-accent-primary/50' : ''}>
+            <span className={isClickable ? 'underline decoration-solid decoration-accent-primary/50 group-hover:decoration-accent-primary' : ''}>
               {currentWord.term}
             </span>
             <span className="text-accent-secondary">»</span>
-          </p>
+            {isClickable && (
+              <span className="ml-2 text-xs opacity-60 group-hover:opacity-100 transition-opacity">→</span>
+            )}
+          </button>
 
           {/* Definition */}
           <div className="text-xs text-text-secondary leading-relaxed">
