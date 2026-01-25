@@ -196,6 +196,7 @@ export const DashboardPage: React.FC = () => {
   const isProUser = user?.plan === "pro" || user?.plan === "team" || user?.plan === "expert";
   const isTeamOrHigher = user?.plan === "team" || user?.plan === "expert" || user?.plan === "unlimited";
   const isStarterPlus = user?.plan === "student" || user?.plan === "starter" || user?.plan === "pro" || user?.plan === "team" || user?.plan === "expert" || user?.plan === "unlimited";
+  const isExpertUser = user?.plan === "expert" || user?.plan === "unlimited";
   
   // 🆕 Configuration des modèles selon le plan
   const availableModels = useMemo(() => {
@@ -1325,7 +1326,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* 🔍 Modal Découverte Intelligente */}
       <VideoDiscoveryModal
-        isOpen={showDiscoveryModal}A
+        isOpen={showDiscoveryModal}
         onClose={() => setShowDiscoveryModal(false)}
         discovery={discoveryResult}
         onSelectVideo={handleSelectDiscoveredVideo}
