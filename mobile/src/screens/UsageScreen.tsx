@@ -9,11 +9,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Header, Card, Badge } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 
 export const UsageScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
 
@@ -34,7 +36,7 @@ export const UsageScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <Header title="Utilisation" showBack />
+      <Header title={t.settings.usage} showBack />
 
       <ScrollView
         style={styles.scrollView}
@@ -45,7 +47,7 @@ export const UsageScreen: React.FC = () => {
         <Card variant="elevated" style={styles.usageCard}>
           <View style={styles.usageHeader}>
             <Text style={[styles.usageTitle, { color: colors.textPrimary }]}>
-              Période actuelle
+              {t.common.thisMonth}
             </Text>
             <Badge label={getPlanLabel()} variant="primary" />
           </View>
@@ -54,7 +56,7 @@ export const UsageScreen: React.FC = () => {
           <View style={styles.progressSection}>
             <View style={styles.progressLabels}>
               <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
-                Crédits utilisés
+                {t.upgrade.creditsUsed}
               </Text>
               <Text style={[styles.progressValue, { color: colors.textPrimary }]}>
                 {creditsUsed} / {creditsTotal}
@@ -72,7 +74,7 @@ export const UsageScreen: React.FC = () => {
               />
             </View>
             <Text style={[styles.progressHint, { color: colors.textTertiary }]}>
-              {user?.credits || 0} crédits restants
+              {user?.credits || 0} {t.dashboard.creditsRemaining}
             </Text>
           </View>
 
@@ -80,14 +82,14 @@ export const UsageScreen: React.FC = () => {
           <View style={[styles.resetInfo, { borderTopColor: colors.border }]}>
             <Ionicons name="calendar-outline" size={20} color={colors.textTertiary} />
             <Text style={[styles.resetText, { color: colors.textSecondary }]}>
-              Renouvellement le 1er du mois
+              {t.upgrade.renewalDate}
             </Text>
           </View>
         </Card>
 
         {/* Statistics */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Statistiques
+          {t.admin.statistics}
         </Text>
         <View style={styles.statsGrid}>
           <Card variant="elevated" style={styles.statCard}>
@@ -96,7 +98,7 @@ export const UsageScreen: React.FC = () => {
               {user?.total_videos || 0}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-              Vidéos analysées
+              {t.admin.videosAnalyzed}
             </Text>
           </Card>
           <Card variant="elevated" style={styles.statCard}>
@@ -105,7 +107,7 @@ export const UsageScreen: React.FC = () => {
               {user?.total_words ? `${Math.round(user.total_words / 1000)}k` : '0'}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-              Mots générés
+              {t.admin.wordsGenerated}
             </Text>
           </Card>
         </View>
@@ -116,7 +118,7 @@ export const UsageScreen: React.FC = () => {
               {user?.total_playlists || 0}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-              Playlists
+              {t.playlists.title}
             </Text>
           </Card>
           <Card variant="elevated" style={styles.statCard}>
@@ -125,14 +127,14 @@ export const UsageScreen: React.FC = () => {
               -
             </Text>
             <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-              Temps économisé
+              {t.admin.wordsGenerated}
             </Text>
           </Card>
         </View>
 
         {/* Usage History */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Historique d'utilisation
+          {t.history.title}
         </Text>
         <Card variant="elevated" style={styles.historyCard}>
           <View style={[styles.historyItem, { borderBottomColor: colors.border }]}>
@@ -140,15 +142,15 @@ export const UsageScreen: React.FC = () => {
               <View style={[styles.historyDot, { backgroundColor: colors.accentPrimary }]} />
               <View>
                 <Text style={[styles.historyTitle, { color: colors.textPrimary }]}>
-                  Analyse vidéo
+                  {t.analysis.title}
                 </Text>
                 <Text style={[styles.historyDate, { color: colors.textTertiary }]}>
-                  Aujourd'hui
+                  {t.common.today}
                 </Text>
               </View>
             </View>
             <Text style={[styles.historyCredits, { color: colors.textSecondary }]}>
-              -1 crédit
+              -1
             </Text>
           </View>
           <View style={styles.historyItem}>
@@ -156,15 +158,15 @@ export const UsageScreen: React.FC = () => {
               <View style={[styles.historyDot, { backgroundColor: colors.accentSuccess }]} />
               <View>
                 <Text style={[styles.historyTitle, { color: colors.textPrimary }]}>
-                  Renouvellement mensuel
+                  {t.upgrade.renewalDate}
                 </Text>
                 <Text style={[styles.historyDate, { color: colors.textTertiary }]}>
-                  1er janvier
+                  {t.common.thisMonth}
                 </Text>
               </View>
             </View>
             <Text style={[styles.historyCredits, { color: colors.accentSuccess }]}>
-              +{creditsTotal} crédits
+              +{creditsTotal}
             </Text>
           </View>
         </Card>

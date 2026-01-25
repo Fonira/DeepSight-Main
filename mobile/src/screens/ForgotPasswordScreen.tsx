@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Button, Input } from '../components/ui';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import type { RootStackParamList } from '../types';
@@ -22,6 +23,7 @@ type ForgotPasswordNavigationProp = NativeStackNavigationProp<RootStackParamList
 
 export const ForgotPasswordScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const { forgotPassword, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<ForgotPasswordNavigationProp>();
   const insets = useSafeAreaInsets();
@@ -37,11 +39,11 @@ export const ForgotPasswordScreen: React.FC = () => {
 
   const validateEmail = (): boolean => {
     if (!email.trim()) {
-      setEmailError('L\'email est requis');
+      setEmailError(t.common.required);
       return false;
     }
     if (!/\S+@\S+\.\S+/.test(email)) {
-      setEmailError('Email invalide');
+      setEmailError(t.errors.invalidUrl);
       return false;
     }
     setEmailError('');
@@ -80,13 +82,13 @@ export const ForgotPasswordScreen: React.FC = () => {
               <Ionicons name="mail" size={48} color={colors.accentSuccess} />
             </View>
             <Text style={[styles.successTitle, { color: colors.textPrimary }]}>
-              Email envoyé !
+              {t.notifications.analysisReady}
             </Text>
             <Text style={[styles.successText, { color: colors.textSecondary }]}>
-              Si un compte existe avec l'adresse {email}, vous recevrez un email avec les instructions pour réinitialiser votre mot de passe.
+              {email}
             </Text>
             <Button
-              title="Retour à la connexion"
+              title={t.auth.signIn}
               onPress={handleBackToLogin}
               fullWidth
               style={styles.backButton}
@@ -124,17 +126,17 @@ export const ForgotPasswordScreen: React.FC = () => {
           </View>
 
           <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Mot de passe oublié ?
+            {t.settings.changePassword}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Pas de souci ! Entrez votre email et nous vous enverrons un lien pour réinitialiser votre mot de passe.
+            {t.auth.subtitle}
           </Text>
 
           {/* Form */}
           <View style={styles.form}>
             <Input
-              label="Email"
-              placeholder="votre@email.com"
+              label={t.auth.email}
+              placeholder="email@example.com"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -145,7 +147,7 @@ export const ForgotPasswordScreen: React.FC = () => {
             />
 
             <Button
-              title="Envoyer le lien"
+              title={t.common.send}
               onPress={handleResetPassword}
               loading={isLoading}
               fullWidth
@@ -157,7 +159,7 @@ export const ForgotPasswordScreen: React.FC = () => {
           <TouchableOpacity onPress={handleBackToLogin} style={styles.loginLink}>
             <Ionicons name="arrow-back" size={16} color={colors.accentPrimary} />
             <Text style={[styles.loginLinkText, { color: colors.accentPrimary }]}>
-              Retour à la connexion
+              {t.auth.signIn}
             </Text>
           </TouchableOpacity>
         </ScrollView>

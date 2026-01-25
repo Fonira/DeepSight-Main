@@ -17,6 +17,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { historyApi } from '../services/api';
 import { Header, VideoCard, EmptyState } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
@@ -30,6 +31,7 @@ type HistoryNavigationProp = CompositeNavigationProp<
 
 export const HistoryScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const navigation = useNavigation<HistoryNavigationProp>();
   const insets = useSafeAreaInsets();
 
@@ -119,12 +121,12 @@ export const HistoryScreen: React.FC = () => {
   const handleDeletePress = (summary: AnalysisSummary) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
-      'Supprimer l\'analyse',
-      `Voulez-vous supprimer "${summary.title}" ?`,
+      t.history.confirmDeleteTitle,
+      `${t.history.deleteConfirm} "${summary.title}"`,
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t.common.delete,
           style: 'destructive',
           onPress: async () => {
             try {
@@ -133,7 +135,7 @@ export const HistoryScreen: React.FC = () => {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch (error) {
               console.error('Failed to delete summary:', error);
-              Alert.alert('Erreur', 'Impossible de supprimer l\'analyse');
+              Alert.alert(t.common.error, t.errors.generic);
             }
           },
         },
@@ -175,19 +177,19 @@ export const HistoryScreen: React.FC = () => {
         icon={showFavoritesOnly ? 'heart-outline' : 'folder-open-outline'}
         title={
           showFavoritesOnly
-            ? 'Aucun favori'
+            ? t.common.noResults
             : searchQuery
-            ? 'Aucun résultat'
-            : 'Aucune analyse'
+            ? t.common.noResults
+            : t.history.noAnalysesYet
         }
         description={
           showFavoritesOnly
-            ? 'Ajoutez des vidéos à vos favoris pour les retrouver ici'
+            ? t.history.emptyDesc
             : searchQuery
-            ? 'Essayez avec d\'autres termes de recherche'
-            : 'Analysez votre première vidéo YouTube pour commencer'
+            ? t.errors.tryAgain
+            : t.history.startFirstAnalysis
         }
-        actionLabel={!showFavoritesOnly && !searchQuery ? 'Analyser une vidéo' : undefined}
+        actionLabel={!showFavoritesOnly && !searchQuery ? t.dashboard.analyze : undefined}
         onAction={!showFavoritesOnly && !searchQuery ? () => navigation.navigate('Dashboard') : undefined}
       />
     );
@@ -195,7 +197,7 @@ export const HistoryScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <Header title="Historique" />
+      <Header title={t.history.title} />
 
       {/* Search Bar */}
       <View style={styles.searchSection}>
@@ -208,7 +210,7 @@ export const HistoryScreen: React.FC = () => {
           <Ionicons name="search" size={20} color={colors.textTertiary} />
           <TextInput
             style={[styles.searchInput, { color: colors.textPrimary }]}
-            placeholder="Rechercher..."
+            placeholder={t.history.searchHistory}
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -259,7 +261,7 @@ export const HistoryScreen: React.FC = () => {
         <View style={styles.filtersContainer}>
           {/* Mode Filter */}
           <View style={styles.filterRow}>
-            <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Mode:</Text>
+            <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t.dashboard.selectMode}:</Text>
             <View style={styles.filterChips}>
               <TouchableOpacity
                 style={[
@@ -269,7 +271,7 @@ export const HistoryScreen: React.FC = () => {
                 onPress={() => setSelectedMode(null)}
               >
                 <Text style={[styles.filterChipText, { color: !selectedMode ? '#FFFFFF' : colors.textSecondary }]}>
-                  Tous
+                  {t.common.all}
                 </Text>
               </TouchableOpacity>
               {modes.map((mode) => (
@@ -291,7 +293,7 @@ export const HistoryScreen: React.FC = () => {
 
           {/* Category Filter */}
           <View style={styles.filterRow}>
-            <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>Catégorie:</Text>
+            <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t.dashboard.selectCategory}:</Text>
             <View style={styles.filterChips}>
               <TouchableOpacity
                 style={[
@@ -301,7 +303,7 @@ export const HistoryScreen: React.FC = () => {
                 onPress={() => setSelectedCategory(null)}
               >
                 <Text style={[styles.filterChipText, { color: !selectedCategory ? '#FFFFFF' : colors.textSecondary }]}>
-                  Toutes
+                  {t.history.allCategories}
                 </Text>
               </TouchableOpacity>
               {categories.map((cat) => (
@@ -327,8 +329,7 @@ export const HistoryScreen: React.FC = () => {
       {!isLoading && analyses.length > 0 && (
         <View style={styles.resultsInfo}>
           <Text style={[styles.resultsText, { color: colors.textSecondary }]}>
-            {analyses.length} analyse{analyses.length > 1 ? 's' : ''}
-            {showFavoritesOnly ? ' en favoris' : ''}
+            {analyses.length} {t.history.analyses}
           </Text>
         </View>
       )}

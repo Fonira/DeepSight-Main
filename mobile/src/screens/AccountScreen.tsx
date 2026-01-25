@@ -13,12 +13,14 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Header, Card, Avatar, Button, Input } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { userApi, authApi, ApiError } from '../services/api';
 
 export const AccountScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const { user, refreshUser, logout, forgotPassword } = useAuth();
   const insets = useSafeAreaInsets();
 
@@ -29,7 +31,7 @@ export const AccountScreen: React.FC = () => {
 
   const handleSave = async () => {
     if (!username.trim()) {
-      Alert.alert('Erreur', 'Le nom d\'utilisateur ne peut pas être vide.');
+      Alert.alert(t.common.error, t.common.required);
       return;
     }
 
@@ -38,11 +40,11 @@ export const AccountScreen: React.FC = () => {
       await userApi.updateProfile({ username: username.trim() });
       await refreshUser();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Succès', 'Vos informations ont été mises à jour.');
+      Alert.alert(t.success.generic, t.success.profileUpdated);
       setIsEditing(false);
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'Erreur lors de la mise à jour';
-      Alert.alert('Erreur', message);
+      const message = err instanceof ApiError ? err.message : t.errors.generic;
+      Alert.alert(t.common.error, message);
     } finally {
       setIsSaving(false);
     }
@@ -50,24 +52,24 @@ export const AccountScreen: React.FC = () => {
 
   const handleChangePassword = () => {
     if (!user?.email) {
-      Alert.alert('Erreur', 'Aucun email associé à ce compte.');
+      Alert.alert(t.common.error, t.errors.generic);
       return;
     }
 
     Alert.alert(
-      'Changer le mot de passe',
-      `Un email sera envoyé à ${user.email} pour réinitialiser votre mot de passe.`,
+      t.settings.changePassword,
+      user.email,
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Envoyer',
+          text: t.common.send,
           onPress: async () => {
             try {
               await forgotPassword(user.email);
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              Alert.alert('Email envoyé', 'Vérifiez votre boîte mail pour réinitialiser votre mot de passe.');
+              Alert.alert(t.success.generic, t.notifications.analysisReady);
             } catch (err) {
-              Alert.alert('Erreur', 'Impossible d\'envoyer l\'email. Réessayez plus tard.');
+              Alert.alert(t.common.error, t.errors.generic);
             }
           }
         },
@@ -77,26 +79,26 @@ export const AccountScreen: React.FC = () => {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Supprimer le compte',
-      'Cette action est irréversible. Toutes vos données seront supprimées définitivement.',
+      t.settings.deleteAccount,
+      t.settings.deleteAccountConfirm,
       [
-        { text: 'Annuler', style: 'cancel' },
+        { text: t.common.cancel, style: 'cancel' },
         {
-          text: 'Supprimer',
+          text: t.common.delete,
           style: 'destructive',
           onPress: async () => {
             try {
               // Note: Backend may not have delete account endpoint yet
               // For now, just log the user out
               Alert.alert(
-                'Confirmation',
-                'Pour supprimer votre compte, veuillez contacter le support à support@deepsight.app',
+                t.common.confirm,
+                'support@deepsight.app',
                 [
                   { text: 'OK', onPress: () => logout() }
                 ]
               );
             } catch (err) {
-              Alert.alert('Erreur', 'Impossible de supprimer le compte.');
+              Alert.alert(t.common.error, t.errors.generic);
             }
           },
         },
@@ -106,7 +108,7 @@ export const AccountScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <Header title="Mon compte" showBack />
+      <Header title={t.settings.account} showBack />
 
       <ScrollView
         style={styles.scrollView}
@@ -118,7 +120,7 @@ export const AccountScreen: React.FC = () => {
           <Avatar uri={user?.avatar_url} name={user?.username} size="xl" />
           <TouchableOpacity
             style={[styles.changeAvatarButton, { backgroundColor: colors.accentPrimary }]}
-            onPress={() => Alert.alert('Changer la photo', 'Cette fonctionnalité sera disponible prochainement.')}
+            onPress={() => Alert.alert(t.settings.profilePicture, t.common.optional)}
           >
             <Ionicons name="camera" size={16} color="#FFFFFF" />
           </TouchableOpacity>
@@ -126,37 +128,37 @@ export const AccountScreen: React.FC = () => {
 
         {/* Account Info */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Informations
+          {t.settings.accountInfo}
         </Text>
         <Card variant="elevated" style={styles.infoCard}>
           {isEditing ? (
             <>
               <Input
-                label="Nom d'utilisateur"
+                label={t.settings.displayName}
                 value={username}
                 onChangeText={setUsername}
                 leftIcon="person-outline"
               />
               <Input
-                label="Email"
+                label={t.auth.email}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 leftIcon="mail-outline"
                 editable={false}
-                hint="L'email ne peut pas être modifié"
+                hint={t.common.optional}
               />
               <View style={styles.editActions}>
                 <Button
-                  title="Annuler"
+                  title={t.common.cancel}
                   variant="outline"
                   onPress={() => setIsEditing(false)}
                   style={styles.editButton}
                   disabled={isSaving}
                 />
                 <Button
-                  title={isSaving ? "Enregistrement..." : "Enregistrer"}
+                  title={isSaving ? t.common.saving : t.common.save}
                   onPress={handleSave}
                   style={styles.editButton}
                   disabled={isSaving}
@@ -170,7 +172,7 @@ export const AccountScreen: React.FC = () => {
                 <View style={styles.infoLabel}>
                   <Ionicons name="person-outline" size={20} color={colors.textTertiary} />
                   <Text style={[styles.infoLabelText, { color: colors.textSecondary }]}>
-                    Nom d'utilisateur
+                    {t.settings.displayName}
                   </Text>
                 </View>
                 <Text style={[styles.infoValue, { color: colors.textPrimary }]}>
@@ -181,7 +183,7 @@ export const AccountScreen: React.FC = () => {
                 <View style={styles.infoLabel}>
                   <Ionicons name="mail-outline" size={20} color={colors.textTertiary} />
                   <Text style={[styles.infoLabelText, { color: colors.textSecondary }]}>
-                    Email
+                    {t.auth.email}
                   </Text>
                 </View>
                 <Text style={[styles.infoValue, { color: colors.textPrimary }]}>
@@ -192,7 +194,7 @@ export const AccountScreen: React.FC = () => {
                 <View style={styles.infoLabel}>
                   <Ionicons name="calendar-outline" size={20} color={colors.textTertiary} />
                   <Text style={[styles.infoLabelText, { color: colors.textSecondary }]}>
-                    Membre depuis
+                    {t.settings.memberSince}
                   </Text>
                 </View>
                 <Text style={[styles.infoValue, { color: colors.textPrimary }]}>
@@ -200,7 +202,7 @@ export const AccountScreen: React.FC = () => {
                 </Text>
               </View>
               <Button
-                title="Modifier"
+                title={t.common.edit}
                 variant="outline"
                 onPress={() => setIsEditing(true)}
                 style={styles.editInfoButton}
@@ -211,7 +213,7 @@ export const AccountScreen: React.FC = () => {
 
         {/* Security */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          Sécurité
+          {t.settings.security}
         </Text>
         <Card variant="elevated" style={styles.securityCard}>
           <TouchableOpacity
@@ -221,7 +223,7 @@ export const AccountScreen: React.FC = () => {
             <View style={styles.securityItemLeft}>
               <Ionicons name="lock-closed-outline" size={20} color={colors.accentPrimary} />
               <Text style={[styles.securityItemText, { color: colors.textPrimary }]}>
-                Changer le mot de passe
+                {t.settings.changePassword}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -230,7 +232,7 @@ export const AccountScreen: React.FC = () => {
             <View style={styles.securityItemLeft}>
               <Ionicons name="shield-checkmark-outline" size={20} color={colors.accentSuccess} />
               <Text style={[styles.securityItemText, { color: colors.textPrimary }]}>
-                Email vérifié
+                {t.settings.emailVerified}
               </Text>
             </View>
             <Ionicons
@@ -243,7 +245,7 @@ export const AccountScreen: React.FC = () => {
 
         {/* Danger Zone */}
         <Text style={[styles.sectionTitle, { color: colors.accentError }]}>
-          Zone de danger
+          {t.settings.dangerZone}
         </Text>
         <Card variant="elevated" style={styles.dangerCard}>
           <TouchableOpacity
@@ -253,7 +255,7 @@ export const AccountScreen: React.FC = () => {
             <View style={styles.securityItemLeft}>
               <Ionicons name="trash-outline" size={20} color={colors.accentError} />
               <Text style={[styles.securityItemText, { color: colors.accentError }]}>
-                Supprimer mon compte
+                {t.settings.deleteAccount}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.accentError} />

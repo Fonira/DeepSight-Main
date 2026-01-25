@@ -3,6 +3,7 @@
     "loading": "Chargement...",
     "error": "Une erreur est survenue",
     "save": "Enregistrer",
+    "saving": "Enregistrement...",
     "cancel": "Annuler",
     "delete": "Supprimer",
     "confirm": "Confirmer",
@@ -22,6 +23,7 @@
     "retry": "Réessayer",
     "seeMore": "Voir plus",
     "seeLess": "Voir moins",
+    "seeAll": "Tout voir",
     "noResults": "Aucun résultat",
     "required": "Obligatoire",
     "optional": "Optionnel",
@@ -40,7 +42,13 @@
     "today": "Aujourd'hui",
     "yesterday": "Hier",
     "thisWeek": "Cette semaine",
-    "thisMonth": "Ce mois"
+    "thisMonth": "Ce mois",
+    "send": "Envoyer",
+    "create": "Créer",
+    "analyze": "Analyser",
+    "analyzing": "Analyse en cours...",
+    "video": "Vidéo",
+    "videos": "vidéos"
   },
   "nav": {
     "dashboard": "Tableau de bord",

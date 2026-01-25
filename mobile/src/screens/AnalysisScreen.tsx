@@ -23,6 +23,7 @@ import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { videoApi, chatApi, studyApi, exportApi } from '../services/api';
 import { Header, Card, Badge, Button } from '../components';
 import { QuizComponent, MindMapComponent } from '../components/study';
@@ -44,6 +45,7 @@ type TabType = 'summary' | 'concepts' | 'chat' | 'tools';
 
 export const AnalysisScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const navigation = useNavigation<AnalysisNavigationProp>();
   const route = useRoute<AnalysisRouteProp>();
   const insets = useSafeAreaInsets();
@@ -130,13 +132,13 @@ export const AnalysisScreen: React.FC = () => {
         }
       } else if (status.status === 'processing') {
         setAnalysisProgress(status.progress || 0);
-        setAnalysisStatus(status.message || 'Analyse en cours...');
+        setAnalysisStatus(status.message || t.analysis.inProgress);
         // Poll for updates with cleanup ref
         if (isMountedRef.current) {
           pollingTimeoutRef.current = setTimeout(() => loadAnalysis(), 2000);
         }
       } else if (status.status === 'failed') {
-        setError(status.error || 'L\'analyse a échoué');
+        setError(status.error || t.analysis.failed);
       }
     } catch (err: any) {
       // Try loading as existing summary
@@ -155,7 +157,7 @@ export const AnalysisScreen: React.FC = () => {
           setChatMessages(chatHistory.messages || []);
         } catch {}
       } catch {
-        setError('Impossible de charger l\'analyse');
+        setError(t.errors.generic);
       }
     } finally {
       setIsLoading(false);
@@ -207,7 +209,7 @@ export const AnalysisScreen: React.FC = () => {
       };
       setChatMessages(prev => [...prev, assistantMessage]);
     } catch (err) {
-      Alert.alert('Erreur', 'Impossible d\'envoyer le message');
+      Alert.alert(t.common.error, t.chat.errors.failed);
       // Remove the user message on error
       setChatMessages(prev => prev.filter(m => m.id !== newUserMessage.id));
       setChatInput(userMessage);
@@ -229,7 +231,7 @@ export const AnalysisScreen: React.FC = () => {
       setCurrentFlashcardIndex(0);
       setShowFlashcardAnswer(false);
     } catch (err) {
-      Alert.alert('Erreur', 'Impossible de générer les flashcards');
+      Alert.alert(t.common.error, t.errors.generic);
       setActiveStudyTool(null);
     } finally {
       setIsLoadingTools(false);
@@ -255,7 +257,7 @@ export const AnalysisScreen: React.FC = () => {
       setQuizQuestions(questions);
       setShowQuiz(true);
     } catch (err) {
-      Alert.alert('Erreur', 'Impossible de générer le quiz');
+      Alert.alert(t.common.error, t.errors.generic);
       setActiveStudyTool(null);
     } finally {
       setIsLoadingQuiz(false);
@@ -279,7 +281,7 @@ export const AnalysisScreen: React.FC = () => {
       if (typeof result.mindmap === 'string') {
         // Create mind map from concepts if mindmap is just text
         const nodes: MindMapNode[] = [
-          { id: 'main', label: summary.title || 'Sujet principal', type: 'main' },
+          { id: 'main', label: summary.title || t.analysis.concepts, type: 'main' },
         ];
 
         // Add concepts as secondary nodes
@@ -301,7 +303,7 @@ export const AnalysisScreen: React.FC = () => {
         });
 
         mapData = {
-          title: summary.title || 'Carte Mentale',
+          title: summary.title || t.analysis.conceptMap,
           nodes,
         };
       } else {
@@ -312,7 +314,7 @@ export const AnalysisScreen: React.FC = () => {
       setMindMapData(mapData);
       setShowMindMap(true);
     } catch (err) {
-      Alert.alert('Erreur', 'Impossible de générer la carte mentale');
+      Alert.alert(t.common.error, t.errors.generic);
       setActiveStudyTool(null);
     } finally {
       setIsLoadingMindMap(false);
@@ -344,7 +346,7 @@ export const AnalysisScreen: React.FC = () => {
 
     await Clipboard.setStringAsync(summary.content || '');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Copié', 'Le résumé a été copié dans le presse-papiers');
+    Alert.alert(t.common.copied, t.success.analysisCopied);
   };
 
   // Open YouTube video
@@ -358,11 +360,11 @@ export const AnalysisScreen: React.FC = () => {
   if (isLoading && analysisProgress < 100) {
     return (
       <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-        <Header title="Analyse" showBack />
+        <Header title={t.analysis.title} showBack />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accentPrimary} />
           <Text style={[styles.loadingText, { color: colors.textPrimary }]}>
-            {analysisStatus || 'Chargement...'}
+            {analysisStatus || t.common.loading}
           </Text>
           {analysisProgress > 0 && (
             <View style={styles.progressContainer}>
@@ -388,13 +390,13 @@ export const AnalysisScreen: React.FC = () => {
   if (error) {
     return (
       <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-        <Header title="Analyse" showBack />
+        <Header title={t.analysis.title} showBack />
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={48} color={colors.accentError} />
           <Text style={[styles.errorText, { color: colors.textPrimary }]}>
             {error}
           </Text>
-          <Button title="Réessayer" onPress={loadAnalysis} style={styles.retryButton} />
+          <Button title={t.common.retry} onPress={loadAnalysis} style={styles.retryButton} />
         </View>
       </View>
     );
@@ -402,16 +404,16 @@ export const AnalysisScreen: React.FC = () => {
 
   // Tabs
   const tabs: { id: TabType; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-    { id: 'summary', label: 'Résumé', icon: 'document-text-outline' },
-    { id: 'concepts', label: 'Concepts', icon: 'bulb-outline' },
-    { id: 'chat', label: 'Chat', icon: 'chatbubble-outline' },
-    { id: 'tools', label: 'Outils', icon: 'school-outline' },
+    { id: 'summary', label: t.analysis.summary, icon: 'document-text-outline' },
+    { id: 'concepts', label: t.analysis.concepts, icon: 'bulb-outline' },
+    { id: 'chat', label: t.analysis.chat, icon: 'chatbubble-outline' },
+    { id: 'tools', label: t.analysis.studyTools, icon: 'school-outline' },
   ];
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <Header
-        title="Analyse"
+        title={t.analysis.title}
         showBack
         rightAction={{ icon: 'share-outline', onPress: handleShare }}
       />
@@ -485,7 +487,7 @@ export const AnalysisScreen: React.FC = () => {
           {/* Summary content */}
           <Card variant="elevated" style={styles.summaryCard}>
             <Text style={[styles.summaryContent, { color: colors.textPrimary }]}>
-              {summary?.content || 'Aucun résumé disponible'}
+              {summary?.content || t.history.empty}
             </Text>
           </Card>
 
@@ -493,21 +495,21 @@ export const AnalysisScreen: React.FC = () => {
           <View style={styles.actionsRow}>
             <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.bgElevated }]} onPress={handleCopy}>
               <Ionicons name="copy-outline" size={20} color={colors.accentPrimary} />
-              <Text style={[styles.actionLabel, { color: colors.textSecondary }]}>Copier</Text>
+              <Text style={[styles.actionLabel, { color: colors.textSecondary }]}>{t.common.copy}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.bgElevated }]} onPress={handleShare}>
               <Ionicons name="share-outline" size={20} color={colors.accentPrimary} />
-              <Text style={[styles.actionLabel, { color: colors.textSecondary }]}>Partager</Text>
+              <Text style={[styles.actionLabel, { color: colors.textSecondary }]}>{t.common.share}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.bgElevated }]} onPress={handleOpenVideo}>
               <Ionicons name="play-outline" size={20} color={colors.accentPrimary} />
-              <Text style={[styles.actionLabel, { color: colors.textSecondary }]}>Vidéo</Text>
+              <Text style={[styles.actionLabel, { color: colors.textSecondary }]}>{t.common.video}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Analysis date */}
           <Text style={[styles.dateText, { color: colors.textMuted }]}>
-            Analysé le {formatDate(summary?.createdAt || '')}
+            {t.analysis.publishedAt} {formatDate(summary?.createdAt || '')}
           </Text>
 
           {/* Tournesol Widget */}
@@ -548,7 +550,7 @@ export const AnalysisScreen: React.FC = () => {
             <View style={styles.emptyState}>
               <Ionicons name="bulb-outline" size={48} color={colors.textTertiary} />
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                Aucun concept extrait
+                {t.analysis.noConcepts}
               </Text>
             </View>
           )}
@@ -571,7 +573,7 @@ export const AnalysisScreen: React.FC = () => {
               <View style={styles.chatEmptyState}>
                 <Ionicons name="chatbubble-outline" size={48} color={colors.textTertiary} />
                 <Text style={[styles.chatEmptyText, { color: colors.textSecondary }]}>
-                  Posez une question sur la vidéo
+                  {t.chat.askQuestion}
                 </Text>
               </View>
             }
@@ -601,7 +603,7 @@ export const AnalysisScreen: React.FC = () => {
           <View style={[styles.chatInputContainer, { backgroundColor: colors.bgSecondary, borderTopColor: colors.border }]}>
             <TextInput
               style={[styles.chatInput, { backgroundColor: colors.bgElevated, color: colors.textPrimary }]}
-              placeholder="Posez votre question..."
+              placeholder={t.chat.placeholder}
               placeholderTextColor={colors.textMuted}
               value={chatInput}
               onChangeText={setChatInput}
@@ -633,7 +635,7 @@ export const AnalysisScreen: React.FC = () => {
             >
               <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
               <Text style={[styles.backToToolsText, { color: colors.textPrimary }]}>
-                Retour aux outils
+                {t.common.back}
               </Text>
             </TouchableOpacity>
           )}
@@ -645,7 +647,7 @@ export const AnalysisScreen: React.FC = () => {
               contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
             >
               <Text style={[styles.toolsTitle, { color: colors.textPrimary }]}>
-                Outils d'étude
+                {t.analysis.studyTools}
               </Text>
 
               {/* Flashcards Button */}
@@ -660,7 +662,7 @@ export const AnalysisScreen: React.FC = () => {
                 <View style={styles.toolInfo}>
                   <Text style={[styles.toolName, { color: colors.textPrimary }]}>Flashcards</Text>
                   <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
-                    Cartes de révision question/réponse
+                    {t.chat.suggestions.summary}
                   </Text>
                 </View>
                 {isLoadingTools && <ActivityIndicator size="small" color={colors.accentPrimary} />}
@@ -682,7 +684,7 @@ export const AnalysisScreen: React.FC = () => {
                 <View style={styles.toolInfo}>
                   <Text style={[styles.toolName, { color: colors.textPrimary }]}>Quiz</Text>
                   <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
-                    Testez vos connaissances avec un quiz
+                    {t.chat.suggestions.keyPoints}
                   </Text>
                 </View>
                 {isLoadingQuiz && <ActivityIndicator size="small" color={colors.accentWarning} />}
@@ -702,21 +704,21 @@ export const AnalysisScreen: React.FC = () => {
                   <Ionicons name="git-network-outline" size={28} color={colors.accentSuccess} />
                 </View>
                 <View style={styles.toolInfo}>
-                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Carte Mentale</Text>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>{t.analysis.conceptMap}</Text>
                   <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
-                    Visualisez les concepts en diagramme
+                    {t.concepts.relatedConcepts}
                   </Text>
                 </View>
                 {isLoadingMindMap && <ActivityIndicator size="small" color={colors.accentSuccess} />}
                 {!isLoadingMindMap && mindMapData && (
-                  <Badge label="Prêt" variant="success" />
+                  <Badge label={t.analysis.complete} variant="success" />
                 )}
                 <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
               </TouchableOpacity>
 
               {/* Verification Section */}
               <Text style={[styles.toolsSectionTitle, { color: colors.textPrimary }]}>
-                Vérification
+                {t.analysis.factCheck}
               </Text>
 
               {summary && (
@@ -729,7 +731,7 @@ export const AnalysisScreen: React.FC = () => {
 
               {/* Export Section */}
               <Text style={[styles.toolsSectionTitle, { color: colors.textPrimary }]}>
-                Exporter
+                {t.analysis.export}
               </Text>
 
               <TouchableOpacity
@@ -740,9 +742,9 @@ export const AnalysisScreen: React.FC = () => {
                   <Ionicons name="download-outline" size={28} color={colors.accentSecondary} />
                 </View>
                 <View style={styles.toolInfo}>
-                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Exporter</Text>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>{t.analysis.export}</Text>
                   <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
-                    PDF, Markdown ou texte brut
+                    {t.export.formats.pdf}, {t.export.formats.md}, {t.export.formats.txt}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -756,9 +758,9 @@ export const AnalysisScreen: React.FC = () => {
                   <Ionicons name="share-outline" size={28} color={colors.textTertiary} />
                 </View>
                 <View style={styles.toolInfo}>
-                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Partager</Text>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>{t.common.share}</Text>
                   <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
-                    Partagez le résumé avec vos apps
+                    {t.analysis.summary}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -772,9 +774,9 @@ export const AnalysisScreen: React.FC = () => {
                   <Ionicons name="copy-outline" size={28} color={colors.textTertiary} />
                 </View>
                 <View style={styles.toolInfo}>
-                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Copier</Text>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>{t.common.copy}</Text>
                   <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
-                    Copiez le contenu dans le presse-papiers
+                    {t.success.analysisCopied}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -789,9 +791,9 @@ export const AnalysisScreen: React.FC = () => {
                   <Ionicons name="document-text-outline" size={28} color={colors.accentPrimary} />
                 </View>
                 <View style={styles.toolInfo}>
-                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Citation</Text>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>{t.citations.title}</Text>
                   <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
-                    APA, MLA, Chicago, Harvard
+                    {t.citations.apa}, {t.citations.mla}, {t.citations.chicago}, {t.citations.harvard}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -810,9 +812,9 @@ export const AnalysisScreen: React.FC = () => {
                   <Ionicons name="volume-high-outline" size={28} color={colors.accentInfo} />
                 </View>
                 <View style={styles.toolInfo}>
-                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>Écouter</Text>
+                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>{t.upgrade.features_list.ttsAudio}</Text>
                   <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
-                    Écoutez le résumé avec TTS
+                    TTS
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -832,7 +834,7 @@ export const AnalysisScreen: React.FC = () => {
                   onPress={() => setShowFlashcardAnswer(!showFlashcardAnswer)}
                 >
                   <Text style={[styles.flashcardLabel, { color: colors.textTertiary }]}>
-                    {showFlashcardAnswer ? 'Réponse' : 'Question'} ({currentFlashcardIndex + 1}/{flashcards.length})
+                    {showFlashcardAnswer ? t.chat.suggestions.summary : t.chat.suggestions.keyPoints} ({currentFlashcardIndex + 1}/{flashcards.length})
                   </Text>
                   <Text style={[styles.flashcardContent, { color: colors.textPrimary }]}>
                     {showFlashcardAnswer
@@ -840,7 +842,7 @@ export const AnalysisScreen: React.FC = () => {
                       : flashcards[currentFlashcardIndex]?.front}
                   </Text>
                   <Text style={[styles.flashcardHint, { color: colors.textMuted }]}>
-                    Touchez pour retourner
+                    {t.common.seeMore}
                   </Text>
                 </TouchableOpacity>
 

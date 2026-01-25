@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Button, Input } from '../components/ui';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import type { RootStackParamList } from '../types';
@@ -22,6 +23,7 @@ type RegisterScreenNavigationProp = NativeStackNavigationProp<RootStackParamList
 
 export const RegisterScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const { register, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<RegisterScreenNavigationProp>();
   const insets = useSafeAreaInsets();
@@ -53,34 +55,34 @@ export const RegisterScreen: React.FC = () => {
     clearError();
 
     if (!username.trim()) {
-      newErrors.username = 'Le nom d\'utilisateur est requis';
+      newErrors.username = t.common.required;
       isValid = false;
     } else if (username.length < 3) {
-      newErrors.username = 'Minimum 3 caractères';
+      newErrors.username = t.common.required;
       isValid = false;
     }
 
     if (!email.trim()) {
-      newErrors.email = 'L\'email est requis';
+      newErrors.email = t.common.required;
       isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Email invalide';
+      newErrors.email = t.errors.invalidUrl;
       isValid = false;
     }
 
     if (!password) {
-      newErrors.password = 'Le mot de passe est requis';
+      newErrors.password = t.common.required;
       isValid = false;
     } else if (password.length < 8) {
-      newErrors.password = 'Minimum 8 caractères';
+      newErrors.password = t.common.required;
       isValid = false;
     }
 
     if (!confirmPassword) {
-      newErrors.confirmPassword = 'Confirmez le mot de passe';
+      newErrors.confirmPassword = t.common.required;
       isValid = false;
     } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = 'Les mots de passe ne correspondent pas';
+      newErrors.confirmPassword = t.errors.generic;
       isValid = false;
     }
 
@@ -128,10 +130,10 @@ export const RegisterScreen: React.FC = () => {
           </TouchableOpacity>
 
           <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Créer un compte
+            {t.auth.createAccount}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Rejoignez Deep Sight et analysez vos vidéos avec l'IA
+            {t.auth.subtitle}
           </Text>
 
           {/* Error message */}
@@ -145,7 +147,7 @@ export const RegisterScreen: React.FC = () => {
           {/* Form */}
           <View style={styles.form}>
             <Input
-              label="Nom d'utilisateur"
+              label={t.settings.displayName}
               placeholder="johndoe"
               value={username}
               onChangeText={setUsername}
@@ -156,8 +158,8 @@ export const RegisterScreen: React.FC = () => {
             />
 
             <Input
-              label="Email"
-              placeholder="votre@email.com"
+              label={t.auth.email}
+              placeholder="email@example.com"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -168,8 +170,8 @@ export const RegisterScreen: React.FC = () => {
             />
 
             <Input
-              label="Mot de passe"
-              placeholder="Minimum 8 caractères"
+              label={t.auth.password}
+              placeholder={t.auth.password}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
@@ -179,8 +181,8 @@ export const RegisterScreen: React.FC = () => {
             />
 
             <Input
-              label="Confirmer le mot de passe"
-              placeholder="Répétez le mot de passe"
+              label={t.settings.newPassword}
+              placeholder={t.settings.newPassword}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry
@@ -190,7 +192,7 @@ export const RegisterScreen: React.FC = () => {
             />
 
             <Button
-              title="S'inscrire"
+              title={t.auth.signUp}
               onPress={handleRegister}
               loading={isLoading}
               fullWidth
@@ -200,20 +202,17 @@ export const RegisterScreen: React.FC = () => {
 
           {/* Terms */}
           <Text style={[styles.terms, { color: colors.textTertiary }]}>
-            En vous inscrivant, vous acceptez nos{' '}
-            <Text style={{ color: colors.accentPrimary }}>Conditions d'utilisation</Text>
-            {' '}et notre{' '}
-            <Text style={{ color: colors.accentPrimary }}>Politique de confidentialité</Text>
+            {t.auth.termsAgreement}
           </Text>
 
           {/* Login link */}
           <View style={styles.loginContainer}>
             <Text style={[styles.loginText, { color: colors.textSecondary }]}>
-              Déjà un compte ?{' '}
+              {t.auth.hasAccount}{' '}
             </Text>
             <TouchableOpacity onPress={handleLogin}>
               <Text style={[styles.loginLink, { color: colors.accentPrimary }]}>
-                Se connecter
+                {t.auth.signIn}
               </Text>
             </TouchableOpacity>
           </View>
