@@ -137,6 +137,14 @@ except ImportError as e:
     API_PUBLIC_ROUTER_AVAILABLE = False
     print(f"⚠️ Public API router not available: {e}", flush=True)
 
+# 🧠 NOUVEAU: Import du Words router ("Le Saviez-Vous")
+try:
+    from words.router import router as words_router
+    WORDS_ROUTER_AVAILABLE = True
+except ImportError as e:
+    WORDS_ROUTER_AVAILABLE = False
+    print(f"⚠️ Words router not available: {e}", flush=True)
+
 VERSION = "3.7.0"  # Added Expert API access + API key management
 APP_NAME = "Deep Sight API"
 
@@ -286,6 +294,11 @@ if API_PUBLIC_ROUTER_AVAILABLE:
     app.include_router(api_public_router, tags=["Public API v1"])
     print("🔑 Public API router loaded (Expert plan)", flush=True)
 
+# 🧠 NOUVEAU: Words router ("Le Saviez-Vous")
+if WORDS_ROUTER_AVAILABLE:
+    app.include_router(words_router, prefix="/api/words", tags=["Words"])
+    print("🧠 Words router loaded (Le Saviez-Vous)", flush=True)
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -310,7 +323,8 @@ async def root():
             "profile": "/api/profile" if PROFILE_ROUTER_AVAILABLE else "not available",
             "tts": "/api/tts" if TTS_ROUTER_AVAILABLE else "not available",
             "usage": "/api/usage" if USAGE_ROUTER_AVAILABLE else "not available",
-            "api_v1": "/api/v1" if API_PUBLIC_ROUTER_AVAILABLE else "not available (Expert plan)"
+            "api_v1": "/api/v1" if API_PUBLIC_ROUTER_AVAILABLE else "not available (Expert plan)",
+            "words": "/api/words" if WORDS_ROUTER_AVAILABLE else "not available"
         }
     }
 
