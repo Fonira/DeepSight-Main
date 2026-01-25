@@ -290,6 +290,29 @@ export const authApi = {
 };
 
 // ============================================
+// User API
+// ============================================
+export const userApi = {
+  async updatePreferences(preferences: {
+    default_lang?: string;
+    default_mode?: string;
+    default_model?: string;
+  }): Promise<User> {
+    return request('/api/auth/preferences', {
+      method: 'PUT',
+      body: preferences,
+    });
+  },
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    return request('/api/auth/change-password', {
+      method: 'POST',
+      body: { current_password: currentPassword, new_password: newPassword },
+    });
+  },
+};
+
+// ============================================
 // Video Analysis API
 // ============================================
 export const videoApi = {
@@ -440,11 +463,31 @@ export const chatApi = {
   },
 
   async getHistory(summaryId: string): Promise<{ messages: ChatMessage[] }> {
-    return request(`/api/chat/history/${summaryId}`);
+    const response = await request<{ messages: ChatMessage[]; quota_info?: Record<string, unknown> }>(
+      `/api/chat/history/${summaryId}`
+    );
+    return { messages: response.messages || [] };
   },
 
-  async getQuota(): Promise<{ used: number; limit: number }> {
-    return request('/api/chat/quota');
+  async getQuota(summaryId: string): Promise<{ used: number; limit: number; remaining: number }> {
+    const response = await request<{
+      can_ask: boolean;
+      reason: string;
+      daily_limit: number;
+      daily_used: number;
+      per_video_limit: number;
+      per_video_used: number;
+    }>(`/api/chat/${summaryId}/quota`);
+
+    return {
+      used: response.daily_used || 0,
+      limit: response.daily_limit || 10,
+      remaining: (response.daily_limit || 10) - (response.daily_used || 0),
+    };
+  },
+
+  async clearHistory(summaryId: string): Promise<{ success: boolean }> {
+    return request(`/api/chat/history/${summaryId}`, { method: 'DELETE' });
   },
 };
 
@@ -530,10 +573,10 @@ export const billingApi = {
     return request('/api/billing/subscription-status');
   },
 
-  async changePlan(newPlanId: string): Promise<{ success: boolean; prorata?: number }> {
+  async changePlan(newPlan: string): Promise<{ success: boolean; prorata?: number }> {
     return request('/api/billing/change-plan', {
       method: 'POST',
-      body: { plan_id: newPlanId },
+      body: { new_plan: newPlan },
     });
   },
 
@@ -624,6 +667,7 @@ export const ttsApi = {
 
 export default {
   authApi,
+  userApi,
   videoApi,
   historyApi,
   chatApi,
