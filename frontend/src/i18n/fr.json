@@ -763,5 +763,19 @@
     "highlyRecommended": "Fortement recommandé",
     "whatIsTournesol": "Qu'est-ce que Tournesol ?",
     "tournesolDescription": "Tournesol est une plateforme collaborative qui évalue les vidéos selon des critères de qualité."
+  },
+  "loadingWord": {
+    "didYouKnow": "Le saviez-vous ?",
+    "learnMore": "En savoir plus",
+    "showLess": "Réduire",
+    "fromYourHistory": "Issu de vos analyses",
+    "newWord": "Nouveau mot",
+    "categories": {
+      "cognitive_bias": "Biais cognitif",
+      "science": "Science",
+      "philosophy": "Philosophie",
+      "culture": "Culture",
+      "misc": "Divers"
+    }
   }
 }

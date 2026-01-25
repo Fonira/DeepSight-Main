@@ -75,6 +75,7 @@ class ChatCorpusRequest(BaseModel):
     message: str
     web_search: bool = False
     mode: str = Field(default="standard", description="accessible | standard | expert")
+    lang: str = Field(default="fr", description="Response language: fr | en")
 
 class ChatCorpusResponse(BaseModel):
     response: str
@@ -172,23 +173,30 @@ MODE_CONFIG = {
 VOLATILE_TOPICS = {
     "sport": {
         "keywords": ["joueur", "effectif", "transfert", "équipe", "club", "entraîneur", "coach",
-                    "mercato", "classement", "buteur", "titulaire", "blessé", "PSG", "OM", "OL"],
-        "disclaimer_fr": "⚠️ **Attention** : Les effectifs sportifs changent fréquemment. Ces informations datent de la vidéo."
+                    "mercato", "classement", "buteur", "titulaire", "blessé", "PSG", "OM", "OL",
+                    "player", "roster", "transfer", "team", "manager", "standings", "injured"],
+        "disclaimer_fr": "⚠️ **Attention** : Les effectifs sportifs changent fréquemment. Ces informations datent de la vidéo.",
+        "disclaimer_en": "⚠️ **Warning**: Sports rosters change frequently. This information is from the video's date."
     },
     "business": {
         "keywords": ["PDG", "CEO", "directeur", "président", "démission", "nomination", "rachat",
-                    "fusion", "acquisition", "valorisation", "licenciement"],
-        "disclaimer_fr": "⚠️ **Attention** : Les positions de direction évoluent. Vérifiez les informations actuelles."
+                    "fusion", "acquisition", "valorisation", "licenciement",
+                    "director", "president", "resignation", "appointment", "buyout", "merger"],
+        "disclaimer_fr": "⚠️ **Attention** : Les positions de direction évoluent. Vérifiez les informations actuelles.",
+        "disclaimer_en": "⚠️ **Warning**: Leadership positions change. Verify current information."
     },
     "tech": {
         "keywords": ["version", "mise à jour", "beta", "alpha", "sortie", "lancement", "prix",
-                    "disponible", "annonce", "roadmap"],
-        "disclaimer_fr": "⚠️ **Attention** : Les informations technologiques évoluent rapidement."
+                    "disponible", "annonce", "roadmap", "update", "release", "launch", "available"],
+        "disclaimer_fr": "⚠️ **Attention** : Les informations technologiques évoluent rapidement.",
+        "disclaimer_en": "⚠️ **Warning**: Technology information evolves rapidly."
     },
     "politique": {
         "keywords": ["ministre", "président", "gouvernement", "élection", "loi", "décret",
-                    "réforme", "vote", "sondage", "candidat"],
-        "disclaimer_fr": "⚠️ **Attention** : La situation politique peut avoir évolué depuis cette vidéo."
+                    "réforme", "vote", "sondage", "candidat",
+                    "minister", "government", "election", "law", "reform", "poll", "candidate"],
+        "disclaimer_fr": "⚠️ **Attention** : La situation politique peut avoir évolué depuis cette vidéo.",
+        "disclaimer_en": "⚠️ **Warning**: The political situation may have evolved since this video."
     }
 }
 
@@ -940,7 +948,7 @@ async def chat_with_corpus(
         mode=request.mode,
         dominant_category=dominant_category,
         perplexity_context=perplexity_context,
-        lang="fr"
+        lang=request.lang
     )
     
     model_used = chat_config["model"]
@@ -948,12 +956,16 @@ async def chat_with_corpus(
     volatile_disclaimer = _detect_volatile_disclaimer(
         question=request.message,
         playlist_title=playlist.playlist_title,
-        dominant_category=dominant_category
+        dominant_category=dominant_category,
+        lang=request.lang
     )
     if volatile_disclaimer:
         response_text += f"\n\n---\n{volatile_disclaimer}"
         if not web_search_enabled and chat_config["web_search"]:
-            response_text += "\n\n💡 *Activez 🌐 Recherche Web pour vérifier les informations actuelles.*"
+            if request.lang == "en":
+                response_text += "\n\n💡 *Enable 🌐 Web Search to verify current information.*"
+            else:
+                response_text += "\n\n💡 *Activez 🌐 Recherche Web pour vérifier les informations actuelles.*"
     
     _chat_cache.set(cache_key, {
         "response": response_text,
@@ -1136,43 +1148,81 @@ async def _chat_with_mistral_corpus_v4(
     word_count = len(question.split())
     is_short_question = word_count < 8
     
-    # Adapter les instructions selon le type
-    if is_yes_no:
-        response_instruction = """🎯 QUESTION OUI/NON DÉTECTÉE
+    # 🆕 v4.2: Instructions bilingues selon le type de question
+    if lang == "fr":
+        if is_yes_no:
+            response_instruction = """🎯 QUESTION OUI/NON DÉTECTÉE
 → Commence IMMÉDIATEMENT par "Oui" ou "Non" ou "Partiellement"
 → Puis justifie en 1-2 phrases avec références vidéos
 → PAS de préambule, PAS de "c'est une bonne question" """
-        adaptive_max_tokens = min(max_tokens, 600)
-    elif is_factual and is_short_question:
-        response_instruction = """🎯 QUESTION FACTUELLE SIMPLE DÉTECTÉE
+            adaptive_max_tokens = min(max_tokens, 600)
+        elif is_factual and is_short_question:
+            response_instruction = """🎯 QUESTION FACTUELLE SIMPLE DÉTECTÉE
 → Réponse DIRECTE en 1-3 phrases maximum
 → Cite la/les vidéo(s) source avec timecode
 → PAS de développement non demandé"""
-        adaptive_max_tokens = min(max_tokens, 500)
-    elif is_summary:
-        response_instruction = """🎯 DEMANDE DE SYNTHÈSE DÉTECTÉE
+            adaptive_max_tokens = min(max_tokens, 500)
+        elif is_summary:
+            response_instruction = """🎯 DEMANDE DE SYNTHÈSE DÉTECTÉE
 → Liste à puces concise (4-6 points max)
 → Chaque point = 1 phrase + référence vidéo
 → Structure claire, pas de prose"""
-        adaptive_max_tokens = min(max_tokens, 1200)
-    elif is_comparison:
-        response_instruction = """🎯 QUESTION COMPARATIVE DÉTECTÉE
+            adaptive_max_tokens = min(max_tokens, 1200)
+        elif is_comparison:
+            response_instruction = """🎯 QUESTION COMPARATIVE DÉTECTÉE
 → Structure: Points communs | Différences | Conclusion
 → Cite les vidéos qui soutiennent chaque point
 → Tableau mental: Vidéo X dit A, Vidéo Y dit B"""
-        adaptive_max_tokens = max_tokens
-    elif is_opinion:
-        response_instruction = """🎯 DEMANDE D'AVIS DÉTECTÉE
+            adaptive_max_tokens = max_tokens
+        elif is_opinion:
+            response_instruction = """🎯 DEMANDE D'AVIS DÉTECTÉE
 → Base-toi sur le CONSENSUS du corpus si présent
 → Mentionne les différents points de vue des vidéos
 → Conclus par une synthèse équilibrée"""
-        adaptive_max_tokens = max_tokens
-    else:
-        response_instruction = """🎯 QUESTION STANDARD
+            adaptive_max_tokens = max_tokens
+        else:
+            response_instruction = """🎯 QUESTION STANDARD
 → Adapte la longueur à la complexité de la question
 → Question simple (< 10 mots) = réponse courte
 → Question complexe = réponse développée mais ciblée"""
-        adaptive_max_tokens = max_tokens if word_count > 12 else min(max_tokens, 1000)
+            adaptive_max_tokens = max_tokens if word_count > 12 else min(max_tokens, 1000)
+    else:  # English
+        if is_yes_no:
+            response_instruction = """🎯 YES/NO QUESTION DETECTED
+→ Start IMMEDIATELY with "Yes" or "No" or "Partially"
+→ Then justify in 1-2 sentences with video references
+→ NO preamble, NO "that's a good question" """
+            adaptive_max_tokens = min(max_tokens, 600)
+        elif is_factual and is_short_question:
+            response_instruction = """🎯 SIMPLE FACTUAL QUESTION DETECTED
+→ DIRECT answer in 1-3 sentences maximum
+→ Cite the source video(s) with timecode
+→ NO unnecessary elaboration"""
+            adaptive_max_tokens = min(max_tokens, 500)
+        elif is_summary:
+            response_instruction = """🎯 SUMMARY REQUEST DETECTED
+→ Concise bullet list (4-6 points max)
+→ Each point = 1 sentence + video reference
+→ Clear structure, no prose"""
+            adaptive_max_tokens = min(max_tokens, 1200)
+        elif is_comparison:
+            response_instruction = """🎯 COMPARISON QUESTION DETECTED
+→ Structure: Common points | Differences | Conclusion
+→ Cite videos supporting each point
+→ Mental table: Video X says A, Video Y says B"""
+            adaptive_max_tokens = max_tokens
+        elif is_opinion:
+            response_instruction = """🎯 OPINION REQUEST DETECTED
+→ Base on corpus CONSENSUS if present
+→ Mention different viewpoints from videos
+→ Conclude with balanced synthesis"""
+            adaptive_max_tokens = max_tokens
+        else:
+            response_instruction = """🎯 STANDARD QUESTION
+→ Adapt length to question complexity
+→ Simple question (< 10 words) = short answer
+→ Complex question = developed but focused answer"""
+            adaptive_max_tokens = max_tokens if word_count > 12 else min(max_tokens, 1000)
     
     history_text = ""
     if chat_history:
@@ -1241,9 +1291,11 @@ async def _chat_with_mistral_corpus_v4(
         corpus_text += video_section
     
     total_chars = len(corpus_text)
-    print(f"[CHAT v4.1] 📊 Corpus: {max_videos} videos, {total_chars:,} chars | Adaptive tokens: {adaptive_max_tokens}", flush=True)
-    
-    system_prompt = f"""Tu es Deep Sight v4.1, assistant IA expert pour l'analyse de corpus vidéo.
+    print(f"[CHAT v4.2] 📊 Corpus: {max_videos} videos, {total_chars:,} chars | Adaptive tokens: {adaptive_max_tokens} | Lang: {lang}", flush=True)
+
+    # 🆕 v4.2: System prompt bilingue
+    if lang == "fr":
+        system_prompt = f"""Tu es Deep Sight v4.2, assistant IA expert pour l'analyse de corpus vidéo.
 
 📚 CORPUS: "{playlist_title}" ({len(videos)} vidéos)
 
@@ -1273,18 +1325,56 @@ Format: "La vidéo 2 (3:15) explique que..."
 • Distingue fait/opinion/hypothèse
 • Note les consensus et divergences entre vidéos
 • Évalue la crédibilité: ✅ Solide | ⚖️ Plausible | ❓ Incertain
+
+🌐 LANGUE: Réponds UNIQUEMENT en français.
 """
-    
+        final_instruction = "RÉPONDS DIRECTEMENT (première phrase = début de la réponse):"
+    else:  # English
+        system_prompt = f"""You are Deep Sight v4.2, an expert AI assistant for video corpus analysis.
+
+📚 CORPUS: "{playlist_title}" ({len(videos)} videos)
+
+═══════════════════════════════════════════════════════════════════════════════
+🎯 GOLDEN RULE: ANSWER PRECISELY WHAT IS ASKED — NOTHING MORE
+═══════════════════════════════════════════════════════════════════════════════
+
+{response_instruction}
+
+⚠️ ABSOLUTE PROHIBITIONS:
+• NEVER use preambles ("Great question", "I'll explain", "That's interesting")
+• NEVER repeat/rephrase the question
+• NEVER add unrequested information
+• NEVER use generic conclusions ("Feel free to ask", "Hope this helps")
+• NEVER start with "Sure" or "Certainly"
+
+✅ CORRECT BEHAVIOR:
+• First sentence = start of the answer
+• Cite videos: "Video 3 (5:23)" or "In video 2..."
+• If info not in corpus → "This information does not appear in the corpus."
+• Adapt your length: short question = short answer
+
+⏱️ REFERENCES: Cite at least {timecode_min} videos with estimated timecodes.
+Format: "Video 2 (3:15) explains that..."
+
+📊 EVALUATION (mode {mode}):
+• Distinguish fact/opinion/hypothesis
+• Note consensus and divergences between videos
+• Evaluate credibility: ✅ Solid | ⚖️ Plausible | ❓ Uncertain
+
+🌐 LANGUAGE: Respond ONLY in English.
+"""
+        final_instruction = "RESPOND DIRECTLY (first sentence = start of the answer):"
+
     full_prompt = f"""{system_prompt}
 
-═══ CORPUS ({len(videos)} VIDÉOS) ═══
+═══ CORPUS ({len(videos)} {"VIDÉOS" if lang == "fr" else "VIDEOS"}) ═══
 {corpus_text}
 
-HISTORIQUE:{history_text}
+{"HISTORIQUE" if lang == "fr" else "HISTORY"}:{history_text}
 
 QUESTION: {question}
 
-RÉPONDS DIRECTEMENT (première phrase = début de la réponse):"""
+{final_instruction}"""
     
     try:
         async with httpx.AsyncClient() as client:
@@ -1306,30 +1396,36 @@ RÉPONDS DIRECTEMENT (première phrase = début de la réponse):"""
             if response.status_code == 200:
                 data = response.json()
                 answer = data["choices"][0]["message"]["content"].strip()
-                
+
                 # Post-processing: supprimer les préambules résiduels
                 preambles_to_remove = [
                     "Bien sûr!", "Bien sûr,", "Certainement!", "Certainement,",
                     "Excellente question!", "Bonne question!", "C'est une bonne question.",
                     "Je vais répondre à votre question.", "Permettez-moi de répondre.",
                     "Sure!", "Certainly!", "Great question!", "Good question!",
-                    "Let me answer that.", "I'll explain."
+                    "Let me answer that.", "I'll explain.", "Of course!"
                 ]
                 for preamble in preambles_to_remove:
                     if answer.startswith(preamble):
                         answer = answer[len(preamble):].strip()
-                
-                print(f"[CHAT v4.1] ✅ Response: {len(answer)} chars", flush=True)
+
+                print(f"[CHAT v4.2] ✅ Response: {len(answer)} chars", flush=True)
                 return answer
             else:
-                print(f"[CHAT v4.1] ❌ API Error {response.status_code}", flush=True)
+                print(f"[CHAT v4.2] ❌ API Error {response.status_code}", flush=True)
                 if response.status_code == 429:
-                    return "⏳ Limite de requêtes atteinte. Réessayez dans quelques instants."
-                return f"❌ Erreur API: {response.status_code}"
-                
+                    if lang == "fr":
+                        return "⏳ Limite de requêtes atteinte. Réessayez dans quelques instants."
+                    return "⏳ Rate limit reached. Please try again in a moment."
+                if lang == "fr":
+                    return f"❌ Erreur API: {response.status_code}"
+                return f"❌ API Error: {response.status_code}"
+
     except Exception as e:
-        print(f"[CHAT v4.1] ❌ Exception: {e}", flush=True)
-        return f"❌ Erreur: {e}"
+        print(f"[CHAT v4.2] ❌ Exception: {e}", flush=True)
+        if lang == "fr":
+            return f"❌ Erreur: {e}"
+        return f"❌ Error: {e}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1422,25 +1518,30 @@ Réponds de manière concise et factuelle."""
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _detect_volatile_disclaimer(
-    question: str, 
-    playlist_title: str, 
-    dominant_category: str
+    question: str,
+    playlist_title: str,
+    dominant_category: str,
+    lang: str = "fr"
 ) -> Optional[str]:
-    """Détecte si la question concerne un sujet volatil."""
+    """
+    🆕 v4.2: Détecte si la question concerne un sujet volatil.
+    Support bilingue FR/EN.
+    """
     text_to_check = f"{question} {playlist_title}".lower()
-    
+    disclaimer_key = "disclaimer_en" if lang == "en" else "disclaimer_fr"
+
     for topic_key, topic_info in VOLATILE_TOPICS.items():
         keywords = topic_info.get("keywords", [])
         for keyword in keywords:
             if keyword.lower() in text_to_check:
-                return topic_info.get("disclaimer_fr")
-    
+                return topic_info.get(disclaimer_key)
+
     if dominant_category:
         category_lower = dominant_category.lower()
         for topic_key, topic_info in VOLATILE_TOPICS.items():
             if topic_key in category_lower or category_lower in topic_key:
-                return topic_info.get("disclaimer_fr")
-    
+                return topic_info.get(disclaimer_key)
+
     return None
 
 
@@ -1576,7 +1677,7 @@ async def _analyze_playlist_background(
                     
                     transcript_context = transcript_timestamped if isinstance(transcript_timestamped, str) else None
                     if transcript_context:
-                        transcript_context = transcript_context[:15000]
+                        transcript_context = transcript_context[:40000]  # 🆕 v4.2: Augmenté pour vidéos longues
                     
                     summary = Summary(
                         user_id=user_id,
@@ -1770,7 +1871,7 @@ async def _analyze_corpus_background(
                     
                     transcript_context = transcript_timestamped if isinstance(transcript_timestamped, str) else None
                     if transcript_context:
-                        transcript_context = transcript_context[:15000]
+                        transcript_context = transcript_context[:40000]  # 🆕 v4.2: Augmenté pour vidéos longues
                     
                     summary = Summary(
                         user_id=user_id,
@@ -1863,39 +1964,47 @@ async def _analyze_corpus_background(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 async def _generate_meta_analysis_v4(
-    summaries: List[Dict], 
-    playlist_title: str, 
-    lang: str, 
+    summaries: List[Dict],
+    playlist_title: str,
+    lang: str,
     model: str
 ) -> str:
-    """Génère une méta-analyse enrichie avec extraction de concepts."""
+    """
+    🆕 v4.2: Génère une méta-analyse enrichie avec extraction de concepts.
+    Support complet FR/EN.
+    """
     api_key = get_mistral_key()
     if not api_key:
-        return "Méta-analyse non disponible"
-    
+        return "Meta-analysis unavailable" if lang == "en" else "Méta-analyse non disponible"
+
     summaries_text = ""
     categories = set()
     all_concepts = []
     total_duration = 0
-    
+
     for s in summaries:
         summaries_text += f"\n### {s['position']}. {s['title']}\n"
-        summaries_text += f"**Chaîne:** {s.get('channel', 'N/A')} | **Catégorie:** {s.get('category', 'N/A')}\n"
+        if lang == "fr":
+            summaries_text += f"**Chaîne:** {s.get('channel', 'N/A')} | **Catégorie:** {s.get('category', 'N/A')}\n"
+        else:
+            summaries_text += f"**Channel:** {s.get('channel', 'N/A')} | **Category:** {s.get('category', 'N/A')}\n"
         summaries_text += f"{s['summary']}\n"
-        
+
         if s.get('category'):
             categories.add(s['category'])
         total_duration += s.get('duration', 0)
-        
+
         concepts = SemanticScorer.extract_key_concepts(s['summary'], top_n=5)
         all_concepts.extend(concepts)
-    
+
     concept_counts = Counter(all_concepts)
     top_concepts = [c for c, _ in concept_counts.most_common(10)]
-    
+
     duration_str = f"{total_duration // 3600}h {(total_duration % 3600) // 60}min" if total_duration > 3600 else f"{total_duration // 60} min"
-    
-    prompt = f"""Analyse ce corpus de {len(summaries)} vidéos intitulé "{playlist_title}":
+
+    # 🆕 v4.2: Prompt bilingue complet
+    if lang == "fr":
+        prompt = f"""Analyse ce corpus de {len(summaries)} vidéos intitulé "{playlist_title}":
 
 {summaries_text}
 
@@ -1906,7 +2015,7 @@ Génère une méta-analyse COMPLÈTE en français avec:
 ## 🎯 Vision d'Ensemble
 Synthèse globale du corpus en 3-4 phrases. Quel est le fil conducteur principal?
 
-## 📊 Thèmes Principaux  
+## 📊 Thèmes Principaux
 Liste les 4-6 thèmes majeurs avec leur fréquence/importance dans le corpus.
 
 ## 🔗 Connexions & Complémentarités
@@ -1926,6 +2035,43 @@ Les 5 apprentissages les plus importants du corpus, avec références aux vidéo
 
 ## 🎬 Parcours Suggéré
 Par quelle vidéo commencer? Quel ordre de visionnage recommandes-tu et pourquoi?
+
+🌐 RÉPONDS UNIQUEMENT EN FRANÇAIS.
+"""
+    else:  # English
+        prompt = f"""Analyze this corpus of {len(summaries)} videos titled "{playlist_title}":
+
+{summaries_text}
+
+**Automatically detected key concepts:** {', '.join(top_concepts)}
+
+Generate a COMPLETE meta-analysis in English with:
+
+## 🎯 Overview
+Global synthesis of the corpus in 3-4 sentences. What is the main thread?
+
+## 📊 Main Themes
+List the 4-6 major themes with their frequency/importance in the corpus.
+
+## 🔗 Connections & Complementarities
+How do the videos complement each other? What conceptual links between them?
+
+## ⚔️ Points of Tension
+Are there contradictions, nuances or divergent opinions between videos?
+
+## 💡 Key Insights
+The 5 most important learnings from the corpus, with video references.
+
+## 📈 Statistics
+- **Videos analyzed:** {len(summaries)}
+- **Total duration:** {duration_str}
+- **Categories:** {', '.join(categories) if categories else 'Various'}
+- **Words generated:** {sum(s.get('word_count', 0) for s in summaries):,}
+
+## 🎬 Suggested Path
+Which video to start with? What viewing order do you recommend and why?
+
+🌐 RESPOND ONLY IN ENGLISH.
 """
     
     try:

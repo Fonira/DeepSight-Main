@@ -208,7 +208,7 @@ Règles:
 **Chaîne:** {channel}
 
 **Transcription:**
-{transcript[:15000]}
+{transcript[:40000]}
 
 Génère une analyse complète en {lang}."""
 
@@ -411,7 +411,7 @@ async def analysis_stream_generator(
                 video_channel=metadata.get("channel", ""),
                 thumbnail_url=metadata.get("thumbnail", ""),
                 summary_content=full_text,
-                transcript_context=transcript[:5000],  # Keep first 5000 chars for chat
+                transcript_context=transcript[:40000],  # 🆕 v3.1: Augmenté pour chat et vidéos longues
                 lang=lang,
                 mode=mode,
                 model_used=model,

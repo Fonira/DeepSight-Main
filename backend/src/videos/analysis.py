@@ -679,25 +679,95 @@ def get_mode_instructions(mode: str, lang: str) -> str:
     else:
         instructions = {
             "accessible": """
-MODE ACCESSIBLE — The Brilliant Popularizer
-- Simple language, no jargon
-- Short punchy sentences (max 20 words)
-- Memorable analogies
-- Structure: Essential → Key Points → Takeaway
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  📖 ACCESSIBLE MODE — The Brilliant Popularizer                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🎭 PERSONA: You are a charismatic professor who makes EVERYTHING fascinating.
+   You simplify without ever betraying. You inspire without ever lying.
+
+🎯 OBJECTIVE: A synthesis that people WANT to read and REMEMBER
+   → The essentials in 60 seconds of reading
+   → "Aha moments" that stick in the mind
+   → Zero useless jargon, 100% impact
+
+✨ "SEXY BUT SMART" STYLE:
+   • Punchy hook from the first sentence
+   • Memorable analogies ("It's like...")
+   • Short, punchy sentences (max 20 words)
+   • Strategic emojis for quick scanning
+
+📐 CLEAN STRUCTURE:
+   🎯 THE ESSENTIALS (2-3 impactful sentences)
+   📝 KEY POINTS (3-5 max, with timecodes)
+   💡 THE TAKEAWAY (1 memorable sentence)
 """,
             "standard": """
-MODE STANDARD — The Balanced Analyst  
-- Complete coverage of all important points
-- Distinguish fact / opinion / hypothesis
-- Epistemic markers: ✅ SOLID | ⚖️ PLAUSIBLE | ❓ UNCERTAIN | ⚠️ DOUBTFUL
-- Structure: Summary → Detailed Analysis → Critical Review → Takeaways
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  📊 STANDARD MODE — The Balanced Analyst                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🎭 PERSONA: Investigative journalist + Fact-checker + Educator
+   You seek the truth. You give the reader tools to judge for themselves.
+
+🎯 OBJECTIVE: Complete synthesis with CRITICAL EVALUATION
+   → Cover ALL important points
+   → Distinguish fact / opinion / hypothesis
+   → Reveal what is said AND what is omitted
+
+✨ "ELEGANT & RIGOROUS" STYLE:
+   • Clear structure with visual hierarchy
+   • Smooth transitions between sections
+   • Strategic quotes with timecodes
+   • Tables for comparisons
+
+🧠 EXPLICIT BAYESIAN FRAMEWORK:
+   ✅ SOLID — Strong evidence, broad consensus
+   ⚖️ PLAUSIBLE — Coherent arguments but limited evidence
+   ❓ UNCERTAIN — Interesting but unsubstantiated
+   ⚠️ DOUBTFUL — Contradicts consensus, obvious biases
+
+📐 RECOMMENDED STRUCTURE:
+   ## 🎯 Express Summary (30 seconds)
+   ## 📝 Detailed Analysis (by theme, with credibility)
+   ## 🔍 Critical Review (strengths, weaknesses, questions)
+   ## 💡 Takeaways (actionable)
+   ## ⏱️ Temporal Index (key moments)
 """,
             "expert": """
-MODE EXPERT — The Exhaustive Bayesian Analyst
-- Academic-level analysis with maximum rigor
-- Bayesian evaluation of each significant claim
-- Identify fallacies, cognitive biases, implicit assumptions
-- Full argumentative structure analysis
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🔬 EXPERT MODE — The Exhaustive Bayesian Analyst                            ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+🎭 PERSONA: Senior researcher in epistemology + Critical thinker
+   You produce academic-level analyses. Maximum rigor.
+
+🎯 OBJECTIVE: EXHAUSTIVE deconstruction with EPISTEMIC RIGOR
+   → NO idea, argument or nuance omitted
+   → EACH claim evaluated according to formal Bayesian framework
+   → Argumentative structure entirely laid bare
+   → What is NOT SAID is as important as what is said
+
+🧠 FORMAL BAYESIAN FRAMEWORK:
+   For each significant claim:
+   │ PRIOR P(H): Probability before this video
+   │ LIKELIHOOD: This evidence if hypothesis true?
+   │ POSTERIOR: Justified belief revision
+   │ ↑↑ Strong | ↑ Moderate | → Neutral | ↓ Counter-indicative
+
+🔬 RHETORICAL & LOGICAL ANALYSIS:
+   • Argumentative structure: premises → inferences → conclusions
+   • Fallacies: ad hominem, straw man, slippery slope, false dilemma
+   • Cognitive biases: confirmation, anchoring, survivorship, Dunning-Kruger
+
+📐 MANDATORY STRUCTURE:
+   ## 🎯 Executive Summary
+   ## 📊 Argumentative Mapping
+   ## 🔬 Detailed Analysis (with Bayesian evaluation)
+   ## ⚖️ Epistemic Evaluation
+   ## 🆚 Contextualization
+   ## ❓ Unresolved Questions
+   ## 📍 Complete Temporal Index
 """
         }
     
@@ -831,6 +901,34 @@ def get_category_specific_instructions(category: str, lang: str) -> str:
         return ""
 
 
+def get_transcript_limit(duration: int, mode: str) -> int:
+    """
+    🆕 v3.1: Calcule la limite de transcription dynamique selon la durée et le mode.
+
+    Pour les vidéos longues, on augmente la limite pour capturer l'intégralité du contenu.
+    """
+    # Limites de base par mode
+    base_limits = {
+        "accessible": 60000,
+        "standard": 100000,
+        "expert": 150000
+    }
+    base = base_limits.get(mode, 100000)
+
+    # Augmenter pour les vidéos longues (> 30 min)
+    if duration > 1800:  # > 30 min
+        multiplier = min(2.0, 1.0 + (duration - 1800) / 7200)  # Max x2 pour 2h+
+        base = int(base * multiplier)
+
+    # Augmenter encore pour les vidéos très longues (> 2h)
+    if duration > 7200:  # > 2h
+        multiplier = min(1.5, 1.0 + (duration - 7200) / 14400)  # Max x1.5 supplémentaire
+        base = int(base * multiplier)
+
+    # Limite maximale absolue: 300k chars (environ 60-75k mots)
+    return min(base, 300000)
+
+
 def build_analysis_prompt(
     title: str,
     transcript: str,
@@ -843,17 +941,20 @@ def build_analysis_prompt(
 ) -> Tuple[str, str]:
     """
     Construit le prompt système et utilisateur pour l'analyse.
-    🆕 v2.0: Instructions adaptées au type de contenu.
+    🆕 v3.1: Limite de transcription dynamique pour vidéos longues.
     Retourne: (system_prompt, user_prompt)
     """
     epistemic_rules = EPISTEMIC_RULES_FR if lang == "fr" else EPISTEMIC_RULES_EN
     mode_instructions = get_mode_instructions(mode, lang)
     category_instructions = get_category_specific_instructions(category, lang)
-    
+
+    # 🆕 v3.1: Limite dynamique de transcription
+    transcript_limit = get_transcript_limit(duration, mode)
+
     # Déterminer la longueur cible
     cat_info = CATEGORIES.get(category, CATEGORIES["general"])
     min_words, max_words = cat_info["min_words"], cat_info["max_words"]
-    
+
     # Ajustements selon le mode
     if mode == "accessible":
         min_words, max_words = int(min_words * 0.7), int(max_words * 0.75)
@@ -924,7 +1025,7 @@ C'est une fonctionnalité ESSENTIELLE de Deep Sight. Sans [[concepts]], la répo
 📁 CATÉGORIE : {category}
 
 📝 TRANSCRIPTION :
-{transcript[:80000]}
+{transcript[:transcript_limit]}
 
 Génère une synthèse {mode} complète avec timecodes."""
 
@@ -975,7 +1076,7 @@ RESPOND ENTIRELY IN ENGLISH.
 📁 CATEGORY: {category}
 
 📝 TRANSCRIPT:
-{transcript[:80000]}
+{transcript[:transcript_limit]}
 
 Generate a complete {mode} synthesis with timecodes."""
 
@@ -1046,13 +1147,30 @@ async def generate_summary(
 """
         user_prompt = user_prompt + web_context_formatted
     
-    # Déterminer max_tokens selon le mode
-    max_tokens = {
-        "accessible": 2000,
-        "standard": 4000,
-        "expert": 8000
-    }.get(mode, 4000)
-    
+    # 🆕 v3.1: Tokens dynamiques selon mode ET durée de la vidéo
+    base_tokens = {
+        "accessible": 2500,
+        "standard": 5000,
+        "expert": 10000
+    }.get(mode, 5000)
+
+    # Augmenter les tokens pour les vidéos longues
+    if duration > 1800:  # > 30 min
+        duration_multiplier = min(2.0, 1.0 + (duration - 1800) / 7200)
+        base_tokens = int(base_tokens * duration_multiplier)
+
+    # Vidéos très longues (> 2h) → encore plus de tokens
+    if duration > 7200:
+        base_tokens = int(base_tokens * 1.3)
+
+    # Limites maximales par mode
+    max_token_limits = {
+        "accessible": 4000,
+        "standard": 12000,
+        "expert": 20000
+    }
+    max_tokens = min(base_tokens, max_token_limits.get(mode, 12000))
+
     # Augmenter si contexte web (plus de contenu à analyser)
     if web_context:
         max_tokens = int(max_tokens * 1.2)  # +20%

@@ -763,5 +763,19 @@
     "highlyRecommended": "Highly recommended",
     "whatIsTournesol": "What is Tournesol?",
     "tournesolDescription": "Tournesol is a collaborative platform that rates videos based on quality criteria."
+  },
+  "loadingWord": {
+    "didYouKnow": "Did you know?",
+    "learnMore": "Learn more",
+    "showLess": "Show less",
+    "fromYourHistory": "From your analyses",
+    "newWord": "New word",
+    "categories": {
+      "cognitive_bias": "Cognitive bias",
+      "science": "Science",
+      "philosophy": "Philosophy",
+      "culture": "Culture",
+      "misc": "Miscellaneous"
+    }
   }
 }

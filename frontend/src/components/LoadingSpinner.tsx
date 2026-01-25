@@ -1,10 +1,12 @@
 /**
- * 🔄 LOADING SPINNER v3.0 — Deep Sight
+ * 🔄 LOADING SPINNER v4.0 — Deep Sight
  * Spinner de chargement avec vidéo du logo animé
  * Inclut une barre de progression optionnelle
+ * 🆕 v4.0: Intégration du widget "Le Saviez-Vous"
  */
 
 import React, { useRef, useEffect, useState } from 'react';
+import { LoadingWordCompact } from './LoadingWord';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎬 VIDEO LOADING SPINNER — Composant principal
@@ -27,6 +29,8 @@ interface LoadingSpinnerProps {
   label?: string;
   /** Rétrocompatibilité */
   variant?: 'nautical' | 'gold' | 'video';
+  /** 🆕 Afficher le widget "Le Saviez-Vous" */
+  showWord?: boolean;
 }
 
 const sizeMap = {
@@ -46,6 +50,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   showProgress = false,
   className = '',
   label = 'Chargement en cours...',
+  showWord = false,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoLoaded, setVideoLoaded] = useState(false);
@@ -145,7 +150,14 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
           {message}
         </p>
       )}
-      
+
+      {/* 🆕 Widget "Le Saviez-Vous" */}
+      {showWord && (
+        <div className="mt-4 max-w-sm">
+          <LoadingWordCompact />
+        </div>
+      )}
+
       <span className="sr-only">{label}</span>
     </div>
   );
@@ -216,14 +228,16 @@ export const LoadingOverlay: React.FC<{
 export const PageLoading: React.FC<{
   message?: string;
   progress?: number;
-}> = ({ message = 'Chargement...', progress }) => {
+  showWord?: boolean;
+}> = ({ message = 'Chargement...', progress, showWord = true }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-primary dark:bg-[#0a0a1a]">
-      <LoadingSpinner 
-        size="hero" 
-        message={message} 
+      <LoadingSpinner
+        size="hero"
+        message={message}
         progress={progress}
         showProgress={typeof progress === 'number'}
+        showWord={showWord}
       />
     </div>
   );
@@ -236,20 +250,21 @@ export const PageLoading: React.FC<{
 export const VideoAnalysisLoading: React.FC<{
   progress?: number;
   stage?: string;
-}> = ({ progress = 0, stage }) => {
+  showWord?: boolean;
+}> = ({ progress = 0, stage, showWord = true }) => {
   return (
     <div className="flex flex-col items-center justify-center p-8 space-y-6">
       <LoadingSpinner size="xl" />
-      
+
       {stage && (
         <p className="text-text-primary font-medium text-center">{stage}</p>
       )}
-      
+
       <div className="w-72">
         <div className="h-2 bg-border-subtle/30 rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full rounded-full transition-all duration-500 ease-out"
-            style={{ 
+            style={{
               width: `${progress}%`,
               background: 'linear-gradient(90deg, #4A7BA7, #C4935A, #6B4380)'
             }}
@@ -260,6 +275,13 @@ export const VideoAnalysisLoading: React.FC<{
           <span>{progress < 100 ? 'En cours...' : 'Terminé !'}</span>
         </div>
       </div>
+
+      {/* 🆕 Widget "Le Saviez-Vous" */}
+      {showWord && (
+        <div className="mt-4 max-w-sm">
+          <LoadingWordCompact />
+        </div>
+      )}
     </div>
   );
 };
