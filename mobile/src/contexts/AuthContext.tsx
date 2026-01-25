@@ -1,20 +1,21 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Platform } from 'react-native';
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
-import { makeRedirectUri } from 'expo-auth-session';
+import { GoogleSignin, statusCodes, isSuccessResponse } from '@react-native-google-signin/google-signin';
 import { authApi, ApiError } from '../services/api';
 import { tokenStorage, userStorage } from '../utils/storage';
 import {
   GOOGLE_CLIENT_ID,
-  GOOGLE_ANDROID_CLIENT_ID,
-  GOOGLE_IOS_CLIENT_ID,
-  GOOGLE_EXPO_CLIENT_ID
+  GOOGLE_IOS_CLIENT_ID
 } from '../constants/config';
 import type { User } from '../types';
 
-// Required for web browser auth session
-WebBrowser.maybeCompleteAuthSession();
+// Configure Google Sign-In on app start
+GoogleSignin.configure({
+  webClientId: GOOGLE_CLIENT_ID,
+  iosClientId: GOOGLE_IOS_CLIENT_ID,
+  offlineAccess: true,
+  scopes: ['profile', 'email'],
+});
 
 interface AuthContextType {
   user: User | null;
@@ -39,42 +40,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [error, setError] = useState<string | null>(null);
 
   const isAuthenticated = user !== null;
-
-  // Google OAuth setup - gets access token directly from Google
-  // Uses platform-specific client IDs for native builds
-  // IMPORTANT: Use Expo auth proxy for Expo Go compatibility
-  // The proxy URL must be registered in Google Cloud Console
-  const EXPO_PROXY_REDIRECT_URI = 'https://auth.expo.io/@maximeadmin/deepsight';
-
-  // Use proxy for Expo Go, native scheme for standalone builds
-  const redirectUri = __DEV__
-    ? EXPO_PROXY_REDIRECT_URI  // Expo Go uses proxy
-    : makeRedirectUri({ scheme: 'deepsight', path: 'oauth' });  // Standalone uses native
-
-  const [request, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
-    webClientId: GOOGLE_CLIENT_ID,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-    iosClientId: GOOGLE_IOS_CLIENT_ID,
-    expoClientId: GOOGLE_EXPO_CLIENT_ID,
-    scopes: ['profile', 'email'],
-    redirectUri,
-  });
-
-  // Handle Google OAuth response
-  useEffect(() => {
-    if (!googleResponse) return;
-
-    if (googleResponse.type === 'success' && googleResponse.authentication?.accessToken) {
-      handleGoogleToken(googleResponse.authentication.accessToken);
-    } else if (googleResponse.type === 'cancel' || googleResponse.type === 'dismiss') {
-      // User cancelled - don't show error, just reset loading
-      setIsLoading(false);
-    } else if (googleResponse.type === 'error') {
-      console.error('Google OAuth error:', googleResponse.error);
-      setError('Échec de la connexion Google. Veuillez réessayer.');
-      setIsLoading(false);
-    }
-  }, [googleResponse]);
 
   // Exchange Google token with backend
   const handleGoogleToken = async (googleAccessToken: string) => {
@@ -134,27 +99,47 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const loginWithGoogle = useCallback(async () => {
     setError(null);
-
-    // Check if Google auth request is ready
-    if (!request) {
-      setError('Configuration Google OAuth en cours. Veuillez réessayer.');
-      return;
-    }
-
     setIsLoading(true);
+
     try {
-      // Use proxy in dev mode (Expo Go) for proper redirect handling
-      const result = await promptGoogleAsync({ useProxy: __DEV__ });
-      // If result is null or user cancelled, the useEffect will handle it
-      if (!result) {
+      // Check if device has Play Services (Android) or is configured properly
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+      // Sign in with Google
+      const response = await GoogleSignin.signIn();
+
+      if (isSuccessResponse(response)) {
+        // Get the access token
+        const tokens = await GoogleSignin.getTokens();
+
+        if (tokens.accessToken) {
+          // Exchange with backend
+          await handleGoogleToken(tokens.accessToken);
+        } else {
+          throw new Error('No access token received from Google');
+        }
+      } else {
+        // User cancelled
         setIsLoading(false);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Google login error:', err);
-      setError('Impossible de lancer la connexion Google. Vérifiez votre connexion.');
-      setIsLoading(false);
+
+      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+        // User cancelled - don't show error
+        setIsLoading(false);
+      } else if (err.code === statusCodes.IN_PROGRESS) {
+        setError('Connexion Google déjà en cours...');
+        setIsLoading(false);
+      } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        setError('Google Play Services non disponible. Mettez à jour votre appareil.');
+        setIsLoading(false);
+      } else {
+        setError('Impossible de se connecter avec Google. Veuillez réessayer.');
+        setIsLoading(false);
+      }
     }
-  }, [request, promptGoogleAsync]);
+  }, []);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
     setIsLoading(true);
