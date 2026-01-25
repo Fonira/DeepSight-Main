@@ -5,14 +5,15 @@ import { authApi, ApiError } from '../services/api';
 import { tokenStorage, userStorage } from '../utils/storage';
 import {
   GOOGLE_CLIENT_ID,
-  GOOGLE_IOS_CLIENT_ID
+  GOOGLE_IOS_CLIENT_ID,
+  GOOGLE_ANDROID_CLIENT_ID
 } from '../constants/config';
 import type { User } from '../types';
 
 // Configure Google Sign-In on app start
 GoogleSignin.configure({
   webClientId: GOOGLE_CLIENT_ID,
-  iosClientId: GOOGLE_IOS_CLIENT_ID,
+  iosClientId: Platform.OS === 'ios' ? GOOGLE_IOS_CLIENT_ID : undefined,
   offlineAccess: true,
   scopes: ['profile', 'email'],
 });
