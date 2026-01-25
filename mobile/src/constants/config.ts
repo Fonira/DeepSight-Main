@@ -7,7 +7,7 @@ export const GOOGLE_CLIENT_ID = '763654536492-8hkdd3n31tqeodnhcak6ef8asu4v287j.a
 // Android Client ID (for standalone builds - create in Google Cloud Console)
 export const GOOGLE_ANDROID_CLIENT_ID = '763654536492-8hkdd3n31tqeodnhcak6ef8asu4v287j.apps.googleusercontent.com';
 // iOS Client ID (for standalone builds - create in Google Cloud Console)
-export const GOOGLE_IOS_CLIENT_ID = '763654536492-8hkdd3n31tqeodnhcak6ef8asu4v287j.apps.googleusercontent.com';
+export const GOOGLE_IOS_CLIENT_ID = '763654536492-riumsqb787nj8d3eq1nnhlo29qufc11h.apps.googleusercontent.com';
 // Expo Client ID (same as web for Expo Go)
 export const GOOGLE_EXPO_CLIENT_ID = GOOGLE_CLIENT_ID;
 
