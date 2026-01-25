@@ -15,7 +15,7 @@
 """
 
 import math
-from typing import Optional, List
+from typing import Optional, List, Dict
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -618,17 +618,23 @@ async def clear_all_history(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🧠 KEYWORDS (Widget "Le Saviez-Vous")
+# 🧠 KEYWORDS (Widget "Le Saviez-Vous") - Avec définitions IA
 # ═══════════════════════════════════════════════════════════════════════════════
 
+# Cache simple en mémoire pour les définitions générées
+_definitions_cache: Dict[str, dict] = {}
+
 class KeywordItem(BaseModel):
-    """Mot-clé extrait d'une analyse"""
+    """Mot-clé extrait d'une analyse avec définition"""
     term: str
     summary_id: int
     video_title: Optional[str]
     video_id: Optional[str]
     category: Optional[str]
     created_at: Optional[str]
+    # NOUVEAU: Définition générée par IA
+    definition: Optional[str] = None
+    short_definition: Optional[str] = None
 
 
 class KeywordsResponse(BaseModel):
@@ -638,9 +644,117 @@ class KeywordsResponse(BaseModel):
     has_history: bool
 
 
+async def _generate_academic_definitions(terms: List[str]) -> Dict[str, dict]:
+    """
+    Génère des définitions ACADÉMIQUES et ÉDUCATIVES via Mistral.
+    Définitions complètes, synthétiques et instructives.
+    """
+    import httpx
+    import json
+    import re
+    from core.config import get_mistral_key
+
+    # Filtrer les termes déjà en cache
+    terms_to_fetch = [t for t in terms if t.lower() not in _definitions_cache]
+
+    if not terms_to_fetch:
+        return _definitions_cache
+
+    api_key = get_mistral_key()
+    if not api_key:
+        print("⚠️ [Keywords] No Mistral API key configured")
+        return _definitions_cache
+
+    terms_to_fetch = terms_to_fetch[:15]  # Limiter pour la qualité
+
+    prompt = f"""Tu es un professeur encyclopédiste. Pour chaque terme, rédige une DÉFINITION ACADÉMIQUE complète et éducative.
+
+EXIGENCES pour chaque définition:
+- 3 à 5 phrases complètes et informatives
+- Commencer par une définition claire et précise du concept
+- Inclure le contexte historique ou étymologique si pertinent
+- Expliquer l'importance ou les applications concrètes
+- Être accessible mais rigoureux (niveau universitaire vulgarisé)
+- Éviter les formulations vagues ou les questions rhétoriques
+
+Termes à définir:
+{chr(10).join(f"- {t}" for t in terms_to_fetch)}
+
+Réponds UNIQUEMENT en JSON valide:
+{{
+  "definitions": [
+    {{
+      "term": "Nom exact du terme",
+      "category": "science|philosophie|histoire|technologie|economie|politique|culture|societe|autre",
+      "definition": "Définition académique complète de 3-5 phrases. Explication claire, contexte, importance."
+    }}
+  ]
+}}
+
+IMPORTANT:
+- JSON valide uniquement, pas de texte avant/après
+- Définitions complètes et éducatives, PAS de phrases courtes ou accrocheuses
+- Chaque définition doit apporter une vraie compréhension du sujet"""
+
+    try:
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            response = await client.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "mistral-small-latest",
+                    "messages": [
+                        {"role": "user", "content": prompt}
+                    ],
+                    "max_tokens": 4000,
+                    "temperature": 0.3
+                }
+            )
+
+            if response.status_code != 200:
+                print(f"❌ [Keywords] Mistral API error: {response.status_code}")
+                return _definitions_cache
+
+            data = response.json()
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+            # Nettoyer le JSON
+            content = content.strip()
+            if content.startswith("```"):
+                content = re.sub(r'^```\w*\n?', '', content)
+                content = re.sub(r'\n?```$', '', content)
+
+            parsed = json.loads(content)
+            definitions = parsed.get("definitions", [])
+
+            # Mettre en cache
+            for item in definitions:
+                term = item.get("term", "")
+                if term:
+                    _definitions_cache[term.lower()] = {
+                        "term": term,
+                        "category": item.get("category", "autre"),
+                        "definition": item.get("definition", ""),
+                        "source": "mistral-academic"
+                    }
+
+            print(f"✅ [Keywords] Generated {len(definitions)} academic definitions")
+
+    except json.JSONDecodeError as e:
+        print(f"❌ [Keywords] JSON parsing error: {e}")
+    except Exception as e:
+        print(f"❌ [Keywords] Error generating definitions: {e}")
+
+    return _definitions_cache
+
+
 @router.get("/keywords", response_model=KeywordsResponse)
 async def get_all_keywords(
     limit: int = Query(100, ge=1, le=500),
+    with_definitions: bool = Query(True, description="Inclure les définitions IA"),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session)
 ):
@@ -650,8 +764,12 @@ async def get_all_keywords(
     Utilisé pour le widget "Le Saviez-Vous" qui affiche un mot aléatoire
     et permet de naviguer vers l'analyse source.
 
+    Params:
+    - limit: Nombre max de mots-clés (défaut: 100)
+    - with_definitions: Si True, génère des définitions via Mistral (défaut: True)
+
     Retourne:
-    - keywords: Liste de mots-clés avec leur source (summary_id, video_title)
+    - keywords: Liste de mots-clés avec définitions et source
     - total: Nombre total de mots-clés
     - has_history: True si l'utilisateur a des analyses
     """
@@ -671,7 +789,7 @@ async def get_all_keywords(
     summaries = result.scalars().all()
 
     # Extraire tous les mots-clés avec leur source
-    keywords = []
+    keywords_raw = []
     seen_terms = set()  # Pour éviter les doublons
 
     for summary in summaries:
@@ -688,21 +806,54 @@ async def get_all_keywords(
                 continue
             seen_terms.add(tag_lower)
 
-            keywords.append(KeywordItem(
-                term=tag,
-                summary_id=summary.id,
-                video_title=summary.video_title,
-                video_id=summary.video_id,
-                category=summary.category,
-                created_at=summary.created_at.isoformat() if summary.created_at else None
-            ))
+            keywords_raw.append({
+                "term": tag,
+                "summary_id": summary.id,
+                "video_title": summary.video_title,
+                "video_id": summary.video_id,
+                "category": summary.category,
+                "created_at": summary.created_at.isoformat() if summary.created_at else None
+            })
 
             # Limiter le nombre total
-            if len(keywords) >= limit:
+            if len(keywords_raw) >= limit:
                 break
 
-        if len(keywords) >= limit:
+        if len(keywords_raw) >= limit:
             break
+
+    # Générer les définitions académiques si demandé
+    if with_definitions and keywords_raw:
+        terms = [k["term"] for k in keywords_raw]
+        definitions = await _generate_academic_definitions(terms)
+
+        # Ajouter les définitions aux keywords
+        for kw in keywords_raw:
+            term_lower = kw["term"].lower()
+            if term_lower in definitions:
+                def_data = definitions[term_lower]
+                kw["definition"] = def_data.get("definition", "")
+                # Créer une version courte (2 premières phrases ou 150 caractères)
+                full_def = def_data.get("definition", "")
+                if full_def:
+                    # Prendre les 2 premières phrases
+                    sentences = full_def.split('. ')
+                    if len(sentences) >= 2:
+                        short = sentences[0] + '. ' + sentences[1] + '.'
+                    else:
+                        short = full_def
+                    # Tronquer si trop long (max 180 caractères)
+                    if len(short) > 180:
+                        short = short[:177] + '...'
+                    kw["short_definition"] = short
+                else:
+                    kw["short_definition"] = None
+                # Utiliser la catégorie de Mistral si disponible
+                if def_data.get("category"):
+                    kw["category"] = def_data["category"]
+
+    # Construire la réponse
+    keywords = [KeywordItem(**kw) for kw in keywords_raw]
 
     return KeywordsResponse(
         keywords=keywords,
