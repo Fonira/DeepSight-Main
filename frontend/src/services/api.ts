@@ -50,19 +50,41 @@ export interface TokenResponse {
 export interface Summary {
   id: number;
   video_id: string;
-  title: string;
-  channel: string;
-  channel_id?: string;
-  duration?: number;
+
+  // Video info - ALIGNED WITH BACKEND SummaryResponse
+  video_title: string;
+  video_channel: string;
+  video_duration?: number;
+  video_url?: string;
   thumbnail_url?: string;
-  summary: string;
-  summary_html?: string;
-  analysis_type: string;
-  language: string;
+
+  // Analysis metadata
+  category?: string;
+  category_confidence?: number;
+  lang?: string;
+  mode?: string;
+  model_used?: string;
+
+  // Content
+  summary_content: string;
+  word_count?: number;
+  reliability_score?: number;
+
+  // Tags and entities
+  tags?: string;  // Comma-separated string from backend
+  entities?: Record<string, string[]>;
+  fact_check?: string;
+
+  // User data
+  is_favorite?: boolean;
+  notes?: string;
+
+  // Timestamps
   created_at: string;
   updated_at?: string;
-  tags?: string[];
-  keywords?: string[];
+
+  // Optional/legacy fields for compatibility
+  channel_id?: string;
   transcript?: string;
   transcript_segments?: TranscriptSegment[];
   web_enriched?: boolean;

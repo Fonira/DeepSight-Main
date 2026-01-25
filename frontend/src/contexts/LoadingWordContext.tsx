@@ -163,7 +163,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, [language]);
 
   /**
-   * Utilise un mot de l'historique (PAS de fallback local)
+   * Utilise un mot de l'historique (avec fallback local si vide)
    */
   const useHistoryWord = useCallback(() => {
     const excludeList = Array.from(displayedWords);
@@ -180,10 +180,10 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         displayedWords.delete(iterator.next().value);
       }
     } else {
-      // Pas de fallback - widget ne s'affiche pas si pas d'historique
-      setCurrentWord(null);
+      // Fallback vers mots locaux si pas d'historique
+      useLocalFallback();
     }
-  }, []);
+  }, [useLocalFallback]);
 
   /**
    * Récupère les mots-clés depuis l'API historique
@@ -237,7 +237,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, []);
 
   /**
-   * Récupère et affiche un nouveau mot (uniquement depuis l'historique)
+   * Récupère et affiche un nouveau mot (historique prioritaire, fallback local)
    */
   const fetchWord = useCallback(async () => {
     if (!isMountedRef.current) return;
@@ -253,21 +253,21 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         if (keywords.length > 0) {
           useHistoryWord();
         } else {
-          // Pas de mots-clés dans l'historique = widget masqué
-          setCurrentWord(null);
+          // Fallback vers mots locaux si pas d'historique
+          useLocalFallback();
         }
       }
     } catch (err) {
       if (isMountedRef.current) {
-        console.info('[LoadingWord] Error fetching history keywords');
-        setCurrentWord(null);
+        console.info('[LoadingWord] Error, using local fallback');
+        useLocalFallback();
       }
     } finally {
       if (isMountedRef.current) {
         setIsLoading(false);
       }
     }
-  }, [fetchHistoryKeywords, useHistoryWord]);
+  }, [fetchHistoryKeywords, useHistoryWord, useLocalFallback]);
 
   /**
    * Rafraîchit le mot manuellement
@@ -312,15 +312,19 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   useEffect(() => {
     isMountedRef.current = true;
 
-    // Récupérer les mots-clés de l'historique (pas de fallback local)
+    // Afficher immédiatement un mot local pendant le chargement
+    useLocalFallback();
+
+    // Puis essayer de récupérer les mots de l'historique
     fetchWord();
 
-    // Démarrer le timer automatiquement (uniquement mots de l'historique)
+    // Démarrer le timer automatiquement (historique prioritaire, fallback local)
     const timer = setInterval(() => {
       if (historyKeywordsCache.length > 0) {
         useHistoryWord();
+      } else {
+        useLocalFallback();
       }
-      // Pas de fallback - si pas d'historique, widget reste masqué
     }, REFRESH_INTERVAL);
 
     return () => {

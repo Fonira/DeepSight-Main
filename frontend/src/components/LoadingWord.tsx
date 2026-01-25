@@ -394,8 +394,7 @@ export const LoadingWordGlobal: React.FC = () => {
       bg-bg-secondary/95 backdrop-blur-md rounded-xl border border-accent-primary/30
       shadow-2xl shadow-accent-primary/10
       transition-all duration-300 ease-in-out
-      ${isMinimized ? 'w-auto' : isExpanded ? 'w-96 max-h-[60vh]' : 'w-80'}
-      hidden lg:block
+      ${isMinimized ? 'w-auto' : isExpanded ? 'w-96 max-h-[60vh]' : 'w-72 sm:w-80'}
       overflow-hidden
     `}>
       {/* Header with controls */}
