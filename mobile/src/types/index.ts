@@ -49,17 +49,20 @@ export interface VideoInfo {
 export interface AnalysisSummary {
   id: string;
   videoId: string;
-  videoInfo: VideoInfo;
+  videoInfo?: VideoInfo;
   title: string;
-  content: string;
+  content?: string;
   mode: string;
   category: string;
-  model: string;
-  language: string;
-  createdAt: string;
-  updatedAt: string;
+  model?: string;
+  language?: string;
+  createdAt?: string;
+  updatedAt?: string;
   isFavorite: boolean;
-  wordCount: number;
+  wordCount?: number;
+  thumbnail?: string;
+  channel?: string;
+  duration?: number;
 }
 
 export interface AnalysisRequest {

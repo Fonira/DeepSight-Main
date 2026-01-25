@@ -354,27 +354,77 @@ export const historyApi = {
   ): Promise<PaginatedResponse<AnalysisSummary>> {
     const params = new URLSearchParams({
       page: String(page),
-      limit: String(limit),
+      per_page: String(limit),
     });
 
     if (filters?.search) params.append('search', filters.search);
-    if (filters?.mode) params.append('mode', filters.mode);
     if (filters?.category) params.append('category', filters.category);
-    if (filters?.favoritesOnly) params.append('favorites', 'true');
 
-    return request(`/api/history?${params.toString()}`);
+    // Use the correct backend endpoint: /api/history/videos
+    const response = await request<{
+      items: Array<{
+        id: number;
+        video_id: string;
+        video_title: string;
+        video_channel?: string;
+        video_duration?: number;
+        thumbnail_url?: string;
+        category?: string;
+        mode?: string;
+        is_favorite: boolean;
+        created_at?: string;
+      }>;
+      total: number;
+      page: number;
+      per_page: number;
+      pages: number;
+    }>(`/api/history/videos?${params.toString()}`);
+
+    // Transform backend response to mobile format
+    const items: AnalysisSummary[] = response.items.map((item) => ({
+      id: String(item.id),
+      title: item.video_title || 'Sans titre',
+      videoId: item.video_id,
+      thumbnail: item.thumbnail_url,
+      isFavorite: item.is_favorite,
+      mode: item.mode || 'synthesis',
+      category: item.category || 'general',
+      channel: item.video_channel,
+      duration: item.video_duration,
+      createdAt: item.created_at,
+    }));
+
+    return {
+      items,
+      hasMore: response.page < response.pages,
+      page: response.page,
+    };
   },
 
   async toggleFavorite(summaryId: string): Promise<{ isFavorite: boolean }> {
-    return request(`/api/history/${summaryId}/favorite`, {
+    return request(`/api/history/videos/${summaryId}/favorite`, {
       method: 'POST',
     });
   },
 
   async deleteSummary(summaryId: string): Promise<void> {
-    return request(`/api/history/${summaryId}`, {
+    return request(`/api/history/videos/${summaryId}`, {
       method: 'DELETE',
     });
+  },
+
+  async getStats(): Promise<{ totalVideos: number; totalPlaylists: number; totalMinutes: number }> {
+    const response = await request<{
+      total_videos: number;
+      total_playlists: number;
+      total_minutes_watched: number;
+    }>('/api/history/stats');
+
+    return {
+      totalVideos: response.total_videos,
+      totalPlaylists: response.total_playlists,
+      totalMinutes: response.total_minutes_watched,
+    };
   },
 };
 
