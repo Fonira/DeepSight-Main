@@ -351,14 +351,15 @@ export const LoadingWordCompact: React.FC<{ className?: string }> = ({ className
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🎯 GLOBAL FIXED WIDGET (pour App.tsx)
+// 🎯 GLOBAL FIXED WIDGET (pour App.tsx) — AVEC EXPANSION POUR DÉFINITIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const LoadingWordGlobal: React.FC = () => {
   const navigate = useNavigate();
-  const { currentWord, refreshWord, isLoading, hasHistory } = useLoadingWord();
+  const { currentWord, refreshWord, isLoading } = useLoadingWord();
   const { language } = useLanguage();
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
 
   if (!currentWord) {
@@ -367,6 +368,7 @@ export const LoadingWordGlobal: React.FC = () => {
 
   const didYouKnow = language === 'fr' ? 'Le saviez-vous ?' : 'Did you know?';
   const isClickable = currentWord.source === 'history' && currentWord.summaryId;
+  const hasFullDefinition = currentWord.definition && currentWord.definition.length > 80;
 
   const handleClick = () => {
     if (isClickable && currentWord.summaryId) {
@@ -391,12 +393,13 @@ export const LoadingWordGlobal: React.FC = () => {
       fixed bottom-4 right-4 z-50
       bg-bg-secondary/95 backdrop-blur-md rounded-xl border border-accent-primary/30
       shadow-2xl shadow-accent-primary/10
-      transition-all duration-300
-      ${isMinimized ? 'w-auto' : 'w-80'}
+      transition-all duration-300 ease-in-out
+      ${isMinimized ? 'w-auto' : isExpanded ? 'w-96 max-h-[60vh]' : 'w-80'}
       hidden lg:block
+      overflow-hidden
     `}>
       {/* Header with controls */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-accent-primary/10">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-accent-primary/10 bg-bg-secondary/50">
         <span className="text-xs font-medium text-accent-primary flex items-center gap-1">
           💡 {didYouKnow}
         </span>
@@ -409,8 +412,17 @@ export const LoadingWordGlobal: React.FC = () => {
           >
             🔄
           </button>
+          {hasFullDefinition && !isMinimized && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-xs p-1 text-text-tertiary hover:text-accent-primary"
+              title={isExpanded ? (language === 'fr' ? 'Réduire' : 'Collapse') : (language === 'fr' ? 'Agrandir' : 'Expand')}
+            >
+              {isExpanded ? '🔽' : '🔼'}
+            </button>
+          )}
           <button
-            onClick={() => setIsMinimized(!isMinimized)}
+            onClick={() => { setIsMinimized(!isMinimized); setIsExpanded(false); }}
             className="text-xs p-1 text-text-tertiary hover:text-accent-primary"
             title={isMinimized ? 'Expand' : 'Minimize'}
           >
@@ -428,11 +440,12 @@ export const LoadingWordGlobal: React.FC = () => {
 
       {/* Content (hidden when minimized) */}
       {!isMinimized && (
-        <div className="p-3">
+        <div className={`p-3 ${isExpanded ? 'overflow-y-auto max-h-[50vh]' : ''}`}>
+          {/* Term */}
           <p
             onClick={handleClick}
             className={`
-              text-sm font-semibold text-text-primary
+              text-sm font-semibold text-text-primary mb-2
               ${isClickable ? 'cursor-pointer hover:text-accent-primary transition-colors' : ''}
             `}
           >
@@ -443,9 +456,33 @@ export const LoadingWordGlobal: React.FC = () => {
             <span className="text-accent-secondary">»</span>
           </p>
 
-          <p className="text-xs text-text-secondary mt-1 line-clamp-2">
-            {currentWord.shortDefinition}
-          </p>
+          {/* Definition */}
+          <div className="text-xs text-text-secondary leading-relaxed">
+            {isExpanded ? (
+              // Full definition when expanded
+              <p className="whitespace-pre-wrap">{currentWord.definition}</p>
+            ) : (
+              // Short definition with expand hint
+              <>
+                <p className="line-clamp-3">{currentWord.shortDefinition}</p>
+                {hasFullDefinition && (
+                  <button
+                    onClick={() => setIsExpanded(true)}
+                    className="text-accent-primary hover:underline mt-1 flex items-center gap-1"
+                  >
+                    {language === 'fr' ? 'Lire la suite...' : 'Read more...'}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Video title for history items */}
+          {currentWord.source === 'history' && currentWord.videoTitle && (
+            <p className="text-xs text-text-tertiary mt-2 italic truncate border-t border-bg-tertiary/30 pt-2">
+              📹 {currentWord.videoTitle}
+            </p>
+          )}
 
           {/* Source indicator and action */}
           <div className="flex items-center justify-between mt-2 pt-2 border-t border-bg-tertiary/50">
@@ -460,9 +497,9 @@ export const LoadingWordGlobal: React.FC = () => {
             {isClickable && (
               <button
                 onClick={handleClick}
-                className="text-xs text-accent-primary hover:underline"
+                className="text-xs bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 px-2 py-1 rounded transition-colors"
               >
-                {language === 'fr' ? 'Voir →' : 'View →'}
+                {language === 'fr' ? 'Voir l\'analyse →' : 'View analysis →'}
               </button>
             )}
           </div>

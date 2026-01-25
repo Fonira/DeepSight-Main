@@ -38,6 +38,9 @@ interface HistoryKeyword {
   video_id: string | null;
   category: string | null;
   created_at: string | null;
+  // NOUVEAU: Définitions générées par IA (Mistral)
+  definition: string | null;
+  short_definition: string | null;
 }
 
 interface LoadingWordContextType {
@@ -84,20 +87,26 @@ function convertLocalWord(word: WordData, lang: string): LoadingWord {
 }
 
 function convertHistoryKeyword(keyword: HistoryKeyword): LoadingWord {
-  // Générer une définition contextuelle pour les mots-clés de l'historique
-  const contextDefinition = keyword.video_title
-    ? `Ce terme a été identifié comme concept clé dans votre analyse. Cliquez pour redécouvrir le contexte complet dans la vidéo "${keyword.video_title}".`
-    : 'Ce terme provient de vos analyses précédentes. Cliquez pour voir le contexte complet.';
+  // Utiliser la définition IA si disponible, sinon fallback contextuel
+  const hasAIDefinition = keyword.definition && keyword.definition.trim().length > 0;
 
-  const shortDef = keyword.video_title
-    ? `Concept clé identifié dans votre analyse. Cliquez pour voir le contexte.`
-    : 'Terme de vos analyses. Cliquez pour explorer.';
+  const definition = hasAIDefinition
+    ? keyword.definition!
+    : keyword.video_title
+      ? `Terme clé de l'analyse "${keyword.video_title}". Cliquez pour voir le contexte.`
+      : 'Terme de votre historique d\'analyses.';
+
+  const shortDefinition = hasAIDefinition && keyword.short_definition
+    ? keyword.short_definition
+    : hasAIDefinition
+      ? keyword.definition!.slice(0, 80) + (keyword.definition!.length > 80 ? '...' : '')
+      : 'Cliquez pour voir le contexte dans votre analyse.';
 
   return {
     term: keyword.term,
-    definition: contextDefinition,
-    shortDefinition: shortDef,
-    category: keyword.category || 'history',
+    definition: definition,
+    shortDefinition: shortDefinition,
+    category: keyword.category || 'concept',
     source: 'history',
     summaryId: keyword.summary_id,
     videoTitle: keyword.video_title || undefined,
