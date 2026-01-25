@@ -133,6 +133,50 @@ async def save_summary(
                 seen.add(term.lower())
         if extracted_tags:
             print(f"🏷️ [save_summary] Extracted {len(extracted_tags)} concepts: {extracted_tags[:5]}...")
+
+    # 🔄 FALLBACK: Si pas de [[concepts]], extraire des mots-clés automatiquement
+    if not extracted_tags and summary_content:
+        print("⚠️ [save_summary] No [[concepts]] found, using fallback extraction...")
+
+        # 1. Utiliser les entités extraites si disponibles
+        if entities_extracted:
+            for entity in entities_extracted[:10]:
+                if isinstance(entity, dict):
+                    name = entity.get('name', entity.get('term', ''))
+                elif isinstance(entity, str):
+                    name = entity
+                else:
+                    continue
+                if name and len(name) > 2 and name.lower() not in seen:
+                    extracted_tags.append(name)
+                    seen.add(name.lower())
+
+        # 2. Extraire les noms propres (mots avec majuscule au milieu du texte)
+        if len(extracted_tags) < 5:
+            # Pattern pour noms propres: mots capitalisés qui ne sont pas en début de phrase
+            proper_nouns = re.findall(r'(?<=[.!?]\s|:\s|,\s|\n)([A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+)*)', summary_content)
+            # Aussi chercher les groupes de mots capitalisés
+            proper_nouns += re.findall(r'\b([A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+)+)\b', summary_content)
+
+            # Mots à ignorer
+            stopwords = {'Le', 'La', 'Les', 'Un', 'Une', 'Des', 'Ce', 'Cette', 'Ces', 'Il', 'Elle',
+                        'Ils', 'Elles', 'On', 'Nous', 'Vous', 'The', 'This', 'That', 'These', 'Those',
+                        'Dans', 'Pour', 'Avec', 'Sans', 'Sur', 'Sous', 'Par', 'En', 'De', 'Du',
+                        'Mais', 'Ou', 'Et', 'Donc', 'Or', 'Ni', 'Car', 'Cela', 'Ceci', 'Ainsi'}
+
+            for noun in proper_nouns:
+                noun = noun.strip()
+                if (noun and len(noun) > 2
+                    and noun not in stopwords
+                    and noun.lower() not in seen
+                    and not noun.isdigit()):
+                    extracted_tags.append(noun)
+                    seen.add(noun.lower())
+                    if len(extracted_tags) >= 8:
+                        break
+
+        if extracted_tags:
+            print(f"🏷️ [save_summary] Fallback extracted {len(extracted_tags)} keywords: {extracted_tags[:5]}...")
     
     summary = Summary(
         user_id=user_id,
