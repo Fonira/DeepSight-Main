@@ -9,6 +9,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { AuthProvider } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
+import { LanguageProvider } from './src/contexts/LanguageContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { DoodleBackground } from './src/components/backgrounds';
 import { ErrorBoundary } from './src/components/common';
@@ -94,9 +95,11 @@ export default function App() {
             }}
           >
             <ThemeProvider>
-              <AuthProvider>
-                <AppContent />
-              </AuthProvider>
+              <LanguageProvider>
+                <AuthProvider>
+                  <AppContent />
+                </AuthProvider>
+              </LanguageProvider>
             </ThemeProvider>
           </ErrorBoundary>
         </QueryClientProvider>
