@@ -17,6 +17,7 @@ import { useAuth } from "./hooks/useAuth";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { LoadingWordProvider } from "./contexts/LoadingWordContext";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { SkipLink } from "./components/SkipLink";
 import { InstallPrompt, UpdatePrompt } from "./components/InstallPrompt";
@@ -326,8 +327,9 @@ const AppRoutes = () => {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <AuthProvider value={auth}>
-          <Router>
+        <LoadingWordProvider>
+          <AuthProvider value={auth}>
+            <Router>
             {/* ♿ Skip Link pour l'accessibilité */}
             <SkipLink targetId="main-content" />
             
@@ -436,8 +438,9 @@ const AppRoutes = () => {
             
             {/* 🔄 PWA: Notification de mise à jour */}
             <UpdatePrompt />
-          </Router>
-        </AuthProvider>
+            </Router>
+          </AuthProvider>
+        </LoadingWordProvider>
       </LanguageProvider>
     </ThemeProvider>
   );
