@@ -40,7 +40,7 @@ import { StudyToolsModal } from "../components/StudyToolsModal";
 import { KeywordsModal } from "../components/KeywordsModal";
 import DoodleBackground from "../components/DoodleBackground";
 import SmartInputBar, { SmartInputValue } from "../components/SmartInputBar";
-import { LoadingWordWidget } from "../components/LoadingWord";
+// LoadingWordWidget désormais global dans App.tsx
 import VideoDiscoveryModal from "../components/VideoDiscoveryModal";
 import { ThumbnailImage } from "../components/ThumbnailImage";
 // 🕐 Freshness & Fact-Check LITE
@@ -1272,11 +1272,7 @@ export const DashboardPage: React.FC = () => {
                     ? 'Collez une URL YouTube ci-dessus pour générer une analyse détaillée avec résumé, fact-checking et chat contextuel.'
                     : 'Paste a YouTube URL above to generate a detailed analysis with summary, fact-checking and contextual chat.'}
                 </p>
-
-                {/* 🧠 Widget "Le Saviez-Vous" */}
-                <div className="max-w-md mx-auto">
-                  <LoadingWordWidget showSource showCategory />
-                </div>
+                {/* Widget "Le Saviez-Vous" désormais global dans App.tsx (coin bas-droite) */}
               </div>
             )}
           </div>

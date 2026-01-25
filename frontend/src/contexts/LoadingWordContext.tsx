@@ -1,10 +1,13 @@
 /**
- * 🧠 LOADING WORD CONTEXT — Widget "Le Saviez-Vous"
- * Fournit un mot éducatif pendant les chargements
+ * 🧠 LOADING WORD CONTEXT V2 — Widget "Le Saviez-Vous"
+ *
+ * Fonctionnalités:
+ * - Récupère les mots-clés depuis l'historique utilisateur
+ * - Fallback vers données locales si pas d'historique
  * - Timer de 60 secondes pour rafraîchir automatiquement
  * - Cache local pour éviter les répétitions
  * - Support bilingue FR/EN
- * - Fallback local quand l'API n'est pas disponible
+ * - summaryId pour navigation vers l'analyse source
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
@@ -20,8 +23,21 @@ export interface LoadingWord {
   definition: string;
   shortDefinition: string;
   category: string;
-  source: 'history' | 'curated' | 'local';
+  source: 'history' | 'local';
   wikiUrl?: string;
+  // NOUVEAU: Pour navigation vers l'analyse source
+  summaryId?: number;
+  videoTitle?: string;
+  videoId?: string;
+}
+
+interface HistoryKeyword {
+  term: string;
+  summary_id: number;
+  video_title: string | null;
+  video_id: string | null;
+  category: string | null;
+  created_at: string | null;
 }
 
 interface LoadingWordContextType {
@@ -32,6 +48,7 @@ interface LoadingWordContextType {
   startTimer: () => void;
   stopTimer: () => void;
   isTimerActive: boolean;
+  hasHistory: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -46,8 +63,13 @@ const REFRESH_INTERVAL = 60 * 1000;
 // Cache des mots déjà affichés pour éviter les répétitions
 const displayedWords = new Set<string>();
 
+// Cache des mots-clés de l'historique
+let historyKeywordsCache: HistoryKeyword[] = [];
+let lastFetchTime = 0;
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🔄 HELPER: Convertir WordData local en LoadingWord
+// 🔄 HELPERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function convertLocalWord(word: WordData, lang: string): LoadingWord {
@@ -61,6 +83,39 @@ function convertLocalWord(word: WordData, lang: string): LoadingWord {
   };
 }
 
+function convertHistoryKeyword(keyword: HistoryKeyword): LoadingWord {
+  return {
+    term: keyword.term,
+    definition: keyword.video_title
+      ? `Mot-clé extrait de l'analyse "${keyword.video_title}"`
+      : 'Mot-clé de votre historique d\'analyses',
+    shortDefinition: keyword.video_title
+      ? `De: ${keyword.video_title.slice(0, 50)}${keyword.video_title.length > 50 ? '...' : ''}`
+      : 'Cliquez pour voir l\'analyse',
+    category: keyword.category || 'history',
+    source: 'history',
+    summaryId: keyword.summary_id,
+    videoTitle: keyword.video_title || undefined,
+    videoId: keyword.video_id || undefined,
+  };
+}
+
+function getRandomHistoryKeyword(excludeTerms: string[]): HistoryKeyword | null {
+  if (historyKeywordsCache.length === 0) return null;
+
+  const available = historyKeywordsCache.filter(
+    k => !excludeTerms.includes(k.term.toLowerCase())
+  );
+
+  if (available.length === 0) {
+    // Reset si tout a été affiché
+    displayedWords.clear();
+    return historyKeywordsCache[Math.floor(Math.random() * historyKeywordsCache.length)];
+  }
+
+  return available[Math.floor(Math.random() * available.length)];
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 PROVIDER
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -71,6 +126,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isTimerActive, setIsTimerActive] = useState(false);
+  const [hasHistory, setHasHistory] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
@@ -83,7 +139,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
     const loadingWord = convertLocalWord(word, language);
 
     setCurrentWord(loadingWord);
-    displayedWords.add(loadingWord.term);
+    displayedWords.add(loadingWord.term.toLowerCase());
 
     // Limiter la taille du cache
     if (displayedWords.size > 50) {
@@ -93,36 +149,53 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, [language]);
 
   /**
-   * Récupère un mot aléatoire depuis l'API ou fallback local
+   * Utilise un mot de l'historique
    */
-  const fetchWord = useCallback(async () => {
-    if (!isMountedRef.current) return;
+  const useHistoryWord = useCallback(() => {
+    const excludeList = Array.from(displayedWords);
+    const keyword = getRandomHistoryKeyword(excludeList);
 
-    setIsLoading(true);
-    setError(null);
+    if (keyword) {
+      const loadingWord = convertHistoryKeyword(keyword);
+      setCurrentWord(loadingWord);
+      displayedWords.add(loadingWord.term.toLowerCase());
+
+      // Limiter la taille du cache
+      if (displayedWords.size > 50) {
+        const iterator = displayedWords.values();
+        displayedWords.delete(iterator.next().value);
+      }
+    } else {
+      useLocalFallback();
+    }
+  }, [useLocalFallback]);
+
+  /**
+   * Récupère les mots-clés depuis l'API historique
+   */
+  const fetchHistoryKeywords = useCallback(async () => {
+    // Vérifier le cache
+    const now = Date.now();
+    if (historyKeywordsCache.length > 0 && (now - lastFetchTime) < CACHE_DURATION) {
+      return historyKeywordsCache;
+    }
 
     try {
-      // Construire la liste des mots à exclure (ceux déjà affichés)
-      const excludeList = Array.from(displayedWords).slice(-20).join(',');
-
-      // Essayer l'API d'abord
       const API_URL = import.meta.env.VITE_API_URL || 'https://deep-sight-backend-v3-production.up.railway.app';
-      const url = `${API_URL}/api/words/random?lang=${language}${excludeList ? `&exclude=${excludeList}` : ''}`;
-
       const token = localStorage.getItem('access_token');
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-      };
 
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      if (!token) {
+        return [];
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3s timeout
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-      const response = await fetch(url, {
-        headers,
+      const response = await fetch(`${API_URL}/api/history/keywords?limit=200`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
         signal: controller.signal
       });
 
@@ -134,29 +207,43 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       const data = await response.json();
 
+      historyKeywordsCache = data.keywords || [];
+      lastFetchTime = now;
+
       if (isMountedRef.current) {
-        const word: LoadingWord = {
-          term: data.term,
-          definition: data.definition,
-          shortDefinition: data.short_definition,
-          category: data.category,
-          source: data.source,
-          wikiUrl: data.wiki_url,
-        };
+        setHasHistory(data.has_history || false);
+      }
 
-        setCurrentWord(word);
-        displayedWords.add(word.term);
+      return historyKeywordsCache;
+    } catch (err) {
+      console.info('[LoadingWord] Could not fetch history keywords:', err);
+      return [];
+    }
+  }, []);
 
-        // Limiter la taille du cache
-        if (displayedWords.size > 50) {
-          const iterator = displayedWords.values();
-          displayedWords.delete(iterator.next().value);
+  /**
+   * Récupère et affiche un nouveau mot
+   */
+  const fetchWord = useCallback(async () => {
+    if (!isMountedRef.current) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Essayer de récupérer les mots-clés de l'historique
+      const keywords = await fetchHistoryKeywords();
+
+      if (isMountedRef.current) {
+        if (keywords.length > 0) {
+          useHistoryWord();
+        } else {
+          useLocalFallback();
         }
       }
     } catch (err) {
-      // API échoue → utiliser les données locales
       if (isMountedRef.current) {
-        console.info('[LoadingWord] API unavailable, using local fallback');
+        console.info('[LoadingWord] Error, using local fallback');
         useLocalFallback();
       }
     } finally {
@@ -164,14 +251,19 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         setIsLoading(false);
       }
     }
-  }, [language, useLocalFallback]);
+  }, [fetchHistoryKeywords, useHistoryWord, useLocalFallback]);
 
   /**
    * Rafraîchit le mot manuellement
    */
   const refreshWord = useCallback(() => {
-    fetchWord();
-  }, [fetchWord]);
+    // Si on a des mots en cache, les utiliser directement
+    if (historyKeywordsCache.length > 0) {
+      useHistoryWord();
+    } else {
+      fetchWord();
+    }
+  }, [fetchWord, useHistoryWord]);
 
   /**
    * Démarre le timer de rafraîchissement automatique
@@ -183,16 +275,11 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
 
     setIsTimerActive(true);
 
-    // Fetch immédiatement si pas de mot actuel
-    if (!currentWord) {
-      fetchWord();
-    }
-
     // Démarrer le timer pour les rafraîchissements suivants
     timerRef.current = setInterval(() => {
-      fetchWord();
+      refreshWord();
     }, REFRESH_INTERVAL);
-  }, [fetchWord, currentWord]);
+  }, [refreshWord]);
 
   /**
    * Arrête le timer de rafraîchissement
@@ -205,28 +292,38 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
     setIsTimerActive(false);
   }, []);
 
-  // Fetch initial au montage - utilise d'abord le local pour affichage immédiat
+  // Fetch initial au montage
   useEffect(() => {
     isMountedRef.current = true;
 
-    // Afficher immédiatement un mot local
+    // Afficher immédiatement un mot local pendant le chargement
     useLocalFallback();
 
-    // Puis essayer l'API en background (pour les futures améliorations)
-    // fetchWord(); // Désactivé pour l'instant car l'API n'est pas déployée
+    // Puis essayer de récupérer les mots de l'historique
+    fetchWord();
+
+    // Démarrer le timer automatiquement
+    const timer = setInterval(() => {
+      if (historyKeywordsCache.length > 0) {
+        useHistoryWord();
+      } else {
+        useLocalFallback();
+      }
+    }, REFRESH_INTERVAL);
 
     return () => {
       isMountedRef.current = false;
+      clearInterval(timer);
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Re-fetch quand la langue change
+  // Re-fetch quand la langue change (pour les mots locaux)
   useEffect(() => {
-    if (currentWord) {
-      useLocalFallback(); // Utiliser le local pour un changement de langue instantané
+    if (currentWord && currentWord.source === 'local') {
+      useLocalFallback();
     }
   }, [language]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -240,6 +337,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         startTimer,
         stopTimer,
         isTimerActive,
+        hasHistory,
       }}
     >
       {children}

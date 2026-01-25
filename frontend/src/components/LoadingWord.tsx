@@ -1,13 +1,17 @@
 /**
- * 🧠 LOADING WORD COMPONENT — Widget "Le Saviez-Vous"
- * Affiche un mot éducatif avec sa définition pendant les chargements
+ * 🧠 LOADING WORD COMPONENT V2 — Widget "Le Saviez-Vous"
+ *
+ * Fonctionnalités:
+ * - Affiche un mot-clé avec sa définition
  * - Design Deep Sight (cyan/gold)
  * - Animation fade-in/fade-out
+ * - NOUVEAU: Cliquable → navigation vers l'analyse source
  * - Mode expand/collapse pour la définition complète
  * - Support bilingue FR/EN
  */
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLoadingWord, LoadingWord as LoadingWordType } from '../contexts/LoadingWordContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -32,6 +36,13 @@ const CATEGORY_ICONS: Record<string, string> = {
   philosophy: '🎭',
   culture: '🌍',
   misc: '✨',
+  history: '📜',
+  technology: '⚡',
+  person: '👤',
+  company: '🏢',
+  concept: '💡',
+  event: '📅',
+  place: '📍',
 };
 
 const CATEGORY_LABELS_FR: Record<string, string> = {
@@ -40,6 +51,13 @@ const CATEGORY_LABELS_FR: Record<string, string> = {
   philosophy: 'Philosophie',
   culture: 'Culture',
   misc: 'Divers',
+  history: 'Historique',
+  technology: 'Technologie',
+  person: 'Personne',
+  company: 'Entreprise',
+  concept: 'Concept',
+  event: 'Événement',
+  place: 'Lieu',
 };
 
 const CATEGORY_LABELS_EN: Record<string, string> = {
@@ -48,10 +66,17 @@ const CATEGORY_LABELS_EN: Record<string, string> = {
   philosophy: 'Philosophy',
   culture: 'Culture',
   misc: 'Miscellaneous',
+  history: 'History',
+  technology: 'Technology',
+  person: 'Person',
+  company: 'Company',
+  concept: 'Concept',
+  event: 'Event',
+  place: 'Place',
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🎯 COMPONENT
+// 🎯 MAIN WIDGET COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
@@ -60,25 +85,23 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
   showCategory = true,
   showSource = false,
 }) => {
-  const { currentWord, isLoading, refreshWord } = useLoadingWord();
-  const { language, t } = useLanguage();
+  const navigate = useNavigate();
+  const { currentWord, isLoading, refreshWord, hasHistory } = useLoadingWord();
+  const { language } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [displayedWord, setDisplayedWord] = useState<LoadingWordType | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
 
   // Animation de transition quand le mot change
   useEffect(() => {
     if (currentWord && currentWord.term !== displayedWord?.term) {
-      // Fade out
       setIsVisible(false);
-
-      // Attendre la fin du fade out, puis changer le mot et fade in
       const timeout = setTimeout(() => {
         setDisplayedWord(currentWord);
         setIsExpanded(false);
         setIsVisible(true);
       }, 300);
-
       return () => clearTimeout(timeout);
     } else if (currentWord && !displayedWord) {
       setDisplayedWord(currentWord);
@@ -90,7 +113,8 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
   const didYouKnow = language === 'fr' ? 'Le saviez-vous ?' : 'Did you know?';
   const learnMore = language === 'fr' ? 'En savoir plus' : 'Learn more';
   const showLess = language === 'fr' ? 'Réduire' : 'Show less';
-  const fromHistory = language === 'fr' ? 'Issu de vos analyses' : 'From your analyses';
+  const fromHistory = language === 'fr' ? 'De vos analyses' : 'From your analyses';
+  const clickToView = language === 'fr' ? 'Cliquez pour voir l\'analyse' : 'Click to view analysis';
   const categoryLabels = language === 'fr' ? CATEGORY_LABELS_FR : CATEGORY_LABELS_EN;
 
   if (!displayedWord) {
@@ -99,6 +123,14 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
 
   const categoryIcon = CATEGORY_ICONS[displayedWord.category] || '📚';
   const categoryLabel = categoryLabels[displayedWord.category] || displayedWord.category;
+  const isClickable = displayedWord.source === 'history' && displayedWord.summaryId;
+
+  // Navigation vers l'analyse source
+  const handleTermClick = () => {
+    if (isClickable && displayedWord.summaryId) {
+      navigate(`/dashboard?id=${displayedWord.summaryId}`);
+    }
+  };
 
   return (
     <div
@@ -121,22 +153,63 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
           </span>
         </div>
 
-        {showCategory && (
-          <span className="flex items-center gap-1 text-xs text-text-secondary">
-            <span role="img" aria-label={categoryLabel}>{categoryIcon}</span>
-            {!compact && <span>{categoryLabel}</span>}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {/* Source badge */}
+          {displayedWord.source === 'history' && (
+            <span className="text-xs bg-accent-secondary/20 text-accent-secondary px-2 py-0.5 rounded-full">
+              📜 {fromHistory}
+            </span>
+          )}
+
+          {showCategory && displayedWord.source === 'local' && (
+            <span className="flex items-center gap-1 text-xs text-text-secondary">
+              <span role="img" aria-label={categoryLabel}>{categoryIcon}</span>
+              {!compact && <span>{categoryLabel}</span>}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Content */}
       <div className="p-4">
-        {/* Term */}
-        <h3 className="text-lg font-semibold text-text-primary mb-2">
+        {/* Term - Cliquable si de l'historique */}
+        <h3
+          onClick={handleTermClick}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          className={`
+            text-lg font-semibold text-text-primary mb-2
+            transition-all duration-200
+            ${isClickable
+              ? 'cursor-pointer hover:text-accent-primary group'
+              : ''
+            }
+          `}
+          title={isClickable ? clickToView : undefined}
+        >
           <span className="text-accent-secondary">«</span>
-          <span className="mx-1">{displayedWord.term}</span>
+          <span className={`
+            mx-1
+            ${isClickable ? 'underline decoration-dotted decoration-accent-primary/50 hover:decoration-solid' : ''}
+          `}>
+            {displayedWord.term}
+          </span>
           <span className="text-accent-secondary">»</span>
+
+          {/* Indicateur cliquable */}
+          {isClickable && isHovered && (
+            <span className="ml-2 text-xs text-accent-primary animate-pulse">
+              → {language === 'fr' ? 'Voir' : 'View'}
+            </span>
+          )}
         </h3>
+
+        {/* Video title si de l'historique */}
+        {displayedWord.source === 'history' && displayedWord.videoTitle && (
+          <p className="text-xs text-text-tertiary mb-2 italic truncate">
+            📹 {displayedWord.videoTitle}
+          </p>
+        )}
 
         {/* Definition */}
         <p className={`
@@ -149,25 +222,30 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
 
         {/* Actions */}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-bg-tertiary/50">
-          {/* Expand/Collapse button */}
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="text-xs text-accent-primary hover:text-accent-hover transition-colors"
-          >
-            {isExpanded ? showLess : learnMore}
-          </button>
-
+          {/* Expand/Collapse ou Voir l'analyse */}
           <div className="flex items-center gap-3">
-            {/* Source indicator */}
-            {showSource && displayedWord.source === 'history' && (
-              <span className="text-xs text-accent-secondary flex items-center gap-1">
-                <span role="img" aria-label="history">📜</span>
-                {fromHistory}
-              </span>
+            {displayedWord.source === 'local' && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="text-xs text-accent-primary hover:text-accent-hover transition-colors"
+              >
+                {isExpanded ? showLess : learnMore}
+              </button>
             )}
 
-            {/* Wiki link */}
-            {displayedWord.wikiUrl && (
+            {isClickable && (
+              <button
+                onClick={handleTermClick}
+                className="text-xs bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 px-3 py-1 rounded-full transition-colors"
+              >
+                📊 {language === 'fr' ? 'Voir l\'analyse' : 'View analysis'}
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Wiki link (seulement pour les mots locaux) */}
+            {displayedWord.wikiUrl && displayedWord.source === 'local' && (
               <a
                 href={displayedWord.wikiUrl}
                 target="_blank"
@@ -202,11 +280,12 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🎯 COMPACT VERSION (pour les spinners)
+// 🎯 COMPACT VERSION (pour les spinners et positions fixes)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const LoadingWordCompact: React.FC<{ className?: string }> = ({ className = '' }) => {
-  const { currentWord } = useLoadingWord();
+  const navigate = useNavigate();
+  const { currentWord, refreshWord, isLoading } = useLoadingWord();
   const { language } = useLanguage();
 
   if (!currentWord) {
@@ -214,18 +293,184 @@ export const LoadingWordCompact: React.FC<{ className?: string }> = ({ className
   }
 
   const didYouKnow = language === 'fr' ? 'Le saviez-vous ?' : 'Did you know?';
+  const isClickable = currentWord.source === 'history' && currentWord.summaryId;
+
+  const handleClick = () => {
+    if (isClickable && currentWord.summaryId) {
+      navigate(`/dashboard?id=${currentWord.summaryId}`);
+    }
+  };
 
   return (
-    <div className={`text-center max-w-md mx-auto ${className}`}>
-      <p className="text-xs text-accent-primary mb-1">💡 {didYouKnow}</p>
-      <p className="text-sm text-text-primary font-medium">
+    <div className={`
+      bg-bg-secondary/90 backdrop-blur-sm rounded-lg border border-accent-primary/20 p-3
+      transition-all duration-300 hover:border-accent-primary/40
+      ${className}
+    `}>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs text-accent-primary flex items-center gap-1">
+          💡 {didYouKnow}
+        </p>
+        <button
+          onClick={refreshWord}
+          disabled={isLoading}
+          className={`text-xs text-text-tertiary hover:text-accent-primary ${isLoading ? 'animate-spin' : ''}`}
+        >
+          🔄
+        </button>
+      </div>
+
+      <p
+        onClick={handleClick}
+        className={`
+          text-sm text-text-primary font-medium
+          ${isClickable ? 'cursor-pointer hover:text-accent-primary transition-colors' : ''}
+        `}
+      >
         <span className="text-accent-secondary">«</span>
-        {currentWord.term}
+        <span className={isClickable ? 'underline decoration-dotted' : ''}>
+          {currentWord.term}
+        </span>
         <span className="text-accent-secondary">»</span>
       </p>
+
       <p className="text-xs text-text-secondary mt-1 line-clamp-2">
         {currentWord.shortDefinition}
       </p>
+
+      {currentWord.source === 'history' && (
+        <p className="text-xs text-accent-secondary mt-2 flex items-center gap-1">
+          📜 {language === 'fr' ? 'De vos analyses' : 'From your analyses'}
+          {isClickable && (
+            <span className="text-accent-primary ml-1">→</span>
+          )}
+        </p>
+      )}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎯 GLOBAL FIXED WIDGET (pour App.tsx)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const LoadingWordGlobal: React.FC = () => {
+  const navigate = useNavigate();
+  const { currentWord, refreshWord, isLoading, hasHistory } = useLoadingWord();
+  const { language } = useLanguage();
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+
+  if (!currentWord) {
+    return null;
+  }
+
+  const didYouKnow = language === 'fr' ? 'Le saviez-vous ?' : 'Did you know?';
+  const isClickable = currentWord.source === 'history' && currentWord.summaryId;
+
+  const handleClick = () => {
+    if (isClickable && currentWord.summaryId) {
+      navigate(`/dashboard?id=${currentWord.summaryId}`);
+    }
+  };
+
+  if (!isVisible) {
+    return (
+      <button
+        onClick={() => setIsVisible(true)}
+        className="fixed bottom-4 right-4 z-50 bg-accent-primary text-white p-3 rounded-full shadow-lg hover:bg-accent-hover transition-colors"
+        title={didYouKnow}
+      >
+        💡
+      </button>
+    );
+  }
+
+  return (
+    <div className={`
+      fixed bottom-4 right-4 z-50
+      bg-bg-secondary/95 backdrop-blur-md rounded-xl border border-accent-primary/30
+      shadow-2xl shadow-accent-primary/10
+      transition-all duration-300
+      ${isMinimized ? 'w-auto' : 'w-80'}
+      hidden lg:block
+    `}>
+      {/* Header with controls */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-accent-primary/10">
+        <span className="text-xs font-medium text-accent-primary flex items-center gap-1">
+          💡 {didYouKnow}
+        </span>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={refreshWord}
+            disabled={isLoading}
+            className={`text-xs p-1 text-text-tertiary hover:text-accent-primary ${isLoading ? 'animate-spin' : ''}`}
+            title={language === 'fr' ? 'Nouveau mot' : 'New word'}
+          >
+            🔄
+          </button>
+          <button
+            onClick={() => setIsMinimized(!isMinimized)}
+            className="text-xs p-1 text-text-tertiary hover:text-accent-primary"
+            title={isMinimized ? 'Expand' : 'Minimize'}
+          >
+            {isMinimized ? '⬆️' : '⬇️'}
+          </button>
+          <button
+            onClick={() => setIsVisible(false)}
+            className="text-xs p-1 text-text-tertiary hover:text-red-400"
+            title={language === 'fr' ? 'Fermer' : 'Close'}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+
+      {/* Content (hidden when minimized) */}
+      {!isMinimized && (
+        <div className="p-3">
+          <p
+            onClick={handleClick}
+            className={`
+              text-sm font-semibold text-text-primary
+              ${isClickable ? 'cursor-pointer hover:text-accent-primary transition-colors' : ''}
+            `}
+          >
+            <span className="text-accent-secondary">«</span>
+            <span className={isClickable ? 'underline decoration-dotted decoration-accent-primary/50' : ''}>
+              {currentWord.term}
+            </span>
+            <span className="text-accent-secondary">»</span>
+          </p>
+
+          <p className="text-xs text-text-secondary mt-1 line-clamp-2">
+            {currentWord.shortDefinition}
+          </p>
+
+          {/* Source indicator and action */}
+          <div className="flex items-center justify-between mt-2 pt-2 border-t border-bg-tertiary/50">
+            <span className="text-xs text-text-tertiary">
+              {currentWord.source === 'history' ? (
+                <span className="text-accent-secondary">📜 {language === 'fr' ? 'Vos analyses' : 'Your analyses'}</span>
+              ) : (
+                <span>📚 {language === 'fr' ? 'Culture' : 'Knowledge'}</span>
+              )}
+            </span>
+
+            {isClickable && (
+              <button
+                onClick={handleClick}
+                className="text-xs text-accent-primary hover:underline"
+              >
+                {language === 'fr' ? 'Voir →' : 'View →'}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Decorative line */}
+      <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-accent-primary via-accent-secondary to-accent-primary opacity-50 rounded-b-xl" />
     </div>
   );
 };
