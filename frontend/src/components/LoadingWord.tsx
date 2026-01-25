@@ -477,30 +477,24 @@ export const LoadingWordGlobal: React.FC = () => {
             )}
           </div>
 
-          {/* Video title for history items */}
-          {currentWord.source === 'history' && currentWord.videoTitle && (
-            <p className="text-xs text-text-tertiary mt-2 italic truncate border-t border-bg-tertiary/30 pt-2">
-              📹 {currentWord.videoTitle}
-            </p>
-          )}
-
-          {/* Source indicator and action */}
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-bg-tertiary/50">
-            <span className="text-xs text-text-tertiary">
-              {currentWord.source === 'history' ? (
-                <span className="text-accent-secondary">📜 {language === 'fr' ? 'Vos analyses' : 'Your analyses'}</span>
-              ) : (
-                <span>📚 {language === 'fr' ? 'Culture' : 'Knowledge'}</span>
-              )}
-            </span>
-
-            {isClickable && (
+          {/* Source: Video title (clickable) for history items, Category for local */}
+          <div className="mt-2 pt-2 border-t border-bg-tertiary/50">
+            {currentWord.source === 'history' && currentWord.videoTitle ? (
               <button
                 onClick={handleClick}
-                className="text-xs bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 px-2 py-1 rounded transition-colors"
+                className="w-full text-left text-xs text-accent-secondary hover:text-accent-primary transition-colors group flex items-center gap-1"
+                title={language === 'fr' ? 'Cliquez pour voir l\'analyse' : 'Click to view analysis'}
               >
-                {language === 'fr' ? 'Voir l\'analyse →' : 'View analysis →'}
+                <span className="text-base">📹</span>
+                <span className="truncate flex-1 underline decoration-dotted decoration-accent-primary/30 group-hover:decoration-solid">
+                  {currentWord.videoTitle}
+                </span>
+                <span className="text-accent-primary opacity-0 group-hover:opacity-100 transition-opacity">→</span>
               </button>
+            ) : (
+              <span className="text-xs text-text-tertiary flex items-center gap-1">
+                📚 {currentWord.category ? CATEGORY_LABELS_FR[currentWord.category] || currentWord.category : (language === 'fr' ? 'Culture' : 'Knowledge')}
+              </span>
             )}
           </div>
         </div>
