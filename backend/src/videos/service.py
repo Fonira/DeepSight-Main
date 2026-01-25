@@ -692,17 +692,17 @@ def build_chat_prompt(
     """
     MODE_CONFIG = {
         "accessible": {
-            "max_context": 8000,
+            "max_context": 12000,  # 🆕 v3.1: Augmenté pour meilleur contexte
             "style_fr": "Réponds de façon concise (2-4 phrases). Langage simple, accessible.",
             "style_en": "Answer concisely (2-4 sentences). Simple, accessible language."
         },
         "standard": {
-            "max_context": 15000,
+            "max_context": 25000,  # 🆕 v3.1: Augmenté pour vidéos longues
             "style_fr": "Réponds de façon complète (4-8 phrases). Équilibre clarté et détail.",
             "style_en": "Answer completely (4-8 sentences). Balance clarity and detail."
         },
         "expert": {
-            "max_context": 25000,
+            "max_context": 40000,  # 🆕 v3.1: Augmenté pour analyses exhaustives
             "style_fr": "Réponds de façon exhaustive et rigoureuse. Analyse critique.",
             "style_en": "Answer exhaustively and rigorously. Critical analysis."
         }
