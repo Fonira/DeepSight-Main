@@ -644,31 +644,109 @@ class KeywordsResponse(BaseModel):
     has_history: bool
 
 
-async def _generate_definitions_batch(terms: List[str]) -> Dict[str, dict]:
+async def _generate_academic_definitions(terms: List[str]) -> Dict[str, dict]:
     """
-    Génère des définitions pour un lot de termes via Mistral.
-    Utilise le cache pour éviter les appels répétés.
+    Génère des définitions ACADÉMIQUES et ÉDUCATIVES via Mistral.
+    Définitions complètes, synthétiques et instructives.
     """
-    from videos.enriched_definitions import categorize_with_mistral
+    import httpx
+    import json
+    import re
+    from core.config import get_mistral_key
 
     # Filtrer les termes déjà en cache
     terms_to_fetch = [t for t in terms if t.lower() not in _definitions_cache]
 
-    if terms_to_fetch:
-        try:
-            # Générer les définitions via Mistral
-            definitions = await categorize_with_mistral(
-                terms=terms_to_fetch[:20],  # Limiter à 20 termes par appel
-                context="Mots-clés extraits d'analyses vidéo YouTube",
-                language="fr"
+    if not terms_to_fetch:
+        return _definitions_cache
+
+    api_key = get_mistral_key()
+    if not api_key:
+        print("⚠️ [Keywords] No Mistral API key configured")
+        return _definitions_cache
+
+    terms_to_fetch = terms_to_fetch[:15]  # Limiter pour la qualité
+
+    prompt = f"""Tu es un professeur encyclopédiste. Pour chaque terme, rédige une DÉFINITION ACADÉMIQUE complète et éducative.
+
+EXIGENCES pour chaque définition:
+- 3 à 5 phrases complètes et informatives
+- Commencer par une définition claire et précise du concept
+- Inclure le contexte historique ou étymologique si pertinent
+- Expliquer l'importance ou les applications concrètes
+- Être accessible mais rigoureux (niveau universitaire vulgarisé)
+- Éviter les formulations vagues ou les questions rhétoriques
+
+Termes à définir:
+{chr(10).join(f"- {t}" for t in terms_to_fetch)}
+
+Réponds UNIQUEMENT en JSON valide:
+{{
+  "definitions": [
+    {{
+      "term": "Nom exact du terme",
+      "category": "science|philosophie|histoire|technologie|economie|politique|culture|societe|autre",
+      "definition": "Définition académique complète de 3-5 phrases. Explication claire, contexte, importance."
+    }}
+  ]
+}}
+
+IMPORTANT:
+- JSON valide uniquement, pas de texte avant/après
+- Définitions complètes et éducatives, PAS de phrases courtes ou accrocheuses
+- Chaque définition doit apporter une vraie compréhension du sujet"""
+
+    try:
+        async with httpx.AsyncClient(timeout=45.0) as client:
+            response = await client.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "mistral-small-latest",
+                    "messages": [
+                        {"role": "user", "content": prompt}
+                    ],
+                    "max_tokens": 4000,
+                    "temperature": 0.3
+                }
             )
 
-            # Mettre en cache
-            for term_lower, data in definitions.items():
-                _definitions_cache[term_lower] = data
+            if response.status_code != 200:
+                print(f"❌ [Keywords] Mistral API error: {response.status_code}")
+                return _definitions_cache
 
-        except Exception as e:
-            print(f"⚠️ [Keywords] Could not generate definitions: {e}")
+            data = response.json()
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+            # Nettoyer le JSON
+            content = content.strip()
+            if content.startswith("```"):
+                content = re.sub(r'^```\w*\n?', '', content)
+                content = re.sub(r'\n?```$', '', content)
+
+            parsed = json.loads(content)
+            definitions = parsed.get("definitions", [])
+
+            # Mettre en cache
+            for item in definitions:
+                term = item.get("term", "")
+                if term:
+                    _definitions_cache[term.lower()] = {
+                        "term": term,
+                        "category": item.get("category", "autre"),
+                        "definition": item.get("definition", ""),
+                        "source": "mistral-academic"
+                    }
+
+            print(f"✅ [Keywords] Generated {len(definitions)} academic definitions")
+
+    except json.JSONDecodeError as e:
+        print(f"❌ [Keywords] JSON parsing error: {e}")
+    except Exception as e:
+        print(f"❌ [Keywords] Error generating definitions: {e}")
 
     return _definitions_cache
 
@@ -744,10 +822,10 @@ async def get_all_keywords(
         if len(keywords_raw) >= limit:
             break
 
-    # Générer les définitions si demandé
+    # Générer les définitions académiques si demandé
     if with_definitions and keywords_raw:
         terms = [k["term"] for k in keywords_raw]
-        definitions = await _generate_definitions_batch(terms)
+        definitions = await _generate_academic_definitions(terms)
 
         # Ajouter les définitions aux keywords
         for kw in keywords_raw:
@@ -755,12 +833,19 @@ async def get_all_keywords(
             if term_lower in definitions:
                 def_data = definitions[term_lower]
                 kw["definition"] = def_data.get("definition", "")
-                # Créer une version courte (première phrase ou 100 caractères)
+                # Créer une version courte (2 premières phrases ou 150 caractères)
                 full_def = def_data.get("definition", "")
                 if full_def:
-                    # Prendre la première phrase ou tronquer
-                    first_sentence = full_def.split('.')[0] + '.' if '.' in full_def else full_def
-                    kw["short_definition"] = first_sentence[:100] + ('...' if len(first_sentence) > 100 else '')
+                    # Prendre les 2 premières phrases
+                    sentences = full_def.split('. ')
+                    if len(sentences) >= 2:
+                        short = sentences[0] + '. ' + sentences[1] + '.'
+                    else:
+                        short = full_def
+                    # Tronquer si trop long (max 180 caractères)
+                    if len(short) > 180:
+                        short = short[:177] + '...'
+                    kw["short_definition"] = short
                 else:
                     kw["short_definition"] = None
                 # Utiliser la catégorie de Mistral si disponible
