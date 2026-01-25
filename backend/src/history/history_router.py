@@ -615,3 +615,97 @@ async def clear_all_history(
     """
     count = await delete_all_history(session, current_user.id, include_playlists)
     return {"success": True, "message": f"History cleared ({count} items removed)"}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🧠 KEYWORDS (Widget "Le Saviez-Vous")
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class KeywordItem(BaseModel):
+    """Mot-clé extrait d'une analyse"""
+    term: str
+    summary_id: int
+    video_title: Optional[str]
+    video_id: Optional[str]
+    category: Optional[str]
+    created_at: Optional[str]
+
+
+class KeywordsResponse(BaseModel):
+    """Réponse avec tous les mots-clés de l'historique"""
+    keywords: List[KeywordItem]
+    total: int
+    has_history: bool
+
+
+@router.get("/keywords", response_model=KeywordsResponse)
+async def get_all_keywords(
+    limit: int = Query(100, ge=1, le=500),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🧠 Récupère tous les mots-clés extraits des analyses de l'utilisateur.
+
+    Utilisé pour le widget "Le Saviez-Vous" qui affiche un mot aléatoire
+    et permet de naviguer vers l'analyse source.
+
+    Retourne:
+    - keywords: Liste de mots-clés avec leur source (summary_id, video_title)
+    - total: Nombre total de mots-clés
+    - has_history: True si l'utilisateur a des analyses
+    """
+    from sqlalchemy import select
+    from db.database import Summary
+
+    # Récupérer toutes les analyses avec des tags
+    stmt = (
+        select(Summary)
+        .where(Summary.user_id == current_user.id)
+        .where(Summary.tags.isnot(None))
+        .where(Summary.tags != "")
+        .order_by(Summary.created_at.desc())
+    )
+
+    result = await session.execute(stmt)
+    summaries = result.scalars().all()
+
+    # Extraire tous les mots-clés avec leur source
+    keywords = []
+    seen_terms = set()  # Pour éviter les doublons
+
+    for summary in summaries:
+        if not summary.tags:
+            continue
+
+        # Parser les tags (comma-separated)
+        tags = [t.strip() for t in summary.tags.split(",") if t.strip()]
+
+        for tag in tags:
+            # Éviter les doublons tout en gardant trace de la première occurrence
+            tag_lower = tag.lower()
+            if tag_lower in seen_terms:
+                continue
+            seen_terms.add(tag_lower)
+
+            keywords.append(KeywordItem(
+                term=tag,
+                summary_id=summary.id,
+                video_title=summary.video_title,
+                video_id=summary.video_id,
+                category=summary.category,
+                created_at=summary.created_at.isoformat() if summary.created_at else None
+            ))
+
+            # Limiter le nombre total
+            if len(keywords) >= limit:
+                break
+
+        if len(keywords) >= limit:
+            break
+
+    return KeywordsResponse(
+        keywords=keywords,
+        total=len(keywords),
+        has_history=len(summaries) > 0
+    )
