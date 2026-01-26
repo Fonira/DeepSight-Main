@@ -82,23 +82,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Initialize auth state
+  // Initialize auth state with timeout protection
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let isCompleted = false;
+
     const init = async () => {
       try {
         if (await tokenStorage.hasTokens()) {
           const userData = await authApi.getMe();
-          setUser(userData);
-          await userStorage.setUser(userData);
+          if (!isCompleted) {
+            setUser(userData);
+            await userStorage.setUser(userData);
+          }
         }
       } catch {
-        await tokenStorage.clearTokens();
-        await userStorage.clearUser();
+        if (!isCompleted) {
+          await tokenStorage.clearTokens();
+          await userStorage.clearUser();
+        }
       } finally {
-        setIsLoading(false);
+        if (!isCompleted) {
+          isCompleted = true;
+          clearTimeout(timeoutId);
+          setIsLoading(false);
+        }
       }
     };
+
+    // Safety timeout: ensure loading ends after 10 seconds max
+    timeoutId = setTimeout(() => {
+      if (!isCompleted) {
+        isCompleted = true;
+        console.warn('Auth init timeout - forcing loading complete');
+        setIsLoading(false);
+      }
+    }, 10000);
+
     init();
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {

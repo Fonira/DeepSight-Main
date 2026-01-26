@@ -43,12 +43,7 @@
     "plugins": [
       "expo-font",
       "expo-secure-store",
-      [
-        "expo-av",
-        {
-          "microphonePermission": "Allow Deep Sight to access your microphone for voice input."
-        }
-      ],
+      "expo-audio",
       "@react-native-google-signin/google-signin"
     ],
     "owner": "maximeadmin",

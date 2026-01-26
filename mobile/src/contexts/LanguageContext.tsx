@@ -4,7 +4,7 @@ import { STORAGE_KEYS } from '../constants/config';
 import fr from '../i18n/fr.json';
 import en from '../i18n/en.json';
 
-type Language = 'fr' | 'en';
+export type Language = 'fr' | 'en';
 
 type TranslationsType = typeof fr;
 
