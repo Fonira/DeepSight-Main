@@ -70,6 +70,7 @@ export const DashboardScreen: React.FC = () => {
     language?: string;
     title?: string;
     source?: string;
+    deepResearch?: boolean;
   }) => {
     // Check credits
     if (user && user.credits <= 0) {
@@ -99,6 +100,7 @@ export const DashboardScreen: React.FC = () => {
         mode: data.mode,
         category: data.category,
         language: data.language || 'fr',
+        deep_research: data.deepResearch || false,
       };
 
       if (data.inputType === 'url') {
@@ -227,6 +229,7 @@ export const DashboardScreen: React.FC = () => {
               isLoading={isAnalyzing}
               creditCost={estimatedCredits}
               creditsRemaining={user?.credits}
+              userPlan={user?.plan}
             />
           </Card>
         </View>
