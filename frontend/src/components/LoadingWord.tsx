@@ -443,9 +443,29 @@ export const LoadingWordGlobal: React.FC = () => {
   const isClickable = currentWord.source === 'history' && currentWord.summaryId;
   const hasFullDefinition = currentWord.definition && currentWord.definition.length > 80;
 
-  // 🆕 Déterminer la source à afficher
-  const sourceUrl = currentWord.wikiUrl;
-  const sourceName = sourceUrl ? extractSourceName(sourceUrl) : null;
+  // 🆕 Déterminer la source à afficher (Wikipedia en priorité, sinon générer un lien de recherche)
+  const getSourceInfo = () => {
+    // Si wikiUrl existe (mots locaux), l'utiliser directement
+    if (currentWord.wikiUrl) {
+      return {
+        url: currentWord.wikiUrl,
+        name: extractSourceName(currentWord.wikiUrl)
+      };
+    }
+
+    // Pour les mots de l'historique sans wikiUrl, générer un lien Wikipedia
+    // Utiliser le terme pour créer une URL de recherche Wikipedia
+    const wikiLang = language === 'fr' ? 'fr' : 'en';
+    const searchUrl = `https://${wikiLang}.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(currentWord.term)}`;
+    return {
+      url: searchUrl,
+      name: 'Wikipedia'
+    };
+  };
+
+  const sourceInfo = getSourceInfo();
+  const sourceUrl = sourceInfo.url;
+  const sourceName = sourceInfo.name;
 
   const handleClick = () => {
     if (isClickable && currentWord.summaryId) {
