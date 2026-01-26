@@ -128,7 +128,7 @@ export const DashboardScreen: React.FC = () => {
 
         // For now, analyze the first (best) result
         // TODO: Show VideoDiscoveryModal for selection
-        analysisRequest.url = `https://youtube.com/watch?v=${searchResults.videos[0].video_id}`;
+        analysisRequest.url = `https://youtube.com/watch?v=${searchResults.videos[0].id}`;
       }
 
       const { task_id } = await videoApi.analyze(analysisRequest);

@@ -38,8 +38,8 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export function useNotifications(): NotificationHookResult {
   const navigation = useNavigation<NavigationProp>();
-  const notificationListener = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
+  const notificationListener = useRef<Notifications.Subscription | undefined>(undefined);
+  const responseListener = useRef<Notifications.Subscription | undefined>(undefined);
 
   const [state, setState] = useState<NotificationState>({
     isInitialized: false,
@@ -52,8 +52,8 @@ export function useNotifications(): NotificationHookResult {
   // Handle notification navigation based on data payload
   const handleNotificationNavigation = useCallback(
     (data: Record<string, unknown>) => {
-      const screen = data.screen as keyof RootStackParamList | undefined;
-      const type = data.type as NotificationType | undefined;
+      const screen = data.screen as string | undefined;
+      const _type = data.type as NotificationType | undefined;
 
       if (!screen) return;
 
@@ -168,7 +168,7 @@ export function useNotifications(): NotificationHookResult {
  */
 export function useAnalysisNotifications() {
   const { state, initialize } = useNotifications();
-  const [activeAnalyses, setActiveAnalyses] = useState<Map<string, NodeJS.Timeout>>(new Map());
+  const [activeAnalyses, setActiveAnalyses] = useState<Map<string, ReturnType<typeof setInterval>>>(new Map());
 
   // Start monitoring an analysis task
   const monitorAnalysis = useCallback(

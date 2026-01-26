@@ -36,7 +36,19 @@ export const VideoCard: React.FC<VideoCardProps> = ({
   const { colors } = useTheme();
 
   // Handle both AnalysisSummary and VideoInfo types
-  const videoInfo = 'videoInfo' in video ? video.videoInfo : video;
+  const videoInfo = 'videoInfo' in video
+    ? video.videoInfo || {
+        id: video.id,
+        title: video.title || '',
+        description: '',
+        thumbnail: video.thumbnail || '',
+        channel: video.channel || '',
+        channelId: '',
+        duration: video.duration || 0,
+        publishedAt: '',
+        viewCount: 0,
+      }
+    : video;
   const analysisSummary = 'videoInfo' in video ? video : null;
 
   const handleFavoritePress = () => {
