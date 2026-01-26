@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional, AsyncGenerator
 from sqlalchemy import (
     Column, Integer, String, Text, Float, Boolean, DateTime, Date,
-    ForeignKey, Index, create_engine, event, UniqueConstraint
+    ForeignKey, Index, create_engine, event, UniqueConstraint, text
 )
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base, relationship
@@ -387,11 +387,66 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+async def run_cascade_migration():
+    """
+    Migration: Ajoute ON DELETE CASCADE aux foreign keys user_id
+    Permet la suppression des comptes utilisateurs sans erreur de contrainte FK
+    """
+    migration_queries = [
+        # summaries
+        "ALTER TABLE summaries DROP CONSTRAINT IF EXISTS summaries_user_id_fkey",
+        "ALTER TABLE summaries ADD CONSTRAINT summaries_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+        # daily_quotas
+        "ALTER TABLE daily_quotas DROP CONSTRAINT IF EXISTS daily_quotas_user_id_fkey",
+        "ALTER TABLE daily_quotas ADD CONSTRAINT daily_quotas_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+        # credit_transactions
+        "ALTER TABLE credit_transactions DROP CONSTRAINT IF EXISTS credit_transactions_user_id_fkey",
+        "ALTER TABLE credit_transactions ADD CONSTRAINT credit_transactions_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+        # playlist_analyses
+        "ALTER TABLE playlist_analyses DROP CONSTRAINT IF EXISTS playlist_analyses_user_id_fkey",
+        "ALTER TABLE playlist_analyses ADD CONSTRAINT playlist_analyses_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+        # chat_messages
+        "ALTER TABLE chat_messages DROP CONSTRAINT IF EXISTS chat_messages_user_id_fkey",
+        "ALTER TABLE chat_messages ADD CONSTRAINT chat_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+        # chat_quotas
+        "ALTER TABLE chat_quotas DROP CONSTRAINT IF EXISTS chat_quotas_user_id_fkey",
+        "ALTER TABLE chat_quotas ADD CONSTRAINT chat_quotas_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+        # playlist_chat_messages
+        "ALTER TABLE playlist_chat_messages DROP CONSTRAINT IF EXISTS playlist_chat_messages_user_id_fkey",
+        "ALTER TABLE playlist_chat_messages ADD CONSTRAINT playlist_chat_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+        # web_search_usage
+        "ALTER TABLE web_search_usage DROP CONSTRAINT IF EXISTS web_search_usage_user_id_fkey",
+        "ALTER TABLE web_search_usage ADD CONSTRAINT web_search_usage_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+        # admin_logs
+        "ALTER TABLE admin_logs DROP CONSTRAINT IF EXISTS admin_logs_admin_id_fkey",
+        "ALTER TABLE admin_logs ADD CONSTRAINT admin_logs_admin_id_fkey FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE CASCADE",
+        # task_status
+        "ALTER TABLE task_status DROP CONSTRAINT IF EXISTS task_status_user_id_fkey",
+        "ALTER TABLE task_status ADD CONSTRAINT task_status_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+        # api_usage
+        "ALTER TABLE api_usage DROP CONSTRAINT IF EXISTS api_usage_user_id_fkey",
+        "ALTER TABLE api_usage ADD CONSTRAINT api_usage_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+    ]
+
+    async with engine.begin() as conn:
+        for query in migration_queries:
+            try:
+                await conn.execute(text(query))
+            except Exception as e:
+                # Ignore errors (table might not exist yet)
+                print(f"⚠️ Migration query skipped: {str(e)[:50]}", flush=True)
+
+    print("✅ CASCADE delete migration completed", flush=True)
+
+
 async def init_db():
     """Initialise la base de données et crée les tables"""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
+    # Appliquer la migration CASCADE delete
+    await run_cascade_migration()
+
     # Créer l'admin par défaut
     await create_admin_if_not_exists()
     print("✅ Database initialized", flush=True)
