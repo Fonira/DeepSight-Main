@@ -1,21 +1,24 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
-║  📺 YOUTUBE SERVICE v4.0 — ANTI-BOT + INVIDIOUS + 6 FALLBACKS                      ║
+║  📺 YOUTUBE SERVICE v5.0 — ANTI-BOT + INVIDIOUS + 7 FALLBACKS + RETRY              ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
-║  🆕 v4.0: CONTOURNEMENT BLOCAGE YOUTUBE                                            ║
+║  🆕 v5.0: FIABILITÉ MAXIMALE                                                       ║
 ║  • 🔄 User-agents rotatifs (anti-détection)                                        ║
-║  • 🛡️ Options anti-bot pour yt-dlp                                                ║
-║  • 🌐 Invidious comme fallback (instances publiques)                               ║
-║  • 🎙️ Groq Whisper optimisé via Invidious                                          ║
-║  • ⚡ Retries intelligents avec délais                                             ║
+║  • 🛡️ Options anti-bot renforcées pour yt-dlp (mweb, retries, sleep)              ║
+║  • 🌐 Invidious (5 instances au lieu de 3)                                         ║
+║  • 🎙️ Groq Whisper + Deepgram Nova-2 (2 services audio)                           ║
+║  • ⚡ Retry automatique (2 tentatives par méthode)                                 ║
+║  • 🌍 Support 12+ langues (fr, en, es, de, pt, it, nl, ru, ja, ko, zh, ar)        ║
+║  • ⏱️ Timeouts augmentés pour connexions lentes                                    ║
 ║                                                                                    ║
-║  ORDRE DES FALLBACKS:                                                              ║
-║  1. Supadata API (stable, prioritaire)                                             ║
+║  ORDRE DES FALLBACKS (7 méthodes):                                                 ║
+║  1. Supadata API (stable, payant)                                                  ║
 ║  2. youtube-transcript-api (gratuit, rapide)                                       ║
 ║  3. Invidious API (contourne le blocage YouTube)                                   ║
 ║  4. yt-dlp subtitles (avec options anti-bot)                                       ║
 ║  5. yt-dlp auto-captions (avec options anti-bot)                                   ║
-║  6. Groq Whisper via Invidious (dernier recours, TOUJOURS fonctionne)              ║
+║  6. Groq Whisper (transcription audio via Invidious/yt-dlp)                        ║
+║  7. Deepgram Nova-2 (transcription audio alternative, ultra-rapide)                ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -34,7 +37,7 @@ from enum import Enum
 import asyncio
 import time
 
-from core.config import get_supadata_key
+from core.config import get_supadata_key, get_groq_key, get_deepgram_key
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 CONFIGURATION
@@ -43,13 +46,14 @@ from core.config import get_supadata_key
 GROQ_MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB max pour Groq
 
 TIMEOUTS = {
-    "supadata": 30,
-    "ytapi": 15,
-    "invidious": 20,
-    "ytdlp_subs": 60,
-    "ytdlp_auto": 60,
-    "whisper_download": 180,
-    "whisper_transcribe": 300,
+    "supadata": 45,           # 30 → 45 (connexions lentes)
+    "ytapi": 25,              # 15 → 25 (plus de marge)
+    "invidious": 35,          # 20 → 35 (instances lentes)
+    "ytdlp_subs": 90,         # 60 → 90 (anti-bot delays)
+    "ytdlp_auto": 90,         # 60 → 90 (anti-bot delays)
+    "whisper_download": 240,  # 180 → 240 (vidéos longues)
+    "whisper_transcribe": 360,# 300 → 360 (fichiers volumineux)
+    "deepgram": 300,          # Nouveau - Deepgram Nova-2
 }
 
 # 🛡️ USER-AGENTS ROTATIFS (anti-détection)
@@ -94,6 +98,7 @@ class TranscriptSource(Enum):
     YTDLP = "yt-dlp"
     YTDLP_AUTO = "yt-dlp-auto"
     WHISPER = "groq-whisper"
+    DEEPGRAM = "deepgram-nova2"  # Nouveau
     CACHE = "cache"
     NONE = "none"
 
@@ -106,13 +111,6 @@ class TranscriptResult:
     source: TranscriptSource
     duration_seconds: float = 0
     confidence: float = 1.0
-
-
-def get_groq_key() -> Optional[str]:
-    key = os.environ.get("GROQ_API_KEY")
-    if key:
-        print(f"🔑 [GROQ] API key configured: {key[:8]}...", flush=True)
-    return key
 
 
 try:
@@ -415,7 +413,8 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
     
     try:
         async with httpx.AsyncClient() as client:
-            for lang in ["fr", "en", None]:
+            # Plus de langues pour maximiser les chances
+            for lang in ["fr", "en", "es", "de", "pt", "it", None]:
                 params = {"videoId": video_id}
                 if lang:
                     params["lang"] = lang
@@ -498,7 +497,7 @@ async def get_transcript_ytapi(video_id: str) -> Tuple[Optional[str], Optional[s
             try:
                 ytt_api = YouTubeTranscriptApi()
                 transcript_list = ytt_api.list(video_id)
-                preferred_langs = ['fr', 'en', 'es', 'de', 'it', 'pt']
+                preferred_langs = ['fr', 'en', 'es', 'de', 'it', 'pt', 'nl', 'ru', 'ja', 'ko', 'zh', 'ar']
                 
                 for is_manual in [True, False]:
                     for lang in preferred_langs:
@@ -576,7 +575,7 @@ async def get_transcript_invidious(video_id: str) -> Tuple[Optional[str], Option
     """
     print(f"  🌐 [INVIDIOUS] Trying captions...", flush=True)
     
-    for instance in INVIDIOUS_INSTANCES[:3]:  # Essayer 3 instances max
+    for instance in INVIDIOUS_INSTANCES[:5]:  # Essayer 5 instances max (augmenté de 3)
         try:
             async with httpx.AsyncClient() as client:
                 # Récupérer la liste des captions
@@ -585,21 +584,21 @@ async def get_transcript_invidious(video_id: str) -> Tuple[Optional[str], Option
                     timeout=TIMEOUTS["invidious"],
                     headers={"User-Agent": get_random_user_agent()}
                 )
-                
+
                 if response.status_code != 200:
                     continue
-                
+
                 data = response.json()
                 captions = data.get("captions", [])
-                
+
                 if not captions:
                     continue
-                
-                # Trouver les captions préférées (FR puis EN)
+
+                # Trouver les captions préférées (plus de langues)
                 caption_url = None
                 caption_lang = "fr"
-                
-                for lang in ["fr", "en", "es", "de"]:
+
+                for lang in ["fr", "en", "es", "de", "pt", "it", "nl", "ru", "ja", "ko"]:
                     for cap in captions:
                         if cap.get("language_code", "").startswith(lang):
                             caption_url = cap.get("url")
@@ -656,12 +655,16 @@ async def get_transcript_ytdlp(video_id: str) -> Tuple[Optional[str], Optional[s
             with tempfile.TemporaryDirectory() as tmpdir:
                 cmd = [
                     "yt-dlp",
-                    "--write-subs", "--sub-langs", "fr,en,es,de,it,pt",
+                    "--write-subs", "--sub-langs", "fr,en,es,de,it,pt,nl,ru,ja,ko,zh,ar",
                     "--sub-format", "vtt/srt/best",
                     "--skip-download", "--no-warnings",
                     "--user-agent", get_random_user_agent(),
-                    "--extractor-args", "youtube:player_client=android,web",
-                    "--sleep-requests", "1",
+                    "--extractor-args", "youtube:player_client=android,web,mweb",
+                    "--sleep-requests", "1.5",
+                    "--sleep-interval", "1",
+                    "--max-sleep-interval", "3",
+                    "--retries", "3",
+                    "--fragment-retries", "3",
                     "-o", f"{tmpdir}/%(id)s.%(ext)s",
                     f"https://youtube.com/watch?v={video_id}"
                 ]
@@ -701,12 +704,16 @@ async def get_transcript_ytdlp_auto(video_id: str) -> Tuple[Optional[str], Optio
             with tempfile.TemporaryDirectory() as tmpdir:
                 cmd = [
                     "yt-dlp",
-                    "--write-auto-subs", "--sub-langs", "fr,en,es,de,it,pt",
+                    "--write-auto-subs", "--sub-langs", "fr,en,es,de,it,pt,nl,ru,ja,ko,zh,ar",
                     "--sub-format", "vtt/srt/best",
                     "--skip-download", "--no-warnings",
                     "--user-agent", get_random_user_agent(),
-                    "--extractor-args", "youtube:player_client=android,web",
-                    "--sleep-requests", "1",
+                    "--extractor-args", "youtube:player_client=android,web,mweb",
+                    "--sleep-requests", "1.5",
+                    "--sleep-interval", "1",
+                    "--max-sleep-interval", "3",
+                    "--retries", "3",
+                    "--fragment-retries", "3",
                     "-o", f"{tmpdir}/%(id)s.%(ext)s",
                     f"https://youtube.com/watch?v={video_id}"
                 ]
@@ -925,68 +932,244 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
     
     except Exception as e:
         print(f"  ❌ [WHISPER] Transcription error: {e}", flush=True)
-    
+
     return None, None, None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🎯 FONCTION PRINCIPALE — 6 MÉTHODES DE FALLBACK
+# 🎙️ MÉTHODE 7: DEEPGRAM NOVA-2 (ALTERNATIVE À WHISPER - ULTRA-RAPIDE)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    🎙️ Deepgram Nova-2 - Transcription audio ultra-rapide
+    Alternative à Whisper si Groq échoue ou n'est pas configuré
+    """
+    deepgram_key = get_deepgram_key()
+    if not deepgram_key:
+        print(f"  ⏭️ [DEEPGRAM] Skipped: No API key", flush=True)
+        return None, None, None
+
+    print(f"  🎙️ [DEEPGRAM] Starting...", flush=True)
+
+    audio_data = None
+    audio_ext = ".mp3"
+
+    # Télécharger l'audio via Invidious (même logique que Whisper)
+    for instance in INVIDIOUS_INSTANCES[:3]:
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                response = await client.get(
+                    f"{instance}/api/v1/videos/{video_id}",
+                    headers={"User-Agent": get_random_user_agent()}
+                )
+
+                if response.status_code != 200:
+                    continue
+
+                data = response.json()
+
+                audio_url = None
+                for fmt in data.get("adaptiveFormats", []):
+                    if fmt.get("type", "").startswith("audio/"):
+                        audio_url = fmt.get("url")
+                        if "audio/mp4" in fmt.get("type", ""):
+                            audio_ext = ".m4a"
+                        elif "audio/webm" in fmt.get("type", ""):
+                            audio_ext = ".webm"
+                        break
+
+                if not audio_url:
+                    continue
+
+                print(f"  🎙️ [DEEPGRAM] Downloading audio from Invidious...", flush=True)
+
+                audio_response = await client.get(
+                    audio_url,
+                    timeout=120,
+                    headers={"User-Agent": get_random_user_agent()},
+                    follow_redirects=True
+                )
+
+                if audio_response.status_code == 200 and len(audio_response.content) > 10000:
+                    audio_data = audio_response.content
+                    print(f"  ✅ [DEEPGRAM] Audio downloaded: {len(audio_data)/1024/1024:.1f}MB", flush=True)
+                    break
+
+        except Exception as e:
+            print(f"  ⚠️ [DEEPGRAM] Invidious {instance}: {str(e)[:50]}", flush=True)
+            continue
+
+    # Fallback yt-dlp si Invidious échoue
+    if not audio_data:
+        print(f"  🎙️ [DEEPGRAM] Trying yt-dlp download...", flush=True)
+        try:
+            loop = asyncio.get_event_loop()
+
+            def _download_audio():
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    audio_path = f"{tmpdir}/{video_id}.mp3"
+
+                    cmd = [
+                        "yt-dlp", "-x", "--audio-format", "mp3", "--audio-quality", "9",
+                        "-o", audio_path, "--no-warnings", "--no-playlist",
+                        "--user-agent", get_random_user_agent(),
+                        "--extractor-args", "youtube:player_client=android,web,mweb",
+                        "--retries", "3",
+                        f"https://youtube.com/watch?v={video_id}"
+                    ]
+
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUTS["whisper_download"])
+
+                    if result.returncode != 0:
+                        return None, None
+
+                    for f in Path(tmpdir).iterdir():
+                        if f.suffix in ['.mp3', '.m4a', '.webm', '.opus', '.wav']:
+                            return f.read_bytes(), f.suffix
+
+                    return None, None
+
+            result = await asyncio.wait_for(
+                loop.run_in_executor(executor, _download_audio),
+                timeout=TIMEOUTS["whisper_download"]
+            )
+
+            if result and result[0]:
+                audio_data, audio_ext = result
+                print(f"  ✅ [DEEPGRAM] Audio from yt-dlp: {len(audio_data)/1024/1024:.1f}MB", flush=True)
+
+        except Exception as e:
+            print(f"  ⚠️ [DEEPGRAM] yt-dlp download failed: {e}", flush=True)
+
+    if not audio_data:
+        print(f"  ❌ [DEEPGRAM] Failed to download audio", flush=True)
+        return None, None, None
+
+    # Envoyer à Deepgram
+    print(f"  🎙️ [DEEPGRAM] Sending {len(audio_data)/1024/1024:.1f}MB to Deepgram Nova-2...", flush=True)
+
+    try:
+        mime_types = {'.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.webm': 'audio/webm', '.opus': 'audio/opus', '.wav': 'audio/wav'}
+        mime_type = mime_types.get(audio_ext, 'audio/mpeg')
+
+        async with httpx.AsyncClient() as client:
+            start_time = time.time()
+            response = await client.post(
+                "https://api.deepgram.com/v1/listen",
+                params={
+                    "model": "nova-2",
+                    "detect_language": "true",
+                    "punctuate": "true",
+                    "paragraphs": "true",
+                    "smart_format": "true",
+                },
+                headers={
+                    "Authorization": f"Token {deepgram_key}",
+                    "Content-Type": mime_type,
+                },
+                content=audio_data,
+                timeout=TIMEOUTS["deepgram"],
+            )
+            elapsed = time.time() - start_time
+            print(f"  🎙️ [DEEPGRAM] Response in {elapsed:.1f}s: {response.status_code}", flush=True)
+
+            if response.status_code == 200:
+                result = response.json()
+
+                # Extraire le transcript
+                channels = result.get("results", {}).get("channels", [])
+                if channels:
+                    alternatives = channels[0].get("alternatives", [])
+                    if alternatives:
+                        transcript = alternatives[0].get("transcript", "")
+                        paragraphs = alternatives[0].get("paragraphs", {}).get("paragraphs", [])
+
+                        # Détecter la langue
+                        detected_lang = result.get("results", {}).get("channels", [{}])[0].get("detected_language", "fr")
+                        if not detected_lang:
+                            detected_lang = "fr"
+
+                        if transcript:
+                            # Créer version avec timestamps si paragraphes disponibles
+                            if paragraphs:
+                                timestamped_parts = []
+                                for para in paragraphs:
+                                    start = para.get("start", 0)
+                                    text = " ".join([s.get("text", "") for s in para.get("sentences", [])])
+                                    if text:
+                                        ts = format_seconds_to_timestamp(start)
+                                        timestamped_parts.append(f"\n[{ts}] {text}")
+                                timestamped = "".join(timestamped_parts).strip()
+                            else:
+                                timestamped = transcript
+
+                            print(f"  ✅ [DEEPGRAM] Success: {len(transcript)} chars", flush=True)
+                            return transcript, timestamped, detected_lang
+            else:
+                print(f"  ❌ [DEEPGRAM] Error {response.status_code}: {response.text[:200]}", flush=True)
+
+    except Exception as e:
+        print(f"  ❌ [DEEPGRAM] Transcription error: {e}", flush=True)
+
+    return None, None, None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎯 FONCTION PRINCIPALE — 7 MÉTHODES DE FALLBACK AVEC RETRY
 # ═══════════════════════════════════════════════════════════════════════════════
 
 async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
-    🎯 FONCTION PRINCIPALE - 6 méthodes de fallback
+    🎯 FONCTION PRINCIPALE - 7 méthodes de fallback avec retry
     Retourne: (transcript_simple, transcript_timestamped, lang)
+
+    Ordre des méthodes:
+    1. Supadata API (stable, payant)
+    2. youtube-transcript-api (gratuit, rapide)
+    3. Invidious API (contourne blocage YouTube)
+    4. yt-dlp manual subtitles (avec anti-bot)
+    5. yt-dlp auto-captions (avec anti-bot)
+    6. Groq Whisper (transcription audio)
+    7. Deepgram Nova-2 (transcription audio alternative)
     """
     print(f"", flush=True)
     print(f"{'='*60}", flush=True)
-    print(f"🔍 TRANSCRIPT EXTRACTION v4.0 for {video_id}", flush=True)
+    print(f"🔍 TRANSCRIPT EXTRACTION v5.0 for {video_id}", flush=True)
     print(f"{'='*60}", flush=True)
-    
-    # 1. Supadata
-    print(f"[1/6] Supadata API...", flush=True)
-    simple, timestamped, lang = await get_transcript_supadata(video_id, supadata_key)
-    if simple and timestamped:
-        print(f"✅ SUCCESS with Supadata", flush=True)
-        return simple, timestamped, lang
-    
-    # 2. youtube-transcript-api
-    print(f"[2/6] youtube-transcript-api...", flush=True)
-    simple, timestamped, lang = await get_transcript_ytapi(video_id)
-    if simple and timestamped:
-        print(f"✅ SUCCESS with YTAPI", flush=True)
-        return simple, timestamped, lang
-    
-    # 3. Invidious (NOUVEAU - contourne le blocage YouTube)
-    print(f"[3/6] Invidious API (bypass YouTube)...", flush=True)
-    simple, timestamped, lang = await get_transcript_invidious(video_id)
-    if simple and timestamped:
-        print(f"✅ SUCCESS with Invidious", flush=True)
-        return simple, timestamped, lang
-    
-    # 4. yt-dlp manual subtitles
-    print(f"[4/6] yt-dlp manual subtitles...", flush=True)
-    simple, timestamped, lang = await get_transcript_ytdlp(video_id)
-    if simple and timestamped:
-        print(f"✅ SUCCESS with YT-DLP", flush=True)
-        return simple, timestamped, lang
-    
-    # 5. yt-dlp auto-captions
-    print(f"[5/6] yt-dlp auto-captions...", flush=True)
-    simple, timestamped, lang = await get_transcript_ytdlp_auto(video_id)
-    if simple and timestamped:
-        print(f"✅ SUCCESS with YT-DLP-AUTO", flush=True)
-        return simple, timestamped, lang
-    
-    # 6. Groq Whisper (DERNIER RECOURS - via Invidious)
-    print(f"[6/6] Groq Whisper (audio transcription)...", flush=True)
-    simple, timestamped, lang = await get_transcript_whisper(video_id)
-    if simple:
-        print(f"✅ SUCCESS with Whisper", flush=True)
-        return simple, timestamped or simple, lang
-    
+
+    # Liste des méthodes avec leur nom et fonction
+    methods = [
+        ("Supadata API", lambda: get_transcript_supadata(video_id, supadata_key)),
+        ("youtube-transcript-api", lambda: get_transcript_ytapi(video_id)),
+        ("Invidious API", lambda: get_transcript_invidious(video_id)),
+        ("yt-dlp manual", lambda: get_transcript_ytdlp(video_id)),
+        ("yt-dlp auto", lambda: get_transcript_ytdlp_auto(video_id)),
+        ("Groq Whisper", lambda: get_transcript_whisper(video_id)),
+        ("Deepgram Nova-2", lambda: get_transcript_deepgram(video_id)),
+    ]
+
+    total_methods = len(methods)
+
+    for i, (name, method) in enumerate(methods, 1):
+        print(f"[{i}/{total_methods}] {name}...", flush=True)
+
+        # Retry avec délai pour chaque méthode (2 tentatives max)
+        for attempt in range(2):
+            try:
+                simple, timestamped, lang = await method()
+                if simple and (timestamped or name in ["Groq Whisper", "Deepgram Nova-2"]):
+                    print(f"✅ SUCCESS with {name}" + (f" (attempt {attempt + 1})" if attempt > 0 else ""), flush=True)
+                    return simple, timestamped or simple, lang
+            except Exception as e:
+                print(f"  ⚠️ [{name}] Exception: {str(e)[:100]}", flush=True)
+
+            # Petit délai avant retry (sauf dernière tentative)
+            if attempt == 0:
+                await asyncio.sleep(1.5)
+
     print(f"", flush=True)
-    print(f"❌ FAILED: All 6 methods failed for {video_id}", flush=True)
+    print(f"❌ FAILED: All {total_methods} methods failed for {video_id}", flush=True)
     print(f"{'='*60}", flush=True)
     return None, None, None
 

@@ -33,6 +33,7 @@ class EnrichedDefinition:
     sources: List[str]  # URLs des sources (si disponibles)
     confidence: float  # 0.0-1.0
     provider: str  # 'mistral', 'perplexity', 'combined'
+    wiki_url: str = None  # URL Wikipedia ou source alternative
 
     def to_dict(self):
         return asdict(self)
@@ -107,7 +108,17 @@ async def categorize_with_mistral(
     
     terms = terms[:20]  # Limiter à 20 termes
     
-    prompt = f"""Tu es un assistant expert en analyse de contenu. Catégorise chaque terme et donne une définition TRÈS COURTE (max 30 mots).
+    prompt = f"""Tu es un assistant expert en analyse de contenu. Catégorise chaque terme et donne une définition TRÈS COURTE (max 30 mots) UNIQUEMENT si tu es CERTAIN.
+
+⚠️ RÈGLES ANTI-HALLUCINATION:
+- Si tu ne connais pas un terme avec certitude, mets "definition": null
+- N'invente JAMAIS de faits ou d'attributions
+- Préfère l'incertitude à l'erreur
+
+📚 SOURCE WIKIPEDIA:
+- Fournis l'URL Wikipedia française si l'article existe probablement
+- Format: "https://fr.wikipedia.org/wiki/Nom_Article"
+- Si incertain: "wiki_url": null
 
 Contexte: {context if context else "Analyse de vidéo YouTube"}
 
@@ -120,8 +131,9 @@ Réponds UNIQUEMENT en JSON valide:
     {{
       "term": "Nom exact du terme",
       "category": "person|company|technology|concept|event|place|other",
-      "definition": "Définition courte en 1 phrase.",
-      "relevance": "Pourquoi ce terme est important ici (1 phrase)"
+      "definition": "Définition courte en 1 phrase OU null si incertain.",
+      "relevance": "Pourquoi ce terme est important ici (1 phrase)",
+      "wiki_url": "https://fr.wikipedia.org/wiki/Article OU null"
     }}
   ]
 }}
@@ -135,7 +147,7 @@ Catégories:
 - place: Lieu géographique
 - other: Autre
 
-IMPORTANT: JSON uniquement, pas de texte avant/après."""
+IMPORTANT: JSON uniquement, pas de texte avant/après. Préférer null à l'incertitude."""
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -181,6 +193,7 @@ IMPORTANT: JSON uniquement, pas de texte avant/après."""
                         "category": item.get("category", "other"),
                         "definition": item.get("definition", ""),
                         "relevance": item.get("relevance", ""),
+                        "wiki_url": item.get("wiki_url"),
                         "source": "mistral"
                     }
             
@@ -210,10 +223,22 @@ async def enrich_with_perplexity(
     
     terms = terms[:15]  # Limiter à 15 termes (Perplexity est plus lent)
     
-    prompt = f"""Tu es un assistant de recherche. Pour chaque terme, donne:
+    prompt = f"""Tu es un assistant de recherche. Pour chaque terme, donne UNIQUEMENT des informations VÉRIFIABLES:
 1. Une définition FACTUELLE et PRÉCISE (2-3 phrases max)
 2. Le contexte de pourquoi c'est pertinent
 3. La catégorie appropriée
+4. L'URL Wikipedia ou une source fiable
+
+⚠️ RÈGLES ANTI-HALLUCINATION:
+- Ne fournis que des informations que tu peux sourcer
+- Si un terme est inconnu ou ambigu, mets "definition": null
+- N'invente JAMAIS de faits, dates ou attributions
+- Préfère avouer l'incertitude plutôt que de deviner
+
+📚 SOURCE (OBLIGATOIRE):
+- Fournis l'URL Wikipedia française si elle existe
+- Sinon, fournis une source web fiable (site officiel, Britannica, etc.)
+- Si aucune source: "wiki_url": null
 
 Contexte de la vidéo: {context if context else "Analyse de vidéo YouTube"}
 
@@ -225,16 +250,17 @@ Réponds en JSON valide:
   "definitions": [
     {{
       "term": "Nom du terme",
-      "definition": "Définition factuelle précise.",
+      "definition": "Définition factuelle précise OU null si incertain.",
       "category": "person|company|technology|concept|event|place|other",
-      "context_relevance": "Pourquoi c'est pertinent dans ce contexte"
+      "context_relevance": "Pourquoi c'est pertinent dans ce contexte",
+      "wiki_url": "https://fr.wikipedia.org/wiki/Article OU URL alternative OU null"
     }}
   ]
 }}
 
-IMPORTANT: 
-- Sois factuel et précis
-- Utilise des informations récentes si disponibles
+IMPORTANT:
+- Sois factuel et précis - JAMAIS d'invention
+- Vérifie mentalement que les URLs Wikipedia sont plausibles
 - JSON uniquement"""
 
     try:
@@ -250,14 +276,14 @@ IMPORTANT:
                     "messages": [
                         {
                             "role": "system",
-                            "content": "Tu fournis des définitions précises et factuelles basées sur des sources fiables."
+                            "content": "Tu fournis des définitions précises, factuelles et VÉRIFIABLES. N'invente jamais de faits. Fournis toujours une source Wikipedia ou fiable quand elle existe. Réponds uniquement en JSON valide."
                         },
                         {
-                            "role": "user", 
+                            "role": "user",
                             "content": prompt
                         }
                     ],
-                    "max_tokens": 3000,
+                    "max_tokens": 3500,
                     "temperature": 0.1
                 }
             )
@@ -287,13 +313,14 @@ IMPORTANT:
                 if term:
                     # Associer des sources si disponibles
                     term_sources = citations[i:i+2] if citations and i < len(citations) else []
-                    
+
                     output[term.lower()] = {
                         "term": term,
                         "category": item.get("category", "other"),
                         "definition": item.get("definition", ""),
                         "context_relevance": item.get("context_relevance", ""),
                         "sources": term_sources,
+                        "wiki_url": item.get("wiki_url"),
                         "source": "perplexity"
                     }
             
@@ -391,7 +418,8 @@ async def get_enriched_definitions(
                 context_relevance=perplexity_data.get("context_relevance", mistral_data.get("relevance", "")),
                 sources=perplexity_data.get("sources", []),
                 confidence=0.9,
-                provider="perplexity"
+                provider="perplexity",
+                wiki_url=perplexity_data.get("wiki_url") or mistral_data.get("wiki_url")
             ))
         elif mistral_data:
             definitions.append(EnrichedDefinition(
@@ -401,7 +429,8 @@ async def get_enriched_definitions(
                 context_relevance=mistral_data.get("relevance", ""),
                 sources=[],
                 confidence=0.7,
-                provider="mistral"
+                provider="mistral",
+                wiki_url=mistral_data.get("wiki_url")
             ))
         else:
             # Fallback - terme sans définition

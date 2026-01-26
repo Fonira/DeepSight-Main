@@ -29,6 +29,7 @@ class ConceptDefinition:
     definition: str
     category: str  # 'person', 'technology', 'company', 'concept', 'other'
     source: str = "perplexity"
+    wiki_url: str = None  # URL Wikipedia ou source alternative
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -115,7 +116,18 @@ async def get_definitions_from_perplexity(
     
     # Construire le prompt
     if language == "fr":
-        prompt = f"""Donne une définition COURTE (1-2 phrases max, moins de 50 mots) pour chaque terme ci-dessous.
+        prompt = f"""Donne une définition COURTE et VÉRIFIABLE (1-2 phrases max, moins de 50 mots) pour chaque terme ci-dessous.
+
+⚠️ RÈGLES ANTI-HALLUCINATION:
+- Ne définis que des termes/personnes/entreprises CONNUS et VÉRIFIABLES
+- Si un terme est inconnu ou ambigu, réponds avec "definition": null
+- N'invente AUCUN fait - préfère avouer l'incertitude
+- Pour les personnes: vérifie mentalement que les rôles/titres sont corrects
+
+📚 SOURCE (OBLIGATOIRE):
+- Fournis l'URL Wikipedia française (fr.wikipedia.org) si elle existe
+- Sinon, fournis une source web fiable (site officiel, Britannica, etc.)
+- Si aucune source fiable: "wiki_url": null
 
 Contexte: {context if context else "Analyse de vidéo YouTube"}
 
@@ -125,7 +137,7 @@ Termes à définir:
 Réponds UNIQUEMENT en JSON valide avec ce format exact:
 {{
   "definitions": [
-    {{"term": "Nom du terme", "definition": "Définition courte.", "category": "person|technology|company|concept|other"}}
+    {{"term": "Nom du terme", "definition": "Définition courte et factuelle OU null si incertain.", "category": "person|technology|company|concept|other", "wiki_url": "https://fr.wikipedia.org/wiki/Article OU URL alternative OU null"}}
   ]
 }}
 
@@ -136,9 +148,23 @@ Catégories:
 - concept: Concept abstrait, théorie, méthode
 - other: Autre
 
-IMPORTANT: Réponse JSON uniquement, pas de texte avant ou après."""
+IMPORTANT:
+- JSON uniquement, pas de texte avant ou après
+- Préférer null à une information incertaine
+- Vérifier que les URLs Wikipedia sont plausibles (format correct)"""
     else:
-        prompt = f"""Give a SHORT definition (1-2 sentences max, under 50 words) for each term below.
+        prompt = f"""Give a SHORT and VERIFIABLE definition (1-2 sentences max, under 50 words) for each term below.
+
+⚠️ ANTI-HALLUCINATION RULES:
+- Only define KNOWN and VERIFIABLE terms/people/companies
+- If a term is unknown or ambiguous, respond with "definition": null
+- NEVER invent facts - prefer admitting uncertainty
+- For people: mentally verify that roles/titles are accurate
+
+📚 SOURCE (REQUIRED):
+- Provide the English Wikipedia URL (en.wikipedia.org) if it exists
+- Otherwise, provide a reliable web source (official site, Britannica, etc.)
+- If no reliable source exists: "wiki_url": null
 
 Context: {context if context else "YouTube video analysis"}
 
@@ -148,7 +174,7 @@ Terms to define:
 Reply ONLY with valid JSON in this exact format:
 {{
   "definitions": [
-    {{"term": "Term name", "definition": "Short definition.", "category": "person|technology|company|concept|other"}}
+    {{"term": "Term name", "definition": "Short factual definition OR null if uncertain.", "category": "person|technology|company|concept|other", "wiki_url": "https://en.wikipedia.org/wiki/Article OR alternative URL OR null"}}
   ]
 }}
 
@@ -159,7 +185,10 @@ Categories:
 - concept: Abstract concept, theory, method
 - other: Other
 
-IMPORTANT: JSON response only, no text before or after."""
+IMPORTANT:
+- JSON response only, no text before or after
+- Prefer null over uncertain information
+- Verify Wikipedia URLs are plausible (correct format)"""
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -174,14 +203,14 @@ IMPORTANT: JSON response only, no text before or after."""
                     "messages": [
                         {
                             "role": "system",
-                            "content": "Tu es un assistant qui fournit des définitions courtes et précises. Réponds uniquement en JSON valide."
+                            "content": "Tu es un assistant qui fournit des définitions courtes, précises et VÉRIFIABLES. N'invente jamais de faits. Fournis toujours une source Wikipedia ou fiable quand elle existe. Réponds uniquement en JSON valide."
                         },
                         {
                             "role": "user",
                             "content": prompt
                         }
                     ],
-                    "max_tokens": 2000,
+                    "max_tokens": 2500,
                     "temperature": 0.1
                 }
             )
@@ -212,7 +241,8 @@ IMPORTANT: JSON response only, no text before or after."""
                         term=term,
                         definition=item.get("definition", ""),
                         category=item.get("category", "other"),
-                        source="perplexity"
+                        source="perplexity",
+                        wiki_url=item.get("wiki_url")
                     )
             
             print(f"✅ [Concepts] Got {len(result)} definitions from Perplexity")
@@ -279,14 +309,16 @@ async def get_concepts_with_definitions(
             concepts_list.append({
                 "term": defn.term,
                 "definition": defn.definition,
-                "category": defn.category
+                "category": defn.category,
+                "wiki_url": defn.wiki_url
             })
         else:
             # Pas de définition trouvée, ajouter quand même
             concepts_list.append({
                 "term": concept,
                 "definition": "",
-                "category": "other"
+                "category": "other",
+                "wiki_url": None
             })
     
     return {

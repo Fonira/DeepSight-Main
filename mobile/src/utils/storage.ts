@@ -3,9 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { STORAGE_KEYS } from '../constants/config';
 
-// Check if we're running on web - must be a function to evaluate at runtime
-// Platform.OS may not be ready at module load time
+// Check if we're running on web - must be a function for runtime evaluation
 const isWeb = (): boolean => {
+  // Check multiple indicators for web platform
   if (Platform.OS === 'web') return true;
   if (typeof document !== 'undefined') return true;
   if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') return true;
@@ -51,6 +51,7 @@ const webStorage = {
 // Uses localStorage on web, SecureStore on native
 export const secureStorage = {
   async setItem(key: string, value: string): Promise<void> {
+    // Always check isWeb() at runtime
     if (isWeb()) {
       await webStorage.setItem(key, value);
       return;
@@ -65,6 +66,7 @@ export const secureStorage = {
   },
 
   async getItem(key: string): Promise<string | null> {
+    // Always check isWeb() at runtime
     if (isWeb()) {
       return await webStorage.getItem(key);
     }
@@ -78,6 +80,7 @@ export const secureStorage = {
   },
 
   async removeItem(key: string): Promise<void> {
+    // Always check isWeb() at runtime
     if (isWeb()) {
       await webStorage.removeItem(key);
       return;
