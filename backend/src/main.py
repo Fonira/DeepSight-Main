@@ -144,12 +144,18 @@ VERSION = "3.7.0"  # Added Expert API access + API key management
 APP_NAME = "Deep Sight API"
 
 # Configuration CORS depuis environnement
-ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000").split(",")
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:8081").split(",")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
 
 # Ajouter le frontend URL aux origines autorisées
 if FRONTEND_URL not in ALLOWED_ORIGINS:
     ALLOWED_ORIGINS.append(FRONTEND_URL)
+
+# Ajouter les origines de développement mobile (Expo)
+MOBILE_DEV_ORIGINS = ["http://localhost:8081", "http://127.0.0.1:8081"]
+for origin in MOBILE_DEV_ORIGINS:
+    if origin not in ALLOWED_ORIGINS:
+        ALLOWED_ORIGINS.append(origin)
 
 
 async def run_auto_migrations():

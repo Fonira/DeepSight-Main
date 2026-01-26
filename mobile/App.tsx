@@ -50,10 +50,13 @@ export default function App() {
   const [appIsReady, setAppIsReady] = useState(false);
 
   useEffect(() => {
+    let isComplete = false;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
     async function prepare() {
       try {
-        // Pre-load custom fonts
-        await Font.loadAsync({
+        // Pre-load custom fonts with timeout
+        const fontLoadPromise = Font.loadAsync({
           'DMSans-Regular': require('./src/assets/fonts/DMSans-Regular.ttf'),
           'DMSans-Medium': require('./src/assets/fonts/DMSans-Medium.ttf'),
           'DMSans-SemiBold': require('./src/assets/fonts/DMSans-SemiBold.ttf'),
@@ -62,16 +65,39 @@ export default function App() {
           'JetBrainsMono-Regular': require('./src/assets/fonts/JetBrainsMono-Regular.ttf'),
         });
 
-        // Artificially delay for a smoother experience
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Race between font loading and timeout
+        await Promise.race([
+          fontLoadPromise,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Font load timeout')), 5000))
+        ]);
+
+        // Small delay for smoother experience
+        await new Promise(resolve => setTimeout(resolve, 300));
       } catch (e) {
         console.warn('Error loading fonts:', e);
       } finally {
-        setAppIsReady(true);
+        if (!isComplete) {
+          isComplete = true;
+          clearTimeout(timeoutId);
+          setAppIsReady(true);
+        }
       }
     }
 
+    // Absolute safety timeout: 8 seconds max for entire init
+    timeoutId = setTimeout(() => {
+      if (!isComplete) {
+        isComplete = true;
+        console.warn('App init timeout - forcing ready state');
+        setAppIsReady(true);
+      }
+    }, 8000);
+
     prepare();
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   // Hide splash screen when app is ready

@@ -82,44 +82,58 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Initialize auth state with timeout protection
+  // Initialize auth state with aggressive timeout protection
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
     let isCompleted = false;
 
-    const init = async () => {
-      try {
-        if (await tokenStorage.hasTokens()) {
-          const userData = await authApi.getMe();
-          if (!isCompleted) {
-            setUser(userData);
-            await userStorage.setUser(userData);
-          }
-        }
-      } catch {
-        if (!isCompleted) {
-          await tokenStorage.clearTokens();
-          await userStorage.clearUser();
-        }
-      } finally {
-        if (!isCompleted) {
-          isCompleted = true;
-          clearTimeout(timeoutId);
-          setIsLoading(false);
-        }
+    const completeInit = () => {
+      if (!isCompleted) {
+        isCompleted = true;
+        clearTimeout(timeoutId);
+        setIsLoading(false);
       }
     };
 
-    // Safety timeout: ensure loading ends after 10 seconds max
+    const init = async () => {
+      try {
+        const hasTokens = await tokenStorage.hasTokens();
+        if (!hasTokens) {
+          // No tokens - complete immediately
+          completeInit();
+          return;
+        }
+
+        // Try to get user data with a shorter timeout
+        const userData = await authApi.getMe();
+        if (!isCompleted) {
+          setUser(userData);
+          await userStorage.setUser(userData);
+        }
+      } catch (error) {
+        console.warn('Auth init error:', error);
+        if (!isCompleted) {
+          await tokenStorage.clearTokens().catch(() => {});
+          await userStorage.clearUser().catch(() => {});
+        }
+      } finally {
+        completeInit();
+      }
+    };
+
+    // Safety timeout: ensure loading ends after 5 seconds max
     timeoutId = setTimeout(() => {
       if (!isCompleted) {
-        isCompleted = true;
-        console.warn('Auth init timeout - forcing loading complete');
-        setIsLoading(false);
+        console.warn('Auth init timeout (5s) - forcing loading complete');
+        completeInit();
       }
-    }, 10000);
+    }, 5000);
 
-    init();
+    // Start init but don't let it block indefinitely
+    init().catch((error) => {
+      console.error('Auth init fatal error:', error);
+      completeInit();
+    });
 
     return () => {
       clearTimeout(timeoutId);
