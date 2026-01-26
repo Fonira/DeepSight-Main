@@ -305,12 +305,29 @@ export const authApi = {
       requiresAuth: false,
     });
   },
+
+  async deleteAccount(password?: string): Promise<{ success: boolean; message: string }> {
+    return request('/api/auth/account', {
+      method: 'DELETE',
+      body: password ? { password } : {},
+    });
+  },
 };
 
 // ============================================
 // User API
 // ============================================
 export const userApi = {
+  async updateProfile(profile: {
+    username?: string;
+    avatar_url?: string;
+  }): Promise<User> {
+    return request('/api/auth/profile', {
+      method: 'PUT',
+      body: profile,
+    });
+  },
+
   async updatePreferences(preferences: {
     default_lang?: string;
     default_mode?: string;

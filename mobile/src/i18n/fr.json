@@ -319,7 +319,11 @@
     "cancelSubscription": "Annuler l'abonnement",
     "dangerZone": "Zone de danger",
     "deleteAccount": "Supprimer mon compte",
+    "deleteAccountConfirm": "Êtes-vous sûr de vouloir supprimer votre compte ? Cette action est irréversible et toutes vos données seront perdues.",
     "deleteAccountWarning": "Cette action est irréversible",
+    "profilePicture": "Photo de profil",
+    "accountInfo": "Informations du compte",
+    "emailVerified": "Email vérifié",
     "exportData": "Exporter mes données",
     "saved": "Paramètres enregistrés",
     "apiKey": "Clé API",
@@ -394,6 +398,9 @@
     "subscriptionCanceled": "Abonnement annulé",
     "willEndOn": "Prendra fin le",
     "reactivate": "Réactiver",
+    "comingSoon": "Paiement bientôt disponible. Merci de votre patience !",
+    "creditsUsed": "Crédits utilisés",
+    "renewalDate": "Date de renouvellement",
     "plans": {
       "free": {
         "name": "Découverte",
@@ -541,9 +548,11 @@
     "rateLimited": "Trop de requêtes, veuillez patienter",
     "sessionExpired": "Session expirée",
     "accessDenied": "Accès refusé",
-    "adminOnly": "Réservé aux administrateurs"
+    "adminOnly": "Réservé aux administrateurs",
+    "saveFailed": "Échec de l'enregistrement"
   },
   "success": {
+    "generic": "Succès",
     "analysisSaved": "Analyse enregistrée",
     "analysisCopied": "Analyse copiée",
     "linkCopied": "Lien copié",
@@ -554,7 +563,8 @@
     "videoAdded": "Vidéo ajoutée",
     "videoRemoved": "Vidéo retirée",
     "exportSuccess": "Export réussi",
-    "creditsAdded": "Crédits ajoutés"
+    "creditsAdded": "Crédits ajoutés",
+    "profileUpdated": "Profil mis à jour"
   },
   "footer": {
     "legal": "Mentions légales",

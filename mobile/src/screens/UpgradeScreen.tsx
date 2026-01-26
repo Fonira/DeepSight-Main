@@ -11,11 +11,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as WebBrowser from 'expo-web-browser';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Header, Card, Badge, Button } from '../components';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
+import { billingApi, ApiError } from '../services/api';
 
 interface Plan {
   id: string;
@@ -224,19 +226,46 @@ export const UpgradeScreen: React.FC = () => {
     setSelectedPlan(planId);
   };
 
-  const handleUpgrade = () => {
+  const handleUpgrade = async () => {
     if (!selectedPlan) return;
 
     setIsLoading(true);
-    // Simulate API call - TODO: Integrate with billingApi.createCheckout
-    setTimeout(() => {
+    try {
+      // Get checkout URL from backend
+      const { url } = await billingApi.createCheckout(selectedPlan);
+
+      if (!url) {
+        throw new Error('No checkout URL received');
+      }
+
+      // Open Stripe checkout in browser
+      const result = await WebBrowser.openBrowserAsync(url, {
+        showTitle: true,
+        enableBarCollapsing: true,
+      });
+
+      // Handle return from browser
+      if (result.type === 'cancel') {
+        // User cancelled - no action needed
+      } else {
+        // Refresh user data to get updated plan
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert(
+          t.success?.generic || 'Succès',
+          isEn
+            ? 'Payment processing. Your plan will be updated shortly.'
+            : 'Paiement en cours. Votre abonnement sera mis à jour sous peu.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (err) {
+      const message = err instanceof ApiError
+        ? err.message
+        : (isEn ? 'Unable to start checkout. Please try again.' : 'Impossible de démarrer le paiement. Veuillez réessayer.');
+      Alert.alert(t.common?.error || 'Erreur', message);
+    } finally {
       setIsLoading(false);
-      Alert.alert(
-        t.upgrade.title,
-        t.upgrade.comingSoon,
-        [{ text: 'OK' }]
-      );
-    }, 1000);
+    }
   };
 
   const formatCredits = (credits: number): string => {

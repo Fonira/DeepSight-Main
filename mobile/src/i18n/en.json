@@ -319,7 +319,11 @@
     "cancelSubscription": "Cancel subscription",
     "dangerZone": "Danger zone",
     "deleteAccount": "Delete my account",
+    "deleteAccountConfirm": "Are you sure you want to delete your account? This action is irreversible and all your data will be lost.",
     "deleteAccountWarning": "This action is irreversible",
+    "profilePicture": "Profile picture",
+    "accountInfo": "Account information",
+    "emailVerified": "Email verified",
     "exportData": "Export my data",
     "saved": "Settings saved",
     "apiKey": "API Key",
@@ -394,6 +398,9 @@
     "subscriptionCanceled": "Subscription canceled",
     "willEndOn": "Will end on",
     "reactivate": "Reactivate",
+    "comingSoon": "Payments coming soon. Thank you for your patience!",
+    "creditsUsed": "Credits used",
+    "renewalDate": "Renewal date",
     "plans": {
       "free": {
         "name": "Discovery",
@@ -541,9 +548,11 @@
     "rateLimited": "Too many requests, please wait",
     "sessionExpired": "Session expired",
     "accessDenied": "Access denied",
-    "adminOnly": "Admin only"
+    "adminOnly": "Admin only",
+    "saveFailed": "Failed to save"
   },
   "success": {
+    "generic": "Success",
     "analysisSaved": "Analysis saved",
     "analysisCopied": "Analysis copied",
     "linkCopied": "Link copied",
@@ -554,7 +563,8 @@
     "videoAdded": "Video added",
     "videoRemoved": "Video removed",
     "exportSuccess": "Export successful",
-    "creditsAdded": "Credits added"
+    "creditsAdded": "Credits added",
+    "profileUpdated": "Profile updated"
   },
   "footer": {
     "legal": "Legal",
