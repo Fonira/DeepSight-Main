@@ -30,10 +30,19 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
-    public code?: string
+    public code?: string,
+    public detail?: string
   ) {
     super(message);
     this.name = 'ApiError';
+  }
+
+  // Helper to check if this is an email verification required error
+  get isEmailNotVerified(): boolean {
+    return this.status === 403 && (
+      this.code === 'EMAIL_NOT_VERIFIED' ||
+      this.detail === 'EMAIL_NOT_VERIFIED'
+    );
   }
 }
 
@@ -174,9 +183,10 @@ const request = async <T>(
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       throw new ApiError(
-        errorData.message || errorData.error || 'Request failed',
+        errorData.message || errorData.detail || errorData.error || 'Request failed',
         response.status,
-        errorData.code
+        errorData.code || errorData.detail,
+        errorData.detail
       );
     }
 

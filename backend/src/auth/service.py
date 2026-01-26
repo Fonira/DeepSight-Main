@@ -209,11 +209,22 @@ async def create_user(
     initial_credits = PLAN_LIMITS["free"]["monthly_credits"]
     
     # Générer le code de vérification si nécessaire
+    # IMPORTANT: Vérifier que Resend est réellement configuré, pas juste "enabled"
     verification_code = None
     verification_expires = None
-    if not email_verified and EMAIL_CONFIG.get("ENABLED"):
+    email_service_configured = (
+        EMAIL_CONFIG.get("ENABLED") and
+        EMAIL_CONFIG.get("RESEND_API_KEY") and
+        len(EMAIL_CONFIG.get("RESEND_API_KEY", "")) > 0
+    )
+
+    if not email_verified and email_service_configured:
         verification_code = generate_verification_code()
         verification_expires = datetime.now() + timedelta(minutes=10)
+    elif not email_verified and not email_service_configured:
+        # Auto-vérifier si le service email n'est pas configuré (mode dev)
+        email_verified = True
+        print(f"⚠️ Auto-verifying user {email} (Resend not configured)", flush=True)
     
     # Créer l'utilisateur
     user = User(
@@ -254,8 +265,21 @@ async def authenticate_user(
         return False, None, "❌ Email ou mot de passe incorrect", None
     
     # Vérifier si l'email doit être vérifié
-    if EMAIL_CONFIG.get("ENABLED") and not user.email_verified:
+    # IMPORTANT: Seulement si Resend est réellement configuré
+    email_service_configured = (
+        EMAIL_CONFIG.get("ENABLED") and
+        EMAIL_CONFIG.get("RESEND_API_KEY") and
+        len(EMAIL_CONFIG.get("RESEND_API_KEY", "")) > 0
+    )
+
+    if email_service_configured and not user.email_verified:
         return False, user, "📧 VERIFICATION_REQUIRED", None
+
+    # Si l'email n'est pas configuré mais l'utilisateur n'est pas vérifié, auto-vérifier
+    if not user.email_verified and not email_service_configured:
+        user.email_verified = True
+        await session.commit()
+        print(f"⚠️ Auto-verified user {user.email} on login (Resend not configured)", flush=True)
     
     # 🆕 Créer une nouvelle session unique (invalide les anciennes)
     session_token = await create_user_session(session, user.id)
