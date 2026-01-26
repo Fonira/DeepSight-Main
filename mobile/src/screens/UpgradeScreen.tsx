@@ -27,72 +27,195 @@ interface Plan {
   isPopular?: boolean;
 }
 
-const PLANS: Plan[] = [
+interface PlanEn {
+  name: string;
+  features: string[];
+}
+
+interface PlanWithTranslations extends Plan {
+  en: PlanEn;
+  icon: string;
+}
+
+const PLANS: PlanWithTranslations[] = [
   {
     id: 'free',
     name: 'Gratuit',
     price: 0,
     period: '/mois',
-    credits: 20,
+    credits: 150,
+    icon: 'gift-outline',
     features: [
-      '20 crédits par mois',
-      'Analyses de base',
-      'Historique 7 jours',
+      '3 analyses par mois',
+      '150 crédits',
+      'Vidéos ≤ 10 min',
+      '3 questions chat/vidéo',
+      'Historique 3 jours',
+      'Export texte',
     ],
+    en: {
+      name: 'Free',
+      features: [
+        '3 analyses/month',
+        '150 credits',
+        'Videos ≤ 10 min',
+        '3 chat questions/video',
+        '3 days history',
+        'Text export',
+      ],
+    },
+  },
+  {
+    id: 'student',
+    name: 'Étudiant',
+    price: 2.99,
+    period: '/mois',
+    credits: 2000,
+    icon: 'school-outline',
+    features: [
+      '40 analyses par mois',
+      '2000 crédits',
+      'Vidéos ≤ 2h',
+      '15 questions chat/vidéo',
+      'Historique 90 jours',
+      'Export PDF + Markdown',
+      'Citations BibTeX',
+      'Audio TTS',
+      'Recherche web (10/mois)',
+    ],
+    en: {
+      name: 'Student',
+      features: [
+        '40 analyses/month',
+        '2000 credits',
+        'Videos ≤ 2h',
+        '15 chat questions/video',
+        '90 days history',
+        'PDF + Markdown export',
+        'BibTeX citations',
+        'Audio TTS',
+        'Web search (10/month)',
+      ],
+    },
   },
   {
     id: 'starter',
     name: 'Starter',
-    price: 9.99,
+    price: 5.99,
     period: '/mois',
-    credits: 100,
+    credits: 3000,
+    icon: 'rocket-outline',
     features: [
-      '100 crédits par mois',
-      'Analyses détaillées',
-      'Historique illimité',
-      'Export PDF',
+      '60 analyses par mois',
+      '3000 crédits',
+      'Vidéos ≤ 2h',
+      '20 questions chat/vidéo',
+      'Historique 60 jours',
+      'Export PDF + TXT',
+      'Citations académiques',
+      'Recherche web (20/mois)',
     ],
-    isPopular: true,
+    en: {
+      name: 'Starter',
+      features: [
+        '60 analyses/month',
+        '3000 credits',
+        'Videos ≤ 2h',
+        '20 chat questions/video',
+        '60 days history',
+        'PDF + TXT export',
+        'Academic citations',
+        'Web search (20/month)',
+      ],
+    },
   },
   {
     id: 'pro',
     name: 'Pro',
-    price: 19.99,
+    price: 12.99,
     period: '/mois',
-    credits: 500,
+    credits: 15000,
+    icon: 'star-outline',
+    isPopular: true,
     features: [
-      '500 crédits par mois',
-      'Tous les modèles IA',
-      'Analyses de playlists',
-      'Outils d\'étude',
+      '300 analyses par mois',
+      '15 000 crédits',
+      'Vidéos ≤ 4h',
+      'Chat illimité par vidéo',
+      'Historique 180 jours',
+      'Tous les exports + Markdown',
+      'Playlists (20 vidéos max)',
+      'Audio TTS',
+      'Recherche web (100/mois)',
       'Support prioritaire',
+      'Fact-checking avancé',
     ],
+    en: {
+      name: 'Pro',
+      features: [
+        '300 analyses/month',
+        '15,000 credits',
+        'Videos ≤ 4h',
+        'Unlimited chat/video',
+        '180 days history',
+        'All exports + Markdown',
+        'Playlists (20 videos max)',
+        'Audio TTS',
+        'Web search (100/month)',
+        'Priority support',
+        'Advanced fact-checking',
+      ],
+    },
   },
   {
-    id: 'expert',
-    name: 'Expert',
-    price: 49.99,
+    id: 'team',
+    name: 'Team',
+    price: 29.99,
     period: '/mois',
-    credits: 2000,
+    credits: 50000,
+    icon: 'people-outline',
     features: [
-      '2000 crédits par mois',
-      'API access',
-      'Analyses avancées',
+      '1000 analyses par mois',
+      '50 000 crédits',
+      'Vidéos illimitées',
+      'Chat et exports illimités',
+      'Historique illimité',
+      'Playlists (100 vidéos, illimitées)',
+      'Recherche web illimitée',
+      'API REST (1000 req/jour)',
+      '5 membres d\'équipe',
       'Support dédié',
-      'Fonctionnalités beta',
+      'Analytics avancés',
     ],
+    en: {
+      name: 'Team',
+      features: [
+        '1000 analyses/month',
+        '50,000 credits',
+        'Unlimited video length',
+        'Unlimited chat & exports',
+        'Unlimited history',
+        'Playlists (100 videos, unlimited)',
+        'Unlimited web search',
+        'REST API (1000 req/day)',
+        '5 team members',
+        'Dedicated support',
+        'Advanced analytics',
+      ],
+    },
   },
 ];
 
 export const UpgradeScreen: React.FC = () => {
   const { colors } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  const isEn = language === 'en';
   const currentPlan = user?.plan || 'free';
 
   const handleSelectPlan = (planId: string) => {
@@ -105,7 +228,7 @@ export const UpgradeScreen: React.FC = () => {
     if (!selectedPlan) return;
 
     setIsLoading(true);
-    // Simulate API call
+    // Simulate API call - TODO: Integrate with billingApi.createCheckout
     setTimeout(() => {
       setIsLoading(false);
       Alert.alert(
@@ -116,9 +239,18 @@ export const UpgradeScreen: React.FC = () => {
     }, 1000);
   };
 
-  const renderPlanCard = (plan: Plan) => {
+  const formatCredits = (credits: number): string => {
+    if (credits >= 1000) {
+      return `${(credits / 1000).toFixed(0)}k`;
+    }
+    return credits.toString();
+  };
+
+  const renderPlanCard = (plan: PlanWithTranslations) => {
     const isCurrentPlan = plan.id === currentPlan;
     const isSelected = plan.id === selectedPlan;
+    const displayName = isEn ? plan.en.name : plan.name;
+    const displayFeatures = isEn ? plan.en.features : plan.features;
 
     return (
       <TouchableOpacity
@@ -131,7 +263,7 @@ export const UpgradeScreen: React.FC = () => {
           style={[
             styles.planCard,
             isSelected && { borderWidth: 2, borderColor: colors.accentPrimary },
-            isCurrentPlan && { opacity: 0.7 },
+            isCurrentPlan && styles.currentPlanCard,
           ]}
         >
           {plan.isPopular && (
@@ -146,9 +278,14 @@ export const UpgradeScreen: React.FC = () => {
           )}
 
           <View style={styles.planHeader}>
-            <Text style={[styles.planName, { color: colors.textPrimary }]}>
-              {plan.name}
-            </Text>
+            <View style={styles.planTitleRow}>
+              <View style={[styles.planIcon, { backgroundColor: colors.accentPrimary + '20' }]}>
+                <Ionicons name={plan.icon as any} size={20} color={colors.accentPrimary} />
+              </View>
+              <Text style={[styles.planName, { color: colors.textPrimary }]}>
+                {displayName}
+              </Text>
+            </View>
             {isCurrentPlan && (
               <Badge label={t.upgrade.currentPlan} variant="primary" size="sm" />
             )}
@@ -156,25 +293,28 @@ export const UpgradeScreen: React.FC = () => {
 
           <View style={styles.priceContainer}>
             <Text style={[styles.price, { color: colors.textPrimary }]}>
-              {plan.price === 0 ? t.common.free : `${plan.price}€`}
+              {plan.price === 0 ? (isEn ? 'Free' : 'Gratuit') : `${plan.price}€`}
             </Text>
             {plan.price > 0 && (
               <Text style={[styles.period, { color: colors.textTertiary }]}>
-                {plan.period}
+                {isEn ? '/month' : plan.period}
               </Text>
             )}
           </View>
 
-          <Text style={[styles.credits, { color: colors.accentPrimary }]}>
-            {plan.credits} crédits/mois
-          </Text>
+          <View style={styles.creditsRow}>
+            <Ionicons name="flash" size={16} color={colors.accentSecondary} />
+            <Text style={[styles.credits, { color: colors.accentPrimary }]}>
+              {formatCredits(plan.credits)} {isEn ? 'credits/month' : 'crédits/mois'}
+            </Text>
+          </View>
 
           <View style={styles.features}>
-            {plan.features.map((feature, index) => (
+            {displayFeatures.map((feature, index) => (
               <View key={index} style={styles.featureRow}>
                 <Ionicons
                   name="checkmark-circle"
-                  size={18}
+                  size={16}
                   color={colors.accentSuccess}
                 />
                 <Text style={[styles.featureText, { color: colors.textSecondary }]}>
@@ -183,6 +323,28 @@ export const UpgradeScreen: React.FC = () => {
               </View>
             ))}
           </View>
+
+          {!isCurrentPlan && (
+            <TouchableOpacity
+              style={[
+                styles.selectButton,
+                isSelected && { backgroundColor: colors.accentPrimary },
+                !isSelected && { borderColor: colors.border, borderWidth: 1 },
+              ]}
+              onPress={() => handleSelectPlan(plan.id)}
+            >
+              <Text
+                style={[
+                  styles.selectButtonText,
+                  { color: isSelected ? '#fff' : colors.textSecondary },
+                ]}
+              >
+                {isSelected
+                  ? (isEn ? 'Selected' : 'Sélectionné')
+                  : (isEn ? 'Choose Plan' : 'Choisir')}
+              </Text>
+            </TouchableOpacity>
+          )}
         </Card>
       </TouchableOpacity>
     );
@@ -263,6 +425,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.sm,
   },
+  planTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  planIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   planName: {
     fontSize: Typography.fontSize.xl,
     fontFamily: Typography.fontFamily.bodySemiBold,
@@ -270,7 +444,7 @@ const styles = StyleSheet.create({
   priceContainer: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   price: {
     fontSize: Typography.fontSize['3xl'],
@@ -281,23 +455,45 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
     marginLeft: Spacing.xs,
   },
+  creditsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.md,
+  },
   credits: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodyMedium,
-    marginBottom: Spacing.lg,
   },
   features: {
-    gap: Spacing.sm,
+    gap: Spacing.xs,
+    marginBottom: Spacing.md,
   },
   featureRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: Spacing.sm,
   },
   featureText: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
     flex: 1,
+    lineHeight: 18,
+  },
+  currentPlanCard: {
+    borderWidth: 2,
+    borderColor: Colors.accentSuccess,
+  },
+  selectButton: {
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    marginTop: Spacing.sm,
+  },
+  selectButtonText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.bodyMedium,
   },
   bottomCta: {
     position: 'absolute',

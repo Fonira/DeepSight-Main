@@ -287,6 +287,14 @@ export const authApi = {
       requiresAuth: false,
     });
   },
+
+  async resendVerification(email: string): Promise<{ message: string }> {
+    return request('/api/auth/resend-verification', {
+      method: 'POST',
+      body: { email },
+      requiresAuth: false,
+    });
+  },
 };
 
 // ============================================
@@ -363,6 +371,102 @@ export const videoApi = {
 
   async getTranscript(videoId: string): Promise<{ transcript: string; segments: Array<{ start: number; text: string }> }> {
     return request(`/api/videos/transcript/${videoId}`);
+  },
+
+  // Reliability analysis
+  async getReliability(summaryId: string): Promise<{
+    overall_score: number;
+    confidence: number;
+    factors: Array<{ name: string; score: number; description: string }>;
+    recommendations: string[];
+  }> {
+    return request(`/api/videos/reliability/${summaryId}`);
+  },
+
+  async analyzeReliability(summaryId: string): Promise<{
+    overall_score: number;
+    confidence: number;
+    factors: Array<{ name: string; score: number; description: string }>;
+    recommendations: string[];
+  }> {
+    return request('/api/videos/reliability/analyze', {
+      method: 'POST',
+      body: { summary_id: summaryId },
+      timeout: TIMEOUTS.FACT_CHECK,
+    });
+  },
+
+  // Freshness indicator
+  async getFreshness(summaryId: string): Promise<{
+    publication_date: string;
+    days_since_published: number;
+    freshness_level: 'fresh' | 'recent' | 'dated' | 'outdated';
+    freshness_score: number;
+  }> {
+    return request(`/api/videos/freshness/${summaryId}`);
+  },
+
+  // Notes and tags
+  async updateNotes(summaryId: string, notes: string): Promise<{ success: boolean }> {
+    return request(`/api/videos/summary/${summaryId}/notes`, {
+      method: 'PUT',
+      body: { notes },
+    });
+  },
+
+  async updateTags(summaryId: string, tags: string[]): Promise<{ success: boolean }> {
+    return request(`/api/videos/summary/${summaryId}/tags`, {
+      method: 'PUT',
+      body: { tags },
+    });
+  },
+
+  // Video discovery - best results
+  async discoverBest(query: string, options?: {
+    limit?: number;
+    language?: string;
+    sort_by?: 'quality' | 'views' | 'date' | 'academic';
+  }): Promise<{
+    videos: Array<VideoInfo & { quality_score: number; academic_relevance: number }>;
+  }> {
+    return request('/api/videos/discover/best', {
+      method: 'POST',
+      body: { query, ...options },
+    });
+  },
+
+  // Categories
+  async getCategories(): Promise<{ categories: Array<{ id: string; name: string; icon: string }> }> {
+    return request('/api/videos/categories');
+  },
+
+  // Credit estimation
+  async estimateCredits(params: {
+    video_url?: string;
+    mode?: string;
+    include_study_tools?: boolean;
+  }): Promise<{ credits: number; breakdown: Record<string, number> }> {
+    return request('/api/videos/estimate-credits', {
+      method: 'POST',
+      body: params,
+    });
+  },
+
+  // Delete summary
+  async deleteSummary(summaryId: string): Promise<{ success: boolean }> {
+    return request(`/api/videos/summary/${summaryId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  // User stats
+  async getStats(): Promise<{
+    total_videos: number;
+    total_words: number;
+    total_minutes_saved: number;
+    favorite_category: string;
+  }> {
+    return request('/api/videos/stats');
   },
 };
 
@@ -449,16 +553,127 @@ export const historyApi = {
       totalMinutes: response.total_minutes_watched,
     };
   },
+
+  // Playlist history
+  async getPlaylistHistory(
+    page: number = 1,
+    limit: number = 20
+  ): Promise<PaginatedResponse<{
+    id: string;
+    name: string;
+    video_count: number;
+    created_at: string;
+    thumbnail_urls: string[];
+  }>> {
+    const params = new URLSearchParams({
+      page: String(page),
+      per_page: String(limit),
+    });
+
+    const response = await request<{
+      items: Array<{
+        id: number;
+        name: string;
+        video_count: number;
+        created_at: string;
+        thumbnail_urls: string[];
+      }>;
+      total: number;
+      page: number;
+      per_page: number;
+      pages: number;
+    }>(`/api/history/playlists?${params.toString()}`);
+
+    return {
+      items: response.items.map((item) => ({
+        ...item,
+        id: String(item.id),
+      })),
+      hasMore: response.page < response.pages,
+      page: response.page,
+    };
+  },
+
+  // Search history
+  async searchHistory(query: string): Promise<AnalysisSummary[]> {
+    const response = await request<{
+      results: Array<{
+        id: number;
+        video_title: string;
+        video_id: string;
+        thumbnail_url?: string;
+        is_favorite: boolean;
+        mode?: string;
+        category?: string;
+        created_at?: string;
+      }>;
+    }>(`/api/history/search?q=${encodeURIComponent(query)}`);
+
+    return response.results.map((item) => ({
+      id: String(item.id),
+      title: item.video_title || 'Sans titre',
+      videoId: item.video_id,
+      thumbnail: item.thumbnail_url,
+      isFavorite: item.is_favorite,
+      mode: item.mode || 'synthesis',
+      category: item.category || 'general',
+      createdAt: item.created_at,
+    }));
+  },
+
+  // Semantic search
+  async semanticSearch(query: string): Promise<AnalysisSummary[]> {
+    const response = await request<{
+      results: Array<{
+        id: number;
+        video_title: string;
+        video_id: string;
+        thumbnail_url?: string;
+        is_favorite: boolean;
+        mode?: string;
+        category?: string;
+        created_at?: string;
+        relevance_score: number;
+      }>;
+    }>('/api/history/search/semantic', {
+      method: 'POST',
+      body: { query },
+    });
+
+    return response.results.map((item) => ({
+      id: String(item.id),
+      title: item.video_title || 'Sans titre',
+      videoId: item.video_id,
+      thumbnail: item.thumbnail_url,
+      isFavorite: item.is_favorite,
+      mode: item.mode || 'synthesis',
+      category: item.category || 'general',
+      createdAt: item.created_at,
+    }));
+  },
 };
 
 // ============================================
 // Chat API
 // ============================================
 export const chatApi = {
-  async sendMessage(summaryId: string, message: string): Promise<{ response: string }> {
+  async sendMessage(
+    summaryId: string,
+    message: string,
+    options?: { useWebSearch?: boolean; mode?: string }
+  ): Promise<{
+    response: string;
+    sources?: Array<{ url: string; title: string }>;
+    web_search_used?: boolean;
+  }> {
     return request('/api/chat/ask', {
       method: 'POST',
-      body: { summary_id: summaryId, question: message },
+      body: {
+        summary_id: summaryId,
+        question: message,
+        use_web_search: options?.useWebSearch ?? false,
+        mode: options?.mode,
+      },
     });
   },
 
@@ -504,6 +719,10 @@ export const playlistApi = {
       method: 'POST',
       body: { name, description },
     });
+  },
+
+  async getPlaylist(id: string): Promise<Playlist & { videos: Array<{ video_id: string; title: string; thumbnail_url: string }> }> {
+    return request(`/api/playlists/${id}`);
   },
 
   async updatePlaylist(id: string, name: string, description?: string): Promise<Playlist> {
@@ -589,6 +808,49 @@ export const billingApi = {
   async getTransactions(): Promise<{ transactions: Array<{ id: string; amount: number; date: string; description: string }> }> {
     return request('/api/billing/transactions');
   },
+
+  async reactivateSubscription(): Promise<{ success: boolean }> {
+    return request('/api/billing/reactivate', {
+      method: 'POST',
+    });
+  },
+
+  async confirmCheckout(sessionId: string): Promise<{ success: boolean; plan: string }> {
+    return request('/api/billing/confirm-checkout', {
+      method: 'POST',
+      body: { session_id: sessionId },
+    });
+  },
+
+  // API Key management (Expert plan)
+  async getApiKeyStatus(): Promise<{
+    has_key: boolean;
+    key_prefix?: string;
+    created_at?: string;
+    last_used?: string;
+    requests_today: number;
+    daily_limit: number;
+  }> {
+    return request('/api/billing/api-key/status');
+  },
+
+  async generateApiKey(): Promise<{ api_key: string; message: string }> {
+    return request('/api/billing/api-key/generate', {
+      method: 'POST',
+    });
+  },
+
+  async regenerateApiKey(): Promise<{ api_key: string; message: string }> {
+    return request('/api/billing/api-key/regenerate', {
+      method: 'POST',
+    });
+  },
+
+  async revokeApiKey(): Promise<{ success: boolean }> {
+    return request('/api/billing/api-key', {
+      method: 'DELETE',
+    });
+  },
 };
 
 // ============================================
@@ -660,8 +922,94 @@ export const ttsApi = {
     });
   },
 
+  async generateFromSummary(summaryId: string, voice: string = 'alloy'): Promise<{ audio_url: string }> {
+    return request(`/api/tts/summary/${summaryId}/audio`, {
+      method: 'POST',
+      body: { voice },
+      timeout: TIMEOUTS.ANALYSIS,
+    });
+  },
+
+  async estimateCost(summaryId: string): Promise<{ credits: number; duration_seconds: number; word_count: number }> {
+    return request(`/api/tts/summary/${summaryId}/estimate`, {
+      method: 'POST',
+    });
+  },
+
   async getVoices(): Promise<{ voices: Array<{ id: string; name: string; preview_url: string }> }> {
     return request('/api/tts/voices');
+  },
+
+  async getStatus(): Promise<{ available: boolean; provider: string }> {
+    return request('/api/tts/status');
+  },
+};
+
+// ============================================
+// Usage API
+// ============================================
+export const usageApi = {
+  async getStats(): Promise<{
+    credits_used: number;
+    credits_remaining: number;
+    credits_total: number;
+    analyses_count: number;
+    chat_messages_count: number;
+    exports_count: number;
+    reset_date: string;
+  }> {
+    return request('/api/usage/stats');
+  },
+
+  async getDetailedUsage(period?: 'day' | 'week' | 'month'): Promise<{
+    by_model: Record<string, number>;
+    by_category: Record<string, number>;
+    by_date: Array<{ date: string; credits: number }>;
+  }> {
+    const params = period ? `?period=${period}` : '';
+    return request(`/api/usage/detailed${params}`);
+  },
+};
+
+// ============================================
+// Tournesol API
+// ============================================
+export const tournesolApi = {
+  async getVideoScore(videoId: string): Promise<{
+    tournesol_score: number | null;
+    criteria_scores: Record<string, number>;
+    n_comparisons: number;
+    n_contributors: number;
+    is_rated: boolean;
+  }> {
+    return request(`/api/tournesol/video/${videoId}`);
+  },
+
+  async searchRecommendations(query: string, limit: number = 10): Promise<{
+    videos: Array<{
+      video_id: string;
+      title: string;
+      channel: string;
+      tournesol_score: number;
+      thumbnail_url: string;
+    }>;
+  }> {
+    return request('/api/tournesol/search', {
+      method: 'POST',
+      body: { query, limit },
+    });
+  },
+
+  async getRecommendations(limit: number = 10): Promise<{
+    videos: Array<{
+      video_id: string;
+      title: string;
+      channel: string;
+      tournesol_score: number;
+      thumbnail_url: string;
+    }>;
+  }> {
+    return request(`/api/tournesol/recommendations?limit=${limit}`);
   },
 };
 
@@ -676,5 +1024,7 @@ export default {
   studyApi,
   exportApi,
   ttsApi,
+  usageApi,
+  tournesolApi,
   ApiError,
 };
