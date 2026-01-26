@@ -912,40 +912,6 @@ export const exportApi = {
 };
 
 // ============================================
-// TTS API
-// ============================================
-export const ttsApi = {
-  async generateAudio(text: string, voice: string = 'alloy'): Promise<{ audio_url: string }> {
-    return request('/api/tts/generate', {
-      method: 'POST',
-      body: { text, voice },
-    });
-  },
-
-  async generateFromSummary(summaryId: string, voice: string = 'alloy'): Promise<{ audio_url: string }> {
-    return request(`/api/tts/summary/${summaryId}/audio`, {
-      method: 'POST',
-      body: { voice },
-      timeout: TIMEOUTS.ANALYSIS,
-    });
-  },
-
-  async estimateCost(summaryId: string): Promise<{ credits: number; duration_seconds: number; word_count: number }> {
-    return request(`/api/tts/summary/${summaryId}/estimate`, {
-      method: 'POST',
-    });
-  },
-
-  async getVoices(): Promise<{ voices: Array<{ id: string; name: string; preview_url: string }> }> {
-    return request('/api/tts/voices');
-  },
-
-  async getStatus(): Promise<{ available: boolean; provider: string }> {
-    return request('/api/tts/status');
-  },
-};
-
-// ============================================
 // Usage API
 // ============================================
 export const usageApi = {
@@ -1013,6 +979,7 @@ export const tournesolApi = {
   },
 };
 
+
 export default {
   authApi,
   userApi,
@@ -1023,7 +990,6 @@ export default {
   billingApi,
   studyApi,
   exportApi,
-  ttsApi,
   usageApi,
   tournesolApi,
   ApiError,

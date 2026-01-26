@@ -91,16 +91,10 @@ export const MyAccount: React.FC = () => {
     const confirmWord = language === 'fr' ? 'SUPPRIMER' : 'DELETE';
     if (deleteConfirmText !== confirmWord) return;
 
-    // Les comptes Google n'ont pas de mot de passe
-    const isGoogleAccount = !user?.email?.includes('@') || user?.email?.includes('google');
-    if (!isGoogleAccount && !deletePassword) {
-      showToast(tr('Veuillez entrer votre mot de passe', 'Please enter your password'), 'error');
-      return;
-    }
-
     setDeleteLoading(true);
     try {
-      await authApi.deleteAccount(isGoogleAccount ? undefined : deletePassword);
+      // Le backend vérifie si un mot de passe est requis selon le type de compte
+      await authApi.deleteAccount(deletePassword || undefined);
       showToast(tr('Compte supprimé', 'Account deleted'), 'success');
       logout();
       navigate('/');
