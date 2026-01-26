@@ -292,16 +292,16 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Wiki link (seulement pour les mots locaux) */}
-            {displayedWord.wikiUrl && displayedWord.source === 'local' && (
+            {/* Wiki link - affiché pour tous les mots avec une URL */}
+            {displayedWord.wikiUrl && (
               <a
                 href={displayedWord.wikiUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-text-tertiary hover:text-accent-primary transition-colors"
-                title="Wikipedia"
+                title="Source"
               >
-                🔗 Wiki
+                🔗 {displayedWord.wikiUrl.includes('wikipedia') ? 'Wiki' : 'Source'}
               </a>
             )}
 

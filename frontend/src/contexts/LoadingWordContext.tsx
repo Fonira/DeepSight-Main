@@ -38,9 +38,12 @@ interface HistoryKeyword {
   video_id: string | null;
   category: string | null;
   created_at: string | null;
-  // NOUVEAU: Définitions générées par IA (Mistral)
+  // Définitions générées par IA (Mistral)
   definition: string | null;
   short_definition: string | null;
+  // Source Wikipedia ou alternative
+  wiki_url: string | null;
+  confidence: string | null;
 }
 
 interface LoadingWordContextType {
@@ -111,6 +114,7 @@ function convertHistoryKeyword(keyword: HistoryKeyword): LoadingWord {
     summaryId: keyword.summary_id,
     videoTitle: keyword.video_title || undefined,
     videoId: keyword.video_id || undefined,
+    wikiUrl: keyword.wiki_url || undefined,
   };
 }
 
