@@ -25,7 +25,7 @@ import { Image } from 'expo-image';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { videoApi, chatApi, studyApi, exportApi } from '../services/api';
-import { Header, Card, Badge, Button, YouTubePlayer } from '../components';
+import { Header, Card, Badge, Button, YouTubePlayer, useToast } from '../components';
 import { QuizComponent, MindMapComponent } from '../components/study';
 import type { QuizQuestion, MindMapData, MindMapNode } from '../components/study';
 import { ExportOptions } from '../components/export';
@@ -46,6 +46,7 @@ type TabType = 'summary' | 'concepts' | 'chat' | 'tools';
 export const AnalysisScreen: React.FC = () => {
   const { colors } = useTheme();
   const { t } = useLanguage();
+  const { showToast } = useToast();
   const navigation = useNavigation<AnalysisNavigationProp>();
   const route = useRoute<AnalysisRouteProp>();
   const insets = useSafeAreaInsets();
@@ -349,7 +350,7 @@ export const AnalysisScreen: React.FC = () => {
 
     await Clipboard.setStringAsync(summary.content || '');
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert(t.common.copied, t.success.analysisCopied);
+    showToast(t.success.analysisCopied, 'success');
   };
 
   // Open YouTube video

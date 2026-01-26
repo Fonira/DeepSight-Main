@@ -13,6 +13,7 @@ import { LanguageProvider } from './src/contexts/LanguageContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { DoodleBackground } from './src/components/backgrounds';
 import { ErrorBoundary } from './src/components/common';
+import { ToastProvider } from './src/components/ui/Toast';
 import { QUERY_CONFIG } from './src/constants/config';
 import { Colors } from './src/constants/theme';
 
@@ -97,7 +98,9 @@ export default function App() {
             <ThemeProvider>
               <LanguageProvider>
                 <AuthProvider>
-                  <AppContent />
+                  <ToastProvider>
+                    <AppContent />
+                  </ToastProvider>
                 </AuthProvider>
               </LanguageProvider>
             </ThemeProvider>
