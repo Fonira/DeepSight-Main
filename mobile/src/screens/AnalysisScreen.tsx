@@ -467,7 +467,14 @@ export const AnalysisScreen: React.FC = () => {
   useEffect(() => {
     if (summary) {
       setPersonalNotes((summary as any).notes || '');
-      setTags((summary as any).tags || []);
+      // Parse tags - backend stores as comma-separated string, mobile expects array
+      const rawTags = (summary as any).tags;
+      const parsedTags = Array.isArray(rawTags)
+        ? rawTags
+        : (typeof rawTags === 'string' && rawTags.trim() !== ''
+            ? rawTags.split(',').map((t: string) => t.trim())
+            : []);
+      setTags(parsedTags);
     }
   }, [summary]);
 
