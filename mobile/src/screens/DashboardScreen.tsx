@@ -1,13 +1,11 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,9 +19,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { videoApi, historyApi } from '../services/api';
-import { Header, VideoCard, Button, Card, Badge, Avatar } from '../components';
+import { Header, VideoCard, Card, Badge, Avatar } from '../components';
+import SmartInputBar from '../components/SmartInputBar';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
-import { ANALYSIS_MODES, ANALYSIS_CATEGORIES, AI_MODELS } from '../constants/config';
 import { isValidYouTubeUrl, formatCredits } from '../utils/formatters';
 import type { RootStackParamList, MainTabParamList, AnalysisSummary } from '../types';
 
@@ -36,17 +34,14 @@ type DashboardNavigationProp = CompositeNavigationProp<
 export const DashboardScreen: React.FC = () => {
   const { colors } = useTheme();
   const { user, refreshUser } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigation = useNavigation<DashboardNavigationProp>();
   const insets = useSafeAreaInsets();
 
-  const [videoUrl, setVideoUrl] = useState('');
-  const [selectedMode, setSelectedMode] = useState('synthesis');
-  const [selectedCategory, setSelectedCategory] = useState('general');
-  const [selectedModel, setSelectedModel] = useState('gpt-4o-mini');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [recentAnalyses, setRecentAnalyses] = useState<AnalysisSummary[]>([]);
+  const [estimatedCredits, setEstimatedCredits] = useState<number | undefined>(undefined);
 
   const loadRecentAnalyses = useCallback(async () => {
     try {
@@ -67,17 +62,16 @@ export const DashboardScreen: React.FC = () => {
     loadRecentAnalyses();
   }, [loadRecentAnalyses]);
 
-  const handleAnalyze = async () => {
-    if (!videoUrl.trim()) {
-      Alert.alert(t.common.error, t.dashboard.pasteYoutubeUrl);
-      return;
-    }
-
-    if (!isValidYouTubeUrl(videoUrl)) {
-      Alert.alert(t.common.error, t.errors.invalidYoutubeUrl);
-      return;
-    }
-
+  const handleSmartInputSubmit = async (data: {
+    inputType: 'url' | 'text' | 'search';
+    value: string;
+    category: string;
+    mode: string;
+    language?: string;
+    title?: string;
+    source?: string;
+  }) => {
+    // Check credits
     if (user && user.credits <= 0) {
       Alert.alert(
         t.errors.noCredits,
@@ -90,21 +84,58 @@ export const DashboardScreen: React.FC = () => {
       return;
     }
 
+    // Validate URL if input type is URL
+    if (data.inputType === 'url' && !isValidYouTubeUrl(data.value)) {
+      Alert.alert(t.common.error, t.errors.invalidYoutubeUrl);
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsAnalyzing(true);
 
     try {
-      const { task_id } = await videoApi.analyze({
-        url: videoUrl,
-        mode: selectedMode,
-        category: selectedCategory,
-        model: selectedModel,
-        language: 'fr',
-      });
+      // Build the analysis request based on input type
+      const analysisRequest: any = {
+        mode: data.mode,
+        category: data.category,
+        language: data.language || 'fr',
+      };
 
-      navigation.navigate('Analysis', { videoUrl, summaryId: task_id });
-      setVideoUrl('');
+      if (data.inputType === 'url') {
+        analysisRequest.url = data.value;
+      } else if (data.inputType === 'text') {
+        analysisRequest.raw_text = data.value;
+        analysisRequest.title = data.title;
+        analysisRequest.source = data.source;
+      } else if (data.inputType === 'search') {
+        // For search, first discover videos then navigate to selection
+        const searchResults = await videoApi.discoverBest(data.value, {
+          limit: 10,
+          language: data.language,
+          sort_by: 'quality',
+        });
+
+        if (searchResults.videos.length === 0) {
+          Alert.alert(
+            t.common.error,
+            language === 'en' ? 'No videos found for this search.' : 'Aucune vidéo trouvée pour cette recherche.'
+          );
+          setIsAnalyzing(false);
+          return;
+        }
+
+        // For now, analyze the first (best) result
+        // TODO: Show VideoDiscoveryModal for selection
+        analysisRequest.url = `https://youtube.com/watch?v=${searchResults.videos[0].video_id}`;
+      }
+
+      const { task_id } = await videoApi.analyze(analysisRequest);
+      navigation.navigate('Analysis', {
+        videoUrl: analysisRequest.url,
+        summaryId: task_id,
+      });
     } catch (error) {
+      console.error('Analysis error:', error);
       Alert.alert(t.common.error, t.errors.generic);
     } finally {
       setIsAnalyzing(false);
@@ -184,105 +215,20 @@ export const DashboardScreen: React.FC = () => {
           </Card>
         </View>
 
-        {/* Analysis Input Section */}
+        {/* Analysis Input Section - SmartInputBar */}
         <View style={styles.analysisSection}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
             {t.dashboard.title}
           </Text>
 
-          <View style={[styles.inputContainer, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
-            <Ionicons name="logo-youtube" size={24} color="#FF0000" style={styles.inputIcon} />
-            <TextInput
-              style={[styles.input, { color: colors.textPrimary }]}
-              placeholder={t.dashboard.placeholder}
-              placeholderTextColor={colors.textMuted}
-              value={videoUrl}
-              onChangeText={setVideoUrl}
-              autoCapitalize="none"
-              autoCorrect={false}
+          <Card variant="elevated" style={styles.smartInputCard}>
+            <SmartInputBar
+              onSubmit={handleSmartInputSubmit}
+              isLoading={isAnalyzing}
+              creditCost={estimatedCredits}
+              creditsRemaining={user?.credits}
             />
-            {videoUrl.length > 0 && (
-              <TouchableOpacity onPress={() => setVideoUrl('')}>
-                <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Mode Selection */}
-          <Text style={[styles.optionLabel, { color: colors.textSecondary }]}>{t.dashboard.selectMode}</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.optionsScroll}
-          >
-            {ANALYSIS_MODES.map((mode) => (
-              <TouchableOpacity
-                key={mode.id}
-                style={[
-                  styles.optionChip,
-                  { backgroundColor: colors.bgElevated, borderColor: colors.border },
-                  selectedMode === mode.id && { backgroundColor: colors.accentPrimary, borderColor: colors.accentPrimary },
-                ]}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setSelectedMode(mode.id);
-                }}
-              >
-                <Text
-                  style={[
-                    styles.optionChipText,
-                    { color: colors.textSecondary },
-                    selectedMode === mode.id && { color: '#FFFFFF' },
-                  ]}
-                >
-                  {mode.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* Category Selection */}
-          <Text style={[styles.optionLabel, { color: colors.textSecondary }]}>{t.dashboard.selectCategory}</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.optionsScroll}
-          >
-            {ANALYSIS_CATEGORIES.map((cat) => (
-              <TouchableOpacity
-                key={cat.id}
-                style={[
-                  styles.optionChip,
-                  { backgroundColor: colors.bgElevated, borderColor: colors.border },
-                  selectedCategory === cat.id && { backgroundColor: colors.accentPrimary, borderColor: colors.accentPrimary },
-                ]}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setSelectedCategory(cat.id);
-                }}
-              >
-                <Text
-                  style={[
-                    styles.optionChipText,
-                    { color: colors.textSecondary },
-                    selectedCategory === cat.id && { color: '#FFFFFF' },
-                  ]}
-                >
-                  {cat.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* Analyze Button */}
-          <Button
-            title={isAnalyzing ? t.dashboard.analyzing : t.dashboard.analyze}
-            onPress={handleAnalyze}
-            loading={isAnalyzing}
-            fullWidth
-            disabled={!videoUrl.trim() || isAnalyzing}
-            style={styles.analyzeButton}
-          />
+          </Card>
         </View>
 
         {/* Recent Analyses */}
@@ -420,48 +366,9 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bodySemiBold,
     marginBottom: Spacing.md,
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: BorderRadius.lg,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  inputIcon: {
-    marginRight: Spacing.sm,
-  },
-  input: {
-    flex: 1,
-    fontSize: Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.body,
-    paddingVertical: Spacing.sm,
-  },
-  optionLabel: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.bodyMedium,
-    marginBottom: Spacing.sm,
-    marginTop: Spacing.sm,
-  },
-  optionsScroll: {
-    marginBottom: Spacing.sm,
-    marginHorizontal: -Spacing.lg,
-    paddingHorizontal: Spacing.lg,
-  },
-  optionChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    marginRight: Spacing.sm,
-  },
-  optionChipText: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.bodyMedium,
-  },
-  analyzeButton: {
-    marginTop: Spacing.lg,
+  smartInputCard: {
+    padding: 0,
+    overflow: 'hidden',
   },
   recentSection: {
     marginBottom: Spacing.xl,

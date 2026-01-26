@@ -4,6 +4,12 @@ export { VideoCard } from './VideoCard';
 export { Header } from './Header';
 export { EmptyState } from './EmptyState';
 
+// Smart Input
+export { SmartInputBar } from './SmartInputBar';
+export { StreamingProgress } from './StreamingProgress';
+export { FreshnessIndicator } from './FreshnessIndicator';
+export { ReliabilityScore } from './ReliabilityScore';
+
 // Video Player
 export { YouTubePlayer, TimestampLink } from './video';
 

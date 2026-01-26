@@ -52,6 +52,8 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [useWebSearch, setUseWebSearch] = useState(false);
+  const [lastSources, setLastSources] = useState<Array<{ url: string; title: string }>>([]);
 
   // Pulse animation for unread badge
   useEffect(() => {
@@ -113,11 +115,14 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    setLastSources([]);
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     try {
-      const response = await chatApi.sendMessage(summaryId, userMessage.content);
+      const response = await chatApi.sendMessage(summaryId, userMessage.content, {
+        useWebSearch: useWebSearch && canUseWebSearch,
+      });
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -125,6 +130,11 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
         content: response.response,
         timestamp: new Date().toISOString(),
       };
+
+      // Store sources if web search was used
+      if (response.sources && response.sources.length > 0) {
+        setLastSources(response.sources);
+      }
 
       setMessages(prev => {
         const newMessages = [...prev, assistantMessage];
@@ -142,6 +152,19 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Check if user can use web search based on plan
+  const canUseWebSearch = ['starter', 'pro', 'team', 'expert'].includes(user?.plan || 'free');
+
+  const handleToggleWebSearch = () => {
+    if (!canUseWebSearch) {
+      // Show upgrade prompt
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
+    Haptics.selectionAsync();
+    setUseWebSearch(!useWebSearch);
   };
 
   // Get user's chat quota based on plan
@@ -318,13 +341,56 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                   </View>
                 )}
 
+                {/* Sources from last web search */}
+                {lastSources.length > 0 && (
+                  <View style={[styles.sourcesContainer, { backgroundColor: colors.bgSecondary }]}>
+                    <View style={styles.sourcesHeader}>
+                      <Ionicons name="globe-outline" size={14} color={colors.accentInfo} />
+                      <Text style={[styles.sourcesTitle, { color: colors.textSecondary }]}>
+                        Sources web
+                      </Text>
+                    </View>
+                    {lastSources.slice(0, 3).map((source, index) => (
+                      <Text
+                        key={index}
+                        style={[styles.sourceLink, { color: colors.accentPrimary }]}
+                        numberOfLines={1}
+                      >
+                        • {source.title || source.url}
+                      </Text>
+                    ))}
+                  </View>
+                )}
+
                 <View style={[styles.inputContainer, { borderTopColor: colors.border }]}>
+                  {/* Web Search Toggle */}
+                  <TouchableOpacity
+                    style={[
+                      styles.webSearchToggle,
+                      {
+                        backgroundColor: useWebSearch ? colors.accentPrimary + '20' : colors.bgSecondary,
+                        borderColor: useWebSearch ? colors.accentPrimary : colors.border,
+                      },
+                    ]}
+                    onPress={handleToggleWebSearch}
+                    disabled={!canUseWebSearch}
+                  >
+                    <Ionicons
+                      name="globe-outline"
+                      size={16}
+                      color={useWebSearch ? colors.accentPrimary : canUseWebSearch ? colors.textSecondary : colors.textMuted}
+                    />
+                    {!canUseWebSearch && (
+                      <Ionicons name="lock-closed" size={10} color={colors.textMuted} style={styles.lockIcon} />
+                    )}
+                  </TouchableOpacity>
+
                   <TextInput
                     style={[
                       styles.input,
                       { backgroundColor: colors.bgSecondary, color: colors.textPrimary },
                     ]}
-                    placeholder={t.chat.placeholder}
+                    placeholder={useWebSearch ? 'Recherche web activée...' : t.chat.placeholder}
                     placeholderTextColor={colors.textMuted}
                     value={input}
                     onChangeText={setInput}
@@ -520,6 +586,42 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  webSearchToggle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    position: 'relative',
+  },
+  lockIcon: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+  },
+  sourcesContainer: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+  },
+  sourcesHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginBottom: Spacing.xs,
+  },
+  sourcesTitle: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.bodyMedium,
+  },
+  sourceLink: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.body,
+    marginLeft: Spacing.sm,
+    marginBottom: 2,
   },
 });
 

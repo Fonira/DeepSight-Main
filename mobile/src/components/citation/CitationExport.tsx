@@ -14,7 +14,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Spacing, Typography, BorderRadius } from '../../constants/theme';
 
-type CitationStyle = 'apa' | 'mla' | 'chicago' | 'harvard';
+type CitationStyle = 'iso690' | 'french' | 'apa' | 'mla' | 'chicago' | 'bibtex';
 
 interface CitationExportProps {
   visible: boolean;
@@ -49,8 +49,11 @@ const formatDate = (date: Date, style: CitationStyle): string => {
       return `${day} ${months[month].substring(0, 3)}. ${year}`;
     case 'chicago':
       return `${months[month]} ${day}, ${year}`;
-    case 'harvard':
+    case 'french':
+    case 'iso690':
       return `${day} ${monthsFr[month]} ${year}`;
+    case 'bibtex':
+      return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     default:
       return `${day}/${month + 1}/${year}`;
   }
@@ -63,8 +66,18 @@ const generateCitation = (
 ): string => {
   const url = `https://www.youtube.com/watch?v=${videoInfo.videoId}`;
   const publishDate = videoInfo.publishedAt ? new Date(videoInfo.publishedAt) : new Date();
+  const safeTitle = videoInfo.title.replace(/[{}]/g, '');
+  const safeChannel = videoInfo.channel.replace(/[{}]/g, '');
 
   switch (style) {
+    case 'iso690':
+      // ISO 690 format
+      return `${videoInfo.channel.toUpperCase()}. ${videoInfo.title} [en ligne]. YouTube, ${formatDate(publishDate, 'iso690')}. [Consulté le ${formatDate(accessDate, 'iso690')}]. Disponible à l'adresse : ${url}`;
+
+    case 'french':
+      // French university style
+      return `${videoInfo.channel}, « ${videoInfo.title} », YouTube, ${formatDate(publishDate, 'french')}, ${url} (consulté le ${formatDate(accessDate, 'french')}).`;
+
     case 'apa':
       // APA 7th edition format
       return `${videoInfo.channel}. (${formatDate(publishDate, 'apa')}). ${videoInfo.title} [Video]. YouTube. ${url}`;
@@ -77,9 +90,17 @@ const generateCitation = (
       // Chicago 17th edition format
       return `${videoInfo.channel}. "${videoInfo.title}." YouTube video, ${formatDate(publishDate, 'chicago')}. ${url}.`;
 
-    case 'harvard':
-      // Harvard format
-      return `${videoInfo.channel} (${publishDate.getFullYear()}) ${videoInfo.title}. [Vidéo en ligne]. Disponible sur: ${url} (Consulté le ${formatDate(accessDate, 'harvard')}).`;
+    case 'bibtex':
+      // BibTeX format
+      const bibtexKey = videoInfo.channel.toLowerCase().replace(/[^a-z0-9]/g, '') + publishDate.getFullYear();
+      return `@online{${bibtexKey},
+  author = {${safeChannel}},
+  title = {${safeTitle}},
+  year = {${publishDate.getFullYear()}},
+  url = {${url}},
+  urldate = {${formatDate(accessDate, 'bibtex')}},
+  note = {YouTube video}
+}`;
 
     default:
       return url;
@@ -96,10 +117,12 @@ export const CitationExport: React.FC<CitationExportProps> = ({
   const [selectedStyle, setSelectedStyle] = useState<CitationStyle>('apa');
 
   const citationStyles: { id: CitationStyle; name: string; description: string }[] = [
+    { id: 'iso690', name: 'ISO 690', description: 'Norme internationale' },
+    { id: 'french', name: 'Français', description: 'Style universitaire FR' },
     { id: 'apa', name: 'APA', description: '7e édition - Sciences sociales' },
     { id: 'mla', name: 'MLA', description: '9e édition - Humanités' },
     { id: 'chicago', name: 'Chicago', description: '17e édition - Histoire' },
-    { id: 'harvard', name: 'Harvard', description: 'Sciences et business' },
+    { id: 'bibtex', name: 'BibTeX', description: 'LaTeX / Zotero' },
   ];
 
   const currentCitation = generateCitation(selectedStyle, videoInfo, accessDate);
