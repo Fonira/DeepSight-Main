@@ -185,12 +185,13 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
 
   /**
    * Récupère les mots-clés depuis l'API historique
+   * PRIORITÉ ABSOLUE: Ne retourne [] que si l'utilisateur n'a vraiment PAS d'historique
    */
-  const fetchHistoryKeywords = useCallback(async () => {
+  const fetchHistoryKeywords = useCallback(async (): Promise<{ keywords: HistoryKeyword[], hasHistory: boolean }> => {
     // Vérifier le cache
     const now = Date.now();
     if (historyKeywordsCache.length > 0 && (now - lastFetchTime) < CACHE_DURATION) {
-      return historyKeywordsCache;
+      return { keywords: historyKeywordsCache, hasHistory: true };
     }
 
     try {
@@ -198,11 +199,12 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
       const token = localStorage.getItem('access_token');
 
       if (!token) {
-        return [];
+        console.info('[LoadingWord] No token - using local fallback');
+        return { keywords: [], hasHistory: false };
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes timeout
 
       const response = await fetch(`${API_URL}/api/history/keywords?limit=200`, {
         headers: {
@@ -215,10 +217,16 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
       clearTimeout(timeoutId);
 
       if (!response.ok) {
+        console.warn('[LoadingWord] API error:', response.status);
+        // Sur erreur API, retourner le cache existant si disponible
+        if (historyKeywordsCache.length > 0) {
+          return { keywords: historyKeywordsCache, hasHistory: true };
+        }
         throw new Error(`HTTP ${response.status}`);
       }
 
       const data = await response.json();
+      console.info('[LoadingWord] Fetched keywords:', data.keywords?.length || 0, 'hasHistory:', data.has_history);
 
       historyKeywordsCache = data.keywords || [];
       lastFetchTime = now;
@@ -227,15 +235,20 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         setHasHistory(data.has_history || false);
       }
 
-      return historyKeywordsCache;
+      return { keywords: historyKeywordsCache, hasHistory: data.has_history || false };
     } catch (err) {
-      console.info('[LoadingWord] Could not fetch history keywords:', err);
-      return [];
+      console.warn('[LoadingWord] Fetch error:', err);
+      // Sur erreur réseau, utiliser le cache si disponible
+      if (historyKeywordsCache.length > 0) {
+        return { keywords: historyKeywordsCache, hasHistory: true };
+      }
+      // Pas de cache, indiquer qu'on ne sait pas si l'utilisateur a un historique
+      return { keywords: [], hasHistory: false };
     }
   }, []);
 
   /**
-   * Récupère et affiche un nouveau mot (historique prioritaire, fallback local)
+   * Récupère et affiche un nouveau mot — HISTORIQUE EN PRIORITÉ ABSOLUE
    */
   const fetchWord = useCallback(async () => {
     if (!isMountedRef.current) return;
@@ -244,21 +257,30 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
     setError(null);
 
     try {
-      // Récupérer les mots-clés de l'historique
-      const keywords = await fetchHistoryKeywords();
+      const { keywords, hasHistory: userHasHistory } = await fetchHistoryKeywords();
 
       if (isMountedRef.current) {
         if (keywords.length > 0) {
+          // Utiliser l'historique
           useHistoryWord();
-        } else {
-          // Fallback vers mots locaux si pas d'historique
+        } else if (!userHasHistory) {
+          // L'utilisateur n'a PAS d'historique → fallback local OK
+          console.info('[LoadingWord] No history - using local fallback');
           useLocalFallback();
+        } else {
+          // L'utilisateur A un historique mais keywords vide (erreur?) → ne rien afficher plutôt que local
+          console.warn('[LoadingWord] User has history but keywords empty - retrying...');
+          // Réessayer après 2 secondes
+          setTimeout(() => {
+            if (isMountedRef.current) fetchWord();
+          }, 2000);
         }
       }
     } catch (err) {
-      if (isMountedRef.current) {
-        console.info('[LoadingWord] Error, using local fallback');
-        useLocalFallback();
+      console.error('[LoadingWord] Critical error:', err);
+      // Même sur erreur critique, ne pas afficher de mot local si on sait que l'utilisateur a un historique
+      if (historyKeywordsCache.length > 0) {
+        useHistoryWord();
       }
     } finally {
       if (isMountedRef.current) {
