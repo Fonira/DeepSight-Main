@@ -345,6 +345,45 @@ export const userApi = {
       body: { current_password: currentPassword, new_password: newPassword },
     });
   },
+
+  async uploadAvatar(imageUri: string): Promise<{ avatar_url: string }> {
+    const token = await tokenStorage.getAccessToken();
+
+    // Create form data with the image
+    const formData = new FormData();
+
+    // Get filename and type from URI
+    const filename = imageUri.split('/').pop() || 'avatar.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+    // Append the file - React Native FormData accepts this format
+    formData.append('file', {
+      uri: imageUri,
+      name: filename,
+      type,
+    } as unknown as Blob);
+
+    const response = await fetch(`${API_BASE_URL}/api/profile/avatar`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        // Don't set Content-Type - let fetch set it with boundary for multipart
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        errorData.message || 'Failed to upload avatar',
+        response.status,
+        errorData.code
+      );
+    }
+
+    return response.json();
+  },
 };
 
 // ============================================

@@ -48,7 +48,10 @@
     "analyze": "Analyze",
     "analyzing": "Analyzing...",
     "video": "Video",
-    "videos": "videos"
+    "videos": "videos",
+    "chooseFromLibrary": "Choose from Library",
+    "takePhoto": "Take Photo",
+    "upload": "Upload"
   },
   "nav": {
     "dashboard": "Dashboard",

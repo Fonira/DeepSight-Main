@@ -48,7 +48,10 @@
     "analyze": "Analyser",
     "analyzing": "Analyse en cours...",
     "video": "Vidéo",
-    "videos": "vidéos"
+    "videos": "vidéos",
+    "chooseFromLibrary": "Choisir dans la galerie",
+    "takePhoto": "Prendre une photo",
+    "upload": "Téléverser"
   },
   "nav": {
     "dashboard": "Tableau de bord",
