@@ -163,7 +163,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, [language]);
 
   /**
-   * Utilise un mot de l'historique (avec fallback local si vide)
+   * Utilise un mot de l'historique — PRIORITÉ ABSOLUE (PAS DE FALLBACK LOCAL)
    */
   const useHistoryWord = useCallback(() => {
     const excludeList = Array.from(displayedWords);
@@ -179,11 +179,9 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         const iterator = displayedWords.values();
         displayedWords.delete(iterator.next().value);
       }
-    } else {
-      // Fallback vers mots locaux si pas d'historique
-      useLocalFallback();
     }
-  }, [useLocalFallback]);
+    // PAS DE FALLBACK LOCAL - Si historique existe, on n'affiche QUE l'historique
+  }, []);
 
   /**
    * Récupère les mots-clés depuis l'API historique
@@ -270,16 +268,12 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, [fetchHistoryKeywords, useHistoryWord, useLocalFallback]);
 
   /**
-   * Rafraîchit le mot manuellement
+   * Rafraîchit le mot manuellement — TOUJOURS vérifier l'historique d'abord
    */
   const refreshWord = useCallback(() => {
-    // Si on a des mots en cache, les utiliser directement
-    if (historyKeywordsCache.length > 0) {
-      useHistoryWord();
-    } else {
-      fetchWord();
-    }
-  }, [fetchWord, useHistoryWord]);
+    // TOUJOURS re-fetch pour s'assurer d'avoir l'historique le plus récent
+    fetchWord();
+  }, [fetchWord]);
 
   /**
    * Démarre le timer de rafraîchissement automatique
