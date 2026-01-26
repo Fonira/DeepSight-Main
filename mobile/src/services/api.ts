@@ -784,6 +784,26 @@ export const playlistApi = {
   async getTaskStatus(taskId: string): Promise<{ status: string; progress: number; videos_completed: number; total_videos: number }> {
     return request(`/api/playlists/task/${taskId}`);
   },
+
+  async getPlaylistDetails(id: string): Promise<{
+    playlist: Playlist;
+    videos: AnalysisSummary[];
+    corpusSummary?: string;
+  }> {
+    const data = await request(`/api/playlists/${id}/details`);
+    return {
+      playlist: data.playlist || data,
+      videos: data.videos || [],
+      corpusSummary: data.corpus_summary || data.corpusSummary,
+    };
+  },
+
+  async generateCorpusSummary(playlistId: string): Promise<{ summary: string }> {
+    return request(`/api/playlists/${playlistId}/corpus-summary`, {
+      method: 'POST',
+      timeout: TIMEOUTS.PLAYLIST,
+    });
+  },
 };
 
 // ============================================

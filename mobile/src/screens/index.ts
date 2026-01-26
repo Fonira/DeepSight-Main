@@ -6,6 +6,7 @@ export { VerifyEmailScreen } from './VerifyEmailScreen';
 export { DashboardScreen } from './DashboardScreen';
 export { HistoryScreen } from './HistoryScreen';
 export { PlaylistsScreen } from './PlaylistsScreen';
+export { PlaylistDetailScreen } from './PlaylistDetailScreen';
 export { ProfileScreen } from './ProfileScreen';
 export { SettingsScreen } from './SettingsScreen';
 export { AccountScreen } from './AccountScreen';

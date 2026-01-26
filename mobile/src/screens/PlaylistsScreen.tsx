@@ -166,20 +166,7 @@ export const PlaylistsScreen: React.FC = () => {
 
   const handlePlaylistPress = (playlist: Playlist) => {
     Haptics.selectionAsync();
-    // For now, show playlist details in alert
-    // In a full implementation, navigate to a playlist detail screen
-    Alert.alert(
-      playlist.name,
-      playlist.description || t.playlists.emptyDesc,
-      [
-        { text: t.common.close },
-        {
-          text: t.common.delete,
-          style: 'destructive',
-          onPress: () => handleDeletePlaylist(playlist),
-        },
-      ]
-    );
+    navigation.navigate('PlaylistDetail', { playlistId: playlist.id });
   };
 
   const renderPlaylistItem = useCallback(
