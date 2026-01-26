@@ -305,12 +305,29 @@ export const authApi = {
       requiresAuth: false,
     });
   },
+
+  async deleteAccount(password?: string): Promise<{ success: boolean; message: string }> {
+    return request('/api/auth/account', {
+      method: 'DELETE',
+      body: password ? { password } : {},
+    });
+  },
 };
 
 // ============================================
 // User API
 // ============================================
 export const userApi = {
+  async updateProfile(profile: {
+    username?: string;
+    avatar_url?: string;
+  }): Promise<User> {
+    return request('/api/auth/profile', {
+      method: 'PUT',
+      body: profile,
+    });
+  },
+
   async updatePreferences(preferences: {
     default_lang?: string;
     default_mode?: string;
@@ -327,6 +344,45 @@ export const userApi = {
       method: 'POST',
       body: { current_password: currentPassword, new_password: newPassword },
     });
+  },
+
+  async uploadAvatar(imageUri: string): Promise<{ avatar_url: string }> {
+    const token = await tokenStorage.getAccessToken();
+
+    // Create form data with the image
+    const formData = new FormData();
+
+    // Get filename and type from URI
+    const filename = imageUri.split('/').pop() || 'avatar.jpg';
+    const match = /\.(\w+)$/.exec(filename);
+    const type = match ? `image/${match[1]}` : 'image/jpeg';
+
+    // Append the file - React Native FormData accepts this format
+    formData.append('file', {
+      uri: imageUri,
+      name: filename,
+      type,
+    } as unknown as Blob);
+
+    const response = await fetch(`${API_BASE_URL}/api/profile/avatar`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        // Don't set Content-Type - let fetch set it with boundary for multipart
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new ApiError(
+        errorData.message || 'Failed to upload avatar',
+        response.status,
+        errorData.code
+      );
+    }
+
+    return response.json();
   },
 };
 
@@ -766,6 +822,26 @@ export const playlistApi = {
 
   async getTaskStatus(taskId: string): Promise<{ status: string; progress: number; videos_completed: number; total_videos: number }> {
     return request(`/api/playlists/task/${taskId}`);
+  },
+
+  async getPlaylistDetails(id: string): Promise<{
+    playlist: Playlist;
+    videos: AnalysisSummary[];
+    corpusSummary?: string;
+  }> {
+    const data = await request(`/api/playlists/${id}/details`);
+    return {
+      playlist: data.playlist || data,
+      videos: data.videos || [],
+      corpusSummary: data.corpus_summary || data.corpusSummary,
+    };
+  },
+
+  async generateCorpusSummary(playlistId: string): Promise<{ summary: string }> {
+    return request(`/api/playlists/${playlistId}/corpus-summary`, {
+      method: 'POST',
+      timeout: TIMEOUTS.PLAYLIST,
+    });
   },
 };
 

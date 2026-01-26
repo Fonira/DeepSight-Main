@@ -6,11 +6,17 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -28,6 +34,16 @@ export const AccountScreen: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [username, setUsername] = useState(user?.username || '');
   const [email, setEmail] = useState(user?.email || '');
+
+  // Delete account modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Avatar upload state
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const handleSave = async () => {
     if (!username.trim()) {
@@ -78,6 +94,7 @@ export const AccountScreen: React.FC = () => {
   };
 
   const handleDeleteAccount = () => {
+    // Show confirmation alert first
     Alert.alert(
       t.settings.deleteAccount,
       t.settings.deleteAccountConfirm,
@@ -86,24 +103,107 @@ export const AccountScreen: React.FC = () => {
         {
           text: t.common.delete,
           style: 'destructive',
-          onPress: async () => {
-            try {
-              // Note: Backend may not have delete account endpoint yet
-              // For now, just log the user out
-              Alert.alert(
-                t.common.confirm,
-                'support@deepsight.app',
-                [
-                  { text: 'OK', onPress: () => logout() }
-                ]
-              );
-            } catch (err) {
-              Alert.alert(t.common.error, t.errors.generic);
-            }
+          onPress: () => {
+            // Show password confirmation modal
+            setDeletePassword('');
+            setShowDeleteModal(true);
           },
         },
       ]
     );
+  };
+
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      // Call delete account API (password is optional for Google accounts)
+      await authApi.deleteAccount(deletePassword || undefined);
+
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowDeleteModal(false);
+
+      // Log user out after successful deletion
+      Alert.alert(
+        t.success?.generic || 'Succès',
+        'Votre compte a été supprimé.',
+        [{ text: 'OK', onPress: () => logout() }]
+      );
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : t.errors.generic;
+      Alert.alert(t.common.error, message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Avatar upload handlers
+  const handleAvatarPress = () => {
+    setSelectedImage(null);
+    setShowAvatarModal(true);
+  };
+
+  const pickImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      Alert.alert(
+        t.common.error,
+        'Permission to access photos is required!'
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  const takePhoto = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      Alert.alert(
+        t.common.error,
+        'Permission to access camera is required!'
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImage(result.assets[0].uri);
+    }
+  };
+
+  const handleUploadAvatar = async () => {
+    if (!selectedImage) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      await userApi.uploadAvatar(selectedImage);
+      await refreshUser();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowAvatarModal(false);
+      setSelectedImage(null);
+      Alert.alert(t.success.generic, t.success.profileUpdated);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : t.errors.generic;
+      Alert.alert(t.common.error, message);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   return (
@@ -120,7 +220,7 @@ export const AccountScreen: React.FC = () => {
           <Avatar uri={user?.avatar_url} name={user?.username} size="xl" />
           <TouchableOpacity
             style={[styles.changeAvatarButton, { backgroundColor: colors.accentPrimary }]}
-            onPress={() => Alert.alert(t.settings.profilePicture, t.common.optional)}
+            onPress={handleAvatarPress}
           >
             <Ionicons name="camera" size={16} color="#FFFFFF" />
           </TouchableOpacity>
@@ -262,6 +362,161 @@ export const AccountScreen: React.FC = () => {
           </TouchableOpacity>
         </Card>
       </ScrollView>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteModal(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.modalContent, { backgroundColor: colors.bgPrimary }]}>
+            <View style={[styles.modalIconContainer, { backgroundColor: `${colors.accentError}15` }]}>
+              <Ionicons name="warning" size={32} color={colors.accentError} />
+            </View>
+
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+              {t.settings.deleteAccount}
+            </Text>
+
+            <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
+              Cette action est irréversible. Toutes vos données seront supprimées définitivement.
+            </Text>
+
+            <View style={styles.modalInputContainer}>
+              <Text style={[styles.modalInputLabel, { color: colors.textSecondary }]}>
+                Entrez votre mot de passe pour confirmer
+              </Text>
+              <TextInput
+                style={[
+                  styles.modalInput,
+                  {
+                    backgroundColor: colors.bgSecondary,
+                    color: colors.textPrimary,
+                    borderColor: colors.border,
+                  },
+                ]}
+                placeholder="Mot de passe"
+                placeholderTextColor={colors.textTertiary}
+                secureTextEntry
+                value={deletePassword}
+                onChangeText={setDeletePassword}
+                editable={!isDeleting}
+              />
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton, { borderColor: colors.border }]}
+                onPress={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.textPrimary }]}>
+                  {t.common.cancel}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalDeleteButton, { backgroundColor: colors.accentError }]}
+                onPress={handleConfirmDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <Ionicons name="hourglass" size={16} color="#FFFFFF" />
+                ) : (
+                  <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>
+                    {t.common.delete}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Avatar Upload Modal */}
+      <Modal
+        visible={showAvatarModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAvatarModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.avatarModalContent, { backgroundColor: colors.bgPrimary }]}>
+            <View style={styles.avatarModalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                {t.settings.profilePicture}
+              </Text>
+              <TouchableOpacity onPress={() => setShowAvatarModal(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Preview */}
+            <View style={styles.avatarPreviewContainer}>
+              {selectedImage ? (
+                <Image
+                  source={{ uri: selectedImage }}
+                  style={styles.avatarPreview}
+                />
+              ) : (
+                <View style={[styles.avatarPlaceholder, { backgroundColor: colors.bgSecondary }]}>
+                  <Avatar uri={user?.avatar_url} name={user?.username} size="xl" />
+                </View>
+              )}
+            </View>
+
+            {/* Actions */}
+            <View style={styles.avatarActions}>
+              <TouchableOpacity
+                style={[styles.avatarActionButton, { backgroundColor: colors.bgSecondary }]}
+                onPress={pickImage}
+                disabled={isUploadingAvatar}
+              >
+                <Ionicons name="images-outline" size={24} color={colors.accentPrimary} />
+                <Text style={[styles.avatarActionText, { color: colors.textPrimary }]}>
+                  {t.common.chooseFromLibrary || 'Choose from Library'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.avatarActionButton, { backgroundColor: colors.bgSecondary }]}
+                onPress={takePhoto}
+                disabled={isUploadingAvatar}
+              >
+                <Ionicons name="camera-outline" size={24} color={colors.accentPrimary} />
+                <Text style={[styles.avatarActionText, { color: colors.textPrimary }]}>
+                  {t.common.takePhoto || 'Take Photo'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Upload Button */}
+            {selectedImage && (
+              <TouchableOpacity
+                style={[styles.uploadButton, { backgroundColor: colors.accentPrimary }]}
+                onPress={handleUploadAvatar}
+                disabled={isUploadingAvatar}
+              >
+                {isUploadingAvatar ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />
+                    <Text style={styles.uploadButtonText}>
+                      {t.common.upload || 'Upload'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -363,6 +618,138 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.lg,
+  },
+  // Delete Account Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+  },
+  modalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.lg,
+  },
+  modalTitle: {
+    fontSize: Typography.fontSize.xl,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  modalDescription: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.body,
+    textAlign: 'center',
+    marginBottom: Spacing.xl,
+    lineHeight: Typography.fontSize.base * 1.5,
+  },
+  modalInputContainer: {
+    width: '100%',
+    marginBottom: Spacing.xl,
+  },
+  modalInputLabel: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.body,
+    marginBottom: Spacing.sm,
+  },
+  modalInput: {
+    width: '100%',
+    height: 48,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.md,
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.body,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelButton: {
+    borderWidth: 1,
+  },
+  modalDeleteButton: {},
+  modalButtonText: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bodyMedium,
+  },
+  // Avatar Upload Modal Styles
+  avatarModalContent: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+  },
+  avatarModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  avatarPreviewContainer: {
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
+  avatarPreview: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+  },
+  avatarPlaceholder: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarActions: {
+    gap: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  avatarActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.md,
+  },
+  avatarActionText: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.body,
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  uploadButtonText: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bodyMedium,
+    color: '#FFFFFF',
   },
 });
 

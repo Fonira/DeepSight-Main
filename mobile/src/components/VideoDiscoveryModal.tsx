@@ -38,7 +38,7 @@ interface VideoDiscoveryModalProps {
   allowMultiSelect?: boolean;
 }
 
-type SortOption = 'quality' | 'views' | 'date' | 'tournesol';
+type SortOption = 'quality' | 'views' | 'date' | 'academic';
 
 export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
   visible,
@@ -61,7 +61,7 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
     { id: 'quality', label: 'Qualité', labelEn: 'Quality' },
     { id: 'views', label: 'Vues', labelEn: 'Views' },
     { id: 'date', label: 'Date', labelEn: 'Date' },
-    { id: 'tournesol', label: 'Tournesol', labelEn: 'Tournesol' },
+    { id: 'academic', label: 'Académique', labelEn: 'Academic' },
   ];
 
   const handleSearch = async () => {
@@ -74,7 +74,19 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
         language,
         sort_by: sortBy,
       });
-      setVideos(response.videos || []);
+      // Map API response to DiscoveredVideo format
+      const mappedVideos: DiscoveredVideo[] = (response.videos || []).map(v => ({
+        video_id: (v as any).video_id || (v as any).id || '',
+        title: v.title || '',
+        channel: (v as any).channel || (v as any).channel_name || '',
+        thumbnail: (v as any).thumbnail || (v as any).thumbnail_url || '',
+        duration: (v as any).duration || 0,
+        views: (v as any).views || (v as any).view_count || 0,
+        published_at: (v as any).published_at || (v as any).publish_date || '',
+        quality_score: v.quality_score,
+        tournesol_score: (v as any).tournesol_score,
+      }));
+      setVideos(mappedVideos);
     } catch (error) {
       console.error('Failed to search videos:', error);
     } finally {

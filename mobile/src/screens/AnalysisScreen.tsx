@@ -107,6 +107,13 @@ export const AnalysisScreen: React.FC = () => {
   // Citation modal state
   const [showCitationModal, setShowCitationModal] = useState(false);
 
+  // Notes and tags state
+  const [personalNotes, setPersonalNotes] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState('');
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+
   // Video player state
   const [showExpandedPlayer, setShowExpandedPlayer] = useState(false);
 
@@ -405,6 +412,65 @@ export const AnalysisScreen: React.FC = () => {
     }
   };
 
+  // Notes and tags handlers
+  const handleSaveNotes = async () => {
+    if (!summary?.id) return;
+
+    setIsSavingNotes(true);
+    try {
+      await videoApi.updateNotes(summary.id, personalNotes);
+      setIsEditingNotes(false);
+      showToast(t.success.settingsSaved, 'success');
+    } catch (error) {
+      showToast(t.errors.generic, 'error');
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  const handleAddTag = async () => {
+    if (!summary?.id || !newTag.trim()) return;
+
+    const trimmedTag = newTag.trim().toLowerCase();
+    if (tags.includes(trimmedTag)) {
+      setNewTag('');
+      return;
+    }
+
+    const updatedTags = [...tags, trimmedTag];
+    setTags(updatedTags);
+    setNewTag('');
+
+    try {
+      await videoApi.updateTags(summary.id, updatedTags);
+    } catch (error) {
+      setTags(tags); // Revert on error
+      showToast(t.errors.generic, 'error');
+    }
+  };
+
+  const handleRemoveTag = async (tagToRemove: string) => {
+    if (!summary?.id) return;
+
+    const updatedTags = tags.filter(t => t !== tagToRemove);
+    setTags(updatedTags);
+
+    try {
+      await videoApi.updateTags(summary.id, updatedTags);
+    } catch (error) {
+      setTags(tags); // Revert on error
+      showToast(t.errors.generic, 'error');
+    }
+  };
+
+  // Initialize notes and tags from summary
+  useEffect(() => {
+    if (summary) {
+      setPersonalNotes((summary as any).notes || '');
+      setTags((summary as any).tags || []);
+    }
+  }, [summary]);
+
   // Render loading state with StreamingProgress
   if (isLoading && analysisProgress < 100) {
     return (
@@ -600,6 +666,74 @@ export const AnalysisScreen: React.FC = () => {
               <TournesolWidget videoId={summary.videoId} />
             </View>
           )}
+
+          {/* Notes Section */}
+          <Card variant="elevated" style={[styles.summaryCard, { marginTop: Spacing.lg }]}>
+            <View style={styles.notesHeader}>
+              <Text style={[styles.notesTitle, { color: colors.textPrimary }]}>
+                <Ionicons name="document-text-outline" size={16} color={colors.accentPrimary} /> Notes personnelles
+              </Text>
+              {!isEditingNotes ? (
+                <TouchableOpacity onPress={() => setIsEditingNotes(true)}>
+                  <Ionicons name="pencil" size={18} color={colors.accentPrimary} />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity onPress={handleSaveNotes} disabled={isSavingNotes}>
+                  <Text style={{ color: colors.accentPrimary, fontFamily: Typography.fontFamily.bodyMedium }}>
+                    {isSavingNotes ? '...' : 'Sauver'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+            {isEditingNotes ? (
+              <TextInput
+                style={[
+                  styles.notesInput,
+                  { backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.border },
+                ]}
+                multiline
+                numberOfLines={4}
+                placeholder="Ajoutez vos notes ici..."
+                placeholderTextColor={colors.textTertiary}
+                value={personalNotes}
+                onChangeText={setPersonalNotes}
+              />
+            ) : (
+              <Text style={[styles.notesContent, { color: personalNotes ? colors.textSecondary : colors.textTertiary }]}>
+                {personalNotes || 'Aucune note. Appuyez sur le crayon pour ajouter.'}
+              </Text>
+            )}
+          </Card>
+
+          {/* Tags Section */}
+          <Card variant="elevated" style={[styles.summaryCard, { marginTop: Spacing.md }]}>
+            <Text style={[styles.notesTitle, { color: colors.textPrimary, marginBottom: Spacing.sm }]}>
+              <Ionicons name="pricetags-outline" size={16} color={colors.accentSecondary} /> Tags
+            </Text>
+            <View style={styles.tagsContainer}>
+              {tags.map((tag, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.tagChip, { backgroundColor: colors.accentPrimary + '20' }]}
+                  onPress={() => handleRemoveTag(tag)}
+                >
+                  <Text style={[styles.tagText, { color: colors.accentPrimary }]}>{tag}</Text>
+                  <Ionicons name="close" size={14} color={colors.accentPrimary} />
+                </TouchableOpacity>
+              ))}
+              <View style={[styles.addTagContainer, { borderColor: colors.border }]}>
+                <TextInput
+                  style={[styles.tagInput, { color: colors.textPrimary }]}
+                  placeholder="+ Ajouter"
+                  placeholderTextColor={colors.textTertiary}
+                  value={newTag}
+                  onChangeText={setNewTag}
+                  onSubmitEditing={handleAddTag}
+                  returnKeyType="done"
+                />
+              </View>
+            </View>
+          </Card>
 
           {/* Detailed Reliability Score */}
           {reliabilityData && (
@@ -1351,6 +1485,63 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Notes styles
+  notesHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  notesTitle: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+  },
+  notesInput: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.body,
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  notesContent: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.body,
+    lineHeight: Typography.fontSize.sm * 1.5,
+  },
+  // Tags styles
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+    alignItems: 'center',
+  },
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    gap: Spacing.xs,
+  },
+  tagText: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.bodyMedium,
+  },
+  addTagContainer: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+  },
+  tagInput: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.body,
+    minWidth: 60,
+    paddingVertical: 0,
   },
 });
 

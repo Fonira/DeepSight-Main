@@ -18,6 +18,7 @@ import {
   DashboardScreen,
   HistoryScreen,
   PlaylistsScreen,
+  PlaylistDetailScreen,
   ProfileScreen,
   SettingsScreen,
   AccountScreen,
@@ -197,6 +198,10 @@ const MainStack: React.FC = () => {
       <Stack.Screen
         name="Legal"
         component={LegalScreen}
+      />
+      <Stack.Screen
+        name="PlaylistDetail"
+        component={PlaylistDetailScreen}
       />
     </Stack.Navigator>
   );

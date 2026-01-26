@@ -42,10 +42,12 @@ interface SmartInputBarProps {
     language?: string;
     title?: string;
     source?: string;
+    deepResearch?: boolean;
   }) => void;
   isLoading?: boolean;
   creditCost?: number;
   creditsRemaining?: number;
+  userPlan?: string;
 }
 
 const CATEGORIES: Category[] = [
@@ -99,6 +101,7 @@ export const SmartInputBar: React.FC<SmartInputBarProps> = ({
   isLoading = false,
   creditCost,
   creditsRemaining,
+  userPlan = 'free',
 }) => {
   const { isDark } = useTheme();
   const { language } = useLanguage();
@@ -112,6 +115,10 @@ export const SmartInputBar: React.FC<SmartInputBarProps> = ({
   const [textTitle, setTextTitle] = useState('');
   const [textSource, setTextSource] = useState('');
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
+  const [deepResearch, setDeepResearch] = useState(false);
+
+  // Check if user has access to deep research (Pro+ plans)
+  const hasDeepResearchAccess = ['pro', 'expert', 'team'].includes(userPlan.toLowerCase());
 
   const scaleAnim = useMemo(() => new Animated.Value(1), []);
 
@@ -188,8 +195,9 @@ export const SmartInputBar: React.FC<SmartInputBarProps> = ({
       language: inputMode === 'search' ? searchLanguage : undefined,
       title: inputMode === 'text' ? textTitle : undefined,
       source: inputMode === 'text' ? textSource : undefined,
+      deepResearch: deepResearch && hasDeepResearchAccess,
     });
-  }, [inputValue, inputMode, selectedCategory, selectedMode, searchLanguage, textTitle, textSource, isLoading, onSubmit, scaleAnim]);
+  }, [inputValue, inputMode, selectedCategory, selectedMode, searchLanguage, textTitle, textSource, isLoading, onSubmit, scaleAnim, deepResearch, hasDeepResearchAccess]);
 
   const getPlaceholder = useCallback(() => {
     switch (inputMode) {
@@ -430,6 +438,50 @@ export const SmartInputBar: React.FC<SmartInputBarProps> = ({
         </ScrollView>
       </View>
 
+      {/* Deep Research Toggle */}
+      <View style={styles.deepResearchContainer}>
+        <TouchableOpacity
+          style={[
+            styles.deepResearchToggle,
+            { backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary },
+            deepResearch && hasDeepResearchAccess && { backgroundColor: Colors.accentPrimary + '20', borderColor: Colors.accentPrimary, borderWidth: 1 },
+            !hasDeepResearchAccess && { opacity: 0.5 },
+          ]}
+          onPress={() => {
+            if (hasDeepResearchAccess) {
+              Haptics.selectionAsync();
+              setDeepResearch(!deepResearch);
+            }
+          }}
+          disabled={!hasDeepResearchAccess}
+        >
+          <Ionicons
+            name={deepResearch && hasDeepResearchAccess ? 'checkbox' : 'square-outline'}
+            size={18}
+            color={deepResearch && hasDeepResearchAccess ? Colors.accentPrimary : isDark ? Colors.textSecondary : Colors.light.textSecondary}
+          />
+          <View style={styles.deepResearchText}>
+            <Text style={[
+              styles.deepResearchLabel,
+              { color: deepResearch && hasDeepResearchAccess ? Colors.accentPrimary : isDark ? Colors.textPrimary : Colors.light.textPrimary },
+            ]}>
+              {isEn ? 'Deep Research' : 'Recherche approfondie'}
+            </Text>
+            <Text style={[styles.deepResearchDesc, { color: isDark ? Colors.textMuted : Colors.light.textSecondary }]}>
+              {hasDeepResearchAccess
+                ? (isEn ? 'Enhanced analysis with web search' : 'Analyse améliorée avec recherche web')
+                : (isEn ? 'Pro+ feature' : 'Fonctionnalité Pro+')
+              }
+            </Text>
+          </View>
+          {!hasDeepResearchAccess && (
+            <View style={styles.proBadge}>
+              <Text style={styles.proBadgeText}>PRO+</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
       {/* Credit Cost Preview */}
       {creditCost !== undefined && (
         <View style={styles.creditPreview}>
@@ -626,6 +678,39 @@ const styles = StyleSheet.create({
   modeChipDescription: {
     fontFamily: Typography.fontFamily.body,
     fontSize: Typography.fontSize.xs,
+  },
+  deepResearchContainer: {
+    marginTop: Spacing.xs,
+  },
+  deepResearchToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.sm,
+  },
+  deepResearchText: {
+    flex: 1,
+  },
+  deepResearchLabel: {
+    fontFamily: Typography.fontFamily.bodyMedium,
+    fontSize: Typography.fontSize.sm,
+  },
+  deepResearchDesc: {
+    fontFamily: Typography.fontFamily.body,
+    fontSize: Typography.fontSize.xs,
+  },
+  proBadge: {
+    backgroundColor: Colors.accentSecondary,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  proBadgeText: {
+    color: '#FFFFFF',
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    fontSize: 10,
   },
   creditPreview: {
     flexDirection: 'row',

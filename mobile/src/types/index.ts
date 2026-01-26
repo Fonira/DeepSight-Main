@@ -205,6 +205,9 @@ export type RootStackParamList = {
 
   // Legal screen
   Legal: undefined;
+
+  // Playlist detail
+  PlaylistDetail: { playlistId: string };
 };
 
 export type MainTabParamList = {
