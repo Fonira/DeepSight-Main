@@ -186,6 +186,7 @@ export type RootStackParamList = {
   VerifyEmail: { email: string };
 
   // Main tabs
+  Main: undefined;
   MainTabs: undefined;
 
   // Modal screens
@@ -197,6 +198,13 @@ export type RootStackParamList = {
   Account: undefined;
   Upgrade: undefined;
   Usage: undefined;
+
+  // Payment screens
+  PaymentSuccess: { planName?: string; sessionId?: string };
+  PaymentCancel: undefined;
+
+  // Legal screen
+  Legal: undefined;
 };
 
 export type MainTabParamList = {

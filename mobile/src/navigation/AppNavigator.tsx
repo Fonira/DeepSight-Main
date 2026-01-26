@@ -24,6 +24,9 @@ import {
   UpgradeScreen,
   UsageScreen,
   AnalysisScreen,
+  PaymentSuccessScreen,
+  PaymentCancelScreen,
+  LegalScreen,
 } from '../screens';
 import { Typography, Spacing, BorderRadius } from '../constants/theme';
 import type { RootStackParamList, MainTabParamList } from '../types';
@@ -175,6 +178,25 @@ const MainStack: React.FC = () => {
       <Stack.Screen
         name="Usage"
         component={UsageScreen}
+      />
+      <Stack.Screen
+        name="PaymentSuccess"
+        component={PaymentSuccessScreen}
+        options={{
+          animation: 'fade',
+          gestureEnabled: false,
+        }}
+      />
+      <Stack.Screen
+        name="PaymentCancel"
+        component={PaymentCancelScreen}
+        options={{
+          animation: 'fade',
+        }}
+      />
+      <Stack.Screen
+        name="Legal"
+        component={LegalScreen}
       />
     </Stack.Navigator>
   );
