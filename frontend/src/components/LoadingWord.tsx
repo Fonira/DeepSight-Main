@@ -573,10 +573,10 @@ export const LoadingWordGlobal: React.FC = () => {
             )}
           </div>
 
-          {/* 🆕 SOURCE: Afficher la source (Wikipedia prioritaire) ou le titre vidéo */}
-          <div className="mt-2 pt-2 border-t border-bg-tertiary/50">
-            {currentWord.source === 'history' && currentWord.videoTitle ? (
-              // Pour les mots de l'historique: afficher le titre de la vidéo
+          {/* SOURCE + NAVIGATION */}
+          <div className="mt-2 pt-2 border-t border-bg-tertiary/50 flex flex-col gap-1.5">
+            {/* Bouton navigation vers l'analyse (si mot de l'historique) */}
+            {isClickable && (
               <button
                 onClick={handleClick}
                 className="w-full text-left text-xs text-accent-secondary hover:text-accent-primary transition-colors group flex items-center gap-1"
@@ -584,12 +584,14 @@ export const LoadingWordGlobal: React.FC = () => {
               >
                 <span className="text-base">📹</span>
                 <span className="truncate flex-1 underline decoration-dotted decoration-accent-primary/30 group-hover:decoration-solid">
-                  {currentWord.videoTitle}
+                  {currentWord.videoTitle || (language === 'fr' ? 'Voir l\'analyse' : 'View analysis')}
                 </span>
                 <span className="text-accent-primary opacity-0 group-hover:opacity-100 transition-opacity">→</span>
               </button>
-            ) : sourceUrl ? (
-              // 🆕 Afficher la SOURCE (Wikipedia, etc.) avec lien
+            )}
+
+            {/* Source: Wikipedia ou catégorie */}
+            {sourceUrl ? (
               <a
                 href={sourceUrl}
                 target="_blank"
@@ -601,9 +603,8 @@ export const LoadingWordGlobal: React.FC = () => {
                 <span className="text-accent-primary opacity-0 group-hover:opacity-100 transition-opacity ml-auto">↗</span>
               </a>
             ) : (
-              // Fallback: afficher la catégorie
               <span className="text-xs text-text-tertiary flex items-center gap-1">
-                📚 {currentWord.category ? CATEGORY_LABELS_FR[currentWord.category] || currentWord.category : (language === 'fr' ? 'Culture' : 'Knowledge')}
+                📚 {currentWord.category ? (language === 'fr' ? CATEGORY_LABELS_FR : CATEGORY_LABELS_EN)[currentWord.category] || currentWord.category : (language === 'fr' ? 'Culture' : 'Knowledge')}
               </span>
             )}
           </div>
