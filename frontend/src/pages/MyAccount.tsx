@@ -11,7 +11,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
 import { billingApi, authApi } from '../services/api';
-import toast from 'react-hot-toast';
+import { useToast } from '../components/Toast';
 import {
   User, Shield, Key, Trash2, LogOut, Check,
   AlertCircle, Loader2, Eye, EyeOff, Copy, RefreshCw, Lock,
@@ -57,6 +57,7 @@ export const MyAccount: React.FC = () => {
   const { user, logout } = useAuth();
   const { language } = useTranslation();
   const navigate = useNavigate();
+  const { showToast, ToastComponent } = useToast();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   // 🔑 API Key State
@@ -93,19 +94,19 @@ export const MyAccount: React.FC = () => {
     // Les comptes Google n'ont pas de mot de passe
     const isGoogleAccount = !user?.email?.includes('@') || user?.email?.includes('google');
     if (!isGoogleAccount && !deletePassword) {
-      toast.error(tr('Veuillez entrer votre mot de passe', 'Please enter your password'));
+      showToast(tr('Veuillez entrer votre mot de passe', 'Please enter your password'), 'error');
       return;
     }
 
     setDeleteLoading(true);
     try {
       await authApi.deleteAccount(isGoogleAccount ? undefined : deletePassword);
-      toast.success(tr('Compte supprimé', 'Account deleted'));
+      showToast(tr('Compte supprimé', 'Account deleted'), 'success');
       logout();
       navigate('/');
     } catch (error: any) {
       const message = error?.message || error?.detail || tr('Erreur lors de la suppression', 'Error deleting account');
-      toast.error(message);
+      showToast(message, 'error');
     } finally {
       setDeleteLoading(false);
     }
@@ -915,6 +916,7 @@ export const MyAccount: React.FC = () => {
           </div>
         </div>
       </main>
+      {ToastComponent}
     </div>
   );
 };

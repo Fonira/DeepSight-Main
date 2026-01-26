@@ -16,7 +16,7 @@ import {
   FileText, Crown, CreditCard, Mail, Check
 } from 'lucide-react';
 import { API_URL } from '../services/api';
-import toast from 'react-hot-toast';
+import { useToast } from '../components/Toast';
 
 // Types
 interface AdminStats {
@@ -72,7 +72,8 @@ export const AdminPage: React.FC = () => {
   const { user, isAdmin } = useAuth();
   const { t, language } = useTranslation();
   const navigate = useNavigate();
-  
+  const { showToast, ToastComponent } = useToast();
+
   // Récupérer le token depuis localStorage
   const getToken = () => localStorage.getItem('access_token');
   
@@ -240,11 +241,11 @@ export const AdminPage: React.FC = () => {
     setActionLoading(true);
     try {
       await adminFetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
-      toast.success(language === 'fr' ? 'Utilisateur supprimé' : 'User deleted');
+      showToast(language === 'fr' ? 'Utilisateur supprimé' : 'User deleted', 'success');
       await loadUsers();
       await loadStats();
     } catch (err: any) {
-      toast.error(err.message || (language === 'fr' ? 'Erreur lors de la suppression' : 'Error deleting user'));
+      showToast(err.message || (language === 'fr' ? 'Erreur lors de la suppression' : 'Error deleting user'), 'error');
       setError(err.message);
     } finally {
       setActionLoading(false);
@@ -810,6 +811,7 @@ export const AdminPage: React.FC = () => {
           </div>
         </div>
       )}
+      {ToastComponent}
     </div>
   );
 };
