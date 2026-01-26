@@ -173,7 +173,7 @@ export function useAnalysisStream(
   const retryCountRef = useRef(0);
   const pausedRef = useRef(false);
   const pauseBufferRef = useRef<{ type: string; data: string }[]>([]);
-  const durationIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const metadataRef = useRef<VideoMetadata | null>(null);
 
   // Helpers

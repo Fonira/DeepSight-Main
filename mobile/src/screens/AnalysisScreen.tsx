@@ -617,7 +617,7 @@ export const AnalysisScreen: React.FC = () => {
           <View style={styles.indicatorsRow}>
             {summary?.videoInfo?.publishedAt && (
               <FreshnessIndicator
-                publishedAt={summary.videoInfo.publishedAt}
+                publicationDate={summary.videoInfo.publishedAt}
                 compact
               />
             )}
@@ -753,7 +753,7 @@ export const AnalysisScreen: React.FC = () => {
           {summary?.videoInfo?.publishedAt && (
             <View style={{ marginTop: Spacing.lg }}>
               <FreshnessIndicator
-                publishedAt={summary.videoInfo.publishedAt}
+                publicationDate={summary.videoInfo.publishedAt}
               />
             </View>
           )}

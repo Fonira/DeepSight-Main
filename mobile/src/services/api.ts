@@ -589,8 +589,10 @@ export const historyApi = {
 
     return {
       items,
-      hasMore: response.page < response.pages,
+      total: response.total,
       page: response.page,
+      pageSize: response.per_page,
+      hasMore: response.page < response.pages,
     };
   },
 
@@ -655,8 +657,10 @@ export const historyApi = {
         ...item,
         id: String(item.id),
       })),
-      hasMore: response.page < response.pages,
+      total: response.total,
       page: response.page,
+      pageSize: response.per_page,
+      hasMore: response.page < response.pages,
     };
   },
 
@@ -829,9 +833,14 @@ export const playlistApi = {
     videos: AnalysisSummary[];
     corpusSummary?: string;
   }> {
-    const data = await request(`/api/playlists/${id}/details`);
+    const data = await request<{
+      playlist?: Playlist;
+      videos?: AnalysisSummary[];
+      corpus_summary?: string;
+      corpusSummary?: string;
+    }>(`/api/playlists/${id}/details`);
     return {
-      playlist: data.playlist || data,
+      playlist: data.playlist || (data as unknown as Playlist),
       videos: data.videos || [],
       corpusSummary: data.corpus_summary || data.corpusSummary,
     };

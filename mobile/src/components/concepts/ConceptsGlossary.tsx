@@ -263,7 +263,7 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = ({
                   )}
 
                   {/* Related concepts */}
-                  {(concept.relatedConcepts || enriched?.relatedConcepts)?.length > 0 && (
+                  {((concept.relatedConcepts || enriched?.relatedConcepts)?.length ?? 0) > 0 && (
                     <View style={styles.relatedSection}>
                       <Text style={[styles.relatedTitle, { color: colors.textTertiary }]}>
                         {language === 'fr' ? 'Concepts liés:' : 'Related concepts:'}
@@ -285,7 +285,7 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = ({
                   )}
 
                   {/* Sources */}
-                  {(concept.sources || enriched?.sources)?.length > 0 && (
+                  {((concept.sources || enriched?.sources)?.length ?? 0) > 0 && (
                     <View style={styles.sourcesSection}>
                       <Text style={[styles.sourcesTitle, { color: colors.textTertiary }]}>
                         {language === 'fr' ? 'Sources:' : 'Sources:'}
