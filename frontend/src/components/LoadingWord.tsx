@@ -1,19 +1,67 @@
 /**
- * 🧠 LOADING WORD COMPONENT V2 — Widget "Le Saviez-Vous"
+ * 🧠 LOADING WORD COMPONENT V3 — Widget "Le Saviez-Vous" FLOTTANT
  *
  * Fonctionnalités:
  * - Affiche un mot-clé avec sa définition
+ * - 🆕 DRAGGABLE: Fenêtre flottante déplaçable comme le chat IA
+ * - 🆕 SOURCE: Affiche la source (Wikipedia en priorité) au lieu de la catégorie
  * - Design Deep Sight (cyan/gold)
  * - Animation fade-in/fade-out
- * - NOUVEAU: Cliquable → navigation vers l'analyse source
+ * - Cliquable → navigation vers l'analyse source
  * - Mode expand/collapse pour la définition complète
  * - Support bilingue FR/EN
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Move, ExternalLink, RefreshCw, ChevronUp, ChevronDown, X, Minus, Maximize2 } from 'lucide-react';
 import { useLoadingWord, LoadingWord as LoadingWordType } from '../contexts/LoadingWordContext';
 import { useLanguage } from '../contexts/LanguageContext';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🪝 DRAGGABLE HOOK (comme FloatingChatWindow)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface Position { x: number; y: number; }
+
+const useDraggable = (initialPos: Position, storageKey: string) => {
+  const [position, setPosition] = useState<Position>(() => {
+    try {
+      const stored = localStorage.getItem(`${storageKey}-pos`);
+      return stored ? JSON.parse(stored) : initialPos;
+    } catch { return initialPos; }
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button, input, a')) return;
+    setIsDragging(true);
+    dragOffset.current = { x: e.clientX - position.x, y: e.clientY - position.y };
+    e.preventDefault();
+  }, [position]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleMove = (e: MouseEvent) => {
+      const x = Math.max(0, Math.min(window.innerWidth - 100, e.clientX - dragOffset.current.x));
+      const y = Math.max(0, Math.min(window.innerHeight - 100, e.clientY - dragOffset.current.y));
+      setPosition({ x, y });
+    };
+    const handleUp = () => {
+      setIsDragging(false);
+      localStorage.setItem(`${storageKey}-pos`, JSON.stringify(position));
+    };
+    document.addEventListener('mousemove', handleMove);
+    document.addEventListener('mouseup', handleUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMove);
+      document.removeEventListener('mouseup', handleUp);
+    };
+  }, [isDragging, position, storageKey]);
+
+  return { position, setPosition, isDragging, handleMouseDown };
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -351,7 +399,26 @@ export const LoadingWordCompact: React.FC<{ className?: string }> = ({ className
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🎯 GLOBAL FIXED WIDGET (pour App.tsx) — AVEC EXPANSION POUR DÉFINITIONS
+// 🔗 HELPER: Extraire le nom du site depuis une URL
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const extractSourceName = (url: string): string => {
+  try {
+    const hostname = new URL(url).hostname;
+    // Nettoyer le hostname
+    const name = hostname
+      .replace(/^www\./, '')
+      .replace(/\.org$|\.com$|\.fr$|\.net$|\.edu$/, '');
+
+    // Capitaliser
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  } catch {
+    return 'Source';
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎯 GLOBAL FLOATING WIDGET (pour App.tsx) — DRAGGABLE COMME CHAT IA
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const LoadingWordGlobal: React.FC = () => {
@@ -362,6 +429,12 @@ export const LoadingWordGlobal: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
 
+  // 🆕 Position draggable
+  const { position, isDragging, handleMouseDown } = useDraggable(
+    { x: window.innerWidth - 340, y: window.innerHeight - 300 },
+    'loading-word-widget'
+  );
+
   if (!currentWord) {
     return null;
   }
@@ -369,6 +442,10 @@ export const LoadingWordGlobal: React.FC = () => {
   const didYouKnow = language === 'fr' ? 'Le saviez-vous ?' : 'Did you know?';
   const isClickable = currentWord.source === 'history' && currentWord.summaryId;
   const hasFullDefinition = currentWord.definition && currentWord.definition.length > 80;
+
+  // 🆕 Déterminer la source à afficher
+  const sourceUrl = currentWord.wikiUrl;
+  const sourceName = sourceUrl ? extractSourceName(sourceUrl) : null;
 
   const handleClick = () => {
     if (isClickable && currentWord.summaryId) {
@@ -389,50 +466,65 @@ export const LoadingWordGlobal: React.FC = () => {
   }
 
   return (
-    <div className={`
-      fixed bottom-4 right-4 z-50
-      bg-bg-secondary/95 backdrop-blur-md rounded-xl border border-accent-primary/30
-      shadow-2xl shadow-accent-primary/10
-      transition-all duration-300 ease-in-out
-      ${isMinimized ? 'w-auto' : isExpanded ? 'w-96 max-h-[60vh]' : 'w-72 sm:w-80'}
-      overflow-hidden
-    `}>
-      {/* Header with controls */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-accent-primary/10 bg-bg-secondary/50">
-        <span className="text-xs font-medium text-accent-primary flex items-center gap-1">
+    <div
+      className={`
+        fixed z-50
+        bg-bg-secondary/95 backdrop-blur-md rounded-xl border border-accent-primary/30
+        shadow-2xl shadow-accent-primary/10
+        transition-all duration-200 ease-out
+        ${isMinimized ? 'w-auto' : isExpanded ? 'w-96 max-h-[60vh]' : 'w-72 sm:w-80'}
+        ${isDragging ? 'cursor-grabbing scale-[1.02] shadow-accent-primary/30' : ''}
+        overflow-hidden
+      `}
+      style={{
+        left: position.x,
+        top: position.y,
+      }}
+    >
+      {/* Header DRAGGABLE */}
+      <div
+        className={`
+          flex items-center justify-between px-3 py-2 border-b border-accent-primary/10
+          bg-bg-secondary/50 cursor-grab select-none
+          ${isDragging ? 'cursor-grabbing bg-accent-primary/10' : ''}
+        `}
+        onMouseDown={handleMouseDown}
+      >
+        <span className="text-xs font-medium text-accent-primary flex items-center gap-1.5">
+          <Move className="w-3 h-3 opacity-50" />
           💡 {didYouKnow}
         </span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <button
-            onClick={refreshWord}
+            onClick={(e) => { e.stopPropagation(); refreshWord(); }}
             disabled={isLoading}
-            className={`text-xs p-1 text-text-tertiary hover:text-accent-primary ${isLoading ? 'animate-spin' : ''}`}
+            className={`p-1.5 rounded text-text-tertiary hover:text-accent-primary hover:bg-accent-primary/10 transition-colors ${isLoading ? 'animate-spin' : ''}`}
             title={language === 'fr' ? 'Nouveau mot' : 'New word'}
           >
-            🔄
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
           {hasFullDefinition && !isMinimized && (
             <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="text-xs p-1 text-text-tertiary hover:text-accent-primary"
+              onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
+              className="p-1.5 rounded text-text-tertiary hover:text-accent-primary hover:bg-accent-primary/10 transition-colors"
               title={isExpanded ? (language === 'fr' ? 'Réduire' : 'Collapse') : (language === 'fr' ? 'Agrandir' : 'Expand')}
             >
-              {isExpanded ? '🔽' : '🔼'}
+              {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
             </button>
           )}
           <button
-            onClick={() => { setIsMinimized(!isMinimized); setIsExpanded(false); }}
-            className="text-xs p-1 text-text-tertiary hover:text-accent-primary"
+            onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); setIsExpanded(false); }}
+            className="p-1.5 rounded text-text-tertiary hover:text-accent-primary hover:bg-accent-primary/10 transition-colors"
             title={isMinimized ? 'Expand' : 'Minimize'}
           >
-            {isMinimized ? '⬆️' : '⬇️'}
+            {isMinimized ? <Maximize2 className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
           </button>
           <button
-            onClick={() => setIsVisible(false)}
-            className="text-xs p-1 text-text-tertiary hover:text-red-400"
+            onClick={(e) => { e.stopPropagation(); setIsVisible(false); }}
+            className="p-1.5 rounded text-text-tertiary hover:text-red-400 hover:bg-red-400/10 transition-colors"
             title={language === 'fr' ? 'Fermer' : 'Close'}
           >
-            ✕
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -465,10 +557,8 @@ export const LoadingWordGlobal: React.FC = () => {
           {/* Definition */}
           <div className="text-xs text-text-secondary leading-relaxed">
             {isExpanded ? (
-              // Full definition when expanded
               <p className="whitespace-pre-wrap">{currentWord.definition}</p>
             ) : (
-              // Short definition with expand hint
               <>
                 <p className="line-clamp-3">{currentWord.shortDefinition}</p>
                 {hasFullDefinition && (
@@ -483,9 +573,10 @@ export const LoadingWordGlobal: React.FC = () => {
             )}
           </div>
 
-          {/* Source: Video title (clickable) for history items, Category for local */}
+          {/* 🆕 SOURCE: Afficher la source (Wikipedia prioritaire) ou le titre vidéo */}
           <div className="mt-2 pt-2 border-t border-bg-tertiary/50">
             {currentWord.source === 'history' && currentWord.videoTitle ? (
+              // Pour les mots de l'historique: afficher le titre de la vidéo
               <button
                 onClick={handleClick}
                 className="w-full text-left text-xs text-accent-secondary hover:text-accent-primary transition-colors group flex items-center gap-1"
@@ -497,7 +588,20 @@ export const LoadingWordGlobal: React.FC = () => {
                 </span>
                 <span className="text-accent-primary opacity-0 group-hover:opacity-100 transition-opacity">→</span>
               </button>
+            ) : sourceUrl ? (
+              // 🆕 Afficher la SOURCE (Wikipedia, etc.) avec lien
+              <a
+                href={sourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full text-left text-xs text-accent-secondary hover:text-accent-primary transition-colors group flex items-center gap-1.5"
+              >
+                <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="truncate">{sourceName}</span>
+                <span className="text-accent-primary opacity-0 group-hover:opacity-100 transition-opacity ml-auto">↗</span>
+              </a>
             ) : (
+              // Fallback: afficher la catégorie
               <span className="text-xs text-text-tertiary flex items-center gap-1">
                 📚 {currentWord.category ? CATEGORY_LABELS_FR[currentWord.category] || currentWord.category : (language === 'fr' ? 'Culture' : 'Knowledge')}
               </span>
