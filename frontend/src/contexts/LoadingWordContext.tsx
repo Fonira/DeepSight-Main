@@ -308,22 +308,22 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
     setIsTimerActive(false);
   }, []);
 
-  // Fetch initial au montage
+  // Fetch initial au montage — PRIORITÉ ABSOLUE À L'HISTORIQUE
   useEffect(() => {
     isMountedRef.current = true;
 
-    // Afficher immédiatement un mot local pendant le chargement
-    useLocalFallback();
-
-    // Puis essayer de récupérer les mots de l'historique
+    // NE PAS afficher de mot local immédiatement
+    // Attendre fetchWord() pour avoir l'historique en priorité
     fetchWord();
 
-    // Démarrer le timer automatiquement (historique prioritaire, fallback local)
+    // Timer: toujours vérifier l'historique d'abord
     const timer = setInterval(() => {
       if (historyKeywordsCache.length > 0) {
+        // Utiliser l'historique en priorité
         useHistoryWord();
       } else {
-        useLocalFallback();
+        // Re-fetch pour vérifier si nouvel historique disponible
+        fetchWord();
       }
     }, REFRESH_INTERVAL);
 
