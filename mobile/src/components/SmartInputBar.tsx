@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, memo } from 'react';
 import {
   View,
   Text,
@@ -96,7 +96,7 @@ const SEARCH_LANGUAGES = [
   { id: 'pt', name: 'Português', flag: '🇧🇷' },
 ];
 
-export const SmartInputBar: React.FC<SmartInputBarProps> = ({
+const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
   onSubmit,
   isLoading = false,
   creditCost,
@@ -739,5 +739,8 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 });
+
+// Memoize the component to prevent unnecessary re-renders
+export const SmartInputBar = memo(SmartInputBarComponent);
 
 export default SmartInputBar;

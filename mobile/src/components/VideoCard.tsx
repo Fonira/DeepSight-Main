@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   View,
   Text,
@@ -24,7 +24,7 @@ interface VideoCardProps {
   compact?: boolean;
 }
 
-export const VideoCard: React.FC<VideoCardProps> = ({
+const VideoCardComponent: React.FC<VideoCardProps> = ({
   video,
   onPress,
   onFavoritePress,
@@ -273,5 +273,27 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
 });
+
+// Memoization comparison function for better performance
+const areEqual = (prevProps: VideoCardProps, nextProps: VideoCardProps): boolean => {
+  // Compare primitive props
+  if (prevProps.isFavorite !== nextProps.isFavorite) return false;
+  if (prevProps.showMode !== nextProps.showMode) return false;
+  if (prevProps.compact !== nextProps.compact) return false;
+
+  // Compare video object by id
+  const prevId = 'id' in prevProps.video ? prevProps.video.id : prevProps.video;
+  const nextId = 'id' in nextProps.video ? nextProps.video.id : nextProps.video;
+  if (prevId !== nextId) return false;
+
+  // If same id, check if content changed
+  if ('videoInfo' in prevProps.video && 'videoInfo' in nextProps.video) {
+    if (prevProps.video.title !== nextProps.video.title) return false;
+  }
+
+  return true;
+};
+
+export const VideoCard = memo(VideoCardComponent, areEqual);
 
 export default VideoCard;

@@ -20,6 +20,7 @@ interface InputProps extends TextInputProps {
   rightIcon?: keyof typeof Ionicons.glyphMap;
   onRightIconPress?: () => void;
   containerStyle?: ViewStyle;
+  testID?: string;
 }
 
 export const Input = forwardRef<TextInput, InputProps>(
@@ -34,6 +35,7 @@ export const Input = forwardRef<TextInput, InputProps>(
       containerStyle,
       secureTextEntry,
       style,
+      testID,
       ...props
     },
     ref
@@ -97,6 +99,7 @@ export const Input = forwardRef<TextInput, InputProps>(
 
           {isPassword && (
             <TouchableOpacity
+              testID={testID ? `${testID}-password-toggle` : 'password-toggle'}
               onPress={() => setIsPasswordVisible(!isPasswordVisible)}
               style={styles.rightIcon}
             >
@@ -110,6 +113,7 @@ export const Input = forwardRef<TextInput, InputProps>(
 
           {rightIcon && !isPassword && (
             <TouchableOpacity
+              testID={testID ? `${testID}-right-icon` : 'right-icon-button'}
               onPress={onRightIconPress}
               style={styles.rightIcon}
               disabled={!onRightIconPress}
