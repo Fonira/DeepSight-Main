@@ -133,7 +133,7 @@ class Summary(Base):
     __tablename__ = "summaries"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     
     # Vidéo
     video_id = Column(String(20), nullable=False)
@@ -188,7 +188,7 @@ class DailyQuota(Base):
     __tablename__ = "daily_quotas"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     quota_date = Column(String(10), nullable=False)  # YYYY-MM-DD
     videos_used = Column(Integer, default=0)
     
@@ -202,7 +202,7 @@ class CreditTransaction(Base):
     __tablename__ = "credit_transactions"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     amount = Column(Integer, nullable=False)
     balance_after = Column(Integer, nullable=False)
     transaction_type = Column(String(50))  # usage, purchase, bonus, refund
@@ -217,7 +217,7 @@ class PlaylistAnalysis(Base):
     __tablename__ = "playlist_analyses"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     playlist_id = Column(String(100), nullable=False)
     playlist_url = Column(String(500))
     playlist_title = Column(String(500))
@@ -247,7 +247,7 @@ class ChatMessage(Base):
     __tablename__ = "chat_messages"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     summary_id = Column(Integer, ForeignKey("summaries.id"), nullable=False, index=True)
     role = Column(String(20), nullable=False)  # user, assistant
     content = Column(Text, nullable=False)
@@ -273,7 +273,7 @@ class ChatQuota(Base):
     __tablename__ = "chat_quotas"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     quota_date = Column(String(10), nullable=False)
     daily_count = Column(Integer, default=0)
     
@@ -287,7 +287,7 @@ class PlaylistChatMessage(Base):
     __tablename__ = "playlist_chat_messages"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     playlist_id = Column(String(100), nullable=False, index=True)
     role = Column(String(20), nullable=False)
     content = Column(Text, nullable=False)
@@ -299,7 +299,7 @@ class WebSearchUsage(Base):
     __tablename__ = "web_search_usage"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     month_year = Column(String(7), nullable=False)  # YYYY-MM
     search_count = Column(Integer, default=0)
     last_search_at = Column(DateTime)
@@ -314,7 +314,7 @@ class AdminLog(Base):
     __tablename__ = "admin_logs"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    admin_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    admin_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     action = Column(String(100), nullable=False)
     target_user_id = Column(Integer)
     details = Column(Text)
@@ -341,7 +341,7 @@ class TaskStatus(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     task_id = Column(String(100), unique=True, nullable=False, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     task_type = Column(String(50), nullable=False)  # video_analysis, playlist_analysis
     status = Column(String(20), default="pending")  # pending, processing, completed, failed
     progress = Column(Integer, default=0)  # 0-100
@@ -359,7 +359,7 @@ class ApiUsage(Base):
     __tablename__ = "api_usage"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     date = Column(Date, nullable=False, index=True)  # Date du jour (pour quotas journaliers)
     request_count = Column(Integer, default=0)       # Nombre de requêtes ce jour
     credits_used = Column(Integer, default=0)        # Crédits consommés via API
