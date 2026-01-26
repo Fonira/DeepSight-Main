@@ -21,7 +21,7 @@ import {
   AlertCircle, X, Send, Globe, Bot, User,
   Minimize2, Maximize2, ExternalLink,
   // 🆕 Toolbar icons
-  Copy, Check, GraduationCap, Brain, Tags, Headphones,
+  Copy, Check, GraduationCap, Brain, Tags,
   Download, FileText, FileDown, ChevronDown
 } from "lucide-react";
 import { useTranslation } from '../hooks/useTranslation';
@@ -36,7 +36,6 @@ import { ThumbnailImage, isRawTextVideo } from "../components/ThumbnailImage";
 import { CitationExport } from "../components/CitationExport";
 import { StudyToolsModal } from "../components/StudyToolsModal";
 import { KeywordsModal } from "../components/KeywordsModal";
-import { AudioPlayer } from "../components/AudioPlayer";
 import { videoApi } from "../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1486,7 +1485,6 @@ const PlaylistDetailView: React.FC<{
   const [showCitationModal, setShowCitationModal] = useState(false);
   const [showStudyToolsModal, setShowStudyToolsModal] = useState(false);
   const [showKeywordsModal, setShowKeywordsModal] = useState(false);
-  const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -1497,7 +1495,6 @@ const PlaylistDetailView: React.FC<{
   const [metaShowCitationModal, setMetaShowCitationModal] = useState(false);
   const [metaShowStudyToolsModal, setMetaShowStudyToolsModal] = useState(false);
   const [metaShowKeywordsModal, setMetaShowKeywordsModal] = useState(false);
-  const [metaShowAudioPlayer, setMetaShowAudioPlayer] = useState(false);
 
   // 🆕 Handler: Copy vidéo
   const handleCopy = async () => {
@@ -1724,16 +1721,6 @@ const PlaylistDetailView: React.FC<{
                 {language === 'fr' ? 'Mots-clés' : 'Keywords'}
               </button>
 
-              {/* 🎙️ Écouter (TTS) */}
-              <button
-                onClick={() => setShowAudioPlayer(!showAudioPlayer)}
-                className={`btn ${showAudioPlayer ? 'btn-primary' : 'btn-ghost'} text-xs`}
-                title={language === 'fr' ? 'Écouter le résumé (synthèse vocale)' : 'Listen to summary (text-to-speech)'}
-              >
-                <Headphones className="w-4 h-4" />
-                {language === 'fr' ? 'Écouter' : 'Listen'}
-              </button>
-
               {/* Export */}
               <div className="relative">
                 <button
@@ -1779,18 +1766,6 @@ const PlaylistDetailView: React.FC<{
               </button>
             </div>
           </div>
-
-          {/* 🎙️ Lecteur Audio TTS */}
-          {showAudioPlayer && selectedVideo && selectedVideo.id && (
-            <div className="p-4 border-b border-border-subtle animate-fadeIn">
-              <AudioPlayer
-                summaryId={selectedVideo.id}
-                title={selectedVideo.video_title || (language === 'fr' ? 'Résumé audio' : 'Audio summary')}
-                language={(selectedVideo.lang === 'en' ? 'en' : 'fr') as 'fr' | 'en'}
-                variant="full"
-              />
-            </div>
-          )}
 
           {/* Summary Content */}
           <div className="p-6">
@@ -2169,16 +2144,6 @@ const PlaylistDetailView: React.FC<{
                   {language === 'fr' ? 'Mots-clés' : 'Keywords'}
                 </button>
 
-                {/* 🎙️ Écouter (TTS) */}
-                <button
-                  onClick={() => setMetaShowAudioPlayer(!metaShowAudioPlayer)}
-                  className={`btn ${metaShowAudioPlayer ? 'btn-primary' : 'btn-ghost'} text-xs`}
-                  title={language === 'fr' ? 'Écouter la méta-analyse (synthèse vocale)' : 'Listen to meta-analysis (text-to-speech)'}
-                >
-                  <Headphones className="w-4 h-4" />
-                  {language === 'fr' ? 'Écouter' : 'Listen'}
-                </button>
-
                 {/* Export */}
                 <div className="relative">
                   <button
@@ -2216,18 +2181,6 @@ const PlaylistDetailView: React.FC<{
                   Chat
                 </button>
               </div>
-            </div>
-          )}
-
-          {/* 🎙️ Lecteur Audio TTS pour méta-analyse */}
-          {metaShowAudioPlayer && metaExpanded && (
-            <div className="p-4 border-b border-border-subtle bg-bg-secondary/30">
-              <AudioPlayer
-                playlistId={playlist.playlist_id}
-                title={language === 'fr' ? 'Méta-analyse audio' : 'Audio meta-analysis'}
-                language={language as 'fr' | 'en'}
-                variant="full"
-              />
             </div>
           )}
 

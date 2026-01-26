@@ -16,6 +16,7 @@ import {
   FileText, Crown, CreditCard, Mail, Check
 } from 'lucide-react';
 import { API_URL } from '../services/api';
+import { useToast } from '../components/Toast';
 
 // Types
 interface AdminStats {
@@ -71,7 +72,8 @@ export const AdminPage: React.FC = () => {
   const { user, isAdmin } = useAuth();
   const { t, language } = useTranslation();
   const navigate = useNavigate();
-  
+  const { showToast, ToastComponent } = useToast();
+
   // Récupérer le token depuis localStorage
   const getToken = () => localStorage.getItem('access_token');
   
@@ -230,18 +232,20 @@ export const AdminPage: React.FC = () => {
 
   // Delete User
   const handleDeleteUser = async (userId: number) => {
-    if (!confirm(language === 'fr' 
-      ? 'Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.' 
+    if (!confirm(language === 'fr'
+      ? 'Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.'
       : 'Are you sure you want to delete this user? This action is irreversible.')) {
       return;
     }
-    
+
     setActionLoading(true);
     try {
       await adminFetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+      showToast(language === 'fr' ? 'Utilisateur supprimé' : 'User deleted', 'success');
       await loadUsers();
       await loadStats();
     } catch (err: any) {
+      showToast(err.message || (language === 'fr' ? 'Erreur lors de la suppression' : 'Error deleting user'), 'error');
       setError(err.message);
     } finally {
       setActionLoading(false);
@@ -807,6 +811,7 @@ export const AdminPage: React.FC = () => {
           </div>
         </div>
       )}
+      {ToastComponent}
     </div>
   );
 };

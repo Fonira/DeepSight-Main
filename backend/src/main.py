@@ -105,13 +105,8 @@ except ImportError as e:
     TOURNESOL_ROUTER_AVAILABLE = False
     print(f"⚠️ Tournesol router not available: {e}", flush=True)
 
-# 🎙️ NOUVEAU: Import du TTS (Text-to-Speech) router
-try:
-    from tts.router import router as tts_router
-    TTS_ROUTER_AVAILABLE = True
-except ImportError as e:
-    TTS_ROUTER_AVAILABLE = False
-    print(f"⚠️ TTS router not available: {e}", flush=True)
+# 🎙️ TTS router supprimé (fonctionnalité audio retirée)
+TTS_ROUTER_AVAILABLE = False
 
 # 📊 NOUVEAU: Import du Usage router (statistiques)
 try:

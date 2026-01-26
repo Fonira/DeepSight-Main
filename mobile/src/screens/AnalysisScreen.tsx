@@ -29,7 +29,6 @@ import { Header, Card, Badge, Button, YouTubePlayer, useToast, StreamingProgress
 import { QuizComponent, MindMapComponent } from '../components/study';
 import type { QuizQuestion, MindMapData, MindMapNode } from '../components/study';
 import { ExportOptions } from '../components/export';
-import { AudioPlayer } from '../components/audio';
 import { FactCheckButton } from '../components/factcheck';
 import { WebEnrichment } from '../components/enrichment';
 import { CitationExport } from '../components/citation';
@@ -104,9 +103,6 @@ export const AnalysisScreen: React.FC = () => {
 
   // Export modal state
   const [showExportModal, setShowExportModal] = useState(false);
-
-  // Audio player state
-  const [showAudioPlayer, setShowAudioPlayer] = useState(false);
 
   // Citation modal state
   const [showCitationModal, setShowCitationModal] = useState(false);
@@ -908,26 +904,6 @@ export const AnalysisScreen: React.FC = () => {
                 <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
               </TouchableOpacity>
 
-              {/* Audio Section */}
-              <Text style={[styles.toolsSectionTitle, { color: colors.textPrimary }]}>
-                Audio
-              </Text>
-
-              <TouchableOpacity
-                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
-                onPress={() => setShowAudioPlayer(true)}
-              >
-                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.accentInfo}20` }]}>
-                  <Ionicons name="volume-high-outline" size={28} color={colors.accentInfo} />
-                </View>
-                <View style={styles.toolInfo}>
-                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>{t.upgrade.features_list.ttsAudio}</Text>
-                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
-                    TTS
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-              </TouchableOpacity>
             </ScrollView>
           )}
 
@@ -1012,16 +988,6 @@ export const AnalysisScreen: React.FC = () => {
           visible={showExportModal}
           onClose={() => setShowExportModal(false)}
           summaryId={summary.id}
-          title={summary.title}
-        />
-      )}
-
-      {/* Audio Player Modal */}
-      {summary && (
-        <AudioPlayer
-          visible={showAudioPlayer}
-          onClose={() => setShowAudioPlayer(false)}
-          text={summary.content || ''}
           title={summary.title}
         />
       )}

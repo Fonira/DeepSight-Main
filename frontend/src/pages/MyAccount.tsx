@@ -10,7 +10,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
-import { billingApi } from '../services/api';
+import { billingApi, authApi } from '../services/api';
+import { useToast } from '../components/Toast';
 import {
   User, Shield, Key, Trash2, LogOut, Check,
   AlertCircle, Loader2, Eye, EyeOff, Copy, RefreshCw, Lock,
@@ -56,6 +57,7 @@ export const MyAccount: React.FC = () => {
   const { user, logout } = useAuth();
   const { language } = useTranslation();
   const navigate = useNavigate();
+  const { showToast, ToastComponent } = useToast();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   // 🔑 API Key State
@@ -72,12 +74,37 @@ export const MyAccount: React.FC = () => {
   // États UI
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const isTeamOrHigher = user?.plan === 'team' || user?.plan === 'expert' || user?.plan === 'unlimited';
   const userPlanId = normalizePlanId(user?.plan);
   
   // Helper pour les traductions inline
   const tr = useCallback((fr: string, en: string) => language === 'fr' ? fr : en, [language]);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 🗑️ Delete Account
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const handleDeleteAccount = async () => {
+    const confirmWord = language === 'fr' ? 'SUPPRIMER' : 'DELETE';
+    if (deleteConfirmText !== confirmWord) return;
+
+    setDeleteLoading(true);
+    try {
+      // Le backend vérifie si un mot de passe est requis selon le type de compte
+      await authApi.deleteAccount(deletePassword || undefined);
+      showToast(tr('Compte supprimé', 'Account deleted'), 'success');
+      logout();
+      navigate('/');
+    } catch (error: any) {
+      const message = error?.message || error?.detail || tr('Erreur lors de la suppression', 'Error deleting account');
+      showToast(message, 'error');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 📡 Fetch API Key Status
@@ -842,7 +869,17 @@ export const MyAccount: React.FC = () => {
                       <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
                       {tr('⚠️ Êtes-vous sûr ? Toutes vos données seront perdues.', '⚠️ Are you sure? All your data will be permanently lost.')}
                     </p>
-                    <p className="text-sm text-text-tertiary mb-3">
+                    <p className="text-sm text-text-tertiary mb-2">
+                      {tr('Entrez votre mot de passe:', 'Enter your password:')}
+                    </p>
+                    <input
+                      type="password"
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      placeholder={tr('Mot de passe', 'Password')}
+                      className="w-full px-3 py-2 rounded-lg bg-bg-primary border border-error/30 text-text-primary text-sm mb-3 focus:outline-none focus:border-error"
+                    />
+                    <p className="text-sm text-text-tertiary mb-2">
                       {tr('Tapez "SUPPRIMER" pour confirmer:', 'Type "DELETE" to confirm:')}
                     </p>
                     <input
@@ -853,10 +890,15 @@ export const MyAccount: React.FC = () => {
                       className="w-full px-3 py-2 rounded-lg bg-bg-primary border border-error/30 text-text-primary text-sm mb-3 focus:outline-none focus:border-error"
                     />
                     <div className="flex gap-2">
-                      <button disabled={deleteConfirmText !== (language === 'fr' ? 'SUPPRIMER' : 'DELETE')} className="px-4 py-2 rounded-lg bg-error text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                      <button
+                        onClick={handleDeleteAccount}
+                        disabled={deleteConfirmText !== (language === 'fr' ? 'SUPPRIMER' : 'DELETE') || deleteLoading}
+                        className="px-4 py-2 rounded-lg bg-error text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        {deleteLoading && <Loader2 className="w-4 h-4 animate-spin" />}
                         {tr('Supprimer définitivement', 'Delete permanently')}
                       </button>
-                      <button onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }} className="px-4 py-2 rounded-lg bg-bg-tertiary text-sm hover:bg-bg-hover transition-colors">
+                      <button onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); setDeletePassword(''); }} className="px-4 py-2 rounded-lg bg-bg-tertiary text-sm hover:bg-bg-hover transition-colors">
                         {tr('Annuler', 'Cancel')}
                       </button>
                     </div>
@@ -868,6 +910,7 @@ export const MyAccount: React.FC = () => {
           </div>
         </div>
       </main>
+      {ToastComponent}
     </div>
   );
 };

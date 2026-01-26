@@ -11,9 +11,9 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
-import { 
+import {
   Settings as SettingsIcon, Globe, Moon, Sun, Bell, BellOff,
-  Volume2, VolumeX, Keyboard, Info, Check, RotateCcw,
+  Keyboard, Info, Check, RotateCcw,
   Sparkles, BookOpen, Monitor, Zap, Download,
   ExternalLink, Palette, SlidersHorizontal, Layout
 } from 'lucide-react';
@@ -24,7 +24,6 @@ import {
 
 interface Preferences {
   notifications: boolean;
-  soundEffects: boolean;
   autoPlay: boolean;
   defaultMode: string;
   compactView: boolean;
@@ -46,7 +45,6 @@ export const Settings: React.FC = () => {
   // Préférences locales (stockées dans localStorage)
   const [preferences, setPreferences] = useState<Preferences>(() => ({
     notifications: localStorage.getItem('deepsight_notifications') !== 'false',
-    soundEffects: localStorage.getItem('deepsight_sounds') !== 'false',
     autoPlay: localStorage.getItem('deepsight_autoplay') !== 'false',
     defaultMode: localStorage.getItem('deepsight_default_mode') || 'standard',
     compactView: localStorage.getItem('deepsight_compact') === 'true',
@@ -75,7 +73,6 @@ export const Settings: React.FC = () => {
   const resetToDefaults = useCallback(() => {
     const defaults: Preferences = {
       notifications: true,
-      soundEffects: true,
       autoPlay: true,
       defaultMode: 'standard',
       compactView: false,
@@ -281,11 +278,11 @@ export const Settings: React.FC = () => {
               <div className="panel-header">
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
                   <Bell className="w-5 h-5 text-accent-primary" />
-                  {tr('Notifications & Sons', 'Notifications & Sounds')}
+                  {tr('Notifications', 'Notifications')}
                 </h2>
               </div>
               <div className="panel-body divide-y divide-border-subtle">
-                
+
                 {/* Notifications navigateur */}
                 <SettingRow
                   icon={preferences.notifications ? Bell : BellOff}
@@ -296,19 +293,6 @@ export const Settings: React.FC = () => {
                     enabled={preferences.notifications}
                     onToggle={() => savePreference('notifications', !preferences.notifications)}
                     saved={saved === 'notifications'}
-                  />
-                </SettingRow>
-
-                {/* Effets sonores */}
-                <SettingRow
-                  icon={preferences.soundEffects ? Volume2 : VolumeX}
-                  title={tr('Effets sonores', 'Sound effects')}
-                  description={tr('Sons de notification', 'Notification sounds')}
-                >
-                  <Toggle
-                    enabled={preferences.soundEffects}
-                    onToggle={() => savePreference('soundEffects', !preferences.soundEffects)}
-                    saved={saved === 'soundEffects'}
                   />
                 </SettingRow>
               </div>
