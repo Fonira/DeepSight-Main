@@ -632,9 +632,12 @@ class KeywordItem(BaseModel):
     video_id: Optional[str]
     category: Optional[str]
     created_at: Optional[str]
-    # NOUVEAU: Définition générée par IA
+    # Définition générée par IA
     definition: Optional[str] = None
     short_definition: Optional[str] = None
+    # Sources et confiance (anti-hallucination)
+    wiki_url: Optional[str] = None
+    confidence: Optional[str] = None  # high|medium|low
 
 
 class KeywordsResponse(BaseModel):
@@ -667,15 +670,27 @@ async def _generate_academic_definitions(terms: List[str]) -> Dict[str, dict]:
 
     terms_to_fetch = terms_to_fetch[:15]  # Limiter pour la qualité
 
-    prompt = f"""Tu es un professeur encyclopédiste. Pour chaque terme, rédige une DÉFINITION ACADÉMIQUE complète et éducative.
+    prompt = f"""Tu es un professeur encyclopédiste rigoureux. Pour chaque terme, rédige une DÉFINITION ACADÉMIQUE vérifiable.
+
+⚠️ RÈGLES ANTI-HALLUCINATION (CRITIQUE):
+- Ne définis QUE des concepts bien établis et vérifiables
+- Si tu n'es pas certain d'un terme, réponds avec "definition": null et "confidence": "low"
+- N'invente JAMAIS de faits, dates, ou attributions
+- Préfère les définitions consensuelles et établies
+- Si un terme est ambigu ou peu connu, indique clairement l'incertitude
 
 EXIGENCES pour chaque définition:
 - 3 à 5 phrases complètes et informatives
 - Commencer par une définition claire et précise du concept
-- Inclure le contexte historique ou étymologique si pertinent
+- Inclure le contexte historique ou étymologique si VÉRIFIABLE
 - Expliquer l'importance ou les applications concrètes
 - Être accessible mais rigoureux (niveau universitaire vulgarisé)
-- Éviter les formulations vagues ou les questions rhétoriques
+
+📚 SOURCE WIKIPEDIA (OBLIGATOIRE):
+- Fournis l'URL Wikipedia française (fr.wikipedia.org) si l'article existe
+- Format: "https://fr.wikipedia.org/wiki/Nom_Article" (remplacer espaces par _)
+- Si pas d'article Wikipedia, fournis une source alternative fiable (Britannica, Stanford Encyclopedia, etc.)
+- Si aucune source fiable n'existe, mets "wiki_url": null
 
 Termes à définir:
 {chr(10).join(f"- {t}" for t in terms_to_fetch)}
@@ -686,15 +701,18 @@ Réponds UNIQUEMENT en JSON valide:
     {{
       "term": "Nom exact du terme",
       "category": "science|philosophie|histoire|technologie|economie|politique|culture|societe|autre",
-      "definition": "Définition académique complète de 3-5 phrases. Explication claire, contexte, importance."
+      "definition": "Définition académique de 3-5 phrases OU null si incertain.",
+      "wiki_url": "https://fr.wikipedia.org/wiki/Article OU URL alternative OU null",
+      "confidence": "high|medium|low"
     }}
   ]
 }}
 
 IMPORTANT:
 - JSON valide uniquement, pas de texte avant/après
-- Définitions complètes et éducatives, PAS de phrases courtes ou accrocheuses
-- Chaque définition doit apporter une vraie compréhension du sujet"""
+- JAMAIS inventer une URL Wikipedia - elle doit être plausible
+- Préférer null à une information incertaine
+- confidence: "high" = terme bien connu, "medium" = assez connu, "low" = incertain"""
 
     try:
         async with httpx.AsyncClient(timeout=45.0) as client:
@@ -738,6 +756,8 @@ IMPORTANT:
                         "term": term,
                         "category": item.get("category", "autre"),
                         "definition": item.get("definition", ""),
+                        "wiki_url": item.get("wiki_url"),
+                        "confidence": item.get("confidence", "medium"),
                         "source": "mistral-academic"
                     }
 
@@ -833,6 +853,9 @@ async def get_all_keywords(
             if term_lower in definitions:
                 def_data = definitions[term_lower]
                 kw["definition"] = def_data.get("definition", "")
+                # Ajouter wiki_url et confidence
+                kw["wiki_url"] = def_data.get("wiki_url")
+                kw["confidence"] = def_data.get("confidence", "medium")
                 # Créer une version courte (2 premières phrases ou 150 caractères)
                 full_def = def_data.get("definition", "")
                 if full_def:
