@@ -77,6 +77,24 @@ export const SettingsScreen: React.FC = () => {
   // Local state for settings
   const [selectedMode, setSelectedMode] = useState(user?.default_mode || 'synthesis');
   const [selectedModel, setSelectedModel] = useState(user?.default_model || 'gpt-4o-mini');
+  const [selectedCategory, setSelectedCategory] = useState('auto');
+  const [autoPlayVideos, setAutoPlayVideos] = useState(true);
+  const [showTournesol, setShowTournesol] = useState(true);
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  // Categories for default
+  const CATEGORIES = [
+    { id: 'auto', label: 'Auto-detect', labelEn: 'Auto-detect' },
+    { id: 'interview', label: 'Interview', labelEn: 'Interview' },
+    { id: 'tech', label: 'Tech', labelEn: 'Tech' },
+    { id: 'science', label: 'Science', labelEn: 'Science' },
+    { id: 'education', label: 'Éducation', labelEn: 'Education' },
+    { id: 'finance', label: 'Finance', labelEn: 'Finance' },
+    { id: 'gaming', label: 'Gaming', labelEn: 'Gaming' },
+    { id: 'culture', label: 'Culture', labelEn: 'Culture' },
+    { id: 'news', label: 'Actualités', labelEn: 'News' },
+    { id: 'health', label: 'Santé', labelEn: 'Health' },
+  ];
 
   // Load saved settings on mount
   useEffect(() => {
@@ -84,9 +102,17 @@ export const SettingsScreen: React.FC = () => {
       try {
         const savedMode = await AsyncStorage.getItem('deepsight_default_mode');
         const savedModel = await AsyncStorage.getItem('deepsight_default_model');
+        const savedCategory = await AsyncStorage.getItem('deepsight_default_category');
+        const savedAutoPlay = await AsyncStorage.getItem('deepsight_autoplay_videos');
+        const savedTournesol = await AsyncStorage.getItem('deepsight_show_tournesol');
+        const savedReduceMotion = await AsyncStorage.getItem('deepsight_reduce_motion');
 
         if (savedMode) setSelectedMode(savedMode);
         if (savedModel) setSelectedModel(savedModel);
+        if (savedCategory) setSelectedCategory(savedCategory);
+        if (savedAutoPlay !== null) setAutoPlayVideos(savedAutoPlay === 'true');
+        if (savedTournesol !== null) setShowTournesol(savedTournesol === 'true');
+        if (savedReduceMotion !== null) setReduceMotion(savedReduceMotion === 'true');
       } catch (error) {
         console.error('Failed to load settings:', error);
       }
@@ -199,6 +225,46 @@ export const SettingsScreen: React.FC = () => {
     return model?.label || 'GPT-4o Mini';
   };
 
+  const getDefaultCategoryLabel = () => {
+    const category = CATEGORIES.find(c => c.id === selectedCategory);
+    return language === 'en' ? category?.labelEn || 'Auto-detect' : category?.label || 'Auto-detect';
+  };
+
+  const handleSelectCategory = () => {
+    Alert.alert(
+      language === 'en' ? 'Default Category' : 'Catégorie par défaut',
+      language === 'en' ? 'Select your preferred category' : 'Sélectionnez votre catégorie préférée',
+      [
+        ...CATEGORIES.map(cat => ({
+          text: language === 'en' ? cat.labelEn : cat.label,
+          onPress: async () => {
+            setSelectedCategory(cat.id);
+            await savePreference('deepsight_default_category', cat.id);
+          },
+        })),
+        { text: t.common.cancel, style: 'cancel' as const },
+      ]
+    );
+  };
+
+  const handleToggleAutoPlay = async () => {
+    const newValue = !autoPlayVideos;
+    setAutoPlayVideos(newValue);
+    await savePreference('deepsight_autoplay_videos', newValue.toString());
+  };
+
+  const handleToggleTournesol = async () => {
+    const newValue = !showTournesol;
+    setShowTournesol(newValue);
+    await savePreference('deepsight_show_tournesol', newValue.toString());
+  };
+
+  const handleToggleReduceMotion = async () => {
+    const newValue = !reduceMotion;
+    setReduceMotion(newValue);
+    await savePreference('deepsight_reduce_motion', newValue.toString());
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <Header title={t.nav.settings} showBack />
@@ -225,6 +291,61 @@ export const SettingsScreen: React.FC = () => {
             value={getDefaultModelLabel()}
             onPress={handleSelectModel}
           />
+          <SettingItem
+            icon="pricetag-outline"
+            label={language === 'en' ? 'Default Category' : 'Catégorie par défaut'}
+            value={getDefaultCategoryLabel()}
+            onPress={handleSelectCategory}
+          />
+        </Card>
+
+        {/* Video Playback */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+          {language === 'en' ? 'VIDEO PLAYBACK' : 'LECTURE VIDÉO'}
+        </Text>
+        <Card variant="elevated" style={styles.settingsCard}>
+          <TouchableOpacity
+            style={[styles.settingItem, { borderBottomColor: colors.border }]}
+            onPress={handleToggleAutoPlay}
+          >
+            <View style={styles.settingItemLeft}>
+              <View style={[styles.settingIcon, { backgroundColor: colors.bgElevated }]}>
+                <Ionicons name="play-circle-outline" size={20} color={colors.accentPrimary} />
+              </View>
+              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
+                {language === 'en' ? 'Auto-play videos' : 'Lecture auto des vidéos'}
+              </Text>
+            </View>
+            <View style={[styles.toggle, { backgroundColor: autoPlayVideos ? colors.accentPrimary : colors.bgTertiary }]}>
+              <View
+                style={[
+                  styles.toggleKnob,
+                  autoPlayVideos ? styles.toggleKnobActive : styles.toggleKnobInactive,
+                ]}
+              />
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.settingItem, { borderBottomColor: colors.border }]}
+            onPress={handleToggleTournesol}
+          >
+            <View style={styles.settingItemLeft}>
+              <View style={[styles.settingIcon, { backgroundColor: colors.bgElevated }]}>
+                <Ionicons name="flower-outline" size={20} color={colors.accentPrimary} />
+              </View>
+              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
+                {language === 'en' ? 'Show Tournesol scores' : 'Afficher scores Tournesol'}
+              </Text>
+            </View>
+            <View style={[styles.toggle, { backgroundColor: showTournesol ? colors.accentPrimary : colors.bgTertiary }]}>
+              <View
+                style={[
+                  styles.toggleKnob,
+                  showTournesol ? styles.toggleKnobActive : styles.toggleKnobInactive,
+                ]}
+              />
+            </View>
+          </TouchableOpacity>
         </Card>
 
         {/* Appearance Settings */}
@@ -266,6 +387,27 @@ export const SettingsScreen: React.FC = () => {
             value={LANGUAGES.find(l => l.code === language)?.label || 'Francais'}
             onPress={handleSelectLanguage}
           />
+          <TouchableOpacity
+            style={[styles.settingItem, { borderBottomColor: 'transparent' }]}
+            onPress={handleToggleReduceMotion}
+          >
+            <View style={styles.settingItemLeft}>
+              <View style={[styles.settingIcon, { backgroundColor: colors.bgElevated }]}>
+                <Ionicons name="speedometer-outline" size={20} color={colors.accentPrimary} />
+              </View>
+              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
+                {language === 'en' ? 'Reduce motion' : 'Réduire les animations'}
+              </Text>
+            </View>
+            <View style={[styles.toggle, { backgroundColor: reduceMotion ? colors.accentPrimary : colors.bgTertiary }]}>
+              <View
+                style={[
+                  styles.toggleKnob,
+                  reduceMotion ? styles.toggleKnobActive : styles.toggleKnobInactive,
+                ]}
+              />
+            </View>
+          </TouchableOpacity>
         </Card>
 
         {/* Notifications */}

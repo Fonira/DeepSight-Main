@@ -38,3 +38,10 @@ export { ErrorBoundary, withErrorBoundary, ErrorFallback } from './common';
 
 // Backgrounds
 export { DoodleBackground } from './backgrounds/DoodleBackground';
+
+// Video Discovery
+export { VideoDiscoveryModal } from './VideoDiscoveryModal';
+
+// Notes & Tags
+export { NotesEditor } from './NotesEditor';
+export { TagsEditor } from './TagsEditor';
