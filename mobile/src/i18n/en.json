@@ -55,6 +55,7 @@
     "analysis": "Analysis",
     "history": "History",
     "playlists": "Playlists",
+    "profile": "Profile",
     "settings": "Settings",
     "subscription": "Subscription",
     "myAccount": "My Account",
@@ -79,6 +80,7 @@
     "signIn": "Sign in",
     "signUp": "Sign up",
     "signOut": "Sign out",
+    "signOutConfirm": "Are you sure you want to sign out?",
     "welcomeBack": "Welcome back!",
     "sessionExpired": "Your session has expired",
     "pleaseLoginAgain": "Please sign in again",
@@ -363,7 +365,12 @@
     "clear": "Clear",
     "cacheClearedMessage": "Cache has been cleared.",
     "about": "About",
-    "version": "Version"
+    "version": "Version",
+    "support": "Support",
+    "helpFaq": "Help & FAQ",
+    "contactUs": "Contact us",
+    "termsOfService": "Terms of service",
+    "privacyPolicy": "Privacy policy"
   },
   "upgrade": {
     "title": "Choose your plan",
@@ -484,16 +491,26 @@
   },
   "export": {
     "title": "Export analysis",
+    "exportSummary": "Export summary",
     "selectFormat": "Choose a format",
     "downloading": "Downloading...",
     "success": "Export successful!",
     "failed": "Export failed",
+    "fileSaved": "File saved",
+    "fileSavedAt": "File saved:",
+    "exportFailed": "Unable to export file",
+    "fileExtension": "File",
     "formats": {
       "txt": "Plain text (.txt)",
       "md": "Markdown (.md)",
       "pdf": "PDF document (.pdf)",
       "docx": "Word document (.docx)",
       "json": "JSON data (.json)"
+    },
+    "labels": {
+      "pdf": "PDF Document",
+      "markdown": "Markdown",
+      "text": "Plain text"
     },
     "options": {
       "includeSummary": "Include summary",
@@ -785,5 +802,44 @@
     "highlyRecommended": "Highly recommended",
     "whatIsTournesol": "What is Tournesol?",
     "tournesolDescription": "Tournesol is a collaborative platform that rates videos based on quality criteria."
+  },
+  "study": {
+    "quiz": {
+      "title": "Quiz",
+      "generating": "Generating quiz...",
+      "noQuestions": "No questions available",
+      "question": "Question",
+      "validate": "Validate",
+      "nextQuestion": "Next question",
+      "seeResults": "See results",
+      "completed": "Quiz completed!",
+      "correctAnswers": "correct answers",
+      "excellent": "Excellent work!",
+      "good": "Good job!",
+      "keepGoing": "Keep up the effort!",
+      "reviewContent": "Review the content and try again",
+      "retry": "Try again",
+      "reviewAnswers": "Review answers",
+      "explanation": "Explanation"
+    },
+    "mindmap": {
+      "title": "Mind Map",
+      "generating": "Generating mind map...",
+      "noData": "No mind map available",
+      "legend": "Legend",
+      "mainConcept": "Main concept",
+      "keyConcepts": "Key concepts",
+      "subConcepts": "Sub-concepts",
+      "conceptList": "Concept list"
+    },
+    "flashcards": {
+      "title": "Flashcards",
+      "generating": "Generating flashcards...",
+      "noCards": "No flashcards available",
+      "front": "Question",
+      "back": "Answer",
+      "tapToFlip": "Tap to flip",
+      "card": "Card"
+    }
   }
 }

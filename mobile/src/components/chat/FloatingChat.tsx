@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { chatApi } from '../../services/api';
 import { Spacing, Typography, BorderRadius } from '../../constants/theme';
 import type { ChatMessage } from '../../types';
@@ -37,6 +39,8 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   onMessagesUpdate,
 }) => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
+  const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<FlatList>(null);
   const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -140,10 +144,25 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
     }
   };
 
+  // Get user's chat quota based on plan
+  const getChatQuota = () => {
+    const quotas: Record<string, number> = {
+      free: 5,
+      starter: 20,
+      pro: -1, // unlimited
+      expert: -1, // unlimited
+    };
+    return quotas[user?.plan || 'free'] || 5;
+  };
+
+  const chatQuota = getChatQuota();
+  const questionsUsed = messages.filter(m => m.role === 'user').length;
+  const questionsRemaining = chatQuota === -1 ? -1 : chatQuota - questionsUsed;
+
   const suggestedQuestions = [
-    'Résume les points clés',
-    'Quels sont les concepts importants ?',
-    'Explique plus simplement',
+    t.chat.suggestions.keyPoints,
+    t.chat.suggestions.summary,
+    t.chat.suggestions.explain,
   ];
 
   return (
@@ -206,7 +225,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
               <View style={styles.headerTitle}>
                 <Ionicons name="chatbubble-ellipses" size={18} color="#FFFFFF" />
                 <Text style={styles.headerText} numberOfLines={1}>
-                  {videoTitle || 'Assistant IA'}
+                  {videoTitle || t.chat.title}
                 </Text>
               </View>
 
@@ -229,12 +248,23 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                   onContentSizeChange={() => scrollRef.current?.scrollToEnd()}
                   ListEmptyComponent={
                     <View style={styles.emptyState}>
+                      <Ionicons name="chatbubble-outline" size={48} color={colors.textTertiary} />
                       <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
-                        Posez vos questions
+                        {t.chat.askQuestion}
                       </Text>
                       <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                        Je suis là pour vous aider à comprendre cette vidéo
+                        {t.chat.startConversation}
                       </Text>
+
+                      {/* Question quota */}
+                      <View style={[styles.quotaContainer, { backgroundColor: colors.bgSecondary }]}>
+                        <Ionicons name="chatbubbles-outline" size={16} color={colors.textTertiary} />
+                        <Text style={[styles.quotaText, { color: colors.textSecondary }]}>
+                          {questionsRemaining === -1
+                            ? t.chat.unlimitedQuestions
+                            : `${questionsRemaining} ${t.chat.questionsRemaining}`}
+                        </Text>
+                      </View>
 
                       {/* Suggested questions */}
                       <View style={styles.suggestedContainer}>
@@ -278,18 +308,29 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                 />
 
                 {/* Input */}
+                {/* Question quota indicator at bottom */}
+                {questionsRemaining !== -1 && questionsRemaining <= 2 && questionsRemaining > 0 && (
+                  <View style={[styles.quotaWarning, { backgroundColor: `${colors.accentWarning}20` }]}>
+                    <Ionicons name="warning-outline" size={14} color={colors.accentWarning} />
+                    <Text style={[styles.quotaWarningText, { color: colors.accentWarning }]}>
+                      {questionsRemaining} {t.chat.questionsRemaining}
+                    </Text>
+                  </View>
+                )}
+
                 <View style={[styles.inputContainer, { borderTopColor: colors.border }]}>
                   <TextInput
                     style={[
                       styles.input,
                       { backgroundColor: colors.bgSecondary, color: colors.textPrimary },
                     ]}
-                    placeholder="Votre question..."
+                    placeholder={t.chat.placeholder}
                     placeholderTextColor={colors.textMuted}
                     value={input}
                     onChangeText={setInput}
                     multiline
                     maxLength={500}
+                    editable={questionsRemaining === -1 || questionsRemaining > 0}
                   />
                   <TouchableOpacity
                     style={[
@@ -397,6 +438,32 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
     textAlign: 'center',
+    marginBottom: Spacing.md,
+  },
+  quotaContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.md,
+  },
+  quotaText: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.body,
+  },
+  quotaWarning: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+  },
+  quotaWarningText: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.bodyMedium,
   },
   suggestedContainer: {
     marginTop: Spacing.lg,

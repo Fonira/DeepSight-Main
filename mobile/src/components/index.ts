@@ -4,6 +4,9 @@ export { VideoCard } from './VideoCard';
 export { Header } from './Header';
 export { EmptyState } from './EmptyState';
 
+// Video Player
+export { YouTubePlayer, TimestampLink } from './video';
+
 // Study Tools
 export * from './study';
 

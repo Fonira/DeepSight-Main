@@ -15,7 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Header, Card, Avatar, Badge } from '../components';
+import { Header, Card, Avatar, Badge, LanguageToggle, CreditDisplay } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { formatNumber } from '../utils/formatters';
 import type { RootStackParamList } from '../types';
@@ -139,8 +139,11 @@ export const ProfileScreen: React.FC = () => {
             </View>
           </View>
 
+          {/* Credits Display */}
+          <CreditDisplay variant="full" />
+
           {/* Stats */}
-          <View style={[styles.statsRow, { borderTopColor: colors.border }]}>
+          <View style={[styles.statsRow, { borderTopColor: colors.border, marginTop: Spacing.md }]}>
             <View style={styles.stat}>
               <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                 {formatNumber(user?.total_videos || 0)}
@@ -232,12 +235,21 @@ export const ProfileScreen: React.FC = () => {
               />
             </View>
           </TouchableOpacity>
-          <MenuItem
-            icon="language-outline"
-            label={t.settings.language}
-            onPress={() => {}}
-            rightText={t.settings.language}
-          />
+          <View style={[styles.menuItem, { borderBottomColor: colors.border }]}>
+            <View style={styles.menuItemLeft}>
+              <View style={[styles.menuIcon, { backgroundColor: colors.bgElevated }]}>
+                <Ionicons
+                  name="language-outline"
+                  size={20}
+                  color={colors.accentPrimary}
+                />
+              </View>
+              <Text style={[styles.menuLabel, { color: colors.textPrimary }]}>
+                {t.settings.language}
+              </Text>
+            </View>
+            <LanguageToggle compact />
+          </View>
         </Card>
 
         {/* Support Section */}
