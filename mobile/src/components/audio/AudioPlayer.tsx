@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Audio, AVPlaybackStatus } from 'expo-av';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { useTheme } from '../../contexts/ThemeContext';
 import { ttsApi } from '../../services/api';
 
@@ -34,13 +34,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   title = 'Summary',
 }) => {
   const { colors } = useTheme();
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [position, setPosition] = useState(0);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string>('alloy');
   const [showVoiceSelector, setShowVoiceSelector] = useState(false);
@@ -49,6 +44,21 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [showSpeedSelector, setShowSpeedSelector] = useState(false);
 
   const PLAYBACK_SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+
+  // Use expo-audio hooks for audio playback
+  const player = useAudioPlayer(audioUrl || undefined);
+  const status = useAudioPlayerStatus(player);
+
+  // Track if we need to apply playback speed after loading
+  const pendingSpeedRef = useRef<number | null>(null);
+
+  // Apply playback speed when player is ready
+  useEffect(() => {
+    if (player && audioUrl && pendingSpeedRef.current !== null) {
+      player.setPlaybackRate(pendingSpeedRef.current);
+      pendingSpeedRef.current = null;
+    }
+  }, [player, audioUrl]);
 
   // Load available voices
   useEffect(() => {
@@ -73,41 +83,6 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     }
   }, [visible]);
 
-  // Configure audio
-  useEffect(() => {
-    const setupAudio = async () => {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        shouldDuckAndroid: true,
-      });
-    };
-    setupAudio();
-  }, []);
-
-  // Cleanup sound on unmount
-  useEffect(() => {
-    return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
-    };
-  }, [sound]);
-
-  const onPlaybackStatusUpdate = useCallback((status: AVPlaybackStatus) => {
-    if (status.isLoaded) {
-      setIsPlaying(status.isPlaying);
-      setDuration(status.durationMillis || 0);
-      setPosition(status.positionMillis || 0);
-
-      if (status.didJustFinish) {
-        setIsPlaying(false);
-        setPosition(0);
-      }
-    }
-  }, []);
-
   const generateAudio = async () => {
     setIsGenerating(true);
     setError(null);
@@ -117,7 +92,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       const truncatedText = text.substring(0, 4000);
       const response = await ttsApi.generateAudio(truncatedText, selectedVoice);
       setAudioUrl(response.audio_url);
-      await loadAudio(response.audio_url);
+      // Set pending speed to be applied when player loads
+      pendingSpeedRef.current = playbackSpeed;
     } catch (err) {
       console.error('TTS error:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate audio');
@@ -126,80 +102,69 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     }
   };
 
-  const loadAudio = async (url: string) => {
-    setIsLoading(true);
-    try {
-      // Unload existing sound
-      if (sound) {
-        await sound.unloadAsync();
-      }
-
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: url },
-        { shouldPlay: false },
-        onPlaybackStatusUpdate
-      );
-
-      setSound(newSound);
-    } catch (err) {
-      console.error('Load audio error:', err);
-      setError('Failed to load audio');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handlePlayPause = async () => {
-    if (!sound) {
+    if (!audioUrl) {
       await generateAudio();
       return;
     }
 
-    if (isPlaying) {
-      await sound.pauseAsync();
+    if (!player) return;
+
+    if (status?.playing) {
+      player.pause();
     } else {
-      await sound.playAsync();
+      player.play();
     }
   };
 
   const handleSeek = async (forward: boolean) => {
-    if (!sound) return;
+    if (!player || !status) return;
 
-    const seekAmount = 10000; // 10 seconds
+    const seekAmount = 10; // 10 seconds
+    const currentTime = status.currentTime || 0;
+    const duration = status.duration || 0;
+
     const newPosition = forward
-      ? Math.min(position + seekAmount, duration)
-      : Math.max(position - seekAmount, 0);
+      ? Math.min(currentTime + seekAmount, duration)
+      : Math.max(currentTime - seekAmount, 0);
 
-    await sound.setPositionAsync(newPosition);
+    player.seekTo(newPosition);
   };
 
   const handleSpeedChange = async (speed: number) => {
     setPlaybackSpeed(speed);
     setShowSpeedSelector(false);
-    if (sound) {
-      await sound.setRateAsync(speed, true);
+    if (player) {
+      player.setPlaybackRate(speed);
     }
   };
 
-  const formatTime = (ms: number) => {
-    const totalSeconds = Math.floor(ms / 1000);
+  const formatTime = (seconds: number) => {
+    const totalSeconds = Math.floor(seconds);
     const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    const secs = totalSeconds % 60;
+    return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleClose = async () => {
-    if (sound) {
-      await sound.stopAsync();
-      await sound.unloadAsync();
-      setSound(null);
+  const handleClose = () => {
+    if (player) {
+      player.pause();
     }
     setAudioUrl(null);
-    setIsPlaying(false);
-    setPosition(0);
-    setDuration(0);
     setError(null);
     onClose();
+  };
+
+  const handleVoiceChange = (voiceId: string) => {
+    setSelectedVoice(voiceId);
+    setShowVoiceSelector(false);
+    // Clear existing audio when voice changes
+    if (audioUrl) {
+      if (player) {
+        player.pause();
+      }
+      setAudioUrl(null);
+    }
   };
 
   const styles = StyleSheet.create({
@@ -407,6 +372,10 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     },
   });
 
+  const duration = status?.duration || 0;
+  const position = status?.currentTime || 0;
+  const isPlaying = status?.playing || false;
+  const isLoading = status?.isLoaded === false && audioUrl !== null;
   const progress = duration > 0 ? (position / duration) * 100 : 0;
 
   return (
@@ -462,7 +431,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
               <Text style={styles.errorText}>{error}</Text>
             )}
 
-            {audioUrl && sound ? (
+            {audioUrl && player ? (
               <>
                 <View style={styles.progressContainer}>
                   <View style={styles.progressBar}>
@@ -550,16 +519,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
                     styles.voiceItem,
                     voice.id === selectedVoice && styles.voiceItemSelected,
                   ]}
-                  onPress={() => {
-                    setSelectedVoice(voice.id);
-                    setShowVoiceSelector(false);
-                    // Clear existing audio when voice changes
-                    if (sound) {
-                      sound.unloadAsync();
-                      setSound(null);
-                      setAudioUrl(null);
-                    }
-                  }}
+                  onPress={() => handleVoiceChange(voice.id)}
                 >
                   <Text style={styles.voiceName}>{voice.name}</Text>
                   {voice.id === selectedVoice && (
