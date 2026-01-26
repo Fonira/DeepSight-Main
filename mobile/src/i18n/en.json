@@ -55,6 +55,7 @@
     "analysis": "Analysis",
     "history": "History",
     "playlists": "Playlists",
+    "profile": "Profile",
     "settings": "Settings",
     "subscription": "Subscription",
     "myAccount": "My Account",
@@ -79,6 +80,7 @@
     "signIn": "Sign in",
     "signUp": "Sign up",
     "signOut": "Sign out",
+    "signOutConfirm": "Are you sure you want to sign out?",
     "welcomeBack": "Welcome back!",
     "sessionExpired": "Your session has expired",
     "pleaseLoginAgain": "Please sign in again",
@@ -363,7 +365,12 @@
     "clear": "Clear",
     "cacheClearedMessage": "Cache has been cleared.",
     "about": "About",
-    "version": "Version"
+    "version": "Version",
+    "support": "Support",
+    "helpFaq": "Help & FAQ",
+    "contactUs": "Contact us",
+    "termsOfService": "Terms of service",
+    "privacyPolicy": "Privacy policy"
   },
   "upgrade": {
     "title": "Choose your plan",
