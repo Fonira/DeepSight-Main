@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Platform } from 'react-native';
-import { GoogleSignin, statusCodes, isSuccessResponse } from '@react-native-google-signin/google-signin';
+import Constants from 'expo-constants';
 import { authApi, ApiError } from '../services/api';
 import { tokenStorage, userStorage } from '../utils/storage';
 import {
@@ -10,13 +10,32 @@ import {
 } from '../constants/config';
 import type { User } from '../types';
 
-// Configure Google Sign-In on app start
-GoogleSignin.configure({
-  webClientId: GOOGLE_CLIENT_ID,
-  iosClientId: Platform.OS === 'ios' ? GOOGLE_IOS_CLIENT_ID : undefined,
-  offlineAccess: true,
-  scopes: ['profile', 'email'],
-});
+// Check if we're running in Expo Go (native modules not available)
+const isExpoGo = Constants.appOwnership === 'expo';
+
+// Conditionally import Google Sign-In (only works in development builds, not Expo Go)
+let GoogleSignin: any = null;
+let statusCodes: any = {};
+let isSuccessResponse: any = () => false;
+
+if (!isExpoGo) {
+  try {
+    const googleSignIn = require('@react-native-google-signin/google-signin');
+    GoogleSignin = googleSignIn.GoogleSignin;
+    statusCodes = googleSignIn.statusCodes;
+    isSuccessResponse = googleSignIn.isSuccessResponse;
+
+    // Configure Google Sign-In on app start
+    GoogleSignin.configure({
+      webClientId: GOOGLE_CLIENT_ID,
+      iosClientId: Platform.OS === 'ios' ? GOOGLE_IOS_CLIENT_ID : undefined,
+      offlineAccess: true,
+      scopes: ['profile', 'email'],
+    });
+  } catch (e) {
+    console.log('Google Sign-In not available (running in Expo Go)');
+  }
+}
 
 interface AuthContextType {
   user: User | null;
@@ -101,6 +120,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const loginWithGoogle = useCallback(async () => {
     setError(null);
     setIsLoading(true);
+
+    // Check if Google Sign-In is available (not in Expo Go)
+    if (!GoogleSignin || isExpoGo) {
+      setError('Connexion Google non disponible dans Expo Go. Utilisez un build de développement ou connectez-vous avec email/mot de passe.');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       // Check if device has Play Services (Android) or is configured properly
