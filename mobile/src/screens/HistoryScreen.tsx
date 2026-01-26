@@ -46,6 +46,7 @@ export const HistoryScreen: React.FC = () => {
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   // Filter options
   const modes = ['Standard', 'Approfondi', 'Expert'];
@@ -148,17 +149,25 @@ export const HistoryScreen: React.FC = () => {
     setShowFavoritesOnly(!showFavoritesOnly);
   };
 
+  const toggleViewMode = () => {
+    Haptics.selectionAsync();
+    setViewMode(viewMode === 'list' ? 'grid' : 'list');
+  };
+
   const renderItem = useCallback(
     ({ item }: { item: AnalysisSummary }) => (
-      <VideoCard
-        video={item}
-        onPress={() => handleVideoPress(item)}
-        onFavoritePress={() => handleFavoritePress(item)}
-        onLongPress={() => handleDeletePress(item)}
-        isFavorite={item.isFavorite}
-      />
+      <View style={viewMode === 'grid' ? styles.gridItem : undefined}>
+        <VideoCard
+          video={item}
+          onPress={() => handleVideoPress(item)}
+          onFavoritePress={() => handleFavoritePress(item)}
+          onLongPress={() => handleDeletePress(item)}
+          isFavorite={item.isFavorite}
+          compact={viewMode === 'grid'}
+        />
+      </View>
     ),
-    []
+    [viewMode]
   );
 
   const renderFooter = () => {
@@ -254,6 +263,20 @@ export const HistoryScreen: React.FC = () => {
             color={showFilters ? '#FFFFFF' : colors.textTertiary}
           />
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            { backgroundColor: colors.bgElevated, borderColor: colors.border },
+          ]}
+          onPress={toggleViewMode}
+        >
+          <Ionicons
+            name={viewMode === 'list' ? 'grid-outline' : 'list-outline'}
+            size={20}
+            color={colors.textTertiary}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Filter Chips */}
@@ -325,12 +348,22 @@ export const HistoryScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Results Count */}
+      {/* Results Count and View Mode */}
       {!isLoading && analyses.length > 0 && (
         <View style={styles.resultsInfo}>
           <Text style={[styles.resultsText, { color: colors.textSecondary }]}>
             {analyses.length} {t.history.analyses}
           </Text>
+          <View style={styles.viewModeIndicator}>
+            <Ionicons
+              name={viewMode === 'list' ? 'list' : 'grid'}
+              size={14}
+              color={colors.textTertiary}
+            />
+            <Text style={[styles.viewModeText, { color: colors.textTertiary }]}>
+              {viewMode === 'list' ? 'Liste' : 'Grille'}
+            </Text>
+          </View>
         </View>
       )}
 
@@ -341,14 +374,17 @@ export const HistoryScreen: React.FC = () => {
         </View>
       ) : (
         <FlatList
+          key={viewMode} // Force re-render when view mode changes
           data={analyses}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
+          numColumns={viewMode === 'grid' ? 2 : 1}
           contentContainerStyle={[
             styles.listContent,
             { paddingBottom: insets.bottom + 80 },
             analyses.length === 0 && styles.emptyListContent,
           ]}
+          columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -401,11 +437,23 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
   },
   resultsInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.sm,
   },
   resultsText: {
     fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.body,
+  },
+  viewModeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  viewModeText: {
+    fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
   },
   loadingContainer: {
@@ -448,6 +496,14 @@ const styles = StyleSheet.create({
   filterChipText: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.bodyMedium,
+  },
+  gridRow: {
+    justifyContent: 'space-between',
+    gap: Spacing.md,
+  },
+  gridItem: {
+    flex: 1,
+    maxWidth: '48%',
   },
 });
 

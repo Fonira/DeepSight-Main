@@ -25,6 +25,7 @@ export { AudioPlayer } from './audio';
 
 // Fact-checking & Enrichment
 export { FactCheckButton } from './factcheck';
+export { FactCheckDisplay } from './factcheck/FactCheckDisplay';
 export { WebEnrichment } from './enrichment';
 
 // Chat
@@ -38,3 +39,25 @@ export { ErrorBoundary, withErrorBoundary, ErrorFallback } from './common';
 
 // Backgrounds
 export { DoodleBackground } from './backgrounds/DoodleBackground';
+
+// Video Discovery
+export { VideoDiscoveryModal } from './VideoDiscoveryModal';
+
+// Notes & Tags
+export { NotesEditor } from './NotesEditor';
+export { TagsEditor } from './TagsEditor';
+
+// NEW: Credit System
+export { CreditCounter, CreditAlert } from './credits';
+
+// NEW: Analysis Streaming
+export { StreamingAnalysisDisplay } from './analysis';
+
+// NEW: Content Components
+export { TimecodeText, TimecodeListItem, formatTimestamp, parseTimestamp } from './content';
+
+// NEW: Concepts Glossary
+export { ConceptsGlossary } from './concepts';
+
+// NEW: Upgrade Prompts
+export { UpgradePromptModal } from './upgrade';

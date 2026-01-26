@@ -25,7 +25,7 @@ import { Image } from 'expo-image';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { videoApi, chatApi, studyApi, exportApi } from '../services/api';
-import { Header, Card, Badge, Button, YouTubePlayer, useToast } from '../components';
+import { Header, Card, Badge, Button, YouTubePlayer, useToast, StreamingProgress, FreshnessIndicator, ReliabilityScore } from '../components';
 import { QuizComponent, MindMapComponent } from '../components/study';
 import type { QuizQuestion, MindMapData, MindMapNode } from '../components/study';
 import { ExportOptions } from '../components/export';
@@ -34,6 +34,7 @@ import { FactCheckButton } from '../components/factcheck';
 import { WebEnrichment } from '../components/enrichment';
 import { CitationExport } from '../components/citation';
 import { TournesolWidget } from '../components/tournesol';
+import { videoApi as videoApiService } from '../services/api';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { formatDuration, formatDate } from '../utils/formatters';
 import type { RootStackParamList, AnalysisSummary, ChatMessage } from '../types';
@@ -65,6 +66,16 @@ export const AnalysisScreen: React.FC = () => {
   // Analysis status polling
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisStatus, setAnalysisStatus] = useState<string>('');
+  const [analysisStep, setAnalysisStep] = useState(0); // 0-4 for StreamingProgress
+
+  // Reliability and freshness state
+  const [reliabilityData, setReliabilityData] = useState<{
+    overallScore: number;
+    confidence?: number;
+    factors?: Array<{ name: string; score: number; description: string }>;
+    recommendations?: string[];
+  } | null>(null);
+  const [isLoadingReliability, setIsLoadingReliability] = useState(false);
 
   // Chat state
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -137,6 +148,13 @@ export const AnalysisScreen: React.FC = () => {
       } else if (status.status === 'processing') {
         setAnalysisProgress(status.progress || 0);
         setAnalysisStatus(status.message || t.analysis.inProgress);
+        // Calculate step based on progress
+        const progress = status.progress || 0;
+        if (progress < 10) setAnalysisStep(0); // Connect
+        else if (progress < 30) setAnalysisStep(1); // Metadata
+        else if (progress < 60) setAnalysisStep(2); // Transcript
+        else if (progress < 90) setAnalysisStep(3); // Analysis
+        else setAnalysisStep(4); // Complete
         // Poll for updates with cleanup ref
         if (isMountedRef.current) {
           pollingTimeoutRef.current = setTimeout(() => loadAnalysis(), 2000);
@@ -183,6 +201,37 @@ export const AnalysisScreen: React.FC = () => {
   useEffect(() => {
     loadAnalysis();
   }, [loadAnalysis]);
+
+  // Load reliability data
+  const loadReliabilityData = useCallback(async () => {
+    if (!summary?.id) return;
+    setIsLoadingReliability(true);
+    try {
+      const data = await videoApiService.getReliability(summary.id);
+      setReliabilityData({
+        overallScore: data.overall_score || 0,
+        confidence: data.confidence,
+        factors: data.factors?.map((f: any) => ({
+          name: f.name,
+          score: f.score,
+          description: f.description,
+        })),
+        recommendations: data.recommendations,
+      });
+    } catch (err) {
+      // Reliability data might not be available
+      console.log('Reliability data not available:', err);
+    } finally {
+      setIsLoadingReliability(false);
+    }
+  }, [summary?.id]);
+
+  // Load reliability when summary is available
+  useEffect(() => {
+    if (summary?.id) {
+      loadReliabilityData();
+    }
+  }, [summary?.id, loadReliabilityData]);
 
   // Send chat message
   const handleSendMessage = async () => {
@@ -360,31 +409,20 @@ export const AnalysisScreen: React.FC = () => {
     }
   };
 
-  // Render loading state
+  // Render loading state with StreamingProgress
   if (isLoading && analysisProgress < 100) {
     return (
       <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         <Header title={t.analysis.title} showBack />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accentPrimary} />
-          <Text style={[styles.loadingText, { color: colors.textPrimary }]}>
-            {analysisStatus || t.common.loading}
-          </Text>
-          {analysisProgress > 0 && (
-            <View style={styles.progressContainer}>
-              <View style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    { width: `${analysisProgress}%`, backgroundColor: colors.accentPrimary },
-                  ]}
-                />
-              </View>
-              <Text style={[styles.progressText, { color: colors.textTertiary }]}>
-                {Math.round(analysisProgress)}%
-              </Text>
-            </View>
-          )}
+          <Card variant="elevated" style={styles.streamingCard}>
+            <StreamingProgress
+              currentStep={analysisStep}
+              progress={analysisProgress}
+              statusMessage={analysisStatus}
+              error={error || undefined}
+            />
+          </Card>
         </View>
       </View>
     );
@@ -513,6 +551,25 @@ export const AnalysisScreen: React.FC = () => {
             )}
           </View>
 
+          {/* Freshness and Reliability indicators */}
+          <View style={styles.indicatorsRow}>
+            {summary?.videoInfo?.publishedAt && (
+              <FreshnessIndicator
+                publishedAt={summary.videoInfo.publishedAt}
+                compact
+              />
+            )}
+            {reliabilityData && (
+              <ReliabilityScore
+                overallScore={reliabilityData.overallScore}
+                confidence={reliabilityData.confidence}
+                factors={reliabilityData.factors}
+                recommendations={reliabilityData.recommendations}
+                compact
+              />
+            )}
+          </View>
+
           {/* Summary content */}
           <Card variant="elevated" style={styles.summaryCard}>
             <Text style={[styles.summaryContent, { color: colors.textPrimary }]}>
@@ -545,6 +602,29 @@ export const AnalysisScreen: React.FC = () => {
           {summary?.videoId && (
             <View style={{ marginTop: Spacing.lg }}>
               <TournesolWidget videoId={summary.videoId} />
+            </View>
+          )}
+
+          {/* Detailed Reliability Score */}
+          {reliabilityData && (
+            <View style={{ marginTop: Spacing.lg }}>
+              <ReliabilityScore
+                overallScore={reliabilityData.overallScore}
+                confidence={reliabilityData.confidence}
+                factors={reliabilityData.factors}
+                recommendations={reliabilityData.recommendations}
+                onAnalyze={loadReliabilityData}
+                isLoading={isLoadingReliability}
+              />
+            </View>
+          )}
+
+          {/* Detailed Freshness Indicator */}
+          {summary?.videoInfo?.publishedAt && (
+            <View style={{ marginTop: Spacing.lg }}>
+              <FreshnessIndicator
+                publishedAt={summary.videoInfo.publishedAt}
+              />
             </View>
           )}
         </ScrollView>
@@ -971,7 +1051,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xl,
   },
   loadingText: {
     fontSize: Typography.fontSize.base,
@@ -1079,6 +1160,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.sm,
     marginBottom: Spacing.md,
+    flexWrap: 'wrap',
+  },
+  indicatorsRow: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
+    flexWrap: 'wrap',
+  },
+  streamingCard: {
+    width: '100%',
+    padding: 0,
+    overflow: 'hidden',
   },
   summaryCard: {
     marginBottom: Spacing.md,

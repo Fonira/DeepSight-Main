@@ -45,6 +45,10 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [selectedVoice, setSelectedVoice] = useState<string>('alloy');
   const [showVoiceSelector, setShowVoiceSelector] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
+  const [showSpeedSelector, setShowSpeedSelector] = useState(false);
+
+  const PLAYBACK_SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 
   // Load available voices
   useEffect(() => {
@@ -169,6 +173,14 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     await sound.setPositionAsync(newPosition);
   };
 
+  const handleSpeedChange = async (speed: number) => {
+    setPlaybackSpeed(speed);
+    setShowSpeedSelector(false);
+    if (sound) {
+      await sound.setRateAsync(speed, true);
+    }
+  };
+
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
@@ -243,7 +255,6 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       paddingVertical: 6,
       backgroundColor: colors.bgCard,
       borderRadius: 16,
-      marginBottom: 24,
     },
     voiceText: {
       fontSize: 14,
@@ -335,6 +346,53 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       fontSize: 16,
       color: colors.textPrimary,
     },
+    speedSelector: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: colors.bgCard,
+      borderRadius: 16,
+      marginLeft: 8,
+    },
+    speedText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    speedModalContent: {
+      backgroundColor: colors.bgPrimary,
+      borderRadius: 16,
+      maxHeight: '50%',
+    },
+    speedModalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    speedModalTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.textPrimary,
+    },
+    speedItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    speedItemSelected: {
+      backgroundColor: colors.accentPrimary + '10',
+    },
+    speedValue: {
+      fontSize: 16,
+      color: colors.textPrimary,
+    },
     generateButton: {
       backgroundColor: colors.accentPrimary,
       paddingHorizontal: 24,
@@ -380,15 +438,25 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
               {title}
             </Text>
 
-            <TouchableOpacity
-              style={styles.voiceSelector}
-              onPress={() => setShowVoiceSelector(true)}
-            >
-              <Text style={styles.voiceText}>
-                Voix: {voices.find(v => v.id === selectedVoice)?.name || selectedVoice}
-              </Text>
-              <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+              <TouchableOpacity
+                style={styles.voiceSelector}
+                onPress={() => setShowVoiceSelector(true)}
+              >
+                <Text style={styles.voiceText}>
+                  Voix: {voices.find(v => v.id === selectedVoice)?.name || selectedVoice}
+                </Text>
+                <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.speedSelector}
+                onPress={() => setShowSpeedSelector(true)}
+              >
+                <Text style={styles.speedText}>{playbackSpeed}x</Text>
+                <Ionicons name="chevron-down" size={16} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+              </TouchableOpacity>
+            </View>
 
             {error && (
               <Text style={styles.errorText}>{error}</Text>
@@ -495,6 +563,48 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
                 >
                   <Text style={styles.voiceName}>{voice.name}</Text>
                   {voice.id === selectedVoice && (
+                    <Ionicons name="checkmark" size={20} color={colors.accentPrimary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Speed Selector Modal */}
+      <Modal
+        visible={showSpeedSelector}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowSpeedSelector(false)}
+      >
+        <TouchableOpacity
+          style={styles.voiceModal}
+          activeOpacity={1}
+          onPress={() => setShowSpeedSelector(false)}
+        >
+          <View style={styles.speedModalContent} onStartShouldSetResponder={() => true}>
+            <View style={styles.speedModalHeader}>
+              <Text style={styles.speedModalTitle}>Vitesse de lecture</Text>
+              <TouchableOpacity onPress={() => setShowSpeedSelector(false)}>
+                <Ionicons name="close" size={24} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              {PLAYBACK_SPEEDS.map((speed) => (
+                <TouchableOpacity
+                  key={speed}
+                  style={[
+                    styles.speedItem,
+                    speed === playbackSpeed && styles.speedItemSelected,
+                  ]}
+                  onPress={() => handleSpeedChange(speed)}
+                >
+                  <Text style={styles.speedValue}>
+                    {speed === 1.0 ? 'Normal' : `${speed}x`}
+                  </Text>
+                  {speed === playbackSpeed && (
                     <Ionicons name="checkmark" size={20} color={colors.accentPrimary} />
                   )}
                 </TouchableOpacity>

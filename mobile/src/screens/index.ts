@@ -12,3 +12,6 @@ export { AccountScreen } from './AccountScreen';
 export { UpgradeScreen } from './UpgradeScreen';
 export { UsageScreen } from './UsageScreen';
 export { AnalysisScreen } from './AnalysisScreen';
+export { PaymentSuccessScreen } from './PaymentSuccessScreen';
+export { PaymentCancelScreen } from './PaymentCancelScreen';
+export { LegalScreen } from './LegalScreen';
