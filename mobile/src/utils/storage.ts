@@ -1,10 +1,60 @@
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { STORAGE_KEYS } from '../constants/config';
 
+// Check if we're running on web - must be a function to evaluate at runtime
+// Platform.OS may not be ready at module load time
+const isWeb = (): boolean => {
+  if (Platform.OS === 'web') return true;
+  if (typeof document !== 'undefined') return true;
+  if (typeof window !== 'undefined' && typeof window.localStorage !== 'undefined') return true;
+  return false;
+};
+
+// Web storage fallback using localStorage
+const webStorage = {
+  async setItem(key: string, value: string): Promise<void> {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, value);
+      }
+    } catch (error) {
+      console.error('localStorage setItem error:', error);
+    }
+  },
+
+  async getItem(key: string): Promise<string | null> {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        return localStorage.getItem(key);
+      }
+      return null;
+    } catch (error) {
+      console.error('localStorage getItem error:', error);
+      return null;
+    }
+  },
+
+  async removeItem(key: string): Promise<void> {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.error('localStorage removeItem error:', error);
+    }
+  },
+};
+
 // Secure storage for sensitive data (tokens)
+// Uses localStorage on web, SecureStore on native
 export const secureStorage = {
   async setItem(key: string, value: string): Promise<void> {
+    if (isWeb()) {
+      await webStorage.setItem(key, value);
+      return;
+    }
     try {
       await SecureStore.setItemAsync(key, value);
     } catch (error) {
@@ -15,6 +65,9 @@ export const secureStorage = {
   },
 
   async getItem(key: string): Promise<string | null> {
+    if (isWeb()) {
+      return await webStorage.getItem(key);
+    }
     try {
       return await SecureStore.getItemAsync(key);
     } catch (error) {
@@ -25,6 +78,10 @@ export const secureStorage = {
   },
 
   async removeItem(key: string): Promise<void> {
+    if (isWeb()) {
+      await webStorage.removeItem(key);
+      return;
+    }
     try {
       await SecureStore.deleteItemAsync(key);
     } catch (error) {
