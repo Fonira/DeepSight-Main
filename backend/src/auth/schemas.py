@@ -78,6 +78,11 @@ class GoogleTokenRequest(BaseModel):
     access_token: str
 
 
+class DeleteAccountRequest(BaseModel):
+    """Schéma pour supprimer le compte"""
+    password: Optional[str] = None  # Optionnel pour les comptes Google
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📤 RÉPONSES (Output)
 # ═══════════════════════════════════════════════════════════════════════════════

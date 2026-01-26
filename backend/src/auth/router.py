@@ -15,7 +15,7 @@ from .schemas import (
     UserRegister, UserLogin, RefreshTokenRequest, VerifyEmailRequest,
     ResendVerificationRequest, ForgotPasswordRequest, ResetPasswordRequest,
     ChangePasswordRequest, UpdatePreferencesRequest, GoogleCallbackRequest,
-    GoogleTokenRequest,
+    GoogleTokenRequest, DeleteAccountRequest,
     UserResponse, TokenResponse, AuthUrlResponse, MessageResponse, QuotaResponse
 )
 from .service import (
@@ -166,6 +166,36 @@ async def logout(
     await invalidate_user_session(session, current_user.id)
     
     return MessageResponse(success=True, message="✅ Déconnecté")
+
+
+@router.delete("/account", response_model=MessageResponse)
+async def delete_account(
+    data: DeleteAccountRequest,
+    current_user = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Supprime le compte de l'utilisateur connecté.
+    Requiert le mot de passe pour les comptes email.
+    Les comptes Google peuvent être supprimés sans mot de passe.
+    """
+    from .service import hash_password
+
+    # Vérifier le mot de passe pour les comptes avec mot de passe
+    if current_user.password_hash:
+        if not data.password:
+            raise HTTPException(status_code=400, detail="Mot de passe requis")
+        if current_user.password_hash != hash_password(data.password):
+            raise HTTPException(status_code=401, detail="Mot de passe incorrect")
+
+    # Invalider la session avant suppression
+    await invalidate_user_session(session, current_user.id)
+
+    # Supprimer l'utilisateur (cascade delete automatique)
+    await session.delete(current_user)
+    await session.commit()
+
+    return MessageResponse(success=True, message="✅ Compte supprimé définitivement")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

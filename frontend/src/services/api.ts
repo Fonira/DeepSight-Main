@@ -596,6 +596,15 @@ export const authApi = {
       body: prefs,
     });
   },
+
+  async deleteAccount(password?: string): Promise<{ success: boolean; message: string }> {
+    const response = await request<{ success: boolean; message: string }>('/api/auth/account', {
+      method: 'DELETE',
+      body: { password },
+    });
+    clearTokens();
+    return response;
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1233,197 +1242,6 @@ export const adminApi = {
   },
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// 🎙️ TTS API — Text-to-Speech pour résumés audio
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export interface TTSEstimate {
-  text_length: number;
-  estimated_duration_seconds: number;
-  estimated_cost_elevenlabs: number;
-  estimated_cost_openai: number;
-  is_within_limit: boolean;
-  truncated_preview: string;
-}
-
-export interface TTSVoice {
-  name: string;
-  description: string;
-  provider: string;
-  recommended_for: string[];
-}
-
-export interface TTSVoices {
-  fr: Record<string, TTSVoice>;
-  en: Record<string, TTSVoice>;
-  default_voice: { fr: string; en: string };
-}
-
-export interface TTSStatus {
-  service: string;
-  status: 'operational' | 'degraded';
-  providers: {
-    elevenlabs: { configured: boolean; status: string; quality: string };
-    openai: { configured: boolean; status: string; quality: string };
-  };
-  fallback_enabled: boolean;
-  cache_enabled: boolean;
-  max_text_length: number;
-}
-
-export type VoiceStyle = 'warm' | 'calm' | 'soft' | 'narrative';
-export type TTSProvider = 'auto' | 'openai' | 'elevenlabs';
-
-export const ttsApi = {
-  /**
-   * 📊 Estime la durée et le coût pour un résumé
-   */
-  async estimateSummary(summaryId: number): Promise<TTSEstimate> {
-    return request(`/api/tts/summary/${summaryId}/estimate`);
-  },
-
-  /**
-   * 🎙️ Génère l'audio pour un résumé
-   * 
-   * @param summaryId - ID du résumé
-   * @param voiceStyle - Style de voix: warm, calm, soft, narrative
-   * @param provider - Provider TTS:
-   *   - 'auto': ElevenLabs avec fallback OpenAI (défaut, Starter+)
-   *   - 'openai': OpenAI TTS HD direct (Pro/Expert uniquement)
-   *   - 'elevenlabs': ElevenLabs uniquement
-   * 
-   * @returns URL du blob audio
-   */
-  async generateSummaryAudio(
-    summaryId: number,
-    voiceStyle: VoiceStyle = 'warm',
-    provider: TTSProvider = 'auto'
-  ): Promise<string> {
-    const params = new URLSearchParams({
-      voice_style: voiceStyle,
-      provider: provider
-    });
-    
-    const response = await fetch(`${API_URL}/api/tts/summary/${summaryId}/audio?${params}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${getAccessToken()}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: 'TTS generation failed' }));
-      
-      // Extraire le message d'erreur proprement (évite [object Object])
-      let errorMessage = 'Échec de la génération audio';
-      
-      if (typeof errorData.detail === 'string') {
-        errorMessage = errorData.detail;
-      } else if (errorData.detail?.message) {
-        errorMessage = errorData.detail.message;
-      } else if (errorData.detail?.error) {
-        const errorCode = errorData.detail.error;
-        if (errorCode === 'tts_generation_failed' || errorCode === 'all_providers_failed') {
-          errorMessage = 'Service TTS temporairement indisponible. Veuillez réessayer plus tard.';
-        } else if (errorCode === 'tts_pro_required') {
-          errorMessage = 'La synthèse vocale nécessite un abonnement Starter ou Pro.';
-        } else if (errorCode === 'openai_tts_pro_required') {
-          errorMessage = 'OpenAI HD est réservé aux abonnés Pro et Expert.';
-        } else {
-          errorMessage = `Erreur: ${errorCode}`;
-        }
-      }
-      
-      throw new ApiError(errorMessage, response.status, errorData.detail?.error);
-    }
-
-    // Créer un blob URL pour le lecteur audio
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
-  },
-
-  /**
-   * 📋 Génère l'audio pour une méta-analyse de playlist
-   */
-  async generatePlaylistAudio(
-    playlistId: string,
-    voiceStyle: VoiceStyle = 'narrative'
-  ): Promise<string> {
-    const response = await fetch(`${API_URL}/api/tts/playlist/${playlistId}/audio?voice_style=${voiceStyle}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${getAccessToken()}`,
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'TTS generation failed' }));
-      throw new ApiError(
-        error.detail?.message || error.detail || 'Échec de la génération audio',
-        response.status,
-        error.detail?.error
-      );
-    }
-
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
-  },
-
-  /**
-   * 🎤 Génère l'audio à partir d'un texte libre
-   */
-  async generateFromText(
-    text: string,
-    language: 'fr' | 'en' = 'fr',
-    voiceStyle: VoiceStyle = 'warm'
-  ): Promise<string> {
-    const response = await fetch(`${API_URL}/api/tts/generate`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${getAccessToken()}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text, language, voice_style: voiceStyle }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ detail: 'TTS generation failed' }));
-      throw new ApiError(
-        error.detail?.message || error.detail || 'Échec de la génération audio',
-        response.status,
-        error.detail?.error
-      );
-    }
-
-    const blob = await response.blob();
-    return URL.createObjectURL(blob);
-  },
-
-  /**
-   * 📋 Liste les voix disponibles
-   */
-  async getVoices(): Promise<TTSVoices> {
-    return request('/api/tts/voices');
-  },
-
-  /**
-   * 🔍 Vérifie le statut du service TTS
-   */
-  async getStatus(): Promise<TTSStatus> {
-    return request('/api/tts/status');
-  },
-
-  /**
-   * 📊 Estime un texte libre
-   */
-  async estimate(text: string, language: 'fr' | 'en' = 'fr'): Promise<TTSEstimate> {
-    return request('/api/tts/estimate', {
-      method: 'POST',
-      body: { text, language, voice_style: 'warm' },
-    });
-  },
-};
-
 // Export par défaut
 export default {
   auth: authApi,
@@ -1436,5 +1254,4 @@ export default {
   usage: usageApi,
   tournesol: tournesolApi,
   admin: adminApi,
-  tts: ttsApi,
 };

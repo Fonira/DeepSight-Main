@@ -22,7 +22,7 @@ import {
   ExternalLink, Copy, Check, MessageCircle, X, Bot,
   AlertCircle, Minimize2, Maximize2, RefreshCw, Pause,
   Zap, FileText, FileDown, ChevronUp, Minus, GraduationCap, Brain,
-  ChevronRight, Tags, Headphones
+  ChevronRight, Tags
 } from "lucide-react";
 import { EnrichedMarkdown } from "../components/EnrichedMarkdown";
 import { ConceptsGlossary } from "../components/ConceptsGlossary";
@@ -46,8 +46,6 @@ import { ThumbnailImage } from "../components/ThumbnailImage";
 // 🕐 Freshness & Fact-Check LITE
 import { FreshnessIndicator } from "../components/FreshnessIndicator";
 import { FactCheckLite } from "../components/FactCheckLite";
-// 🎙️ Audio Player TTS
-import { AudioPlayer } from "../components/AudioPlayer";
 // 💰 Monetization components
 import { CreditAlert } from "../components/CreditAlert";
 import { AnalysisValueDisplay } from "../components/AnalysisValueDisplay";
@@ -163,7 +161,6 @@ export const DashboardPage: React.FC = () => {
   const [showCitationModal, setShowCitationModal] = useState(false);
   const [showStudyToolsModal, setShowStudyToolsModal] = useState(false);
   const [showKeywordsModal, setShowKeywordsModal] = useState(false);
-  const [showAudioPlayer, setShowAudioPlayer] = useState(false);
   // 💰 Monetization states
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeLimitType, setUpgradeLimitType] = useState<'credits' | 'chat' | 'analysis'>('credits');
@@ -1155,16 +1152,6 @@ export const DashboardPage: React.FC = () => {
                         {language === 'fr' ? 'Mots-clés' : 'Keywords'}
                       </button>
 
-                      {/* 🎙️ Écouter (TTS) */}
-                      <button
-                        onClick={() => setShowAudioPlayer(!showAudioPlayer)}
-                        className={`btn ${showAudioPlayer ? 'btn-primary' : 'btn-ghost'} text-xs`}
-                        title={language === 'fr' ? 'Écouter le résumé (synthèse vocale)' : 'Listen to summary (text-to-speech)'}
-                      >
-                        <Headphones className="w-4 h-4" />
-                        {language === 'fr' ? 'Écouter' : 'Listen'}
-                      </button>
-
                       {/* Export */}
                       <div className="relative">
                         <button
@@ -1216,18 +1203,6 @@ export const DashboardPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="panel-body prose max-w-none">
-                    {/* 🎙️ Lecteur Audio TTS - EN HAUT */}
-                    {showAudioPlayer && (
-                      <div className="mb-6 animate-fadeIn not-prose">
-                        <AudioPlayer
-                          summaryId={selectedSummary.id}
-                          title={selectedSummary.video_title || (language === 'fr' ? 'Résumé audio' : 'Audio summary')}
-                          language={selectedSummary.lang === 'en' ? 'en' : 'fr'}
-                          variant="full"
-                        />
-                      </div>
-                    )}
-                    
                     <EnrichedMarkdown 
                       language={language}
                       onTimecodeClick={handleTimecodeClick}

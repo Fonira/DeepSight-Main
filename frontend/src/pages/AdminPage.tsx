@@ -16,6 +16,7 @@ import {
   FileText, Crown, CreditCard, Mail, Check
 } from 'lucide-react';
 import { API_URL } from '../services/api';
+import toast from 'react-hot-toast';
 
 // Types
 interface AdminStats {
@@ -230,18 +231,20 @@ export const AdminPage: React.FC = () => {
 
   // Delete User
   const handleDeleteUser = async (userId: number) => {
-    if (!confirm(language === 'fr' 
-      ? 'Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.' 
+    if (!confirm(language === 'fr'
+      ? 'Êtes-vous sûr de vouloir supprimer cet utilisateur ? Cette action est irréversible.'
       : 'Are you sure you want to delete this user? This action is irreversible.')) {
       return;
     }
-    
+
     setActionLoading(true);
     try {
       await adminFetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+      toast.success(language === 'fr' ? 'Utilisateur supprimé' : 'User deleted');
       await loadUsers();
       await loadStats();
     } catch (err: any) {
+      toast.error(err.message || (language === 'fr' ? 'Erreur lors de la suppression' : 'Error deleting user'));
       setError(err.message);
     } finally {
       setActionLoading(false);

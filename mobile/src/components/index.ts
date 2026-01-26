@@ -20,9 +20,6 @@ export * from './study';
 export { ExportOptions } from './export';
 export { CitationExport } from './citation';
 
-// Audio
-export { AudioPlayer } from './audio';
-
 // Fact-checking & Enrichment
 export { FactCheckButton } from './factcheck';
 export { FactCheckDisplay } from './factcheck/FactCheckDisplay';
