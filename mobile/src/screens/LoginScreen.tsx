@@ -26,9 +26,17 @@ type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, '
 export const LoginScreen: React.FC = () => {
   const { colors } = useTheme();
   const { t } = useLanguage();
-  const { login, loginWithGoogle, isLoading, error, clearError } = useAuth();
+  const { login, loginWithGoogle, isLoading, error, clearError, pendingVerificationEmail, clearPendingVerification } = useAuth();
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const insets = useSafeAreaInsets();
+
+  // Navigate to verification if email needs verification
+  useEffect(() => {
+    if (pendingVerificationEmail) {
+      navigation.navigate('VerifyEmail', { email: pendingVerificationEmail });
+      clearPendingVerification();
+    }
+  }, [pendingVerificationEmail, navigation, clearPendingVerification]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

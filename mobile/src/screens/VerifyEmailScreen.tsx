@@ -25,7 +25,7 @@ const CODE_LENGTH = 6;
 
 export const VerifyEmailScreen: React.FC = () => {
   const { colors } = useTheme();
-  const { verifyEmail, isLoading, error, clearError } = useAuth();
+  const { verifyEmail, resendVerificationCode, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<VerifyEmailNavigationProp>();
   const route = useRoute<VerifyEmailRouteProp>();
   const insets = useSafeAreaInsets();
@@ -74,13 +74,15 @@ export const VerifyEmailScreen: React.FC = () => {
     setIsResending(true);
     clearError();
 
-    // Note: Using a simple timeout as there's no dedicated resend endpoint
-    // In production, this should call a resend verification email API
-    setTimeout(() => {
-      setIsResending(false);
+    try {
+      await resendVerificationCode(email);
       setCountdown(60);
       setCode('');
-    }, 1500);
+    } catch (err) {
+      // Error handled by AuthContext
+    } finally {
+      setIsResending(false);
+    }
   };
 
   const handleBackToLogin = () => {

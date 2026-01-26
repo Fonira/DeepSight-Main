@@ -42,6 +42,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  pendingVerificationEmail: string | null;  // Email awaiting verification
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<{ requiresVerification: boolean }>;
@@ -50,6 +51,8 @@ interface AuthContextType {
   forgotPassword: (email: string) => Promise<void>;
   refreshUser: (force?: boolean) => Promise<void>;
   clearError: () => void;
+  clearPendingVerification: () => void;
+  resendVerificationCode: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -58,6 +61,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
 
   const isAuthenticated = user !== null;
 
@@ -143,11 +147,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     setError(null);
+    setPendingVerificationEmail(null);
     try {
       const response = await authApi.login(email, password);
       setUser(response.user);
       await userStorage.setUser(response.user);
     } catch (err) {
+      // Check for email verification required error
+      if (err instanceof ApiError && err.isEmailNotVerified) {
+        setPendingVerificationEmail(email);
+        setError('Votre email n\'est pas encore vérifié. Veuillez vérifier votre boîte mail.');
+        throw err;
+      }
       const message = err instanceof ApiError ? err.message : 'Échec de la connexion';
       setError(message);
       throw err;
@@ -280,11 +291,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const clearError = useCallback(() => setError(null), []);
 
+  const clearPendingVerification = useCallback(() => {
+    setPendingVerificationEmail(null);
+  }, []);
+
+  const resendVerificationCode = useCallback(async (email: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await authApi.resendVerification(email);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'Échec du renvoi';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return (
     <AuthContext.Provider value={{
-      user, isAuthenticated, isLoading, error,
+      user, isAuthenticated, isLoading, error, pendingVerificationEmail,
       login, loginWithGoogle, register, verifyEmail,
       logout, forgotPassword, refreshUser, clearError,
+      clearPendingVerification, resendVerificationCode,
     }}>
       {children}
     </AuthContext.Provider>

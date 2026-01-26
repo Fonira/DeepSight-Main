@@ -152,7 +152,20 @@ if FRONTEND_URL not in ALLOWED_ORIGINS:
     ALLOWED_ORIGINS.append(FRONTEND_URL)
 
 # Ajouter les origines de développement mobile (Expo)
-MOBILE_DEV_ORIGINS = ["http://localhost:8081", "http://127.0.0.1:8081"]
+# Expo peut utiliser différents ports selon la configuration
+MOBILE_DEV_ORIGINS = [
+    "http://localhost:8081",
+    "http://127.0.0.1:8081",
+    "http://localhost:8082",
+    "http://localhost:19000",
+    "http://localhost:19001",
+    "http://localhost:19002",
+    "http://localhost:19006",  # Expo web
+    "http://127.0.0.1:19000",
+    "http://127.0.0.1:19006",
+    "exp://localhost:8081",
+    "exp://127.0.0.1:8081",
+]
 for origin in MOBILE_DEV_ORIGINS:
     if origin not in ALLOWED_ORIGINS:
         ALLOWED_ORIGINS.append(origin)
