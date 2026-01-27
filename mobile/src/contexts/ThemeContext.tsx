@@ -96,12 +96,23 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
   const colors = isDark ? darkColors : lightColors;
 
-  // Load saved theme preference
+  // Load saved theme preference with timeout protection
   useEffect(() => {
     const loadTheme = async () => {
-      const savedTheme = await storage.getItem(STORAGE_KEYS.THEME);
-      if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
-        setThemeState(savedTheme as ThemeMode);
+      try {
+        // Timeout protection: 2 seconds max to prevent hanging on emulator
+        const timeoutPromise = new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('Theme load timeout')), 2000)
+        );
+        const savedTheme = await Promise.race([
+          storage.getItem(STORAGE_KEYS.THEME),
+          timeoutPromise
+        ]) as string | null;
+        if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
+          setThemeState(savedTheme as ThemeMode);
+        }
+      } catch (e) {
+        console.warn('Theme load failed/timeout, using default');
       }
     };
     loadTheme();

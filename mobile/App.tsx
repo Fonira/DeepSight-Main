@@ -1,21 +1,30 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 import { AuthProvider } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { LanguageProvider } from './src/contexts/LanguageContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
-import { DoodleBackground } from './src/components/backgrounds';
 import { ErrorBoundary, OfflineBanner } from './src/components/common';
 import { ToastProvider } from './src/components/ui/Toast';
 import { QUERY_CONFIG } from './src/constants/config';
 import { Colors } from './src/constants/theme';
+
+// Check if running in Expo Go (has version mismatch issues with Reanimated/Worklets)
+const isExpoGo = Constants.appOwnership === 'expo';
+
+// Lazy load DoodleBackground only in development builds (not Expo Go)
+// This prevents the Worklets version mismatch crash in Expo Go
+const DoodleBackground = !isExpoGo
+  ? lazy(() => import('./src/components/backgrounds').then(mod => ({ default: mod.DoodleBackground })))
+  : null;
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -36,10 +45,18 @@ const queryClient = new QueryClient({
 const AppContent: React.FC = () => {
   const { isDark, colors } = useTheme();
 
+  // Use lower density on Android to avoid performance issues with Reanimated
+  const doodleDensity = Platform.OS === 'android' ? 'low' : 'medium';
+
   return (
     <View style={[styles.appContainer, { backgroundColor: colors.bgPrimary }]}>
       <OfflineBanner />
-      <DoodleBackground density="medium" />
+      {/* DoodleBackground is disabled in Expo Go due to Worklets version mismatch */}
+      {DoodleBackground && (
+        <Suspense fallback={null}>
+          <DoodleBackground density={doodleDensity} />
+        </Suspense>
+      )}
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <AppNavigator />
     </View>

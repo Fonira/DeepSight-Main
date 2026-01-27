@@ -415,7 +415,61 @@ export const videoApi = {
   },
 
   async getSummary(summaryId: string): Promise<AnalysisSummary> {
-    return request(`/api/videos/summary/${summaryId}`);
+    const response = await request<{
+      id: number;
+      video_id: string;
+      video_title: string;
+      video_channel?: string;
+      video_duration?: number;
+      video_url?: string;
+      thumbnail_url?: string;
+      category: string;
+      lang?: string;
+      mode: string;
+      model_used?: string;
+      summary_content: string;
+      word_count?: number;
+      reliability_score?: number;
+      is_favorite: boolean;
+      notes?: string;
+      tags?: string;
+      created_at?: string;
+      transcript_context?: string;
+    }>(`/api/videos/summary/${summaryId}`);
+
+    // Transform backend response to mobile format
+    return {
+      id: String(response.id),
+      videoId: response.video_id,
+      title: response.video_title || 'Sans titre',
+      content: response.summary_content,
+      mode: response.mode || 'standard',
+      category: response.category || 'general',
+      model: response.model_used,
+      language: response.lang,
+      createdAt: response.created_at,
+      isFavorite: response.is_favorite || false,
+      wordCount: response.word_count,
+      thumbnail: response.thumbnail_url,
+      channel: response.video_channel,
+      duration: response.video_duration,
+      videoInfo: {
+        id: response.video_id,
+        title: response.video_title || 'Sans titre',
+        description: '',
+        thumbnail: response.thumbnail_url || `https://img.youtube.com/vi/${response.video_id}/mqdefault.jpg`,
+        channel: response.video_channel || 'Unknown',
+        channelId: '',
+        duration: response.video_duration || 0,
+        publishedAt: response.created_at || '',
+        viewCount: 0,
+      },
+      // Pass through additional fields for notes/tags
+      notes: response.notes,
+      tags: response.tags,
+      reliabilityScore: response.reliability_score,
+      creditsUsed: 1, // Default value
+    } as AnalysisSummary & { notes?: string; tags?: string; reliabilityScore?: number; creditsUsed?: number };
   },
 
   async getConcepts(summaryId: string): Promise<{ concepts: string[] }> {

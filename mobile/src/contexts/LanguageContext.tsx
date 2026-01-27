@@ -24,16 +24,23 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
   const [language, setLanguageState] = useState<Language>('fr');
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load saved language preference on mount
+  // Load saved language preference on mount with timeout protection
   useEffect(() => {
     const loadLanguage = async () => {
       try {
-        const saved = await AsyncStorage.getItem(STORAGE_KEYS.LANGUAGE);
+        // Timeout protection: 2 seconds max to prevent hanging on emulator
+        const timeoutPromise = new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('Language load timeout')), 2000)
+        );
+        const saved = await Promise.race([
+          AsyncStorage.getItem(STORAGE_KEYS.LANGUAGE),
+          timeoutPromise
+        ]) as string | null;
         if (saved === 'fr' || saved === 'en') {
           setLanguageState(saved);
         }
       } catch (error) {
-        console.error('Failed to load language preference:', error);
+        console.warn('Language load failed/timeout, using default:', error);
       } finally {
         setIsLoading(false);
       }
