@@ -212,6 +212,7 @@ export const DashboardScreen: React.FC = () => {
         mode: pendingSearchData.mode,
         category: pendingSearchData.category,
         language: pendingSearchData.language,
+        model: user?.default_model || 'mistral-small-latest',
         deep_research: pendingSearchData.deepResearch,
       };
 
