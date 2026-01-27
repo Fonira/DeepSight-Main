@@ -21,6 +21,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { videoApi, historyApi } from '../services/api';
 import { Header, VideoCard, Card, Badge, Avatar, FreeTrialLimitModal } from '../components';
 import SmartInputBar from '../components/SmartInputBar';
+import { VideoDiscoveryModal } from '../components/VideoDiscoveryModal';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
 import { isValidYouTubeUrl, formatCredits } from '../utils/formatters';
 import { useIsOffline } from '../hooks/useNetworkStatus';
@@ -57,6 +58,15 @@ export const DashboardScreen: React.FC = () => {
   const [showFreeTrialModal, setShowFreeTrialModal] = useState(false);
   const [analysesUsedThisMonth, setAnalysesUsedThisMonth] = useState(0);
   const [lastVideoDuration, setLastVideoDuration] = useState(0);
+
+  // Video discovery modal state
+  const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
+  const [pendingSearchData, setPendingSearchData] = useState<{
+    mode: string;
+    category: string;
+    language: string;
+    deepResearch: boolean;
+  } | null>(null);
 
   const loadRecentAnalyses = useCallback(async () => {
     try {
@@ -138,22 +148,16 @@ export const DashboardScreen: React.FC = () => {
         analysisRequest.title = data.title;
         analysisRequest.source = data.source;
       } else if (data.inputType === 'search') {
-        // For search, first discover videos then navigate to selection
-        const searchResults = await videoApi.discoverBest(data.value, {
-          limit: 10,
-          language: data.language,
-          sort_by: 'quality',
+        // For search, show the VideoDiscoveryModal for user to select a video
+        setPendingSearchData({
+          mode: data.mode,
+          category: data.category,
+          language: data.language || 'fr',
+          deepResearch: data.deepResearch || false,
         });
-
-        if (searchResults.videos.length === 0) {
-          Alert.alert(t.common.error, t.videoDiscovery.noResults);
-          setIsAnalyzing(false);
-          return;
-        }
-
-        // For now, analyze the first (best) result
-        // TODO: Show VideoDiscoveryModal for selection
-        analysisRequest.url = `https://youtube.com/watch?v=${searchResults.videos[0].id}`;
+        setShowDiscoveryModal(true);
+        setIsAnalyzing(false);
+        return; // Exit early - analysis will continue after video selection
       }
 
       const { task_id } = await videoApi.analyze(analysisRequest);
@@ -191,6 +195,49 @@ export const DashboardScreen: React.FC = () => {
 
   const handleVideoPress = (summary: AnalysisSummary) => {
     navigation.navigate('Analysis', { summaryId: summary.id });
+  };
+
+  // Handle video selection from discovery modal
+  const handleVideoSelect = async (videoId: string, videoUrl: string) => {
+    if (!pendingSearchData) return;
+
+    setShowDiscoveryModal(false);
+    setIsAnalyzing(true);
+
+    try {
+      const analysisRequest = {
+        url: videoUrl,
+        mode: pendingSearchData.mode,
+        category: pendingSearchData.category,
+        language: pendingSearchData.language,
+        deep_research: pendingSearchData.deepResearch,
+      };
+
+      const { task_id } = await videoApi.analyze(analysisRequest);
+
+      // For free users, track analysis
+      if (userPlan === 'free') {
+        const newCount = analysesUsedThisMonth + 1;
+        setAnalysesUsedThisMonth(newCount);
+        const promptStatus = shouldShowUpgradePrompt(userPlan, newCount);
+        if (promptStatus === 'blocked') {
+          setShowFreeTrialModal(true);
+        } else if (promptStatus === 'warning') {
+          setTimeout(() => setShowFreeTrialModal(true), 2000);
+        }
+      }
+
+      navigation.navigate('Analysis', {
+        videoUrl: videoUrl,
+        summaryId: task_id,
+      });
+    } catch (error) {
+      console.error('Analysis error:', error);
+      Alert.alert(t.common.error, t.errors.generic);
+    } finally {
+      setIsAnalyzing(false);
+      setPendingSearchData(null);
+    }
   };
 
   return (
@@ -346,6 +393,16 @@ export const DashboardScreen: React.FC = () => {
         onUpgrade={() => {
           navigation.navigate('Upgrade');
         }}
+      />
+
+      {/* Video Discovery Modal for Search Mode */}
+      <VideoDiscoveryModal
+        visible={showDiscoveryModal}
+        onClose={() => {
+          setShowDiscoveryModal(false);
+          setPendingSearchData(null);
+        }}
+        onSelectVideo={handleVideoSelect}
       />
     </View>
   );
