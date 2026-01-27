@@ -36,6 +36,7 @@ interface VideoDiscoveryModalProps {
   onSelectVideo: (videoId: string, videoUrl: string) => void;
   onSelectMultiple?: (videos: DiscoveredVideo[]) => void;
   allowMultiSelect?: boolean;
+  initialQuery?: string;
 }
 
 type SortOption = 'quality' | 'views' | 'date' | 'academic';
@@ -46,6 +47,7 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
   onSelectVideo,
   onSelectMultiple,
   allowMultiSelect = false,
+  initialQuery = '',
 }) => {
   const { colors, isDark } = useTheme();
   const { language } = useLanguage();
@@ -104,6 +106,13 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
       return () => clearTimeout(debounce);
     }
   }, [searchQuery, sortBy, visible]);
+
+  // Auto-populate search query when modal opens with initialQuery
+  useEffect(() => {
+    if (visible && initialQuery && initialQuery.trim()) {
+      setSearchQuery(initialQuery);
+    }
+  }, [visible, initialQuery]);
 
   const handleSelectVideo = (video: DiscoveredVideo) => {
     Haptics.selectionAsync();

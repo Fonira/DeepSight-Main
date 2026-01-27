@@ -66,6 +66,7 @@ export const DashboardScreen: React.FC = () => {
     category: string;
     language: string;
     deepResearch: boolean;
+    searchQuery: string;
   } | null>(null);
 
   const loadRecentAnalyses = useCallback(async () => {
@@ -154,6 +155,7 @@ export const DashboardScreen: React.FC = () => {
           category: data.category,
           language: data.language || 'fr',
           deepResearch: data.deepResearch || false,
+          searchQuery: data.value, // Pass the search query to pre-fill the modal
         });
         setShowDiscoveryModal(true);
         setIsAnalyzing(false);
@@ -403,6 +405,7 @@ export const DashboardScreen: React.FC = () => {
           setPendingSearchData(null);
         }}
         onSelectVideo={handleVideoSelect}
+        initialQuery={pendingSearchData?.searchQuery}
       />
     </View>
   );
