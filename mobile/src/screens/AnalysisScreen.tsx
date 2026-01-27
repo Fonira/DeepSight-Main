@@ -711,9 +711,9 @@ export const AnalysisScreen: React.FC = () => {
               <Ionicons name="pricetags-outline" size={16} color={colors.accentSecondary} /> Tags
             </Text>
             <View style={styles.tagsContainer}>
-              {tags.map((tag, index) => (
+              {tags.map((tag) => (
                 <TouchableOpacity
-                  key={index}
+                  key={tag}
                   style={[styles.tagChip, { backgroundColor: colors.accentPrimary + '20' }]}
                   onPress={() => handleRemoveTag(tag)}
                 >
@@ -724,7 +724,7 @@ export const AnalysisScreen: React.FC = () => {
               <View style={[styles.addTagContainer, { borderColor: colors.border }]}>
                 <TextInput
                   style={[styles.tagInput, { color: colors.textPrimary }]}
-                  placeholder="+ Ajouter"
+                  placeholder={`+ ${t.common.add}`}
                   placeholderTextColor={colors.textTertiary}
                   value={newTag}
                   onChangeText={setNewTag}
@@ -766,8 +766,8 @@ export const AnalysisScreen: React.FC = () => {
           contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
         >
           {concepts.length > 0 ? (
-            concepts.map((concept, index) => (
-              <Card key={index} variant="elevated" style={styles.conceptCard}>
+            concepts.map((concept) => (
+              <Card key={concept.name} variant="elevated" style={styles.conceptCard}>
                 <View style={styles.conceptHeader}>
                   <Text style={[styles.conceptName, { color: colors.accentPrimary, flex: 1 }]}>
                     {concept.name}

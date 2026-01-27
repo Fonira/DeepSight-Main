@@ -57,8 +57,10 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
 
   // Pulse animation for unread badge
   useEffect(() => {
+    let animation: Animated.CompositeAnimation | null = null;
+
     if (unreadCount > 0) {
-      Animated.loop(
+      animation = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1.2,
@@ -71,11 +73,20 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
             useNativeDriver: true,
           }),
         ])
-      ).start();
+      );
+      animation.start();
     } else {
       pulseAnim.setValue(1);
     }
-  }, [unreadCount]);
+
+    // Cleanup: stop animation on unmount or when unreadCount changes
+    return () => {
+      if (animation) {
+        animation.stop();
+      }
+      pulseAnim.setValue(1);
+    };
+  }, [unreadCount, pulseAnim]);
 
   // Open/close animation
   useEffect(() => {

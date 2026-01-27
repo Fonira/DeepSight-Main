@@ -231,7 +231,8 @@
     "noAnalysesYet": "Aucune analyse encore",
     "startFirstAnalysis": "Lancez votre première analyse",
     "confirmDeleteTitle": "Supprimer l'analyse",
-    "confirmDeleteMessage": "Cette action est irréversible."
+    "confirmDeleteMessage": "Cette action est irréversible.",
+    "showingCachedData": "Affichage des données en cache"
   },
   "playlists": {
     "title": "Playlists",
@@ -535,7 +536,10 @@
     "generic": "Une erreur est survenue",
     "tryAgain": "Veuillez réessayer",
     "invalidUrl": "URL invalide",
+    "invalidEmail": "Adresse email invalide",
     "invalidYoutubeUrl": "URL YouTube invalide",
+    "passwordMinLength": "Le mot de passe doit contenir au moins 8 caractères",
+    "offlineError": "Pas de connexion internet. Réessayez quand vous serez en ligne.",
     "videoNotFound": "Vidéo introuvable",
     "videoUnavailable": "Vidéo non disponible",
     "videoTooLong": "Vidéo trop longue (max 4 heures)",

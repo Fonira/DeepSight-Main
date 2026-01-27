@@ -35,7 +35,7 @@ type DashboardNavigationProp = CompositeNavigationProp<
 export const DashboardScreen: React.FC = () => {
   const { colors } = useTheme();
   const { user, refreshUser } = useAuth();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const navigation = useNavigation<DashboardNavigationProp>();
   const insets = useSafeAreaInsets();
   const isOffline = useIsOffline();
@@ -76,12 +76,7 @@ export const DashboardScreen: React.FC = () => {
   }) => {
     // Block submission when offline
     if (isOffline) {
-      Alert.alert(
-        t.common.error,
-        language === 'en'
-          ? 'Analysis requires an internet connection. Please try again when online.'
-          : 'L\'analyse necessite une connexion internet. Reessayez quand vous serez en ligne.',
-      );
+      Alert.alert(t.common.error, t.errors.offlineError);
       return;
     }
 
@@ -131,10 +126,7 @@ export const DashboardScreen: React.FC = () => {
         });
 
         if (searchResults.videos.length === 0) {
-          Alert.alert(
-            t.common.error,
-            language === 'en' ? 'No videos found for this search.' : 'Aucune vidéo trouvée pour cette recherche.'
-          );
+          Alert.alert(t.common.error, t.videoDiscovery.noResults);
           setIsAnalyzing(false);
           return;
         }

@@ -231,7 +231,8 @@
     "noAnalysesYet": "No analyses yet",
     "startFirstAnalysis": "Start your first analysis",
     "confirmDeleteTitle": "Delete analysis",
-    "confirmDeleteMessage": "This action cannot be undone."
+    "confirmDeleteMessage": "This action cannot be undone.",
+    "showingCachedData": "Showing cached data"
   },
   "playlists": {
     "title": "Playlists",
@@ -535,7 +536,10 @@
     "generic": "An error occurred",
     "tryAgain": "Please try again",
     "invalidUrl": "Invalid URL",
+    "invalidEmail": "Invalid email address",
     "invalidYoutubeUrl": "Invalid YouTube URL",
+    "passwordMinLength": "Password must be at least 8 characters",
+    "offlineError": "No internet connection. Please try again when online.",
     "videoNotFound": "Video not found",
     "videoUnavailable": "Video unavailable",
     "videoTooLong": "Video too long (max 4 hours)",

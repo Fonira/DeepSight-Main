@@ -36,7 +36,7 @@ type HistoryNavigationProp = CompositeNavigationProp<
 
 export const HistoryScreen: React.FC = () => {
   const { colors } = useTheme();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const navigation = useNavigation<HistoryNavigationProp>();
   const insets = useSafeAreaInsets();
   const isOffline = useIsOffline();
@@ -399,7 +399,7 @@ export const HistoryScreen: React.FC = () => {
         <View style={styles.offlineNotice}>
           <Ionicons name="information-circle" size={16} color={colors.textSecondary} />
           <Text style={[styles.offlineText, { color: colors.textSecondary }]}>
-            {language === 'en' ? 'Showing cached data' : 'Affichage des donnees en cache'}
+            {t.history.showingCachedData}
           </Text>
         </View>
       )}
