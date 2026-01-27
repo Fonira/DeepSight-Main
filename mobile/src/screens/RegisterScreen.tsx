@@ -58,7 +58,7 @@ export const RegisterScreen: React.FC = () => {
       newErrors.username = t.common.required;
       isValid = false;
     } else if (username.length < 3) {
-      newErrors.username = t.common.required;
+      newErrors.username = t.errors.usernameMinLength;
       isValid = false;
     }
 
@@ -66,7 +66,7 @@ export const RegisterScreen: React.FC = () => {
       newErrors.email = t.common.required;
       isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = t.errors.invalidUrl;
+      newErrors.email = t.errors.invalidEmail;
       isValid = false;
     }
 
@@ -74,7 +74,7 @@ export const RegisterScreen: React.FC = () => {
       newErrors.password = t.common.required;
       isValid = false;
     } else if (password.length < 8) {
-      newErrors.password = t.common.required;
+      newErrors.password = t.errors.passwordMinLength;
       isValid = false;
     }
 
@@ -82,7 +82,7 @@ export const RegisterScreen: React.FC = () => {
       newErrors.confirmPassword = t.common.required;
       isValid = false;
     } else if (password !== confirmPassword) {
-      newErrors.confirmPassword = t.errors.generic;
+      newErrors.confirmPassword = t.errors.passwordMismatch;
       isValid = false;
     }
 

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -54,6 +54,9 @@ export const HistoryScreen: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [isUsingCache, setIsUsingCache] = useState(false);
+
+  // Track previous offline state to detect offline→online transitions
+  const wasOfflineRef = useRef(isOffline);
 
   // Filter options
   const modes = ['Standard', 'Approfondi', 'Expert'];
@@ -134,6 +137,17 @@ export const HistoryScreen: React.FC = () => {
   useEffect(() => {
     loadAnalyses(1, true);
   }, [loadAnalyses]);
+
+  // Detect offline→online transition and refresh data
+  useEffect(() => {
+    // If we were offline and now we're online, refresh the data
+    if (wasOfflineRef.current && !isOffline) {
+      setIsUsingCache(false);
+      loadAnalyses(1, true);
+    }
+    // Update the ref for next comparison
+    wasOfflineRef.current = isOffline;
+  }, [isOffline, loadAnalyses]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

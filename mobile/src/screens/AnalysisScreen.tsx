@@ -159,6 +159,10 @@ export const AnalysisScreen: React.FC = () => {
         else if (progress < 90) setAnalysisStep(3); // Analysis
         else setAnalysisStep(4); // Complete
         // Poll for updates with cleanup ref
+        // Clear existing timeout to prevent accumulation
+        if (pollingTimeoutRef.current) {
+          clearTimeout(pollingTimeoutRef.current);
+        }
         if (isMountedRef.current) {
           pollingTimeoutRef.current = setTimeout(() => loadAnalysis(), 2000);
         }

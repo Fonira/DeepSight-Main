@@ -170,6 +170,18 @@ const request = async <T>(
                 ...requestOptions,
                 headers: requestHeaders,
               });
+
+              // Check if retry response is ok
+              if (!retryResponse.ok) {
+                const errorData = await retryResponse.json().catch(() => ({}));
+                reject(new ApiError(
+                  errorData.message || 'Request failed after token refresh',
+                  retryResponse.status,
+                  errorData.code
+                ));
+                return;
+              }
+
               resolve(await retryResponse.json());
             } catch (error) {
               reject(error);

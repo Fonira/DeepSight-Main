@@ -539,6 +539,8 @@
     "invalidEmail": "Adresse email invalide",
     "invalidYoutubeUrl": "URL YouTube invalide",
     "passwordMinLength": "Le mot de passe doit contenir au moins 8 caractères",
+    "usernameMinLength": "Le nom d'utilisateur doit contenir au moins 3 caractères",
+    "passwordMismatch": "Les mots de passe ne correspondent pas",
     "offlineError": "Pas de connexion internet. Réessayez quand vous serez en ligne.",
     "videoNotFound": "Vidéo introuvable",
     "videoUnavailable": "Vidéo non disponible",
