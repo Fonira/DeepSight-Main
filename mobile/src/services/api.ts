@@ -437,6 +437,16 @@ export const videoApi = {
       transcript_context?: string;
     }>(`/api/videos/summary/${summaryId}`);
 
+    // Debug logging - check what we receive from backend
+    console.log('[API] getSummary response:', {
+      id: response.id,
+      hasContent: !!response.summary_content,
+      contentLength: response.summary_content?.length || 0,
+      contentPreview: response.summary_content?.substring(0, 200) || 'EMPTY',
+      tags: response.tags,
+      created_at: response.created_at,
+    });
+
     // Transform backend response to mobile format
     return {
       id: String(response.id),

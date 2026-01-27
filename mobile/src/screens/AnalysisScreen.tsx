@@ -34,10 +34,10 @@ import { WebEnrichment } from '../components/enrichment';
 import { CitationExport } from '../components/citation';
 import { TournesolWidget } from '../components/tournesol';
 import { AnalysisValueDisplay } from '../components/analysis/AnalysisValueDisplay';
+import { AnalysisContentDisplay } from '../components/analysis/AnalysisContentDisplay';
 import { TTSPlayer } from '../components/audio/TTSPlayer';
 import { SuggestedQuestions } from '../components/chat/SuggestedQuestions';
 import { UpgradePromptModal } from '../components/upgrade';
-import { TimecodeText } from '../components/content/TimecodeText';
 import { useAuth } from '../contexts/AuthContext';
 import { hasFeature, normalizePlanId, type PlanId } from '../config/planPrivileges';
 import { videoApi as videoApiService } from '../services/api';
@@ -691,12 +691,13 @@ export const AnalysisScreen: React.FC = () => {
             )}
           </View>
 
-          {/* Summary content with clickable timecodes */}
+          {/* Summary content with clickable timecodes and markdown */}
           <Card variant="elevated" style={styles.summaryCard}>
-            <TimecodeText
-              content={summary?.content || t.history.empty}
+            <AnalysisContentDisplay
+              content={summary?.content || ''}
               onTimecodePress={handleTimecodePress}
-              style={StyleSheet.flatten([styles.summaryContent, { color: colors.textPrimary }])}
+              showEmptyState={!summary?.content}
+              emptyStateMessage={t.history.empty}
             />
           </Card>
 
