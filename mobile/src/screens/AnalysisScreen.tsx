@@ -33,6 +33,12 @@ import { FactCheckButton } from '../components/factcheck';
 import { WebEnrichment } from '../components/enrichment';
 import { CitationExport } from '../components/citation';
 import { TournesolWidget } from '../components/tournesol';
+import { AnalysisValueDisplay } from '../components/analysis/AnalysisValueDisplay';
+import { TTSPlayer } from '../components/audio/TTSPlayer';
+import { SuggestedQuestions } from '../components/chat/SuggestedQuestions';
+import { UpgradePromptModal } from '../components/upgrade';
+import { useAuth } from '../contexts/AuthContext';
+import { hasFeature, normalizePlanId, type PlanId } from '../config/planPrivileges';
 import { videoApi as videoApiService } from '../services/api';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { formatDuration, formatDate } from '../utils/formatters';
@@ -45,14 +51,18 @@ type TabType = 'summary' | 'concepts' | 'chat' | 'tools';
 
 export const AnalysisScreen: React.FC = () => {
   const { colors } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { showToast } = useToast();
+  const { user } = useAuth();
   const navigation = useNavigation<AnalysisNavigationProp>();
   const route = useRoute<AnalysisRouteProp>();
   const insets = useSafeAreaInsets();
   const chatScrollRef = useRef<FlatList>(null);
   const pollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
+
+  // User plan
+  const userPlan = normalizePlanId(user?.plan);
 
   const { summaryId, videoUrl } = route.params || {};
 
@@ -116,6 +126,10 @@ export const AnalysisScreen: React.FC = () => {
 
   // Video player state
   const [showExpandedPlayer, setShowExpandedPlayer] = useState(false);
+
+  // Upgrade modal state
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeLimitType, setUpgradeLimitType] = useState<'chat' | 'analysis' | 'playlist' | 'export' | 'webSearch' | 'tts' | 'apiKey' | 'credits'>('analysis');
 
   // Load analysis data
   const loadAnalysis = useCallback(async () => {
@@ -282,6 +296,14 @@ export const AnalysisScreen: React.FC = () => {
   const handleGenerateFlashcards = async () => {
     if (!summary?.id || isLoadingTools) return;
 
+    // Check plan access
+    if (!hasFeature(userPlan, 'flashcards')) {
+      setUpgradeLimitType('analysis');
+      setShowUpgradeModal(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
+
     setIsLoadingTools(true);
     setActiveStudyTool('flashcards');
     try {
@@ -301,6 +323,14 @@ export const AnalysisScreen: React.FC = () => {
   // Generate Quiz
   const handleGenerateQuiz = async () => {
     if (!summary?.id || isLoadingQuiz) return;
+
+    // Check plan access (quiz uses flashcards feature)
+    if (!hasFeature(userPlan, 'flashcards')) {
+      setUpgradeLimitType('analysis');
+      setShowUpgradeModal(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
 
     setIsLoadingQuiz(true);
     setActiveStudyTool('quiz');
@@ -327,6 +357,14 @@ export const AnalysisScreen: React.FC = () => {
   // Generate Mind Map
   const handleGenerateMindMap = async () => {
     if (!summary?.id || isLoadingMindMap) return;
+
+    // Check plan access
+    if (!hasFeature(userPlan, 'conceptMaps')) {
+      setUpgradeLimitType('analysis');
+      setShowUpgradeModal(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
 
     setIsLoadingMindMap(true);
     setActiveStudyTool('mindmap');
@@ -671,10 +709,35 @@ export const AnalysisScreen: React.FC = () => {
             {t.analysis.publishedAt} {formatDate(summary?.createdAt || '')}
           </Text>
 
+          {/* Analysis Value Display - Show time saved */}
+          {summary?.videoInfo?.duration && (
+            <View style={{ marginTop: Spacing.lg }}>
+              <AnalysisValueDisplay
+                videoDurationSeconds={summary.videoInfo.duration}
+                creditsUsed={summary.creditsUsed}
+                animated
+              />
+            </View>
+          )}
+
           {/* Tournesol Widget */}
           {summary?.videoId && (
             <View style={{ marginTop: Spacing.lg }}>
               <TournesolWidget videoId={summary.videoId} />
+            </View>
+          )}
+
+          {/* TTS Player - Listen to summary */}
+          {summary?.content && (
+            <View style={{ marginTop: Spacing.lg }}>
+              <TTSPlayer
+                text={summary.content}
+                title={summary.title}
+                onUpgradePress={() => {
+                  setUpgradeLimitType('tts');
+                  setShowUpgradeModal(true);
+                }}
+              />
             </View>
           )}
 
@@ -825,6 +888,18 @@ export const AnalysisScreen: React.FC = () => {
                 <Text style={[styles.chatEmptyText, { color: colors.textSecondary }]}>
                   {t.chat.askQuestion}
                 </Text>
+                {/* Suggested Questions */}
+                <View style={{ marginTop: Spacing.lg, width: '100%' }}>
+                  <SuggestedQuestions
+                    onQuestionSelect={(question) => {
+                      setChatInput(question);
+                      // Optionally auto-send
+                      // handleSendMessage();
+                    }}
+                    variant="chat"
+                    category={summary?.category}
+                  />
+                </View>
               </View>
             }
             renderItem={({ item }) => (
@@ -1150,6 +1225,13 @@ export const AnalysisScreen: React.FC = () => {
           }}
         />
       )}
+
+      {/* Upgrade Modal */}
+      <UpgradePromptModal
+        visible={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        limitType={upgradeLimitType}
+      />
     </View>
   );
 };

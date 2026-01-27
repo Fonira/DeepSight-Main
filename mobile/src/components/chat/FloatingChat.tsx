@@ -21,6 +21,8 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { chatApi } from '../../services/api';
 import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+import { hasFeature, getLimit, isUnlimited } from '../../config/planPrivileges';
+import { SuggestedQuestions } from './SuggestedQuestions';
 import type { ChatMessage } from '../../types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -28,6 +30,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 interface FloatingChatProps {
   summaryId: string;
   videoTitle?: string;
+  category?: string;
   initialMessages?: ChatMessage[];
   onMessagesUpdate?: (messages: ChatMessage[]) => void;
 }
@@ -35,6 +38,7 @@ interface FloatingChatProps {
 export const FloatingChat: React.FC<FloatingChatProps> = ({
   summaryId,
   videoTitle,
+  category = 'general',
   initialMessages = [],
   onMessagesUpdate,
 }) => {
@@ -165,8 +169,9 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
     }
   };
 
-  // Check if user can use web search based on plan
-  const canUseWebSearch = ['starter', 'pro', 'team', 'expert'].includes(user?.plan || 'free');
+  // Check if user can use web search based on plan privileges
+  const userPlan = user?.plan || 'free';
+  const canUseWebSearch = hasFeature(userPlan, 'chatWebSearch');
 
   const handleToggleWebSearch = () => {
     if (!canUseWebSearch) {
@@ -178,26 +183,16 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
     setUseWebSearch(!useWebSearch);
   };
 
-  // Get user's chat quota based on plan
-  const getChatQuota = () => {
-    const quotas: Record<string, number> = {
-      free: 5,
-      starter: 20,
-      pro: -1, // unlimited
-      expert: -1, // unlimited
-    };
-    return quotas[user?.plan || 'free'] || 5;
-  };
-
-  const chatQuota = getChatQuota();
+  // Get user's chat quota based on plan privileges
+  const chatQuotaPerVideo = getLimit(userPlan, 'chatQuestionsPerVideo');
+  const isUnlimitedChat = isUnlimited(userPlan, 'chatQuestionsPerVideo');
   const questionsUsed = messages.filter(m => m.role === 'user').length;
-  const questionsRemaining = chatQuota === -1 ? -1 : chatQuota - questionsUsed;
+  const questionsRemaining = isUnlimitedChat ? -1 : chatQuotaPerVideo - questionsUsed;
 
-  const suggestedQuestions = [
-    t.chat.suggestions.keyPoints,
-    t.chat.suggestions.summary,
-    t.chat.suggestions.explain,
-  ];
+  // Handle suggested question selection
+  const handleSuggestedQuestion = (question: string) => {
+    setInput(question);
+  };
 
   return (
     <>
@@ -300,22 +295,13 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                         </Text>
                       </View>
 
-                      {/* Suggested questions */}
-                      <View style={styles.suggestedContainer}>
-                        {suggestedQuestions.map((q, i) => (
-                          <TouchableOpacity
-                            key={i}
-                            style={[styles.suggestedButton, { borderColor: colors.border }]}
-                            onPress={() => {
-                              setInput(q);
-                            }}
-                          >
-                            <Text style={[styles.suggestedText, { color: colors.accentPrimary }]}>
-                              {q}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
+                      {/* Suggested questions - using new component */}
+                      <SuggestedQuestions
+                        onQuestionSelect={handleSuggestedQuestion}
+                        category={category}
+                        variant="chat"
+                        disabled={questionsRemaining === 0}
+                      />
                     </View>
                   }
                   renderItem={({ item }) => (
@@ -358,7 +344,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                     <View style={styles.sourcesHeader}>
                       <Ionicons name="globe-outline" size={14} color={colors.accentInfo} />
                       <Text style={[styles.sourcesTitle, { color: colors.textSecondary }]}>
-                        Sources web
+                        {t.chat.webSources}
                       </Text>
                     </View>
                     {lastSources.slice(0, 3).map((source, index) => (
@@ -401,7 +387,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                       styles.input,
                       { backgroundColor: colors.bgSecondary, color: colors.textPrimary },
                     ]}
-                    placeholder={useWebSearch ? 'Recherche web activée...' : t.chat.placeholder}
+                    placeholder={useWebSearch ? t.chat.webSearchPlaceholder : t.chat.placeholder}
                     placeholderTextColor={colors.textMuted}
                     value={input}
                     onChangeText={setInput}

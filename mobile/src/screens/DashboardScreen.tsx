@@ -19,11 +19,16 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { videoApi, historyApi } from '../services/api';
-import { Header, VideoCard, Card, Badge, Avatar } from '../components';
+import { Header, VideoCard, Card, Badge, Avatar, FreeTrialLimitModal } from '../components';
 import SmartInputBar from '../components/SmartInputBar';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
 import { isValidYouTubeUrl, formatCredits } from '../utils/formatters';
 import { useIsOffline } from '../hooks/useNetworkStatus';
+import {
+  normalizePlanId,
+  shouldShowUpgradePrompt,
+  CONVERSION_TRIGGERS,
+} from '../config/planPrivileges';
 import type { RootStackParamList, MainTabParamList, AnalysisSummary } from '../types';
 
 // Composite type for navigating to both tab screens and stack screens
@@ -40,10 +45,18 @@ export const DashboardScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const isOffline = useIsOffline();
 
+  // Normalize user plan
+  const userPlan = normalizePlanId(user?.plan);
+
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [recentAnalyses, setRecentAnalyses] = useState<AnalysisSummary[]>([]);
   const [estimatedCredits, setEstimatedCredits] = useState<number | undefined>(undefined);
+
+  // Free trial limit modal state
+  const [showFreeTrialModal, setShowFreeTrialModal] = useState(false);
+  const [analysesUsedThisMonth, setAnalysesUsedThisMonth] = useState(0);
+  const [lastVideoDuration, setLastVideoDuration] = useState(0);
 
   const loadRecentAnalyses = useCallback(async () => {
     try {
@@ -63,6 +76,13 @@ export const DashboardScreen: React.FC = () => {
   React.useEffect(() => {
     loadRecentAnalyses();
   }, [loadRecentAnalyses]);
+
+  // Track analyses used this month from user data
+  useEffect(() => {
+    if (user?.analyses_this_month !== undefined) {
+      setAnalysesUsedThisMonth(user.analyses_this_month);
+    }
+  }, [user?.analyses_this_month]);
 
   const handleSmartInputSubmit = async (data: {
     inputType: 'url' | 'text' | 'search';
@@ -137,6 +157,26 @@ export const DashboardScreen: React.FC = () => {
       }
 
       const { task_id } = await videoApi.analyze(analysisRequest);
+
+      // For free users, track analysis and potentially show upgrade modal
+      if (userPlan === 'free') {
+        const newCount = analysesUsedThisMonth + 1;
+        setAnalysesUsedThisMonth(newCount);
+
+        // Check if we should show the upgrade prompt
+        const promptStatus = shouldShowUpgradePrompt(userPlan, newCount);
+
+        if (promptStatus === 'blocked') {
+          // User has hit the limit - show modal immediately
+          setShowFreeTrialModal(true);
+        } else if (promptStatus === 'warning') {
+          // User is approaching limit - show modal after a delay
+          setTimeout(() => {
+            setShowFreeTrialModal(true);
+          }, 2000);
+        }
+      }
+
       navigation.navigate('Analysis', {
         videoUrl: analysisRequest.url,
         summaryId: task_id,
@@ -209,7 +249,7 @@ export const DashboardScreen: React.FC = () => {
                   />
                 </View>
               </View>
-              {user?.plan === 'free' && (
+              {userPlan === 'free' && (
                 <TouchableOpacity
                   style={styles.upgradeButton}
                   onPress={() => navigation.navigate('Upgrade')}
@@ -292,6 +332,21 @@ export const DashboardScreen: React.FC = () => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Free Trial Limit Modal */}
+      <FreeTrialLimitModal
+        visible={showFreeTrialModal}
+        onClose={() => setShowFreeTrialModal(false)}
+        analysesUsed={analysesUsedThisMonth}
+        lastVideoDuration={lastVideoDuration}
+        onStartTrial={() => {
+          // TODO: Implement trial start logic
+          navigation.navigate('Upgrade');
+        }}
+        onUpgrade={() => {
+          navigation.navigate('Upgrade');
+        }}
+      />
     </View>
   );
 };

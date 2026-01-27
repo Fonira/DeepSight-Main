@@ -15,6 +15,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { Header, Card, Badge } from '../components';
 import { usageApi } from '../services/api';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
+import { normalizePlanId, getPlanInfo } from '../config/planPrivileges';
 
 interface DailyUsage {
   date: string;
@@ -33,6 +34,10 @@ export const UsageScreen: React.FC = () => {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const isEn = language === 'en';
+
+  // Normalize user plan
+  const userPlan = normalizePlanId(user?.plan);
+  const planInfo = getPlanInfo(userPlan);
 
   const [detailedUsage, setDetailedUsage] = useState<DetailedUsage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,14 +69,7 @@ export const UsageScreen: React.FC = () => {
   }, [loadDetailedUsage]);
 
   const getPlanLabel = () => {
-    const labels: Record<string, string> = {
-      free: 'Gratuit',
-      student: 'Étudiant',
-      starter: 'Starter',
-      pro: 'Pro',
-      expert: 'Expert',
-    };
-    return labels[user?.plan || 'free'] || 'Gratuit';
+    return language === 'fr' ? planInfo.name.fr : planInfo.name.en;
   };
 
   return (
@@ -183,7 +181,7 @@ export const UsageScreen: React.FC = () => {
         {detailedUsage && detailedUsage.by_date && detailedUsage.by_date.length > 0 && (
           <>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              {isEn ? 'Daily Usage' : 'Utilisation quotidienne'}
+              {t.usage.dailyUsage}
             </Text>
             <Card variant="elevated" style={styles.chartCard}>
               <View style={styles.chartContainer}>
@@ -222,7 +220,7 @@ export const UsageScreen: React.FC = () => {
         {detailedUsage && detailedUsage.by_category && Object.keys(detailedUsage.by_category).length > 0 && (
           <>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              {isEn ? 'By Category' : 'Par catégorie'}
+              {t.usage.byCategory}
             </Text>
             <Card variant="elevated" style={styles.breakdownCard}>
               {Object.entries(detailedUsage.by_category).map(([category, count], index) => {
@@ -252,7 +250,7 @@ export const UsageScreen: React.FC = () => {
         {detailedUsage && detailedUsage.by_model && Object.keys(detailedUsage.by_model).length > 0 && (
           <>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              {isEn ? 'By AI Model' : 'Par modèle IA'}
+              {t.usage.byModel}
             </Text>
             <Card variant="elevated" style={styles.breakdownCard}>
               {Object.entries(detailedUsage.by_model).map(([model, count], index) => {

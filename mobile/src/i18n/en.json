@@ -395,7 +395,13 @@
     "helpFaq": "Help & FAQ",
     "contactUs": "Contact us",
     "termsOfService": "Terms of service",
-    "privacyPolicy": "Privacy policy"
+    "privacyPolicy": "Privacy policy",
+    "defaultCategory": "Default Category",
+    "selectCategory": "Select your preferred category",
+    "videoPlayback": "VIDEO PLAYBACK",
+    "autoPlayVideos": "Auto-play videos",
+    "showTournesol": "Show Tournesol scores",
+    "reduceMotion": "Reduce motion"
   },
   "upgrade": {
     "title": "Choose your plan",
@@ -499,6 +505,8 @@
     "remaining": "remaining",
     "questionLimit": "Question limit reached",
     "upgradeToChat": "Upgrade to continue",
+    "webSources": "Web sources",
+    "webSearchPlaceholder": "Web search enabled...",
     "suggestions": {
       "keyPoints": "What are the main points?",
       "summary": "Summarize in 3 key points",
@@ -738,7 +746,10 @@
     "dailyAverage": "Daily average",
     "analysesRemaining": "analyses remaining",
     "creditsRemaining": "credits remaining",
-    "unlimited_analyses": "Unlimited analyses"
+    "unlimited_analyses": "Unlimited analyses",
+    "dailyUsage": "Daily Usage",
+    "byCategory": "By Category",
+    "byModel": "By AI Model"
   },
   "videoDiscovery": {
     "title": "Video Discovery",

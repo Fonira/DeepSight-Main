@@ -18,11 +18,13 @@ import type { RouteProp } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { playlistApi } from '../services/api';
-import { Header, Card, Badge, Button, VideoCard } from '../components';
+import { Header, Card, Badge, Button, VideoCard, UpgradePromptModal } from '../components';
 import { Spacing, Typography, BorderRadius, Colors } from '../constants/theme';
 import { formatDate } from '../utils/formatters';
+import { normalizePlanId, hasFeature, getMinPlanForFeature, getPlanInfo } from '../config/planPrivileges';
 import type { RootStackParamList, Playlist, AnalysisSummary } from '../types';
 
 type PlaylistDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'PlaylistDetail'>;
@@ -30,11 +32,18 @@ type PlaylistDetailRouteProp = RouteProp<RootStackParamList, 'PlaylistDetail'>;
 
 export const PlaylistDetailScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const { t, language } = useLanguage();
   const navigation = useNavigation<PlaylistDetailNavigationProp>();
   const route = useRoute<PlaylistDetailRouteProp>();
   const insets = useSafeAreaInsets();
   const isEn = language === 'en';
+
+  // Plan access checks
+  const userPlan = normalizePlanId(user?.plan);
+  const hasCorpusAccess = hasFeature(userPlan, 'corpus');
+  const minPlanForCorpus = getMinPlanForFeature('corpus');
+  const minPlanInfo = minPlanForCorpus ? getPlanInfo(minPlanForCorpus) : null;
 
   const { playlistId } = route.params;
 
@@ -45,6 +54,7 @@ export const PlaylistDetailScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [isGeneratingSynthesis, setIsGeneratingSynthesis] = useState(false);
   const [activeTab, setActiveTab] = useState<'videos' | 'synthesis'>('videos');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Load playlist details
   const loadPlaylistDetails = useCallback(async () => {
@@ -74,6 +84,13 @@ export const PlaylistDetailScreen: React.FC = () => {
   // Generate corpus synthesis
   const handleGenerateSynthesis = async () => {
     if (!playlistId) return;
+
+    // Check plan access
+    if (!hasCorpusAccess) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setShowUpgradeModal(true);
+      return;
+    }
 
     setIsGeneratingSynthesis(true);
     try {
@@ -324,17 +341,45 @@ export const PlaylistDetailScreen: React.FC = () => {
               <Text style={[styles.noSynthesisSubtext, { color: colors.textTertiary }]}>
                 {t.playlists.generateFirst}
               </Text>
+
+              {/* Show Team badge if user doesn't have access */}
+              {!hasCorpusAccess && (
+                <View style={[styles.teamBadge, { backgroundColor: `${colors.accentWarning}15` }]}>
+                  <View style={[styles.teamBadgeIcon, { backgroundColor: colors.accentWarning }]}>
+                    <Ionicons name="people" size={14} color="#FFFFFF" />
+                  </View>
+                  <Text style={[styles.teamBadgeText, { color: colors.textSecondary }]}>
+                    {isEn
+                      ? `Requires ${minPlanInfo?.name.en || 'Team'} plan`
+                      : `Nécessite le plan ${minPlanInfo?.name.fr || 'Team'}`}
+                  </Text>
+                </View>
+              )}
+
               <Button
-                title={t.playlists.generateSynthesis}
+                title={hasCorpusAccess
+                  ? t.playlists.generateSynthesis
+                  : (isEn ? 'Unlock Corpus Analysis' : 'Débloquer l\'analyse de corpus')}
                 onPress={handleGenerateSynthesis}
                 loading={isGeneratingSynthesis}
                 style={styles.generateButton}
-                icon={<Ionicons name="sparkles" size={18} color="#FFFFFF" />}
+                icon={
+                  hasCorpusAccess
+                    ? <Ionicons name="sparkles" size={18} color="#FFFFFF" />
+                    : <Ionicons name="lock-closed" size={18} color="#FFFFFF" />
+                }
               />
             </View>
           )}
         </ScrollView>
       )}
+
+      {/* Upgrade Modal */}
+      <UpgradePromptModal
+        visible={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        limitType="playlist"
+      />
     </View>
   );
 };
@@ -496,6 +541,26 @@ const styles = StyleSheet.create({
   },
   generateButton: {
     marginTop: Spacing.xl,
+  },
+  teamBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    gap: Spacing.sm,
+  },
+  teamBadgeIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  teamBadgeText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.bodyMedium,
   },
 });
 

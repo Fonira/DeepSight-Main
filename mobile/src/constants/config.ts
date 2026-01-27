@@ -41,13 +41,13 @@ export const STORAGE_KEYS = {
   ONBOARDING_COMPLETE: 'deepsight_onboarding_complete',
 };
 
-// Plans
+// Plans - matches backend plan IDs
 export const PLANS = {
   FREE: 'free',
   STUDENT: 'student',
   STARTER: 'starter',
   PRO: 'pro',
-  EXPERT: 'expert',
+  TEAM: 'team',
 } as const;
 
 export type PlanType = typeof PLANS[keyof typeof PLANS];

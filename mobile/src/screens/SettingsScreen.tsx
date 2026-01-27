@@ -232,8 +232,8 @@ export const SettingsScreen: React.FC = () => {
 
   const handleSelectCategory = () => {
     Alert.alert(
-      language === 'en' ? 'Default Category' : 'Catégorie par défaut',
-      language === 'en' ? 'Select your preferred category' : 'Sélectionnez votre catégorie préférée',
+      t.settings.defaultCategory,
+      t.settings.selectCategory,
       [
         ...CATEGORIES.map(cat => ({
           text: language === 'en' ? cat.labelEn : cat.label,
@@ -293,7 +293,7 @@ export const SettingsScreen: React.FC = () => {
           />
           <SettingItem
             icon="pricetag-outline"
-            label={language === 'en' ? 'Default Category' : 'Catégorie par défaut'}
+            label={t.settings.defaultCategory}
             value={getDefaultCategoryLabel()}
             onPress={handleSelectCategory}
           />
@@ -301,7 +301,7 @@ export const SettingsScreen: React.FC = () => {
 
         {/* Video Playback */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          {language === 'en' ? 'VIDEO PLAYBACK' : 'LECTURE VIDÉO'}
+          {t.settings.videoPlayback}
         </Text>
         <Card variant="elevated" style={styles.settingsCard}>
           <TouchableOpacity
@@ -313,7 +313,7 @@ export const SettingsScreen: React.FC = () => {
                 <Ionicons name="play-circle-outline" size={20} color={colors.accentPrimary} />
               </View>
               <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-                {language === 'en' ? 'Auto-play videos' : 'Lecture auto des vidéos'}
+                {t.settings.autoPlayVideos}
               </Text>
             </View>
             <View style={[styles.toggle, { backgroundColor: autoPlayVideos ? colors.accentPrimary : colors.bgTertiary }]}>
@@ -334,7 +334,7 @@ export const SettingsScreen: React.FC = () => {
                 <Ionicons name="flower-outline" size={20} color={colors.accentPrimary} />
               </View>
               <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-                {language === 'en' ? 'Show Tournesol scores' : 'Afficher scores Tournesol'}
+                {t.settings.showTournesol}
               </Text>
             </View>
             <View style={[styles.toggle, { backgroundColor: showTournesol ? colors.accentPrimary : colors.bgTertiary }]}>
@@ -396,7 +396,7 @@ export const SettingsScreen: React.FC = () => {
                 <Ionicons name="speedometer-outline" size={20} color={colors.accentPrimary} />
               </View>
               <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-                {language === 'en' ? 'Reduce motion' : 'Réduire les animations'}
+                {t.settings.reduceMotion}
               </Text>
             </View>
             <View style={[styles.toggle, { backgroundColor: reduceMotion ? colors.accentPrimary : colors.bgTertiary }]}>

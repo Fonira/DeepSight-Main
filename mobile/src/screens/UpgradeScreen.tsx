@@ -18,6 +18,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { Header, Card, Badge, Button } from '../components';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
 import { billingApi, ApiError } from '../services/api';
+import { normalizePlanId, isPlanHigher, comparePlans, type PlanId } from '../config/planPrivileges';
 
 interface Plan {
   id: string;
@@ -208,6 +209,18 @@ const PLANS: PlanWithTranslations[] = [
   },
 ];
 
+// Plan progression order for recommendations
+const PLAN_ORDER: PlanId[] = ['free', 'student', 'starter', 'pro', 'team'];
+
+// Get recommended upgrade path based on current plan
+const getRecommendedPlan = (currentPlan: PlanId): PlanId | null => {
+  const currentIndex = PLAN_ORDER.indexOf(currentPlan);
+  if (currentIndex === -1 || currentIndex >= PLAN_ORDER.length - 1) return null;
+  // Recommend the next tier, but skip to 'pro' if on 'starter' (since pro is popular)
+  if (currentPlan === 'starter') return 'pro';
+  return PLAN_ORDER[currentIndex + 1];
+};
+
 export const UpgradeScreen: React.FC = () => {
   const { colors } = useTheme();
   const { t, language } = useLanguage();
@@ -218,7 +231,12 @@ export const UpgradeScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const isEn = language === 'en';
-  const currentPlan = user?.plan || 'free';
+  const currentPlan = normalizePlanId(user?.plan);
+  const recommendedPlan = getRecommendedPlan(currentPlan);
+
+  // Check if selected plan is an upgrade or downgrade
+  const isUpgrade = selectedPlan ? isPlanHigher(selectedPlan as PlanId, currentPlan) : false;
+  const isDowngrade = selectedPlan ? isPlanHigher(currentPlan, selectedPlan as PlanId) : false;
 
   const handleSelectPlan = (planId: string) => {
     if (planId === currentPlan) return;
@@ -278,6 +296,8 @@ export const UpgradeScreen: React.FC = () => {
   const renderPlanCard = (plan: PlanWithTranslations) => {
     const isCurrentPlan = plan.id === currentPlan;
     const isSelected = plan.id === selectedPlan;
+    const isRecommended = plan.id === recommendedPlan;
+    const isPlanUpgrade = isPlanHigher(plan.id as PlanId, currentPlan);
     const displayName = isEn ? plan.en.name : plan.name;
     const displayFeatures = isEn ? plan.en.features : plan.features;
 
@@ -293,9 +313,21 @@ export const UpgradeScreen: React.FC = () => {
             styles.planCard,
             isSelected && { borderWidth: 2, borderColor: colors.accentPrimary },
             isCurrentPlan && styles.currentPlanCard,
+            isRecommended && !isCurrentPlan && styles.recommendedPlanCard,
           ]}
         >
-          {plan.isPopular && (
+          {/* Recommended badge */}
+          {isRecommended && !isCurrentPlan && (
+            <View style={[styles.recommendedBadge, { backgroundColor: colors.accentSuccess }]}>
+              <Ionicons name="trending-up" size={12} color="#FFFFFF" />
+              <Text style={styles.recommendedText}>
+                {isEn ? 'Recommended' : 'Recommandé'}
+              </Text>
+            </View>
+          )}
+
+          {/* Popular badge (only if not showing recommended) */}
+          {plan.isPopular && !isRecommended && (
             <View style={styles.popularBadge}>
               <LinearGradient
                 colors={Colors.gradientPrimary}
@@ -398,8 +430,23 @@ export const UpgradeScreen: React.FC = () => {
       {/* Bottom CTA */}
       {selectedPlan && selectedPlan !== currentPlan && (
         <View style={[styles.bottomCta, { backgroundColor: 'transparent', paddingBottom: insets.bottom + Spacing.md }]}>
+          {isDowngrade && (
+            <Text style={[styles.downgradeWarning, { color: colors.accentWarning }]}>
+              {isEn
+                ? 'Downgrading will reduce your limits'
+                : 'Rétrograder réduira vos limites'}
+            </Text>
+          )}
           <Button
-            title={`Passer à ${PLANS.find(p => p.id === selectedPlan)?.name}`}
+            title={
+              isUpgrade
+                ? (isEn
+                    ? `Upgrade to ${PLANS.find(p => p.id === selectedPlan)?.en.name}`
+                    : `Passer à ${PLANS.find(p => p.id === selectedPlan)?.name}`)
+                : (isEn
+                    ? `Switch to ${PLANS.find(p => p.id === selectedPlan)?.en.name}`
+                    : `Changer pour ${PLANS.find(p => p.id === selectedPlan)?.name}`)
+            }
             onPress={handleUpgrade}
             loading={isLoading}
             fullWidth
@@ -512,6 +559,32 @@ const styles = StyleSheet.create({
   currentPlanCard: {
     borderWidth: 2,
     borderColor: Colors.accentSuccess,
+  },
+  recommendedPlanCard: {
+    borderWidth: 2,
+    borderColor: Colors.accentSuccess,
+  },
+  recommendedBadge: {
+    position: 'absolute',
+    top: -12,
+    left: Spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    gap: 4,
+  },
+  recommendedText: {
+    color: '#FFFFFF',
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+  },
+  downgradeWarning: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.body,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
   },
   selectButton: {
     paddingVertical: Spacing.sm,
