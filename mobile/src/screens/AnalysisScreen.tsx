@@ -37,6 +37,7 @@ import { AnalysisValueDisplay } from '../components/analysis/AnalysisValueDispla
 import { TTSPlayer } from '../components/audio/TTSPlayer';
 import { SuggestedQuestions } from '../components/chat/SuggestedQuestions';
 import { UpgradePromptModal } from '../components/upgrade';
+import { TimecodeText } from '../components/content/TimecodeText';
 import { useAuth } from '../contexts/AuthContext';
 import { hasFeature, normalizePlanId, type PlanId } from '../config/planPrivileges';
 import { videoApi as videoApiService } from '../services/api';
@@ -454,6 +455,15 @@ export const AnalysisScreen: React.FC = () => {
     }
   };
 
+  // Handle timecode press - opens YouTube at specific timestamp
+  const handleTimecodePress = useCallback((seconds: number) => {
+    if (summary?.videoId) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const timeParam = `&t=${Math.floor(seconds)}`;
+      Linking.openURL(`https://www.youtube.com/watch?v=${summary.videoId}${timeParam}`);
+    }
+  }, [summary?.videoId]);
+
   // Notes and tags handlers
   const handleSaveNotes = async () => {
     if (!summary?.id) return;
@@ -681,11 +691,13 @@ export const AnalysisScreen: React.FC = () => {
             )}
           </View>
 
-          {/* Summary content */}
+          {/* Summary content with clickable timecodes */}
           <Card variant="elevated" style={styles.summaryCard}>
-            <Text style={[styles.summaryContent, { color: colors.textPrimary }]}>
-              {summary?.content || t.history.empty}
-            </Text>
+            <TimecodeText
+              content={summary?.content || t.history.empty}
+              onTimecodePress={handleTimecodePress}
+              style={StyleSheet.flatten([styles.summaryContent, { color: colors.textPrimary }])}
+            />
           </Card>
 
           {/* Actions */}

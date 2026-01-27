@@ -120,6 +120,14 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = ({
     Linking.openURL(url);
   };
 
+  // Open Wikipedia search for a concept
+  const openWikipedia = (conceptName: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const searchTerm = encodeURIComponent(conceptName);
+    const wikiLang = language === 'fr' ? 'fr' : 'en';
+    Linking.openURL(`https://${wikiLang}.wikipedia.org/wiki/Special:Search?search=${searchTerm}`);
+  };
+
   // Get importance color
   const getImportanceColor = (importance?: number): string => {
     if (!importance) return colors.textTertiary;
@@ -242,25 +250,39 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = ({
               {/* Expanded content */}
               {isExpanded && (
                 <View style={styles.expandedContent}>
-                  {/* Web enrichment button */}
-                  {summaryId && !enriched && (
+                  {/* Action buttons row */}
+                  <View style={styles.actionButtonsRow}>
+                    {/* Wikipedia button */}
                     <TouchableOpacity
-                      style={[styles.enrichButton, { backgroundColor: `${colors.accentInfo}15` }]}
-                      onPress={() => enrichConcept(concept)}
-                      disabled={isEnriching}
+                      style={[styles.enrichButton, { backgroundColor: `${colors.textSecondary}15`, flex: 1 }]}
+                      onPress={() => openWikipedia(concept.name)}
                     >
-                      {isEnriching ? (
-                        <ActivityIndicator size="small" color={colors.accentInfo} />
-                      ) : (
-                        <>
-                          <Ionicons name="globe-outline" size={16} color={colors.accentInfo} />
-                          <Text style={[styles.enrichButtonText, { color: colors.accentInfo }]}>
-                            {language === 'fr' ? 'Enrichir avec le web' : 'Enrich with web'}
-                          </Text>
-                        </>
-                      )}
+                      <Ionicons name="book-outline" size={16} color={colors.textSecondary} />
+                      <Text style={[styles.enrichButtonText, { color: colors.textSecondary }]}>
+                        Wikipedia
+                      </Text>
                     </TouchableOpacity>
-                  )}
+
+                    {/* Web enrichment button */}
+                    {summaryId && !enriched && (
+                      <TouchableOpacity
+                        style={[styles.enrichButton, { backgroundColor: `${colors.accentInfo}15`, flex: 1 }]}
+                        onPress={() => enrichConcept(concept)}
+                        disabled={isEnriching}
+                      >
+                        {isEnriching ? (
+                          <ActivityIndicator size="small" color={colors.accentInfo} />
+                        ) : (
+                          <>
+                            <Ionicons name="globe-outline" size={16} color={colors.accentInfo} />
+                            <Text style={[styles.enrichButtonText, { color: colors.accentInfo }]}>
+                              {language === 'fr' ? 'Enrichir' : 'Enrich'}
+                            </Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
 
                   {/* Related concepts */}
                   {((concept.relatedConcepts || enriched?.relatedConcepts)?.length ?? 0) > 0 && (
@@ -451,6 +473,11 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.md,
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
   },
   enrichButton: {
     flexDirection: 'row',
