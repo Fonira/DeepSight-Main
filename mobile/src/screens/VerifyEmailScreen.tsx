@@ -14,6 +14,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { Button } from '../components/ui';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import type { RootStackParamList } from '../types';
@@ -25,6 +26,7 @@ const CODE_LENGTH = 6;
 
 export const VerifyEmailScreen: React.FC = () => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const { verifyEmail, resendVerificationCode, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<VerifyEmailNavigationProp>();
   const route = useRoute<VerifyEmailRouteProp>();
@@ -110,15 +112,15 @@ export const VerifyEmailScreen: React.FC = () => {
           </View>
 
           <Text style={[styles.title, { color: colors.textPrimary }]}>
-            Email vérifié !
+            {t.auth.emailVerified}
           </Text>
 
           <Text style={[styles.description, { color: colors.textSecondary }]}>
-            Votre compte a été activé avec succès. Vous pouvez maintenant vous connecter.
+            {t.auth.accountActivated}
           </Text>
 
           <Button
-            title="Se connecter"
+            title={t.auth.signIn}
             onPress={handleBackToLogin}
             fullWidth
             style={styles.actionButton}
@@ -141,11 +143,11 @@ export const VerifyEmailScreen: React.FC = () => {
         </View>
 
         <Text style={[styles.title, { color: colors.textPrimary }]}>
-          Vérifiez votre email
+          {t.auth.verifyEmail}
         </Text>
 
         <Text style={[styles.description, { color: colors.textSecondary }]}>
-          Nous avons envoyé un code de vérification à{' '}
+          {t.auth.verificationCodeSent}{' '}
           <Text style={{ color: colors.accentPrimary, fontFamily: Typography.fontFamily.bodySemiBold }}>
             {email}
           </Text>
@@ -162,7 +164,7 @@ export const VerifyEmailScreen: React.FC = () => {
         {/* Code Input */}
         <View style={styles.codeContainer}>
           <Text style={[styles.codeLabel, { color: colors.textSecondary }]}>
-            Entrez le code à 6 chiffres
+            {t.auth.enterCode}
           </Text>
 
           <TouchableOpacity
@@ -202,7 +204,7 @@ export const VerifyEmailScreen: React.FC = () => {
         </View>
 
         <Button
-          title="Vérifier"
+          title={t.auth.verify}
           onPress={handleVerifyCode}
           loading={isLoading}
           disabled={code.length !== CODE_LENGTH}
@@ -211,12 +213,12 @@ export const VerifyEmailScreen: React.FC = () => {
         />
 
         <Text style={[styles.instructions, { color: colors.textTertiary }]}>
-          Si vous ne trouvez pas l'email, vérifiez votre dossier spam.
+          {t.auth.checkSpam}
         </Text>
 
         <View style={styles.actions}>
           <Button
-            title={countdown > 0 ? `Renvoyer dans ${countdown}s` : 'Renvoyer le code'}
+            title={countdown > 0 ? `${t.auth.resendIn} ${countdown}s` : t.auth.resendCode}
             onPress={handleResendEmail}
             loading={isResending}
             disabled={countdown > 0}
@@ -227,7 +229,7 @@ export const VerifyEmailScreen: React.FC = () => {
           <TouchableOpacity onPress={handleBackToLogin} style={styles.backLink}>
             <Ionicons name="arrow-back" size={16} color={colors.accentPrimary} />
             <Text style={[styles.backLinkText, { color: colors.accentPrimary }]}>
-              Retour à la connexion
+              {t.auth.backToLogin}
             </Text>
           </TouchableOpacity>
         </View>

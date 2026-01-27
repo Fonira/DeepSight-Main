@@ -88,7 +88,17 @@
     "sessionExpired": "Your session has expired",
     "pleaseLoginAgain": "Please sign in again",
     "termsAgreement": "By continuing, you agree to our terms of service",
-    "subtitle": "Analyze and understand your YouTube videos in depth"
+    "subtitle": "Analyze and understand your YouTube videos in depth",
+    "verifyEmail": "Verify your email",
+    "verificationCodeSent": "We sent a verification code to",
+    "enterCode": "Enter the 6-digit code",
+    "verify": "Verify",
+    "checkSpam": "If you can't find the email, check your spam folder.",
+    "resendIn": "Resend in",
+    "resendCode": "Resend code",
+    "backToLogin": "Back to login",
+    "emailVerified": "Email verified!",
+    "accountActivated": "Your account has been activated successfully. You can now sign in."
   },
   "dashboard": {
     "title": "Video Analysis",
@@ -164,6 +174,9 @@
     "transcript": "Transcript",
     "regenerate": "Regenerate",
     "addToPlaylist": "Add to playlist",
+    "personalNotes": "Personal notes",
+    "notesPlaceholder": "Add your notes here...",
+    "noNotes": "No notes. Tap the pencil to add.",
     "expressSummary": "Express summary",
     "detailedSummary": "Detailed summary",
     "generating": "Generating...",
@@ -190,7 +203,9 @@
     "history": "History",
     "philosophy": "Philosophy",
     "economics": "Economics",
-    "environment": "Environment"
+    "environment": "Environment",
+    "entertainment": "Entertainment",
+    "other": "Other"
   },
   "modes": {
     "quick": "Express",
@@ -228,10 +243,13 @@
     "resultsCount": "result(s)",
     "loadMore": "Load more",
     "analyses": "analyses",
+    "listView": "List",
+    "gridView": "Grid",
     "noAnalysesYet": "No analyses yet",
     "startFirstAnalysis": "Start your first analysis",
     "confirmDeleteTitle": "Delete analysis",
-    "confirmDeleteMessage": "This action cannot be undone."
+    "confirmDeleteMessage": "This action cannot be undone.",
+    "showingCachedData": "Showing cached data"
   },
   "playlists": {
     "title": "Playlists",
@@ -535,7 +553,12 @@
     "generic": "An error occurred",
     "tryAgain": "Please try again",
     "invalidUrl": "Invalid URL",
+    "invalidEmail": "Invalid email address",
     "invalidYoutubeUrl": "Invalid YouTube URL",
+    "passwordMinLength": "Password must be at least 8 characters",
+    "usernameMinLength": "Username must be at least 3 characters",
+    "passwordMismatch": "Passwords do not match",
+    "offlineError": "No internet connection. Please try again when online.",
     "videoNotFound": "Video not found",
     "videoUnavailable": "Video unavailable",
     "videoTooLong": "Video too long (max 4 hours)",
@@ -814,7 +837,18 @@
     "noScore": "No score available",
     "highlyRecommended": "Highly recommended",
     "whatIsTournesol": "What is Tournesol?",
-    "tournesolDescription": "Tournesol is a collaborative platform that rates videos based on quality criteria."
+    "tournesolDescription": "Tournesol is a collaborative platform that rates videos based on quality criteria.",
+    "notRatedYet": "Not yet rated on Tournesol",
+    "contributeToEthical": "Contribute to the ethical recommendation platform",
+    "rateThisVideo": "Rate this video",
+    "ethicalRecommendation": "Tournesol - Collaborative ethical recommendation",
+    "criteria": {
+      "reliability": "Reliability",
+      "importance": "Importance",
+      "pedagogy": "Pedagogy",
+      "accessibility": "Accessibility",
+      "diversity": "Diversity"
+    }
   },
   "study": {
     "quiz": {

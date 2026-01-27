@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, memo } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Colors, Spacing, BorderRadius, Typography } from '../constants/theme';
+import { validateYouTubeUrl, URLValidationResult } from '../utils/formatters';
+import { sanitizeUrlInput, sanitizeTextInput, sanitizeSearchQuery } from '../utils/sanitize';
 
 type InputMode = 'url' | 'text' | 'search';
 
@@ -96,7 +98,7 @@ const SEARCH_LANGUAGES = [
   { id: 'pt', name: 'Português', flag: '🇧🇷' },
 ];
 
-export const SmartInputBar: React.FC<SmartInputBarProps> = ({
+const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
   onSubmit,
   isLoading = false,
   creditCost,
@@ -116,6 +118,7 @@ export const SmartInputBar: React.FC<SmartInputBarProps> = ({
   const [textSource, setTextSource] = useState('');
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
   const [deepResearch, setDeepResearch] = useState(false);
+  const [urlValidation, setUrlValidation] = useState<URLValidationResult | null>(null);
 
   // Check if user has access to deep research (Pro+ plans)
   const hasDeepResearchAccess = ['pro', 'expert', 'team'].includes(userPlan.toLowerCase());
@@ -142,6 +145,15 @@ export const SmartInputBar: React.FC<SmartInputBarProps> = ({
 
   const handleInputChange = useCallback((value: string) => {
     setInputValue(value);
+
+    // Real-time URL validation
+    if (inputMode === 'url' && value.trim().length > 0) {
+      const validation = validateYouTubeUrl(value);
+      setUrlValidation(validation);
+    } else {
+      setUrlValidation(null);
+    }
+
     // Auto-detect mode for longer inputs
     if (value.length > 50) {
       const detected = detectInputType(value);
@@ -155,6 +167,7 @@ export const SmartInputBar: React.FC<SmartInputBarProps> = ({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setInputMode(mode);
     setInputValue('');
+    setUrlValidation(null);
   }, []);
 
   const handleCategorySelect = useCallback((categoryId: string) => {
@@ -169,6 +182,25 @@ export const SmartInputBar: React.FC<SmartInputBarProps> = ({
 
   const handleSubmit = useCallback(() => {
     if (!inputValue.trim() || isLoading) return;
+
+    // Sanitize input based on mode
+    let sanitizedValue: string;
+    switch (inputMode) {
+      case 'url':
+        sanitizedValue = sanitizeUrlInput(inputValue);
+        break;
+      case 'text':
+        sanitizedValue = sanitizeTextInput(inputValue);
+        break;
+      case 'search':
+        sanitizedValue = sanitizeSearchQuery(inputValue);
+        break;
+      default:
+        sanitizedValue = inputValue.trim();
+    }
+
+    // Don't submit if sanitization removed everything (e.g., dangerous URL)
+    if (!sanitizedValue) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Keyboard.dismiss();
@@ -189,12 +221,12 @@ export const SmartInputBar: React.FC<SmartInputBarProps> = ({
 
     onSubmit({
       inputType: inputMode,
-      value: inputValue.trim(),
+      value: sanitizedValue,
       category: selectedCategory,
       mode: selectedMode,
       language: inputMode === 'search' ? searchLanguage : undefined,
-      title: inputMode === 'text' ? textTitle : undefined,
-      source: inputMode === 'text' ? textSource : undefined,
+      title: inputMode === 'text' ? sanitizeTextInput(textTitle) : undefined,
+      source: inputMode === 'text' ? sanitizeTextInput(textSource) : undefined,
       deepResearch: deepResearch && hasDeepResearchAccess,
     });
   }, [inputValue, inputMode, selectedCategory, selectedMode, searchLanguage, textTitle, textSource, isLoading, onSubmit, scaleAnim, deepResearch, hasDeepResearchAccess]);
@@ -355,11 +387,32 @@ export const SmartInputBar: React.FC<SmartInputBarProps> = ({
           keyboardType={inputMode === 'url' ? 'url' : 'default'}
         />
         {inputValue.length > 0 && (
-          <TouchableOpacity onPress={() => setInputValue('')} style={styles.clearButton}>
+          <TouchableOpacity onPress={() => { setInputValue(''); setUrlValidation(null); }} style={styles.clearButton}>
             <Ionicons name="close-circle" size={20} color={isDark ? Colors.textMuted : Colors.light.textSecondary} />
           </TouchableOpacity>
         )}
       </View>
+
+      {/* URL Validation Indicator */}
+      {inputMode === 'url' && urlValidation && inputValue.trim().length > 0 && (
+        <View style={styles.validationIndicator}>
+          <Ionicons
+            name={urlValidation.isValid ? 'checkmark-circle' : 'close-circle'}
+            size={16}
+            color={urlValidation.isValid ? Colors.accentSuccess : Colors.accentError}
+          />
+          <Text style={[
+            styles.validationText,
+            { color: urlValidation.isValid ? Colors.accentSuccess : Colors.accentError }
+          ]}>
+            {urlValidation.isValid
+              ? (isEn ? 'Valid YouTube URL' : 'URL YouTube valide')
+              + (urlValidation.urlType === 'shorts' ? (isEn ? ' (Shorts)' : ' (Shorts)') : '')
+              : (urlValidation.error || (isEn ? 'Invalid URL format' : 'Format d\'URL invalide'))
+            }
+          </Text>
+        </View>
+      )}
 
       {/* Category Selector */}
       <View style={styles.selectorSection}>
@@ -634,6 +687,17 @@ const styles = StyleSheet.create({
   clearButton: {
     padding: Spacing.sm,
   },
+  validationIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    marginTop: -Spacing.xs,
+    gap: Spacing.xs,
+  },
+  validationText: {
+    fontFamily: Typography.fontFamily.body,
+    fontSize: Typography.fontSize.xs,
+  },
   selectorSection: {
     gap: Spacing.sm,
   },
@@ -739,5 +803,8 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 });
+
+// Memoize the component to prevent unnecessary re-renders
+export const SmartInputBar = memo(SmartInputBarComponent);
 
 export default SmartInputBar;

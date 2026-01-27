@@ -12,7 +12,7 @@ import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { LanguageProvider } from './src/contexts/LanguageContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { DoodleBackground } from './src/components/backgrounds';
-import { ErrorBoundary } from './src/components/common';
+import { ErrorBoundary, OfflineBanner } from './src/components/common';
 import { ToastProvider } from './src/components/ui/Toast';
 import { QUERY_CONFIG } from './src/constants/config';
 import { Colors } from './src/constants/theme';
@@ -38,6 +38,7 @@ const AppContent: React.FC = () => {
 
   return (
     <View style={[styles.appContainer, { backgroundColor: colors.bgPrimary }]}>
+      <OfflineBanner />
       <DoodleBackground density="medium" />
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <AppNavigator />

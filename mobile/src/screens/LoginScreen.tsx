@@ -56,7 +56,7 @@ export const LoginScreen: React.FC = () => {
       setEmailError(t.common.required);
       isValid = false;
     } else if (!/\S+@\S+\.\S+/.test(email)) {
-      setEmailError(t.errors.invalidUrl);
+      setEmailError(t.errors.invalidEmail);
       isValid = false;
     } else {
       setEmailError('');
@@ -66,7 +66,7 @@ export const LoginScreen: React.FC = () => {
       setPasswordError(t.common.required);
       isValid = false;
     } else if (password.length < 8) {
-      setPasswordError(t.common.required);
+      setPasswordError(t.errors.passwordMinLength);
       isValid = false;
     } else {
       setPasswordError('');

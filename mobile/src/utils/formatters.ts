@@ -97,15 +97,32 @@ export const truncateText = (text: string, maxLength: number): string => {
   return text.slice(0, maxLength - 3) + '...';
 };
 
-// Extract YouTube video ID from URL
+// URL validation result interface for real-time feedback
+export interface URLValidationResult {
+  isValid: boolean;
+  videoId: string | null;
+  urlType: 'watch' | 'youtu.be' | 'embed' | 'v' | 'shorts' | 'direct' | null;
+  error?: string;
+}
+
+// Extract YouTube video ID from URL (synced with backend patterns)
 export const extractYouTubeId = (url: string): string | null => {
+  if (!url) return null;
+
+  const trimmed = url.trim();
+
+  // Patterns synced with backend (youtube.py)
   const patterns = [
-    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+    // Standard watch URL, youtu.be short link, embed, and /v/ format
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
+    // YouTube Shorts
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+    // Direct video ID (11 characters)
     /^([a-zA-Z0-9_-]{11})$/,
   ];
 
   for (const pattern of patterns) {
-    const match = url.match(pattern);
+    const match = trimmed.match(pattern);
     if (match && match[1]) {
       return match[1];
     }
@@ -113,7 +130,64 @@ export const extractYouTubeId = (url: string): string | null => {
   return null;
 };
 
-// Validate YouTube URL
+// Validate YouTube URL with detailed feedback
+export const validateYouTubeUrl = (url: string): URLValidationResult => {
+  if (!url || !url.trim()) {
+    return { isValid: false, videoId: null, urlType: null };
+  }
+
+  const trimmed = url.trim();
+
+  // Check for YouTube Shorts
+  const shortsMatch = trimmed.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
+  if (shortsMatch) {
+    return { isValid: true, videoId: shortsMatch[1], urlType: 'shorts' };
+  }
+
+  // Check for standard watch URL
+  const watchMatch = trimmed.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/);
+  if (watchMatch) {
+    return { isValid: true, videoId: watchMatch[1], urlType: 'watch' };
+  }
+
+  // Check for youtu.be short link
+  const shortMatch = trimmed.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+  if (shortMatch) {
+    return { isValid: true, videoId: shortMatch[1], urlType: 'youtu.be' };
+  }
+
+  // Check for embed URL
+  const embedMatch = trimmed.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
+  if (embedMatch) {
+    return { isValid: true, videoId: embedMatch[1], urlType: 'embed' };
+  }
+
+  // Check for /v/ URL
+  const vMatch = trimmed.match(/youtube\.com\/v\/([a-zA-Z0-9_-]{11})/);
+  if (vMatch) {
+    return { isValid: true, videoId: vMatch[1], urlType: 'v' };
+  }
+
+  // Check for direct video ID
+  const directMatch = trimmed.match(/^[a-zA-Z0-9_-]{11}$/);
+  if (directMatch) {
+    return { isValid: true, videoId: trimmed, urlType: 'direct' };
+  }
+
+  // Check if it looks like a URL but isn't valid YouTube
+  if (trimmed.includes('youtube.com') || trimmed.includes('youtu.be')) {
+    return {
+      isValid: false,
+      videoId: null,
+      urlType: null,
+      error: 'Invalid YouTube URL format'
+    };
+  }
+
+  return { isValid: false, videoId: null, urlType: null };
+};
+
+// Validate YouTube URL (simple boolean check)
 export const isValidYouTubeUrl = (url: string): boolean => {
   return extractYouTubeId(url) !== null;
 };
@@ -155,6 +229,7 @@ export default {
   formatFileSize,
   truncateText,
   extractYouTubeId,
+  validateYouTubeUrl,
   isValidYouTubeUrl,
   getYouTubeThumbnail,
   formatWordCount,

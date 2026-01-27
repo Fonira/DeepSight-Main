@@ -159,6 +159,10 @@ export const AnalysisScreen: React.FC = () => {
         else if (progress < 90) setAnalysisStep(3); // Analysis
         else setAnalysisStep(4); // Complete
         // Poll for updates with cleanup ref
+        // Clear existing timeout to prevent accumulation
+        if (pollingTimeoutRef.current) {
+          clearTimeout(pollingTimeoutRef.current);
+        }
         if (isMountedRef.current) {
           pollingTimeoutRef.current = setTimeout(() => loadAnalysis(), 2000);
         }
@@ -678,7 +682,7 @@ export const AnalysisScreen: React.FC = () => {
           <Card variant="elevated" style={[styles.summaryCard, { marginTop: Spacing.lg }]}>
             <View style={styles.notesHeader}>
               <Text style={[styles.notesTitle, { color: colors.textPrimary }]}>
-                <Ionicons name="document-text-outline" size={16} color={colors.accentPrimary} /> Notes personnelles
+                <Ionicons name="document-text-outline" size={16} color={colors.accentPrimary} /> {t.analysis.personalNotes}
               </Text>
               {!isEditingNotes ? (
                 <TouchableOpacity onPress={() => setIsEditingNotes(true)}>
@@ -687,7 +691,7 @@ export const AnalysisScreen: React.FC = () => {
               ) : (
                 <TouchableOpacity onPress={handleSaveNotes} disabled={isSavingNotes}>
                   <Text style={{ color: colors.accentPrimary, fontFamily: Typography.fontFamily.bodyMedium }}>
-                    {isSavingNotes ? '...' : 'Sauver'}
+                    {isSavingNotes ? '...' : t.common.save}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -700,14 +704,14 @@ export const AnalysisScreen: React.FC = () => {
                 ]}
                 multiline
                 numberOfLines={4}
-                placeholder="Ajoutez vos notes ici..."
+                placeholder={t.analysis.notesPlaceholder}
                 placeholderTextColor={colors.textTertiary}
                 value={personalNotes}
                 onChangeText={setPersonalNotes}
               />
             ) : (
               <Text style={[styles.notesContent, { color: personalNotes ? colors.textSecondary : colors.textTertiary }]}>
-                {personalNotes || 'Aucune note. Appuyez sur le crayon pour ajouter.'}
+                {personalNotes || t.analysis.noNotes}
               </Text>
             )}
           </Card>
@@ -718,9 +722,9 @@ export const AnalysisScreen: React.FC = () => {
               <Ionicons name="pricetags-outline" size={16} color={colors.accentSecondary} /> Tags
             </Text>
             <View style={styles.tagsContainer}>
-              {tags.map((tag, index) => (
+              {tags.map((tag) => (
                 <TouchableOpacity
-                  key={index}
+                  key={tag}
                   style={[styles.tagChip, { backgroundColor: colors.accentPrimary + '20' }]}
                   onPress={() => handleRemoveTag(tag)}
                 >
@@ -731,7 +735,7 @@ export const AnalysisScreen: React.FC = () => {
               <View style={[styles.addTagContainer, { borderColor: colors.border }]}>
                 <TextInput
                   style={[styles.tagInput, { color: colors.textPrimary }]}
-                  placeholder="+ Ajouter"
+                  placeholder={`+ ${t.common.add}`}
                   placeholderTextColor={colors.textTertiary}
                   value={newTag}
                   onChangeText={setNewTag}
@@ -773,8 +777,8 @@ export const AnalysisScreen: React.FC = () => {
           contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
         >
           {concepts.length > 0 ? (
-            concepts.map((concept, index) => (
-              <Card key={index} variant="elevated" style={styles.conceptCard}>
+            concepts.map((concept) => (
+              <Card key={concept.name} variant="elevated" style={styles.conceptCard}>
                 <View style={styles.conceptHeader}>
                   <Text style={[styles.conceptName, { color: colors.accentPrimary, flex: 1 }]}>
                     {concept.name}

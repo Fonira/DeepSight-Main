@@ -23,6 +23,7 @@ import { Header, VideoCard, Card, Badge, Avatar } from '../components';
 import SmartInputBar from '../components/SmartInputBar';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
 import { isValidYouTubeUrl, formatCredits } from '../utils/formatters';
+import { useIsOffline } from '../hooks/useNetworkStatus';
 import type { RootStackParamList, MainTabParamList, AnalysisSummary } from '../types';
 
 // Composite type for navigating to both tab screens and stack screens
@@ -34,9 +35,10 @@ type DashboardNavigationProp = CompositeNavigationProp<
 export const DashboardScreen: React.FC = () => {
   const { colors } = useTheme();
   const { user, refreshUser } = useAuth();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const navigation = useNavigation<DashboardNavigationProp>();
   const insets = useSafeAreaInsets();
+  const isOffline = useIsOffline();
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -72,6 +74,12 @@ export const DashboardScreen: React.FC = () => {
     source?: string;
     deepResearch?: boolean;
   }) => {
+    // Block submission when offline
+    if (isOffline) {
+      Alert.alert(t.common.error, t.errors.offlineError);
+      return;
+    }
+
     // Check credits
     if (user && user.credits <= 0) {
       Alert.alert(
@@ -118,10 +126,7 @@ export const DashboardScreen: React.FC = () => {
         });
 
         if (searchResults.videos.length === 0) {
-          Alert.alert(
-            t.common.error,
-            language === 'en' ? 'No videos found for this search.' : 'Aucune vidéo trouvée pour cette recherche.'
-          );
+          Alert.alert(t.common.error, t.videoDiscovery.noResults);
           setIsAnalyzing(false);
           return;
         }

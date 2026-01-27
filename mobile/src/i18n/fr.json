@@ -88,7 +88,17 @@
     "sessionExpired": "Votre session a expiré",
     "pleaseLoginAgain": "Veuillez vous reconnecter",
     "termsAgreement": "En continuant, vous acceptez nos conditions d'utilisation",
-    "subtitle": "Analysez et comprenez vos vidéos YouTube en profondeur"
+    "subtitle": "Analysez et comprenez vos vidéos YouTube en profondeur",
+    "verifyEmail": "Vérifiez votre email",
+    "verificationCodeSent": "Nous avons envoyé un code de vérification à",
+    "enterCode": "Entrez le code à 6 chiffres",
+    "verify": "Vérifier",
+    "checkSpam": "Si vous ne trouvez pas l'email, vérifiez votre dossier spam.",
+    "resendIn": "Renvoyer dans",
+    "resendCode": "Renvoyer le code",
+    "backToLogin": "Retour à la connexion",
+    "emailVerified": "Email vérifié !",
+    "accountActivated": "Votre compte a été activé avec succès. Vous pouvez maintenant vous connecter."
   },
   "dashboard": {
     "title": "Analyse vidéo",
@@ -164,6 +174,9 @@
     "transcript": "Transcription",
     "regenerate": "Régénérer",
     "addToPlaylist": "Ajouter à une playlist",
+    "personalNotes": "Notes personnelles",
+    "notesPlaceholder": "Ajoutez vos notes ici...",
+    "noNotes": "Aucune note. Appuyez sur le crayon pour ajouter.",
     "expressSummary": "Synthèse express",
     "detailedSummary": "Synthèse détaillée",
     "generating": "Génération en cours...",
@@ -190,7 +203,9 @@
     "history": "Histoire",
     "philosophy": "Philosophie",
     "economics": "Économie",
-    "environment": "Environnement"
+    "environment": "Environnement",
+    "entertainment": "Divertissement",
+    "other": "Autre"
   },
   "modes": {
     "quick": "Express",
@@ -228,10 +243,13 @@
     "resultsCount": "résultat(s)",
     "loadMore": "Charger plus",
     "analyses": "analyses",
+    "listView": "Liste",
+    "gridView": "Grille",
     "noAnalysesYet": "Aucune analyse encore",
     "startFirstAnalysis": "Lancez votre première analyse",
     "confirmDeleteTitle": "Supprimer l'analyse",
-    "confirmDeleteMessage": "Cette action est irréversible."
+    "confirmDeleteMessage": "Cette action est irréversible.",
+    "showingCachedData": "Affichage des données en cache"
   },
   "playlists": {
     "title": "Playlists",
@@ -535,7 +553,12 @@
     "generic": "Une erreur est survenue",
     "tryAgain": "Veuillez réessayer",
     "invalidUrl": "URL invalide",
+    "invalidEmail": "Adresse email invalide",
     "invalidYoutubeUrl": "URL YouTube invalide",
+    "passwordMinLength": "Le mot de passe doit contenir au moins 8 caractères",
+    "usernameMinLength": "Le nom d'utilisateur doit contenir au moins 3 caractères",
+    "passwordMismatch": "Les mots de passe ne correspondent pas",
+    "offlineError": "Pas de connexion internet. Réessayez quand vous serez en ligne.",
     "videoNotFound": "Vidéo introuvable",
     "videoUnavailable": "Vidéo non disponible",
     "videoTooLong": "Vidéo trop longue (max 4 heures)",
@@ -814,7 +837,18 @@
     "noScore": "Pas de score disponible",
     "highlyRecommended": "Fortement recommandé",
     "whatIsTournesol": "Qu'est-ce que Tournesol ?",
-    "tournesolDescription": "Tournesol est une plateforme collaborative qui évalue les vidéos selon des critères de qualité."
+    "tournesolDescription": "Tournesol est une plateforme collaborative qui évalue les vidéos selon des critères de qualité.",
+    "notRatedYet": "Pas encore évalué sur Tournesol",
+    "contributeToEthical": "Contribuez à la plateforme de recommandation éthique",
+    "rateThisVideo": "Évaluer cette vidéo",
+    "ethicalRecommendation": "Tournesol - Recommandation éthique collaborative",
+    "criteria": {
+      "reliability": "Fiabilité",
+      "importance": "Importance",
+      "pedagogy": "Pédagogie",
+      "accessibility": "Accessibilité",
+      "diversity": "Diversité"
+    }
   },
   "study": {
     "quiz": {
