@@ -17,6 +17,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { Colors, Spacing, BorderRadius, Typography } from '../constants/theme';
 import { validateYouTubeUrl, URLValidationResult } from '../utils/formatters';
 import { sanitizeUrlInput, sanitizeTextInput, sanitizeSearchQuery } from '../utils/sanitize';
+import { normalizePlanId, hasFeature } from '../config/planPrivileges';
 
 type InputMode = 'url' | 'text' | 'search';
 
@@ -121,7 +122,8 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
   const [urlValidation, setUrlValidation] = useState<URLValidationResult | null>(null);
 
   // Check if user has access to deep research (Pro+ plans)
-  const hasDeepResearchAccess = ['pro', 'expert', 'team'].includes(userPlan.toLowerCase());
+  const normalizedPlan = normalizePlanId(userPlan);
+  const hasDeepResearchAccess = hasFeature(normalizedPlan, 'chatWebSearch');
 
   const scaleAnim = useMemo(() => new Animated.Value(1), []);
 
