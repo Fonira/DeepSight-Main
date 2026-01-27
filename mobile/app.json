@@ -43,8 +43,7 @@
     "plugins": [
       "expo-font",
       "expo-secure-store",
-      "expo-audio",
-      "@react-native-google-signin/google-signin"
+      "expo-audio"
     ],
     "owner": "maximeadmin",
     "runtimeVersion": {
