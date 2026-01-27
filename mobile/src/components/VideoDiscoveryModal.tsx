@@ -55,6 +55,7 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
   const [videos, setVideos] = useState<DiscoveredVideo[]>([]);
   const [selectedVideos, setSelectedVideos] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('quality');
 
   const sortOptions: { id: SortOption; label: string; labelEn: string }[] = [
@@ -68,6 +69,7 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
     if (!searchQuery.trim()) return;
 
     setIsLoading(true);
+    setSearchError(null);
     try {
       const response = await videoApi.discoverBest(searchQuery, {
         limit: 20,
@@ -89,6 +91,8 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
       setVideos(mappedVideos);
     } catch (error) {
       console.error('Failed to search videos:', error);
+      setSearchError(isEn ? 'Failed to search videos. Please try again.' : 'Échec de la recherche. Veuillez réessayer.');
+      setVideos([]);
     } finally {
       setIsLoading(false);
     }
@@ -277,6 +281,19 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
             </View>
           </View>
 
+          {/* Error Message */}
+          {searchError && (
+            <View style={styles.errorContainer}>
+              <Ionicons name="alert-circle" size={20} color={Colors.accentError} />
+              <Text style={[styles.errorText, { color: Colors.accentError }]}>{searchError}</Text>
+              <TouchableOpacity onPress={handleSearch} style={styles.retryButton}>
+                <Text style={[styles.retryText, { color: colors.accentPrimary }]}>
+                  {isEn ? 'Retry' : 'Réessayer'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Results */}
           {isLoading ? (
             <View style={styles.loadingContainer}>
@@ -285,7 +302,7 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
                 {isEn ? 'Searching quality videos...' : 'Recherche de vidéos de qualité...'}
               </Text>
             </View>
-          ) : (
+          ) : !searchError && (
             <FlatList
               data={videos}
               renderItem={renderVideoItem}
@@ -492,6 +509,27 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
     marginTop: Spacing.md,
     textAlign: 'center',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+  },
+  errorText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.body,
+    flex: 1,
+  },
+  retryButton: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+  },
+  retryText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.bodySemiBold,
   },
   footer: {
     flexDirection: 'row',

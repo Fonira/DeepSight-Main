@@ -49,6 +49,7 @@ export const Toast: React.FC<ToastProps> = ({
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const config = toastConfig[type];
 
@@ -67,12 +68,18 @@ export const Toast: React.FC<ToastProps> = ({
   };
 
   useEffect(() => {
+    // Stop any running animation before starting a new one
+    if (animationRef.current) {
+      animationRef.current.stop();
+      animationRef.current = null;
+    }
+
     if (visible) {
       // Haptic feedback
       Haptics.notificationAsync(config.haptic);
 
       // Animate in
-      Animated.parallel([
+      animationRef.current = Animated.parallel([
         Animated.spring(translateY, {
           toValue: 0,
           friction: 8,
@@ -84,7 +91,8 @@ export const Toast: React.FC<ToastProps> = ({
           duration: 200,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]);
+      animationRef.current.start();
 
       // Auto dismiss
       if (duration > 0) {
@@ -94,7 +102,7 @@ export const Toast: React.FC<ToastProps> = ({
       }
     } else {
       // Animate out
-      Animated.parallel([
+      animationRef.current = Animated.parallel([
         Animated.timing(translateY, {
           toValue: -100,
           duration: 200,
@@ -105,12 +113,17 @@ export const Toast: React.FC<ToastProps> = ({
           duration: 200,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]);
+      animationRef.current.start();
     }
 
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
+      }
+      if (animationRef.current) {
+        animationRef.current.stop();
+        animationRef.current = null;
       }
     };
   }, [visible]);

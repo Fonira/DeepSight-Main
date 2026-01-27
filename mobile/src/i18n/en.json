@@ -88,7 +88,17 @@
     "sessionExpired": "Your session has expired",
     "pleaseLoginAgain": "Please sign in again",
     "termsAgreement": "By continuing, you agree to our terms of service",
-    "subtitle": "Analyze and understand your YouTube videos in depth"
+    "subtitle": "Analyze and understand your YouTube videos in depth",
+    "verifyEmail": "Verify your email",
+    "verificationCodeSent": "We sent a verification code to",
+    "enterCode": "Enter the 6-digit code",
+    "verify": "Verify",
+    "checkSpam": "If you can't find the email, check your spam folder.",
+    "resendIn": "Resend in",
+    "resendCode": "Resend code",
+    "backToLogin": "Back to login",
+    "emailVerified": "Email verified!",
+    "accountActivated": "Your account has been activated successfully. You can now sign in."
   },
   "dashboard": {
     "title": "Video Analysis",
