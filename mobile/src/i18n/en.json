@@ -200,7 +200,9 @@
     "history": "History",
     "philosophy": "Philosophy",
     "economics": "Economics",
-    "environment": "Environment"
+    "environment": "Environment",
+    "entertainment": "Entertainment",
+    "other": "Other"
   },
   "modes": {
     "quick": "Express",
@@ -238,6 +240,8 @@
     "resultsCount": "result(s)",
     "loadMore": "Load more",
     "analyses": "analyses",
+    "listView": "List",
+    "gridView": "Grid",
     "noAnalysesYet": "No analyses yet",
     "startFirstAnalysis": "Start your first analysis",
     "confirmDeleteTitle": "Delete analysis",

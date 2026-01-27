@@ -58,9 +58,20 @@ export const HistoryScreen: React.FC = () => {
   // Track previous offline state to detect offline→online transitions
   const wasOfflineRef = useRef(isOffline);
 
-  // Filter options
-  const modes = ['Standard', 'Approfondi', 'Expert'];
-  const categories = ['Éducation', 'Science', 'Technologie', 'Divertissement', 'Actualités', 'Autre'];
+  // Filter options - using translation keys
+  const modes = [
+    { key: 'standard', label: t.modes.standard },
+    { key: 'deep', label: t.modes.deep },
+    { key: 'expert', label: t.modes.expert },
+  ];
+  const categories = [
+    { key: 'educational', label: t.categories.educational },
+    { key: 'science', label: t.categories.science },
+    { key: 'tech', label: t.categories.tech },
+    { key: 'entertainment', label: t.categories.entertainment },
+    { key: 'news', label: t.categories.news },
+    { key: 'other', label: t.categories.other },
+  ];
 
   const loadAnalyses = useCallback(async (pageNum: number = 1, reset: boolean = false) => {
     if (pageNum === 1) {
@@ -359,15 +370,15 @@ export const HistoryScreen: React.FC = () => {
               </TouchableOpacity>
               {modes.map((mode) => (
                 <TouchableOpacity
-                  key={mode}
+                  key={mode.key}
                   style={[
                     styles.filterChip,
-                    { backgroundColor: selectedMode === mode ? colors.accentPrimary : colors.bgElevated },
+                    { backgroundColor: selectedMode === mode.key ? colors.accentPrimary : colors.bgElevated },
                   ]}
-                  onPress={() => setSelectedMode(selectedMode === mode ? null : mode)}
+                  onPress={() => setSelectedMode(selectedMode === mode.key ? null : mode.key)}
                 >
-                  <Text style={[styles.filterChipText, { color: selectedMode === mode ? '#FFFFFF' : colors.textSecondary }]}>
-                    {mode}
+                  <Text style={[styles.filterChipText, { color: selectedMode === mode.key ? '#FFFFFF' : colors.textSecondary }]}>
+                    {mode.label}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -391,15 +402,15 @@ export const HistoryScreen: React.FC = () => {
               </TouchableOpacity>
               {categories.map((cat) => (
                 <TouchableOpacity
-                  key={cat}
+                  key={cat.key}
                   style={[
                     styles.filterChip,
-                    { backgroundColor: selectedCategory === cat ? colors.accentPrimary : colors.bgElevated },
+                    { backgroundColor: selectedCategory === cat.key ? colors.accentPrimary : colors.bgElevated },
                   ]}
-                  onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
+                  onPress={() => setSelectedCategory(selectedCategory === cat.key ? null : cat.key)}
                 >
-                  <Text style={[styles.filterChipText, { color: selectedCategory === cat ? '#FFFFFF' : colors.textSecondary }]}>
-                    {cat}
+                  <Text style={[styles.filterChipText, { color: selectedCategory === cat.key ? '#FFFFFF' : colors.textSecondary }]}>
+                    {cat.label}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -431,7 +442,7 @@ export const HistoryScreen: React.FC = () => {
               color={colors.textTertiary}
             />
             <Text style={[styles.viewModeText, { color: colors.textTertiary }]}>
-              {viewMode === 'list' ? 'Liste' : 'Grille'}
+              {viewMode === 'list' ? t.history.listView : t.history.gridView}
             </Text>
           </View>
         </View>
