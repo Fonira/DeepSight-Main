@@ -400,7 +400,7 @@ export const AccountScreen: React.FC = () => {
                     borderColor: colors.border,
                   },
                 ]}
-                placeholder="Mot de passe"
+                placeholder={t.auth.password}
                 placeholderTextColor={colors.textTertiary}
                 secureTextEntry
                 value={deletePassword}

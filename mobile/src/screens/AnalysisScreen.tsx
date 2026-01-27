@@ -675,7 +675,7 @@ export const AnalysisScreen: React.FC = () => {
           <Card variant="elevated" style={[styles.summaryCard, { marginTop: Spacing.lg }]}>
             <View style={styles.notesHeader}>
               <Text style={[styles.notesTitle, { color: colors.textPrimary }]}>
-                <Ionicons name="document-text-outline" size={16} color={colors.accentPrimary} /> Notes personnelles
+                <Ionicons name="document-text-outline" size={16} color={colors.accentPrimary} /> {t.analysis.personalNotes}
               </Text>
               {!isEditingNotes ? (
                 <TouchableOpacity onPress={() => setIsEditingNotes(true)}>
@@ -684,7 +684,7 @@ export const AnalysisScreen: React.FC = () => {
               ) : (
                 <TouchableOpacity onPress={handleSaveNotes} disabled={isSavingNotes}>
                   <Text style={{ color: colors.accentPrimary, fontFamily: Typography.fontFamily.bodyMedium }}>
-                    {isSavingNotes ? '...' : 'Sauver'}
+                    {isSavingNotes ? '...' : t.common.save}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -697,14 +697,14 @@ export const AnalysisScreen: React.FC = () => {
                 ]}
                 multiline
                 numberOfLines={4}
-                placeholder="Ajoutez vos notes ici..."
+                placeholder={t.analysis.notesPlaceholder}
                 placeholderTextColor={colors.textTertiary}
                 value={personalNotes}
                 onChangeText={setPersonalNotes}
               />
             ) : (
               <Text style={[styles.notesContent, { color: personalNotes ? colors.textSecondary : colors.textTertiary }]}>
-                {personalNotes || 'Aucune note. Appuyez sur le crayon pour ajouter.'}
+                {personalNotes || t.analysis.noNotes}
               </Text>
             )}
           </Card>

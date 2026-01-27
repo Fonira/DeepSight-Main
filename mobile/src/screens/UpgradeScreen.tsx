@@ -262,7 +262,7 @@ export const UpgradeScreen: React.FC = () => {
       const message = err instanceof ApiError
         ? err.message
         : (isEn ? 'Unable to start checkout. Please try again.' : 'Impossible de démarrer le paiement. Veuillez réessayer.');
-      Alert.alert(t.common?.error || 'Erreur', message);
+      Alert.alert(t.common.error, message);
     } finally {
       setIsLoading(false);
     }
