@@ -47,8 +47,12 @@ export { TagsEditor } from './TagsEditor';
 // NEW: Credit System
 export { CreditCounter, CreditAlert } from './credits';
 
-// NEW: Analysis Streaming
+// NEW: Analysis Components
 export { StreamingAnalysisDisplay } from './analysis';
+export { AnalysisValueDisplay } from './analysis/AnalysisValueDisplay';
+
+// Suggested Questions
+export { SuggestedQuestions } from './chat/SuggestedQuestions';
 
 // NEW: Content Components
 export { TimecodeText, TimecodeListItem, formatTimestamp, parseTimestamp } from './content';
@@ -58,3 +62,6 @@ export { ConceptsGlossary } from './concepts';
 
 // NEW: Upgrade Prompts
 export { UpgradePromptModal } from './upgrade';
+
+// NEW: Audio Components
+export { TTSPlayer } from './audio/TTSPlayer';
