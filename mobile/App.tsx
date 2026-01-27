@@ -5,7 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Platform } from 'react-native';
 
 import { AuthProvider } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
@@ -36,10 +36,13 @@ const queryClient = new QueryClient({
 const AppContent: React.FC = () => {
   const { isDark, colors } = useTheme();
 
+  // Use lower density on Android to avoid performance issues with Reanimated
+  const doodleDensity = Platform.OS === 'android' ? 'low' : 'medium';
+
   return (
     <View style={[styles.appContainer, { backgroundColor: colors.bgPrimary }]}>
       <OfflineBanner />
-      <DoodleBackground density="medium" />
+      <DoodleBackground density={doodleDensity} />
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <AppNavigator />
     </View>
