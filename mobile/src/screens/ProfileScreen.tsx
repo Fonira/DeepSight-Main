@@ -18,6 +18,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { Header, Card, Avatar, Badge, LanguageToggle, CreditDisplay } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { formatNumber } from '../utils/formatters';
+import { normalizePlanId, getPlanInfo } from '../config/planPrivileges';
 import type { RootStackParamList } from '../types';
 
 type ProfileNavigationProp = NativeStackNavigationProp<RootStackParamList, 'MainTabs'>;
@@ -78,10 +79,14 @@ const MenuItem: React.FC<MenuItemProps> = ({
 
 export const ProfileScreen: React.FC = () => {
   const { colors, isDark, toggleTheme } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user, logout } = useAuth();
   const navigation = useNavigation<ProfileNavigationProp>();
   const insets = useSafeAreaInsets();
+
+  // Normalize user plan
+  const userPlan = normalizePlanId(user?.plan);
+  const planInfo = getPlanInfo(userPlan);
 
   const handleLogout = () => {
     Alert.alert(
@@ -101,14 +106,7 @@ export const ProfileScreen: React.FC = () => {
   };
 
   const getPlanLabel = () => {
-    const planLabels: Record<string, string> = {
-      free: 'Gratuit',
-      student: 'Étudiant',
-      starter: 'Starter',
-      pro: 'Pro',
-      expert: 'Expert',
-    };
-    return planLabels[user?.plan || 'free'] || 'Gratuit';
+    return language === 'fr' ? planInfo.name.fr : planInfo.name.en;
   };
 
   return (
@@ -133,7 +131,7 @@ export const ProfileScreen: React.FC = () => {
               </Text>
               <Badge
                 label={getPlanLabel()}
-                variant={user?.plan === 'free' ? 'default' : 'primary'}
+                variant={userPlan === 'free' ? 'default' : 'primary'}
                 style={{ marginTop: Spacing.sm }}
               />
             </View>

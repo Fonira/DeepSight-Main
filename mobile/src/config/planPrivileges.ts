@@ -417,6 +417,111 @@ export const CONVERSION_TRIGGERS = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// TESTIMONIALS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface Testimonial {
+  id: string;
+  name: string;
+  role: { fr: string; en: string };
+  avatar?: string;
+  quote: { fr: string; en: string };
+  plan: PlanId;
+  rating: number;
+}
+
+export const TESTIMONIALS: Testimonial[] = [
+  {
+    id: 'testimonial-1',
+    name: 'Marie L.',
+    role: { fr: 'Étudiante en Master', en: 'Master\'s Student' },
+    quote: {
+      fr: 'DeepSight m\'a fait gagner des heures de prise de notes. Je peux maintenant me concentrer sur la compréhension plutôt que la transcription.',
+      en: 'DeepSight saved me hours of note-taking. I can now focus on understanding rather than transcribing.',
+    },
+    plan: 'student',
+    rating: 5,
+  },
+  {
+    id: 'testimonial-2',
+    name: 'Thomas R.',
+    role: { fr: 'Créateur de contenu', en: 'Content Creator' },
+    quote: {
+      fr: 'J\'analyse 20+ vidéos par semaine pour ma veille. L\'analyse de playlists Pro est un game-changer.',
+      en: 'I analyze 20+ videos weekly for research. The Pro playlist analysis is a game-changer.',
+    },
+    plan: 'pro',
+    rating: 5,
+  },
+  {
+    id: 'testimonial-3',
+    name: 'Dr. Sophie M.',
+    role: { fr: 'Chercheuse CNRS', en: 'CNRS Researcher' },
+    quote: {
+      fr: 'Les exports BibTeX et le fact-checking sont indispensables pour mes publications académiques.',
+      en: 'BibTeX exports and fact-checking are essential for my academic publications.',
+    },
+    plan: 'pro',
+    rating: 5,
+  },
+  {
+    id: 'testimonial-4',
+    name: 'Alex K.',
+    role: { fr: 'Développeur freelance', en: 'Freelance Developer' },
+    quote: {
+      fr: 'Je peux parcourir des heures de tutoriels en quelques minutes. ROI incroyable pour 12€/mois.',
+      en: 'I can go through hours of tutorials in minutes. Incredible ROI for €12/month.',
+    },
+    plan: 'pro',
+    rating: 5,
+  },
+  {
+    id: 'testimonial-5',
+    name: 'Julie D.',
+    role: { fr: 'Professeure de lycée', en: 'High School Teacher' },
+    quote: {
+      fr: 'Les flashcards générées automatiquement m\'aident à créer des supports de cours rapidement.',
+      en: 'Auto-generated flashcards help me create course materials quickly.',
+    },
+    plan: 'student',
+    rating: 5,
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PRO BENEFITS (for upgrade modals)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface ProBenefit {
+  icon: string;
+  title: { fr: string; en: string };
+  description: { fr: string; en: string };
+}
+
+export const PRO_BENEFITS: ProBenefit[] = [
+  {
+    icon: 'time-outline',
+    title: { fr: 'Gagnez du temps', en: 'Save time' },
+    description: { fr: 'Analysez une vidéo de 2h en 30 secondes', en: 'Analyze a 2h video in 30 seconds' },
+  },
+  {
+    icon: 'list-outline',
+    title: { fr: 'Playlists', en: 'Playlists' },
+    description: { fr: 'Analysez jusqu\'à 20 vidéos d\'un coup', en: 'Analyze up to 20 videos at once' },
+  },
+  {
+    icon: 'school-outline',
+    title: { fr: 'Outils d\'étude', en: 'Study tools' },
+    description: { fr: 'Flashcards, quiz, cartes mentales', en: 'Flashcards, quizzes, mind maps' },
+  },
+  {
+    icon: 'shield-checkmark-outline',
+    title: { fr: 'Fact-checking', en: 'Fact-checking' },
+    description: { fr: 'Vérifiez les affirmations avec Perplexity', en: 'Verify claims with Perplexity' },
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // UTILITY FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -621,6 +726,8 @@ export default {
   PLAN_FEATURES,
   PLANS_INFO,
   CONVERSION_TRIGGERS,
+  TESTIMONIALS,
+  PRO_BENEFITS,
   hasFeature,
   getLimit,
   isUnlimited,

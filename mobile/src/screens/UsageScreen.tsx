@@ -15,6 +15,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { Header, Card, Badge } from '../components';
 import { usageApi } from '../services/api';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
+import { normalizePlanId, getPlanInfo } from '../config/planPrivileges';
 
 interface DailyUsage {
   date: string;
@@ -33,6 +34,10 @@ export const UsageScreen: React.FC = () => {
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const isEn = language === 'en';
+
+  // Normalize user plan
+  const userPlan = normalizePlanId(user?.plan);
+  const planInfo = getPlanInfo(userPlan);
 
   const [detailedUsage, setDetailedUsage] = useState<DetailedUsage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,14 +69,7 @@ export const UsageScreen: React.FC = () => {
   }, [loadDetailedUsage]);
 
   const getPlanLabel = () => {
-    const labels: Record<string, string> = {
-      free: 'Gratuit',
-      student: 'Étudiant',
-      starter: 'Starter',
-      pro: 'Pro',
-      expert: 'Expert',
-    };
-    return labels[user?.plan || 'free'] || 'Gratuit';
+    return language === 'fr' ? planInfo.name.fr : planInfo.name.en;
   };
 
   return (

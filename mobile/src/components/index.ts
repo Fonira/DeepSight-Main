@@ -61,7 +61,7 @@ export { TimecodeText, TimecodeListItem, formatTimestamp, parseTimestamp } from 
 export { ConceptsGlossary } from './concepts';
 
 // NEW: Upgrade Prompts
-export { UpgradePromptModal } from './upgrade';
+export { UpgradePromptModal, FreeTrialLimitModal } from './upgrade';
 
 // NEW: Audio Components
 export { TTSPlayer } from './audio/TTSPlayer';
