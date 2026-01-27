@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Spacing, Typography, BorderRadius } from '../../constants/theme';
 
 interface TournesolScore {
@@ -83,6 +84,7 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
   compact = false,
 }) => {
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
   const [score, setScore] = useState<TournesolScore | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -138,15 +140,15 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
         <View style={styles.tournesolHeader}>
           <Text style={[styles.tournesolLogo, { color: colors.textTertiary }]}>🌻</Text>
           <Text style={[styles.notRatedText, { color: colors.textTertiary }]}>
-            Pas encore évalué sur Tournesol
+            {t.tournesol.notRatedYet}
           </Text>
         </View>
         <Text style={[styles.helpText, { color: colors.textMuted }]}>
-          Contribuez à la plateforme de recommandation éthique
+          {t.tournesol.contributeToEthical}
         </Text>
         <View style={styles.linkRow}>
           <Text style={[styles.linkText, { color: colors.accentPrimary }]}>
-            Évaluer cette vidéo
+            {t.tournesol.rateThisVideo}
           </Text>
           <Ionicons name="open-outline" size={14} color={colors.accentPrimary} />
         </View>
@@ -170,11 +172,11 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
   }
 
   const criteria = [
-    { label: 'Fiabilité', value: score.reliability, icon: 'shield-checkmark-outline' },
-    { label: 'Importance', value: score.importance, icon: 'star-outline' },
-    { label: 'Pédagogie', value: score.pedagogy, icon: 'school-outline' },
-    { label: 'Accessibilité', value: score.layman_friendly, icon: 'people-outline' },
-    { label: 'Diversité', value: score.diversity_inclusion, icon: 'globe-outline' },
+    { label: t.tournesol.criteria.reliability, value: score.reliability, icon: 'shield-checkmark-outline' },
+    { label: t.tournesol.criteria.importance, value: score.importance, icon: 'star-outline' },
+    { label: t.tournesol.criteria.pedagogy, value: score.pedagogy, icon: 'school-outline' },
+    { label: t.tournesol.criteria.accessibility, value: score.layman_friendly, icon: 'people-outline' },
+    { label: t.tournesol.criteria.diversity, value: score.diversity_inclusion, icon: 'globe-outline' },
   ];
 
   return (
@@ -186,7 +188,7 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
       <View style={styles.tournesolHeader}>
         <Text style={styles.tournesolLogo}>🌻</Text>
         <Text style={[styles.tournesolTitle, { color: colors.textPrimary }]}>
-          Score Tournesol
+          {t.tournesol.score}
         </Text>
         <View style={[styles.mainScore, { backgroundColor: `${getScoreColor(score.score)}20` }]}>
           <Text style={[styles.mainScoreText, { color: getScoreColor(score.score) }]}>
@@ -227,7 +229,7 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
       {/* Footer */}
       <View style={styles.tournesolFooter}>
         <Text style={[styles.footerText, { color: colors.textMuted }]}>
-          Tournesol - Recommandation éthique collaborative
+          {t.tournesol.ethicalRecommendation}
         </Text>
         <Ionicons name="open-outline" size={12} color={colors.textMuted} />
       </View>

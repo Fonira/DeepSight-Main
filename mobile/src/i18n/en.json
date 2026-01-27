@@ -830,7 +830,18 @@
     "noScore": "No score available",
     "highlyRecommended": "Highly recommended",
     "whatIsTournesol": "What is Tournesol?",
-    "tournesolDescription": "Tournesol is a collaborative platform that rates videos based on quality criteria."
+    "tournesolDescription": "Tournesol is a collaborative platform that rates videos based on quality criteria.",
+    "notRatedYet": "Not yet rated on Tournesol",
+    "contributeToEthical": "Contribute to the ethical recommendation platform",
+    "rateThisVideo": "Rate this video",
+    "ethicalRecommendation": "Tournesol - Collaborative ethical recommendation",
+    "criteria": {
+      "reliability": "Reliability",
+      "importance": "Importance",
+      "pedagogy": "Pedagogy",
+      "accessibility": "Accessibility",
+      "diversity": "Diversity"
+    }
   },
   "study": {
     "quiz": {

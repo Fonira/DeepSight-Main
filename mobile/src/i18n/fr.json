@@ -830,7 +830,18 @@
     "noScore": "Pas de score disponible",
     "highlyRecommended": "Fortement recommandé",
     "whatIsTournesol": "Qu'est-ce que Tournesol ?",
-    "tournesolDescription": "Tournesol est une plateforme collaborative qui évalue les vidéos selon des critères de qualité."
+    "tournesolDescription": "Tournesol est une plateforme collaborative qui évalue les vidéos selon des critères de qualité.",
+    "notRatedYet": "Pas encore évalué sur Tournesol",
+    "contributeToEthical": "Contribuez à la plateforme de recommandation éthique",
+    "rateThisVideo": "Évaluer cette vidéo",
+    "ethicalRecommendation": "Tournesol - Recommandation éthique collaborative",
+    "criteria": {
+      "reliability": "Fiabilité",
+      "importance": "Importance",
+      "pedagogy": "Pédagogie",
+      "accessibility": "Accessibilité",
+      "diversity": "Diversité"
+    }
   },
   "study": {
     "quiz": {
