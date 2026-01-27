@@ -726,7 +726,7 @@ export const AnalysisScreen: React.FC = () => {
             <View style={{ marginTop: Spacing.lg }}>
               <AnalysisValueDisplay
                 videoDurationSeconds={summary.videoInfo.duration}
-                creditsUsed={summary.creditsUsed}
+                creditsUsed={(summary as any).creditsUsed || 1}
                 animated
               />
             </View>
@@ -756,9 +756,12 @@ export const AnalysisScreen: React.FC = () => {
           {/* Notes Section */}
           <Card variant="elevated" style={[styles.summaryCard, { marginTop: Spacing.lg }]}>
             <View style={styles.notesHeader}>
-              <Text style={[styles.notesTitle, { color: colors.textPrimary }]}>
-                <Ionicons name="document-text-outline" size={16} color={colors.accentPrimary} /> {t.analysis.personalNotes}
-              </Text>
+              <View style={styles.notesTitleRow}>
+                <Ionicons name="document-text-outline" size={16} color={colors.accentPrimary} />
+                <Text style={[styles.notesTitle, { color: colors.textPrimary, marginLeft: 6 }]}>
+                  {t.analysis.personalNotes}
+                </Text>
+              </View>
               {!isEditingNotes ? (
                 <TouchableOpacity onPress={() => setIsEditingNotes(true)}>
                   <Ionicons name="pencil" size={18} color={colors.accentPrimary} />
@@ -793,9 +796,12 @@ export const AnalysisScreen: React.FC = () => {
 
           {/* Tags Section */}
           <Card variant="elevated" style={[styles.summaryCard, { marginTop: Spacing.md }]}>
-            <Text style={[styles.notesTitle, { color: colors.textPrimary, marginBottom: Spacing.sm }]}>
-              <Ionicons name="pricetags-outline" size={16} color={colors.accentSecondary} /> Tags
-            </Text>
+            <View style={[styles.notesTitleRow, { marginBottom: Spacing.sm }]}>
+              <Ionicons name="pricetags-outline" size={16} color={colors.accentSecondary} />
+              <Text style={[styles.notesTitle, { color: colors.textPrimary, marginLeft: 6 }]}>
+                Tags
+              </Text>
+            </View>
             <View style={styles.tagsContainer}>
               {tags.map((tag) => (
                 <TouchableOpacity
@@ -1597,6 +1603,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.sm,
+  },
+  notesTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   notesTitle: {
     fontSize: Typography.fontSize.base,

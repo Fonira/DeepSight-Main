@@ -52,7 +52,15 @@ export const formatRelativeTime = (dateString: string): string => {
 
 // Format date to readable string
 export const formatDate = (dateString: string, locale: string = 'fr-FR'): string => {
+  if (!dateString) return '';
+
   const date = new Date(dateString);
+
+  // Check for invalid date
+  if (isNaN(date.getTime())) {
+    return '';
+  }
+
   return date.toLocaleDateString(locale, {
     year: 'numeric',
     month: 'long',
