@@ -569,9 +569,16 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
               <Ionicons name="hourglass" size={20} color="#fff" />
             ) : (
               <>
-                <Ionicons name="sparkles" size={20} color={canSubmit ? '#fff' : Colors.textMuted} />
+                <Ionicons
+                  name={inputMode === 'search' ? 'search' : 'sparkles'}
+                  size={20}
+                  color={canSubmit ? '#fff' : Colors.textMuted}
+                />
                 <Text style={[styles.submitButtonText, !canSubmit && { color: Colors.textMuted }]}>
-                  {isEn ? 'Analyze' : 'Analyser'}
+                  {inputMode === 'search'
+                    ? (isEn ? 'Search Videos' : 'Rechercher des vidéos')
+                    : (isEn ? 'Analyze' : 'Analyser')
+                  }
                 </Text>
               </>
             )}
