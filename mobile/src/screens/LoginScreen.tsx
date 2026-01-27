@@ -8,6 +8,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -118,12 +119,11 @@ export const LoginScreen: React.FC = () => {
         >
           {/* Logo */}
           <View style={styles.logoContainer}>
-            <LinearGradient
-              colors={Colors.gradientPrimary}
-              style={styles.logoGradient}
-            >
-              <Ionicons name="eye" size={32} color="#FFFFFF" />
-            </LinearGradient>
+            <Image
+              source={require('../assets/images/icon.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
             <View style={styles.logoText}>
               <Text style={[styles.logoDeep, { color: colors.accentPrimary }]}>Deep</Text>
               <Text style={[styles.logoSight, { color: colors.textPrimary }]}>Sight</Text>
@@ -234,12 +234,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.xxxl,
   },
-  logoGradient: {
-    width: 64,
-    height: 64,
+  logoImage: {
+    width: 80,
+    height: 80,
     borderRadius: BorderRadius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: Spacing.md,
   },
   logoText: {

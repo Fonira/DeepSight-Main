@@ -30,27 +30,45 @@ const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({ collaps
   const [imageError, setImageError] = React.useState(false);
   const { t } = useTranslation();
   
+  // New compass/star logo SVG fallback (simplified version of the cosmic logo)
   const LogoSVG = () => (
     <svg viewBox="0 0 100 100" className="w-full h-full">
       <defs>
         <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#8B5CF6" />
-          <stop offset="50%" stopColor="#6366F1" />
-          <stop offset="100%" stopColor="#06B6D4" />
+          <stop offset="0%" stopColor="#00D4FF" />
+          <stop offset="25%" stopColor="#8B5CF6" />
+          <stop offset="50%" stopColor="#FF00FF" />
+          <stop offset="75%" stopColor="#FF8C00" />
+          <stop offset="100%" stopColor="#FFD700" />
         </linearGradient>
+        <radialGradient id="cosmicBg" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="#1a0a2e" />
+          <stop offset="100%" stopColor="#0a0a0b" />
+        </radialGradient>
         <filter id="glow">
-          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+          <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
           <feMerge>
             <feMergeNode in="coloredBlur"/>
             <feMergeNode in="SourceGraphic"/>
           </feMerge>
         </filter>
       </defs>
-      <circle cx="50" cy="50" r="45" fill="none" stroke="url(#logoGradient)" strokeWidth="3" opacity="0.8" filter="url(#glow)"/>
-      <circle cx="50" cy="50" r="32" fill="none" stroke="url(#logoGradient)" strokeWidth="2.5" opacity="0.9"/>
-      <circle cx="50" cy="50" r="20" fill="none" stroke="url(#logoGradient)" strokeWidth="2"/>
-      <polygon points="45,38 45,62 65,50" fill="url(#logoGradient)" filter="url(#glow)"/>
-      <circle cx="62" cy="38" r="4" fill="#06B6D4" opacity="0.9"/>
+      {/* Background */}
+      <circle cx="50" cy="50" r="48" fill="url(#cosmicBg)" />
+      {/* Outer ring */}
+      <circle cx="50" cy="50" r="42" fill="none" stroke="url(#logoGradient)" strokeWidth="1.5" opacity="0.6" />
+      {/* Inner rings */}
+      <circle cx="50" cy="50" r="32" fill="none" stroke="url(#logoGradient)" strokeWidth="1" opacity="0.5" />
+      <circle cx="50" cy="50" r="22" fill="none" stroke="url(#logoGradient)" strokeWidth="1" opacity="0.4" />
+      {/* 8-pointed star */}
+      <path
+        d="M50 8 L54 38 L84 42 L58 50 L84 58 L54 62 L50 92 L46 62 L16 58 L42 50 L16 42 L46 38 Z"
+        fill="url(#logoGradient)"
+        filter="url(#glow)"
+        opacity="0.9"
+      />
+      {/* Center point */}
+      <circle cx="50" cy="50" r="4" fill="#0a0a0b" />
     </svg>
   );
   
