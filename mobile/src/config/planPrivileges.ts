@@ -36,6 +36,11 @@ export interface PlanLimits {
   studyDailyLimit: number;        // -1 = unlimited
 }
 
+// Type for numeric-only limits (excludes boolean properties)
+export type NumericPlanLimits = {
+  [K in keyof PlanLimits as PlanLimits[K] extends number ? K : never]: PlanLimits[K];
+};
+
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   free: {
     monthlyAnalyses: 3,
@@ -564,7 +569,7 @@ export function hasFeature(plan: PlanId | string | undefined, feature: keyof Pla
 /**
  * Get a limit for a plan
  */
-export function getLimit(plan: PlanId | string | undefined, limit: keyof PlanLimits): number {
+export function getLimit(plan: PlanId | string | undefined, limit: keyof NumericPlanLimits): number {
   const planId = normalizePlanId(plan as string);
   return PLAN_LIMITS[planId]?.[limit] ?? 0;
 }
@@ -572,7 +577,7 @@ export function getLimit(plan: PlanId | string | undefined, limit: keyof PlanLim
 /**
  * Check if a limit is unlimited (-1)
  */
-export function isUnlimited(plan: PlanId | string | undefined, limit: keyof PlanLimits): boolean {
+export function isUnlimited(plan: PlanId | string | undefined, limit: keyof NumericPlanLimits): boolean {
   return getLimit(plan, limit) === -1;
 }
 

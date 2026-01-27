@@ -18,6 +18,7 @@ export interface User {
   total_words: number;
   total_playlists: number;
   created_at: string;
+  analyses_this_month?: number;
 }
 
 export interface AuthTokens {
@@ -72,6 +73,7 @@ export interface AnalysisRequest {
   category: string;
   model: string;
   language: string;
+  deep_research?: boolean;
 }
 
 export interface AnalysisStatus {
