@@ -16,12 +16,17 @@ import { useNavigation, CompositeNavigationProp } from '@react-navigation/native
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { historyApi } from '../services/api';
 import { Header, VideoCard, EmptyState } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
+import { useIsOffline } from '../hooks/useNetworkStatus';
 import type { RootStackParamList, MainTabParamList, AnalysisSummary, HistoryFilters } from '../types';
+
+// Cache key for offline storage
+const HISTORY_CACHE_KEY = 'deepsight_history_cache';
 
 // Composite type for navigating to both tab screens and stack screens
 type HistoryNavigationProp = CompositeNavigationProp<
@@ -31,9 +36,10 @@ type HistoryNavigationProp = CompositeNavigationProp<
 
 export const HistoryScreen: React.FC = () => {
   const { colors } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigation = useNavigation<HistoryNavigationProp>();
   const insets = useSafeAreaInsets();
+  const isOffline = useIsOffline();
 
   const [analyses, setAnalyses] = useState<AnalysisSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -47,6 +53,7 @@ export const HistoryScreen: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [isUsingCache, setIsUsingCache] = useState(false);
 
   // Filter options
   const modes = ['Standard', 'Approfondi', 'Expert'];
@@ -59,6 +66,27 @@ export const HistoryScreen: React.FC = () => {
       setIsLoadingMore(true);
     }
 
+    // If offline, load from cache
+    if (isOffline) {
+      try {
+        const cached = await AsyncStorage.getItem(HISTORY_CACHE_KEY);
+        if (cached) {
+          const cachedData = JSON.parse(cached);
+          setAnalyses(cachedData);
+          setIsUsingCache(true);
+          setHasMore(false); // Can't load more when offline
+        }
+      } catch (e) {
+        console.error('Failed to load cached history:', e);
+      } finally {
+        setIsLoading(false);
+        setIsLoadingMore(false);
+      }
+      return;
+    }
+
+    // Online: fetch from API
+    setIsUsingCache(false);
     try {
       const filters: HistoryFilters = {
         search: searchQuery || undefined,
@@ -71,6 +99,12 @@ export const HistoryScreen: React.FC = () => {
 
       if (reset || pageNum === 1) {
         setAnalyses(response.items);
+        // Cache the first page results for offline use
+        try {
+          await AsyncStorage.setItem(HISTORY_CACHE_KEY, JSON.stringify(response.items));
+        } catch (e) {
+          console.warn('Failed to cache history:', e);
+        }
       } else {
         setAnalyses((prev) => [...prev, ...response.items]);
       }
@@ -79,11 +113,23 @@ export const HistoryScreen: React.FC = () => {
       setPage(pageNum);
     } catch (error) {
       console.error('Failed to load history:', error);
+      // Try to load from cache on error
+      try {
+        const cached = await AsyncStorage.getItem(HISTORY_CACHE_KEY);
+        if (cached) {
+          const cachedData = JSON.parse(cached);
+          setAnalyses(cachedData);
+          setIsUsingCache(true);
+          setHasMore(false);
+        }
+      } catch (e) {
+        console.error('Failed to load cached history:', e);
+      }
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
     }
-  }, [searchQuery, showFavoritesOnly, selectedMode, selectedCategory]);
+  }, [searchQuery, showFavoritesOnly, selectedMode, selectedCategory, isOffline]);
 
   useEffect(() => {
     loadAnalyses(1, true);
@@ -348,6 +394,16 @@ export const HistoryScreen: React.FC = () => {
         </View>
       )}
 
+      {/* Offline/Cache Notice */}
+      {(isOffline || isUsingCache) && !isLoading && (
+        <View style={styles.offlineNotice}>
+          <Ionicons name="information-circle" size={16} color={colors.textSecondary} />
+          <Text style={[styles.offlineText, { color: colors.textSecondary }]}>
+            {language === 'en' ? 'Showing cached data' : 'Affichage des donnees en cache'}
+          </Text>
+        </View>
+      )}
+
       {/* Results Count and View Mode */}
       {!isLoading && analyses.length > 0 && (
         <View style={styles.resultsInfo}>
@@ -510,6 +566,17 @@ const styles = StyleSheet.create({
   gridItem: {
     flex: 1,
     maxWidth: '48%',
+  },
+  offlineNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.sm,
+    gap: Spacing.xs,
+  },
+  offlineText: {
+    fontFamily: Typography.fontFamily.body,
+    fontSize: Typography.fontSize.xs,
   },
 });
 

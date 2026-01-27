@@ -23,6 +23,7 @@ import { Header, VideoCard, Card, Badge, Avatar } from '../components';
 import SmartInputBar from '../components/SmartInputBar';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
 import { isValidYouTubeUrl, formatCredits } from '../utils/formatters';
+import { useIsOffline } from '../hooks/useNetworkStatus';
 import type { RootStackParamList, MainTabParamList, AnalysisSummary } from '../types';
 
 // Composite type for navigating to both tab screens and stack screens
@@ -37,6 +38,7 @@ export const DashboardScreen: React.FC = () => {
   const { t, language } = useLanguage();
   const navigation = useNavigation<DashboardNavigationProp>();
   const insets = useSafeAreaInsets();
+  const isOffline = useIsOffline();
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -72,6 +74,17 @@ export const DashboardScreen: React.FC = () => {
     source?: string;
     deepResearch?: boolean;
   }) => {
+    // Block submission when offline
+    if (isOffline) {
+      Alert.alert(
+        t.common.error,
+        language === 'en'
+          ? 'Analysis requires an internet connection. Please try again when online.'
+          : 'L\'analyse necessite une connexion internet. Reessayez quand vous serez en ligne.',
+      );
+      return;
+    }
+
     // Check credits
     if (user && user.credits <= 0) {
       Alert.alert(
