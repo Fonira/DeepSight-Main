@@ -181,7 +181,7 @@ export const UsageScreen: React.FC = () => {
         {detailedUsage && detailedUsage.by_date && detailedUsage.by_date.length > 0 && (
           <>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              {isEn ? 'Daily Usage' : 'Utilisation quotidienne'}
+              {t.usage.dailyUsage}
             </Text>
             <Card variant="elevated" style={styles.chartCard}>
               <View style={styles.chartContainer}>
@@ -220,7 +220,7 @@ export const UsageScreen: React.FC = () => {
         {detailedUsage && detailedUsage.by_category && Object.keys(detailedUsage.by_category).length > 0 && (
           <>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              {isEn ? 'By Category' : 'Par catégorie'}
+              {t.usage.byCategory}
             </Text>
             <Card variant="elevated" style={styles.breakdownCard}>
               {Object.entries(detailedUsage.by_category).map(([category, count], index) => {
@@ -250,7 +250,7 @@ export const UsageScreen: React.FC = () => {
         {detailedUsage && detailedUsage.by_model && Object.keys(detailedUsage.by_model).length > 0 && (
           <>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              {isEn ? 'By AI Model' : 'Par modèle IA'}
+              {t.usage.byModel}
             </Text>
             <Card variant="elevated" style={styles.breakdownCard}>
               {Object.entries(detailedUsage.by_model).map(([model, count], index) => {

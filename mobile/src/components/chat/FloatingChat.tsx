@@ -344,7 +344,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                     <View style={styles.sourcesHeader}>
                       <Ionicons name="globe-outline" size={14} color={colors.accentInfo} />
                       <Text style={[styles.sourcesTitle, { color: colors.textSecondary }]}>
-                        Sources web
+                        {t.chat.webSources}
                       </Text>
                     </View>
                     {lastSources.slice(0, 3).map((source, index) => (
@@ -387,7 +387,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                       styles.input,
                       { backgroundColor: colors.bgSecondary, color: colors.textPrimary },
                     ]}
-                    placeholder={useWebSearch ? 'Recherche web activée...' : t.chat.placeholder}
+                    placeholder={useWebSearch ? t.chat.webSearchPlaceholder : t.chat.placeholder}
                     placeholderTextColor={colors.textMuted}
                     value={input}
                     onChangeText={setInput}
