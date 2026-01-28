@@ -6,6 +6,7 @@ import {
   Dimensions,
   TouchableOpacity,
   ScrollView,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -156,12 +157,11 @@ export const LandingScreen: React.FC = () => {
                 end={{ x: 0.5, y: 1 }}
               />
             </Animated.View>
-            <LinearGradient
-              colors={Colors.gradientPrimary}
-              style={styles.logoGradient}
-            >
-              <Ionicons name="eye" size={48} color="#FFFFFF" />
-            </LinearGradient>
+            <Image
+              source={require('../assets/images/icon.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </Animated.View>
 
           {/* Title */}
@@ -282,12 +282,10 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 80,
   },
-  logoGradient: {
-    width: 80,
-    height: 80,
+  logoImage: {
+    width: 100,
+    height: 100,
     borderRadius: BorderRadius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   titleContainer: {
     flexDirection: 'row',

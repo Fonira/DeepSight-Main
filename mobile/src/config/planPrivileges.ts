@@ -34,7 +34,14 @@ export interface PlanLimits {
   studyMindmapDepth: number;
   studyCanGenerateMore: boolean;
   studyDailyLimit: number;        // -1 = unlimited
+  // Academic sources
+  academicPapersPerAnalysis: number;  // Max papers shown per analysis
 }
+
+// Type for numeric-only limits (excludes boolean properties)
+export type NumericPlanLimits = {
+  [K in keyof PlanLimits as PlanLimits[K] extends number ? K : never]: PlanLimits[K];
+};
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   free: {
@@ -54,6 +61,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyMindmapDepth: 2,
     studyCanGenerateMore: false,
     studyDailyLimit: 2,
+    academicPapersPerAnalysis: 3,
   },
   student: {
     monthlyAnalyses: 40,
@@ -72,6 +80,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyMindmapDepth: 3,
     studyCanGenerateMore: false,
     studyDailyLimit: 5,
+    academicPapersPerAnalysis: 10,
   },
   starter: {
     monthlyAnalyses: 60,
@@ -90,6 +99,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyMindmapDepth: 3,
     studyCanGenerateMore: true,
     studyDailyLimit: 10,
+    academicPapersPerAnalysis: 15,
   },
   pro: {
     monthlyAnalyses: 300,
@@ -108,6 +118,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyMindmapDepth: 4,
     studyCanGenerateMore: true,
     studyDailyLimit: 50,
+    academicPapersPerAnalysis: 30,
   },
   team: {
     monthlyAnalyses: 1000,
@@ -126,6 +137,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyMindmapDepth: 5,
     studyCanGenerateMore: true,
     studyDailyLimit: -1,
+    academicPapersPerAnalysis: 50,
   },
 };
 
@@ -160,6 +172,10 @@ export interface PlanFeatures {
   sharedWorkspace: boolean;
   slackIntegration: boolean;
   teamsIntegration: boolean;
+  // Academic sources
+  academicSearch: boolean;
+  bibliographyExport: boolean;
+  academicFullText: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
@@ -190,6 +206,9 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     sharedWorkspace: false,
     slackIntegration: false,
     teamsIntegration: false,
+    academicSearch: true,         // Basic search available
+    bibliographyExport: false,
+    academicFullText: false,
   },
   student: {
     summaryExpress: true,
@@ -218,6 +237,9 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     sharedWorkspace: false,
     slackIntegration: false,
     teamsIntegration: false,
+    academicSearch: true,
+    bibliographyExport: true,    // Student killer feature
+    academicFullText: false,
   },
   starter: {
     summaryExpress: true,
@@ -246,6 +268,9 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     sharedWorkspace: false,
     slackIntegration: false,
     teamsIntegration: false,
+    academicSearch: true,
+    bibliographyExport: true,
+    academicFullText: false,
   },
   pro: {
     summaryExpress: true,
@@ -274,6 +299,9 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     sharedWorkspace: false,
     slackIntegration: false,
     teamsIntegration: false,
+    academicSearch: true,
+    bibliographyExport: true,
+    academicFullText: true,
   },
   team: {
     summaryExpress: true,
@@ -302,6 +330,9 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     sharedWorkspace: true,
     slackIntegration: true,
     teamsIntegration: true,
+    academicSearch: true,
+    bibliographyExport: true,
+    academicFullText: true,
   },
 };
 
@@ -564,7 +595,7 @@ export function hasFeature(plan: PlanId | string | undefined, feature: keyof Pla
 /**
  * Get a limit for a plan
  */
-export function getLimit(plan: PlanId | string | undefined, limit: keyof PlanLimits): number {
+export function getLimit(plan: PlanId | string | undefined, limit: keyof NumericPlanLimits): number {
   const planId = normalizePlanId(plan as string);
   return PLAN_LIMITS[planId]?.[limit] ?? 0;
 }
@@ -572,7 +603,7 @@ export function getLimit(plan: PlanId | string | undefined, limit: keyof PlanLim
 /**
  * Check if a limit is unlimited (-1)
  */
-export function isUnlimited(plan: PlanId | string | undefined, limit: keyof PlanLimits): boolean {
+export function isUnlimited(plan: PlanId | string | undefined, limit: keyof NumericPlanLimits): boolean {
   return getLimit(plan, limit) === -1;
 }
 

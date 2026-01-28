@@ -6,7 +6,6 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
   Share,
   Linking,
@@ -25,12 +24,13 @@ import { Image } from 'expo-image';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { videoApi, chatApi, studyApi, exportApi } from '../services/api';
-import { Header, Card, Badge, Button, YouTubePlayer, useToast, StreamingProgress, FreshnessIndicator, ReliabilityScore } from '../components';
+import { Header, Card, Badge, Button, YouTubePlayer, useToast, StreamingProgress, FreshnessIndicator, ReliabilityScore, DeepSightSpinner } from '../components';
 import { QuizComponent, MindMapComponent } from '../components/study';
 import type { QuizQuestion, MindMapData, MindMapNode } from '../components/study';
 import { ExportOptions } from '../components/export';
 import { FactCheckButton } from '../components/factcheck';
 import { WebEnrichment } from '../components/enrichment';
+import { AcademicSourcesSection } from '../components/academic';
 import { CitationExport } from '../components/citation';
 import { TournesolWidget } from '../components/tournesol';
 import { AnalysisValueDisplay } from '../components/analysis/AnalysisValueDisplay';
@@ -39,6 +39,7 @@ import { TTSPlayer } from '../components/audio/TTSPlayer';
 import { SuggestedQuestions } from '../components/chat/SuggestedQuestions';
 import { UpgradePromptModal } from '../components/upgrade';
 import { useAuth } from '../contexts/AuthContext';
+import { useBackgroundAnalysis, type VideoAnalysisTask } from '../contexts/BackgroundAnalysisContext';
 import { hasFeature, normalizePlanId, type PlanId } from '../config/planPrivileges';
 import { videoApi as videoApiService } from '../services/api';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
@@ -55,11 +56,11 @@ export const AnalysisScreen: React.FC = () => {
   const { t, language } = useLanguage();
   const { showToast } = useToast();
   const { user } = useAuth();
+  const { subscribeToTask, getTask } = useBackgroundAnalysis();
   const navigation = useNavigation<AnalysisNavigationProp>();
   const route = useRoute<AnalysisRouteProp>();
   const insets = useSafeAreaInsets();
   const chatScrollRef = useRef<FlatList>(null);
-  const pollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
 
   // User plan
@@ -132,97 +133,151 @@ export const AnalysisScreen: React.FC = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeLimitType, setUpgradeLimitType] = useState<'chat' | 'analysis' | 'playlist' | 'export' | 'webSearch' | 'tts' | 'apiKey' | 'credits'>('analysis');
 
-  // Load analysis data
-  const loadAnalysis = useCallback(async () => {
-    if (!summaryId) return;
+  // Helper to calculate step from progress
+  const calculateStepFromProgress = useCallback((progress: number): number => {
+    if (progress < 10) return 0; // Connect
+    if (progress < 30) return 1; // Metadata
+    if (progress < 60) return 2; // Transcript
+    if (progress < 90) return 3; // Analysis
+    return 4; // Complete
+  }, []);
 
+  // Load completed analysis data (summary, concepts, chat history)
+  const loadCompletedAnalysis = useCallback(async (summaryIdToLoad: string) => {
     try {
-      setIsLoading(true);
-      setError(null);
+      const summaryData = await videoApi.getSummary(summaryIdToLoad);
+      setSummary(summaryData);
+      setAnalysisProgress(100);
+      setAnalysisStep(4);
 
-      // Check if this is a task ID (new analysis) or summary ID (existing)
-      const status = await videoApi.getStatus(summaryId);
-
-      if (status.status === 'completed' && status.summary_id) {
-        const summaryData = await videoApi.getSummary(status.summary_id);
-        setSummary(summaryData);
-        setAnalysisProgress(100);
-
-        // Load concepts
-        try {
-          const conceptsData = await videoApi.getEnrichedConcepts(status.summary_id);
-          setConcepts(conceptsData.concepts || []);
-        } catch {
-          // Concepts might not be available
-        }
-
-        // Load chat history
-        try {
-          const chatHistory = await chatApi.getHistory(status.summary_id);
-          setChatMessages(chatHistory.messages || []);
-        } catch {
-          // Chat history might not exist
-        }
-      } else if (status.status === 'processing') {
-        setAnalysisProgress(status.progress || 0);
-        setAnalysisStatus(status.message || t.analysis.inProgress);
-        // Calculate step based on progress
-        const progress = status.progress || 0;
-        if (progress < 10) setAnalysisStep(0); // Connect
-        else if (progress < 30) setAnalysisStep(1); // Metadata
-        else if (progress < 60) setAnalysisStep(2); // Transcript
-        else if (progress < 90) setAnalysisStep(3); // Analysis
-        else setAnalysisStep(4); // Complete
-        // Poll for updates with cleanup ref
-        // Clear existing timeout to prevent accumulation
-        if (pollingTimeoutRef.current) {
-          clearTimeout(pollingTimeoutRef.current);
-        }
-        if (isMountedRef.current) {
-          pollingTimeoutRef.current = setTimeout(() => loadAnalysis(), 2000);
-        }
-      } else if (status.status === 'failed') {
-        setError(status.error || t.analysis.failed);
-      }
-    } catch (err: any) {
-      // Try loading as existing summary
+      // Load concepts
       try {
-        const summaryData = await videoApi.getSummary(summaryId);
-        setSummary(summaryData);
-        setAnalysisProgress(100);
-
-        try {
-          const conceptsData = await videoApi.getEnrichedConcepts(summaryId);
-          setConcepts(conceptsData.concepts || []);
-        } catch {}
-
-        try {
-          const chatHistory = await chatApi.getHistory(summaryId);
-          setChatMessages(chatHistory.messages || []);
-        } catch {}
+        const conceptsData = await videoApi.getEnrichedConcepts(summaryIdToLoad);
+        setConcepts(conceptsData.concepts || []);
       } catch {
-        setError(t.errors.generic);
+        // Concepts might not be available
       }
+
+      // Load chat history
+      try {
+        const chatHistory = await chatApi.getHistory(summaryIdToLoad);
+        setChatMessages(chatHistory.messages || []);
+      } catch {
+        // Chat history might not exist
+      }
+    } catch (err) {
+      console.error('Error loading completed analysis:', err);
+      setError(t.errors.generic);
     } finally {
       setIsLoading(false);
     }
-  }, [summaryId]);
+  }, [t.errors.generic]);
 
-  // Cleanup on unmount
+  // Initial load and subscription setup
   useEffect(() => {
+    if (!summaryId) return;
+
     isMountedRef.current = true;
+    setIsLoading(true);
+    setError(null);
+
+    // Check if this is a background task we're tracking
+    const backgroundTask = getTask(summaryId);
+
+    if (backgroundTask) {
+      // Subscribe to updates from the centralized polling in BackgroundAnalysisContext
+      const unsubscribe = subscribeToTask(summaryId, (task) => {
+        if (!isMountedRef.current) return;
+
+        if (task.type === 'video') {
+          const videoTask = task as VideoAnalysisTask;
+          setAnalysisProgress(videoTask.progress);
+          setAnalysisStatus(videoTask.message);
+          setAnalysisStep(calculateStepFromProgress(videoTask.progress));
+
+          if (videoTask.status === 'completed' && videoTask.result) {
+            // Task completed - load full summary data
+            loadCompletedAnalysis(videoTask.result.id || summaryId);
+          } else if (videoTask.status === 'failed') {
+            setError(videoTask.error || t.analysis.failed);
+            setIsLoading(false);
+          }
+        }
+      });
+
+      // Set initial state from background task
+      if (backgroundTask.type === 'video') {
+        const videoTask = backgroundTask as VideoAnalysisTask;
+        setAnalysisProgress(videoTask.progress);
+        setAnalysisStatus(videoTask.message);
+        setAnalysisStep(calculateStepFromProgress(videoTask.progress));
+
+        if (videoTask.status === 'completed' && videoTask.result) {
+          loadCompletedAnalysis(videoTask.result.id || summaryId);
+        } else if (videoTask.status === 'failed') {
+          setError(videoTask.error || t.analysis.failed);
+          setIsLoading(false);
+        } else {
+          setIsLoading(false); // Still processing - show streaming progress
+        }
+      }
+
+      return () => {
+        isMountedRef.current = false;
+        unsubscribe();
+      };
+    }
+
+    // Not a background task - try loading as existing summary or check API status
+    const loadInitialData = async () => {
+      try {
+        // First try to get status (for task IDs)
+        const status = await videoApi.getStatus(summaryId);
+
+        if (status.status === 'completed' && status.summary_id) {
+          await loadCompletedAnalysis(status.summary_id);
+        } else if (status.status === 'processing') {
+          // This shouldn't happen if using BackgroundAnalysisContext properly
+          // but handle it gracefully
+          setAnalysisProgress(status.progress || 0);
+          setAnalysisStatus(status.message || t.analysis.inProgress);
+          setAnalysisStep(calculateStepFromProgress(status.progress || 0));
+          setIsLoading(false);
+        } else if (status.status === 'failed') {
+          setError(status.error || t.analysis.failed);
+          setIsLoading(false);
+        }
+      } catch {
+        // Not a task ID - try loading as existing summary
+        try {
+          await loadCompletedAnalysis(summaryId);
+        } catch {
+          setError(t.errors.generic);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadInitialData();
 
     return () => {
       isMountedRef.current = false;
-      if (pollingTimeoutRef.current) {
-        clearTimeout(pollingTimeoutRef.current);
-      }
     };
-  }, []);
+  }, [summaryId, getTask, subscribeToTask, calculateStepFromProgress, loadCompletedAnalysis, t.analysis.inProgress, t.analysis.failed, t.errors.generic]);
 
-  useEffect(() => {
-    loadAnalysis();
-  }, [loadAnalysis]);
+  // Reload function for retry button
+  const loadAnalysis = useCallback(async () => {
+    if (!summaryId) return;
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await loadCompletedAnalysis(summaryId);
+    } catch {
+      setError(t.errors.generic);
+      setIsLoading(false);
+    }
+  }, [summaryId, loadCompletedAnalysis, t.errors.generic]);
 
   // Load reliability data
   const loadReliabilityData = useCallback(async () => {
@@ -960,7 +1015,7 @@ export const AnalysisScreen: React.FC = () => {
               disabled={!chatInput.trim() || isSendingMessage}
             >
               {isSendingMessage ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
+                <DeepSightSpinner size="sm" speed="fast" color="#FFFFFF" />
               ) : (
                 <Ionicons name="send" size={20} color="#FFFFFF" />
               )}
@@ -1009,7 +1064,7 @@ export const AnalysisScreen: React.FC = () => {
                     {t.chat.suggestions.summary}
                   </Text>
                 </View>
-                {isLoadingTools && <ActivityIndicator size="small" color={colors.accentPrimary} />}
+                {isLoadingTools && <DeepSightSpinner size="sm" speed="fast" color={colors.accentPrimary} />}
                 {!isLoadingTools && flashcards.length > 0 && (
                   <Badge label={`${flashcards.length}`} variant="primary" />
                 )}
@@ -1031,7 +1086,7 @@ export const AnalysisScreen: React.FC = () => {
                     {t.chat.suggestions.keyPoints}
                   </Text>
                 </View>
-                {isLoadingQuiz && <ActivityIndicator size="small" color={colors.accentWarning} />}
+                {isLoadingQuiz && <DeepSightSpinner size="sm" speed="fast" color={colors.accentWarning} />}
                 {!isLoadingQuiz && quizQuestions.length > 0 && (
                   <Badge label={`${quizQuestions.length}Q`} variant="warning" />
                 )}
@@ -1053,7 +1108,7 @@ export const AnalysisScreen: React.FC = () => {
                     {t.concepts.relatedConcepts}
                   </Text>
                 </View>
-                {isLoadingMindMap && <ActivityIndicator size="small" color={colors.accentSuccess} />}
+                {isLoadingMindMap && <DeepSightSpinner size="sm" speed="fast" color={colors.accentSuccess} />}
                 {!isLoadingMindMap && mindMapData && (
                   <Badge label={t.analysis.complete} variant="success" />
                 )}
@@ -1071,6 +1126,18 @@ export const AnalysisScreen: React.FC = () => {
                   <View style={{ height: Spacing.sm }} />
                   <WebEnrichment summaryId={summary.id} />
                 </>
+              )}
+
+              {/* Academic Sources Section */}
+              {summary && (
+                <AcademicSourcesSection
+                  summaryId={summary.id}
+                  userPlan={user?.plan}
+                  onUpgrade={() => {
+                    setUpgradeLimitType('analysis');
+                    setShowUpgradeModal(true);
+                  }}
+                />
               )}
 
               {/* Export Section */}

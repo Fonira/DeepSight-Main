@@ -6,7 +6,6 @@ import {
   FlatList,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
   Alert,
   TextInput,
   Modal,
@@ -23,7 +22,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { playlistApi, videoApi } from '../services/api';
-import { Header, Card, EmptyState, Button, Badge, UpgradePromptModal } from '../components';
+import { Header, Card, EmptyState, Button, Badge, UpgradePromptModal, DeepSightSpinner } from '../components';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { normalizePlanId, hasFeature, getLimit, getMinPlanForFeature, getPlanInfo } from '../config/planPrivileges';
@@ -404,7 +403,7 @@ export const PlaylistsScreen: React.FC = () => {
       {/* Playlist List */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accentPrimary} />
+          <DeepSightSpinner size="lg" showGlow />
         </View>
       ) : (
         <FlatList

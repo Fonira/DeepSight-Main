@@ -51,6 +51,9 @@ export { CreditCounter, CreditAlert } from './credits';
 export { StreamingAnalysisDisplay } from './analysis';
 export { AnalysisValueDisplay } from './analysis/AnalysisValueDisplay';
 
+// Loading Components
+export { AnimatedLogo, DeepSightSpinner } from './loading';
+
 // Suggested Questions
 export { SuggestedQuestions } from './chat/SuggestedQuestions';
 
@@ -65,3 +68,6 @@ export { UpgradePromptModal, FreeTrialLimitModal } from './upgrade';
 
 // NEW: Audio Components
 export { TTSPlayer } from './audio/TTSPlayer';
+
+// NEW: Academic Sources
+export { PaperCard, AcademicSourcesSection, BibliographyExportModal } from './academic';

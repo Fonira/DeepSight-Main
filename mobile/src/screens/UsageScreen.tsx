@@ -5,14 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Header, Card, Badge } from '../components';
+import { Header, Card, Badge, DeepSightSpinner } from '../components';
 import { usageApi } from '../services/api';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { normalizePlanId, getPlanInfo } from '../config/planPrivileges';
@@ -279,7 +278,7 @@ export const UsageScreen: React.FC = () => {
         {/* Loading Indicator */}
         {isLoading && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={colors.accentPrimary} />
+            <DeepSightSpinner size="md" showGlow />
           </View>
         )}
       </ScrollView>

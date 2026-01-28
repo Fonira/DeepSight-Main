@@ -52,6 +52,7 @@ export const DashboardScreen: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [recentAnalyses, setRecentAnalyses] = useState<AnalysisSummary[]>([]);
+  const [favorites, setFavorites] = useState<AnalysisSummary[]>([]);
   const [estimatedCredits, setEstimatedCredits] = useState<number | undefined>(undefined);
 
   // Free trial limit modal state
@@ -78,15 +79,25 @@ export const DashboardScreen: React.FC = () => {
     }
   }, []);
 
+  const loadFavorites = useCallback(async () => {
+    try {
+      const favs = await historyApi.getFavorites(3);
+      setFavorites(favs);
+    } catch (error) {
+      console.error('Failed to load favorites:', error);
+    }
+  }, []);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refreshUser(), loadRecentAnalyses()]);
+    await Promise.all([refreshUser(), loadRecentAnalyses(), loadFavorites()]);
     setRefreshing(false);
-  }, [refreshUser, loadRecentAnalyses]);
+  }, [refreshUser, loadRecentAnalyses, loadFavorites]);
 
   React.useEffect(() => {
     loadRecentAnalyses();
-  }, [loadRecentAnalyses]);
+    loadFavorites();
+  }, [loadRecentAnalyses, loadFavorites]);
 
   // Track analyses used this month from user data
   useEffect(() => {
@@ -104,6 +115,7 @@ export const DashboardScreen: React.FC = () => {
     title?: string;
     source?: string;
     deepResearch?: boolean;
+    model?: string;
   }) => {
     // Block submission when offline
     if (isOffline) {
@@ -140,6 +152,7 @@ export const DashboardScreen: React.FC = () => {
         category: data.category,
         language: data.language || 'fr',
         deep_research: data.deepResearch || false,
+        model: data.model || 'mistral-small-latest',
       };
 
       if (data.inputType === 'url') {
@@ -199,6 +212,27 @@ export const DashboardScreen: React.FC = () => {
     navigation.navigate('Analysis', { summaryId: summary.id });
   };
 
+  const handleFavoritePress = async (summary: AnalysisSummary) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const { isFavorite } = await historyApi.toggleFavorite(summary.id);
+      // Update local state
+      setRecentAnalyses((prev) =>
+        prev.map((item) =>
+          item.id === summary.id ? { ...item, isFavorite } : item
+        )
+      );
+      // Reload favorites if needed
+      if (!isFavorite) {
+        setFavorites((prev) => prev.filter((item) => item.id !== summary.id));
+      } else {
+        loadFavorites();
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite:', error);
+    }
+  };
+
   // Handle video selection from discovery modal
   const handleVideoSelect = async (videoId: string, videoUrl: string) => {
     if (!pendingSearchData) return;
@@ -212,6 +246,7 @@ export const DashboardScreen: React.FC = () => {
         mode: pendingSearchData.mode,
         category: pendingSearchData.category,
         language: pendingSearchData.language,
+        model: user?.default_model || 'mistral-small-latest',
         deep_research: pendingSearchData.deepResearch,
       };
 
@@ -328,6 +363,39 @@ export const DashboardScreen: React.FC = () => {
           </Card>
         </View>
 
+        {/* Favorites Section */}
+        {favorites.length > 0 && (
+          <View style={styles.recentSection}>
+            <View style={styles.sectionHeader}>
+              <View style={styles.sectionTitleRow}>
+                <Ionicons name="heart" size={18} color={colors.accentError} style={{ marginRight: Spacing.xs }} />
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                  {t.history.favorites || 'Favoris'}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => {
+                // Navigate to History with favorites filter active
+                navigation.navigate('History');
+              }}>
+                <Text style={[styles.seeAllText, { color: colors.accentPrimary }]}>
+                  {t.dashboard.viewAll}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {favorites.map((analysis) => (
+              <VideoCard
+                key={analysis.id}
+                video={analysis}
+                onPress={() => handleVideoPress(analysis)}
+                onFavoritePress={() => handleFavoritePress(analysis)}
+                isFavorite={true}
+                compact
+              />
+            ))}
+          </View>
+        )}
+
         {/* Recent Analyses */}
         {recentAnalyses.length > 0 && (
           <View style={styles.recentSection}>
@@ -347,6 +415,7 @@ export const DashboardScreen: React.FC = () => {
                 key={analysis.id}
                 video={analysis}
                 onPress={() => handleVideoPress(analysis)}
+                onFavoritePress={() => handleFavoritePress(analysis)}
                 isFavorite={analysis.isFavorite}
                 compact
               />
@@ -501,6 +570,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: Spacing.md,
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   seeAllText: {
     fontSize: Typography.fontSize.sm,

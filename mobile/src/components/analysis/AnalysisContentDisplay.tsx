@@ -75,16 +75,20 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
     return processed;
   }, [content]);
 
+  // Pure white color for dark mode to ensure maximum readability
+  const pureWhite = isDark ? '#FFFFFF' : colors.textPrimary;
+  const emphasisColor = isDark ? '#E8E8F0' : colors.textSecondary;
+
   // Create markdown styles based on theme
   const markdownStyles = useMemo(() => StyleSheet.create({
     body: {
-      color: colors.textPrimary,
+      color: pureWhite,
       fontSize: 16,
       lineHeight: 26,
       fontFamily: Typography.fontFamily.body,
     },
     heading1: {
-      color: colors.textPrimary,
+      color: pureWhite,
       fontSize: 22,
       fontFamily: Typography.fontFamily.bodySemiBold,
       marginTop: 20,
@@ -92,7 +96,7 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
       lineHeight: 30,
     },
     heading2: {
-      color: colors.textPrimary,
+      color: pureWhite,
       fontSize: 19,
       fontFamily: Typography.fontFamily.bodySemiBold,
       marginTop: 18,
@@ -100,7 +104,7 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
       lineHeight: 26,
     },
     heading3: {
-      color: colors.textPrimary,
+      color: pureWhite,
       fontSize: 17,
       fontFamily: Typography.fontFamily.bodySemiBold,
       marginTop: 16,
@@ -108,7 +112,7 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
       lineHeight: 24,
     },
     paragraph: {
-      color: colors.textPrimary,
+      color: pureWhite,
       fontSize: 16,
       lineHeight: 26,
       marginBottom: 14,
@@ -116,11 +120,11 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
     },
     strong: {
       fontFamily: Typography.fontFamily.bodySemiBold,
-      color: colors.textPrimary,
+      color: pureWhite,
     },
     em: {
       fontStyle: 'italic',
-      color: colors.textSecondary,
+      color: emphasisColor,
     },
     bullet_list: {
       marginBottom: 12,
@@ -207,7 +211,7 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
     td: {
       padding: 8,
     },
-  }), [colors]);
+  }), [colors, pureWhite, emphasisColor, isDark]);
 
   // Custom renderer for timecodes
   const renderTimecode = (timecode: string) => {
@@ -257,7 +261,7 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
       if (match.index > lastIndex) {
         const beforeText = text.slice(lastIndex, match.index);
         parts.push(
-          <Text key={`text-${key++}`} style={{ color: colors.textPrimary }}>
+          <Text key={`text-${key++}`} style={{ color: pureWhite }}>
             {beforeText}
           </Text>
         );
@@ -284,7 +288,7 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
     // Add remaining text
     if (lastIndex < text.length) {
       parts.push(
-        <Text key={`text-${key++}`} style={{ color: colors.textPrimary }}>
+        <Text key={`text-${key++}`} style={{ color: pureWhite }}>
           {text.slice(lastIndex)}
         </Text>
       );

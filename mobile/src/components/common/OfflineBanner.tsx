@@ -22,7 +22,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
   showRetry = true,
   onRetry,
 }) => {
-  const { isDark } = useTheme();
+  const { colors, isDark } = useTheme();
   const { language } = useLanguage();
   const { status, refresh } = useNetworkStatus();
   const insets = useSafeAreaInsets();
@@ -51,7 +51,7 @@ export const OfflineBanner: React.FC<OfflineBannerProps> = ({
         {
           transform: [{ translateY: slideAnim }],
           paddingTop: insets.top,
-          backgroundColor: isDark ? Colors.accentWarning : '#F59E0B',
+          backgroundColor: colors.accentWarning,
         },
       ]}
     >

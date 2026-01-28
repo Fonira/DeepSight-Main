@@ -53,6 +53,9 @@ export interface PlanLimits {
   studyMindmapDepth: number;      // Max profondeur mindmap
   studyCanGenerateMore: boolean;  // Peut générer des questions supplémentaires
   studyDailyLimit: number;        // Générations par jour, -1 = illimité
+
+  // 🎓 Sources académiques
+  academicPapersPerAnalysis: number;  // Max papers per analysis
 }
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
@@ -77,6 +80,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyMindmapDepth: 2,
     studyCanGenerateMore: false,
     studyDailyLimit: 2,
+    // Sources académiques
+    academicPapersPerAnalysis: 3,
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -100,6 +105,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyMindmapDepth: 3,
     studyCanGenerateMore: false,
     studyDailyLimit: 5,
+    // Sources académiques
+    academicPapersPerAnalysis: 10,
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -123,6 +130,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyMindmapDepth: 3,
     studyCanGenerateMore: true,   // ⭐ Peut générer plus de questions
     studyDailyLimit: 10,
+    // Sources académiques
+    academicPapersPerAnalysis: 15,
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -146,6 +155,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyMindmapDepth: 4,
     studyCanGenerateMore: true,
     studyDailyLimit: 50,
+    // Sources académiques
+    academicPapersPerAnalysis: 30,
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -169,6 +180,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyMindmapDepth: 5,
     studyCanGenerateMore: true,
     studyDailyLimit: -1,          // Illimité
+    // Sources académiques
+    academicPapersPerAnalysis: 50,
   },
 };
 
@@ -220,6 +233,11 @@ export interface PlanFeatures {
   sharedWorkspace: boolean;
   slackIntegration: boolean;
   teamsIntegration: boolean;
+
+  // 🎓 Sources académiques
+  academicSearch: boolean;
+  bibliographyExport: boolean;
+  academicFullText: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
@@ -261,6 +279,11 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     sharedWorkspace: false,
     slackIntegration: false,
     teamsIntegration: false,
+
+    // Sources académiques
+    academicSearch: true,
+    bibliographyExport: false,
+    academicFullText: false,
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -302,6 +325,11 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     sharedWorkspace: false,
     slackIntegration: false,
     teamsIntegration: false,
+
+    // Sources académiques - KILLER FEATURE ÉTUDIANT
+    academicSearch: true,
+    bibliographyExport: true,
+    academicFullText: false,
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -342,6 +370,11 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     sharedWorkspace: false,
     slackIntegration: false,
     teamsIntegration: false,
+
+    // Sources académiques
+    academicSearch: true,
+    bibliographyExport: true,
+    academicFullText: false,
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -383,6 +416,11 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     sharedWorkspace: false,
     slackIntegration: false,
     teamsIntegration: false,
+
+    // Sources académiques - Accès texte complet
+    academicSearch: true,
+    bibliographyExport: true,
+    academicFullText: true,
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -424,6 +462,11 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     sharedWorkspace: true,
     slackIntegration: true,
     teamsIntegration: true,
+
+    // Sources académiques - Accès complet
+    academicSearch: true,
+    bibliographyExport: true,
+    academicFullText: true,
   },
 };
 

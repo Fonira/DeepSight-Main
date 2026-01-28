@@ -613,6 +613,96 @@ export const videoApi = {
 };
 
 // ============================================
+// Academic API
+// ============================================
+export interface AcademicPaper {
+  id: string;
+  doi?: string;
+  title: string;
+  authors: Array<{ name: string; affiliation?: string }>;
+  year?: number;
+  venue?: string;
+  abstract?: string;
+  citation_count: number;
+  url?: string;
+  pdf_url?: string;
+  source: 'semantic_scholar' | 'openalex' | 'arxiv';
+  relevance_score: number;
+  is_open_access: boolean;
+  keywords: string[];
+}
+
+export interface AcademicSearchResponse {
+  papers: AcademicPaper[];
+  total_found: number;
+  query_keywords: string[];
+  sources_queried: string[];
+  cached: boolean;
+  tier_limit_reached: boolean;
+  tier_limit?: number;
+}
+
+export type BibliographyFormat = 'bibtex' | 'ris' | 'apa' | 'mla' | 'chicago' | 'harvard';
+
+export const academicApi = {
+  // Search for academic papers by keywords
+  async search(params: {
+    keywords: string[];
+    summary_id?: string;
+    limit?: number;
+    year_from?: number;
+    year_to?: number;
+    include_preprints?: boolean;
+  }): Promise<AcademicSearchResponse> {
+    return request('/api/academic/search', {
+      method: 'POST',
+      body: params,
+      timeout: TIMEOUTS.FACT_CHECK,
+    });
+  },
+
+  // Enrich a summary with academic sources
+  async enrich(summaryId: string, maxPapers?: number): Promise<AcademicSearchResponse> {
+    return request(`/api/academic/enrich/${summaryId}`, {
+      method: 'POST',
+      body: maxPapers ? { max_papers: maxPapers } : undefined,
+      timeout: TIMEOUTS.FACT_CHECK,
+    });
+  },
+
+  // Get cached academic papers for a summary
+  async getPapers(summaryId: string): Promise<AcademicSearchResponse> {
+    return request(`/api/academic/papers/${summaryId}`);
+  },
+
+  // Export bibliography
+  async exportBibliography(params: {
+    paper_ids: string[];
+    format: BibliographyFormat;
+    summary_id?: string;
+  }): Promise<{
+    content: string;
+    format: BibliographyFormat;
+    paper_count: number;
+    filename: string;
+  }> {
+    return request('/api/academic/export', {
+      method: 'POST',
+      body: params,
+    });
+  },
+
+  // Get available export formats for user's plan
+  async getFormats(): Promise<{
+    formats: Array<{ id: string; name: string; extension: string }>;
+    can_export: boolean;
+    user_plan: string;
+  }> {
+    return request('/api/academic/formats');
+  },
+};
+
+// ============================================
 // History API
 // ============================================
 export const historyApi = {
@@ -628,6 +718,8 @@ export const historyApi = {
 
     if (filters?.search) params.append('search', filters.search);
     if (filters?.category) params.append('category', filters.category);
+    if (filters?.favoritesOnly) params.append('favorites_only', 'true');
+    if (filters?.mode) params.append('mode', filters.mode);
 
     // Use the correct backend endpoint: /api/history/videos
     const response = await request<{
@@ -673,9 +765,11 @@ export const historyApi = {
   },
 
   async toggleFavorite(summaryId: string): Promise<{ isFavorite: boolean }> {
-    return request(`/api/history/videos/${summaryId}/favorite`, {
+    const response = await request<{ is_favorite: boolean }>(`/api/videos/summary/${summaryId}/favorite`, {
       method: 'POST',
     });
+    // Transform snake_case to camelCase
+    return { isFavorite: response.is_favorite };
   },
 
   async deleteSummary(summaryId: string): Promise<void> {
@@ -765,6 +859,12 @@ export const historyApi = {
       category: item.category || 'general',
       createdAt: item.created_at,
     }));
+  },
+
+  // Get user's favorites
+  async getFavorites(limit: number = 5): Promise<AnalysisSummary[]> {
+    const response = await this.getHistory(1, limit, { favoritesOnly: true });
+    return response.items;
   },
 
   // Semantic search

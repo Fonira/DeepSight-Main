@@ -148,12 +148,34 @@ except ImportError as e:
     STUDY_ROUTER_AVAILABLE = False
     print(f"⚠️ Study router not available: {e}", flush=True)
 
-VERSION = "3.7.1"  # Added Expert API access + API key management
+# 📚 NOUVEAU: Import du Academic router (Sources Académiques)
+try:
+    from academic.router import router as academic_router
+    ACADEMIC_ROUTER_AVAILABLE = True
+except ImportError as e:
+    ACADEMIC_ROUTER_AVAILABLE = False
+    print(f"⚠️ Academic router not available: {e}", flush=True)
+
+VERSION = "3.7.1"  # Added P0/P1 API endpoints for mobile sync
 APP_NAME = "Deep Sight API"
 
 # Configuration CORS depuis environnement
-ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:8081").split(",")
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+# 🔧 Inclure les URLs de production par défaut pour éviter les erreurs CORS
+DEFAULT_ORIGINS = [
+    # Production
+    "https://www.deepsightsynthesis.com",
+    "https://deepsightsynthesis.com",
+    # Développement
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:8081",
+]
+
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", ",".join(DEFAULT_ORIGINS)).split(",")
+# Nettoyer les espaces éventuels
+ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS if origin.strip()]
+
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://www.deepsightsynthesis.com")
 
 # Ajouter le frontend URL aux origines autorisées
 if FRONTEND_URL not in ALLOWED_ORIGINS:
@@ -325,6 +347,11 @@ if WORDS_ROUTER_AVAILABLE:
 if STUDY_ROUTER_AVAILABLE:
     app.include_router(study_router, prefix="/api/study", tags=["Study"])
     print("📚 Study router loaded (quiz, mindmap, flashcards)", flush=True)
+
+# 📚 NOUVEAU: Academic router (Sources Académiques)
+if ACADEMIC_ROUTER_AVAILABLE:
+    app.include_router(academic_router, tags=["Academic"])
+    print("📚 Academic router loaded (Semantic Scholar, OpenAlex, arXiv)", flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE

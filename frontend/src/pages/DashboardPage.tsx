@@ -40,6 +40,7 @@ import { StudyToolsModal } from "../components/StudyToolsModal";
 import { KeywordsModal } from "../components/KeywordsModal";
 import DoodleBackground from "../components/DoodleBackground";
 import SmartInputBar, { SmartInputValue } from "../components/SmartInputBar";
+import { AcademicSourcesPanel } from "../components/academic";
 // LoadingWordWidget désormais global dans App.tsx
 import VideoDiscoveryModal from "../components/VideoDiscoveryModal";
 import { ThumbnailImage } from "../components/ThumbnailImage";
@@ -1216,6 +1217,16 @@ export const DashboardPage: React.FC = () => {
                       <ConceptsGlossary
                         summaryId={selectedSummary.id}
                         language={language}
+                      />
+                    </div>
+
+                    {/* 🎓 Sources académiques */}
+                    <div className="mt-6 not-prose">
+                      <AcademicSourcesPanel
+                        summaryId={selectedSummary.id.toString()}
+                        userPlan={user?.plan || 'free'}
+                        onUpgrade={() => navigate('/pricing')}
+                        language={language as 'fr' | 'en'}
                       />
                     </div>
 

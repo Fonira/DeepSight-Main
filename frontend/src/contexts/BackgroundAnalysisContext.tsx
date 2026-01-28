@@ -88,11 +88,100 @@ const BackgroundAnalysisContext = createContext<BackgroundAnalysisContextType | 
 // 🎯 PROVIDER
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 💾 PERSISTENCE KEYS
+// ═══════════════════════════════════════════════════════════════════════════════
+const STORAGE_KEY = 'deepsight_pending_tasks';
+
 export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tasks, setTasks] = useState<AnalysisTask[]>([]);
   const [hasNewCompletedTask, setHasNewCompletedTask] = useState(false);
   const [hasNewFailedTask, setHasNewFailedTask] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(true);
   const pollingIntervals = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // 💾 PERSISTENCE: Sauvegarder les tâches en cours dans localStorage
+  // ═══════════════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (isRestoring) return; // Ne pas sauvegarder pendant la restauration
+
+    const pendingTasks = tasks.filter(t => t.status === 'pending' || t.status === 'processing');
+
+    // Sauvegarder uniquement les infos nécessaires pour reprendre
+    const tasksToStore = pendingTasks.map(t => ({
+      id: t.id,
+      type: t.type,
+      taskId: t.taskId,
+      videoUrl: t.type === 'video' ? (t as VideoAnalysisTask).videoUrl : undefined,
+      playlistUrl: t.type === 'playlist' ? (t as PlaylistAnalysisTask).playlistUrl : undefined,
+      status: t.status,
+      progress: t.progress,
+      message: t.message,
+      startedAt: t.startedAt,
+    }));
+
+    try {
+      if (tasksToStore.length > 0) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tasksToStore));
+      } else {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    } catch (e) {
+      console.warn('[BackgroundAnalysis] Failed to save to localStorage:', e);
+    }
+  }, [tasks, isRestoring]);
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // 💾 PERSISTENCE: Restaurer les tâches au démarrage
+  // ═══════════════════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    const restoreTasks = async () => {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (!stored) {
+          setIsRestoring(false);
+          return;
+        }
+
+        const storedTasks = JSON.parse(stored);
+        console.log('[BackgroundAnalysis] Restoring', storedTasks.length, 'pending tasks');
+
+        // Restaurer les tâches et reprendre le polling
+        for (const task of storedTasks) {
+          if (task.taskId && task.status === 'processing') {
+            // Recréer la tâche
+            const restoredTask: AnalysisTask = task.type === 'video'
+              ? {
+                  ...task,
+                  startedAt: new Date(task.startedAt),
+                } as VideoAnalysisTask
+              : {
+                  ...task,
+                  startedAt: new Date(task.startedAt),
+                } as PlaylistAnalysisTask;
+
+            setTasks(prev => [...prev, restoredTask]);
+
+            // Reprendre le polling
+            setTimeout(() => {
+              startPolling(task.id, task.taskId, task.type);
+            }, 500);
+          }
+        }
+
+        // Nettoyer le localStorage après restauration
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {
+        console.warn('[BackgroundAnalysis] Failed to restore tasks:', e);
+        localStorage.removeItem(STORAGE_KEY);
+      } finally {
+        setIsRestoring(false);
+      }
+    };
+
+    restoreTasks();
+  }, []);
 
   // Nettoyer les intervals au démontage
   useEffect(() => {

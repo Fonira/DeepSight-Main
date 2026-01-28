@@ -54,6 +54,9 @@ SUPADATA_API_KEY = os.environ.get("SUPADATA_API_KEY", "")
 # Perplexity (recherche web)
 PERPLEXITY_API_KEY = os.environ.get("PERPLEXITY_API_KEY", "")
 
+# OpenAI (GPT-4 pour questions complexes - Pro/Expert)
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📧 CONFIGURATION EMAIL (Resend)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -164,7 +167,11 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "web_search_enabled": False,
         # 🔬 Recherche approfondie
         "deep_research_enabled": False,
-        "deep_research_credits_cost": 0
+        "deep_research_credits_cost": 0,
+        # 📚 Sources académiques
+        "academic_papers_per_analysis": 3,
+        "bibliography_export": False,
+        "academic_full_text": False
     },
     "starter": {
         "monthly_credits": 5000,  # ~100 analyses basiques
@@ -189,7 +196,11 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "web_search_enabled": True,
         # 🔬 Recherche approfondie
         "deep_research_enabled": False,
-        "deep_research_credits_cost": 0
+        "deep_research_credits_cost": 0,
+        # 📚 Sources académiques
+        "academic_papers_per_analysis": 15,
+        "bibliography_export": True,
+        "academic_full_text": False
     },
     "pro": {
         "monthly_credits": 25000,  # ~500 analyses ou usage intensif
@@ -215,7 +226,11 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "web_search_enabled": True,
         # 🔬 Recherche approfondie - NON disponible en Pro
         "deep_research_enabled": False,
-        "deep_research_credits_cost": 0
+        "deep_research_credits_cost": 0,
+        # 📚 Sources académiques
+        "academic_papers_per_analysis": 30,
+        "bibliography_export": True,
+        "academic_full_text": True
     },
     "expert": {
         "monthly_credits": 100000,  # Usage très intensif
@@ -241,7 +256,11 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "web_search_enabled": True,
         # 🔬 Recherche approfondie disponible
         "deep_research_enabled": True,
-        "deep_research_credits_cost": 50
+        "deep_research_credits_cost": 50,
+        # 📚 Sources académiques
+        "academic_papers_per_analysis": 50,
+        "bibliography_export": True,
+        "academic_full_text": True
     },
     "unlimited": {
         "monthly_credits": 999999,
@@ -264,7 +283,11 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "web_search_enabled": True,
         # 🔬 Recherche approfondie - Illimité
         "deep_research_enabled": True,
-        "deep_research_credits_cost": 0  # Gratuit pour admin
+        "deep_research_credits_cost": 0,  # Gratuit pour admin
+        # 📚 Sources académiques - Illimité
+        "academic_papers_per_analysis": 100,
+        "bibliography_export": True,
+        "academic_full_text": True
     }
 }
 
@@ -363,6 +386,14 @@ def get_perplexity_key() -> str:
     """Retourne la clé API Perplexity"""
     return PERPLEXITY_API_KEY
 
+def get_openai_key() -> str:
+    """Retourne la clé API OpenAI (pour GPT-4)"""
+    return OPENAI_API_KEY
+
+def is_openai_available() -> bool:
+    """Vérifie si OpenAI est configuré"""
+    return bool(OPENAI_API_KEY)
+
 def is_api_configured() -> bool:
     """Vérifie si les APIs sont configurées"""
     return bool(MISTRAL_API_KEY)
@@ -383,6 +414,35 @@ def get_deepgram_key() -> Optional[str]:
     """Clé API Deepgram Nova-2 (transcription ultra-rapide)"""
     return os.environ.get("DEEPGRAM_API_KEY")
 
+def get_openai_key() -> Optional[str]:
+    """Clé API OpenAI pour Whisper (fallback si Groq échoue)"""
+    return os.environ.get("OPENAI_API_KEY")
+
+def get_assemblyai_key() -> Optional[str]:
+    """Clé API AssemblyAI (transcription premium très fiable)"""
+    return os.environ.get("ASSEMBLYAI_API_KEY")
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📺 CONFIGURATION TRANSCRIPT EXTRACTION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+TRANSCRIPT_CONFIG = {
+    # Circuit Breaker
+    "circuit_breaker_failure_threshold": 5,  # Échecs avant d'ouvrir le circuit
+    "circuit_breaker_recovery_timeout": 300,  # 5 minutes avant de réessayer
+
+    # Exponential Backoff
+    "backoff_base": 1.0,  # Délai de base en secondes
+    "backoff_max": 30.0,  # Délai max en secondes
+
+    # Instance Health
+    "health_check_interval": 600,  # 10 minutes entre les health checks
+    "instance_timeout_threshold": 3,  # Échecs avant de marquer une instance comme down
+
+    # yt-dlp cookies (optionnel, pour vidéos restreintes)
+    "ytdlp_cookies_path": os.environ.get("YTDLP_COOKIES_PATH", ""),
+}
+
 # Affichage des infos au démarrage
 if __name__ != "__main__":
     print(f"🤿 Deep Sight API v{VERSION}", flush=True)
@@ -392,6 +452,10 @@ if __name__ != "__main__":
     print(f"📧 Email: {EMAIL_CONFIG.get('ENABLED', False)}", flush=True)
     print(f"🤖 Mistral: {'✓' if MISTRAL_API_KEY else '✗'}", flush=True)
     print(f"🔍 Perplexity: {'✓' if PERPLEXITY_API_KEY else '✗'}", flush=True)
-    print(f"🎙️ Deepgram Nova-2: {'✓' if get_deepgram_key() else '✗ (DEEPGRAM_API_KEY missing!)'}", flush=True)
-    print(f"🔊 Groq Whisper: {'✓ (fallback)' if get_groq_key() else '✗'}", flush=True)
     print(f"📝 Supadata: {'✓' if SUPADATA_API_KEY else '✗'}", flush=True)
+    print(f"", flush=True)
+    print(f"🎙️ Audio Transcription Services (v6.0):", flush=True)
+    print(f"   • Groq Whisper: {'✓' if get_groq_key() else '✗'}", flush=True)
+    print(f"   • OpenAI Whisper: {'✓' if get_openai_key() else '✗'}", flush=True)
+    print(f"   • Deepgram Nova-2: {'✓' if get_deepgram_key() else '✗'}", flush=True)
+    print(f"   • AssemblyAI: {'✓' if get_assemblyai_key() else '✗'}", flush=True)

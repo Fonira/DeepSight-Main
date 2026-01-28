@@ -220,6 +220,9 @@
   "history": {
     "title": "History",
     "subtitle": "Find all your previous analyses",
+    "favorites": "Favorites",
+    "noFavorites": "No favorites",
+    "noFavoritesDesc": "Add videos to favorites to find them here",
     "empty": "No analyses yet",
     "emptyDesc": "Your analyses will appear here",
     "delete": "Delete",
@@ -899,5 +902,71 @@
       "tapToFlip": "Tap to flip",
       "card": "Card"
     }
+  },
+  "academic": {
+    "title": "Academic Sources",
+    "findSources": "Find Sources",
+    "papers": "papers",
+    "citations": "citations",
+    "viewPdf": "View PDF",
+    "copyCitation": "Copy citation",
+    "exportBibliography": "Export Bibliography",
+    "searching": "Searching...",
+    "noResults": "No academic sources found",
+    "selectAll": "Select all",
+    "deselectAll": "Deselect all",
+    "export": "Export",
+    "selected": "selected",
+    "citationCopied": "Citation copied",
+    "citationCopiedDesc": "Citation copied to clipboard",
+    "openAccess": "Open Access",
+    "cite": "Cite",
+    "showMore": "Show more",
+    "showLess": "Show less",
+    "unknownAuthor": "Unknown author",
+    "formats": {
+      "bibtex": "BibTeX",
+      "ris": "RIS",
+      "apa": "APA 7th edition",
+      "mla": "MLA 9th edition",
+      "chicago": "Chicago",
+      "harvard": "Harvard"
+    },
+    "formatDescriptions": {
+      "bibtex": "For LaTeX and reference managers",
+      "ris": "Compatible with Zotero, Mendeley, EndNote",
+      "apa": "Standard academic style",
+      "mla": "Humanities and literature",
+      "chicago": "Social sciences and history",
+      "harvard": "Author-date style"
+    },
+    "upgrade": {
+      "moreResults": "more results available",
+      "exportAccess": "Bibliography export requires a Student subscription or higher.",
+      "upgradeToSeeMore": "Upgrade to see more sources."
+    },
+    "sources": {
+      "semanticScholar": "Semantic Scholar",
+      "openAlex": "OpenAlex",
+      "arxiv": "arXiv"
+    },
+    "exportModal": {
+      "title": "Export Bibliography",
+      "chooseFormat": "Choose format",
+      "generate": "Generate",
+      "exporting": "Exporting...",
+      "copy": "Copy",
+      "share": "Share",
+      "changeFormat": "Change format",
+      "copied": "Copied!",
+      "copiedDesc": "Bibliography copied to clipboard."
+    },
+    "description": "Find scientific papers related to this analysis from Semantic Scholar, OpenAlex, and arXiv.",
+    "freeLimit": "Free feature - 3 results max",
+    "premiumFeature": "Premium Feature",
+    "noSelection": "No Selection",
+    "selectPapersToExport": "Select papers to export.",
+    "error": "Search failed",
+    "retry": "Retry"
   }
 }
