@@ -18,8 +18,21 @@ import time
 import asyncio
 
 from db.database import get_session, User
-from videos.service import analyze_video
-from chat.service import ask_question
+
+# Optional imports - these features may not be available in all deployments
+try:
+    from videos.streaming import run_analysis_task
+    ANALYSIS_AVAILABLE = True
+except ImportError:
+    ANALYSIS_AVAILABLE = False
+    print("⚠️ [API Public] Video analysis not available", flush=True)
+
+try:
+    from chat.service import process_chat_message_v4
+    CHAT_AVAILABLE = True
+except ImportError:
+    CHAT_AVAILABLE = False
+    print("⚠️ [API Public] Chat service not available", flush=True)
 
 router = APIRouter(prefix="/api/v1")
 
@@ -271,45 +284,44 @@ async def analyze_video_api(
 ):
     """
     🎬 Analyser une vidéo YouTube.
-    
+
     **Modes disponibles:**
     - `express`: Synthèse rapide (~30s), 10 crédits
     - `standard`: Analyse complète (~1-2min), 20 crédits
     - `detailed`: Analyse approfondie avec concepts (~2-3min), 50 crédits
-    
+
     **Langues:**
     - `auto`: Détection automatique de la langue
     - `fr`: Français
     - `en`: English
     """
+    if not ANALYSIS_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "service_unavailable",
+                "message": "Video analysis service is temporarily unavailable"
+            }
+        )
+
     # Calcul des crédits
     credits_map = {"express": 10, "standard": 20, "detailed": 50}
     credits_cost = credits_map[req.mode]
-    
+
     try:
-        # Appel au service d'analyse existant
-        result = await analyze_video(
-            url=req.url,
-            user_id=user.id,
-            mode=req.mode,
-            language=req.language if req.language != "auto" else None,
-            include_concepts=req.include_concepts,
-            include_timestamps=req.include_timestamps,
-            session=session
+        # Pour l'instant, l'API publique retourne une erreur car l'analyse sync n'est pas supportée
+        # L'analyse est asynchrone via le système de tâches
+        raise HTTPException(
+            status_code=501,
+            detail={
+                "error": "not_implemented",
+                "message": "Synchronous analysis via API is not yet implemented. Use the web interface or POST /api/videos/analyze endpoint with authentication.",
+                "video_url": req.url
+            }
         )
-        
-        return AnalyzeResponse(
-            success=True,
-            analysis_id=str(result.get("id", "")),
-            video_id=result.get("video_id", ""),
-            title=result.get("title", ""),
-            summary=result.get("summary", ""),
-            concepts=result.get("concepts") if req.include_concepts else None,
-            timestamps=result.get("timestamps") if req.include_timestamps else None,
-            duration_seconds=result.get("duration", 0),
-            credits_used=credits_cost
-        )
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=400,
@@ -368,30 +380,74 @@ async def chat_with_video(
 ):
     """
     💬 Poser une question sur une vidéo analysée.
-    
+
     **Options:**
     - `web_search`: Enrichir la réponse avec une recherche web (10 crédits au lieu de 5)
     - `context_mode`: "video" (contexte vidéo seul) ou "expanded" (contexte élargi)
     """
-    credits_cost = 10 if req.web_search else 5
-    
-    try:
-        result = await ask_question(
-            video_id=req.video_id,
-            question=req.question,
-            user_id=user.id,
-            enable_web_search=req.web_search,
-            session=session
+    if not CHAT_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": "service_unavailable",
+                "message": "Chat service is temporarily unavailable"
+            }
         )
-        
+
+    credits_cost = 10 if req.web_search else 5
+
+    try:
+        # First, find the summary for this video
+        from db.database import Summary
+
+        result = await session.execute(
+            select(Summary).where(
+                Summary.video_id == req.video_id,
+                Summary.user_id == user.id
+            ).order_by(Summary.created_at.desc())
+        )
+        summary = result.scalar_one_or_none()
+
+        if not summary:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": "not_found",
+                    "message": f"No analysis found for video {req.video_id}. Analyze it first using POST /api/v1/analyze"
+                }
+            )
+
+        # Call the chat service
+        chat_result = await process_chat_message_v4(
+            session=session,
+            user_id=user.id,
+            summary_id=summary.id,
+            question=req.question,
+            web_search=req.web_search,
+            mode=req.context_mode
+        )
+
+        # Check for errors
+        if chat_result.get("error"):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "chat_limit_reached",
+                    "message": chat_result.get("error"),
+                    "quota_info": chat_result.get("quota_info")
+                }
+            )
+
         return ChatResponse(
             success=True,
-            answer=result.get("answer", ""),
-            sources=result.get("sources") if req.web_search else None,
-            web_enriched=req.web_search,
+            answer=chat_result.get("response", ""),
+            sources=chat_result.get("sources") if req.web_search else None,
+            web_enriched=chat_result.get("web_search_used", False),
             credits_used=credits_cost
         )
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=400,

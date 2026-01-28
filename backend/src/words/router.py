@@ -10,8 +10,7 @@ from typing import Optional, List
 import random
 
 from auth.dependencies import get_current_user_optional
-from db.database import async_session_maker
-from db.models import User, Summary
+from db.database import async_session_maker, User, Summary
 
 from .data import DEFAULT_WORDS, get_random_word, get_words_by_category, get_all_categories
 
