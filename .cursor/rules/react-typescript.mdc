@@ -1,0 +1,51 @@
+---
+description: React/TypeScript — Vite, Zustand, TanStack Query, Tailwind. Trigger: @frontend
+globs: frontend/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# React / TypeScript (Frontend)
+
+Règles pour le frontend DeepSight. Actif avec `@frontend` ou fichiers `frontend/**/*.{ts,tsx}`.
+
+## Stack
+
+- **React 18** — composants fonctionnels uniquement
+- **TypeScript strict** — `interface` pour les shapes, pas de `any`
+- **Vite 5** — build ; **React Router 6** — routes
+- **Zustand** — state (`analysisStore.ts` avec Immer) ; **TanStack Query** — cache / requêtes
+- **Tailwind CSS** — styles ; **react-markdown** + **remark-gfm** — markdown
+
+## Conventions
+
+- **Composants** : fonctionnels, hooks pour la logique réutilisable (`useAuth`, `useAnalysisStream`, etc.)
+- **Données** : `useQuery` / `useMutation` ; `queryKey` stable ; `services/api.ts` pour les appels
+- **State global** : Zustand dans `store/` ; `config/planPrivileges.ts` pour les features par plan
+
+## Fichiers clés
+
+| Fichier | Rôle |
+|---------|------|
+| `src/services/api.ts` | Tous les appels API |
+| `src/store/analysisStore.ts` | État d’analyse (Zustand + Immer) |
+| `src/config/planPrivileges.ts` | Matrice des fonctionnalités par plan |
+| `src/hooks/` | Hooks réutilisables |
+
+## Bonnes pratiques
+
+```tsx
+// ✅ Hook + interface
+interface AnalysisResult {
+  id: string;
+  summary: string;
+}
+
+const useAnalysis = (videoId: string) =>
+  useQuery({
+    queryKey: ['analysis', videoId],
+    queryFn: () => videoApi.getSummary(videoId),
+  });
+```
+
+- Classes CSS via Tailwind. Pas de `StyleSheet` (réservé au mobile).
+- Garder `api.ts` aligné avec `mobile/src/services/api.ts`.

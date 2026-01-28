@@ -1,0 +1,34 @@
+---
+description: DeepSight — règles globales (identité, structure, conventions). S'applique partout.
+alwaysApply: true
+---
+
+# DeepSight — Règles globales
+
+**DeepSight** : SaaS d’analyse de vidéos YouTube par IA (épistémologie bayésienne). Backend FastAPI (Railway), Frontend React+Vite (Vercel), Mobile Expo (EAS).
+
+## Structure
+
+- `backend/` — FastAPI, SQLAlchemy, auth JWT+Google, Mistral, Stripe
+- `frontend/` — React 18, Vite, Zustand, TanStack Query, Tailwind
+- `mobile/` — Expo SDK 54, React Native, api.ts aligné sur le frontend
+
+## Conventions transverses
+
+- **TypeScript** : mode strict, `interface` pour les objets, composants fonctionnels, hooks pour la logique réutilisable.
+- **API** : `services/api.ts` identique entre frontend et mobile ; endpoints sous `/api/`.
+- **Secrets** : jamais en dur ; `core/config.py` (backend), `.env` / `constants/config.ts` (frontend/mobile).
+
+## Fichiers de référence
+
+| Zone | Fichiers clés |
+|------|---------------|
+| Backend | `core/config.py`, `db/database.py`, `auth/dependencies.py`, `videos/analysis.py` |
+| Frontend | `services/api.ts`, `store/analysisStore.ts`, `config/planPrivileges.ts` |
+| Mobile | `services/api.ts`, `contexts/AuthContext.tsx`, `constants/config.ts` |
+
+## Déclencheurs par zone
+
+- `@backend` ou `backend/**/*.py` → règle **FastAPI Expert**
+- `@frontend` ou `frontend/**/*.{ts,tsx}` → règle **React/TypeScript**
+- `@mobile` ou `mobile/**/*.{ts,tsx}` → règle **Expo**
