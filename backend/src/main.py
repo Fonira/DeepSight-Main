@@ -140,7 +140,15 @@ except ImportError as e:
     WORDS_ROUTER_AVAILABLE = False
     print(f"⚠️ Words router not available: {e}", flush=True)
 
-VERSION = "3.7.0"  # Added Expert API access + API key management
+# 📚 NOUVEAU: Study router (mobile-compatible study tools)
+try:
+    from study.router import router as study_router
+    STUDY_ROUTER_AVAILABLE = True
+except ImportError as e:
+    STUDY_ROUTER_AVAILABLE = False
+    print(f"⚠️ Study router not available: {e}", flush=True)
+
+VERSION = "3.7.1"  # Added Expert API access + API key management
 APP_NAME = "Deep Sight API"
 
 # Configuration CORS depuis environnement
@@ -312,6 +320,11 @@ if API_PUBLIC_ROUTER_AVAILABLE:
 if WORDS_ROUTER_AVAILABLE:
     app.include_router(words_router, prefix="/api/words", tags=["Words"])
     print("🧠 Words router loaded (Le Saviez-Vous)", flush=True)
+
+# 📚 NOUVEAU: Study router (mobile-compatible study tools)
+if STUDY_ROUTER_AVAILABLE:
+    app.include_router(study_router, prefix="/api/study", tags=["Study"])
+    print("📚 Study router loaded (quiz, mindmap, flashcards)", flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE

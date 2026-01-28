@@ -33,12 +33,21 @@
 
 | Problème | Cause | Solution |
 |----------|-------|----------|
-| **Google OAuth** | Endpoint `/api/auth/google/token` manquant sur le backend | Ajouter l'endpoint au backend v3 |
 | Playlists | UI stub seulement | Implémenter complètement |
 | Mind Map | Non implémenté | Créer avec react-native-svg |
 | Export PDF | Non implémenté | Utiliser Share API |
 | TTS Audio | Non implémenté | Connecter à l'API TTS existante |
 | Fact-checking UI | Non implémenté | Créer le composant d'affichage |
+
+### Ce qui a été corrigé (28/01/2026)
+
+| Fonctionnalité | Status |
+|----------------|--------|
+| **Google OAuth** | ✅ Endpoint `/api/auth/google/token` existe et fonctionne |
+| **Study Tools** | ✅ Nouveau router `/api/study/*` (quiz, mindmap, flashcards) |
+| **Trial Pro** | ✅ Endpoints `/api/billing/trial-eligibility` et `/api/billing/start-pro-trial` |
+| **Playlists CRUD** | ✅ Endpoints `POST /api/playlists` et `PUT /api/playlists/{id}` |
+| **Tournesol Search** | ✅ Endpoints `/api/tournesol/search` et `/api/tournesol/recommendations` |
 
 ---
 
@@ -92,9 +101,9 @@ DeepSight-Mobile/
 
 ## Problème Critique : Google OAuth
 
-### Situation Actuelle (Mise à jour 21/01/2026)
+### Situation Actuelle (Mise à jour 28/01/2026)
 
-L'app mobile utilise maintenant `expo-auth-session/providers/google` pour obtenir un access token directement de Google, puis l'échange avec notre backend.
+L'app mobile utilise `expo-auth-session/providers/google` pour obtenir un access token directement de Google, puis l'échange avec notre backend.
 
 **Flux actuel :**
 1. L'utilisateur clique "Continuer avec Google"
@@ -102,50 +111,25 @@ L'app mobile utilise maintenant `expo-auth-session/providers/google` pour obteni
 3. Google retourne un `access_token` directement à l'app
 4. L'app envoie ce token à `/api/auth/google/token` pour l'échanger contre des tokens de session
 
-**PROBLÈME** : L'endpoint `/api/auth/google/token` **n'existe pas** sur le backend v3 !
+**STATUS** : ✅ L'endpoint `/api/auth/google/token` **existe** sur le backend v3 (lignes 508-541 de `auth/router.py`).
 
-### Solution Requise
+### Backend Implementation (Existing)
 
-Ajouter au backend Python (FastAPI) :
+L'endpoint est déjà implémenté dans `backend/src/auth/router.py`:
 
 ```python
-from google.oauth2 import id_token
-from google.auth.transport import requests
-
-@router.post("/auth/google/token")
+@router.post("/google/token")
 async def google_token_login(request: GoogleTokenRequest):
     """
     Échange un Google access token contre des tokens de session.
     Utilisé par l'app mobile qui obtient le token directement via expo-auth-session.
     """
-    # 1. Vérifier le token avec l'API Google (userinfo endpoint)
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            'https://www.googleapis.com/oauth2/v3/userinfo',
-            headers={'Authorization': f'Bearer {request.access_token}'}
-        )
-        if response.status_code != 200:
-            raise HTTPException(status_code=401, detail="Invalid Google token")
-        google_user_info = response.json()
-
-    # 2. Trouver ou créer l'utilisateur
-    user = await get_or_create_user_from_google(
-        email=google_user_info['email'],
-        name=google_user_info.get('name'),
-        picture=google_user_info.get('picture'),
-        google_id=google_user_info['sub']
-    )
-
-    # 3. Générer les tokens de session
-    access_token = create_access_token(user)
-    refresh_token = create_refresh_token(user)
-
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "user": user.to_dict()
-    }
+    # Vérifie le token avec l'API Google userinfo
+    # Trouve ou crée l'utilisateur
+    # Retourne access_token + refresh_token + user
 ```
+
+✅ Cet endpoint fonctionne correctement avec le flux mobile.
 
 ### Configuration Google Cloud Console
 
@@ -163,10 +147,13 @@ Pour le client ID web (utilisé par Expo Go) :
 
 ## Tâches de Développement Prioritaires
 
-### Phase 1 : Backend (BLOQUANT)
+### Phase 1 : Backend ✅ COMPLÉTÉ
 
-1. **Ajouter `/api/auth/google/token`** au backend v3
-2. Tester l'authentification Google complète
+1. ✅ `/api/auth/google/token` existe et fonctionne
+2. ✅ `/api/billing/trial-eligibility` et `/api/billing/start-pro-trial` ajoutés
+3. ✅ `/api/playlists` (POST/PUT) endpoints ajoutés
+4. ✅ `/api/study/*` router ajouté (quiz, mindmap, flashcards)
+5. ✅ `/api/tournesol/search` et `/api/tournesol/recommendations` ajoutés
 
 ### Phase 2 : Fonctionnalités Manquantes
 
@@ -316,4 +303,4 @@ Après le développement autonome :
 
 ---
 
-*Dernière mise à jour : 21 janvier 2026*
+*Dernière mise à jour : 28 janvier 2026*

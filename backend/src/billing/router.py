@@ -139,6 +139,151 @@ def get_price_id(plan: str) -> Optional[str]:
 # 💰 ENDPOINTS BILLING
 # ═══════════════════════════════════════════════════════════════════════════════
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🆓 TRIAL ELIGIBILITY — Essai gratuit Pro
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TrialEligibilityResponse(BaseModel):
+    """Réponse d'éligibilité à l'essai gratuit"""
+    eligible: bool
+    reason: Optional[str] = None
+    trial_days: int = 7
+    trial_plan: str = "pro"
+
+
+@router.get("/trial-eligibility", response_model=TrialEligibilityResponse)
+async def check_trial_eligibility(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🆓 Vérifie si l'utilisateur peut bénéficier d'un essai gratuit Pro.
+
+    Conditions d'éligibilité:
+    - Plan actuel = free
+    - N'a jamais eu d'abonnement payant
+    - N'a jamais bénéficié d'un essai gratuit
+    """
+    # Vérifier le plan actuel
+    if current_user.plan != "free":
+        return TrialEligibilityResponse(
+            eligible=False,
+            reason="Vous avez déjà un abonnement actif",
+            trial_days=0,
+            trial_plan="pro"
+        )
+
+    # Vérifier s'il a déjà eu un abonnement
+    if current_user.stripe_subscription_id:
+        return TrialEligibilityResponse(
+            eligible=False,
+            reason="Vous avez déjà bénéficié d'un abonnement",
+            trial_days=0,
+            trial_plan="pro"
+        )
+
+    # Vérifier les transactions passées (si déjà eu des crédits achetés)
+    result = await session.execute(
+        select(CreditTransaction)
+        .where(CreditTransaction.user_id == current_user.id)
+        .where(CreditTransaction.transaction_type.in_(["purchase", "trial", "upgrade"]))
+        .limit(1)
+    )
+    has_past_purchase = result.scalar_one_or_none() is not None
+
+    if has_past_purchase:
+        return TrialEligibilityResponse(
+            eligible=False,
+            reason="Vous avez déjà bénéficié d'un essai ou d'un abonnement",
+            trial_days=0,
+            trial_plan="pro"
+        )
+
+    return TrialEligibilityResponse(
+        eligible=True,
+        reason=None,
+        trial_days=7,
+        trial_plan="pro"
+    )
+
+
+@router.post("/start-pro-trial")
+async def start_pro_trial(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🆓 Démarre un essai gratuit Pro de 7 jours.
+
+    Crée une session Stripe Checkout avec trial_period_days=7.
+    L'utilisateur doit entrer sa carte mais ne sera pas facturé pendant 7 jours.
+    """
+    # Vérifier l'éligibilité
+    eligibility = await check_trial_eligibility(current_user, session)
+
+    if not eligibility.eligible:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "not_eligible",
+                "message": eligibility.reason or "Non éligible à l'essai gratuit"
+            }
+        )
+
+    if not STRIPE_CONFIG.get("ENABLED"):
+        raise HTTPException(status_code=400, detail="Stripe not enabled")
+
+    if not init_stripe():
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+
+    price_id = get_price_id("pro")
+    if not price_id:
+        raise HTTPException(status_code=400, detail="Pro plan not configured")
+
+    # Créer ou récupérer le client Stripe
+    try:
+        customer_id = await get_or_create_stripe_customer(current_user, session)
+    except stripe.error.StripeError as e:
+        print(f"❌ Error creating Stripe customer: {e}", flush=True)
+        raise HTTPException(status_code=500, detail="Erreur lors de la création du client Stripe")
+
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            customer=customer_id,
+            payment_method_types=["card"],
+            line_items=[{"price": price_id, "quantity": 1}],
+            mode="subscription",
+            subscription_data={
+                "trial_period_days": 7,
+                "metadata": {
+                    "user_id": str(current_user.id),
+                    "is_trial": "true"
+                }
+            },
+            success_url=f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan=pro&trial=true",
+            cancel_url=f"{FRONTEND_URL}/upgrade",
+            allow_promotion_codes=False,  # Pas de code promo pour les essais
+            metadata={
+                "user_id": str(current_user.id),
+                "plan": "pro",
+                "is_trial": "true"
+            }
+        )
+
+        print(f"🆓 Trial checkout session created for user {current_user.id}", flush=True)
+
+        return {
+            "checkout_url": checkout_session.url,
+            "session_id": checkout_session.id,
+            "trial_days": 7,
+            "plan": "pro"
+        }
+
+    except stripe.error.StripeError as e:
+        print(f"❌ Stripe error: {e}", flush=True)
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/plans")
 async def get_plans():
     """Retourne la liste des plans disponibles"""

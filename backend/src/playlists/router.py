@@ -628,6 +628,192 @@ async def list_playlists(
     ]
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🆕 CRUD PLAYLISTS — Créer et modifier des playlists manuellement
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class CreatePlaylistRequest(BaseModel):
+    """Requête pour créer une playlist manuellement"""
+    name: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = None
+    video_ids: Optional[List[int]] = None  # IDs de summaries existants à ajouter
+
+
+class UpdatePlaylistRequest(BaseModel):
+    """Requête pour mettre à jour une playlist"""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = None
+    add_video_ids: Optional[List[int]] = None
+    remove_video_ids: Optional[List[int]] = None
+
+
+@router.post("", response_model=Dict)
+async def create_playlist(
+    request: CreatePlaylistRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🆕 Crée une nouvelle playlist/corpus manuellement.
+
+    Permet de regrouper des vidéos déjà analysées dans une collection personnalisée.
+    """
+    # Vérifier les permissions du plan
+    plan = current_user.plan or "free"
+    plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+
+    if not plan_limits.get("can_use_playlists", False):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "plan_required",
+                "message": "Les playlists nécessitent un plan Starter ou supérieur",
+                "upgrade_url": "/upgrade"
+            }
+        )
+
+    # Générer un ID unique pour la playlist
+    playlist_id = f"custom_{uuid4().hex[:12]}"
+
+    # Créer la playlist
+    playlist = PlaylistAnalysis(
+        user_id=current_user.id,
+        playlist_id=playlist_id,
+        playlist_title=request.name,
+        playlist_url=None,  # Playlist manuelle, pas d'URL YouTube
+        num_videos=0,
+        status="created",
+        started_at=datetime.utcnow(),
+        completed_at=datetime.utcnow()
+    )
+    session.add(playlist)
+    await session.flush()  # Pour obtenir l'ID
+
+    # Ajouter des vidéos existantes si spécifiées
+    videos_added = 0
+    if request.video_ids:
+        for position, summary_id in enumerate(request.video_ids, 1):
+            # Vérifier que le summary appartient à l'utilisateur
+            summary_result = await session.execute(
+                select(Summary)
+                .where(Summary.id == summary_id)
+                .where(Summary.user_id == current_user.id)
+            )
+            summary = summary_result.scalar_one_or_none()
+
+            if summary:
+                # Mettre à jour le summary pour l'associer à cette playlist
+                summary.playlist_id = playlist_id
+                summary.playlist_position = position
+                videos_added += 1
+
+        playlist.num_videos = videos_added
+        playlist.num_processed = videos_added
+
+    await session.commit()
+
+    print(f"📚 Created playlist '{request.name}' with {videos_added} videos for user {current_user.id}", flush=True)
+
+    return {
+        "id": playlist.id,
+        "playlist_id": playlist_id,
+        "playlist_title": request.name,
+        "num_videos": videos_added,
+        "status": "created",
+        "created_at": playlist.started_at.isoformat()
+    }
+
+
+@router.put("/{playlist_id}")
+async def update_playlist(
+    playlist_id: str,
+    request: UpdatePlaylistRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🆕 Met à jour une playlist existante.
+
+    Permet de:
+    - Renommer la playlist
+    - Ajouter des vidéos
+    - Retirer des vidéos
+    """
+    # Récupérer la playlist
+    result = await session.execute(
+        select(PlaylistAnalysis)
+        .where(PlaylistAnalysis.playlist_id == playlist_id)
+        .where(PlaylistAnalysis.user_id == current_user.id)
+        .order_by(PlaylistAnalysis.created_at.desc())
+        .limit(1)
+    )
+    playlist = result.scalar_one_or_none()
+
+    if not playlist:
+        raise HTTPException(status_code=404, detail="Playlist non trouvée")
+
+    # Mettre à jour le nom si fourni
+    if request.name is not None:
+        playlist.playlist_title = request.name
+
+    # Ajouter des vidéos
+    if request.add_video_ids:
+        # Récupérer la position max actuelle
+        max_pos_result = await session.execute(
+            select(func.max(Summary.playlist_position))
+            .where(Summary.playlist_id == playlist_id)
+        )
+        max_pos = max_pos_result.scalar() or 0
+
+        for summary_id in request.add_video_ids:
+            summary_result = await session.execute(
+                select(Summary)
+                .where(Summary.id == summary_id)
+                .where(Summary.user_id == current_user.id)
+            )
+            summary = summary_result.scalar_one_or_none()
+
+            if summary and summary.playlist_id != playlist_id:
+                max_pos += 1
+                summary.playlist_id = playlist_id
+                summary.playlist_position = max_pos
+
+    # Retirer des vidéos
+    if request.remove_video_ids:
+        for summary_id in request.remove_video_ids:
+            summary_result = await session.execute(
+                select(Summary)
+                .where(Summary.id == summary_id)
+                .where(Summary.playlist_id == playlist_id)
+            )
+            summary = summary_result.scalar_one_or_none()
+
+            if summary:
+                summary.playlist_id = None
+                summary.playlist_position = None
+
+    # Recalculer le nombre de vidéos
+    count_result = await session.execute(
+        select(func.count(Summary.id))
+        .where(Summary.playlist_id == playlist_id)
+    )
+    playlist.num_videos = count_result.scalar() or 0
+    playlist.num_processed = playlist.num_videos
+
+    await session.commit()
+
+    print(f"📚 Updated playlist '{playlist.playlist_title}' (now {playlist.num_videos} videos)", flush=True)
+
+    return {
+        "id": playlist.id,
+        "playlist_id": playlist_id,
+        "playlist_title": playlist.playlist_title,
+        "num_videos": playlist.num_videos,
+        "status": playlist.status,
+        "updated": True
+    }
+
+
 @router.get("/{playlist_id}")
 async def get_playlist(
     playlist_id: str,
