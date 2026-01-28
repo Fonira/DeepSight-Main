@@ -60,7 +60,7 @@ export interface AnalysisStreamOptions {
   webEnrich?: boolean;
   onToken?: (token: string, fullText: string) => void;
   onStatusChange?: (status: StreamStatus) => void;
-  onComplete?: (data: { summaryId: number; text: string; metadata: VideoMetadata }) => void;
+  onComplete?: (data: { summaryId: number; text: string; metadata: VideoMetadata | null }) => void;
   onError?: (error: StreamError) => void;
   autoStart?: boolean;
   maxRetries?: number;
@@ -175,6 +175,7 @@ export function useAnalysisStream(
   const pauseBufferRef = useRef<{ type: string; data: string }[]>([]);
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const metadataRef = useRef<VideoMetadata | null>(null);
+  const completedOrErrorRef = useRef(false);
 
   // Helpers
   const updateStep = useCallback((stepId: string, updates: Partial<StreamStep>) => {
@@ -277,6 +278,7 @@ export function useAnalysisStream(
           break;
 
         case 'complete':
+          completedOrErrorRef.current = true;
           updateStep('complete', { status: 'complete', completedAt: new Date() });
 
           setState(prev => ({
@@ -289,7 +291,7 @@ export function useAnalysisStream(
           onComplete?.({
             summaryId: data.summary_id,
             text: textBufferRef.current,
-            metadata: metadataRef.current!,
+            metadata: metadataRef.current ?? null,
           });
 
           // Cleanup
@@ -300,6 +302,7 @@ export function useAnalysisStream(
           break;
 
         case 'error':
+          completedOrErrorRef.current = true;
           const error: StreamError = {
             code: data.code || 'UNKNOWN',
             message: data.message || 'Une erreur est survenue',
@@ -338,6 +341,7 @@ export function useAnalysisStream(
     pausedRef.current = false;
     pauseBufferRef.current = [];
     metadataRef.current = null;
+    completedOrErrorRef.current = false;
 
     setState({
       status: 'connecting',
@@ -449,7 +453,10 @@ export function useAnalysisStream(
       handleEvent(event);
     }
 
-    setStatus('analyzing');
+    // Only set 'analyzing' if we didn't just process 'complete' or 'error'
+    if (!completedOrErrorRef.current) {
+      setStatus('analyzing');
+    }
   }, [handleEvent, setStatus]);
 
   const cancel = useCallback(() => {
@@ -469,6 +476,7 @@ export function useAnalysisStream(
     retryCountRef.current = 0;
     pausedRef.current = false;
     pauseBufferRef.current = [];
+    completedOrErrorRef.current = false;
 
     setState({
       status: 'idle',

@@ -146,6 +146,7 @@ export const AnalysisScreen: React.FC = () => {
   const loadCompletedAnalysis = useCallback(async (summaryIdToLoad: string) => {
     try {
       const summaryData = await videoApi.getSummary(summaryIdToLoad);
+      if (!isMountedRef.current) return;
       setSummary(summaryData);
       setAnalysisProgress(100);
       setAnalysisStep(4);
@@ -153,6 +154,7 @@ export const AnalysisScreen: React.FC = () => {
       // Load concepts
       try {
         const conceptsData = await videoApi.getEnrichedConcepts(summaryIdToLoad);
+        if (!isMountedRef.current) return;
         setConcepts(conceptsData.concepts || []);
       } catch {
         // Concepts might not be available
@@ -161,21 +163,26 @@ export const AnalysisScreen: React.FC = () => {
       // Load chat history
       try {
         const chatHistory = await chatApi.getHistory(summaryIdToLoad);
+        if (!isMountedRef.current) return;
         setChatMessages(chatHistory.messages || []);
       } catch {
         // Chat history might not exist
       }
     } catch (err) {
       console.error('Error loading completed analysis:', err);
-      setError(t.errors.generic);
+      if (isMountedRef.current) setError(t.errors.generic);
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) setIsLoading(false);
     }
   }, [t.errors.generic]);
 
   // Initial load and subscription setup
   useEffect(() => {
-    if (!summaryId) return;
+    if (!summaryId) {
+      setError(t.errors.generic);
+      setIsLoading(false);
+      return;
+    }
 
     isMountedRef.current = true;
     setIsLoading(true);
@@ -233,27 +240,35 @@ export const AnalysisScreen: React.FC = () => {
       try {
         // First try to get status (for task IDs)
         const status = await videoApi.getStatus(summaryId);
+        if (!isMountedRef.current) return;
 
         if (status.status === 'completed' && status.summary_id) {
           await loadCompletedAnalysis(status.summary_id);
         } else if (status.status === 'processing') {
           // This shouldn't happen if using BackgroundAnalysisContext properly
           // but handle it gracefully
-          setAnalysisProgress(status.progress || 0);
-          setAnalysisStatus(status.message || t.analysis.inProgress);
-          setAnalysisStep(calculateStepFromProgress(status.progress || 0));
-          setIsLoading(false);
+          if (isMountedRef.current) {
+            setAnalysisProgress(status.progress || 0);
+            setAnalysisStatus(status.message || t.analysis.inProgress);
+            setAnalysisStep(calculateStepFromProgress(status.progress || 0));
+            setIsLoading(false);
+          }
         } else if (status.status === 'failed') {
-          setError(status.error || t.analysis.failed);
-          setIsLoading(false);
+          if (isMountedRef.current) {
+            setError(status.error || t.analysis.failed);
+            setIsLoading(false);
+          }
         }
       } catch {
         // Not a task ID - try loading as existing summary
+        if (!isMountedRef.current) return;
         try {
           await loadCompletedAnalysis(summaryId);
         } catch {
-          setError(t.errors.generic);
-          setIsLoading(false);
+          if (isMountedRef.current) {
+            setError(t.errors.generic);
+            setIsLoading(false);
+          }
         }
       }
     };
