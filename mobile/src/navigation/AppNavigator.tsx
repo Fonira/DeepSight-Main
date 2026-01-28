@@ -1,6 +1,7 @@
 import React from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
+import { DeepSightSpinner } from '../components/loading';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -215,7 +216,7 @@ export const AppNavigator: React.FC = () => {
   if (isLoading) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.bgPrimary }]}>
-        <ActivityIndicator size="large" color={colors.accentPrimary} />
+        <DeepSightSpinner size="lg" showGlow />
       </View>
     );
   }

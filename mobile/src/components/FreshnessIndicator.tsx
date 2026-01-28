@@ -88,7 +88,7 @@ export const FreshnessIndicator: React.FC<FreshnessIndicatorProps> = ({
   compact = false,
   onPress,
 }) => {
-  const { isDark } = useTheme();
+  const { colors, isDark } = useTheme();
   const { language } = useLanguage();
   const isEn = language === 'en';
 
@@ -118,7 +118,7 @@ export const FreshnessIndicator: React.FC<FreshnessIndicatorProps> = ({
       style={[
         styles.container,
         {
-          backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary,
+          backgroundColor: colors.bgSecondary,
           borderLeftColor: config.color,
         },
       ]}
@@ -137,13 +137,13 @@ export const FreshnessIndicator: React.FC<FreshnessIndicatorProps> = ({
           <Ionicons
             name="calendar-outline"
             size={14}
-            color={isDark ? Colors.textMuted : Colors.light.textSecondary}
+            color={colors.textMuted}
           />
-          <Text style={[styles.dateText, { color: isDark ? Colors.textSecondary : Colors.light.textSecondary }]}>
+          <Text style={[styles.dateText, { color: colors.textSecondary }]}>
             {formatDate(publicationDate, isEn)}
           </Text>
         </View>
-        <Text style={[styles.relativeText, { color: isDark ? Colors.textMuted : Colors.light.textSecondary }]}>
+        <Text style={[styles.relativeText, { color: colors.textMuted }]}>
           {formatRelativeTime(days, isEn)}
         </Text>
       </View>

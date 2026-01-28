@@ -220,6 +220,9 @@
   "history": {
     "title": "History",
     "subtitle": "Find all your previous analyses",
+    "favorites": "Favorites",
+    "noFavorites": "No favorites",
+    "noFavoritesDesc": "Add videos to favorites to find them here",
     "empty": "No analyses yet",
     "emptyDesc": "Your analyses will appear here",
     "delete": "Delete",

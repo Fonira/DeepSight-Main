@@ -18,7 +18,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.deepsight.app",
-      "buildNumber": "1",
       "infoPlist": {
         "NSCameraUsageDescription": "Deep Sight needs camera access to scan QR codes for video URLs.",
         "NSMicrophoneUsageDescription": "Deep Sight needs microphone access for voice input.",
@@ -50,12 +49,7 @@
       "expo-audio"
     ],
     "owner": "maximeadmin",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "enabled": true
-    },
+    "runtimeVersion": "1.0.0",
     "extra": {
       "eas": {
         "projectId": "baeb5f9c-579a-4385-b913-554aa4591a7d"

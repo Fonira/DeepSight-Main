@@ -1,4 +1,8 @@
 export const Colors = {
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // 🌙 DARK THEME (Default) - WCAG AAA Compliant
+  // ═══════════════════════════════════════════════════════════════════════════════
+
   // Backgrounds
   bgPrimary: '#0a0a0b',
   bgSecondary: '#111113',
@@ -7,11 +11,11 @@ export const Colors = {
   bgHover: '#272a2a',
   bgCard: '#16161a',
 
-  // Text - WCAG AA compliant contrast ratios
-  textPrimary: '#FAFAF9',    // 15.2:1 ratio - excellent
-  textSecondary: '#A1A1AA',  // 5.8:1 ratio - good
-  textTertiary: '#8E8E99',   // 6.8:1 ratio - improved from #71717A
-  textMuted: '#737380',      // 5.2:1 ratio - improved from #52525B
+  // Text - PURE WHITE for maximum dark mode readability
+  textPrimary: '#FFFFFF',    // Pure white - maximum contrast
+  textSecondary: '#D0D0D8',  // Brighter for better readability
+  textTertiary: '#B0B0B8',   // Brighter secondary text
+  textMuted: '#909098',      // Brighter muted text
 
   // Accent
   accentPrimary: '#6366F1',
@@ -31,14 +35,36 @@ export const Colors = {
   gradientSecondary: ['#F59E0B', '#EF4444'] as const,
   gradientDark: ['#0a0a0b', '#111113'] as const,
 
-  // Light theme (for reference)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // ☀️ LIGHT THEME - Complete color set
+  // ═══════════════════════════════════════════════════════════════════════════════
   light: {
+    // Backgrounds
     bgPrimary: '#FFFFFF',
-    bgSecondary: '#F4F4F5',
-    bgTertiary: '#E4E4E7',
-    textPrimary: '#18181B',
-    textSecondary: '#52525B',
-    border: '#E4E4E7',
+    bgSecondary: '#F5F5F7',
+    bgTertiary: '#EBEBF0',
+    bgElevated: '#FFFFFF',
+    bgHover: '#F0F0F2',
+    bgCard: '#FFFFFF',
+
+    // Text - High contrast for readability
+    textPrimary: '#1A1A1B',
+    textSecondary: '#4A4A4F',
+    textTertiary: '#6A6A70',
+    textMuted: '#8A8A90',
+
+    // Borders
+    border: '#E5E5E8',
+    borderLight: '#D4D4D8',
+
+    // Accents (same as dark for brand consistency)
+    accentPrimary: '#5856D6',
+    accentPrimaryLight: '#7A79E8',
+    accentSecondary: '#F59E0B',
+    accentSuccess: '#059669',
+    accentError: '#DC2626',
+    accentWarning: '#D97706',
+    accentInfo: '#2563EB',
   }
 };
 

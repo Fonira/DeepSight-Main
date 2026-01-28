@@ -312,8 +312,8 @@ export const UpgradeScreen: React.FC = () => {
           style={[
             styles.planCard,
             isSelected && { borderWidth: 2, borderColor: colors.accentPrimary },
-            isCurrentPlan && styles.currentPlanCard,
-            isRecommended && !isCurrentPlan && styles.recommendedPlanCard,
+            isCurrentPlan && [styles.currentPlanCard, { borderColor: colors.accentSuccess }],
+            isRecommended && !isCurrentPlan && [styles.recommendedPlanCard, { borderColor: colors.accentSuccess }],
           ]}
         >
           {/* Recommended badge */}
@@ -558,11 +558,11 @@ const styles = StyleSheet.create({
   },
   currentPlanCard: {
     borderWidth: 2,
-    borderColor: Colors.accentSuccess,
+    // borderColor is set dynamically
   },
   recommendedPlanCard: {
     borderWidth: 2,
-    borderColor: Colors.accentSuccess,
+    // borderColor is set dynamically
   },
   recommendedBadge: {
     position: 'absolute',

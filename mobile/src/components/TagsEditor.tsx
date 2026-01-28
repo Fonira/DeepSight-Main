@@ -145,7 +145,7 @@ export const TagsEditor: React.FC<TagsEditorProps> = ({
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary }]}>
+    <View style={[styles.container, { backgroundColor: colors.bgSecondary }]}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTitle}>

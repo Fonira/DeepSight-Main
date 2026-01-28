@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
-  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,7 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Header, Card, Avatar, Button, Input } from '../components';
+import { Header, Card, Avatar, Button, Input, DeepSightSpinner } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { userApi, authApi, ApiError } from '../services/api';
 
@@ -503,7 +502,7 @@ export const AccountScreen: React.FC = () => {
                 disabled={isUploadingAvatar}
               >
                 {isUploadingAvatar ? (
-                  <ActivityIndicator color="#FFFFFF" />
+                  <DeepSightSpinner size="sm" speed="fast" color="#FFFFFF" />
                 ) : (
                   <>
                     <Ionicons name="cloud-upload-outline" size={20} color="#FFFFFF" />

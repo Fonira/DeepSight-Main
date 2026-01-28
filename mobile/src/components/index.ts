@@ -51,6 +51,9 @@ export { CreditCounter, CreditAlert } from './credits';
 export { StreamingAnalysisDisplay } from './analysis';
 export { AnalysisValueDisplay } from './analysis/AnalysisValueDisplay';
 
+// Loading Components
+export { AnimatedLogo, DeepSightSpinner } from './loading';
+
 // Suggested Questions
 export { SuggestedQuestions } from './chat/SuggestedQuestions';
 

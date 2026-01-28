@@ -718,6 +718,8 @@ export const historyApi = {
 
     if (filters?.search) params.append('search', filters.search);
     if (filters?.category) params.append('category', filters.category);
+    if (filters?.favoritesOnly) params.append('favorites_only', 'true');
+    if (filters?.mode) params.append('mode', filters.mode);
 
     // Use the correct backend endpoint: /api/history/videos
     const response = await request<{
@@ -763,9 +765,11 @@ export const historyApi = {
   },
 
   async toggleFavorite(summaryId: string): Promise<{ isFavorite: boolean }> {
-    return request(`/api/history/videos/${summaryId}/favorite`, {
+    const response = await request<{ is_favorite: boolean }>(`/api/videos/summary/${summaryId}/favorite`, {
       method: 'POST',
     });
+    // Transform snake_case to camelCase
+    return { isFavorite: response.is_favorite };
   },
 
   async deleteSummary(summaryId: string): Promise<void> {
@@ -855,6 +859,12 @@ export const historyApi = {
       category: item.category || 'general',
       createdAt: item.created_at,
     }));
+  },
+
+  // Get user's favorites
+  async getFavorites(limit: number = 5): Promise<AnalysisSummary[]> {
+    const response = await this.getHistory(1, limit, { favoritesOnly: true });
+    return response.items;
   },
 
   // Semantic search
