@@ -47,19 +47,20 @@ _engine_kwargs = {
 # PostgreSQL-specific pool settings for production reliability
 if DATABASE_URL.startswith("postgresql"):
     _engine_kwargs.update({
-        "pool_size": int(os.environ.get("DB_POOL_SIZE", "5")),
+        "pool_size": int(os.environ.get("DB_POOL_SIZE", "20")),
         "max_overflow": int(os.environ.get("DB_MAX_OVERFLOW", "10")),
         "pool_timeout": 30,
-        "pool_recycle": 1800,  # Recycle connections every 30 min
+        "pool_recycle": 3600,
     })
 
 engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
 
-# Session factory
+# Session factory avec autoflush désactivé pour meilleures performances
 async_session_maker = async_sessionmaker(
     engine,
     class_=AsyncSession,
-    expire_on_commit=False
+    expire_on_commit=False,
+    autoflush=False
 )
 
 # Base pour les modèles

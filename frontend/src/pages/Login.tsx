@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { useTheme } from '../contexts/ThemeContext';
@@ -41,6 +41,7 @@ const GoogleIcon: React.FC<{ className?: string }> = ({ className }) => (
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { login, loginWithGoogle, register, verifyEmail, isAuthenticated, isLoading: authLoading } = useAuth();
   const { t, language } = useTranslation();
   const { isDark, toggleTheme } = useTheme();
@@ -57,10 +58,9 @@ export const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Handle OAuth error redirects (e.g. /login?error=database_error)
+  // Lire les erreurs OAuth depuis les paramètres URL (redirect du backend)
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const oauthError = params.get('error');
+    const oauthError = searchParams.get('error');
     if (oauthError) {
       const errorMessages: Record<string, string> = {
         database_error: language === 'fr'
@@ -83,12 +83,12 @@ export const Login: React.FC = () => {
           : 'Missing authentication parameters.',
       };
       setError(errorMessages[oauthError] || (language === 'fr'
-        ? `Erreur de connexion : ${oauthError}`
-        : `Login error: ${oauthError}`));
-      // Clean up URL
+        ? `Erreur d'authentification: ${oauthError}`
+        : `Authentication error: ${oauthError}`));
+      // Nettoyer l'URL
       navigate(location.pathname, { replace: true });
     }
-  }, [location.search, language, navigate, location.pathname]);
+  }, [searchParams, language, navigate, location.pathname]);
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {

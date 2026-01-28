@@ -12,6 +12,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import os
 import time
 import json
 import gzip
@@ -169,12 +170,12 @@ class TimingMiddleware(BaseHTTPMiddleware):
             latency=process_time,
         )
         
-        # Log slow requests (> 1 second)
-        if process_time > 1.0:
-            print(
-                f"⚠️ [SLOW] {request.method} {request.url.path} "
-                f"took {process_time:.2f}s",
-                flush=True
+        # Log slow requests (> 2 seconds) - reduced frequency
+        if process_time > 2.0:
+            # Use structured logging instead of print
+            import logging
+            logging.getLogger("deepsight").warning(
+                f"Slow request: {request.method} {request.url.path} took {process_time:.2f}s"
             )
         
         return response
@@ -348,8 +349,9 @@ class StructuredLoggingMiddleware(BaseHTTPMiddleware):
         if hasattr(request.state, "user_id"):
             log_entry["user_id"] = request.state.user_id
         
-        # Log as JSON (one line)
-        print(json.dumps(log_entry, ensure_ascii=False), flush=True)
+        # Log as JSON (one line) - only if verbose logging enabled
+        if os.environ.get("VERBOSE_LOGGING", "false").lower() == "true":
+            print(json.dumps(log_entry, ensure_ascii=False), flush=True)
         
         return response
 

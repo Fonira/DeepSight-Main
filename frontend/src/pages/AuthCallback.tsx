@@ -203,7 +203,10 @@ export function AuthCallback() {
         if (accessToken) {
           console.log('[AuthCallback] Processing direct tokens');
           setStatus('processing_tokens');
-          
+
+          // Nettoyer l'URL immédiatement (supprimer les tokens de l'historique)
+          window.history.replaceState({}, '', '/auth/callback');
+
           // Stocker les tokens
           setStatus('storing_tokens');
           setTokens(accessToken, refreshToken || '');
@@ -319,9 +322,8 @@ export function AuthCallback() {
       throw new Error('Échec après plusieurs tentatives');
     }
     
-    return () => {
-      hasProcessedRef.current = false;
-    };
+    // Ne PAS reset hasProcessedRef dans le cleanup
+    // sinon React Strict Mode re-exécute le callback (double token exchange)
   }, [searchParams, navigate]);
   
   // ═══════════════════════════════════════════════════════════════════════════
