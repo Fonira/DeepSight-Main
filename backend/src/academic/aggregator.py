@@ -136,11 +136,15 @@ class AcademicAggregator:
             sources_queried.append(source_name)
             all_papers.extend(result)
 
+        print(f"Total papers before deduplication: {len(all_papers)}", flush=True)
+
         # Deduplicate papers
         deduplicated = self._deduplicate(all_papers)
+        print(f"Papers after deduplication: {len(deduplicated)}", flush=True)
 
         # Score and sort papers
         scored = self._score_papers(deduplicated, request.keywords)
+        print(f"Papers after scoring: {len(scored)}", flush=True)
 
         # Sort by final score
         scored.sort(key=lambda p: p.relevance_score, reverse=True)
@@ -149,6 +153,9 @@ class AcademicAggregator:
         tier_limit = get_tier_limit(user_plan)
         tier_limit_reached = len(scored) > tier_limit
         limited_papers = scored[:tier_limit]
+
+        print(f"Final papers (after tier limit {tier_limit}): {len(limited_papers)}", flush=True)
+        print(f"Sources queried: {sources_queried}", flush=True)
 
         return AcademicSearchResponse(
             papers=limited_papers,
@@ -167,15 +174,20 @@ class AcademicAggregator:
     ) -> List[AcademicPaper]:
         """Search Semantic Scholar"""
         try:
-            return await self.semantic_scholar.search(
+            print(f"Querying Semantic Scholar with: {query}", flush=True)
+            results = await self.semantic_scholar.search(
                 query=query,
                 limit=min(request.limit * 2, 50),  # Get more for deduplication
                 year_from=request.year_from,
                 year_to=request.year_to,
                 fields_of_study=request.fields_of_study
             )
+            print(f"Semantic Scholar returned {len(results)} papers", flush=True)
+            return results
         except Exception as e:
             print(f"Semantic Scholar search error: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
             return []
 
     async def _search_openalex(
@@ -185,14 +197,19 @@ class AcademicAggregator:
     ) -> List[AcademicPaper]:
         """Search OpenAlex"""
         try:
-            return await self.openalex.search(
+            print(f"Querying OpenAlex with: {query}", flush=True)
+            results = await self.openalex.search(
                 query=query,
                 limit=min(request.limit * 2, 50),
                 year_from=request.year_from,
                 year_to=request.year_to
             )
+            print(f"OpenAlex returned {len(results)} papers", flush=True)
+            return results
         except Exception as e:
             print(f"OpenAlex search error: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
             return []
 
     async def _search_arxiv(
@@ -202,15 +219,21 @@ class AcademicAggregator:
     ) -> List[AcademicPaper]:
         """Search arXiv (if preprints included)"""
         if not request.include_preprints:
+            print("arXiv search skipped (preprints not included)", flush=True)
             return []
 
         try:
-            return await self.arxiv.search(
+            print(f"Querying arXiv with: {query}", flush=True)
+            results = await self.arxiv.search(
                 query=query,
                 limit=min(request.limit * 2, 30)  # arXiv has slower rate limit
             )
+            print(f"arXiv returned {len(results)} papers", flush=True)
+            return results
         except Exception as e:
             print(f"arXiv search error: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
             return []
 
     def _deduplicate(self, papers: List[AcademicPaper]) -> List[AcademicPaper]:
