@@ -899,5 +899,71 @@
       "tapToFlip": "Appuyez pour retourner",
       "card": "Carte"
     }
+  },
+  "academic": {
+    "title": "Sources Académiques",
+    "findSources": "Rechercher des sources",
+    "papers": "articles",
+    "citations": "citations",
+    "viewPdf": "Voir le PDF",
+    "copyCitation": "Copier la citation",
+    "exportBibliography": "Exporter la bibliographie",
+    "searching": "Recherche en cours...",
+    "noResults": "Aucune source académique trouvée",
+    "selectAll": "Tout sélectionner",
+    "deselectAll": "Tout désélectionner",
+    "export": "Exporter",
+    "selected": "sélectionnés",
+    "citationCopied": "Citation copiée",
+    "citationCopiedDesc": "La citation a été copiée dans le presse-papiers",
+    "openAccess": "Accès libre",
+    "cite": "Citer",
+    "showMore": "Voir plus",
+    "showLess": "Voir moins",
+    "unknownAuthor": "Auteur inconnu",
+    "formats": {
+      "bibtex": "BibTeX",
+      "ris": "RIS",
+      "apa": "APA 7e édition",
+      "mla": "MLA 9e édition",
+      "chicago": "Chicago",
+      "harvard": "Harvard"
+    },
+    "formatDescriptions": {
+      "bibtex": "Pour LaTeX et gestionnaires de références",
+      "ris": "Compatible Zotero, Mendeley, EndNote",
+      "apa": "Style académique standard",
+      "mla": "Humanités et littérature",
+      "chicago": "Sciences sociales et histoire",
+      "harvard": "Style auteur-date"
+    },
+    "upgrade": {
+      "moreResults": "résultats supplémentaires disponibles",
+      "exportAccess": "L'export de bibliographie nécessite un abonnement Student ou supérieur.",
+      "upgradeToSeeMore": "Passez à un forfait supérieur pour voir plus de sources."
+    },
+    "sources": {
+      "semanticScholar": "Semantic Scholar",
+      "openAlex": "OpenAlex",
+      "arxiv": "arXiv"
+    },
+    "exportModal": {
+      "title": "Exporter la bibliographie",
+      "chooseFormat": "Choisir le format",
+      "generate": "Générer",
+      "exporting": "Export en cours...",
+      "copy": "Copier",
+      "share": "Partager",
+      "changeFormat": "Changer de format",
+      "copied": "Copié !",
+      "copiedDesc": "La bibliographie a été copiée dans le presse-papiers."
+    },
+    "description": "Trouvez des articles scientifiques liés à cette analyse via Semantic Scholar, OpenAlex et arXiv.",
+    "freeLimit": "Fonctionnalité gratuite - 3 résultats max",
+    "premiumFeature": "Fonctionnalité Premium",
+    "noSelection": "Aucune sélection",
+    "selectPapersToExport": "Sélectionnez des articles à exporter.",
+    "error": "Erreur lors de la recherche",
+    "retry": "Réessayer"
   }
 }

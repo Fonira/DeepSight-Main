@@ -31,6 +31,7 @@ import type { QuizQuestion, MindMapData, MindMapNode } from '../components/study
 import { ExportOptions } from '../components/export';
 import { FactCheckButton } from '../components/factcheck';
 import { WebEnrichment } from '../components/enrichment';
+import { AcademicSourcesSection } from '../components/academic';
 import { CitationExport } from '../components/citation';
 import { TournesolWidget } from '../components/tournesol';
 import { AnalysisValueDisplay } from '../components/analysis/AnalysisValueDisplay';
@@ -1071,6 +1072,18 @@ export const AnalysisScreen: React.FC = () => {
                   <View style={{ height: Spacing.sm }} />
                   <WebEnrichment summaryId={summary.id} />
                 </>
+              )}
+
+              {/* Academic Sources Section */}
+              {summary && (
+                <AcademicSourcesSection
+                  summaryId={summary.id}
+                  userPlan={user?.plan}
+                  onUpgrade={() => {
+                    setUpgradeLimitType('analysis');
+                    setShowUpgradeModal(true);
+                  }}
+                />
               )}
 
               {/* Export Section */}

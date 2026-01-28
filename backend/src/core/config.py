@@ -164,7 +164,11 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "web_search_enabled": False,
         # 🔬 Recherche approfondie
         "deep_research_enabled": False,
-        "deep_research_credits_cost": 0
+        "deep_research_credits_cost": 0,
+        # 📚 Sources académiques
+        "academic_papers_per_analysis": 3,
+        "bibliography_export": False,
+        "academic_full_text": False
     },
     "starter": {
         "monthly_credits": 5000,  # ~100 analyses basiques
@@ -189,7 +193,11 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "web_search_enabled": True,
         # 🔬 Recherche approfondie
         "deep_research_enabled": False,
-        "deep_research_credits_cost": 0
+        "deep_research_credits_cost": 0,
+        # 📚 Sources académiques
+        "academic_papers_per_analysis": 15,
+        "bibliography_export": True,
+        "academic_full_text": False
     },
     "pro": {
         "monthly_credits": 25000,  # ~500 analyses ou usage intensif
@@ -215,7 +223,11 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "web_search_enabled": True,
         # 🔬 Recherche approfondie - NON disponible en Pro
         "deep_research_enabled": False,
-        "deep_research_credits_cost": 0
+        "deep_research_credits_cost": 0,
+        # 📚 Sources académiques
+        "academic_papers_per_analysis": 30,
+        "bibliography_export": True,
+        "academic_full_text": True
     },
     "expert": {
         "monthly_credits": 100000,  # Usage très intensif
@@ -241,7 +253,11 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "web_search_enabled": True,
         # 🔬 Recherche approfondie disponible
         "deep_research_enabled": True,
-        "deep_research_credits_cost": 50
+        "deep_research_credits_cost": 50,
+        # 📚 Sources académiques
+        "academic_papers_per_analysis": 50,
+        "bibliography_export": True,
+        "academic_full_text": True
     },
     "unlimited": {
         "monthly_credits": 999999,
@@ -264,7 +280,11 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "web_search_enabled": True,
         # 🔬 Recherche approfondie - Illimité
         "deep_research_enabled": True,
-        "deep_research_credits_cost": 0  # Gratuit pour admin
+        "deep_research_credits_cost": 0,  # Gratuit pour admin
+        # 📚 Sources académiques - Illimité
+        "academic_papers_per_analysis": 100,
+        "bibliography_export": True,
+        "academic_full_text": True
     }
 }
 
