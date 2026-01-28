@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from db.database import get_session
-from core.config import FRONTEND_URL, EMAIL_CONFIG, GOOGLE_OAUTH_CONFIG, GITLAB_OAUTH_CONFIG
+from core.config import FRONTEND_URL, EMAIL_CONFIG, GOOGLE_OAUTH_CONFIG
 from .schemas import (
     UserRegister, UserLogin, RefreshTokenRequest, VerifyEmailRequest,
     ResendVerificationRequest, ForgotPasswordRequest, ResetPasswordRequest,
@@ -25,9 +25,7 @@ from .service import (
     create_access_token, create_refresh_token, verify_token,
     get_google_auth_url, exchange_google_code, get_google_user_info,
     login_or_register_google_user, create_user_session, invalidate_user_session,
-    validate_session_token,
-    get_gitlab_auth_url, exchange_gitlab_code, get_gitlab_user_info,
-    login_or_register_gitlab_user
+    validate_session_token
 )
 from .dependencies import get_current_user, get_current_user_optional
 from .email import send_verification_email, send_password_reset_email
@@ -557,65 +555,4 @@ async def google_token_login(
         access_token=access_token,
         refresh_token=refresh_token,
         user=UserResponse.model_validate(user)
-    )
-
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 🦊 GITLAB OAUTH
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@router.get("/gitlab/login", response_model=AuthUrlResponse)
-async def gitlab_login():
-    """Retourne l'URL d'authentification GitLab"""
-    if not GITLAB_OAUTH_CONFIG.get("ENABLED"):
-        raise HTTPException(status_code=400, detail="GitLab OAuth non activé")
-    
-    auth_url = get_gitlab_auth_url()
-    
-    if not auth_url:
-        raise HTTPException(status_code=500, detail="Erreur configuration OAuth GitLab")
-    
-    return AuthUrlResponse(auth_url=auth_url)
-
-
-@router.get("/gitlab/callback")
-async def gitlab_callback(
-    code: Optional[str] = None,
-    state: Optional[str] = None,
-    error: Optional[str] = None,
-    session: AsyncSession = Depends(get_session)
-):
-    """Callback GitLab OAuth — redirige vers le frontend avec tokens"""
-    if error:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error={error}")
-    
-    if not code:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=no_code")
-    
-    token_data = await exchange_gitlab_code(code)
-    
-    if not token_data or "access_token" not in token_data:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=token_exchange_failed")
-    
-    gitlab_user = await get_gitlab_user_info(token_data["access_token"])
-    
-    if not gitlab_user:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=userinfo_failed")
-    
-    try:
-        success, user, message, session_token = await login_or_register_gitlab_user(session, gitlab_user)
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"GitLab OAuth DB error: {e}")
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=database_error")
-
-    if not success or not user:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=auth_failed")
-    
-    access_token = create_access_token(user.id, user.is_admin, session_token)
-    refresh_token = create_refresh_token(user.id, session_token)
-    
-    return RedirectResponse(
-        url=f"{FRONTEND_URL}/auth/callback?access_token={access_token}&refresh_token={refresh_token}"
     )
