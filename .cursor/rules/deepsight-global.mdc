@@ -1,0 +1,71 @@
+---
+description: DeepSight global conventions. Always applies to all project files.
+globs: "**/*"
+alwaysApply: true
+---
+
+# DeepSight Project Conventions
+
+## Project structure
+
+```
+DeepSight-Main/
+├── frontend/          # React + TypeScript + Vite (Vercel)
+├── backend/           # FastAPI + Python (Railway)
+├── mobile/            # Expo + React Native
+├── docs/              # Documentation
+└── scripts/           # Build & deploy scripts
+```
+
+## Commit message format
+
+Use conventional commits:
+- `feat:` New feature
+- `fix:` Bug fix
+- `refactor:` Code change that neither fixes a bug nor adds a feature
+- `docs:` Documentation only
+- `chore:` Build process, dependencies
+- `perf:` Performance improvement
+
+```bash
+# Examples
+feat(mobile): add video playlist analysis
+fix(backend): handle rate limit on YouTube API
+refactor(frontend): extract AnalysisCard component
+```
+
+## Environment variables
+
+- Frontend: `VITE_*` prefix, accessed via `import.meta.env.VITE_*`
+- Backend: Direct access via `os.environ` or `pydantic-settings`
+- Mobile: `EXPO_PUBLIC_*` prefix
+
+## API response format
+
+Backend always returns consistent JSON:
+
+```python
+# Success
+{"data": {...}, "meta": {"page": 1, "total": 100}}
+
+# Error
+{"error": {"code": "NOT_FOUND", "message": "Video not found"}}
+```
+
+## Imports order
+
+1. Standard library / Node built-ins
+2. Third-party packages
+3. Internal absolute imports (`@/`)
+4. Relative imports (`./`, `../`)
+
+Separate each group with blank line.
+
+## Code review checklist (for Claude Code Action)
+
+When reviewing PRs, check:
+- [ ] TypeScript: no `any`, proper error types
+- [ ] Python: async/await, type hints, HTTPException
+- [ ] Tests: new features have tests
+- [ ] Security: no secrets in code, proper validation
+- [ ] Performance: pagination, no memory leaks

@@ -1,0 +1,81 @@
+---
+description: React/TypeScript Expert for DeepSight frontend. Trigger: @frontend
+globs: frontend/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# React/TypeScript Expert
+
+You are a React 18+ / TypeScript expert. Applies when `@frontend` or `frontend/**/*.{ts,tsx}` is in context.
+
+## TypeScript strictness
+
+- Always use explicit types, never `any`. Prefer `interface` for objects, `type` for unions/primitives.
+- Use `as const` for literal objects, `satisfies` for type checking without widening.
+
+```typescript
+// ✅ GOOD
+interface VideoAnalysis {
+  id: string;
+  title: string;
+  status: 'pending' | 'processing' | 'complete' | 'error';
+  segments: Segment[];
+}
+
+const DEFAULT_CONFIG = {
+  maxRetries: 3,
+  timeout: 30000,
+} as const satisfies Partial<AppConfig>;
+```
+
+## Component patterns
+
+- Functional components only. Props interface named `{ComponentName}Props`.
+- Destructure props in signature. Export named, not default.
+
+```typescript
+// ✅ GOOD
+interface AnalysisCardProps {
+  analysis: VideoAnalysis;
+  onSelect: (id: string) => void;
+  isLoading?: boolean;
+}
+
+export function AnalysisCard({ analysis, onSelect, isLoading = false }: AnalysisCardProps) {
+  // ...
+}
+```
+
+## State management
+
+- `useState` for local UI state. React Query/TanStack Query for server state.
+- Avoid `useEffect` for data fetching—use React Query's `useQuery`.
+
+```typescript
+// ✅ GOOD - React Query
+const { data, isLoading, error } = useQuery({
+  queryKey: ['analysis', videoId],
+  queryFn: () => api.getAnalysis(videoId),
+  staleTime: 5 * 60 * 1000,
+});
+```
+
+## Tailwind CSS
+
+- Use Tailwind utility classes. Group by: layout → spacing → typography → colors → effects.
+- Use `cn()` utility for conditional classes (clsx + tailwind-merge).
+
+```typescript
+import { cn } from '@/lib/utils';
+
+<div className={cn(
+  "flex flex-col gap-4 p-6",
+  "text-sm font-medium",
+  "bg-white dark:bg-gray-900 rounded-lg shadow-sm",
+  isActive && "ring-2 ring-blue-500"
+)} />
+```
+
+## Error boundaries & loading states
+
+- Wrap async UI in Suspense + ErrorBoundary. Show skeletons, not spinners.
