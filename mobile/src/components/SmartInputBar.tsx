@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, memo } from 'react';
+import React, { useState, useCallback, useMemo, memo, useRef } from 'react';
 import {
   View,
   Text,
@@ -36,6 +36,14 @@ interface AnalysisMode {
   descriptionEn: string;
 }
 
+interface AIModel {
+  id: string;
+  name: string;
+  desc: string;
+  descEn: string;
+  icon: string;
+}
+
 interface SmartInputBarProps {
   onSubmit: (data: {
     inputType: InputMode;
@@ -46,6 +54,7 @@ interface SmartInputBarProps {
     title?: string;
     source?: string;
     deepResearch?: boolean;
+    model?: string;
   }) => void;
   isLoading?: boolean;
   creditCost?: number;
@@ -120,10 +129,31 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
   const [deepResearch, setDeepResearch] = useState(false);
   const [urlValidation, setUrlValidation] = useState<URLValidationResult | null>(null);
+  const [selectedModel, setSelectedModel] = useState('mistral-small-latest');
+  const [showModelSelector, setShowModelSelector] = useState(false);
 
   // Check if user has access to deep research (Pro+ plans)
   const normalizedPlan = normalizePlanId(userPlan);
   const hasDeepResearchAccess = hasFeature(normalizedPlan, 'chatWebSearch');
+
+  // Available AI models based on plan
+  const availableModels = useMemo((): AIModel[] => {
+    const models: AIModel[] = [
+      { id: 'mistral-small-latest', name: 'Mistral Small', desc: 'Rapide', descEn: 'Fast', icon: '⚡' },
+    ];
+    if (['student', 'starter', 'pro', 'team', 'expert', 'unlimited'].includes(normalizedPlan)) {
+      models.push({ id: 'mistral-medium-latest', name: 'Mistral Medium', desc: 'Équilibré', descEn: 'Balanced', icon: '⚖️' });
+    }
+    if (['pro', 'team', 'expert', 'unlimited'].includes(normalizedPlan)) {
+      models.push({ id: 'mistral-large-latest', name: 'Mistral Large', desc: 'Puissant', descEn: 'Powerful', icon: '🚀' });
+    }
+    return models;
+  }, [normalizedPlan]);
+
+  const currentModel = useMemo(() =>
+    availableModels.find(m => m.id === selectedModel) || availableModels[0],
+    [availableModels, selectedModel]
+  );
 
   const scaleAnim = useMemo(() => new Animated.Value(1), []);
 
@@ -230,6 +260,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
       title: inputMode === 'text' ? sanitizeTextInput(textTitle) : undefined,
       source: inputMode === 'text' ? sanitizeTextInput(textSource) : undefined,
       deepResearch: deepResearch && hasDeepResearchAccess,
+      model: selectedModel,
     });
   }, [inputValue, inputMode, selectedCategory, selectedMode, searchLanguage, textTitle, textSource, isLoading, onSubmit, scaleAnim, deepResearch, hasDeepResearchAccess]);
 
@@ -492,6 +523,72 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
           ))}
         </ScrollView>
       </View>
+
+      {/* AI Model Selector - Only show if multiple models available */}
+      {availableModels.length > 1 && (
+        <View style={styles.selectorSection}>
+          <Text style={[styles.selectorLabel, { color: isDark ? Colors.textSecondary : Colors.light.textSecondary }]}>
+            {isEn ? 'AI Model' : 'Modèle IA'}
+          </Text>
+          <TouchableOpacity
+            style={[
+              styles.modelSelector,
+              { backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary },
+            ]}
+            onPress={() => {
+              Haptics.selectionAsync();
+              setShowModelSelector(!showModelSelector);
+            }}
+          >
+            <Text style={styles.modelIcon}>{currentModel.icon}</Text>
+            <View style={styles.modelInfo}>
+              <Text style={[styles.modelName, { color: isDark ? Colors.textPrimary : Colors.light.textPrimary }]}>
+                {currentModel.name}
+              </Text>
+              <Text style={[styles.modelDesc, { color: isDark ? Colors.textMuted : Colors.light.textSecondary }]}>
+                {isEn ? currentModel.descEn : currentModel.desc}
+              </Text>
+            </View>
+            <Ionicons
+              name={showModelSelector ? 'chevron-up' : 'chevron-down'}
+              size={18}
+              color={isDark ? Colors.textSecondary : Colors.light.textSecondary}
+            />
+          </TouchableOpacity>
+
+          {showModelSelector && (
+            <View style={[styles.modelDropdown, { backgroundColor: isDark ? Colors.bgElevated : Colors.light.bgPrimary }]}>
+              {availableModels.map((model) => (
+                <TouchableOpacity
+                  key={model.id}
+                  style={[
+                    styles.modelOption,
+                    selectedModel === model.id && { backgroundColor: Colors.accentPrimary + '20' },
+                  ]}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setSelectedModel(model.id);
+                    setShowModelSelector(false);
+                  }}
+                >
+                  <Text style={styles.modelIcon}>{model.icon}</Text>
+                  <View style={styles.modelInfo}>
+                    <Text style={[styles.modelName, { color: isDark ? Colors.textPrimary : Colors.light.textPrimary }]}>
+                      {model.name}
+                    </Text>
+                    <Text style={[styles.modelDesc, { color: isDark ? Colors.textMuted : Colors.light.textSecondary }]}>
+                      {isEn ? model.descEn : model.desc}
+                    </Text>
+                  </View>
+                  {selectedModel === model.id && (
+                    <Ionicons name="checkmark-circle" size={18} color={Colors.accentPrimary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      )}
 
       {/* Deep Research Toggle */}
       <View style={styles.deepResearchContainer}>
@@ -810,6 +907,47 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bodySemiBold,
     fontSize: Typography.fontSize.base,
     color: '#fff',
+  },
+  // Model selector styles
+  modelSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.sm,
+  },
+  modelDropdown: {
+    marginTop: Spacing.xs,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.xs,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  modelOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.sm,
+    gap: Spacing.sm,
+  },
+  modelIcon: {
+    fontSize: 18,
+  },
+  modelInfo: {
+    flex: 1,
+  },
+  modelName: {
+    fontFamily: Typography.fontFamily.bodyMedium,
+    fontSize: Typography.fontSize.sm,
+  },
+  modelDesc: {
+    fontFamily: Typography.fontFamily.body,
+    fontSize: Typography.fontSize.xs,
   },
 });
 

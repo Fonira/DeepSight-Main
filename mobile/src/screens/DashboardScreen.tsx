@@ -104,6 +104,7 @@ export const DashboardScreen: React.FC = () => {
     title?: string;
     source?: string;
     deepResearch?: boolean;
+    model?: string;
   }) => {
     // Block submission when offline
     if (isOffline) {
@@ -140,6 +141,7 @@ export const DashboardScreen: React.FC = () => {
         category: data.category,
         language: data.language || 'fr',
         deep_research: data.deepResearch || false,
+        model: data.model || 'mistral-small-latest',
       };
 
       if (data.inputType === 'url') {
