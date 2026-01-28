@@ -10,6 +10,7 @@ import io
 import os
 import re
 import random
+import shutil
 import tempfile
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Tuple
@@ -330,11 +331,17 @@ class UltraResilientTranscriptExtractor:
                         return result
                 except Exception as e:
                     logger.warning(f"[PHASE3] {service_name} failed: {e}")
-                    self.circuit_breaker.record_failure(service_name)
 
         finally:
             if audio_path and os.path.exists(audio_path):
                 os.remove(audio_path)
+            if audio_path:
+                parent = os.path.dirname(audio_path)
+                if parent and os.path.isdir(parent):
+                    try:
+                        os.rmdir(parent)
+                    except OSError:
+                        pass
 
         return None
 
@@ -653,10 +660,11 @@ class UltraResilientTranscriptExtractor:
         return None
 
     async def _download_audio(self, video_id: str) -> Optional[str]:
+        tmpdir = tempfile.mkdtemp()
+        result: Optional[str] = None
         try:
             import yt_dlp
 
-            tmpdir = tempfile.mkdtemp()
             output_path = os.path.join(tmpdir, f"{video_id}.mp3")
 
             ydl_opts = {
@@ -686,12 +694,14 @@ class UltraResilientTranscriptExtractor:
 
             for f in os.listdir(tmpdir):
                 if f.endswith(".mp3"):
-                    return os.path.join(tmpdir, f)
-
+                    result = os.path.join(tmpdir, f)
+                    break
         except Exception as e:
             logger.warning(f"[AUDIO] Download failed: {e}")
-
-        return None
+        finally:
+            if result is None and tmpdir and os.path.exists(tmpdir):
+                shutil.rmtree(tmpdir, ignore_errors=True)
+        return result
 
     async def _get_audio_duration(self, audio_path: str) -> float:
         """
