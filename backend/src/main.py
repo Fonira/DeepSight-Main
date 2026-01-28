@@ -248,23 +248,67 @@ async def run_auto_migrations():
                 print(f"  ℹ️ Column type migration: {table}.{column} - {str(e)[:50]}", flush=True)
 
 
+import asyncio
+
+# État de l'application pour healthcheck
+_app_state = {
+    "ready": False,
+    "db_initialized": False,
+    "migrations_completed": False,
+    "error": None
+}
+
+
+async def initialize_database_background():
+    """
+    🚀 Initialisation DB en arrière-plan (non-bloquant).
+    Permet au healthcheck de répondre immédiatement.
+    """
+    global _app_state
+    try:
+        logger.info("Starting background database initialization...")
+
+        # Étape 1: Initialiser la connexion DB
+        await init_db()
+        _app_state["db_initialized"] = True
+        logger.info("Database connection established")
+
+        # Étape 2: Exécuter les migrations
+        logger.info("Running auto-migrations in background...")
+        await run_auto_migrations()
+        _app_state["migrations_completed"] = True
+        logger.info("Migrations completed successfully")
+
+        # Marquer l'app comme prête
+        _app_state["ready"] = True
+        logger.info("🟢 Application fully ready to serve requests")
+
+    except Exception as e:
+        _app_state["error"] = str(e)
+        logger.error(f"Database initialization failed: {e}")
+        # Ne pas crasher l'app, mais marquer l'erreur
+        # Les endpoints qui nécessitent la DB renverront une erreur appropriée
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Gestion du cycle de vie de l'application"""
+    """
+    Gestion du cycle de vie de l'application.
+    ⚡ OPTIMISÉ: L'initialisation DB se fait en arrière-plan
+    pour que le healthcheck réponde immédiatement.
+    """
     # Startup
     logger.info("Application starting", app_name=APP_NAME, version=VERSION)
     logger.info("CORS configuration", origins=ALLOWED_ORIGINS)
     logger.info("Sentry status", enabled=SENTRY_ENABLED)
-    
-    await init_db()
-    logger.info("Database initialized")
-    
-    # 🆕 Exécuter les migrations automatiques
-    logger.info("Running auto-migrations")
-    await run_auto_migrations()
-    logger.info("Migrations completed")
-    
+
+    # 🚀 Lancer l'initialisation DB en arrière-plan (NON-BLOQUANT)
+    # Cela permet au healthcheck de répondre immédiatement
+    asyncio.create_task(initialize_database_background())
+    logger.info("Database initialization started in background")
+
     yield
+
     # Shutdown
     await close_db()
     logger.info("Application shutdown")
@@ -386,14 +430,53 @@ async def root():
 async def health_check():
     """
     Endpoint de healthcheck pour Railway.
-    DOIT retourner 200 avec un JSON simple.
+    ⚡ Retourne 200 IMMÉDIATEMENT (même si DB pas encore prête).
+    Railway vérifie juste que l'app répond.
     """
-    return {"status": "healthy", "version": VERSION}
+    return {
+        "status": "healthy",
+        "version": VERSION,
+        "ready": _app_state.get("ready", False),
+        "db_initialized": _app_state.get("db_initialized", False),
+        "migrations_completed": _app_state.get("migrations_completed", False),
+    }
+
+
+@app.get("/health/ready")
+async def health_ready():
+    """
+    Endpoint de readiness - Vérifie que l'app est PLEINEMENT opérationnelle.
+    Utiliser pour les vérifications après le déploiement initial.
+    """
+    if not _app_state.get("ready", False):
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "not_ready",
+                "version": VERSION,
+                "db_initialized": _app_state.get("db_initialized", False),
+                "migrations_completed": _app_state.get("migrations_completed", False),
+                "error": _app_state.get("error"),
+            }
+        )
+    return {
+        "status": "ready",
+        "version": VERSION,
+        "db_initialized": True,
+        "migrations_completed": True,
+    }
+
 
 @app.get("/api/health")
 async def api_health():
     """Healthcheck alternatif sous /api"""
-    return {"status": "ok", "service": "deepsight-api", "version": VERSION}
+    return {
+        "status": "ok",
+        "service": "deepsight-api",
+        "version": VERSION,
+        "ready": _app_state.get("ready", False),
+    }
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # GESTION GLOBALE DES ERREURS
