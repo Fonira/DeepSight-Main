@@ -46,7 +46,13 @@
     "plugins": [
       "expo-font",
       "expo-secure-store",
-      "expo-audio"
+      "expo-audio",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.763654536492-riumsqb787nj8d3eq1nnhlo29qufc11h"
+        }
+      ]
     ],
     "owner": "maximeadmin",
     "runtimeVersion": "1.0.0",
