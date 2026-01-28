@@ -236,27 +236,40 @@ class UltraResilientTranscriptExtractor:
                 return_when=asyncio.FIRST_COMPLETED
             )
 
-            for task in pending:
-                task.cancel()
-
+            # Check completed tasks first; do NOT cancel pending yet — we may need them as fallback.
             for task in done:
                 try:
                     result = task.result()
                     if result:
+                        # Success: cancel pending and return (absorb CancelledError via gather).
+                        for t in pending:
+                            t.cancel()
+                        if pending:
+                            await asyncio.gather(*pending, return_exceptions=True)
                         logger.info(f"[PHASE1] Success with {result.method.value}")
                         return result
                 except Exception as e:
                     logger.debug(f"[PHASE1] Task failed: {e}")
 
+            # No valid result from first completed — wait for pending (they are not cancelled).
             if pending:
-                done2, _ = await asyncio.wait(pending, timeout=15)
+                done2, pending2 = await asyncio.wait(pending, timeout=15)
                 for task in done2:
                     try:
                         result = task.result()
                         if result:
+                            for t in pending2:
+                                t.cancel()
+                            if pending2:
+                                await asyncio.gather(*pending2, return_exceptions=True)
                             return result
                     except Exception:
                         pass
+                # No result from fallbacks: cancel any still-pending and clean up.
+                for t in pending2:
+                    t.cancel()
+                if pending2:
+                    await asyncio.gather(*pending2, return_exceptions=True)
 
         except asyncio.TimeoutError:
             logger.warning("[PHASE1] Timeout reached")
