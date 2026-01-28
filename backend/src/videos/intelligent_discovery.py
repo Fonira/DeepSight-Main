@@ -221,13 +221,16 @@ FORMAT DE RÉPONSE (JSON uniquement):
 {"queries": ["requête 1", "requête 2", "requête 3"]}"""
 
     @classmethod
-    async def reformulate(cls, query: str, language: str = "fr") -> List[str]:
+    async def reformulate(cls, query: str | None, language: str = "fr") -> List[str]:
         """
         Reformule la requête via Mistral AI.
         Retourne la requête originale + variantes générées.
         """
+        if not query:
+            return []
+
         queries = [query]  # Toujours inclure l'originale
-        
+
         if not MISTRAL_API_KEY:
             logger.warning("⚠️ MISTRAL_API_KEY not set, using fallback reformulation")
             return cls._fallback_reformulation(query, language)
@@ -271,8 +274,11 @@ FORMAT DE RÉPONSE (JSON uniquement):
         return queries[:5]  # Max 5 requêtes totales
     
     @classmethod
-    def _fallback_reformulation(cls, query: str, language: str) -> List[str]:
+    def _fallback_reformulation(cls, query: str | None, language: str) -> List[str]:
         """Reformulation sans IA (fallback)"""
+        if not query:
+            return []
+
         queries = [query]
         
         # Variantes académiques
@@ -293,11 +299,15 @@ FORMAT DE RÉPONSE (JSON uniquement):
         return queries
     
     @classmethod
-    async def translate_query(cls, query: str, from_lang: str, to_lang: str) -> str:
+    async def translate_query(cls, query: str | None, from_lang: str, to_lang: str) -> str:
         """
         🌍 Traduit une requête de recherche vers une autre langue.
         Utilise Mistral AI pour une traduction contextuellement appropriée.
         """
+        # Guard contre None
+        if not query:
+            return ""
+
         if from_lang == to_lang:
             return query
         
@@ -564,11 +574,14 @@ class QualityScorer:
         return candidate
     
     @classmethod
-    def _calculate_relevance_score(cls, candidate: VideoCandidate, query: str) -> float:
+    def _calculate_relevance_score(cls, candidate: VideoCandidate, query: str | None) -> float:
         """
         ⭐ Score de pertinence basé sur les termes exacts de la recherche.
         C'est LE critère le plus important pour le classement.
         """
+        if not query:
+            return 0.5  # Score neutre si pas de query
+
         query_lower = query.lower()
         title_lower = candidate.title.lower()
         desc_lower = (candidate.description or "").lower()[:500]
@@ -880,11 +893,14 @@ class TournesolPromotion:
         return None
     
     @classmethod
-    def _get_relevant_tags(cls, query: str) -> List[str]:
+    def _get_relevant_tags(cls, query: str | None) -> List[str]:
         """Détermine les termes de recherche Tournesol pertinents pour la requête"""
+        if not query:
+            return []
+
         query_lower = query.lower()
         search_terms = []
-        
+
         # D'abord, utiliser la requête originale
         search_terms.append(query)
         
@@ -1467,7 +1483,7 @@ class IntelligentDiscoveryService:
     @classmethod
     async def discover(
         cls,
-        query: str,
+        query: str | None,
         languages: List[str] = None,
         max_results: int = 10,
         min_quality: float = 30.0,
@@ -1479,7 +1495,21 @@ class IntelligentDiscoveryService:
         """
         import time
         start_time = time.time()
-        
+
+        # Validation de la requête
+        if not query or not query.strip():
+            return DiscoveryResultCompat(
+                query=query or "",
+                reformulated_queries=[],
+                candidates=[],
+                total_searched=0,
+                languages_searched=[],
+                search_duration_ms=0,
+                tournesol_available=True,
+            )
+
+        query = query.strip()
+
         if languages is None:
             languages = ["fr", "en"]
         

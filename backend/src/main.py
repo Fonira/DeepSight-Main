@@ -144,8 +144,22 @@ VERSION = "3.7.0"  # Added Expert API access + API key management
 APP_NAME = "Deep Sight API"
 
 # Configuration CORS depuis environnement
-ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000,http://localhost:8081").split(",")
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+# 🔧 Inclure les URLs de production par défaut pour éviter les erreurs CORS
+DEFAULT_ORIGINS = [
+    # Production
+    "https://www.deepsightsynthesis.com",
+    "https://deepsightsynthesis.com",
+    # Développement
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:8081",
+]
+
+ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", ",".join(DEFAULT_ORIGINS)).split(",")
+# Nettoyer les espaces éventuels
+ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS if origin.strip()]
+
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "https://www.deepsightsynthesis.com")
 
 # Ajouter le frontend URL aux origines autorisées
 if FRONTEND_URL not in ALLOWED_ORIGINS:
