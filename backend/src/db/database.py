@@ -38,18 +38,22 @@ else:
     DATABASE_URL = f"sqlite+aiosqlite:///{DB_FILE}"
     print(f"📁 Using SQLite database: {DB_FILE}", flush=True)
 
-# Créer le moteur async
+# Créer le moteur async avec pool optimisé pour production
 engine = create_async_engine(
     DATABASE_URL,
     echo=os.environ.get("SQL_ECHO", "false").lower() == "true",
     pool_pre_ping=True,
+    pool_size=20,
+    max_overflow=10,
+    pool_recycle=3600,
 )
 
-# Session factory
+# Session factory avec autoflush désactivé pour meilleures performances
 async_session_maker = async_sessionmaker(
-    engine, 
-    class_=AsyncSession, 
-    expire_on_commit=False
+    engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autoflush=False
 )
 
 # Base pour les modèles

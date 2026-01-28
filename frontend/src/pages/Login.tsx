@@ -5,7 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { useTheme } from '../contexts/ThemeContext';
@@ -41,6 +41,7 @@ const GoogleIcon: React.FC<{ className?: string }> = ({ className }) => (
 export const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { login, loginWithGoogle, register, verifyEmail, isAuthenticated, isLoading: authLoading } = useAuth();
   const { t, language } = useTranslation();
   const { isDark, toggleTheme } = useTheme();
@@ -56,6 +57,35 @@ export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Lire les erreurs OAuth depuis les paramètres URL (redirect du backend)
+  useEffect(() => {
+    const oauthError = searchParams.get('error');
+    if (oauthError) {
+      const errorMessages: Record<string, string> = {
+        access_denied: language === 'fr'
+          ? 'Accès refusé. Veuillez autoriser l\'application.'
+          : 'Access denied. Please authorize the application.',
+        token_exchange_failed: language === 'fr'
+          ? 'Échec de l\'authentification Google. Veuillez réessayer.'
+          : 'Google authentication failed. Please try again.',
+        userinfo_failed: language === 'fr'
+          ? 'Impossible de récupérer vos informations Google.'
+          : 'Could not retrieve your Google information.',
+        auth_failed: language === 'fr'
+          ? 'Échec de la connexion. Veuillez réessayer.'
+          : 'Login failed. Please try again.',
+        no_code: language === 'fr'
+          ? 'Paramètres d\'authentification manquants.'
+          : 'Missing authentication parameters.',
+      };
+      setError(errorMessages[oauthError] || (language === 'fr'
+        ? `Erreur d'authentification: ${oauthError}`
+        : `Authentication error: ${oauthError}`));
+      // Nettoyer l'URL
+      window.history.replaceState({}, '', '/login');
+    }
+  }, [searchParams, language]);
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {

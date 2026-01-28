@@ -426,45 +426,51 @@ async def google_callback(
     # Gestion des erreurs Google
     if error:
         return RedirectResponse(
-            url=f"{FRONTEND_URL}/login?error={error}"
+            url=f"{FRONTEND_URL}/login?error={error}",
+            status_code=302
         )
-    
+
     if not code:
         return RedirectResponse(
-            url=f"{FRONTEND_URL}/login?error=no_code"
+            url=f"{FRONTEND_URL}/login?error=no_code",
+            status_code=302
         )
-    
+
     # Échanger le code contre un token
     token_data = await exchange_google_code(code)
-    
+
     if not token_data or "access_token" not in token_data:
         return RedirectResponse(
-            url=f"{FRONTEND_URL}/login?error=token_exchange_failed"
+            url=f"{FRONTEND_URL}/login?error=token_exchange_failed",
+            status_code=302
         )
-    
+
     # Récupérer les infos utilisateur
     google_user = await get_google_user_info(token_data["access_token"])
-    
+
     if not google_user:
         return RedirectResponse(
-            url=f"{FRONTEND_URL}/login?error=userinfo_failed"
+            url=f"{FRONTEND_URL}/login?error=userinfo_failed",
+            status_code=302
         )
-    
+
     # Créer ou connecter l'utilisateur (avec session unique)
     success, user, message, session_token = await login_or_register_google_user(session, google_user)
-    
+
     if not success or not user:
         return RedirectResponse(
-            url=f"{FRONTEND_URL}/login?error=auth_failed"
+            url=f"{FRONTEND_URL}/login?error=auth_failed",
+            status_code=302
         )
-    
+
     # Générer les tokens JWT avec session_token
     access_token = create_access_token(user.id, user.is_admin, session_token)
     refresh_token = create_refresh_token(user.id, session_token)
-    
+
     # Rediriger vers le frontend avec les tokens
     return RedirectResponse(
-        url=f"{FRONTEND_URL}/auth/callback?access_token={access_token}&refresh_token={refresh_token}"
+        url=f"{FRONTEND_URL}/auth/callback?access_token={access_token}&refresh_token={refresh_token}",
+        status_code=302
     )
 
 
@@ -571,29 +577,30 @@ async def gitlab_callback(
 ):
     """Callback GitLab OAuth — redirige vers le frontend avec tokens"""
     if error:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error={error}")
-    
+        return RedirectResponse(url=f"{FRONTEND_URL}/login?error={error}", status_code=302)
+
     if not code:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=no_code")
-    
+        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=no_code", status_code=302)
+
     token_data = await exchange_gitlab_code(code)
-    
+
     if not token_data or "access_token" not in token_data:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=token_exchange_failed")
-    
+        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=token_exchange_failed", status_code=302)
+
     gitlab_user = await get_gitlab_user_info(token_data["access_token"])
-    
+
     if not gitlab_user:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=userinfo_failed")
-    
+        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=userinfo_failed", status_code=302)
+
     success, user, message, session_token = await login_or_register_gitlab_user(session, gitlab_user)
-    
+
     if not success or not user:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=auth_failed")
-    
+        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=auth_failed", status_code=302)
+
     access_token = create_access_token(user.id, user.is_admin, session_token)
     refresh_token = create_refresh_token(user.id, session_token)
-    
+
     return RedirectResponse(
-        url=f"{FRONTEND_URL}/auth/callback?access_token={access_token}&refresh_token={refresh_token}"
+        url=f"{FRONTEND_URL}/auth/callback?access_token={access_token}&refresh_token={refresh_token}",
+        status_code=302
     )
