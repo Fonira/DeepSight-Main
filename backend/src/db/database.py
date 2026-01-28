@@ -374,6 +374,47 @@ class ApiUsage(Base):
     )
 
 
+class AcademicPaper(Base):
+    """
+    📚 Academic papers linked to video analyses
+    Caches papers from Semantic Scholar, OpenAlex, and arXiv
+    """
+    __tablename__ = "academic_papers"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    summary_id = Column(Integer, ForeignKey("summaries.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Paper identification
+    external_id = Column(String(100), nullable=False)  # ID from source (ss_xxx, oa_xxx, arxiv_xxx)
+    doi = Column(String(255), index=True)
+
+    # Paper metadata
+    title = Column(Text, nullable=False)
+    authors_json = Column(Text)  # JSON array of authors
+    year = Column(Integer)
+    venue = Column(String(500))
+    abstract = Column(Text)
+    citation_count = Column(Integer, default=0)
+
+    # URLs
+    url = Column(Text)
+    pdf_url = Column(Text)
+
+    # Source and scoring
+    source = Column(String(50), nullable=False)  # semantic_scholar, openalex, arxiv
+    relevance_score = Column(Float, default=0.0)
+    is_open_access = Column(Boolean, default=False)
+    keywords_json = Column(Text)  # JSON array of keywords
+
+    # Timestamps
+    created_at = Column(DateTime, default=func.now())
+
+    __table_args__ = (
+        Index('idx_academic_papers_summary', 'summary_id'),
+        Index('idx_academic_papers_doi', 'doi'),
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 FONCTIONS DATABASE
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -426,6 +467,9 @@ async def run_cascade_migration():
         # api_usage
         "ALTER TABLE api_usage DROP CONSTRAINT IF EXISTS api_usage_user_id_fkey",
         "ALTER TABLE api_usage ADD CONSTRAINT api_usage_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
+        # academic_papers
+        "ALTER TABLE academic_papers DROP CONSTRAINT IF EXISTS academic_papers_summary_id_fkey",
+        "ALTER TABLE academic_papers ADD CONSTRAINT academic_papers_summary_id_fkey FOREIGN KEY (summary_id) REFERENCES summaries(id) ON DELETE CASCADE",
     ]
 
     async with engine.begin() as conn:

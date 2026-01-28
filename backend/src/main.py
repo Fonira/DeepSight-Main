@@ -140,6 +140,14 @@ except ImportError as e:
     WORDS_ROUTER_AVAILABLE = False
     print(f"⚠️ Words router not available: {e}", flush=True)
 
+# 📚 NOUVEAU: Import du Academic router (Sources Académiques)
+try:
+    from academic.router import router as academic_router
+    ACADEMIC_ROUTER_AVAILABLE = True
+except ImportError as e:
+    ACADEMIC_ROUTER_AVAILABLE = False
+    print(f"⚠️ Academic router not available: {e}", flush=True)
+
 VERSION = "3.7.0"  # Added Expert API access + API key management
 APP_NAME = "Deep Sight API"
 
@@ -312,6 +320,11 @@ if API_PUBLIC_ROUTER_AVAILABLE:
 if WORDS_ROUTER_AVAILABLE:
     app.include_router(words_router, prefix="/api/words", tags=["Words"])
     print("🧠 Words router loaded (Le Saviez-Vous)", flush=True)
+
+# 📚 NOUVEAU: Academic router (Sources Académiques)
+if ACADEMIC_ROUTER_AVAILABLE:
+    app.include_router(academic_router, tags=["Academic"])
+    print("📚 Academic router loaded (Semantic Scholar, OpenAlex, arXiv)", flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE
