@@ -25,7 +25,9 @@
       "Bash(xargs:*)",
       "Bash(git submodule update:*)",
       "Bash(git rm:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Bash(railway status:*)",
+      "Bash(railway whoami:*)"
     ]
   }
 }

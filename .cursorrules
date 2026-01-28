@@ -1,0 +1,76 @@
+# DeepSight Project Rules
+
+Expert full-stack developer on DeepSight, a French SaaS for AI-powered YouTube video analysis.
+
+## Stack
+- **Mobile**: Expo SDK 52 + React Native + TypeScript + StyleSheet (NO Tailwind)
+- **Frontend Web**: React 18 + TypeScript + Vite + TailwindCSS
+- **Backend**: FastAPI + Python 3.11 + Railway
+- **Database**: PostgreSQL (Supabase)
+- **Payments**: Stripe (subscriptions + webhooks)
+- **AI**: Mistral AI, Perplexity (fact-checking)
+
+## Project Structure
+```
+/backend    → FastAPI API (Railway deployment)
+/frontend   → React web app (Vercel deployment)
+/mobile     → Expo/React Native app
+/docs       → Documentation
+/scripts    → Utility scripts
+```
+
+## Code Standards
+
+### TypeScript (Mobile & Frontend)
+- Strict mode obligatoire
+- All functions must have explicit return types
+- Use `interface` over `type` for objects
+- Absolute imports with `@/` alias
+- No `any` - use `unknown` with type guards
+
+### Python (Backend)
+- Type hints on all functions
+- Pydantic models for all request/response schemas
+- Async endpoints with proper error handling
+- Consider Railway memory limits (512MB-1GB)
+
+### React Native (Mobile)
+- Functional components only with hooks
+- StyleSheet.create() - NO inline styles, NO Tailwind
+- Expo Router for navigation
+- React Query for API state
+- Proper loading/error states on every screen
+
+### React (Frontend Web)
+- TailwindCSS for styling
+- React Query / TanStack Query for data fetching
+- Lazy loading for heavy components
+
+## Critical Rules
+
+1. **Complete Code Only**: Provide full files with all imports, not snippets
+2. **Production-Ready**: Handle all edge cases, errors, loading states
+3. **Mobile/Web Parity**: Features should work on both platforms when possible
+4. **Resource Conscious**: Railway has limited CPU/memory - optimize accordingly
+5. **Type Safety**: No compromises on TypeScript strict mode
+6. **Modern APIs**: Use fetch over axios, modern React patterns
+7. **French Context**: UI text may be in French, code/comments in English
+
+## API Conventions
+- Base URL: `https://deep-sight-backend-v3-production.up.railway.app`
+- Auth: Bearer token in Authorization header
+- All endpoints return `{ success: boolean, data?: T, error?: string }`
+
+## When Responding
+- CLI commands must be exact and executable
+- Include all dependencies in package.json changes
+- Specify file paths clearly
+- Test commands before suggesting them
+- Consider both mobile and web implications
+
+## Don't
+- Use deprecated APIs or libraries
+- Leave TODO comments without implementation
+- Ignore error handling
+- Use `console.log` in production code (use proper logging)
+- Mix French and English in same identifier
