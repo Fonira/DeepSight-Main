@@ -403,6 +403,35 @@ def get_deepgram_key() -> Optional[str]:
     """Clé API Deepgram Nova-2 (transcription ultra-rapide)"""
     return os.environ.get("DEEPGRAM_API_KEY")
 
+def get_openai_key() -> Optional[str]:
+    """Clé API OpenAI pour Whisper (fallback si Groq échoue)"""
+    return os.environ.get("OPENAI_API_KEY")
+
+def get_assemblyai_key() -> Optional[str]:
+    """Clé API AssemblyAI (transcription premium très fiable)"""
+    return os.environ.get("ASSEMBLYAI_API_KEY")
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📺 CONFIGURATION TRANSCRIPT EXTRACTION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+TRANSCRIPT_CONFIG = {
+    # Circuit Breaker
+    "circuit_breaker_failure_threshold": 5,  # Échecs avant d'ouvrir le circuit
+    "circuit_breaker_recovery_timeout": 300,  # 5 minutes avant de réessayer
+
+    # Exponential Backoff
+    "backoff_base": 1.0,  # Délai de base en secondes
+    "backoff_max": 30.0,  # Délai max en secondes
+
+    # Instance Health
+    "health_check_interval": 600,  # 10 minutes entre les health checks
+    "instance_timeout_threshold": 3,  # Échecs avant de marquer une instance comme down
+
+    # yt-dlp cookies (optionnel, pour vidéos restreintes)
+    "ytdlp_cookies_path": os.environ.get("YTDLP_COOKIES_PATH", ""),
+}
+
 # Affichage des infos au démarrage
 if __name__ != "__main__":
     print(f"🤿 Deep Sight API v{VERSION}", flush=True)
@@ -412,6 +441,10 @@ if __name__ != "__main__":
     print(f"📧 Email: {EMAIL_CONFIG.get('ENABLED', False)}", flush=True)
     print(f"🤖 Mistral: {'✓' if MISTRAL_API_KEY else '✗'}", flush=True)
     print(f"🔍 Perplexity: {'✓' if PERPLEXITY_API_KEY else '✗'}", flush=True)
-    print(f"🎙️ Deepgram Nova-2: {'✓' if get_deepgram_key() else '✗ (DEEPGRAM_API_KEY missing!)'}", flush=True)
-    print(f"🔊 Groq Whisper: {'✓ (fallback)' if get_groq_key() else '✗'}", flush=True)
     print(f"📝 Supadata: {'✓' if SUPADATA_API_KEY else '✗'}", flush=True)
+    print(f"", flush=True)
+    print(f"🎙️ Audio Transcription Services (v6.0):", flush=True)
+    print(f"   • Groq Whisper: {'✓' if get_groq_key() else '✗'}", flush=True)
+    print(f"   • OpenAI Whisper: {'✓' if get_openai_key() else '✗'}", flush=True)
+    print(f"   • Deepgram Nova-2: {'✓' if get_deepgram_key() else '✗'}", flush=True)
+    print(f"   • AssemblyAI: {'✓' if get_assemblyai_key() else '✗'}", flush=True)
