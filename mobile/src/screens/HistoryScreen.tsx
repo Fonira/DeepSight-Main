@@ -7,9 +7,9 @@ import {
   TextInput,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
+import { DeepSightSpinner } from '../components/loading';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, CompositeNavigationProp } from '@react-navigation/native';
@@ -245,7 +245,7 @@ export const HistoryScreen: React.FC = () => {
     if (!isLoadingMore) return null;
     return (
       <View style={styles.loadingFooter}>
-        <ActivityIndicator size="small" color={colors.accentPrimary} />
+        <DeepSightSpinner size="sm" speed="fast" />
       </View>
     );
   };
@@ -451,7 +451,7 @@ export const HistoryScreen: React.FC = () => {
       {/* Analysis List */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accentPrimary} />
+          <DeepSightSpinner size="lg" showGlow />
         </View>
       ) : (
         <FlatList

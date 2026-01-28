@@ -54,6 +54,9 @@ SUPADATA_API_KEY = os.environ.get("SUPADATA_API_KEY", "")
 # Perplexity (recherche web)
 PERPLEXITY_API_KEY = os.environ.get("PERPLEXITY_API_KEY", "")
 
+# OpenAI (GPT-4 pour questions complexes - Pro/Expert)
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📧 CONFIGURATION EMAIL (Resend)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -382,6 +385,14 @@ def get_supadata_key() -> str:
 def get_perplexity_key() -> str:
     """Retourne la clé API Perplexity"""
     return PERPLEXITY_API_KEY
+
+def get_openai_key() -> str:
+    """Retourne la clé API OpenAI (pour GPT-4)"""
+    return OPENAI_API_KEY
+
+def is_openai_available() -> bool:
+    """Vérifie si OpenAI est configuré"""
+    return bool(OPENAI_API_KEY)
 
 def is_api_configured() -> bool:
     """Vérifie si les APIs sont configurées"""

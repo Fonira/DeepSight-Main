@@ -115,7 +115,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
   creditsRemaining,
   userPlan = 'free',
 }) => {
-  const { isDark } = useTheme();
+  const { colors, isDark } = useTheme();
   const { language } = useLanguage();
   const isEn = language === 'en';
 
@@ -156,8 +156,6 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
   );
 
   const scaleAnim = useMemo(() => new Animated.Value(1), []);
-
-  const colors = isDark ? Colors : Colors.light;
 
   const detectInputType = useCallback((value: string): InputMode => {
     const trimmed = value.trim();
@@ -297,26 +295,26 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
   return (
     <View style={styles.container}>
       {/* Mode Tabs */}
-      <View style={[styles.modeTabs, { backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary }]}>
+      <View style={[styles.modeTabs, { backgroundColor: colors.bgSecondary }]}>
         {(['url', 'text', 'search'] as InputMode[]).map((mode) => (
           <TouchableOpacity
             key={mode}
             style={[
               styles.modeTab,
               inputMode === mode && styles.modeTabActive,
-              inputMode === mode && { backgroundColor: Colors.accentPrimary },
+              inputMode === mode && { backgroundColor: colors.accentPrimary },
             ]}
             onPress={() => handleModeChange(mode)}
           >
             <Ionicons
               name={mode === 'url' ? 'link' : mode === 'text' ? 'document-text' : 'search'}
               size={16}
-              color={inputMode === mode ? '#fff' : isDark ? Colors.textSecondary : Colors.light.textSecondary}
+              color={inputMode === mode ? '#fff' : colors.textSecondary}
             />
             <Text
               style={[
                 styles.modeTabText,
-                { color: inputMode === mode ? '#fff' : isDark ? Colors.textSecondary : Colors.light.textSecondary },
+                { color: inputMode === mode ? '#fff' : colors.textSecondary },
               ]}
             >
               {mode === 'url' ? 'URL' : mode === 'text' ? (isEn ? 'Text' : 'Texte') : (isEn ? 'Search' : 'Recherche')}
@@ -329,20 +327,20 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
       {inputMode === 'search' && (
         <View style={styles.languageSelector}>
           <TouchableOpacity
-            style={[styles.languageButton, { backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary }]}
+            style={[styles.languageButton, { backgroundColor: colors.bgSecondary }]}
             onPress={() => setShowLanguageSelector(!showLanguageSelector)}
           >
             <Text style={styles.languageFlag}>
               {SEARCH_LANGUAGES.find((l) => l.id === searchLanguage)?.flag}
             </Text>
-            <Text style={[styles.languageText, { color: isDark ? Colors.textPrimary : Colors.light.textPrimary }]}>
+            <Text style={[styles.languageText, { color: colors.textPrimary }]}>
               {SEARCH_LANGUAGES.find((l) => l.id === searchLanguage)?.name}
             </Text>
-            <Ionicons name="chevron-down" size={16} color={isDark ? Colors.textSecondary : Colors.light.textSecondary} />
+            <Ionicons name="chevron-down" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
 
           {showLanguageSelector && (
-            <View style={[styles.languageDropdown, { backgroundColor: isDark ? Colors.bgElevated : Colors.light.bgPrimary }]}>
+            <View style={[styles.languageDropdown, { backgroundColor: colors.bgElevated }]}>
               {SEARCH_LANGUAGES.map((lang) => (
                 <TouchableOpacity
                   key={lang.id}
@@ -353,7 +351,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
                   }}
                 >
                   <Text style={styles.languageFlag}>{lang.flag}</Text>
-                  <Text style={[styles.languageText, { color: isDark ? Colors.textPrimary : Colors.light.textPrimary }]}>
+                  <Text style={[styles.languageText, { color: colors.textPrimary }]}>
                     {lang.name}
                   </Text>
                 </TouchableOpacity>
@@ -370,12 +368,12 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
             style={[
               styles.textMetaInput,
               {
-                backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary,
-                color: isDark ? Colors.textPrimary : Colors.light.textPrimary,
+                backgroundColor: colors.bgSecondary,
+                color: colors.textPrimary,
               },
             ]}
             placeholder={isEn ? 'Title (optional)' : 'Titre (optionnel)'}
-            placeholderTextColor={isDark ? Colors.textMuted : Colors.light.textSecondary}
+            placeholderTextColor={colors.textMuted}
             value={textTitle}
             onChangeText={setTextTitle}
           />
@@ -383,12 +381,12 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
             style={[
               styles.textMetaInput,
               {
-                backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary,
-                color: isDark ? Colors.textPrimary : Colors.light.textPrimary,
+                backgroundColor: colors.bgSecondary,
+                color: colors.textPrimary,
               },
             ]}
             placeholder={isEn ? 'Source (optional)' : 'Source (optionnel)'}
-            placeholderTextColor={isDark ? Colors.textMuted : Colors.light.textSecondary}
+            placeholderTextColor={colors.textMuted}
             value={textSource}
             onChangeText={setTextSource}
           />
@@ -396,21 +394,21 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
       )}
 
       {/* Main Input */}
-      <View style={[styles.inputContainer, { backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary }]}>
+      <View style={[styles.inputContainer, { backgroundColor: colors.bgSecondary }]}>
         <Ionicons
           name={getIcon()}
           size={20}
-          color={isDark ? Colors.textMuted : Colors.light.textSecondary}
+          color={colors.textMuted}
           style={styles.inputIcon}
         />
         <TextInput
           style={[
             styles.input,
             inputMode === 'text' && styles.inputMultiline,
-            { color: isDark ? Colors.textPrimary : Colors.light.textPrimary },
+            { color: colors.textPrimary },
           ]}
           placeholder={getPlaceholder()}
-          placeholderTextColor={isDark ? Colors.textMuted : Colors.light.textSecondary}
+          placeholderTextColor={colors.textMuted}
           value={inputValue}
           onChangeText={handleInputChange}
           multiline={inputMode === 'text'}
@@ -421,7 +419,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
         />
         {inputValue.length > 0 && (
           <TouchableOpacity onPress={() => { setInputValue(''); setUrlValidation(null); }} style={styles.clearButton}>
-            <Ionicons name="close-circle" size={20} color={isDark ? Colors.textMuted : Colors.light.textSecondary} />
+            <Ionicons name="close-circle" size={20} color={colors.textMuted} />
           </TouchableOpacity>
         )}
       </View>
@@ -432,11 +430,11 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
           <Ionicons
             name={urlValidation.isValid ? 'checkmark-circle' : 'close-circle'}
             size={16}
-            color={urlValidation.isValid ? Colors.accentSuccess : Colors.accentError}
+            color={urlValidation.isValid ? colors.accentSuccess : colors.accentError}
           />
           <Text style={[
             styles.validationText,
-            { color: urlValidation.isValid ? Colors.accentSuccess : Colors.accentError }
+            { color: urlValidation.isValid ? colors.accentSuccess : colors.accentError }
           ]}>
             {urlValidation.isValid
               ? (isEn ? 'Valid YouTube URL' : 'URL YouTube valide')
@@ -449,7 +447,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
 
       {/* Category Selector */}
       <View style={styles.selectorSection}>
-        <Text style={[styles.selectorLabel, { color: isDark ? Colors.textSecondary : Colors.light.textSecondary }]}>
+        <Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>
           {isEn ? 'Category' : 'Catégorie'}
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
@@ -458,7 +456,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
               key={category.id}
               style={[
                 styles.chip,
-                { backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary },
+                { backgroundColor: colors.bgSecondary },
                 selectedCategory === category.id && styles.chipActive,
               ]}
               onPress={() => handleCategorySelect(category.id)}
@@ -466,13 +464,13 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
               <Ionicons
                 name={category.icon as any}
                 size={14}
-                color={selectedCategory === category.id ? '#fff' : isDark ? Colors.textSecondary : Colors.light.textSecondary}
+                color={selectedCategory === category.id ? '#fff' : colors.textSecondary}
               />
               <Text
                 style={[
                   styles.chipText,
                   {
-                    color: selectedCategory === category.id ? '#fff' : isDark ? Colors.textSecondary : Colors.light.textSecondary,
+                    color: selectedCategory === category.id ? '#fff' : colors.textSecondary,
                   },
                 ]}
               >
@@ -485,7 +483,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
 
       {/* Analysis Mode Selector */}
       <View style={styles.selectorSection}>
-        <Text style={[styles.selectorLabel, { color: isDark ? Colors.textSecondary : Colors.light.textSecondary }]}>
+        <Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>
           {isEn ? 'Analysis Mode' : "Mode d'analyse"}
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
@@ -494,7 +492,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
               key={mode.id}
               style={[
                 styles.modeChip,
-                { backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary },
+                { backgroundColor: colors.bgSecondary },
                 selectedMode === mode.id && styles.chipActive,
               ]}
               onPress={() => handleAnalysisModeSelect(mode.id)}
@@ -503,7 +501,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
                 style={[
                   styles.modeChipTitle,
                   {
-                    color: selectedMode === mode.id ? '#fff' : isDark ? Colors.textPrimary : Colors.light.textPrimary,
+                    color: selectedMode === mode.id ? '#fff' : colors.textPrimary,
                   },
                 ]}
               >
@@ -513,7 +511,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
                 style={[
                   styles.modeChipDescription,
                   {
-                    color: selectedMode === mode.id ? 'rgba(255,255,255,0.8)' : isDark ? Colors.textMuted : Colors.light.textSecondary,
+                    color: selectedMode === mode.id ? 'rgba(255,255,255,0.8)' : colors.textMuted,
                   },
                 ]}
               >
@@ -527,13 +525,13 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
       {/* AI Model Selector - Only show if multiple models available */}
       {availableModels.length > 1 && (
         <View style={styles.selectorSection}>
-          <Text style={[styles.selectorLabel, { color: isDark ? Colors.textSecondary : Colors.light.textSecondary }]}>
+          <Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>
             {isEn ? 'AI Model' : 'Modèle IA'}
           </Text>
           <TouchableOpacity
             style={[
               styles.modelSelector,
-              { backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary },
+              { backgroundColor: colors.bgSecondary },
             ]}
             onPress={() => {
               Haptics.selectionAsync();
@@ -542,28 +540,28 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
           >
             <Text style={styles.modelIcon}>{currentModel.icon}</Text>
             <View style={styles.modelInfo}>
-              <Text style={[styles.modelName, { color: isDark ? Colors.textPrimary : Colors.light.textPrimary }]}>
+              <Text style={[styles.modelName, { color: colors.textPrimary }]}>
                 {currentModel.name}
               </Text>
-              <Text style={[styles.modelDesc, { color: isDark ? Colors.textMuted : Colors.light.textSecondary }]}>
+              <Text style={[styles.modelDesc, { color: colors.textMuted }]}>
                 {isEn ? currentModel.descEn : currentModel.desc}
               </Text>
             </View>
             <Ionicons
               name={showModelSelector ? 'chevron-up' : 'chevron-down'}
               size={18}
-              color={isDark ? Colors.textSecondary : Colors.light.textSecondary}
+              color={colors.textSecondary}
             />
           </TouchableOpacity>
 
           {showModelSelector && (
-            <View style={[styles.modelDropdown, { backgroundColor: isDark ? Colors.bgElevated : Colors.light.bgPrimary }]}>
+            <View style={[styles.modelDropdown, { backgroundColor: colors.bgElevated }]}>
               {availableModels.map((model) => (
                 <TouchableOpacity
                   key={model.id}
                   style={[
                     styles.modelOption,
-                    selectedModel === model.id && { backgroundColor: Colors.accentPrimary + '20' },
+                    selectedModel === model.id && { backgroundColor: colors.accentPrimary + '20' },
                   ]}
                   onPress={() => {
                     Haptics.selectionAsync();
@@ -573,15 +571,15 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
                 >
                   <Text style={styles.modelIcon}>{model.icon}</Text>
                   <View style={styles.modelInfo}>
-                    <Text style={[styles.modelName, { color: isDark ? Colors.textPrimary : Colors.light.textPrimary }]}>
+                    <Text style={[styles.modelName, { color: colors.textPrimary }]}>
                       {model.name}
                     </Text>
-                    <Text style={[styles.modelDesc, { color: isDark ? Colors.textMuted : Colors.light.textSecondary }]}>
+                    <Text style={[styles.modelDesc, { color: colors.textMuted }]}>
                       {isEn ? model.descEn : model.desc}
                     </Text>
                   </View>
                   {selectedModel === model.id && (
-                    <Ionicons name="checkmark-circle" size={18} color={Colors.accentPrimary} />
+                    <Ionicons name="checkmark-circle" size={18} color={colors.accentPrimary} />
                   )}
                 </TouchableOpacity>
               ))}
@@ -595,8 +593,8 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
         <TouchableOpacity
           style={[
             styles.deepResearchToggle,
-            { backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary },
-            deepResearch && hasDeepResearchAccess && { backgroundColor: Colors.accentPrimary + '20', borderColor: Colors.accentPrimary, borderWidth: 1 },
+            { backgroundColor: colors.bgSecondary },
+            deepResearch && hasDeepResearchAccess && { backgroundColor: colors.accentPrimary + '20', borderColor: colors.accentPrimary, borderWidth: 1 },
             !hasDeepResearchAccess && { opacity: 0.5 },
           ]}
           onPress={() => {
@@ -610,16 +608,16 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
           <Ionicons
             name={deepResearch && hasDeepResearchAccess ? 'checkbox' : 'square-outline'}
             size={18}
-            color={deepResearch && hasDeepResearchAccess ? Colors.accentPrimary : isDark ? Colors.textSecondary : Colors.light.textSecondary}
+            color={deepResearch && hasDeepResearchAccess ? colors.accentPrimary : colors.textSecondary}
           />
           <View style={styles.deepResearchText}>
             <Text style={[
               styles.deepResearchLabel,
-              { color: deepResearch && hasDeepResearchAccess ? Colors.accentPrimary : isDark ? Colors.textPrimary : Colors.light.textPrimary },
+              { color: deepResearch && hasDeepResearchAccess ? colors.accentPrimary : colors.textPrimary },
             ]}>
               {isEn ? 'Deep Research' : 'Recherche approfondie'}
             </Text>
-            <Text style={[styles.deepResearchDesc, { color: isDark ? Colors.textMuted : Colors.light.textSecondary }]}>
+            <Text style={[styles.deepResearchDesc, { color: colors.textMuted }]}>
               {hasDeepResearchAccess
                 ? (isEn ? 'Enhanced analysis with web search' : 'Analyse améliorée avec recherche web')
                 : (isEn ? 'Pro+ feature' : 'Fonctionnalité Pro+')
@@ -637,11 +635,11 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
       {/* Credit Cost Preview */}
       {creditCost !== undefined && (
         <View style={styles.creditPreview}>
-          <Ionicons name="flash" size={14} color={Colors.accentSecondary} />
-          <Text style={[styles.creditText, { color: isDark ? Colors.textSecondary : Colors.light.textSecondary }]}>
+          <Ionicons name="flash" size={14} color={colors.accentSecondary} />
+          <Text style={[styles.creditText, { color: colors.textSecondary }]}>
             {isEn ? `Cost: ${creditCost} credits` : `Coût: ${creditCost} crédits`}
             {creditsRemaining !== undefined && (
-              <Text style={{ color: creditsRemaining < creditCost ? Colors.accentError : Colors.accentSuccess }}>
+              <Text style={{ color: creditsRemaining < creditCost ? colors.accentError : colors.accentSuccess }}>
                 {` (${creditsRemaining} ${isEn ? 'remaining' : 'restants'})`}
               </Text>
             )}

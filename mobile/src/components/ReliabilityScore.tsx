@@ -53,7 +53,7 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
   onAnalyze,
   isLoading = false,
 }) => {
-  const { isDark } = useTheme();
+  const { colors, isDark } = useTheme();
   const { language } = useLanguage();
   const isEn = language === 'en';
 
@@ -79,13 +79,13 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
       <View
         style={[
           styles.container,
-          { backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary },
+          { backgroundColor: colors.bgSecondary },
         ]}
       >
         <View style={styles.header}>
           <View style={styles.titleRow}>
             <Ionicons name="shield-checkmark" size={18} color={scoreColor} />
-            <Text style={[styles.title, { color: isDark ? Colors.textPrimary : Colors.light.textPrimary }]}>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
               {isEn ? 'Reliability Score' : 'Score de fiabilité'}
             </Text>
           </View>
@@ -93,7 +93,7 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
             <Ionicons
               name="information-circle-outline"
               size={20}
-              color={isDark ? Colors.textMuted : Colors.light.textSecondary}
+              color={colors.textMuted}
             />
           </TouchableOpacity>
         </View>
@@ -106,7 +106,7 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
               style={styles.scoreGradient}
             >
               <Text style={[styles.scoreValue, { color: scoreColor }]}>{overallScore}</Text>
-              <Text style={[styles.scoreMax, { color: isDark ? Colors.textMuted : Colors.light.textSecondary }]}>
+              <Text style={[styles.scoreMax, { color: colors.textMuted }]}>
                 /100
               </Text>
             </LinearGradient>
@@ -116,7 +116,7 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
               <Text style={[styles.scoreBadgeText, { color: scoreColor }]}>{scoreLabel}</Text>
             </View>
             {confidence !== undefined && (
-              <Text style={[styles.confidenceText, { color: isDark ? Colors.textMuted : Colors.light.textSecondary }]}>
+              <Text style={[styles.confidenceText, { color: colors.textMuted }]}>
                 {isEn ? `Confidence: ${confidence}%` : `Confiance: ${confidence}%`}
               </Text>
             )}
@@ -129,7 +129,7 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
             {factors.slice(0, 3).map((factor, index) => (
               <View key={index} style={styles.factorRow}>
                 <Text
-                  style={[styles.factorName, { color: isDark ? Colors.textSecondary : Colors.light.textSecondary }]}
+                  style={[styles.factorName, { color: colors.textSecondary }]}
                   numberOfLines={1}
                 >
                   {factor.name}
@@ -184,15 +184,15 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
           <View
             style={[
               styles.modalContent,
-              { backgroundColor: isDark ? Colors.bgSecondary : Colors.light.bgPrimary },
+              { backgroundColor: colors.bgPrimary },
             ]}
           >
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: isDark ? Colors.textPrimary : Colors.light.textPrimary }]}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
                 {isEn ? 'Reliability Details' : 'Détails de fiabilité'}
               </Text>
               <TouchableOpacity onPress={() => setShowDetails(false)}>
-                <Ionicons name="close" size={24} color={isDark ? Colors.textPrimary : Colors.light.textPrimary} />
+                <Ionicons name="close" size={24} color={colors.textPrimary} />
               </TouchableOpacity>
             </View>
 
@@ -211,7 +211,7 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
               {factors.length > 0 && (
                 <View style={styles.modalSection}>
                   <Text
-                    style={[styles.sectionTitle, { color: isDark ? Colors.textPrimary : Colors.light.textPrimary }]}
+                    style={[styles.sectionTitle, { color: colors.textPrimary }]}
                   >
                     {isEn ? 'Analysis Factors' : "Facteurs d'analyse"}
                   </Text>
@@ -221,7 +221,7 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
                         <Text
                           style={[
                             styles.factorCardName,
-                            { color: isDark ? Colors.textPrimary : Colors.light.textPrimary },
+                            { color: colors.textPrimary },
                           ]}
                         >
                           {factor.name}
@@ -233,7 +233,7 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
                       <View
                         style={[
                           styles.factorFullBar,
-                          { backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary },
+                          { backgroundColor: colors.bgSecondary },
                         ]}
                       >
                         <View
@@ -249,7 +249,7 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
                       <Text
                         style={[
                           styles.factorDescription,
-                          { color: isDark ? Colors.textMuted : Colors.light.textSecondary },
+                          { color: colors.textMuted },
                         ]}
                       >
                         {factor.description}
@@ -263,17 +263,17 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
               {recommendations.length > 0 && (
                 <View style={styles.modalSection}>
                   <Text
-                    style={[styles.sectionTitle, { color: isDark ? Colors.textPrimary : Colors.light.textPrimary }]}
+                    style={[styles.sectionTitle, { color: colors.textPrimary }]}
                   >
                     {isEn ? 'Recommendations' : 'Recommandations'}
                   </Text>
                   {recommendations.map((rec, index) => (
                     <View key={index} style={styles.recommendationItem}>
-                      <Ionicons name="checkmark-circle" size={16} color={Colors.accentInfo} />
+                      <Ionicons name="checkmark-circle" size={16} color={colors.accentInfo} />
                       <Text
                         style={[
                           styles.recommendationText,
-                          { color: isDark ? Colors.textSecondary : Colors.light.textSecondary },
+                          { color: colors.textSecondary },
                         ]}
                       >
                         {rec}
@@ -287,12 +287,12 @@ export const ReliabilityScore: React.FC<ReliabilityScoreProps> = ({
               <View
                 style={[
                   styles.disclaimer,
-                  { backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary },
+                  { backgroundColor: colors.bgSecondary },
                 ]}
               >
-                <Ionicons name="information-circle" size={14} color={Colors.accentInfo} />
+                <Ionicons name="information-circle" size={14} color={colors.accentInfo} />
                 <Text
-                  style={[styles.disclaimerText, { color: isDark ? Colors.textMuted : Colors.light.textSecondary }]}
+                  style={[styles.disclaimerText, { color: colors.textMuted }]}
                 >
                   {isEn
                     ? 'This analysis is AI-generated and should be used as a guide, not as definitive fact-checking.'

@@ -220,6 +220,9 @@
   "history": {
     "title": "Historique",
     "subtitle": "Retrouvez toutes vos analyses précédentes",
+    "favorites": "Favoris",
+    "noFavorites": "Aucun favori",
+    "noFavoritesDesc": "Ajoutez des vidéos en favori pour les retrouver ici",
     "empty": "Aucune analyse pour le moment",
     "emptyDesc": "Vos analyses apparaîtront ici",
     "delete": "Supprimer",

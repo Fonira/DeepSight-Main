@@ -18,7 +18,176 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import ChatMessage, ChatQuota, Summary, User, WebSearchUsage
-from core.config import get_mistral_key, get_perplexity_key, PLAN_LIMITS
+from core.config import get_mistral_key, get_perplexity_key, get_openai_key, is_openai_available, PLAN_LIMITS
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎓 SEMANTIC SCHOLAR API (Sources académiques gratuites)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+SEMANTIC_SCHOLAR_API = "https://api.semanticscholar.org/graph/v1"
+
+async def search_semantic_scholar(
+    query: str,
+    limit: int = 5,
+    fields: str = "title,authors,year,abstract,url,citationCount"
+) -> List[Dict[str, Any]]:
+    """
+    Recherche des articles académiques sur Semantic Scholar (API gratuite).
+
+    Args:
+        query: Terme de recherche
+        limit: Nombre de résultats (max 100)
+        fields: Champs à retourner
+
+    Returns:
+        Liste de papers avec titre, auteurs, année, abstract, url
+    """
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{SEMANTIC_SCHOLAR_API}/paper/search",
+                params={
+                    "query": query,
+                    "limit": limit,
+                    "fields": fields
+                },
+                timeout=10
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                papers = data.get("data", [])
+
+                # Formater les résultats
+                results = []
+                for paper in papers:
+                    if paper.get("title"):
+                        authors = paper.get("authors", [])
+                        author_names = ", ".join([a.get("name", "") for a in authors[:3]])
+                        if len(authors) > 3:
+                            author_names += " et al."
+
+                        results.append({
+                            "title": paper.get("title"),
+                            "authors": author_names,
+                            "year": paper.get("year"),
+                            "abstract": paper.get("abstract", "")[:500] if paper.get("abstract") else None,
+                            "url": paper.get("url"),
+                            "citations": paper.get("citationCount", 0)
+                        })
+
+                print(f"📚 [SCHOLAR] Found {len(results)} papers for '{query}'", flush=True)
+                return results
+            else:
+                print(f"⚠️ [SCHOLAR] API error: {response.status_code}", flush=True)
+                return []
+
+    except Exception as e:
+        print(f"❌ [SCHOLAR] Error: {e}", flush=True)
+        return []
+
+
+def _detect_complex_question(question: str) -> bool:
+    """
+    Détecte si une question est complexe et nécessite GPT-4.
+
+    Questions complexes:
+    - Analyses comparatives
+    - Questions multi-étapes
+    - Raisonnement abstrait
+    - Synthèse de concepts
+    """
+    question_lower = question.lower()
+
+    COMPLEX_PATTERNS = [
+        # Analyses comparatives
+        "compare", "différence entre", "avantages et inconvénients",
+        "difference between", "pros and cons", "versus", " vs ",
+        # Multi-étapes
+        "étapes pour", "comment faire pour", "processus de",
+        "steps to", "how to", "process of",
+        # Raisonnement abstrait
+        "pourquoi", "implications", "conséquences",
+        "why", "implications", "consequences",
+        # Synthèse
+        "résume et analyse", "synthétise", "en quoi",
+        "summarize and analyze", "synthesize",
+        # Questions longues (>20 mots)
+    ]
+
+    # Question longue = probablement complexe
+    if len(question.split()) > 20:
+        return True
+
+    for pattern in COMPLEX_PATTERNS:
+        if pattern in question_lower:
+            return True
+
+    return False
+
+
+async def select_chat_model(question: str, user_plan: str) -> str:
+    """
+    Sélectionne le modèle approprié selon la question et le plan.
+
+    - Free/Starter: Toujours Mistral Small
+    - Pro/Expert: GPT-4 pour questions complexes, Mistral sinon
+    """
+    # Plans basiques: toujours Mistral
+    if user_plan in ["free", "student", "starter"]:
+        return "mistral"
+
+    # Plans premium: GPT-4 pour questions complexes
+    if user_plan in ["pro", "expert", "team", "unlimited"]:
+        if _detect_complex_question(question) and is_openai_available():
+            return "openai"
+
+    return "mistral"
+
+
+async def generate_openai_response(
+    question: str,
+    system_prompt: str,
+    user_prompt: str,
+    max_tokens: int = 4000
+) -> Optional[str]:
+    """
+    Génère une réponse avec OpenAI GPT-4 pour les questions complexes.
+    """
+    api_key = get_openai_key()
+    if not api_key:
+        return None
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "gpt-4-turbo-preview",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    "max_tokens": max_tokens,
+                    "temperature": 0.3
+                },
+                timeout=90
+            )
+
+            if response.status_code == 200:
+                return response.json()["choices"][0]["message"]["content"].strip()
+            else:
+                print(f"❌ [OpenAI] API error: {response.status_code}", flush=True)
+                return None
+
+    except Exception as e:
+        print(f"❌ [OpenAI] Error: {e}", flush=True)
+        return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

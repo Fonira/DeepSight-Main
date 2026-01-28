@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Colors, Spacing, BorderRadius, Typography } from '../constants/theme';
+import { AnimatedLogo } from './loading';
 
 interface Step {
   id: string;
@@ -17,6 +18,10 @@ interface StreamingProgressProps {
   progress: number; // 0-100
   statusMessage?: string;
   error?: string;
+  /** Show animated spinner above the steps */
+  showSpinner?: boolean;
+  /** Show pulsing glow effect on spinner */
+  showGlow?: boolean;
 }
 
 const STEPS: Step[] = [
@@ -32,8 +37,10 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
   progress,
   statusMessage,
   error,
+  showSpinner = true,
+  showGlow = true,
 }) => {
-  const { isDark } = useTheme();
+  const { colors, isDark } = useTheme();
   const { language } = useLanguage();
   const isEn = language === 'en';
 
@@ -80,13 +87,13 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
   const getStepColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return Colors.accentSuccess;
+        return colors.accentSuccess;
       case 'active':
-        return Colors.accentPrimary;
+        return colors.accentPrimary;
       case 'error':
-        return Colors.accentError;
+        return colors.accentError;
       default:
-        return isDark ? Colors.textMuted : Colors.light.textSecondary;
+        return colors.textMuted;
     }
   };
 
@@ -97,14 +104,27 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
 
   return (
     <View style={styles.container}>
+      {/* Animated Spinner */}
+      {showSpinner && currentStep < 4 && !error && (
+        <View style={styles.spinnerContainer}>
+          <AnimatedLogo
+            size="lg"
+            speed="normal"
+            showGlow={showGlow}
+            loop
+            autoPlay
+          />
+        </View>
+      )}
+
       {/* Progress Bar */}
-      <View style={[styles.progressBarContainer, { backgroundColor: isDark ? Colors.bgTertiary : Colors.light.bgSecondary }]}>
+      <View style={[styles.progressBarContainer, { backgroundColor: colors.bgSecondary }]}>
         <Animated.View
           style={[
             styles.progressBarFill,
             {
               width: progressWidth,
-              backgroundColor: error ? Colors.accentError : Colors.accentPrimary,
+              backgroundColor: error ? colors.accentError : colors.accentPrimary,
             },
           ]}
         />
@@ -139,7 +159,7 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
                 style={[
                   styles.stepLabel,
                   {
-                    color: status === 'pending' ? (isDark ? Colors.textMuted : Colors.light.textSecondary) : color,
+                    color: status === 'pending' ? colors.textMuted : color,
                     fontFamily: isActive ? Typography.fontFamily.bodySemiBold : Typography.fontFamily.body,
                   },
                 ]}
@@ -163,10 +183,8 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
                 styles.connector,
                 {
                   backgroundColor: isCompleted
-                    ? Colors.accentSuccess
-                    : isDark
-                    ? Colors.bgTertiary
-                    : Colors.light.bgSecondary,
+                    ? colors.accentSuccess
+                    : colors.bgSecondary,
                 },
               ]}
             />
@@ -181,27 +199,23 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
             styles.messageContainer,
             {
               backgroundColor: error
-                ? Colors.accentError + '15'
-                : isDark
-                ? Colors.bgTertiary
-                : Colors.light.bgSecondary,
+                ? colors.accentError + '15'
+                : colors.bgSecondary,
             },
           ]}
         >
           <Ionicons
             name={error ? 'alert-circle' : 'information-circle'}
             size={16}
-            color={error ? Colors.accentError : Colors.accentInfo}
+            color={error ? colors.accentError : colors.accentInfo}
           />
           <Text
             style={[
               styles.messageText,
               {
                 color: error
-                  ? Colors.accentError
-                  : isDark
-                  ? Colors.textSecondary
-                  : Colors.light.textSecondary,
+                  ? colors.accentError
+                  : colors.textSecondary,
               },
             ]}
           >
@@ -211,7 +225,7 @@ export const StreamingProgress: React.FC<StreamingProgressProps> = ({
       )}
 
       {/* Progress Percentage */}
-      <Text style={[styles.progressText, { color: isDark ? Colors.textMuted : Colors.light.textSecondary }]}>
+      <Text style={[styles.progressText, { color: colors.textMuted }]}>
         {Math.round(progress)}%
       </Text>
     </View>
@@ -222,6 +236,11 @@ const styles = StyleSheet.create({
   container: {
     padding: Spacing.lg,
     gap: Spacing.lg,
+  },
+  spinnerContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
   },
   progressBarContainer: {
     height: 4,

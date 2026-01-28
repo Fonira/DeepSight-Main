@@ -99,7 +99,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
           contentFit="cover"
           transition={200}
         />
-        {videoInfo.duration && (
+        {typeof videoInfo.duration === 'number' && videoInfo.duration > 0 && (
           <View style={[styles.duration, { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
             <Text style={styles.durationText}>
               {formatDuration(videoInfo.duration)}
