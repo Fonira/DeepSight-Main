@@ -1204,7 +1204,7 @@ export const academicApi = {
     return request(`/api/academic/enrich/${summaryId}`, {
       method: 'POST',
       body: maxPapers ? { max_papers: maxPapers } : undefined,
-      timeout: 60000,
+      timeout: 120000,  // Increased to 120s for multiple external API calls
     });
   },
 

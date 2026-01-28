@@ -3,6 +3,7 @@ Academic Sources Router
 API endpoints for academic paper search and bibliography export
 """
 
+import asyncio
 import json
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -47,14 +48,27 @@ async def search_academic_papers(
     """
     try:
         user_plan = current_user.plan or "free"
+        print(f"Starting academic search for user plan: {user_plan}, keywords: {request.keywords}", flush=True)
 
         # Search all sources
         response = await academic_aggregator.search(request, user_plan)
 
+        print(f"Academic search completed: {response.total_found} papers found from {len(response.sources_queried)} sources", flush=True)
         return response
 
+    except asyncio.TimeoutError:
+        print(f"Academic search timeout after 90s", flush=True)
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail={
+                "code": "academic_search_timeout",
+                "message": "Search took too long. Please try again with more specific keywords."
+            }
+        )
     except Exception as e:
         print(f"Academic search error: {str(e)}", flush=True)
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
@@ -97,6 +111,7 @@ async def enrich_summary_with_academic_sources(
 
     # Extract keywords from summary
     keywords = _extract_keywords_from_summary(summary)
+    print(f"Extracted keywords for summary {summary_id}: {keywords}", flush=True)
 
     if not keywords:
         raise HTTPException(
@@ -117,12 +132,24 @@ async def enrich_summary_with_academic_sources(
         limit=max_papers or get_tier_limit(user_plan)
     )
 
-    response = await academic_aggregator.search(search_request, user_plan)
+    try:
+        response = await academic_aggregator.search(search_request, user_plan)
 
-    # Cache papers in database
-    await _cache_papers(session, summary_id, response.papers)
+        # Cache papers in database
+        await _cache_papers(session, summary_id, response.papers)
 
-    return response
+        print(f"Enrichment completed: {response.total_found} papers found and cached for summary {summary_id}", flush=True)
+        return response
+
+    except asyncio.TimeoutError:
+        print(f"Academic enrichment timeout for summary {summary_id}", flush=True)
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail={
+                "code": "academic_search_timeout",
+                "message": "Search took too long. The analysis may have too many keywords. Please try again."
+            }
+        )
 
 
 @router.get("/papers/{summary_id}", response_model=AcademicSearchResponse)
