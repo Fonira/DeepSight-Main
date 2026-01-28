@@ -539,13 +539,19 @@ async def get_task_status(task_id: str):
 
 
 @router.post("/corpus/analyze", response_model=PlaylistTaskStatus)
+@router.post("/analyze-corpus", response_model=PlaylistTaskStatus, include_in_schema=False)
 async def analyze_corpus(
     request: AnalyzeCorpusRequest,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session)
 ):
-    """Analyse un corpus personnalisé de vidéos."""
+    """
+    Analyse un corpus personnalisé de vidéos.
+
+    Note: `/analyze-corpus` is an alias for mobile compatibility.
+    Preferred path is `/corpus/analyze`.
+    """
     print(f"\n{'='*60}", flush=True)
     print(f"📦 CORPUS ANALYSIS REQUEST", flush=True)
     print(f"   Name: {request.name}", flush=True)
@@ -872,6 +878,182 @@ async def get_playlist(
             }
             for v in videos
         ]
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📊 PLAYLIST DETAILS — Statistiques détaillées (P1 mobile compatibility)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/{playlist_id}/details")
+async def get_playlist_details(
+    playlist_id: str,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Récupère les détails et statistiques d'une playlist.
+
+    Mobile-compatible endpoint providing detailed analytics.
+    """
+    # Récupérer la playlist
+    result = await session.execute(
+        select(PlaylistAnalysis)
+        .where(PlaylistAnalysis.playlist_id == playlist_id)
+        .where(PlaylistAnalysis.user_id == current_user.id)
+        .order_by(PlaylistAnalysis.created_at.desc())
+        .limit(1)
+    )
+    playlist = result.scalar_one_or_none()
+
+    if not playlist:
+        raise HTTPException(status_code=404, detail="Playlist non trouvée")
+
+    # Récupérer les vidéos pour les statistiques
+    videos_result = await session.execute(
+        select(Summary)
+        .where(Summary.playlist_id == playlist_id)
+        .where(Summary.user_id == current_user.id)
+        .order_by(Summary.playlist_position)
+    )
+    videos = videos_result.scalars().all()
+
+    # Calculer les statistiques
+    categories = {}
+    channels = {}
+    total_duration = 0
+    total_words = 0
+
+    for v in videos:
+        # Catégories
+        cat = v.category or "Autre"
+        categories[cat] = categories.get(cat, 0) + 1
+
+        # Chaînes
+        ch = v.video_channel or "Inconnu"
+        channels[ch] = channels.get(ch, 0) + 1
+
+        # Totaux
+        total_duration += v.video_duration or 0
+        total_words += v.word_count or 0
+
+    # Formater la durée
+    hours = total_duration // 3600
+    minutes = (total_duration % 3600) // 60
+    duration_str = f"{hours}h {minutes}min" if hours > 0 else f"{minutes} min"
+
+    return {
+        "id": playlist.id,
+        "playlist_id": playlist_id,
+        "playlist_title": playlist.playlist_title,
+        "playlist_url": playlist.playlist_url,
+        "status": playlist.status,
+        "created_at": playlist.created_at.isoformat() if playlist.created_at else None,
+        "completed_at": playlist.completed_at.isoformat() if playlist.completed_at else None,
+        "statistics": {
+            "num_videos": len(videos),
+            "num_processed": playlist.num_processed or len(videos),
+            "total_duration": total_duration,
+            "total_duration_formatted": duration_str,
+            "total_words": total_words,
+            "average_duration": total_duration // len(videos) if videos else 0,
+            "average_words": total_words // len(videos) if videos else 0
+        },
+        "categories": categories,
+        "channels": channels,
+        "has_meta_analysis": bool(playlist.meta_analysis),
+        "videos_summary": [
+            {
+                "id": v.id,
+                "title": v.video_title,
+                "channel": v.video_channel,
+                "duration": v.video_duration,
+                "category": v.category,
+                "position": v.playlist_position
+            }
+            for v in videos
+        ]
+    }
+
+
+@router.post("/{playlist_id}/corpus-summary")
+async def generate_corpus_summary(
+    playlist_id: str,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Génère ou régénère la méta-analyse (corpus summary) d'une playlist.
+
+    Utile si la méta-analyse initiale a échoué ou pour la mettre à jour.
+    """
+    # Récupérer la playlist
+    result = await session.execute(
+        select(PlaylistAnalysis)
+        .where(PlaylistAnalysis.playlist_id == playlist_id)
+        .where(PlaylistAnalysis.user_id == current_user.id)
+        .order_by(PlaylistAnalysis.created_at.desc())
+        .limit(1)
+    )
+    playlist = result.scalar_one_or_none()
+
+    if not playlist:
+        raise HTTPException(status_code=404, detail="Playlist non trouvée")
+
+    # Vérifier les crédits (1 crédit pour régénérer)
+    if current_user.credits < 1:
+        raise HTTPException(status_code=402, detail="Crédits insuffisants")
+
+    # Récupérer les vidéos
+    videos_result = await session.execute(
+        select(Summary)
+        .where(Summary.playlist_id == playlist_id)
+        .where(Summary.user_id == current_user.id)
+        .order_by(Summary.playlist_position)
+    )
+    videos = videos_result.scalars().all()
+
+    if not videos:
+        raise HTTPException(status_code=400, detail="Aucune vidéo dans cette playlist")
+
+    # Préparer les données pour la méta-analyse
+    summaries = []
+    for v in videos:
+        summaries.append({
+            "position": v.playlist_position or 0,
+            "title": v.video_title or "Sans titre",
+            "channel": v.video_channel or "Inconnu",
+            "summary": (v.summary_content or "")[:2000],
+            "category": v.category or "Autre",
+            "duration": v.video_duration or 0,
+            "word_count": v.word_count or 0
+        })
+
+    # Générer la méta-analyse
+    plan = current_user.plan or "free"
+    model = PLAN_MODELS.get(plan, "mistral-small-latest")
+    lang = videos[0].lang if videos else "fr"
+
+    meta_analysis = await _generate_meta_analysis_v4(
+        summaries=summaries,
+        playlist_title=playlist.playlist_title or "Corpus",
+        lang=lang,
+        model=model
+    )
+
+    # Mettre à jour la playlist
+    playlist.meta_analysis = meta_analysis
+
+    # Déduire 1 crédit
+    current_user.credits -= 1
+
+    await session.commit()
+
+    return {
+        "success": True,
+        "playlist_id": playlist_id,
+        "meta_analysis": meta_analysis,
+        "credits_remaining": current_user.credits
     }
 
 

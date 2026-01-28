@@ -48,6 +48,10 @@
 | **Trial Pro** | ✅ Endpoints `/api/billing/trial-eligibility` et `/api/billing/start-pro-trial` |
 | **Playlists CRUD** | ✅ Endpoints `POST /api/playlists` et `PUT /api/playlists/{id}` |
 | **Tournesol Search** | ✅ Endpoints `/api/tournesol/search` et `/api/tournesol/recommendations` |
+| **Playlist Details** | ✅ `GET /api/playlists/{id}/details` et `POST /api/playlists/{id}/corpus-summary` |
+| **Corpus Analyze** | ✅ Alias `/api/playlists/analyze-corpus` → `/api/playlists/corpus/analyze` |
+| **Usage Detailed** | ✅ `GET /api/usage/detailed` avec statistiques granulaires |
+| **Chat Streaming** | ✅ `chatApi.sendMessageStream()` pour SSE streaming |
 
 ---
 
