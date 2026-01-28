@@ -184,10 +184,14 @@ export function AuthCallback() {
         if (error) {
           console.error('[AuthCallback] OAuth error:', error);
           setStatus('error');
-          setErrorMessage(error === 'access_denied' 
-            ? 'Accès refusé. Veuillez autoriser l\'application.'
-            : `Erreur OAuth: ${error}`
-          );
+          const errorMessages: Record<string, string> = {
+            access_denied: 'Accès refusé. Veuillez autoriser l\'application.',
+            database_error: 'Service temporairement indisponible. Veuillez réessayer.',
+            token_exchange_failed: 'Échec de l\'authentification Google. Veuillez réessayer.',
+            userinfo_failed: 'Impossible de récupérer vos informations Google.',
+            auth_failed: 'Échec de la connexion. Veuillez réessayer.',
+          };
+          setErrorMessage(errorMessages[error] || `Erreur OAuth: ${error}`);
           return;
         }
         

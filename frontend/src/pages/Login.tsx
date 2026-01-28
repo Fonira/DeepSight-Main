@@ -57,6 +57,39 @@ export const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Handle OAuth error redirects (e.g. /login?error=database_error)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const oauthError = params.get('error');
+    if (oauthError) {
+      const errorMessages: Record<string, string> = {
+        database_error: language === 'fr'
+          ? 'Service temporairement indisponible. Veuillez réessayer.'
+          : 'Service temporarily unavailable. Please try again.',
+        access_denied: language === 'fr'
+          ? 'Accès refusé. Veuillez autoriser l\'application.'
+          : 'Access denied. Please authorize the application.',
+        token_exchange_failed: language === 'fr'
+          ? 'Échec de l\'authentification Google. Veuillez réessayer.'
+          : 'Google authentication failed. Please try again.',
+        userinfo_failed: language === 'fr'
+          ? 'Impossible de récupérer vos informations Google. Veuillez réessayer.'
+          : 'Could not retrieve your Google info. Please try again.',
+        auth_failed: language === 'fr'
+          ? 'Échec de la connexion. Veuillez réessayer.'
+          : 'Login failed. Please try again.',
+        no_code: language === 'fr'
+          ? 'Paramètres d\'authentification manquants.'
+          : 'Missing authentication parameters.',
+      };
+      setError(errorMessages[oauthError] || (language === 'fr'
+        ? `Erreur de connexion : ${oauthError}`
+        : `Login error: ${oauthError}`));
+      // Clean up URL
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.search, language, navigate, location.pathname]);
+
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
       const from = (location.state as any)?.from?.pathname || '/dashboard';

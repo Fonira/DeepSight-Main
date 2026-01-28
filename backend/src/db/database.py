@@ -38,17 +38,27 @@ else:
     DATABASE_URL = f"sqlite+aiosqlite:///{DB_FILE}"
     print(f"📁 Using SQLite database: {DB_FILE}", flush=True)
 
-# Créer le moteur async
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=os.environ.get("SQL_ECHO", "false").lower() == "true",
-    pool_pre_ping=True,
-)
+# Créer le moteur async avec pool résilient
+_engine_kwargs = {
+    "echo": os.environ.get("SQL_ECHO", "false").lower() == "true",
+    "pool_pre_ping": True,
+}
+
+# PostgreSQL-specific pool settings for production reliability
+if DATABASE_URL.startswith("postgresql"):
+    _engine_kwargs.update({
+        "pool_size": int(os.environ.get("DB_POOL_SIZE", "5")),
+        "max_overflow": int(os.environ.get("DB_MAX_OVERFLOW", "10")),
+        "pool_timeout": 30,
+        "pool_recycle": 1800,  # Recycle connections every 30 min
+    })
+
+engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
 
 # Session factory
 async_session_maker = async_sessionmaker(
-    engine, 
-    class_=AsyncSession, 
+    engine,
+    class_=AsyncSession,
     expire_on_commit=False
 )
 
@@ -424,11 +434,22 @@ class AcademicPaper(Base):
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     """Dependency pour obtenir une session DB"""
-    async with async_session_maker() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+    try:
+        async with async_session_maker() as session:
+            try:
+                yield session
+            finally:
+                await session.close()
+    except Exception as e:
+        error_msg = str(e).lower()
+        if "password authentication" in error_msg or "could not connect" in error_msg or "connection refused" in error_msg:
+            print(f"❌ Database connection failed: {e}", flush=True)
+            from fastapi import HTTPException
+            raise HTTPException(
+                status_code=503,
+                detail="Database temporarily unavailable. Please try again later."
+            )
+        raise
 
 
 async def run_cascade_migration():
