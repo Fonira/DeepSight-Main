@@ -486,8 +486,8 @@ async def api_health():
 async def global_exception_handler(request: Request, exc: Exception):
     """Capture toutes les exceptions non gérées et les envoie à Sentry"""
     error_msg = str(exc)
-    print(f"❌ Unhandled error: {error_msg}", file=sys.stderr, flush=True)
-    
+    logger.error(f"Unhandled error on {request.method} {request.url.path}: {error_msg}")
+
     # Envoyer à Sentry si activé
     if SENTRY_ENABLED:
         import sentry_sdk
@@ -497,10 +497,20 @@ async def global_exception_handler(request: Request, exc: Exception):
             scope.set_extra("path", str(request.url.path))
             scope.set_extra("method", request.method)
             scope.set_extra("client_host", request.client.host if request.client else "unknown")
-    
+
+    # Classify error for safe client response (never leak internal details)
+    safe_error = "An unexpected error occurred"
+    error_lower = error_msg.lower()
+    if "password authentication" in error_lower or "could not connect" in error_lower or "connection refused" in error_lower or "connection reset" in error_lower:
+        safe_error = "Database connection error. Please try again later."
+    elif "timeout" in error_lower:
+        safe_error = "Request timed out. Please try again."
+    elif "rate limit" in error_lower:
+        safe_error = "Too many requests. Please slow down."
+
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error", "error": error_msg}
+        content={"detail": "Internal server error", "error": safe_error}
     )
 
 
