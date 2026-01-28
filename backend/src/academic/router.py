@@ -297,60 +297,107 @@ async def get_available_formats(
 
 def _extract_keywords_from_summary(summary: Summary) -> List[str]:
     """Extract searchable keywords from a summary"""
+    import re
+    from collections import Counter
+
     keywords = []
 
-    # From video title
-    if summary.video_title:
-        # Extract meaningful words (skip common words)
-        stop_words = {"the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-                      "have", "has", "had", "do", "does", "did", "will", "would", "could",
-                      "should", "may", "might", "must", "can", "and", "or", "but", "if",
-                      "then", "else", "when", "where", "why", "how", "all", "each", "every",
-                      "both", "few", "more", "most", "other", "some", "such", "no", "nor",
-                      "not", "only", "own", "same", "so", "than", "too", "very", "just",
-                      "le", "la", "les", "un", "une", "des", "de", "du", "et", "ou", "pour",
-                      "dans", "sur", "avec", "par", "en", "au", "aux", "ce", "cette", "ces",
-                      "qui", "que", "dont", "où", "est", "sont", "être", "avoir", "fait"}
+    # Enhanced stop words list
+    stop_words = {
+        # English
+        "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+        "have", "has", "had", "do", "does", "did", "will", "would", "could",
+        "should", "may", "might", "must", "can", "and", "or", "but", "if",
+        "then", "else", "when", "where", "why", "how", "all", "each", "every",
+        "both", "few", "more", "most", "other", "some", "such", "no", "nor",
+        "not", "only", "own", "same", "so", "than", "too", "very", "just",
+        "about", "into", "through", "during", "before", "after", "above", "below",
+        "from", "up", "down", "in", "out", "on", "off", "over", "under", "again",
+        "further", "once", "here", "there", "all", "any", "both", "each", "more",
+        "most", "other", "some", "such", "that", "these", "those", "what", "which",
+        "who", "whom", "this", "those", "am", "as", "at", "by", "for", "it", "its",
+        "of", "to", "with", "you", "your", "we", "our", "they", "their", "them",
+        "he", "him", "his", "she", "her", "hers", "me", "my", "mine", "us",
+        # French
+        "le", "la", "les", "un", "une", "des", "de", "du", "et", "ou", "pour",
+        "dans", "sur", "avec", "par", "en", "au", "aux", "ce", "cette", "ces",
+        "qui", "que", "dont", "où", "est", "sont", "être", "avoir", "fait",
+        "faire", "plus", "comme", "tout", "tous", "toute", "toutes", "même",
+        "aussi", "bien", "très", "pas", "ne", "sans", "sous", "après", "avant",
+        "nous", "vous", "ils", "elles", "leur", "leurs", "lui", "elle", "se",
+        "son", "sa", "ses", "mon", "ma", "mes", "ton", "ta", "tes"
+    }
 
+    # 1. Extract from video title (prioritize capitalized terms)
+    if summary.video_title:
+        # Extract capitalized terms (likely proper nouns/important concepts)
+        capitalized = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', summary.video_title)
+        for term in capitalized:
+            if term.lower() not in stop_words and len(term) > 2:
+                keywords.append(term)
+
+        # Extract other meaningful words
         words = summary.video_title.lower().split()
         for word in words:
-            # Clean word
             clean_word = "".join(c for c in word if c.isalnum())
-            if clean_word and len(clean_word) > 2 and clean_word not in stop_words:
+            if clean_word and len(clean_word) > 3 and clean_word not in stop_words:
                 keywords.append(clean_word)
 
-    # From entities if available
+    # 2. Extract from summary content (most important source!)
+    if summary.summary_content:
+        content = summary.summary_content
+
+        # Extract capitalized terms (concepts, names, etc.)
+        capitalized = re.findall(r'\b[A-Z][A-Z]+\b|\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', content)
+        for term in capitalized[:10]:  # Limit to top 10
+            if term.lower() not in stop_words and len(term) > 2:
+                keywords.append(term)
+
+        # Extract frequently used terms (TF analysis)
+        words = re.findall(r'\b[a-zA-Z]{4,}\b', content.lower())
+        word_freq = Counter(w for w in words if w not in stop_words)
+
+        # Add top 10 most frequent words
+        for word, _ in word_freq.most_common(10):
+            if len(word) > 3:
+                keywords.append(word)
+
+    # 3. From entities if available
     if summary.entities_extracted:
         try:
             entities = json.loads(summary.entities_extracted)
             if isinstance(entities, list):
                 keywords.extend(entities[:5])
             elif isinstance(entities, dict):
-                for key in ["concepts", "topics", "keywords"]:
+                for key in ["concepts", "topics", "keywords", "persons", "organizations"]:
                     if key in entities and isinstance(entities[key], list):
                         keywords.extend(entities[key][:5])
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, ValueError):
             pass
 
-    # From tags
+    # 4. From tags
     if summary.tags:
         try:
-            tags = json.loads(summary.tags) if summary.tags.startswith("[") else summary.tags.split(",")
-            keywords.extend([t.strip() for t in tags[:3]])
-        except (json.JSONDecodeError, AttributeError):
+            if isinstance(summary.tags, str):
+                tags = json.loads(summary.tags) if summary.tags.startswith("[") else summary.tags.split(",")
+                keywords.extend([t.strip() for t in tags[:5]])
+        except (json.JSONDecodeError, AttributeError, ValueError):
             pass
 
     # Deduplicate and limit
     seen = set()
     unique_keywords = []
     for kw in keywords:
-        kw_lower = kw.lower().strip()
-        if kw_lower and kw_lower not in seen and len(kw_lower) > 2:
-            seen.add(kw_lower)
-            unique_keywords.append(kw)
-            if len(unique_keywords) >= 10:
-                break
+        if isinstance(kw, str):
+            kw_lower = kw.lower().strip()
+            # Skip if too short, already seen, or is a stop word
+            if kw_lower and kw_lower not in seen and len(kw_lower) > 2 and kw_lower not in stop_words:
+                seen.add(kw_lower)
+                unique_keywords.append(kw)
+                if len(unique_keywords) >= 15:  # Increased from 10 to 15
+                    break
 
+    print(f"Extracted {len(unique_keywords)} keywords: {unique_keywords[:10]}...", flush=True)
     return unique_keywords
 
 
