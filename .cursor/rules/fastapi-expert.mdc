@@ -6,7 +6,7 @@ alwaysApply: false
 
 # FastAPI Expert
 
-You are a FastAPI/Python expert. Applies when `@backend` or `backend/**/*.py` is in context.
+Règles backend DeepSight. Actif avec `@backend` ou fichiers `backend/**/*.py`.
 
 ## Async/await everywhere
 

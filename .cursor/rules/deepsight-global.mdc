@@ -1,71 +1,34 @@
 ---
-description: DeepSight global conventions. Always applies to all project files.
-globs: "**/*"
+description: DeepSight — règles globales (identité, structure, conventions). S'applique partout.
 alwaysApply: true
 ---
 
-# DeepSight Project Conventions
+# DeepSight — Règles globales
 
-## Project structure
+**DeepSight** : SaaS d’analyse de vidéos YouTube par IA (épistémologie bayésienne). Backend FastAPI (Railway), Frontend React+Vite (Vercel), Mobile Expo (EAS).
 
-```
-DeepSight-Main/
-├── frontend/          # React + TypeScript + Vite (Vercel)
-├── backend/           # FastAPI + Python (Railway)
-├── mobile/            # Expo + React Native
-├── docs/              # Documentation
-└── scripts/           # Build & deploy scripts
-```
+## Structure
 
-## Commit message format
+- `backend/` — FastAPI, SQLAlchemy, auth JWT+Google, Mistral, Stripe
+- `frontend/` — React 18, Vite, Zustand, TanStack Query, Tailwind
+- `mobile/` — Expo SDK 54, React Native, api.ts aligné sur le frontend
 
-Use conventional commits:
-- `feat:` New feature
-- `fix:` Bug fix
-- `refactor:` Code change that neither fixes a bug nor adds a feature
-- `docs:` Documentation only
-- `chore:` Build process, dependencies
-- `perf:` Performance improvement
+## Conventions transverses
 
-```bash
-# Examples
-feat(mobile): add video playlist analysis
-fix(backend): handle rate limit on YouTube API
-refactor(frontend): extract AnalysisCard component
-```
+- **TypeScript** : mode strict, `interface` pour les objets, composants fonctionnels, hooks pour la logique réutilisable.
+- **API** : `services/api.ts` identique entre frontend et mobile ; endpoints sous `/api/`.
+- **Secrets** : jamais en dur ; `core/config.py` (backend), `.env` / `constants/config.ts` (frontend/mobile).
 
-## Environment variables
+## Fichiers de référence
 
-- Frontend: `VITE_*` prefix, accessed via `import.meta.env.VITE_*`
-- Backend: Direct access via `os.environ` or `pydantic-settings`
-- Mobile: `EXPO_PUBLIC_*` prefix
+| Zone | Fichiers clés |
+|------|---------------|
+| Backend | `core/config.py`, `db/database.py`, `auth/dependencies.py`, `videos/analysis.py` |
+| Frontend | `services/api.ts`, `store/analysisStore.ts`, `config/planPrivileges.ts` |
+| Mobile | `services/api.ts`, `contexts/AuthContext.tsx`, `constants/config.ts` |
 
-## API response format
+## Déclencheurs par zone
 
-Backend always returns consistent JSON:
-
-```python
-# Success
-{"data": {...}, "meta": {"page": 1, "total": 100}}
-
-# Error
-{"error": {"code": "NOT_FOUND", "message": "Video not found"}}
-```
-
-## Imports order
-
-1. Standard library / Node built-ins
-2. Third-party packages
-3. Internal absolute imports (`@/`)
-4. Relative imports (`./`, `../`)
-
-Separate each group with blank line.
-
-## Code review checklist (for Claude Code Action)
-
-When reviewing PRs, check:
-- [ ] TypeScript: no `any`, proper error types
-- [ ] Python: async/await, type hints, HTTPException
-- [ ] Tests: new features have tests
-- [ ] Security: no secrets in code, proper validation
-- [ ] Performance: pagination, no memory leaks
+- `@backend` ou `backend/**/*.py` → règle **FastAPI Expert**
+- `@frontend` ou `frontend/**/*.{ts,tsx}` → règle **React/TypeScript**
+- `@mobile` ou `mobile/**/*.{ts,tsx}` → règle **Expo**

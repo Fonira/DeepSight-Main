@@ -1,81 +1,51 @@
 ---
-description: React/TypeScript Expert for DeepSight frontend. Trigger: @frontend
+description: React/TypeScript — Vite, Zustand, TanStack Query, Tailwind. Trigger: @frontend
 globs: frontend/**/*.{ts,tsx}
 alwaysApply: false
 ---
 
-# React/TypeScript Expert
+# React / TypeScript (Frontend)
 
-You are a React 18+ / TypeScript expert. Applies when `@frontend` or `frontend/**/*.{ts,tsx}` is in context.
+Règles pour le frontend DeepSight. Actif avec `@frontend` ou fichiers `frontend/**/*.{ts,tsx}`.
 
-## TypeScript strictness
+## Stack
 
-- Always use explicit types, never `any`. Prefer `interface` for objects, `type` for unions/primitives.
-- Use `as const` for literal objects, `satisfies` for type checking without widening.
+- **React 18** — composants fonctionnels uniquement
+- **TypeScript strict** — `interface` pour les shapes, pas de `any`
+- **Vite 5** — build ; **React Router 6** — routes
+- **Zustand** — state (`analysisStore.ts` avec Immer) ; **TanStack Query** — cache / requêtes
+- **Tailwind CSS** — styles ; **react-markdown** + **remark-gfm** — markdown
 
-```typescript
-// ✅ GOOD
-interface VideoAnalysis {
+## Conventions
+
+- **Composants** : fonctionnels, hooks pour la logique réutilisable (`useAuth`, `useAnalysisStream`, etc.)
+- **Données** : `useQuery` / `useMutation` ; `queryKey` stable ; `services/api.ts` pour les appels
+- **State global** : Zustand dans `store/` ; `config/planPrivileges.ts` pour les features par plan
+
+## Fichiers clés
+
+| Fichier | Rôle |
+|---------|------|
+| `src/services/api.ts` | Tous les appels API |
+| `src/store/analysisStore.ts` | État d’analyse (Zustand + Immer) |
+| `src/config/planPrivileges.ts` | Matrice des fonctionnalités par plan |
+| `src/hooks/` | Hooks réutilisables |
+
+## Bonnes pratiques
+
+```tsx
+// ✅ Hook + interface
+interface AnalysisResult {
   id: string;
-  title: string;
-  status: 'pending' | 'processing' | 'complete' | 'error';
-  segments: Segment[];
+  summary: string;
 }
 
-const DEFAULT_CONFIG = {
-  maxRetries: 3,
-  timeout: 30000,
-} as const satisfies Partial<AppConfig>;
+const useAnalysis = (videoId: string) =>
+  useQuery({
+    queryKey: ['analysis', videoId],
+    queryFn: () => videoApi.getSummary(videoId),
+  });
 ```
 
-## Component patterns
-
-- Functional components only. Props interface named `{ComponentName}Props`.
-- Destructure props in signature. Export named, not default.
-
-```typescript
-// ✅ GOOD
-interface AnalysisCardProps {
-  analysis: VideoAnalysis;
-  onSelect: (id: string) => void;
-  isLoading?: boolean;
-}
-
-export function AnalysisCard({ analysis, onSelect, isLoading = false }: AnalysisCardProps) {
-  // ...
-}
-```
-
-## State management
-
-- `useState` for local UI state. React Query/TanStack Query for server state.
-- Avoid `useEffect` for data fetching—use React Query's `useQuery`.
-
-```typescript
-// ✅ GOOD - React Query
-const { data, isLoading, error } = useQuery({
-  queryKey: ['analysis', videoId],
-  queryFn: () => api.getAnalysis(videoId),
-  staleTime: 5 * 60 * 1000,
-});
-```
-
-## Tailwind CSS
-
-- Use Tailwind utility classes. Group by: layout → spacing → typography → colors → effects.
-- Use `cn()` utility for conditional classes (clsx + tailwind-merge).
-
-```typescript
-import { cn } from '@/lib/utils';
-
-<div className={cn(
-  "flex flex-col gap-4 p-6",
-  "text-sm font-medium",
-  "bg-white dark:bg-gray-900 rounded-lg shadow-sm",
-  isActive && "ring-2 ring-blue-500"
-)} />
-```
-
-## Error boundaries & loading states
-
-- Wrap async UI in Suspense + ErrorBoundary. Show skeletons, not spinners.
+- Classes CSS via Tailwind. Pas de `StyleSheet` (réservé au mobile).
+- Garder `api.ts` aligné avec `mobile/src/services/api.ts`.

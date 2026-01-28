@@ -657,3 +657,177 @@ async def login_or_register_google_user(
     session_token = await create_user_session(session, user.id)
     
     return True, user, "✅ Compte créé avec Google", session_token
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🦊 GITLAB OAUTH
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from core.config import GITLAB_OAUTH_CONFIG
+
+GITLAB_AUTH_URL = "https://gitlab.com/oauth/authorize"
+GITLAB_TOKEN_URL = "https://gitlab.com/oauth/token"
+GITLAB_USERINFO_URL = "https://gitlab.com/api/v4/user"
+
+
+def get_gitlab_auth_url(state: str = None) -> Optional[str]:
+    """Génère l'URL d'authentification GitLab"""
+    import urllib.parse
+    
+    if not GITLAB_OAUTH_CONFIG.get("ENABLED"):
+        return None
+    
+    if not state:
+        state = secrets.token_urlsafe(16)
+    
+    params = {
+        "client_id": GITLAB_OAUTH_CONFIG["CLIENT_ID"],
+        "redirect_uri": GITLAB_OAUTH_CONFIG.get("REDIRECT_URI", f"{APP_URL}/auth/gitlab/callback"),
+        "response_type": "code",
+        "scope": "read_user",
+        "state": state,
+    }
+    
+    return f"{GITLAB_AUTH_URL}?{urllib.parse.urlencode(params)}"
+
+
+async def exchange_gitlab_code(code: str) -> Optional[dict]:
+    """Échange le code d'autorisation GitLab contre un token"""
+    try:
+        data = {
+            "client_id": GITLAB_OAUTH_CONFIG["CLIENT_ID"],
+            "client_secret": GITLAB_OAUTH_CONFIG["CLIENT_SECRET"],
+            "code": code,
+            "grant_type": "authorization_code",
+            "redirect_uri": GITLAB_OAUTH_CONFIG.get("REDIRECT_URI", f"{APP_URL}/auth/gitlab/callback")
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(GITLAB_TOKEN_URL, data=data, timeout=10)
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"❌ GitLab token error: {response.text}", flush=True)
+                return None
+    except Exception as e:
+        print(f"❌ GitLab OAuth exception: {e}", flush=True)
+        return None
+
+
+async def get_gitlab_user_info(access_token: str) -> Optional[dict]:
+    """Récupère les infos utilisateur GitLab"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                GITLAB_USERINFO_URL,
+                headers={"Authorization": f"Bearer {access_token}"},
+                timeout=10
+            )
+            if response.status_code == 200:
+                return response.json()
+            return None
+    except Exception as e:
+        print(f"❌ GitLab userinfo error: {e}", flush=True)
+        return None
+
+
+async def login_or_register_gitlab_user(
+    session: AsyncSession,
+    gitlab_user: dict
+) -> Tuple[bool, Optional[User], str, Optional[str]]:
+    """
+    Connecte ou crée un utilisateur via GitLab OAuth.
+    Retourne: (success, user, message, session_token)
+    """
+    email = gitlab_user.get("email", "").lower().strip()
+    gitlab_id = str(gitlab_user.get("id", ""))
+    name = gitlab_user.get("name", "") or gitlab_user.get("username", email.split("@")[0])
+    username_gitlab = gitlab_user.get("username", "")
+    avatar_url = gitlab_user.get("avatar_url", "")
+    
+    if not email:
+        return False, None, "❌ Email non fourni par GitLab", None
+    
+    # Vérifier si c'est l'admin
+    admin_email = ADMIN_CONFIG.get("ADMIN_EMAIL", "").lower().strip()
+    is_admin_user = (email == admin_email)
+    
+    # Chercher l'utilisateur existant par email ou gitlab_id
+    result = await session.execute(
+        select(User).where((User.email == email) | (User.gitlab_id == gitlab_id))
+    )
+    user = result.scalar_one_or_none()
+    
+    if user:
+        # Utilisateur existant - mettre à jour gitlab_id si nécessaire
+        if not user.gitlab_id:
+            user.gitlab_id = gitlab_id
+            user.email_verified = True
+        if avatar_url and not user.avatar_url:
+            user.avatar_url = avatar_url
+        
+        # Si c'est l'admin, s'assurer que is_admin=True
+        if is_admin_user and not user.is_admin:
+            user.is_admin = True
+            user.plan = "unlimited"
+            user.credits = 999999
+            print(f"🔐 Admin privileges granted to: {email}", flush=True)
+        
+        await session.commit()
+        
+        # Créer une session unique
+        session_token = await create_user_session(session, user.id)
+        
+        return True, user, "✅ Connexion GitLab réussie", session_token
+    
+    # Nouvel utilisateur
+    username = username_gitlab or email.split("@")[0].lower()
+    
+    # S'assurer que le username est unique
+    base_username = username
+    counter = 1
+    while True:
+        existing = await get_user_by_username(session, username)
+        if not existing:
+            break
+        username = f"{base_username}{counter}"
+        counter += 1
+    
+    # Créer avec mot de passe aléatoire
+    random_password = secrets.token_urlsafe(16)
+    
+    if is_admin_user:
+        user = User(
+            username=username,
+            email=email,
+            password_hash=hash_password(random_password),
+            email_verified=True,
+            gitlab_id=gitlab_id,
+            avatar_url=avatar_url,
+            plan="unlimited",
+            credits=999999,
+            is_admin=True
+        )
+        print(f"🔐 Admin user created via GitLab: {email}", flush=True)
+    else:
+        initial_credits = PLAN_LIMITS["free"]["monthly_credits"]
+        user = User(
+            username=username,
+            email=email,
+            password_hash=hash_password(random_password),
+            email_verified=True,
+            gitlab_id=gitlab_id,
+            avatar_url=avatar_url,
+            plan="free",
+            credits=initial_credits
+        )
+    
+    session.add(user)
+    await session.commit()
+    await session.refresh(user)
+    
+    # Créer une session unique
+    session_token = await create_user_session(session, user.id)
+    
+    return True, user, "✅ Compte créé avec GitLab", session_token

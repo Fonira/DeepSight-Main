@@ -111,6 +111,17 @@ GOOGLE_OAUTH_CONFIG = {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🦊 GITLAB OAUTH
+# ═══════════════════════════════════════════════════════════════════════════════
+
+GITLAB_OAUTH_CONFIG = {
+    "ENABLED": os.environ.get("GITLAB_OAUTH_ENABLED", "false").lower() == "true",
+    "CLIENT_ID": os.environ.get("GITLAB_CLIENT_ID", ""),
+    "CLIENT_SECRET": os.environ.get("GITLAB_CLIENT_SECRET", ""),
+    "REDIRECT_URI": os.environ.get("GITLAB_REDIRECT_URI", f"{APP_URL}/auth/gitlab/callback"),
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 🔒 JWT CONFIG
 # ═══════════════════════════════════════════════════════════════════════════════
 

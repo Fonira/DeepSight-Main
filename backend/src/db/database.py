@@ -91,6 +91,9 @@ class User(Base):
     # Google OAuth
     google_id = Column(String(100))
     
+    # GitLab OAuth
+    gitlab_id = Column(String(100))
+    
     # Clés API utilisateur (optionnel)
     mistral_key = Column(String(255))
     supadata_key = Column(String(255))
