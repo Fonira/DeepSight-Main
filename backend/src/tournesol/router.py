@@ -153,6 +153,216 @@ async def get_tournesol_data(video_id: str):
         )
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔍 SEARCH & RECOMMENDATIONS — Recherche dans Tournesol
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class SearchRequest(BaseModel):
+    """Requête de recherche Tournesol"""
+    query: str
+    limit: int = 10
+    language: Optional[str] = None
+    min_score: Optional[float] = None
+
+
+class TournesolVideoResult(BaseModel):
+    """Résultat de recherche Tournesol"""
+    video_id: str
+    title: Optional[str] = None
+    channel: Optional[str] = None
+    tournesol_score: Optional[float] = None
+    n_comparisons: int = 0
+    n_contributors: int = 0
+    thumbnail_url: Optional[str] = None
+    duration: Optional[int] = None
+
+
+class SearchResponse(BaseModel):
+    """Réponse de recherche Tournesol"""
+    results: List[TournesolVideoResult]
+    total: int
+    query: str
+
+
+@router.post("/search", response_model=SearchResponse)
+async def search_tournesol(request: SearchRequest):
+    """
+    🔍 Recherche des vidéos recommandées par Tournesol.
+
+    Utilise l'API Tournesol pour trouver des vidéos de qualité sur un sujet donné.
+    Les résultats sont classés par score Tournesol (qualité collaborative).
+
+    Args:
+        query: Termes de recherche
+        limit: Nombre max de résultats (défaut: 10, max: 50)
+        language: Filtrer par langue (fr, en, etc.)
+        min_score: Score Tournesol minimum
+    """
+    if not request.query or len(request.query.strip()) < 2:
+        return SearchResponse(results=[], total=0, query=request.query)
+
+    limit = min(request.limit, 50)
+
+    # Construire les paramètres de recherche
+    params = {
+        "search": request.query,
+        "limit": limit,
+        "unsafe": "false"
+    }
+
+    if request.language:
+        params["language"] = request.language
+
+    print(f"🔍 Tournesol search: '{request.query}' (limit={limit})", flush=True)
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(
+                "https://api.tournesol.app/polls/videos/recommendations/",
+                params=params,
+                headers={
+                    "Accept": "application/json",
+                    "User-Agent": "DeepSight/1.0 (tournesol-integration)"
+                }
+            )
+
+            if response.status_code != 200:
+                print(f"🔍 Tournesol search failed: {response.status_code}", flush=True)
+                return SearchResponse(results=[], total=0, query=request.query)
+
+            data = response.json()
+            results_data = data.get("results", [])
+
+            results = []
+            for item in results_data:
+                entity = item.get("entity", item)
+                video_id = entity.get("uid", "").replace("yt:", "")
+
+                if not video_id:
+                    continue
+
+                score = item.get("tournesol_score") or entity.get("tournesol_score")
+
+                # Filtrer par score minimum si spécifié
+                if request.min_score and score and score < request.min_score:
+                    continue
+
+                metadata = entity.get("metadata", {})
+
+                results.append(TournesolVideoResult(
+                    video_id=video_id,
+                    title=metadata.get("name") or entity.get("name"),
+                    channel=metadata.get("uploader") or entity.get("uploader"),
+                    tournesol_score=score,
+                    n_comparisons=item.get("n_comparisons", 0) or entity.get("n_comparisons", 0),
+                    n_contributors=item.get("n_contributors", 0) or entity.get("n_contributors", 0),
+                    thumbnail_url=f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg",
+                    duration=metadata.get("duration")
+                ))
+
+            print(f"🔍 Tournesol search: {len(results)} results", flush=True)
+
+            return SearchResponse(
+                results=results[:limit],
+                total=len(results),
+                query=request.query
+            )
+
+    except httpx.TimeoutException:
+        print(f"🔍 Tournesol search timeout", flush=True)
+        return SearchResponse(results=[], total=0, query=request.query)
+    except Exception as e:
+        print(f"🔍 Tournesol search error: {e}", flush=True)
+        return SearchResponse(results=[], total=0, query=request.query)
+
+
+@router.get("/recommendations", response_model=SearchResponse)
+async def get_recommendations(
+    limit: int = 20,
+    language: Optional[str] = None,
+    date_gte: Optional[str] = None
+):
+    """
+    🌻 Récupère les meilleures recommandations Tournesol.
+
+    Retourne les vidéos les mieux notées par la communauté Tournesol,
+    sans nécessiter de recherche spécifique.
+
+    Args:
+        limit: Nombre de résultats (défaut: 20, max: 50)
+        language: Filtrer par langue (fr, en, etc.)
+        date_gte: Date minimum (format YYYY-MM-DD)
+    """
+    limit = min(limit, 50)
+
+    params = {
+        "limit": limit,
+        "unsafe": "false"
+    }
+
+    if language:
+        params["language"] = language
+
+    if date_gte:
+        params["date_gte"] = date_gte
+
+    print(f"🌻 Tournesol recommendations: limit={limit}, language={language}", flush=True)
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(
+                "https://api.tournesol.app/polls/videos/recommendations/",
+                params=params,
+                headers={
+                    "Accept": "application/json",
+                    "User-Agent": "DeepSight/1.0 (tournesol-integration)"
+                }
+            )
+
+            if response.status_code != 200:
+                print(f"🌻 Tournesol recommendations failed: {response.status_code}", flush=True)
+                return SearchResponse(results=[], total=0, query="recommendations")
+
+            data = response.json()
+            results_data = data.get("results", [])
+
+            results = []
+            for item in results_data:
+                entity = item.get("entity", item)
+                video_id = entity.get("uid", "").replace("yt:", "")
+
+                if not video_id:
+                    continue
+
+                metadata = entity.get("metadata", {})
+
+                results.append(TournesolVideoResult(
+                    video_id=video_id,
+                    title=metadata.get("name") or entity.get("name"),
+                    channel=metadata.get("uploader") or entity.get("uploader"),
+                    tournesol_score=item.get("tournesol_score") or entity.get("tournesol_score"),
+                    n_comparisons=item.get("n_comparisons", 0) or entity.get("n_comparisons", 0),
+                    n_contributors=item.get("n_contributors", 0) or entity.get("n_contributors", 0),
+                    thumbnail_url=f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg",
+                    duration=metadata.get("duration")
+                ))
+
+            print(f"🌻 Tournesol recommendations: {len(results)} results", flush=True)
+
+            return SearchResponse(
+                results=results,
+                total=len(results),
+                query="recommendations"
+            )
+
+    except httpx.TimeoutException:
+        print(f"🌻 Tournesol recommendations timeout", flush=True)
+        return SearchResponse(results=[], total=0, query="recommendations")
+    except Exception as e:
+        print(f"🌻 Tournesol recommendations error: {e}", flush=True)
+        return SearchResponse(results=[], total=0, query="recommendations")
+
+
 @router.get("/batch")
 async def get_tournesol_batch(video_ids: str):
     """

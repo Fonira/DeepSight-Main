@@ -539,13 +539,19 @@ async def get_task_status(task_id: str):
 
 
 @router.post("/corpus/analyze", response_model=PlaylistTaskStatus)
+@router.post("/analyze-corpus", response_model=PlaylistTaskStatus, include_in_schema=False)
 async def analyze_corpus(
     request: AnalyzeCorpusRequest,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session)
 ):
-    """Analyse un corpus personnalisé de vidéos."""
+    """
+    Analyse un corpus personnalisé de vidéos.
+
+    Note: `/analyze-corpus` is an alias for mobile compatibility.
+    Preferred path is `/corpus/analyze`.
+    """
     print(f"\n{'='*60}", flush=True)
     print(f"📦 CORPUS ANALYSIS REQUEST", flush=True)
     print(f"   Name: {request.name}", flush=True)
@@ -628,6 +634,192 @@ async def list_playlists(
     ]
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🆕 CRUD PLAYLISTS — Créer et modifier des playlists manuellement
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class CreatePlaylistRequest(BaseModel):
+    """Requête pour créer une playlist manuellement"""
+    name: str = Field(..., min_length=1, max_length=200)
+    description: Optional[str] = None
+    video_ids: Optional[List[int]] = None  # IDs de summaries existants à ajouter
+
+
+class UpdatePlaylistRequest(BaseModel):
+    """Requête pour mettre à jour une playlist"""
+    name: Optional[str] = Field(None, min_length=1, max_length=200)
+    description: Optional[str] = None
+    add_video_ids: Optional[List[int]] = None
+    remove_video_ids: Optional[List[int]] = None
+
+
+@router.post("", response_model=Dict)
+async def create_playlist(
+    request: CreatePlaylistRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🆕 Crée une nouvelle playlist/corpus manuellement.
+
+    Permet de regrouper des vidéos déjà analysées dans une collection personnalisée.
+    """
+    # Vérifier les permissions du plan
+    plan = current_user.plan or "free"
+    plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+
+    if not plan_limits.get("can_use_playlists", False):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "plan_required",
+                "message": "Les playlists nécessitent un plan Starter ou supérieur",
+                "upgrade_url": "/upgrade"
+            }
+        )
+
+    # Générer un ID unique pour la playlist
+    playlist_id = f"custom_{uuid4().hex[:12]}"
+
+    # Créer la playlist
+    playlist = PlaylistAnalysis(
+        user_id=current_user.id,
+        playlist_id=playlist_id,
+        playlist_title=request.name,
+        playlist_url=None,  # Playlist manuelle, pas d'URL YouTube
+        num_videos=0,
+        status="created",
+        started_at=datetime.utcnow(),
+        completed_at=datetime.utcnow()
+    )
+    session.add(playlist)
+    await session.flush()  # Pour obtenir l'ID
+
+    # Ajouter des vidéos existantes si spécifiées
+    videos_added = 0
+    if request.video_ids:
+        for position, summary_id in enumerate(request.video_ids, 1):
+            # Vérifier que le summary appartient à l'utilisateur
+            summary_result = await session.execute(
+                select(Summary)
+                .where(Summary.id == summary_id)
+                .where(Summary.user_id == current_user.id)
+            )
+            summary = summary_result.scalar_one_or_none()
+
+            if summary:
+                # Mettre à jour le summary pour l'associer à cette playlist
+                summary.playlist_id = playlist_id
+                summary.playlist_position = position
+                videos_added += 1
+
+        playlist.num_videos = videos_added
+        playlist.num_processed = videos_added
+
+    await session.commit()
+
+    print(f"📚 Created playlist '{request.name}' with {videos_added} videos for user {current_user.id}", flush=True)
+
+    return {
+        "id": playlist.id,
+        "playlist_id": playlist_id,
+        "playlist_title": request.name,
+        "num_videos": videos_added,
+        "status": "created",
+        "created_at": playlist.started_at.isoformat()
+    }
+
+
+@router.put("/{playlist_id}")
+async def update_playlist(
+    playlist_id: str,
+    request: UpdatePlaylistRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🆕 Met à jour une playlist existante.
+
+    Permet de:
+    - Renommer la playlist
+    - Ajouter des vidéos
+    - Retirer des vidéos
+    """
+    # Récupérer la playlist
+    result = await session.execute(
+        select(PlaylistAnalysis)
+        .where(PlaylistAnalysis.playlist_id == playlist_id)
+        .where(PlaylistAnalysis.user_id == current_user.id)
+        .order_by(PlaylistAnalysis.created_at.desc())
+        .limit(1)
+    )
+    playlist = result.scalar_one_or_none()
+
+    if not playlist:
+        raise HTTPException(status_code=404, detail="Playlist non trouvée")
+
+    # Mettre à jour le nom si fourni
+    if request.name is not None:
+        playlist.playlist_title = request.name
+
+    # Ajouter des vidéos
+    if request.add_video_ids:
+        # Récupérer la position max actuelle
+        max_pos_result = await session.execute(
+            select(func.max(Summary.playlist_position))
+            .where(Summary.playlist_id == playlist_id)
+        )
+        max_pos = max_pos_result.scalar() or 0
+
+        for summary_id in request.add_video_ids:
+            summary_result = await session.execute(
+                select(Summary)
+                .where(Summary.id == summary_id)
+                .where(Summary.user_id == current_user.id)
+            )
+            summary = summary_result.scalar_one_or_none()
+
+            if summary and summary.playlist_id != playlist_id:
+                max_pos += 1
+                summary.playlist_id = playlist_id
+                summary.playlist_position = max_pos
+
+    # Retirer des vidéos
+    if request.remove_video_ids:
+        for summary_id in request.remove_video_ids:
+            summary_result = await session.execute(
+                select(Summary)
+                .where(Summary.id == summary_id)
+                .where(Summary.playlist_id == playlist_id)
+            )
+            summary = summary_result.scalar_one_or_none()
+
+            if summary:
+                summary.playlist_id = None
+                summary.playlist_position = None
+
+    # Recalculer le nombre de vidéos
+    count_result = await session.execute(
+        select(func.count(Summary.id))
+        .where(Summary.playlist_id == playlist_id)
+    )
+    playlist.num_videos = count_result.scalar() or 0
+    playlist.num_processed = playlist.num_videos
+
+    await session.commit()
+
+    print(f"📚 Updated playlist '{playlist.playlist_title}' (now {playlist.num_videos} videos)", flush=True)
+
+    return {
+        "id": playlist.id,
+        "playlist_id": playlist_id,
+        "playlist_title": playlist.playlist_title,
+        "num_videos": playlist.num_videos,
+        "status": playlist.status,
+        "updated": True
+    }
+
+
 @router.get("/{playlist_id}")
 async def get_playlist(
     playlist_id: str,
@@ -686,6 +878,182 @@ async def get_playlist(
             }
             for v in videos
         ]
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📊 PLAYLIST DETAILS — Statistiques détaillées (P1 mobile compatibility)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/{playlist_id}/details")
+async def get_playlist_details(
+    playlist_id: str,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Récupère les détails et statistiques d'une playlist.
+
+    Mobile-compatible endpoint providing detailed analytics.
+    """
+    # Récupérer la playlist
+    result = await session.execute(
+        select(PlaylistAnalysis)
+        .where(PlaylistAnalysis.playlist_id == playlist_id)
+        .where(PlaylistAnalysis.user_id == current_user.id)
+        .order_by(PlaylistAnalysis.created_at.desc())
+        .limit(1)
+    )
+    playlist = result.scalar_one_or_none()
+
+    if not playlist:
+        raise HTTPException(status_code=404, detail="Playlist non trouvée")
+
+    # Récupérer les vidéos pour les statistiques
+    videos_result = await session.execute(
+        select(Summary)
+        .where(Summary.playlist_id == playlist_id)
+        .where(Summary.user_id == current_user.id)
+        .order_by(Summary.playlist_position)
+    )
+    videos = videos_result.scalars().all()
+
+    # Calculer les statistiques
+    categories = {}
+    channels = {}
+    total_duration = 0
+    total_words = 0
+
+    for v in videos:
+        # Catégories
+        cat = v.category or "Autre"
+        categories[cat] = categories.get(cat, 0) + 1
+
+        # Chaînes
+        ch = v.video_channel or "Inconnu"
+        channels[ch] = channels.get(ch, 0) + 1
+
+        # Totaux
+        total_duration += v.video_duration or 0
+        total_words += v.word_count or 0
+
+    # Formater la durée
+    hours = total_duration // 3600
+    minutes = (total_duration % 3600) // 60
+    duration_str = f"{hours}h {minutes}min" if hours > 0 else f"{minutes} min"
+
+    return {
+        "id": playlist.id,
+        "playlist_id": playlist_id,
+        "playlist_title": playlist.playlist_title,
+        "playlist_url": playlist.playlist_url,
+        "status": playlist.status,
+        "created_at": playlist.created_at.isoformat() if playlist.created_at else None,
+        "completed_at": playlist.completed_at.isoformat() if playlist.completed_at else None,
+        "statistics": {
+            "num_videos": len(videos),
+            "num_processed": playlist.num_processed or len(videos),
+            "total_duration": total_duration,
+            "total_duration_formatted": duration_str,
+            "total_words": total_words,
+            "average_duration": total_duration // len(videos) if videos else 0,
+            "average_words": total_words // len(videos) if videos else 0
+        },
+        "categories": categories,
+        "channels": channels,
+        "has_meta_analysis": bool(playlist.meta_analysis),
+        "videos_summary": [
+            {
+                "id": v.id,
+                "title": v.video_title,
+                "channel": v.video_channel,
+                "duration": v.video_duration,
+                "category": v.category,
+                "position": v.playlist_position
+            }
+            for v in videos
+        ]
+    }
+
+
+@router.post("/{playlist_id}/corpus-summary")
+async def generate_corpus_summary(
+    playlist_id: str,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Génère ou régénère la méta-analyse (corpus summary) d'une playlist.
+
+    Utile si la méta-analyse initiale a échoué ou pour la mettre à jour.
+    """
+    # Récupérer la playlist
+    result = await session.execute(
+        select(PlaylistAnalysis)
+        .where(PlaylistAnalysis.playlist_id == playlist_id)
+        .where(PlaylistAnalysis.user_id == current_user.id)
+        .order_by(PlaylistAnalysis.created_at.desc())
+        .limit(1)
+    )
+    playlist = result.scalar_one_or_none()
+
+    if not playlist:
+        raise HTTPException(status_code=404, detail="Playlist non trouvée")
+
+    # Vérifier les crédits (1 crédit pour régénérer)
+    if current_user.credits < 1:
+        raise HTTPException(status_code=402, detail="Crédits insuffisants")
+
+    # Récupérer les vidéos
+    videos_result = await session.execute(
+        select(Summary)
+        .where(Summary.playlist_id == playlist_id)
+        .where(Summary.user_id == current_user.id)
+        .order_by(Summary.playlist_position)
+    )
+    videos = videos_result.scalars().all()
+
+    if not videos:
+        raise HTTPException(status_code=400, detail="Aucune vidéo dans cette playlist")
+
+    # Préparer les données pour la méta-analyse
+    summaries = []
+    for v in videos:
+        summaries.append({
+            "position": v.playlist_position or 0,
+            "title": v.video_title or "Sans titre",
+            "channel": v.video_channel or "Inconnu",
+            "summary": (v.summary_content or "")[:2000],
+            "category": v.category or "Autre",
+            "duration": v.video_duration or 0,
+            "word_count": v.word_count or 0
+        })
+
+    # Générer la méta-analyse
+    plan = current_user.plan or "free"
+    model = PLAN_MODELS.get(plan, "mistral-small-latest")
+    lang = videos[0].lang if videos else "fr"
+
+    meta_analysis = await _generate_meta_analysis_v4(
+        summaries=summaries,
+        playlist_title=playlist.playlist_title or "Corpus",
+        lang=lang,
+        model=model
+    )
+
+    # Mettre à jour la playlist
+    playlist.meta_analysis = meta_analysis
+
+    # Déduire 1 crédit
+    current_user.credits -= 1
+
+    await session.commit()
+
+    return {
+        "success": True,
+        "playlist_id": playlist_id,
+        "meta_analysis": meta_analysis,
+        "credits_remaining": current_user.credits
     }
 
 

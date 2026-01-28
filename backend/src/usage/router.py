@@ -332,6 +332,130 @@ async def get_plan_features(
 # 💰 ENDPOINTS COÛTS ET ESTIMATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
+@router.get("/detailed")
+async def get_detailed_usage(
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+    days: int = 30
+):
+    """
+    Retourne les statistiques d'utilisation détaillées sur une période.
+
+    Mobile-compatible endpoint providing granular usage data.
+
+    Args:
+        days: Nombre de jours à analyser (défaut: 30, max: 90)
+    """
+    days = min(days, 90)  # Max 90 jours
+    now = datetime.utcnow()
+    start_date = now - timedelta(days=days)
+
+    # Analyses par jour
+    analyses_by_day_result = await session.execute(
+        select(
+            func.date(Summary.created_at).label("date"),
+            func.count(Summary.id).label("count")
+        )
+        .where(Summary.user_id == current_user.id)
+        .where(Summary.created_at >= start_date)
+        .group_by(func.date(Summary.created_at))
+        .order_by(func.date(Summary.created_at))
+    )
+    analyses_by_day = [
+        {"date": str(row.date), "count": row.count}
+        for row in analyses_by_day_result
+    ]
+
+    # Crédits utilisés par type
+    credits_by_type_result = await session.execute(
+        select(
+            CreditTransaction.transaction_type,
+            func.sum(func.abs(CreditTransaction.amount)).label("total")
+        )
+        .where(CreditTransaction.user_id == current_user.id)
+        .where(CreditTransaction.amount < 0)
+        .where(CreditTransaction.created_at >= start_date)
+        .group_by(CreditTransaction.transaction_type)
+    )
+    credits_by_type = {
+        row.transaction_type or "other": int(row.total or 0)
+        for row in credits_by_type_result
+    }
+
+    # Catégories analysées
+    categories_result = await session.execute(
+        select(
+            Summary.category,
+            func.count(Summary.id).label("count")
+        )
+        .where(Summary.user_id == current_user.id)
+        .where(Summary.created_at >= start_date)
+        .group_by(Summary.category)
+        .order_by(func.count(Summary.id).desc())
+    )
+    categories = {
+        row.category or "Autre": row.count
+        for row in categories_result
+    }
+
+    # Modèles utilisés
+    models_result = await session.execute(
+        select(
+            Summary.model_used,
+            func.count(Summary.id).label("count")
+        )
+        .where(Summary.user_id == current_user.id)
+        .where(Summary.created_at >= start_date)
+        .where(Summary.model_used.isnot(None))
+        .group_by(Summary.model_used)
+    )
+    models_used = {
+        row.model_used: row.count
+        for row in models_result
+    }
+
+    # Totaux sur la période
+    totals_result = await session.execute(
+        select(
+            func.count(Summary.id).label("analyses"),
+            func.sum(Summary.video_duration).label("duration"),
+            func.sum(Summary.word_count).label("words")
+        )
+        .where(Summary.user_id == current_user.id)
+        .where(Summary.created_at >= start_date)
+    )
+    totals = totals_result.first()
+
+    total_credits_result = await session.execute(
+        select(func.sum(func.abs(CreditTransaction.amount)))
+        .where(CreditTransaction.user_id == current_user.id)
+        .where(CreditTransaction.amount < 0)
+        .where(CreditTransaction.created_at >= start_date)
+    )
+    total_credits = int(total_credits_result.scalar() or 0)
+
+    return {
+        "period_days": days,
+        "start_date": start_date.isoformat(),
+        "end_date": now.isoformat(),
+        "totals": {
+            "analyses": totals.analyses or 0,
+            "duration_seconds": totals.duration or 0,
+            "duration_formatted": f"{(totals.duration or 0) // 3600}h {((totals.duration or 0) % 3600) // 60}min",
+            "words_generated": totals.words or 0,
+            "credits_used": total_credits
+        },
+        "daily_analyses": analyses_by_day,
+        "credits_by_type": credits_by_type,
+        "categories": categories,
+        "models_used": models_used,
+        "averages": {
+            "analyses_per_day": round((totals.analyses or 0) / days, 1),
+            "credits_per_day": round(total_credits / days, 1)
+        }
+    }
+
+
 @router.get("/costs")
 async def get_costs_info():
     """

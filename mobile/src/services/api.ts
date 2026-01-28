@@ -950,6 +950,93 @@ export const chatApi = {
   async clearHistory(summaryId: string): Promise<{ success: boolean }> {
     return request(`/api/chat/history/${summaryId}`, { method: 'DELETE' });
   },
+
+  /**
+   * Send a message with streaming response (SSE).
+   * Returns an async generator that yields response chunks.
+   *
+   * Usage:
+   * ```
+   * for await (const chunk of chatApi.sendMessageStream(summaryId, message)) {
+   *   console.log(chunk); // Partial response text
+   * }
+   * ```
+   */
+  async *sendMessageStream(
+    summaryId: string,
+    message: string,
+    options?: { useWebSearch?: boolean; mode?: string }
+  ): AsyncGenerator<string, void, unknown> {
+    const accessToken = await tokenStorage.getAccessToken();
+
+    const response = await fetch(`${API_BASE_URL}/api/chat/ask/stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
+      body: JSON.stringify({
+        summary_id: summaryId,
+        question: message,
+        use_web_search: options?.useWebSearch ?? false,
+        mode: options?.mode,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new ApiError(
+        `Chat stream failed: ${response.status}`,
+        response.status
+      );
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new ApiError('No response body', 500);
+    }
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Parse SSE events
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              return;
+            }
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                yield parsed.content;
+              } else if (parsed.text) {
+                yield parsed.text;
+              } else if (typeof parsed === 'string') {
+                yield parsed;
+              }
+            } catch {
+              // Not JSON, yield as-is
+              if (data.trim()) {
+                yield data;
+              }
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  },
 };
 
 // ============================================
