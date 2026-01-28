@@ -1475,9 +1475,16 @@ async def analyze_hybrid(
     
     # === MODE SEARCH ===
     else:
+        # Valider la requête de recherche
+        if not request.search_query or not request.search_query.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="search_query est requis pour le mode recherche"
+            )
+
         # Découverte intelligente
         discovery_result = await IntelligentDiscoveryService.discover(
-            query=request.search_query,
+            query=request.search_query.strip(),
             languages=request.search_languages,
             max_results=10 if not request.auto_select_best else 1,
             min_quality=25.0,
