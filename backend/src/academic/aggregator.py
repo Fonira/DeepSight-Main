@@ -109,13 +109,20 @@ class AcademicAggregator:
         # Build query from keywords
         query = " ".join(request.keywords)
 
-        # Query all sources in parallel
-        results = await asyncio.gather(
-            self._search_semantic_scholar(query, request),
-            self._search_openalex(query, request),
-            self._search_arxiv(query, request),
-            return_exceptions=True
-        )
+        # Query all sources in parallel with overall timeout
+        try:
+            results = await asyncio.wait_for(
+                asyncio.gather(
+                    self._search_semantic_scholar(query, request),
+                    self._search_openalex(query, request),
+                    self._search_arxiv(query, request),
+                    return_exceptions=True
+                ),
+                timeout=90.0  # 90 seconds overall timeout
+            )
+        except asyncio.TimeoutError:
+            print("Academic search timeout - returning partial results", flush=True)
+            results = [[], [], []]  # Empty results if timeout
 
         # Collect papers from successful queries
         all_papers: List[AcademicPaper] = []

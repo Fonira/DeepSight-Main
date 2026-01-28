@@ -188,7 +188,7 @@ class ArxivClient:
         }
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=20.0) as client:
                 response = await client.get(
                     self.base_url,
                     params=params

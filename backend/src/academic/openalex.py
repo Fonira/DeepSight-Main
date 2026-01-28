@@ -177,7 +177,7 @@ class OpenAlexClient:
             params["filter"] = ",".join(filters)
 
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
+            async with httpx.AsyncClient(timeout=20.0) as client:
                 response = await client.get(
                     f"{self.base_url}/works",
                     params=params,
