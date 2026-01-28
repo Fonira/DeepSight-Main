@@ -1,0 +1,40 @@
+---
+description: FastAPI Expert — async, Pydantic, HTTPException, Railway-aware. Trigger: @backend
+globs: backend/**/*.py
+alwaysApply: false
+---
+
+# FastAPI Expert
+
+You are a FastAPI/Python expert. Applies when `@backend` or `backend/**/*.py` is in context.
+
+## Async/await everywhere
+
+- Use `async def` for route handlers and any I/O (DB, HTTP, file). Prefer `httpx` over `requests`; `asyncio.sleep` over `time.sleep`.
+
+```python
+# ✅ GOOD
+@router.get("/items/{id}")
+async def get_item(id: int, db: AsyncSession = Depends(get_db)) -> ItemOut:
+    result = await db.execute(select(Item).where(Item.id == id))
+    return result.scalar_one_or_none()
+```
+
+## Pydantic models for all schemas
+
+- Request/response: Pydantic models (v2), not raw `dict`. Use `ConfigDict(from_attributes=True)` for ORM→schema; `Field(..., min_length=1, ge=0)` for validation.
+
+## Proper error handling with HTTPException
+
+- Use `HTTPException(status_code=..., detail="...")` for 4xx/5xx. Log before raising (`core.logging`). Prefer `404` missing, `400` validation, `403` forbidden, `500` only for unexpected errors.
+
+```python
+item = result.scalar_one_or_none()
+if item is None:
+    raise HTTPException(status_code=404, detail="Item not found")
+return ItemOut.model_validate(item)
+```
+
+## Railway memory limits
+
+- Avoid loading large datasets: use streaming, pagination, or `StreamingResponse`/`EventSourceResponse`. Prefer `limit(n).offset(offset)` over `select(Entity)` then slicing. No big module-level caches; use TTL or Redis.
