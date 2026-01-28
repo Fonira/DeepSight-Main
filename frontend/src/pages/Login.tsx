@@ -63,6 +63,9 @@ export const Login: React.FC = () => {
     const oauthError = searchParams.get('error');
     if (oauthError) {
       const errorMessages: Record<string, string> = {
+        database_error: language === 'fr'
+          ? 'Service temporairement indisponible. Veuillez réessayer.'
+          : 'Service temporarily unavailable. Please try again.',
         access_denied: language === 'fr'
           ? 'Accès refusé. Veuillez autoriser l\'application.'
           : 'Access denied. Please authorize the application.',
@@ -70,8 +73,8 @@ export const Login: React.FC = () => {
           ? 'Échec de l\'authentification Google. Veuillez réessayer.'
           : 'Google authentication failed. Please try again.',
         userinfo_failed: language === 'fr'
-          ? 'Impossible de récupérer vos informations Google.'
-          : 'Could not retrieve your Google information.',
+          ? 'Impossible de récupérer vos informations Google. Veuillez réessayer.'
+          : 'Could not retrieve your Google info. Please try again.',
         auth_failed: language === 'fr'
           ? 'Échec de la connexion. Veuillez réessayer.'
           : 'Login failed. Please try again.',
@@ -83,9 +86,9 @@ export const Login: React.FC = () => {
         ? `Erreur d'authentification: ${oauthError}`
         : `Authentication error: ${oauthError}`));
       // Nettoyer l'URL
-      window.history.replaceState({}, '', '/login');
+      navigate(location.pathname, { replace: true });
     }
-  }, [searchParams, language]);
+  }, [searchParams, language, navigate, location.pathname]);
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {

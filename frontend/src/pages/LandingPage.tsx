@@ -79,9 +79,9 @@ const Logo: React.FC<{ className?: string }> = ({ className = "" }) => {
           }}
         />
         {!imageError ? (
-          <img 
-            src="/logo.png?v=4" 
-            alt="Deep Sight" 
+          <img
+            src="/deep-sight-logo.png"
+            alt="Deep Sight"
             className="w-full h-full object-contain relative z-10 transition-transform duration-300 group-hover:scale-110"
             style={{ filter: 'drop-shadow(0 2px 8px rgba(212, 165, 116, 0.4)) drop-shadow(0 0 6px rgba(74, 144, 217, 0.3))' }}
             onError={() => setImageError(true)}

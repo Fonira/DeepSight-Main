@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from db.database import get_session
-from core.config import FRONTEND_URL, EMAIL_CONFIG, GOOGLE_OAUTH_CONFIG, GITLAB_OAUTH_CONFIG
+from core.config import FRONTEND_URL, EMAIL_CONFIG, GOOGLE_OAUTH_CONFIG
 from .schemas import (
     UserRegister, UserLogin, RefreshTokenRequest, VerifyEmailRequest,
     ResendVerificationRequest, ForgotPasswordRequest, ResetPasswordRequest,
@@ -25,9 +25,7 @@ from .service import (
     create_access_token, create_refresh_token, verify_token,
     get_google_auth_url, exchange_google_code, get_google_user_info,
     login_or_register_google_user, create_user_session, invalidate_user_session,
-    validate_session_token,
-    get_gitlab_auth_url, exchange_gitlab_code, get_gitlab_user_info,
-    login_or_register_gitlab_user
+    validate_session_token
 )
 from .dependencies import get_current_user, get_current_user_optional
 from .email import send_verification_email, send_password_reset_email
@@ -455,7 +453,15 @@ async def google_callback(
         )
 
     # Créer ou connecter l'utilisateur (avec session unique)
-    success, user, message, session_token = await login_or_register_google_user(session, google_user)
+    try:
+        success, user, message, session_token = await login_or_register_google_user(session, google_user)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Google OAuth DB error: {e}")
+        return RedirectResponse(
+            url=f"{FRONTEND_URL}/login?error=database_error",
+            status_code=302
+        )
 
     if not success or not user:
         return RedirectResponse(
@@ -486,18 +492,23 @@ async def google_callback_post(
     """
     # Échanger le code
     token_data = await exchange_google_code(data.code)
-    
+
     if not token_data or "access_token" not in token_data:
         raise HTTPException(status_code=400, detail="Token exchange failed")
-    
+
     # Récupérer les infos utilisateur
     google_user = await get_google_user_info(token_data["access_token"])
-    
+
     if not google_user:
         raise HTTPException(status_code=400, detail="Could not get user info")
-    
+
     # Créer ou connecter (avec session unique)
-    success, user, message, session_token = await login_or_register_google_user(session, google_user)
+    try:
+        success, user, message, session_token = await login_or_register_google_user(session, google_user)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Google OAuth DB error: {e}")
+        raise HTTPException(status_code=503, detail="Database temporarily unavailable. Please try again.")
 
     if not success or not user:
         raise HTTPException(status_code=400, detail=message)
@@ -533,7 +544,12 @@ async def google_token_login(
         )
 
     # Créer ou connecter (avec session unique)
-    success, user, message, session_token = await login_or_register_google_user(session, google_user)
+    try:
+        success, user, message, session_token = await login_or_register_google_user(session, google_user)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Google OAuth DB error: {e}")
+        raise HTTPException(status_code=503, detail="Database temporarily unavailable. Please try again.")
 
     if not success or not user:
         raise HTTPException(status_code=400, detail=message)
@@ -559,12 +575,12 @@ async def gitlab_login():
     """Retourne l'URL d'authentification GitLab"""
     if not GITLAB_OAUTH_CONFIG.get("ENABLED"):
         raise HTTPException(status_code=400, detail="GitLab OAuth non activé")
-    
+
     auth_url = get_gitlab_auth_url()
-    
+
     if not auth_url:
         raise HTTPException(status_code=500, detail="Erreur configuration OAuth GitLab")
-    
+
     return AuthUrlResponse(auth_url=auth_url)
 
 

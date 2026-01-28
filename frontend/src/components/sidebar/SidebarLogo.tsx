@@ -75,10 +75,10 @@ export const SidebarLogo: React.FC = () => {
             />
           ) : (
             <img
-              src="/logo-deep-sight.png?v=4"
+              src="/deep-sight-logo.png"
               alt="Deep Sight"
               className="w-28 h-28 object-contain relative z-10"
-              style={{ 
+              style={{
                 filter: 'drop-shadow(0 0 20px rgba(212, 165, 116, 0.4)) drop-shadow(0 0 15px rgba(74, 144, 217, 0.3))',
               }}
             />
