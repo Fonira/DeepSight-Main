@@ -5,12 +5,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   StatusBar,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
-import { Spacing, Typography } from '../constants/theme';
+import { Spacing, Typography, BorderRadius } from '../constants/theme';
 
 interface HeaderProps {
   title?: string;
@@ -69,14 +70,25 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {showLogo && (
-            <View style={styles.logoContainer}>
-              <Text style={[styles.logoText, { color: colors.accentPrimary }]}>
-                Deep
-              </Text>
-              <Text style={[styles.logoText, { color: colors.textPrimary }]}>
-                Sight
-              </Text>
-            </View>
+            <TouchableOpacity
+              onPress={() => (navigation as any).navigate('MainTabs', { screen: 'Dashboard' })}
+              style={styles.logoContainer}
+              activeOpacity={0.7}
+            >
+              <Image
+                source={require('../assets/images/icon.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+              <View style={styles.logoTextContainer}>
+                <Text style={[styles.logoText, { color: colors.accentPrimary }]}>
+                  Deep
+                </Text>
+                <Text style={[styles.logoText, { color: colors.textPrimary }]}>
+                  Sight
+                </Text>
+              </View>
+            </TouchableOpacity>
           )}
 
           {title && !showLogo && (
@@ -130,6 +142,16 @@ const styles = StyleSheet.create({
     marginLeft: -Spacing.sm,
   },
   logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logoImage: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.md,
+    marginRight: Spacing.sm,
+  },
+  logoTextContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },

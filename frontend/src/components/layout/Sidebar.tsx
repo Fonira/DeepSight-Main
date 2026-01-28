@@ -87,9 +87,9 @@ const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({ collaps
           }}
         />
         {!imageError ? (
-          <img 
-            src="/logo.png" 
-            alt="Deep Sight" 
+          <img
+            src="/deep-sight-logo.png"
+            alt="Deep Sight"
             className="w-full h-full object-contain relative z-10"
             style={{ filter: 'drop-shadow(0 2px 8px rgba(99, 102, 241, 0.5))' }}
             onError={() => setImageError(true)}
