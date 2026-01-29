@@ -45,9 +45,9 @@ if DATABASE_URL:
     elif DATABASE_URL.startswith("postgresql://") and "+asyncpg" not in DATABASE_URL:
         DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-    # Note: Railway proxy gère SSL termination, pas besoin de SSL côté client
-    # SSL uniquement si explicitement demandé dans l'URL
-    pass
+    # Railway public proxy REQUIERT SSL
+    if ".proxy.rlwy.net" in DATABASE_URL:
+        _use_ssl = True
 
     print(f"🐘 Using PostgreSQL database (SSL: {_use_ssl})", flush=True)
 else:
@@ -73,8 +73,8 @@ if DATABASE_URL.startswith("postgresql"):
 
     # Configurer SSL pour asyncpg via connect_args
     if _use_ssl:
-        # Utiliser ssl="require" pour Railway proxy (plus simple que SSLContext)
-        _engine_kwargs["connect_args"] = {"ssl": "require"}
+        # ssl=True crée un contexte SSL par défaut pour asyncpg
+        _engine_kwargs["connect_args"] = {"ssl": True}
 
 engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
 
