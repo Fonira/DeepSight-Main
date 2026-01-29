@@ -57,7 +57,7 @@ class AcademicSearchRequest(BaseModel):
     """Request model for academic search"""
     keywords: List[str] = Field(..., min_length=1, description="Keywords to search for")
     summary_id: Optional[str] = None
-    limit: int = Field(default=10, ge=1, le=50)
+    limit: int = Field(default=10, ge=1, le=100)
     year_from: Optional[int] = None
     year_to: Optional[int] = None
     include_preprints: bool = True
