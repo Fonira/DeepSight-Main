@@ -2,7 +2,7 @@
  * Analysis Customization Types
  *
  * Types for analysis customization options including Anti-AI detection,
- * writing styles, and other formatting preferences.
+ * writing styles, custom prompts, and other formatting preferences.
  */
 
 // Writing style options
@@ -26,6 +26,8 @@ export type FormalityLevel = 1 | 2 | 3 | 4 | 5;
 
 // Main customization interface
 export interface AnalysisCustomization {
+  /** Custom user prompt for personalized analysis */
+  userPrompt?: string;
   /** Enable Anti-AI Detection (humanize text) */
   antiAIDetection: boolean;
   /** Writing style for the output */
@@ -44,6 +46,7 @@ export interface AnalysisCustomization {
 
 // Default customization values
 export const DEFAULT_CUSTOMIZATION: AnalysisCustomization = {
+  userPrompt: '',
   antiAIDetection: false,
   writingStyle: WritingStyle.PROFESSIONAL,
   targetLength: 'medium',
@@ -52,6 +55,24 @@ export const DEFAULT_CUSTOMIZATION: AnalysisCustomization = {
   includeExamples: true,
   personalTone: false,
 };
+
+// V2 Analysis Request with customization options
+export interface AnalysisRequestV2 {
+  url?: string;
+  raw_text?: string;
+  title?: string;
+  source?: string;
+  mode: string;
+  category: string;
+  language: string;
+  model?: string;
+  deep_research?: boolean;
+  /** Customization options for personalized output */
+  customization?: AnalysisCustomization;
+}
+
+// AsyncStorage key for saving user preferences
+export const CUSTOMIZATION_STORAGE_KEY = '@deepsight_customization_prefs';
 
 // Writing style configuration with labels
 export const WRITING_STYLE_CONFIG: Record<WritingStyle, {

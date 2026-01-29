@@ -1,5 +1,18 @@
 import { PlanType } from '../constants/config';
 
+// Re-export analysis customization types
+export {
+  WritingStyle,
+  AnalysisCustomization,
+  AnalysisRequestV2,
+  DEFAULT_CUSTOMIZATION,
+  CUSTOMIZATION_STORAGE_KEY,
+  WRITING_STYLE_CONFIG,
+  VOCABULARY_CONFIG,
+  LENGTH_CONFIG,
+} from './analysis';
+export type { VocabularyComplexity, TargetLength, FormalityLevel } from './analysis';
+
 // User Types
 export interface User {
   id: number;

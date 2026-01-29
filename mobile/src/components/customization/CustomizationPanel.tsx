@@ -1,17 +1,19 @@
 /**
  * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  🎨 CUSTOMIZATION PANEL — Personnalisation de l'analyse                            ║
+ * ║  🎨 CUSTOMIZATION PANEL V2 — Personnalisation avancée de l'analyse                 ║
  * ╠════════════════════════════════════════════════════════════════════════════════════╣
- * ║  - Anti-AI Detection toggle (humanize text) - 72px prominent button               ║
+ * ║  - Custom user prompt TextInput                                                     ║
+ * ║  - Anti-AI Detection toggle (72px prominent button with haptic feedback)            ║
  * ║  - Writing style selector                                                          ║
  * ║  - Target length                                                                   ║
  * ║  - Formality level                                                                 ║
  * ║  - Vocabulary complexity                                                           ║
+ * ║  - AsyncStorage for preference persistence                                          ║
  * ║  - Accessibility compliant                                                         ║
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,12 +22,16 @@ import {
   ScrollView,
   Switch,
   Animated,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
 import { BorderRadius, Spacing, Typography, Shadows } from '../../constants/theme';
+import { storage } from '../../utils/storage';
 import {
   AnalysisCustomization,
   WritingStyle,
@@ -36,6 +42,7 @@ import {
   WRITING_STYLE_CONFIG,
   VOCABULARY_CONFIG,
   LENGTH_CONFIG,
+  CUSTOMIZATION_STORAGE_KEY,
 } from '../../types/analysis';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -55,6 +62,8 @@ interface CustomizationPanelProps {
   disabled?: boolean;
   /** Whether to show advanced options */
   showAdvanced?: boolean;
+  /** Whether to persist preferences to storage */
+  persistPreferences?: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -68,6 +77,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   language = 'fr',
   disabled = false,
   showAdvanced = true,
+  persistPreferences = true,
 }) => {
   const { colors, isDark } = useTheme();
   const [customization, setCustomization] = useState<AnalysisCustomization>({
@@ -76,11 +86,59 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   });
   const [advancedExpanded, setAdvancedExpanded] = useState(false);
   const [scaleAnim] = useState(new Animated.Value(1));
+  const [isLoaded, setIsLoaded] = useState(false);
 
   // Translation helper
   const t = useCallback(
     (fr: string, en: string) => (language === 'fr' ? fr : en),
     [language]
+  );
+
+  // Load saved preferences from AsyncStorage
+  useEffect(() => {
+    const loadPreferences = async () => {
+      if (!persistPreferences) {
+        setIsLoaded(true);
+        return;
+      }
+
+      try {
+        const saved = await storage.getObject<Partial<AnalysisCustomization>>(
+          CUSTOMIZATION_STORAGE_KEY
+        );
+        if (saved) {
+          const merged = {
+            ...DEFAULT_CUSTOMIZATION,
+            ...saved,
+            ...initialCustomization,
+          };
+          setCustomization(merged);
+          onCustomizationChange(merged);
+        }
+      } catch (error) {
+        console.error('Failed to load customization preferences:', error);
+      } finally {
+        setIsLoaded(true);
+      }
+    };
+
+    loadPreferences();
+  }, [persistPreferences, initialCustomization, onCustomizationChange]);
+
+  // Save preferences to AsyncStorage
+  const savePreferences = useCallback(
+    async (prefs: AnalysisCustomization) => {
+      if (!persistPreferences) return;
+
+      try {
+        // Don't save userPrompt to storage (it's per-analysis)
+        const { userPrompt, ...prefsToSave } = prefs;
+        await storage.setObject(CUSTOMIZATION_STORAGE_KEY, prefsToSave);
+      } catch (error) {
+        console.error('Failed to save customization preferences:', error);
+      }
+    },
+    [persistPreferences]
   );
 
   // Update customization
@@ -89,13 +147,15 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
       const newCustomization = { ...customization, ...updates };
       setCustomization(newCustomization);
       onCustomizationChange(newCustomization);
+      savePreferences(newCustomization);
     },
-    [customization, onCustomizationChange]
+    [customization, onCustomizationChange, savePreferences]
   );
 
-  // Toggle Anti-AI Detection with animation
+  // Toggle Anti-AI Detection with animation and haptic
   const toggleAntiAIDetection = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Strong haptic feedback for this important toggle
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
     // Animate button press
     Animated.sequence([
@@ -115,6 +175,53 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   }, [customization.antiAIDetection, updateCustomization, scaleAnim]);
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // 📝 USER PROMPT INPUT
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const renderUserPromptInput = () => (
+    <View style={styles.section}>
+      <View style={styles.promptHeader}>
+        <Ionicons name="create-outline" size={18} color={colors.accentPrimary} />
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginLeft: Spacing.xs }]}>
+          {t('Instructions personnalisées', 'Custom Instructions')}
+        </Text>
+      </View>
+      <Text style={[styles.promptHint, { color: colors.textMuted }]}>
+        {t(
+          'Ajoutez des instructions spécifiques pour personnaliser votre analyse',
+          'Add specific instructions to customize your analysis'
+        )}
+      </Text>
+      <TextInput
+        style={[
+          styles.promptInput,
+          {
+            backgroundColor: colors.bgTertiary,
+            color: colors.textPrimary,
+            borderColor: customization.userPrompt ? colors.accentPrimary : colors.border,
+          },
+        ]}
+        placeholder={t(
+          'Ex: "Concentre-toi sur les aspects techniques" ou "Résume pour un débutant"...',
+          'E.g.: "Focus on technical aspects" or "Summarize for a beginner"...'
+        )}
+        placeholderTextColor={colors.textMuted}
+        value={customization.userPrompt || ''}
+        onChangeText={(text) => updateCustomization({ userPrompt: text })}
+        multiline
+        numberOfLines={3}
+        maxLength={500}
+        textAlignVertical="top"
+        editable={!disabled}
+        accessibilityLabel={t('Instructions personnalisées', 'Custom instructions')}
+      />
+      <Text style={[styles.charCount, { color: colors.textMuted }]}>
+        {(customization.userPrompt || '').length}/500
+      </Text>
+    </View>
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // 🛡️ ANTI-AI DETECTION BUTTON (72px prominent)
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -128,39 +235,51 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
             onPress={toggleAntiAIDetection}
             disabled={disabled}
             activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityState={{ selected: isActive }}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: isActive }}
             accessibilityLabel={t('Anti-Détection IA', 'Anti-AI Detection')}
+            accessibilityHint={t(
+              'Active ou désactive la réécriture humanisée pour éviter la détection par les outils IA',
+              'Toggle humanized rewriting to avoid AI detection tools'
+            )}
           >
             <LinearGradient
-              colors={isActive ? ['#10B981', '#059669'] : ['#22C55E', '#16A34A']}
+              colors={isActive ? ['#10B981', '#059669'] : [colors.bgTertiary, colors.bgSecondary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={[
                 styles.antiAIButton,
                 isActive && styles.antiAIButtonActive,
+                !isActive && { borderWidth: 1, borderColor: colors.border },
                 disabled && styles.disabled,
               ]}
             >
               <View style={styles.antiAIContent}>
                 <View style={[
                   styles.antiAIIconContainer,
-                  isActive && styles.antiAIIconContainerActive,
+                  {
+                    backgroundColor: isActive
+                      ? 'rgba(255, 255, 255, 0.2)'
+                      : colors.accentPrimary + '20',
+                  },
                 ]}>
                   <Ionicons
-                    name={isActive ? 'shield-checkmark' : 'shield'}
+                    name={isActive ? 'shield-checkmark' : 'shield-outline'}
                     size={28}
-                    color="#FFFFFF"
+                    color={isActive ? '#FFFFFF' : colors.accentPrimary}
                   />
                 </View>
                 <View style={styles.antiAITextContainer}>
-                  <Text style={styles.antiAITitle}>
-                    {isActive
-                      ? t('✓ Anti-Détection IA Activé', '✓ Anti-AI Detection Active')
-                      : t('Anti-Détection IA', 'Anti-AI Detection')
-                    }
+                  <Text style={[
+                    styles.antiAITitle,
+                    { color: isActive ? '#FFFFFF' : colors.textPrimary },
+                  ]}>
+                    {t('Anti-Détection IA', 'Anti-AI Detection')}
                   </Text>
-                  <Text style={styles.antiAISubtitle}>
+                  <Text style={[
+                    styles.antiAISubtitle,
+                    { color: isActive ? 'rgba(255, 255, 255, 0.85)' : colors.textSecondary },
+                  ]}>
                     {t(
                       'Humanise le texte pour éviter la détection',
                       'Humanizes text to avoid detection'
@@ -168,14 +287,35 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                   </Text>
                 </View>
               </View>
-              {isActive && (
-                <View style={styles.antiAIBadge}>
-                  <Text style={styles.antiAIBadgeText}>ON</Text>
-                </View>
-              )}
+              <View style={[
+                styles.antiAIBadge,
+                {
+                  backgroundColor: isActive
+                    ? 'rgba(255, 255, 255, 0.3)'
+                    : colors.accentPrimary + '20',
+                },
+              ]}>
+                <Text style={[
+                  styles.antiAIBadgeText,
+                  { color: isActive ? '#FFFFFF' : colors.accentPrimary },
+                ]}>
+                  {isActive ? 'ON' : 'OFF'}
+                </Text>
+              </View>
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
+        
+        {/* Info tooltip */}
+        <View style={[styles.antiAIInfo, { backgroundColor: colors.bgTertiary }]}>
+          <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
+          <Text style={[styles.antiAIInfoText, { color: colors.textMuted }]}>
+            {t(
+              'Réécrit le texte avec des variations naturelles pour le rendre indétectable par GPTZero, Turnitin, etc.',
+              'Rewrites text with natural variations to make it undetectable by GPTZero, Turnitin, etc.'
+            )}
+          </Text>
+        </View>
       </View>
     );
   };
@@ -212,6 +352,8 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                 },
                 disabled && styles.disabled,
               ]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: isSelected }}
             >
               <Ionicons
                 name={config.icon as any}
@@ -262,6 +404,8 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                 },
                 disabled && styles.disabled,
               ]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: isSelected }}
             >
               <Text
                 style={[
@@ -316,8 +460,12 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                   level <= customization.formalityLevel
                     ? colors.accentPrimary
                     : colors.bgTertiary,
+                borderWidth: level === customization.formalityLevel ? 2 : 0,
+                borderColor: colors.accentPrimary,
               },
             ]}
+            accessibilityRole="adjustable"
+            accessibilityValue={{ now: customization.formalityLevel, min: 1, max: 5 }}
           />
         ))}
       </View>
@@ -361,6 +509,8 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                 },
                 disabled && styles.disabled,
               ]}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: isSelected }}
             >
               <Text
                 style={[
@@ -396,7 +546,10 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
         </View>
         <Switch
           value={customization.includeExamples}
-          onValueChange={(value) => updateCustomization({ includeExamples: value })}
+          onValueChange={(value) => {
+            Haptics.selectionAsync();
+            updateCustomization({ includeExamples: value });
+          }}
           disabled={disabled}
           trackColor={{ false: colors.bgTertiary, true: colors.accentPrimary }}
           thumbColor="#FFFFFF"
@@ -412,7 +565,10 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
         </View>
         <Switch
           value={customization.personalTone}
-          onValueChange={(value) => updateCustomization({ personalTone: value })}
+          onValueChange={(value) => {
+            Haptics.selectionAsync();
+            updateCustomization({ personalTone: value });
+          }}
           disabled={disabled}
           trackColor={{ false: colors.bgTertiary, true: colors.accentPrimary }}
           thumbColor="#FFFFFF"
@@ -446,7 +602,8 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
           </TouchableOpacity>
         </View>
         {advancedExpanded && (
-          <View style={styles.compactExpandedOptions}>
+          <View style={[styles.compactExpandedOptions, { borderTopColor: colors.border }]}>
+            {renderUserPromptInput()}
             {renderWritingStyleSelector()}
             {renderLengthSelector()}
           </View>
@@ -459,54 +616,66 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   // 🎨 FULL MODE
   // ═══════════════════════════════════════════════════════════════════════════
 
+  if (!isLoaded) {
+    return null; // Don't render until preferences are loaded
+  }
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
-      <View style={styles.header}>
-        <Ionicons name="options" size={20} color={colors.accentPrimary} />
-        <Text style={[styles.title, { color: colors.textPrimary }]}>
-          {t("Personnalisation de l'analyse", 'Analysis Customization')}
-        </Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+    >
+      <View style={[styles.container, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
+        <View style={styles.header}>
+          <Ionicons name="options" size={20} color={colors.accentPrimary} />
+          <Text style={[styles.title, { color: colors.textPrimary }]}>
+            {t('Personnalisation avancée', 'Advanced Customization')}
+          </Text>
+        </View>
+
+        {/* User Prompt Input */}
+        {renderUserPromptInput()}
+
+        {/* Prominent Anti-AI Button */}
+        {renderAntiAIButton()}
+
+        {/* Writing Style */}
+        {renderWritingStyleSelector()}
+
+        {/* Target Length */}
+        {renderLengthSelector()}
+
+        {/* Advanced Options Toggle */}
+        {showAdvanced && (
+          <>
+            <TouchableOpacity
+              style={styles.advancedToggle}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setAdvancedExpanded(!advancedExpanded);
+              }}
+            >
+              <Text style={[styles.advancedToggleText, { color: colors.textSecondary }]}>
+                {t('Options avancées', 'Advanced Options')}
+              </Text>
+              <Ionicons
+                name={advancedExpanded ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={colors.textSecondary}
+              />
+            </TouchableOpacity>
+
+            {advancedExpanded && (
+              <>
+                {renderFormalitySlider()}
+                {renderVocabularySelector()}
+                {renderAdditionalOptions()}
+              </>
+            )}
+          </>
+        )}
       </View>
-
-      {/* Prominent Anti-AI Button */}
-      {renderAntiAIButton()}
-
-      {/* Writing Style */}
-      {renderWritingStyleSelector()}
-
-      {/* Target Length */}
-      {renderLengthSelector()}
-
-      {/* Advanced Options Toggle */}
-      {showAdvanced && (
-        <>
-          <TouchableOpacity
-            style={styles.advancedToggle}
-            onPress={() => {
-              Haptics.selectionAsync();
-              setAdvancedExpanded(!advancedExpanded);
-            }}
-          >
-            <Text style={[styles.advancedToggleText, { color: colors.textSecondary }]}>
-              {t('Options avancées', 'Advanced Options')}
-            </Text>
-            <Ionicons
-              name={advancedExpanded ? 'chevron-up' : 'chevron-down'}
-              size={20}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-
-          {advancedExpanded && (
-            <>
-              {renderFormalitySlider()}
-              {renderVocabularySelector()}
-              {renderAdditionalOptions()}
-            </>
-          )}
-        </>
-      )}
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -530,6 +699,33 @@ const styles = StyleSheet.create({
   title: {
     fontSize: Typography.fontSize.lg,
     fontFamily: Typography.fontFamily.bodySemiBold,
+  },
+
+  // User Prompt Input
+  promptHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  promptHint: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.body,
+    marginBottom: Spacing.sm,
+  },
+  promptInput: {
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    padding: Spacing.md,
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.body,
+    minHeight: 80,
+    maxHeight: 120,
+  },
+  charCount: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.body,
+    textAlign: 'right',
+    marginTop: Spacing.xs,
   },
 
   // Anti-AI Button (72px height)
@@ -558,13 +754,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: Spacing.md,
-  },
-  antiAIIconContainerActive: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   antiAITextContainer: {
     flex: 1,
@@ -572,16 +764,13 @@ const styles = StyleSheet.create({
   antiAITitle: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.bodyBold,
-    color: '#FFFFFF',
   },
   antiAISubtitle: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
-    color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
   antiAIBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     paddingHorizontal: Spacing.sm,
     paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.full,
@@ -589,7 +778,20 @@ const styles = StyleSheet.create({
   antiAIBadgeText: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.bodyBold,
-    color: '#FFFFFF',
+  },
+  antiAIInfo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: Spacing.sm,
+    padding: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.xs,
+  },
+  antiAIInfoText: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.body,
+    flex: 1,
+    lineHeight: 16,
   },
 
   // Sections

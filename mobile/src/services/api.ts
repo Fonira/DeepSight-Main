@@ -410,6 +410,63 @@ export const videoApi = {
     });
   },
 
+  /**
+   * V2 Analysis with advanced customization options
+   * Supports Anti-AI Detection, custom prompts, writing styles, etc.
+   */
+  async analyzeVideoV2(data: {
+    url?: string;
+    raw_text?: string;
+    title?: string;
+    source?: string;
+    mode: string;
+    category: string;
+    language: string;
+    model?: string;
+    deep_research?: boolean;
+    customization?: {
+      userPrompt?: string;
+      antiAIDetection?: boolean;
+      writingStyle?: string;
+      targetLength?: string;
+      formalityLevel?: number;
+      vocabularyComplexity?: string;
+      includeExamples?: boolean;
+      personalTone?: boolean;
+    };
+  }): Promise<{ task_id: string }> {
+    // Transform customization to backend format
+    const backendData: Record<string, unknown> = {
+      url: data.url,
+      raw_text: data.raw_text,
+      title: data.title,
+      source: data.source,
+      mode: data.mode,
+      category: data.category,
+      language: data.language,
+      model: data.model,
+      deep_research: data.deep_research,
+    };
+
+    // Add customization options if provided
+    if (data.customization) {
+      backendData.user_prompt = data.customization.userPrompt;
+      backendData.anti_ai_detection = data.customization.antiAIDetection;
+      backendData.writing_style = data.customization.writingStyle;
+      backendData.target_length = data.customization.targetLength;
+      backendData.formality_level = data.customization.formalityLevel;
+      backendData.vocabulary_complexity = data.customization.vocabularyComplexity;
+      backendData.include_examples = data.customization.includeExamples;
+      backendData.personal_tone = data.customization.personalTone;
+    }
+
+    return request('/api/videos/analyze/hybrid', {
+      method: 'POST',
+      body: backendData,
+      timeout: TIMEOUTS.ANALYSIS,
+    });
+  },
+
   async getStatus(taskId: string): Promise<AnalysisStatus> {
     return request(`/api/videos/status/${taskId}`);
   },

@@ -71,6 +71,20 @@ from .enriched_definitions import (
     get_enriched_definitions, extract_terms_from_text, get_category_info, CATEGORIES
 )
 
+# 🆕 v2.1: Import des nouveaux modules d'analyse avancée
+try:
+    from .youtube_comments import analyze_comments
+    from .metadata_enriched import get_enriched_metadata, detect_sponsorship, detect_propaganda_risk
+    from .anti_ai_prompts import build_customized_prompt, get_anti_ai_prompt, get_style_instruction
+    from .schemas import (
+        AnalysisCustomization, WritingStyle, AnalyzeRequestV2, AnalyzeResponseV2,
+        CommentsAnalysis, VideoMetadataEnriched
+    )
+    ADVANCED_ANALYSIS_AVAILABLE = True
+except ImportError as e:
+    ADVANCED_ANALYSIS_AVAILABLE = False
+    print(f"⚠️ [VIDEO] Advanced analysis modules not available: {e}", flush=True)
+
 # 🕐 Import du système de fraîcheur et fact-check LITE
 try:
     from .freshness_factcheck import (

@@ -7,6 +7,10 @@ import {
   TouchableOpacity,
   Alert,
   RefreshControl,
+  Animated,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,6 +25,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { videoApi, historyApi } from '../services/api';
 import { Header, VideoCard, Card, Badge, Avatar, FreeTrialLimitModal } from '../components';
 import SmartInputBar from '../components/SmartInputBar';
+import { CustomizationPanel } from '../components/customization';
 import { VideoDiscoveryModal } from '../components/VideoDiscoveryModal';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
 import { isValidYouTubeUrl, formatCredits } from '../utils/formatters';
@@ -31,6 +36,12 @@ import {
   CONVERSION_TRIGGERS,
 } from '../config/planPrivileges';
 import type { RootStackParamList, MainTabParamList, AnalysisSummary } from '../types';
+import { AnalysisCustomization, DEFAULT_CUSTOMIZATION } from '../types/analysis';
+
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 // Composite type for navigating to both tab screens and stack screens
 type DashboardNavigationProp = CompositeNavigationProp<
@@ -41,7 +52,7 @@ type DashboardNavigationProp = CompositeNavigationProp<
 export const DashboardScreen: React.FC = () => {
   const { colors } = useTheme();
   const { user, refreshUser } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigation = useNavigation<DashboardNavigationProp>();
   const insets = useSafeAreaInsets();
   const isOffline = useIsOffline();
@@ -70,6 +81,17 @@ export const DashboardScreen: React.FC = () => {
     deepResearch: boolean;
     searchQuery: string;
   } | null>(null);
+
+  // Customization panel state
+  const [showCustomization, setShowCustomization] = useState(false);
+  const [customization, setCustomization] = useState<AnalysisCustomization>(DEFAULT_CUSTOMIZATION);
+
+  // Handle customization toggle with animation
+  const toggleCustomization = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowCustomization(!showCustomization);
+  }, [showCustomization]);
 
   const loadRecentAnalyses = useCallback(async () => {
     try {
@@ -176,7 +198,38 @@ export const DashboardScreen: React.FC = () => {
         return; // Exit early - analysis will continue after video selection
       }
 
-      const { task_id } = await videoApi.analyze(analysisRequest);
+      // Use V2 API with customization options if any customization is set
+      const hasCustomization = 
+        customization.userPrompt ||
+        customization.antiAIDetection ||
+        customization.writingStyle !== DEFAULT_CUSTOMIZATION.writingStyle ||
+        customization.targetLength !== DEFAULT_CUSTOMIZATION.targetLength ||
+        customization.formalityLevel !== DEFAULT_CUSTOMIZATION.formalityLevel ||
+        customization.vocabularyComplexity !== DEFAULT_CUSTOMIZATION.vocabularyComplexity;
+
+      let task_id: string;
+      
+      if (hasCustomization) {
+        // Use V2 API with customization
+        const result = await videoApi.analyzeVideoV2({
+          ...analysisRequest,
+          customization: {
+            userPrompt: customization.userPrompt,
+            antiAIDetection: customization.antiAIDetection,
+            writingStyle: customization.writingStyle,
+            targetLength: customization.targetLength,
+            formalityLevel: customization.formalityLevel,
+            vocabularyComplexity: customization.vocabularyComplexity,
+            includeExamples: customization.includeExamples,
+            personalTone: customization.personalTone,
+          },
+        });
+        task_id = result.task_id;
+      } else {
+        // Use standard API for non-customized requests
+        const result = await videoApi.analyze(analysisRequest);
+        task_id = result.task_id;
+      }
 
       // For free users, track analysis and potentially show upgrade modal
       if (userPlan === 'free') {
@@ -251,7 +304,34 @@ export const DashboardScreen: React.FC = () => {
         deep_research: pendingSearchData.deepResearch,
       };
 
-      const { task_id } = await videoApi.analyze(analysisRequest);
+      // Use V2 API with customization options if any customization is set
+      const hasCustomization = 
+        customization.userPrompt ||
+        customization.antiAIDetection ||
+        customization.writingStyle !== DEFAULT_CUSTOMIZATION.writingStyle ||
+        customization.targetLength !== DEFAULT_CUSTOMIZATION.targetLength;
+
+      let task_id: string;
+      
+      if (hasCustomization) {
+        const result = await videoApi.analyzeVideoV2({
+          ...analysisRequest,
+          customization: {
+            userPrompt: customization.userPrompt,
+            antiAIDetection: customization.antiAIDetection,
+            writingStyle: customization.writingStyle,
+            targetLength: customization.targetLength,
+            formalityLevel: customization.formalityLevel,
+            vocabularyComplexity: customization.vocabularyComplexity,
+            includeExamples: customization.includeExamples,
+            personalTone: customization.personalTone,
+          },
+        });
+        task_id = result.task_id;
+      } else {
+        const result = await videoApi.analyze(analysisRequest);
+        task_id = result.task_id;
+      }
 
       // For free users, track analysis
       if (userPlan === 'free') {
@@ -349,9 +429,59 @@ export const DashboardScreen: React.FC = () => {
 
         {/* Analysis Input Section - SmartInputBar */}
         <View style={styles.analysisSection}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-            {t.dashboard.title}
-          </Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              {t.dashboard.title}
+            </Text>
+            
+            {/* Customization Toggle Button */}
+            <TouchableOpacity
+              style={[
+                styles.customizeButton,
+                { 
+                  backgroundColor: showCustomization 
+                    ? colors.accentPrimary 
+                    : colors.bgTertiary,
+                  borderColor: showCustomization
+                    ? colors.accentPrimary
+                    : colors.border,
+                },
+              ]}
+              onPress={toggleCustomization}
+              accessibilityLabel="Personnaliser"
+            >
+              <Ionicons 
+                name={showCustomization ? 'options' : 'options-outline'} 
+                size={16} 
+                color={showCustomization ? '#FFFFFF' : colors.textSecondary} 
+              />
+              <Text style={[
+                styles.customizeButtonText,
+                { color: showCustomization ? '#FFFFFF' : colors.textSecondary },
+              ]}>
+                Personnaliser
+              </Text>
+              {customization.antiAIDetection && (
+                <View style={styles.antiAIIndicator}>
+                  <Ionicons name="shield-checkmark" size={12} color="#10B981" />
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Customization Panel (Collapsible) */}
+          {showCustomization && (
+            <Card variant="elevated" style={styles.customizationCard}>
+              <CustomizationPanel
+                onCustomizationChange={setCustomization}
+                initialCustomization={customization}
+                language={language as 'fr' | 'en'}
+                compact={false}
+                showAdvanced={true}
+                persistPreferences={true}
+              />
+            </Card>
+          )}
 
           <Card variant="elevated" style={styles.smartInputCard}>
             <SmartInputBar
@@ -602,6 +732,34 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
     marginTop: Spacing.xs,
     textAlign: 'center',
+  },
+  // Customization section styles
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  customizeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    gap: Spacing.xs,
+  },
+  customizeButtonText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.bodyMedium,
+  },
+  antiAIIndicator: {
+    marginLeft: Spacing.xs,
+  },
+  customizationCard: {
+    padding: 0,
+    marginBottom: Spacing.md,
+    overflow: 'hidden',
   },
 });
 
