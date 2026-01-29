@@ -18,10 +18,16 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.deepsight.app",
+      "associatedDomains": [
+        "applinks:deepsightsynthesis.com",
+        "applinks:www.deepsightsynthesis.com"
+      ],
       "infoPlist": {
         "NSCameraUsageDescription": "Deep Sight needs camera access to scan QR codes for video URLs.",
         "NSMicrophoneUsageDescription": "Deep Sight needs microphone access for voice input.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSFaceIDUsageDescription": "Deep Sight uses Face ID for secure authentication.",
+        "UIBackgroundModes": ["fetch", "remote-notification"]
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -36,7 +42,31 @@
       "versionCode": 1,
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "deepsightsynthesis.com",
+              "pathPrefix": "/analysis"
+            },
+            {
+              "scheme": "https",
+              "host": "www.deepsightsynthesis.com",
+              "pathPrefix": "/analysis"
+            },
+            {
+              "scheme": "deepsight"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ]
     },
     "web": {
@@ -46,14 +76,29 @@
     "plugins": [
       "expo-font",
       "expo-secure-store",
-      "expo-audio"
+      "expo-audio",
+      [
+        "expo-notifications",
+        {
+          "icon": "./src/assets/images/notification-icon.png",
+          "color": "#6366F1",
+          "sounds": []
+        }
+      ]
     ],
+    "notification": {
+      "icon": "./src/assets/images/notification-icon.png",
+      "color": "#6366F1",
+      "androidMode": "default"
+    },
     "owner": "maximeadmin",
     "runtimeVersion": "1.0.0",
     "extra": {
       "eas": {
         "projectId": "baeb5f9c-579a-4385-b913-554aa4591a7d"
-      }
+      },
+      "privacyPolicyUrl": "https://www.deepsightsynthesis.com/privacy",
+      "termsOfServiceUrl": "https://www.deepsightsynthesis.com/terms"
     }
   }
 }

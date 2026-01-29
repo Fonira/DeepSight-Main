@@ -1,0 +1,1 @@
+export { AnimatedTabBarIcon } from './AnimatedTabBarIcon';

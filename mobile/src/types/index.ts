@@ -192,7 +192,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
 
   // Modal screens
-  Analysis: { videoUrl?: string; summaryId?: string };
+  Analysis: { videoUrl?: string; summaryId?: string; videoId?: string };
   VideoPlayer: { videoId: string; startTime?: number };
   Chat: { summaryId: string };
   StudyTools: { summaryId: string };
@@ -206,7 +206,7 @@ export type RootStackParamList = {
   PaymentCancel: undefined;
 
   // Legal screen
-  Legal: undefined;
+  Legal: { type?: 'privacy' | 'terms' | 'about' } | undefined;
 
   // Playlist detail
   PlaylistDetail: { playlistId: string };

@@ -361,7 +361,7 @@ export function useAnalysisStream(
       }));
     }, 1000);
 
-    // Build URL
+    // Build URL with query params (no token in URL for security)
     const params = new URLSearchParams({
       mode,
       lang,
@@ -369,12 +369,10 @@ export function useAnalysisStream(
       web_enrich: String(webEnrich),
     });
 
-    const token = await tokenStorage.getAccessToken();
-    if (token) {
-      params.set('token', token);
-    }
-
     const url = `${API_BASE_URL}/api/videos/stream/${videoId}?${params}`;
+
+    // Get token for Authorization header
+    const token = await tokenStorage.getAccessToken();
 
     // Abort previous request
     abortControllerRef.current?.abort();
@@ -383,12 +381,20 @@ export function useAnalysisStream(
     updateStep('connect', { status: 'active', startedAt: new Date() });
 
     try {
+      // Build headers with Authorization (secure - not exposed in logs/URLs)
+      const headers: Record<string, string> = {
+        'Accept': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+      };
+
+      // Add Authorization header if token exists
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Accept': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-        },
+        headers,
         signal: abortControllerRef.current.signal,
       });
 

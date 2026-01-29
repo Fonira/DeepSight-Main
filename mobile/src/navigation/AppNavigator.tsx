@@ -1,15 +1,17 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useMemo, useCallback } from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
+import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { DeepSightSpinner } from '../components/loading';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import * as Linking from 'expo-linking';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import { AnimatedTabBarIcon } from '../components/navigation';
 import {
   LandingScreen,
   LoginScreen,
@@ -60,7 +62,7 @@ const MainTabs: React.FC = () => {
           fontFamily: Typography.fontFamily.bodyMedium,
           marginTop: Spacing.xs,
         },
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
           switch (route.name) {
@@ -80,7 +82,14 @@ const MainTabs: React.FC = () => {
               iconName = 'help-outline';
           }
 
-          return <Ionicons name={iconName} size={24} color={color} />;
+          return (
+            <AnimatedTabBarIcon
+              name={iconName}
+              focused={focused}
+              color={color}
+              size={24}
+            />
+          );
         },
       })}
       screenListeners={{
@@ -208,10 +217,61 @@ const MainStack: React.FC = () => {
   );
 };
 
+// Deep Linking Configuration
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: [
+    Linking.createURL('/'),
+    'deepsight://',
+    'https://deepsightsynthesis.com',
+    'https://www.deepsightsynthesis.com',
+  ],
+  config: {
+    screens: {
+      // Auth screens
+      Landing: 'welcome',
+      Login: 'login',
+      Register: 'register',
+      ForgotPassword: 'forgot-password',
+      VerifyEmail: 'verify-email',
+      // Main screens
+      MainTabs: {
+        screens: {
+          Dashboard: 'home',
+          History: 'history',
+          Playlists: 'playlists',
+          Profile: 'profile',
+        },
+      },
+      Analysis: 'analysis/:videoId',
+      Settings: 'settings',
+      Account: 'account',
+      Upgrade: 'upgrade',
+      Usage: 'usage',
+      PaymentSuccess: 'payment/success',
+      PaymentCancel: 'payment/cancel',
+      Legal: 'legal/:type',
+      PlaylistDetail: 'playlists/:playlistId',
+    },
+  },
+};
+
 // Root Navigator
 export const AppNavigator: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const { colors, isDark } = useTheme();
+
+  // Memoize navigation theme
+  const navigationTheme = useMemo(() => ({
+    dark: isDark,
+    colors: {
+      primary: colors.accentPrimary,
+      background: colors.bgPrimary,
+      card: colors.bgSecondary,
+      text: colors.textPrimary,
+      border: colors.border,
+      notification: colors.accentError,
+    },
+  }), [isDark, colors]);
 
   if (isLoading) {
     return (
@@ -223,16 +283,11 @@ export const AppNavigator: React.FC = () => {
 
   return (
     <NavigationContainer
-      theme={{
-        dark: isDark,
-        colors: {
-          primary: colors.accentPrimary,
-          background: colors.bgPrimary,
-          card: colors.bgSecondary,
-          text: colors.textPrimary,
-          border: colors.border,
-          notification: colors.accentError,
-        },
+      linking={linking}
+      theme={navigationTheme}
+      onStateChange={(state) => {
+        // Analytics tracking could be added here
+        // e.g., analytics.logScreenView(currentRouteName);
       }}
     >
       {isAuthenticated ? <MainStack /> : <AuthStack />}
