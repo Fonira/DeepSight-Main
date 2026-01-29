@@ -73,11 +73,8 @@ if DATABASE_URL.startswith("postgresql"):
 
     # Configurer SSL pour asyncpg via connect_args
     if _use_ssl:
-        import ssl
-        ssl_context = ssl.create_default_context()
-        ssl_context.check_hostname = False
-        ssl_context.verify_mode = ssl.CERT_NONE
-        _engine_kwargs["connect_args"] = {"ssl": ssl_context}
+        # Utiliser ssl="require" pour Railway proxy (plus simple que SSLContext)
+        _engine_kwargs["connect_args"] = {"ssl": "require"}
 
 engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
 
