@@ -317,6 +317,11 @@ export function useAnalysisStream(
 
           onError?.(error);
           abortControllerRef.current?.abort();
+          // Cleanup timer on error
+          if (durationIntervalRef.current) {
+            clearInterval(durationIntervalRef.current);
+            durationIntervalRef.current = null;
+          }
           break;
 
         case 'heartbeat':
@@ -428,6 +433,11 @@ export function useAnalysisStream(
         retryCountRef.current++;
         setTimeout(() => start(), 1000 * Math.pow(2, retryCountRef.current));
       } else {
+        // Cleanup timer when giving up on retries
+        if (durationIntervalRef.current) {
+          clearInterval(durationIntervalRef.current);
+          durationIntervalRef.current = null;
+        }
         setState(prev => ({
           ...prev,
           status: 'error',

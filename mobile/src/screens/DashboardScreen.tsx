@@ -58,7 +58,8 @@ export const DashboardScreen: React.FC = () => {
   // Free trial limit modal state
   const [showFreeTrialModal, setShowFreeTrialModal] = useState(false);
   const [analysesUsedThisMonth, setAnalysesUsedThisMonth] = useState(0);
-  const [lastVideoDuration, setLastVideoDuration] = useState(0);
+  // Note: lastVideoDuration reserved for future FreeTrialLimitModal enhancement
+  // Currently the modal shows 0 for duration, which is acceptable as a placeholder
 
   // Video discovery modal state
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
@@ -456,7 +457,7 @@ export const DashboardScreen: React.FC = () => {
         visible={showFreeTrialModal}
         onClose={() => setShowFreeTrialModal(false)}
         analysesUsed={analysesUsedThisMonth}
-        lastVideoDuration={lastVideoDuration}
+        lastVideoDuration={0} // Placeholder - could be enhanced to track actual duration
         onStartTrial={() => {
           // TODO: Implement trial start logic
           navigation.navigate('Upgrade');

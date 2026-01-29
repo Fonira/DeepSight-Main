@@ -2,7 +2,7 @@
  * LegalScreen - Page des mentions légales, CGU et politique de confidentialité
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,24 +13,37 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Header } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
+import type { RootStackParamList } from '../types';
 
-type TabType = 'terms' | 'privacy' | 'legal';
+type TabType = 'terms' | 'privacy' | 'legal' | 'about';
+type LegalRouteProp = RouteProp<RootStackParamList, 'Legal'>;
 
 export const LegalScreen: React.FC = () => {
   const { colors } = useTheme();
   const { language } = useLanguage();
   const navigation = useNavigation();
+  const route = useRoute<LegalRouteProp>();
   const insets = useSafeAreaInsets();
 
-  const [activeTab, setActiveTab] = useState<TabType>('terms');
+  // Use route param if provided, default to 'terms'
+  const initialTab = route.params?.type || 'terms';
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab as TabType);
+
+  // Update tab when route param changes
+  useEffect(() => {
+    if (route.params?.type) {
+      setActiveTab(route.params.type as TabType);
+    }
+  }, [route.params?.type]);
 
   const tabs: { id: TabType; label: string }[] = [
+    { id: 'about', label: language === 'fr' ? 'À propos' : 'About' },
     { id: 'terms', label: language === 'fr' ? 'CGU' : 'Terms' },
     { id: 'privacy', label: language === 'fr' ? 'Confidentialité' : 'Privacy' },
     { id: 'legal', label: language === 'fr' ? 'Mentions légales' : 'Legal' },
@@ -46,6 +59,54 @@ export const LegalScreen: React.FC = () => {
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'about':
+        return (
+          <View style={styles.contentSection}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              {language === 'fr' ? 'À propos de DeepSight' : 'About DeepSight'}
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              {language === 'fr'
+                ? 'DeepSight est une application innovante d\'analyse de vidéos YouTube propulsée par l\'intelligence artificielle.'
+                : 'DeepSight is an innovative YouTube video analysis application powered by artificial intelligence.'}
+            </Text>
+
+            <Text style={[styles.sectionSubtitle, { color: colors.textPrimary }]}>
+              {language === 'fr' ? 'Fonctionnalités principales' : 'Key Features'}
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              {language === 'fr'
+                ? '• Synthèse automatique de vidéos\n• Extraction de concepts clés\n• Chat avec l\'IA sur le contenu\n• Outils d\'étude (Flashcards, Quiz)\n• Export multi-format\n• Sources académiques'
+                : '• Automatic video summaries\n• Key concept extraction\n• AI chat about content\n• Study tools (Flashcards, Quiz)\n• Multi-format export\n• Academic sources'}
+            </Text>
+
+            <Text style={[styles.sectionSubtitle, { color: colors.textPrimary }]}>
+              FAQ
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              {language === 'fr'
+                ? '• Comment fonctionne DeepSight ?\nNous utilisons des modèles d\'IA avancés pour analyser le contenu des vidéos YouTube.\n\n• Quelles vidéos sont supportées ?\nToutes les vidéos YouTube publiques avec des sous-titres disponibles.\n\n• Mes données sont-elles sécurisées ?\nOui, nous utilisons un chiffrement de bout en bout et nous conformons au RGPD.'
+                : '• How does DeepSight work?\nWe use advanced AI models to analyze YouTube video content.\n\n• Which videos are supported?\nAll public YouTube videos with available subtitles.\n\n• Is my data secure?\nYes, we use end-to-end encryption and comply with GDPR.'}
+            </Text>
+
+            <Text style={[styles.sectionSubtitle, { color: colors.textPrimary }]}>
+              Contact
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              {language === 'fr'
+                ? 'Pour toute question ou assistance :\n\n📧 Email: support@deepsight.app\n🌐 Site web: https://deepsight.app'
+                : 'For any questions or support:\n\n📧 Email: support@deepsight.app\n🌐 Website: https://deepsight.app'}
+            </Text>
+
+            <Text style={[styles.sectionSubtitle, { color: colors.textPrimary }]}>
+              {language === 'fr' ? 'Version' : 'Version'}
+            </Text>
+            <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
+              DeepSight Mobile v1.0.0
+            </Text>
+          </View>
+        );
+
       case 'terms':
         return (
           <View style={styles.contentSection}>
