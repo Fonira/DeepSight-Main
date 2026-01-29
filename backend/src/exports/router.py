@@ -28,7 +28,7 @@ router = APIRouter()
 class ExportRequest(BaseModel):
     """Requête d'export"""
     summary_id: int
-    format: str = "md"  # txt, md, docx, pdf
+    format: str = "md"  # txt, md, csv, docx, pdf, xlsx
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

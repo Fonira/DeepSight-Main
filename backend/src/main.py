@@ -148,6 +148,14 @@ except ImportError as e:
     STUDY_ROUTER_AVAILABLE = False
     print(f"⚠️ Study router not available: {e}", flush=True)
 
+# 📦 NOUVEAU: Batch router (analyses en lot - API v2)
+try:
+    from batch.router import router as batch_router
+    BATCH_ROUTER_AVAILABLE = True
+except ImportError as e:
+    BATCH_ROUTER_AVAILABLE = False
+    print(f"⚠️ Batch router not available: {e}", flush=True)
+
 # 📚 NOUVEAU: Import du Academic router (Sources Académiques)
 try:
     from academic.router import router as academic_router
@@ -156,8 +164,9 @@ except ImportError as e:
     ACADEMIC_ROUTER_AVAILABLE = False
     print(f"⚠️ Academic router not available: {e}", flush=True)
 
-VERSION = "3.7.1"  # Added P0/P1 API endpoints for mobile sync
+VERSION = "3.8.0"  # Phase 4: CSV/Excel export, Batch API, Health detailed
 APP_NAME = "Deep Sight API"
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
 
 # Configuration CORS depuis environnement
 # 🔧 Inclure les URLs de production par défaut pour éviter les erreurs CORS
@@ -348,6 +357,11 @@ if STUDY_ROUTER_AVAILABLE:
     app.include_router(study_router, prefix="/api/study", tags=["Study"])
     print("📚 Study router loaded (quiz, mindmap, flashcards)", flush=True)
 
+# 📦 NOUVEAU: Batch router (analyses en lot - API v2)
+if BATCH_ROUTER_AVAILABLE:
+    app.include_router(batch_router, prefix="/api/batch", tags=["Batch"])
+    print("📦 Batch router loaded (batch video analysis)", flush=True)
+
 # 📚 NOUVEAU: Academic router (Sources Académiques)
 if ACADEMIC_ROUTER_AVAILABLE:
     app.include_router(academic_router, tags=["Academic"])
@@ -374,6 +388,7 @@ async def root():
             "admin": "/api/admin",
             "exports": "/api/exports",
             "playlists": "/api/playlists",
+            "batch": "/api/batch" if BATCH_ROUTER_AVAILABLE else "not available",
             "profile": "/api/profile" if PROFILE_ROUTER_AVAILABLE else "not available",
             "tts": "/api/tts" if TTS_ROUTER_AVAILABLE else "not available",
             "usage": "/api/usage" if USAGE_ROUTER_AVAILABLE else "not available",
@@ -395,66 +410,162 @@ async def api_health():
     """Healthcheck alternatif sous /api"""
     return {"status": "ok", "service": "deepsight-api", "version": VERSION}
 
+
+@app.get("/health/detailed")
+async def health_detailed():
+    """
+    Endpoint de healthcheck détaillé avec métriques.
+
+    Retourne:
+    - Status de la base de données
+    - Status du cache (Redis/mémoire)
+    - Statistiques d'utilisation
+    - Informations système
+    """
+    import time
+    from datetime import datetime
+
+    start_time = time.time()
+    health_data = {
+        "status": "healthy",
+        "version": VERSION,
+        "environment": ENVIRONMENT,
+        "timestamp": datetime.utcnow().isoformat(),
+        "checks": {}
+    }
+
+    # Check database
+    try:
+        from db.database import async_session_maker
+        from sqlalchemy import text
+        async with async_session_maker() as session:
+            db_start = time.time()
+            await session.execute(text("SELECT 1"))
+            db_latency = (time.time() - db_start) * 1000
+            health_data["checks"]["database"] = {
+                "status": "healthy",
+                "latency_ms": round(db_latency, 2)
+            }
+    except Exception as e:
+        health_data["checks"]["database"] = {
+            "status": "unhealthy",
+            "error": str(e)[:100]
+        }
+        health_data["status"] = "degraded"
+
+    # Check cache
+    try:
+        from core.cache import cache
+        cache_health = await cache.health_check()
+        cache_metrics = cache.get_metrics()
+        health_data["checks"]["cache"] = {
+            "status": cache_health.get("status", "unknown"),
+            "redis": cache_health.get("redis", "unknown"),
+            "memory_cache_size": cache_metrics.get("memory_cache_size", 0),
+            "hit_rate": cache_metrics.get("hit_rate", "0%")
+        }
+    except Exception as e:
+        health_data["checks"]["cache"] = {
+            "status": "unavailable",
+            "error": str(e)[:100]
+        }
+
+    # Check external services
+    health_data["checks"]["services"] = {
+        "sentry": SENTRY_ENABLED,
+        "logging": LOGGING_AVAILABLE,
+        "profile_router": PROFILE_ROUTER_AVAILABLE,
+        "tournesol_router": TOURNESOL_ROUTER_AVAILABLE,
+        "usage_router": USAGE_ROUTER_AVAILABLE,
+        "notifications_router": NOTIFICATIONS_ROUTER_AVAILABLE,
+        "api_public_router": API_PUBLIC_ROUTER_AVAILABLE,
+        "study_router": STUDY_ROUTER_AVAILABLE,
+        "academic_router": ACADEMIC_ROUTER_AVAILABLE
+    }
+
+    # Response time
+    health_data["response_time_ms"] = round((time.time() - start_time) * 1000, 2)
+
+    return health_data
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # GESTION GLOBALE DES ERREURS
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Capture toutes les exceptions non gérées et les envoie à Sentry"""
+    """
+    Capture toutes les exceptions non gérées.
+
+    SÉCURITÉ: Ne jamais exposer les détails d'erreur en production.
+    """
+    import uuid
+    error_id = str(uuid.uuid4())[:8]
     error_msg = str(exc)
-    print(f"❌ Unhandled error: {error_msg}", file=sys.stderr, flush=True)
-    
+
+    # Log complet côté serveur
+    print(f"❌ [{error_id}] Unhandled error: {error_msg}", file=sys.stderr, flush=True)
+
     # Envoyer à Sentry si activé
     if SENTRY_ENABLED:
         import sentry_sdk
         sentry_sdk.capture_exception(exc)
-        # Ajouter du contexte
         with sentry_sdk.push_scope() as scope:
+            scope.set_tag("error_id", error_id)
             scope.set_extra("path", str(request.url.path))
             scope.set_extra("method", request.method)
             scope.set_extra("client_host", request.client.host if request.client else "unknown")
-    
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error", "error": error_msg}
-    )
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 🔍 SENTRY DEBUG ENDPOINT (uniquement en dev)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@app.get("/debug/sentry")
-async def debug_sentry():
-    """
-    🔍 Endpoint de test Sentry — Déclenche une erreur volontaire.
-    Accessible uniquement pour vérifier que Sentry fonctionne.
-    """
+    # SÉCURITÉ: En production, ne pas exposer les détails d'erreur
     if ENVIRONMENT == "production":
-        return {"error": "Not available in production"}
-    
-    if not SENTRY_ENABLED:
-        return {"error": "Sentry not configured", "hint": "Set SENTRY_DSN environment variable"}
-    
-    # Déclencher une erreur de test
-    raise Exception("🔍 Sentry test error - This is intentional!")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": "Internal server error",
+                "error_id": error_id,
+                "support": "Contact support with this error_id"
+            }
+        )
+    else:
+        # En développement, inclure les détails
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error", "error": error_msg, "error_id": error_id}
+        )
 
 
-@app.get("/debug/info")
-async def debug_info():
-    """Informations de debug (non sensibles)"""
-    return {
-        "version": VERSION,
-        "environment": ENVIRONMENT,
-        "sentry_enabled": SENTRY_ENABLED,
-        "python_version": sys.version,
-        "routers": {
-            "profile": PROFILE_ROUTER_AVAILABLE,
-            "tournesol": TOURNESOL_ROUTER_AVAILABLE,
-            "tts": TTS_ROUTER_AVAILABLE,
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔍 DEBUG ENDPOINTS — DÉSACTIVÉS EN PRODUCTION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+if ENVIRONMENT != "production":
+    @app.get("/debug/sentry")
+    async def debug_sentry():
+        """
+        🔍 Endpoint de test Sentry — Uniquement en développement.
+        Déclenche une erreur volontaire pour tester Sentry.
+        """
+        if not SENTRY_ENABLED:
+            return {"error": "Sentry not configured", "hint": "Set SENTRY_DSN environment variable"}
+
+        raise Exception("🔍 Sentry test error - This is intentional!")
+
+    @app.get("/debug/info")
+    async def debug_info():
+        """Informations de debug — Uniquement en développement."""
+        return {
+            "version": VERSION,
+            "environment": ENVIRONMENT,
+            "sentry_enabled": SENTRY_ENABLED,
+            "python_version": sys.version,
+            "routers": {
+                "profile": PROFILE_ROUTER_AVAILABLE,
+                "tournesol": TOURNESOL_ROUTER_AVAILABLE,
+                "tts": TTS_ROUTER_AVAILABLE,
+            }
         }
-    }
+else:
+    logger.info("Debug endpoints disabled in production")
 
 if __name__ == "__main__":
     import uvicorn

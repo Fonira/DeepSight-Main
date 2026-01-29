@@ -1,14 +1,15 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
-║  📄 EXPORT SERVICE — Génération PDF, DOCX, TXT, Markdown                           ║
+║  📄 EXPORT SERVICE — Génération PDF, DOCX, TXT, Markdown, CSV, Excel               ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
 import os
 import io
 import re
+import csv
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pathlib import Path
 
 # Imports conditionnels pour les librairies d'export
@@ -30,6 +31,14 @@ try:
     PDF_AVAILABLE = True
 except ImportError:
     PDF_AVAILABLE = False
+
+try:
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    EXCEL_AVAILABLE = True
+except ImportError:
+    EXCEL_AVAILABLE = False
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -465,6 +474,257 @@ def export_to_pdf(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 📊 EXPORT CSV
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def export_to_csv(
+    title: str,
+    channel: str,
+    category: str,
+    mode: str,
+    summary: str,
+    video_url: str = "",
+    duration: int = 0,
+    entities: Dict = None,
+    reliability_score: float = None,
+    created_at: datetime = None
+) -> str:
+    """Exporte l'analyse en format CSV (structured data)"""
+
+    # Formatage durée
+    if duration:
+        hours, remainder = divmod(duration, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        duration_str = f"{hours}h{minutes:02d}m" if hours else f"{minutes}m{seconds:02d}s"
+    else:
+        duration_str = "N/A"
+
+    date_str = created_at.strftime("%Y-%m-%d %H:%M:%S") if created_at else datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, quoting=csv.QUOTE_ALL)
+
+    # Header
+    writer.writerow(["Deep Sight - Export d'analyse"])
+    writer.writerow([])
+
+    # Métadonnées
+    writer.writerow(["Propriété", "Valeur"])
+    writer.writerow(["Titre", title])
+    writer.writerow(["Chaîne", channel])
+    writer.writerow(["Durée", duration_str])
+    writer.writerow(["Catégorie", category])
+    writer.writerow(["Mode d'analyse", mode])
+    writer.writerow(["URL", video_url])
+    writer.writerow(["Date d'analyse", date_str])
+
+    if reliability_score is not None:
+        writer.writerow(["Score de fiabilité", f"{reliability_score}/100"])
+
+    writer.writerow([])
+
+    # Synthèse (nettoyée du markdown)
+    summary_clean = re.sub(r'^##+ ', '', summary, flags=re.MULTILINE)
+    summary_clean = summary_clean.replace('**', '').replace('*', '')
+    writer.writerow(["Synthèse"])
+    writer.writerow([summary_clean])
+
+    writer.writerow([])
+
+    # Entités
+    if entities:
+        if entities.get("concepts"):
+            writer.writerow(["Concepts clés"])
+            for concept in entities["concepts"][:15]:
+                writer.writerow([concept])
+            writer.writerow([])
+
+        if entities.get("persons"):
+            writer.writerow(["Personnes mentionnées"])
+            for person in entities["persons"][:15]:
+                writer.writerow([person])
+            writer.writerow([])
+
+        if entities.get("organizations"):
+            writer.writerow(["Organisations"])
+            for org in entities["organizations"][:15]:
+                writer.writerow([org])
+
+    writer.writerow([])
+    writer.writerow(["Généré par Deep Sight - deepsightsynthesis.com"])
+
+    return buffer.getvalue()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📊 EXPORT EXCEL (.xlsx)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def export_to_excel(
+    title: str,
+    channel: str,
+    category: str,
+    mode: str,
+    summary: str,
+    video_url: str = "",
+    duration: int = 0,
+    entities: Dict = None,
+    reliability_score: float = None,
+    created_at: datetime = None
+) -> Optional[bytes]:
+    """Exporte l'analyse en format Excel (.xlsx)"""
+
+    if not EXCEL_AVAILABLE:
+        return None
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Analyse Deep Sight"
+
+    # Styles
+    header_font = Font(name='Arial', size=16, bold=True, color="0D4F4F")
+    subheader_font = Font(name='Arial', size=12, bold=True, color="0D4F4F")
+    label_font = Font(name='Arial', size=10, bold=True)
+    value_font = Font(name='Arial', size=10)
+    header_fill = PatternFill(start_color="E8F4F4", end_color="E8F4F4", fill_type="solid")
+
+    thin_border = Border(
+        left=Side(style='thin', color='CCCCCC'),
+        right=Side(style='thin', color='CCCCCC'),
+        top=Side(style='thin', color='CCCCCC'),
+        bottom=Side(style='thin', color='CCCCCC')
+    )
+
+    # Formatage durée
+    if duration:
+        hours, remainder = divmod(duration, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        duration_str = f"{hours}h{minutes:02d}m" if hours else f"{minutes}m{seconds:02d}s"
+    else:
+        duration_str = "N/A"
+
+    date_str = created_at.strftime("%d/%m/%Y %H:%M") if created_at else datetime.now().strftime("%d/%m/%Y %H:%M")
+
+    row = 1
+
+    # Titre principal
+    ws.merge_cells('A1:D1')
+    cell = ws['A1']
+    cell.value = "🤿 Deep Sight — Analyse"
+    cell.font = header_font
+    cell.alignment = Alignment(horizontal='center', vertical='center')
+    ws.row_dimensions[1].height = 30
+    row = 3
+
+    # Section Vidéo
+    ws.merge_cells(f'A{row}:D{row}')
+    cell = ws[f'A{row}']
+    cell.value = "📺 Vidéo analysée"
+    cell.font = subheader_font
+    cell.fill = header_fill
+    row += 1
+
+    # Données de la vidéo
+    video_data = [
+        ("Titre", title),
+        ("Chaîne", channel),
+        ("Durée", duration_str),
+        ("Catégorie", category),
+        ("Mode d'analyse", mode),
+        ("URL", video_url),
+        ("Date d'analyse", date_str),
+    ]
+
+    if reliability_score is not None:
+        emoji = "✅" if reliability_score >= 70 else "⚖️" if reliability_score >= 50 else "⚠️"
+        video_data.append(("Score de fiabilité", f"{emoji} {reliability_score}/100"))
+
+    for label, value in video_data:
+        ws[f'A{row}'] = label
+        ws[f'A{row}'].font = label_font
+        ws[f'A{row}'].border = thin_border
+        ws.merge_cells(f'B{row}:D{row}')
+        ws[f'B{row}'] = value
+        ws[f'B{row}'].font = value_font
+        ws[f'B{row}'].border = thin_border
+        row += 1
+
+    row += 1
+
+    # Section Synthèse
+    ws.merge_cells(f'A{row}:D{row}')
+    cell = ws[f'A{row}']
+    cell.value = "📋 Synthèse"
+    cell.font = subheader_font
+    cell.fill = header_fill
+    row += 1
+
+    # Contenu de la synthèse (nettoyé)
+    summary_clean = re.sub(r'^##+ ', '', summary, flags=re.MULTILINE)
+    summary_clean = summary_clean.replace('**', '').replace('*', '')
+
+    ws.merge_cells(f'A{row}:D{row}')
+    cell = ws[f'A{row}']
+    cell.value = summary_clean[:32000]  # Excel cell limit
+    cell.font = value_font
+    cell.alignment = Alignment(wrap_text=True, vertical='top')
+    ws.row_dimensions[row].height = min(400, max(50, len(summary_clean) // 5))
+    row += 2
+
+    # Section Entités
+    if entities:
+        ws.merge_cells(f'A{row}:D{row}')
+        cell = ws[f'A{row}']
+        cell.value = "🏷️ Entités extraites"
+        cell.font = subheader_font
+        cell.fill = header_fill
+        row += 1
+
+        col_offset = 0
+        if entities.get("concepts"):
+            ws[f'A{row}'] = "Concepts clés"
+            ws[f'A{row}'].font = label_font
+            for i, concept in enumerate(entities["concepts"][:15]):
+                ws[f'A{row + 1 + i}'] = concept
+                ws[f'A{row + 1 + i}'].font = value_font
+
+        if entities.get("persons"):
+            ws[f'B{row}'] = "Personnes"
+            ws[f'B{row}'].font = label_font
+            for i, person in enumerate(entities["persons"][:15]):
+                ws[f'B{row + 1 + i}'] = person
+                ws[f'B{row + 1 + i}'].font = value_font
+
+        if entities.get("organizations"):
+            ws[f'C{row}'] = "Organisations"
+            ws[f'C{row}'].font = label_font
+            for i, org in enumerate(entities["organizations"][:15]):
+                ws[f'C{row + 1 + i}'] = org
+                ws[f'C{row + 1 + i}'].font = value_font
+
+        row += 17
+
+    # Footer
+    ws.merge_cells(f'A{row}:D{row}')
+    cell = ws[f'A{row}']
+    cell.value = "Généré par Deep Sight — deepsightsynthesis.com"
+    cell.font = Font(name='Arial', size=8, italic=True, color='999999')
+    cell.alignment = Alignment(horizontal='center')
+
+    # Ajuster largeur des colonnes
+    ws.column_dimensions['A'].width = 20
+    ws.column_dimensions['B'].width = 30
+    ws.column_dimensions['C'].width = 25
+    ws.column_dimensions['D'].width = 25
+
+    # Sauvegarder en bytes
+    buffer = io.BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 FONCTION PRINCIPALE D'EXPORT
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -526,16 +786,34 @@ def export_summary(
             video_url, duration, entities, reliability_score, created_at
         )
         return content, f"deepsight_{safe_title}_{timestamp}.pdf", "application/pdf"
-    
+
+    elif format == "csv":
+        content = export_to_csv(
+            title, channel, category, mode, summary,
+            video_url, duration, entities, reliability_score, created_at
+        )
+        return content, f"deepsight_{safe_title}_{timestamp}.csv", "text/csv"
+
+    elif format == "xlsx":
+        if not EXCEL_AVAILABLE:
+            return None, "", ""
+        content = export_to_excel(
+            title, channel, category, mode, summary,
+            video_url, duration, entities, reliability_score, created_at
+        )
+        return content, f"deepsight_{safe_title}_{timestamp}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
     else:
         return None, "", ""
 
 
 def get_available_formats() -> list[str]:
     """Retourne la liste des formats d'export disponibles"""
-    formats = ["txt", "md"]
+    formats = ["txt", "md", "csv"]  # CSV is always available (stdlib)
     if DOCX_AVAILABLE:
         formats.append("docx")
     if PDF_AVAILABLE:
         formats.append("pdf")
+    if EXCEL_AVAILABLE:
+        formats.append("xlsx")
     return formats
