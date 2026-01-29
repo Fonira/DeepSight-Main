@@ -146,6 +146,7 @@ LEGAL_CONFIG = {
 PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
     "free": {
         "monthly_credits": 500,  # ~10 analyses basiques
+        "daily_analyses": 5,  # 🆕 5 analyses/jour max
         "can_use_playlists": False,
         "max_playlist_videos": 0,
         "history_days": 7,
@@ -171,10 +172,17 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         # 📚 Sources académiques
         "academic_papers_per_analysis": 3,
         "bibliography_export": False,
-        "academic_full_text": False
+        "academic_full_text": False,
+        # 🚫 Features bloquées
+        "blocked_features": ["playlists", "export_csv", "export_excel", "batch_api", "tts", "deep_research"],
+        "upgrade_prompt": {
+            "fr": "Passez à Starter pour débloquer plus d'analyses et de fonctionnalités !",
+            "en": "Upgrade to Starter to unlock more analyses and features!"
+        }
     },
     "starter": {
         "monthly_credits": 5000,  # ~100 analyses basiques
+        "daily_analyses": 20,  # 🆕 20 analyses/jour
         "can_use_playlists": False,
         "max_playlist_videos": 0,
         "history_days": 60,
@@ -200,10 +208,17 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         # 📚 Sources académiques
         "academic_papers_per_analysis": 15,
         "bibliography_export": True,
-        "academic_full_text": False
+        "academic_full_text": False,
+        # 🚫 Features bloquées
+        "blocked_features": ["playlists", "batch_api", "deep_research"],
+        "upgrade_prompt": {
+            "fr": "Passez à Pro pour les playlists et le chat illimité !",
+            "en": "Upgrade to Pro for playlists and unlimited chat!"
+        }
     },
     "pro": {
         "monthly_credits": 25000,  # ~500 analyses ou usage intensif
+        "daily_analyses": 50,  # 🆕 50 analyses/jour
         "can_use_playlists": True,
         "max_playlist_videos": 10,  # ✅ CORRIGÉ: 10 vidéos (était 20)
         "history_days": 180,        # ✅ CORRIGÉ: 180 jours (était -1)
@@ -230,10 +245,17 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         # 📚 Sources académiques
         "academic_papers_per_analysis": 30,
         "bibliography_export": True,
-        "academic_full_text": True
+        "academic_full_text": True,
+        # 🚫 Features bloquées
+        "blocked_features": ["batch_api", "deep_research"],
+        "upgrade_prompt": {
+            "fr": "Passez à Expert pour la recherche approfondie et l'API !",
+            "en": "Upgrade to Expert for deep research and API access!"
+        }
     },
     "expert": {
         "monthly_credits": 100000,  # Usage très intensif
+        "daily_analyses": 200,  # 🆕 200 analyses/jour
         "can_use_playlists": True,
         "max_playlist_videos": 50,  # ✅ CORRIGÉ: 50 vidéos (était 60)
         "history_days": -1,  # Illimité
@@ -260,10 +282,17 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         # 📚 Sources académiques
         "academic_papers_per_analysis": 50,
         "bibliography_export": True,
-        "academic_full_text": True
+        "academic_full_text": True,
+        # 🚫 Features bloquées
+        "blocked_features": [],
+        "upgrade_prompt": {
+            "fr": "Vous avez le plan Expert, toutes les fonctionnalités sont débloquées !",
+            "en": "You have the Expert plan, all features are unlocked!"
+        }
     },
     "unlimited": {
         "monthly_credits": 999999,
+        "daily_analyses": -1,  # 🆕 Illimité
         "can_use_playlists": True,
         "max_playlist_videos": 100,  # 100 vidéos max par playlist
         "history_days": -1,
@@ -287,7 +316,13 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         # 📚 Sources académiques - Illimité
         "academic_papers_per_analysis": 100,
         "bibliography_export": True,
-        "academic_full_text": True
+        "academic_full_text": True,
+        # 🚫 Features bloquées
+        "blocked_features": [],
+        "upgrade_prompt": {
+            "fr": "Compte administrateur - accès illimité",
+            "en": "Admin account - unlimited access"
+        }
     }
 }
 

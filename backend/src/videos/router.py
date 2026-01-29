@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, U
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_session, User
-from auth.dependencies import get_current_user, get_verified_user, require_plan
+from auth.dependencies import get_current_user, get_verified_user, require_plan, check_daily_limit, require_feature
 from core.config import PLAN_LIMITS, CATEGORIES
 
 # Import du système de sécurité
@@ -115,7 +115,7 @@ _task_store: Dict[str, Dict[str, Any]] = {}
 async def analyze_video(
     request: AnalyzeVideoRequest,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_verified_user),  # 🔐 Email vérifié obligatoire
+    current_user: User = Depends(check_daily_limit),  # 🔐 Email vérifié + limite quotidienne
     session: AsyncSession = Depends(get_session)
 ):
     """
@@ -579,7 +579,15 @@ async def _analyze_video_background_v6(
             )
             
             print(f"💾 Summary saved: id={summary_id}", flush=True)
-            
+
+            # 🎫 Incrémenter le compteur quotidien d'analyses
+            try:
+                from core.plan_limits import increment_daily_usage
+                daily_count = await increment_daily_usage(session, user_id)
+                print(f"📊 [QUOTA] User {user_id} daily usage: {daily_count}", flush=True)
+            except Exception as quota_err:
+                print(f"⚠️ [QUOTA] Failed to increment daily usage: {quota_err}", flush=True)
+
             # ═══════════════════════════════════════════════════════════════════
             # 9. MARQUER COMME TERMINÉ
             # ═══════════════════════════════════════════════════════════════════
@@ -1019,11 +1027,15 @@ async def update_notes(
     session: AsyncSession = Depends(get_session)
 ):
     """Met à jour les notes d'un résumé"""
+    from core.sanitize import sanitize_text
+
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found")
-    
-    await update_summary(session, summary_id, current_user.id, notes=data.get("notes", ""))
+
+    # 🛡️ Sanitize user input
+    notes = sanitize_text(data.get("notes", ""), max_length=10000)
+    await update_summary(session, summary_id, current_user.id, notes=notes)
     return {"success": True}
 
 
@@ -1035,11 +1047,15 @@ async def update_tags(
     session: AsyncSession = Depends(get_session)
 ):
     """Met à jour les tags d'un résumé"""
+    from core.sanitize import sanitize_text
+
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found")
-    
-    await update_summary(session, summary_id, current_user.id, tags=data.get("tags", ""))
+
+    # 🛡️ Sanitize user input
+    tags = sanitize_text(data.get("tags", ""), max_length=500)
+    await update_summary(session, summary_id, current_user.id, tags=tags)
     return {"success": True}
 
 
