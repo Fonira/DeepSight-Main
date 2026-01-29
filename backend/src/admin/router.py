@@ -44,6 +44,15 @@ class UpdateUserRequest(BaseModel):
     credits: Optional[int] = None
     is_admin: Optional[bool] = None
 
+    def validate_plan(self) -> Optional[str]:
+        """Valide que le plan est une valeur autorisée"""
+        if self.plan is None:
+            return None
+        valid_plans = ["free", "starter", "pro", "expert", "unlimited"]
+        if self.plan not in valid_plans:
+            raise ValueError(f"Invalid plan. Must be one of: {', '.join(valid_plans)}")
+        return self.plan
+
 
 class AddCreditsRequest(BaseModel):
     amount: int
@@ -149,9 +158,12 @@ async def list_users(
     query = select(User)
     count_query = select(func.count(User.id))
     
-    # Filtres
+    # Filtres - SÉCURITÉ: Échapper les caractères spéciaux pour éviter l'injection
     if search:
-        search_filter = User.email.ilike(f"%{search}%") | User.username.ilike(f"%{search}%")
+        # Échapper les caractères spéciaux SQL LIKE (%, _, \)
+        safe_search = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        search_pattern = f"%{safe_search}%"
+        search_filter = User.email.ilike(search_pattern) | User.username.ilike(search_pattern)
         query = query.where(search_filter)
         count_query = count_query.where(search_filter)
     
@@ -271,10 +283,21 @@ async def update_user(
     """Met à jour un utilisateur"""
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
+    # 🔐 SÉCURITÉ: Valider le plan avant mise à jour
+    if request.plan is not None:
+        try:
+            validated_plan = request.validate_plan()
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+    # 🔐 SÉCURITÉ: Empêcher de modifier son propre statut admin
+    if user_id == admin.id and request.is_admin is False:
+        raise HTTPException(status_code=403, detail="Cannot remove your own admin privileges")
+
     # Mettre à jour les champs
     if request.plan is not None:
         user.plan = request.plan
@@ -345,12 +368,16 @@ async def delete_user(
     session: AsyncSession = Depends(get_session)
 ):
     """Supprime un utilisateur et toutes ses données"""
+    # 🔐 SÉCURITÉ: Empêcher l'admin de se supprimer lui-même
+    if user_id == admin.id:
+        raise HTTPException(status_code=403, detail="Cannot delete your own account from admin panel")
+
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    
+
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     if user.is_admin:
         raise HTTPException(status_code=403, detail="Cannot delete admin user")
     
