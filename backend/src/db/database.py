@@ -25,13 +25,31 @@ from core.config import DATA_DIR, IS_RAILWAY, ADMIN_CONFIG
 # Support PostgreSQL (Railway) ou SQLite (local)
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
+# Flag pour activer SSL (pour proxy public Railway)
+_use_ssl = False
+
 if DATABASE_URL:
     # PostgreSQL sur Railway
+    # Nettoyer les paramètres SSL de l'URL (asyncpg les gère différemment)
+    if "?" in DATABASE_URL:
+        base_url, params = DATABASE_URL.split("?", 1)
+        # Vérifier si SSL est demandé
+        if "sslmode=require" in params or "ssl=require" in params or "sslmode=prefer" in params:
+            _use_ssl = True
+        # Retirer les paramètres SSL de l'URL
+        param_list = [p for p in params.split("&") if not p.startswith("sslmode=") and not p.startswith("ssl=")]
+        DATABASE_URL = base_url + ("?" + "&".join(param_list) if param_list else "")
+
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
-    elif DATABASE_URL.startswith("postgresql://"):
+    elif DATABASE_URL.startswith("postgresql://") and "+asyncpg" not in DATABASE_URL:
         DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
-    print(f"🐘 Using PostgreSQL database", flush=True)
+
+    # Activer SSL si on utilise un proxy externe (pas .internal)
+    if ".proxy.rlwy.net" in DATABASE_URL or ".railway.app" in DATABASE_URL:
+        _use_ssl = True
+
+    print(f"🐘 Using PostgreSQL database (SSL: {_use_ssl})", flush=True)
 else:
     # SQLite local avec aiosqlite
     DB_FILE = os.path.join(DATA_DIR, "deepsight_users.db")
@@ -52,6 +70,14 @@ if DATABASE_URL.startswith("postgresql"):
         "pool_timeout": 30,
         "pool_recycle": 3600,
     })
+
+    # Configurer SSL pour asyncpg via connect_args
+    if _use_ssl:
+        import ssl
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        _engine_kwargs["connect_args"] = {"ssl": ssl_context}
 
 engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
 
