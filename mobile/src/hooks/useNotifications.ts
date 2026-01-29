@@ -40,6 +40,7 @@ export function useNotifications(): NotificationHookResult {
   const navigation = useNavigation<NavigationProp>();
   const notificationListener = useRef<Notifications.Subscription | undefined>(undefined);
   const responseListener = useRef<Notifications.Subscription | undefined>(undefined);
+  const isMountedRef = useRef(true);
 
   const [state, setState] = useState<NotificationState>({
     isInitialized: false,
@@ -86,9 +87,11 @@ export function useNotifications(): NotificationHookResult {
   const initialize = useCallback(async () => {
     try {
       const { permissionGranted, pushToken } = await initializeNotifications();
+      if (!isMountedRef.current) return;
 
       // Get current badge count
       const badgeCount = await getBadgeCount();
+      if (!isMountedRef.current) return;
 
       setState((prev) => ({
         ...prev,
@@ -107,11 +110,13 @@ export function useNotifications(): NotificationHookResult {
       }
     } catch (error) {
       console.error('Failed to initialize notifications:', error);
-      setState((prev) => ({
-        ...prev,
-        isInitialized: true,
-        permissionGranted: false,
-      }));
+      if (isMountedRef.current) {
+        setState((prev) => ({
+          ...prev,
+          isInitialized: true,
+          permissionGranted: false,
+        }));
+      }
     }
   }, [handleNotificationNavigation]);
 
@@ -129,8 +134,10 @@ export function useNotifications(): NotificationHookResult {
 
   // Set up notification listeners
   useEffect(() => {
+    isMountedRef.current = true;
     // Notification received while app is foregrounded
     notificationListener.current = addNotificationReceivedListener((notification) => {
+      if (!isMountedRef.current) return;
       setState((prev) => ({
         ...prev,
         lastNotification: notification,
@@ -149,6 +156,7 @@ export function useNotifications(): NotificationHookResult {
 
     // Cleanup
     return () => {
+      isMountedRef.current = false;
       notificationListener.current?.remove();
       responseListener.current?.remove();
     };

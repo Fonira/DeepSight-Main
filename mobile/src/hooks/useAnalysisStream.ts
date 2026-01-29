@@ -176,6 +176,7 @@ export function useAnalysisStream(
   const durationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const metadataRef = useRef<VideoMetadata | null>(null);
   const completedOrErrorRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   // Helpers
   const updateStep = useCallback((stepId: string, updates: Partial<StreamStep>) => {
@@ -212,6 +213,7 @@ export function useAnalysisStream(
 
   // Event handler
   const handleEvent = useCallback((event: { type: string; data: string }) => {
+    if (!isMountedRef.current) return;
     if (pausedRef.current) {
       pauseBufferRef.current.push(event);
       return;
@@ -357,6 +359,7 @@ export function useAnalysisStream(
 
     // Start duration timer
     durationIntervalRef.current = setInterval(() => {
+      if (!isMountedRef.current) return;
       setState(prev => ({
         ...prev,
         duration: prev.startedAt
@@ -374,6 +377,7 @@ export function useAnalysisStream(
     });
 
     const token = await tokenStorage.getAccessToken();
+    if (!isMountedRef.current) return;
     if (token) {
       params.set('token', token);
     }
@@ -396,6 +400,7 @@ export function useAnalysisStream(
         signal: abortControllerRef.current.signal,
       });
 
+      if (!isMountedRef.current) return;
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -425,7 +430,7 @@ export function useAnalysisStream(
       if (retryCountRef.current < maxRetries && !pausedRef.current) {
         retryCountRef.current++;
         setTimeout(() => start(), 1000 * Math.pow(2, retryCountRef.current));
-      } else {
+      } else if (isMountedRef.current) {
         setState(prev => ({
           ...prev,
           status: 'error',
@@ -519,7 +524,9 @@ export function useAnalysisStream(
 
   // Cleanup on unmount
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
       abortControllerRef.current?.abort();
       if (durationIntervalRef.current) {
         clearInterval(durationIntervalRef.current);
