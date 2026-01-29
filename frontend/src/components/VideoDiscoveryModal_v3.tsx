@@ -216,10 +216,6 @@ const VideoCard: React.FC<{
             {formatViews(video.view_count || 0)}
           </span>
           <span className="flex items-center gap-1">
-            <ThumbsUp className="w-3 h-3" />
-            {formatViews(video.like_count || 0)}
-          </span>
-          <span className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />
             {formatDate(video.published_at || video.publish_date)}
           </span>

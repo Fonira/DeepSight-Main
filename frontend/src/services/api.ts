@@ -27,7 +27,7 @@ export interface User {
   username: string;
   email: string;
   email_verified: boolean;
-  plan: 'free' | 'student' | 'starter' | 'pro' | 'expert';
+  plan: 'free' | 'student' | 'starter' | 'pro' | 'team' | 'expert' | 'unlimited';
   credits: number;
   credits_monthly: number;
   is_admin: boolean;
@@ -39,6 +39,9 @@ export interface User {
   total_words: number;
   total_playlists: number;
   created_at: string;
+  // 🆕 Champs optionnels pour limites d'analyses
+  analysis_count?: number;
+  analysis_limit?: number;
 }
 
 export interface TokenResponse {
@@ -332,6 +335,22 @@ export class ApiError extends Error {
     this.status = status;
     this.data = data;
   }
+
+  get isRateLimited(): boolean {
+    return this.status === 429;
+  }
+
+  get isUnauthorized(): boolean {
+    return this.status === 401;
+  }
+
+  get isNotFound(): boolean {
+    return this.status === 404;
+  }
+
+  get isForbidden(): boolean {
+    return this.status === 403;
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -543,7 +562,8 @@ export const authApi = {
     return response;
   },
 
-  async me(options?: { skipCache?: boolean }): Promise<User> {
+  async me(_options?: { skipCache?: boolean }): Promise<User> {
+    // Note: skipCache non implémenté côté client, géré côté serveur
     return request('/api/auth/me');
   },
 

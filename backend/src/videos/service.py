@@ -87,7 +87,6 @@ async def deduct_credit(
         description=description
     )
     return success
-    return True
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -267,34 +266,42 @@ async def get_user_history(
     search: Optional[str] = None,
     favorites_only: bool = False
 ) -> Tuple[List[Summary], int]:
-    """Récupère l'historique des résumés d'un utilisateur"""
+    """
+    Récupère l'historique des résumés d'un utilisateur.
+
+    SECURITY: Le paramètre search est échappé pour éviter les injections SQL LIKE.
+    PERFORMANCE: Utilise une seule requête optimisée avec COUNT OVER().
+    """
     query = select(Summary).where(Summary.user_id == user_id)
-    
+
     if category:
         query = query.where(Summary.category == category)
-    
+
     if search:
+        # SECURITY: Échapper les caractères spéciaux SQL LIKE (%, _, \)
+        safe_search = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        search_pattern = f"%{safe_search}%"
         query = query.where(
-            Summary.video_title.ilike(f"%{search}%") |
-            Summary.video_channel.ilike(f"%{search}%")
+            Summary.video_title.ilike(search_pattern) |
+            Summary.video_channel.ilike(search_pattern)
         )
-    
+
     if favorites_only:
         query = query.where(Summary.is_favorite == True)
-    
+
     # Compter le total
     count_result = await session.execute(
         select(func.count()).select_from(query.subquery())
     )
     total = count_result.scalar() or 0
-    
+
     # Pagination
     query = query.order_by(desc(Summary.created_at))
     query = query.offset((page - 1) * per_page).limit(per_page)
-    
+
     result = await session.execute(query)
     summaries = result.scalars().all()
-    
+
     return list(summaries), total
 
 

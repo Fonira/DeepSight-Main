@@ -236,13 +236,13 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
 
   return (
     <div
-      className="bg-bg-secondary border border-border-default rounded-xl p-5 space-y-5"
+      className="bg-bg-secondary border border-border-default rounded-xl p-4 sm:p-5 space-y-4 sm:space-y-5"
       role="group"
       aria-labelledby={`${baseId}-title`}
     >
       <h2
         id={`${baseId}-title`}
-        className="text-lg font-semibold text-text-primary flex items-center gap-2"
+        className="text-base sm:text-lg font-semibold text-text-primary flex items-center gap-2"
       >
         <FileText className="w-5 h-5 text-accent-primary" />
         {t("Personnalisation de l'analyse", 'Analysis Customization')}
@@ -306,7 +306,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
           {t("Style d'écriture", 'Writing Style')}
         </label>
         <div
-          className="grid grid-cols-2 sm:grid-cols-3 gap-2"
+          className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2"
           role="radiogroup"
           aria-labelledby={styleId}
         >
@@ -322,8 +322,8 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                 disabled={disabled}
                 onClick={() => updateCustomization({ writingStyle: key as WritingStyle })}
                 className={`
-                  flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all
-                  ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                  flex flex-col items-center gap-1 sm:gap-1.5 p-2 sm:p-3 rounded-lg border-2 transition-all min-h-[60px] sm:min-h-[80px]
+                  ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer active:scale-95'}
                   ${
                     isSelected
                       ? 'border-accent-primary bg-accent-primary/10 text-accent-primary'
@@ -331,9 +331,9 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                   }
                 `}
               >
-                <Icon className="w-5 h-5" />
-                <span className="text-sm font-medium">{config.label[language]}</span>
-                <span className="text-xs text-text-muted">{config.description[language]}</span>
+                <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="text-xs sm:text-sm font-medium text-center leading-tight">{config.label[language]}</span>
+                <span className="text-[10px] sm:text-xs text-text-muted text-center hidden sm:block">{config.description[language]}</span>
               </button>
             );
           })}
@@ -358,7 +358,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
           </button>
         </label>
         <div
-          className="flex gap-2"
+          className="flex flex-col sm:flex-row gap-2"
           role="radiogroup"
           aria-labelledby={vocabId}
         >

@@ -1,0 +1,722 @@
+---
+description: DeepSight Backend - Ultra-Resilient Transcript Extraction System
+globs: ["**/*.py"]
+alwaysApply: true
+---
+
+# 🎯 DEEP SIGHT BACKEND — TRANSCRIPT EXTRACTION ULTRA-RÉSILIENT
+
+## MISSION CRITIQUE
+
+Tu es un agent expert en extraction de transcripts YouTube. Ta mission : **GARANTIR l'obtention du transcript de TOUTE vidéo YouTube**, peu importe les blocages, restrictions ou limitations.
+
+**Philosophie** : Un transcript DOIT être obtenu. Échec = inacceptable. Utilise TOUTES les méthodes disponibles.
+
+---
+
+## ARCHITECTURE ACTUELLE (youtube.py)
+
+```
+┌─ Phase 1: Texte EN PARALLÈLE ─────────────────────────────────────────────────┐
+│  1. Supadata API (stable, payant) - PRIORITAIRE                               │
+│  2. youtube-transcript-api (gratuit, rapide)                                  │
+│  3. Invidious API (10 instances, contourne blocage)                           │
+│  4. Piped API (8 instances, alternative Invidious)                            │
+└───────────────────────────────────────────────────────────────────────────────┘
+┌─ Phase 2: yt-dlp (séquentiel) ───────────────────────────────────────────────┐
+│  5. yt-dlp manual subtitles (avec anti-bot)                                   │
+│  6. yt-dlp auto-captions (avec anti-bot)                                      │
+└───────────────────────────────────────────────────────────────────────────────┘
+┌─ Phase 3: Audio transcription (dernier recours) ─────────────────────────────┐
+│  7. Groq Whisper (rapide, gratuit jusqu'à 25MB)                               │
+│  8. OpenAI Whisper (fallback)                                                 │
+│  9. Deepgram Nova-2 (ultra-rapide)                                            │
+│  10. AssemblyAI (premium, très fiable)                                        │
+└───────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## RENFORCEMENTS À IMPLÉMENTER
+
+### 1. SUPADATA - AMÉLIORATION PRIORITAIRE
+
+```python
+# backend/src/transcripts/youtube.py
+
+async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    🥇 SUPADATA - Méthode prioritaire avec retry agressif
+    
+    LANGUES À ESSAYER (dans l'ordre):
+    1. Langue préférée de l'utilisateur (fr, en, etc.)
+    2. Toutes les langues disponibles
+    3. Auto-generated captions (any language)
+    4. Traduction automatique vers la langue cible
+    """
+    api_key = api_key or get_supadata_key()
+    if not api_key:
+        return None, None, None
+    
+    print(f"  🥇 [SUPADATA] Trying with aggressive retry...", flush=True)
+    
+    # Liste étendue de langues
+    LANGUAGES = [
+        "fr", "en", "es", "de", "pt", "it", "nl", "ru", 
+        "ja", "ko", "zh", "ar", "hi", "tr", "pl", "vi",
+        "th", "id", "sv", "da", "no", "fi", "cs", "ro",
+        None  # Sans langue = auto-detect
+    ]
+    
+    async with httpx.AsyncClient() as client:
+        for attempt in range(3):  # 3 tentatives avec backoff
+            for lang in LANGUAGES:
+                try:
+                    params = {"videoId": video_id}
+                    if lang:
+                        params["lang"] = lang
+                    
+                    # Essayer aussi les auto-generated
+                    for include_auto in [False, True]:
+                        if include_auto:
+                            params["includeAuto"] = "true"
+                        
+                        response = await client.get(
+                            "https://api.supadata.ai/v1/youtube/transcript",
+                            params=params,
+                            headers={"Authorization": f"Bearer {api_key}"},
+                            timeout=TIMEOUTS["supadata"]
+                        )
+                        
+                        if response.status_code == 200:
+                            data = response.json()
+                            text = _extract_supadata_text(data)
+                            if text and len(text) > 100:
+                                print(f"  ✅ [SUPADATA] Success: {len(text)} chars, lang={lang or 'auto'}", flush=True)
+                                return text, text, lang or "auto"
+                
+                except httpx.TimeoutException:
+                    await asyncio.sleep(calculate_backoff(attempt))
+                except Exception as e:
+                    print(f"  ⚠️ [SUPADATA] Error: {str(e)[:50]}", flush=True)
+            
+            # Backoff entre les tentatives complètes
+            if attempt < 2:
+                await asyncio.sleep(calculate_backoff(attempt))
+    
+    return None, None, None
+```
+
+### 2. YOUTUBE-TRANSCRIPT-API - EXTRACTION EXHAUSTIVE
+
+```python
+async def get_transcript_ytapi(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    🥈 youtube-transcript-api avec extraction EXHAUSTIVE
+    
+    Essayer:
+    1. Sous-titres manuels (toutes langues)
+    2. Sous-titres auto-générés (toutes langues)
+    3. Traduction vers langue préférée si disponible
+    """
+    if not YTAPI_AVAILABLE:
+        return None, None, None
+    
+    print(f"  🥈 [YTAPI] Trying exhaustive extraction...", flush=True)
+    
+    try:
+        loop = asyncio.get_event_loop()
+        
+        def _fetch_exhaustive():
+            try:
+                ytt_api = YouTubeTranscriptApi()
+                transcript_list = ytt_api.list(video_id)
+                
+                # Toutes les langues supportées
+                ALL_LANGUAGES = [
+                    'fr', 'en', 'es', 'de', 'it', 'pt', 'nl', 'ru', 
+                    'ja', 'ko', 'zh-Hans', 'zh-Hant', 'ar', 'hi', 
+                    'tr', 'pl', 'vi', 'th', 'id', 'sv', 'da', 'no', 
+                    'fi', 'cs', 'ro', 'hu', 'el', 'he', 'uk', 'bg'
+                ]
+                
+                # 1. Essayer les sous-titres manuels (prioritaire)
+                for lang in ALL_LANGUAGES:
+                    try:
+                        transcript = transcript_list.find_manually_created_transcript([lang])
+                        data = _extract_transcript_data(transcript.fetch())
+                        if data:
+                            print(f"  ✅ [YTAPI] Manual subs found: {lang}", flush=True)
+                            return _format_transcript(data, lang)
+                    except:
+                        continue
+                
+                # 2. Essayer les sous-titres auto-générés
+                for lang in ALL_LANGUAGES:
+                    try:
+                        transcript = transcript_list.find_generated_transcript([lang])
+                        data = _extract_transcript_data(transcript.fetch())
+                        if data:
+                            print(f"  ✅ [YTAPI] Auto subs found: {lang}", flush=True)
+                            return _format_transcript(data, lang)
+                    except:
+                        continue
+                
+                # 3. Prendre N'IMPORTE quel transcript disponible
+                try:
+                    available = list(transcript_list)
+                    if available:
+                        transcript = available[0]
+                        data = _extract_transcript_data(transcript.fetch())
+                        if data:
+                            lang = getattr(transcript, 'language_code', 'unknown')
+                            print(f"  ✅ [YTAPI] Any subs found: {lang}", flush=True)
+                            return _format_transcript(data, lang)
+                except:
+                    pass
+                
+                # 4. Essayer la traduction automatique
+                for source_lang in ALL_LANGUAGES:
+                    try:
+                        transcript = transcript_list.find_generated_transcript([source_lang])
+                        translated = transcript.translate('fr')
+                        data = _extract_transcript_data(translated.fetch())
+                        if data:
+                            print(f"  ✅ [YTAPI] Translated from {source_lang} to fr", flush=True)
+                            return _format_transcript(data, 'fr')
+                    except:
+                        continue
+                
+            except Exception as e:
+                print(f"  ⚠️ [YTAPI] Exception: {str(e)[:100]}", flush=True)
+            
+            return None, None, None
+        
+        return await asyncio.wait_for(
+            loop.run_in_executor(executor, _fetch_exhaustive),
+            timeout=TIMEOUTS["ytapi"]
+        )
+        
+    except asyncio.TimeoutError:
+        print(f"  ⚠️ [YTAPI] Timeout", flush=True)
+    
+    return None, None, None
+
+
+def _extract_transcript_data(fetched):
+    """Extrait les données du transcript quel que soit le format"""
+    if hasattr(fetched, 'to_raw_data'):
+        return fetched.to_raw_data()
+    elif hasattr(fetched, '__iter__'):
+        return list(fetched)
+    return None
+
+
+def _format_transcript(data, lang):
+    """Formate le transcript en texte simple et timestamped"""
+    if not data:
+        return None, None, None
+    
+    simple_parts = []
+    timestamped_parts = []
+    last_ts = -30
+    
+    for entry in data:
+        text = entry.get("text", "").strip()
+        start = entry.get("start", 0)
+        
+        # Filtrer les annotations
+        if not text or text in ['[Music]', '[Applause]', '[Musique]', '[Applaudissements]']:
+            continue
+        
+        simple_parts.append(text)
+        
+        if start - last_ts >= 30:
+            ts = format_seconds_to_timestamp(start)
+            timestamped_parts.append(f"\n[{ts}] {text}")
+            last_ts = start
+        else:
+            timestamped_parts.append(f" {text}")
+    
+    simple = " ".join(simple_parts)
+    timestamped = "".join(timestamped_parts).strip()
+    
+    return simple, timestamped, lang if simple and len(simple) > 50 else (None, None, None)
+```
+
+### 3. INVIDIOUS/PIPED - INSTANCES MULTIPLES
+
+```python
+# Instances mises à jour janvier 2026 - ÉTENDUES
+INVIDIOUS_INSTANCES = [
+    "https://invidious.fdn.fr",
+    "https://inv.nadeko.net",
+    "https://invidious.nerdvpn.de",
+    "https://yt.artemislena.eu",
+    "https://invidious.protokolla.fi",
+    "https://inv.tux.pizza",
+    "https://vid.puffyan.us",
+    "https://invidious.projectsegfau.lt",
+    "https://invidious.privacyredirect.com",
+    "https://invidious.io.lol",
+    # Nouvelles instances
+    "https://yewtu.be",
+    "https://inv.bp.projectsegfau.lt",
+    "https://invidious.lunar.icu",
+    "https://inv.riverside.rocks",
+    "https://invidious.sethforprivacy.com",
+]
+
+PIPED_INSTANCES = [
+    "https://pipedapi.kavin.rocks",
+    "https://api.piped.yt",
+    "https://pipedapi.tokhmi.xyz",
+    "https://pipedapi.moomoo.me",
+    "https://pipedapi.syncpundit.io",
+    "https://api.piped.projectsegfau.lt",
+    "https://pipedapi.r4fo.com",
+    "https://pipedapi.privacy.com.de",
+    # Nouvelles instances
+    "https://pipedapi.leptons.xyz",
+    "https://pipedapi.in.projectsegfau.lt",
+    "https://api.piped.privacydev.net",
+]
+```
+
+### 4. YT-DLP - OPTIONS ANTI-BOT RENFORCÉES
+
+```python
+async def get_transcript_ytdlp(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    🏅 yt-dlp avec TOUTES les options anti-bot et langues
+    """
+    print(f"  🏅 [YT-DLP] Trying with enhanced anti-bot...", flush=True)
+    
+    ALL_LANGUAGES = "fr,en,es,de,it,pt,nl,ru,ja,ko,zh,ar,hi,tr,pl,vi,th,id,sv,da,no,fi,cs,ro,hu,el,he,uk,bg"
+    
+    try:
+        loop = asyncio.get_event_loop()
+        
+        def _fetch():
+            with tempfile.TemporaryDirectory() as tmpdir:
+                # Options anti-bot maximales
+                cmd = [
+                    "yt-dlp",
+                    "--write-subs",
+                    "--write-auto-subs",  # Auto ET manual
+                    "--sub-langs", ALL_LANGUAGES,
+                    "--sub-format", "vtt/srt/ass/best",
+                    "--skip-download",
+                    "--no-warnings",
+                    "--user-agent", get_random_user_agent(),
+                    # Anti-bot renforcé
+                    "--extractor-args", "youtube:player_client=android,web,mweb,ios",
+                    "--sleep-requests", "2",
+                    "--sleep-interval", "2",
+                    "--max-sleep-interval", "5",
+                    "--retries", "5",
+                    "--fragment-retries", "5",
+                    "--retry-sleep", "2",
+                    "--no-check-certificates",
+                    "--geo-bypass",
+                    "--cookies-from-browser", "chrome",  # Si disponible
+                    "-o", f"{tmpdir}/%(id)s.%(ext)s",
+                    f"https://youtube.com/watch?v={video_id}"
+                ]
+                
+                try:
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUTS["ytdlp_subs"])
+                except:
+                    # Retry sans cookies si échec
+                    cmd = [c for c in cmd if not c.startswith("--cookies")]
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUTS["ytdlp_subs"])
+                
+                return _parse_subtitle_files_extended(tmpdir, video_id)
+        
+        simple, timestamped, lang = await asyncio.wait_for(
+            loop.run_in_executor(executor, _fetch),
+            timeout=TIMEOUTS["ytdlp_subs"] + 30
+        )
+        
+        if simple:
+            print(f"  ✅ [YT-DLP] Success: {len(simple)} chars, lang={lang}", flush=True)
+            return simple, timestamped, lang
+            
+    except asyncio.TimeoutError:
+        print(f"  ⚠️ [YT-DLP] Timeout", flush=True)
+    except Exception as e:
+        print(f"  ⚠️ [YT-DLP] Exception: {str(e)[:100]}", flush=True)
+    
+    return None, None, None
+
+
+def _parse_subtitle_files_extended(tmpdir: str, video_id: str):
+    """Parse TOUS les fichiers de sous-titres trouvés"""
+    ALL_LANGS = ['fr', 'en', 'es', 'de', 'it', 'pt', 'nl', 'ru', 'ja', 'ko', 'zh', 'ar', 'hi', 'tr', 'pl', 'vi']
+    EXTENSIONS = ['vtt', 'srt', 'ass', 'ssa', 'ttml', 'srv1', 'srv2', 'srv3']
+    
+    # 1. Chercher par langue préférée
+    for lang in ALL_LANGS:
+        for ext in EXTENSIONS:
+            for pattern in [f"{video_id}.{lang}.{ext}", f"{video_id}.{lang}-*.{ext}"]:
+                for sub_file in Path(tmpdir).glob(pattern):
+                    result = _try_parse_subtitle(sub_file, lang)
+                    if result[0]:
+                        return result
+    
+    # 2. Chercher TOUS les fichiers sous-titres
+    for ext in EXTENSIONS:
+        for sub_file in Path(tmpdir).glob(f"*.{ext}"):
+            lang = _extract_lang_from_filename(sub_file.name)
+            result = _try_parse_subtitle(sub_file, lang)
+            if result[0]:
+                return result
+    
+    return None, None, None
+```
+
+### 5. AUDIO TRANSCRIPTION - MULTI-SERVICES
+
+```python
+async def get_transcript_audio(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    🎙️ Transcription audio avec TOUS les services disponibles
+    Ordre: Groq → OpenAI → Deepgram → AssemblyAI
+    """
+    print(f"  🎙️ [AUDIO] Starting multi-service transcription...", flush=True)
+    
+    # Télécharger l'audio une seule fois
+    audio_path = await _download_audio(video_id)
+    if not audio_path:
+        print(f"  ❌ [AUDIO] Failed to download audio", flush=True)
+        return None, None, None
+    
+    try:
+        # Services à essayer dans l'ordre
+        services = [
+            ("GROQ", transcribe_groq, get_groq_key()),
+            ("OPENAI", transcribe_openai, get_openai_key()),
+            ("DEEPGRAM", transcribe_deepgram, get_deepgram_key()),
+            ("ASSEMBLYAI", transcribe_assemblyai, get_assemblyai_key()),
+        ]
+        
+        for name, func, api_key in services:
+            if not api_key:
+                print(f"  ⏭️ [{name}] Skipped: No API key", flush=True)
+                continue
+            
+            circuit = get_circuit_breaker(name.lower())
+            if not circuit.can_execute():
+                print(f"  ⏭️ [{name}] Skipped: Circuit open", flush=True)
+                continue
+            
+            try:
+                result = await func(audio_path, api_key)
+                if result and result[0] and len(result[0]) > 100:
+                    circuit.record_success()
+                    print(f"  ✅ [{name}] Success: {len(result[0])} chars", flush=True)
+                    return result
+            except Exception as e:
+                circuit.record_failure()
+                print(f"  ⚠️ [{name}] Error: {str(e)[:50]}", flush=True)
+        
+    finally:
+        # Nettoyer le fichier audio
+        try:
+            os.remove(audio_path)
+        except:
+            pass
+    
+    return None, None, None
+
+
+async def transcribe_groq(audio_path: str, api_key: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Transcription via Groq Whisper"""
+    file_size = os.path.getsize(audio_path)
+    if file_size > GROQ_MAX_FILE_SIZE:
+        print(f"  ⚠️ [GROQ] File too large: {file_size / 1024 / 1024:.1f}MB", flush=True)
+        return None, None, None
+    
+    async with httpx.AsyncClient() as client:
+        with open(audio_path, 'rb') as f:
+            files = {'file': ('audio.mp3', f, 'audio/mpeg')}
+            data = {'model': 'whisper-large-v3', 'response_format': 'verbose_json'}
+            
+            response = await client.post(
+                "https://api.groq.com/openai/v1/audio/transcriptions",
+                files=files,
+                data=data,
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=TIMEOUTS["whisper_transcribe"]
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                text = result.get("text", "")
+                lang = result.get("language", "auto")
+                return text, text, lang
+    
+    return None, None, None
+
+
+async def transcribe_openai(audio_path: str, api_key: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Transcription via OpenAI Whisper"""
+    async with httpx.AsyncClient() as client:
+        with open(audio_path, 'rb') as f:
+            files = {'file': ('audio.mp3', f, 'audio/mpeg')}
+            data = {'model': 'whisper-1', 'response_format': 'verbose_json'}
+            
+            response = await client.post(
+                "https://api.openai.com/v1/audio/transcriptions",
+                files=files,
+                data=data,
+                headers={"Authorization": f"Bearer {api_key}"},
+                timeout=TIMEOUTS["openai_whisper"]
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                text = result.get("text", "")
+                lang = result.get("language", "auto")
+                return text, text, lang
+    
+    return None, None, None
+
+
+async def transcribe_deepgram(audio_path: str, api_key: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Transcription via Deepgram Nova-2"""
+    async with httpx.AsyncClient() as client:
+        with open(audio_path, 'rb') as f:
+            response = await client.post(
+                "https://api.deepgram.com/v1/listen?model=nova-2&detect_language=true&punctuate=true",
+                content=f.read(),
+                headers={
+                    "Authorization": f"Token {api_key}",
+                    "Content-Type": "audio/mpeg"
+                },
+                timeout=TIMEOUTS["deepgram"]
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                transcript = result.get("results", {}).get("channels", [{}])[0].get("alternatives", [{}])[0].get("transcript", "")
+                lang = result.get("results", {}).get("channels", [{}])[0].get("detected_language", "auto")
+                return transcript, transcript, lang
+    
+    return None, None, None
+
+
+async def transcribe_assemblyai(audio_path: str, api_key: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Transcription via AssemblyAI"""
+    async with httpx.AsyncClient() as client:
+        # 1. Upload
+        with open(audio_path, 'rb') as f:
+            upload_response = await client.post(
+                "https://api.assemblyai.com/v2/upload",
+                content=f.read(),
+                headers={"Authorization": api_key},
+                timeout=120
+            )
+        
+        if upload_response.status_code != 200:
+            return None, None, None
+        
+        upload_url = upload_response.json().get("upload_url")
+        
+        # 2. Transcribe
+        transcript_response = await client.post(
+            "https://api.assemblyai.com/v2/transcript",
+            json={"audio_url": upload_url, "language_detection": True},
+            headers={"Authorization": api_key},
+            timeout=30
+        )
+        
+        transcript_id = transcript_response.json().get("id")
+        
+        # 3. Poll for result
+        for _ in range(60):  # Max 5 minutes
+            result_response = await client.get(
+                f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
+                headers={"Authorization": api_key},
+                timeout=10
+            )
+            
+            result = result_response.json()
+            status = result.get("status")
+            
+            if status == "completed":
+                text = result.get("text", "")
+                lang = result.get("language_code", "auto")
+                return text, text, lang
+            elif status == "error":
+                return None, None, None
+            
+            await asyncio.sleep(5)
+    
+    return None, None, None
+```
+
+### 6. ORCHESTRATION PRINCIPALE
+
+```python
+async def get_transcript(
+    video_id: str,
+    preferred_lang: str = "fr",
+    supadata_key: str = None
+) -> TranscriptResult:
+    """
+    🎯 ORCHESTRATION PRINCIPALE — GARANTIE DE RÉSULTAT
+    
+    Stratégie :
+    1. Phase 1 : 4 méthodes texte EN PARALLÈLE (timeout 45s)
+    2. Phase 2 : yt-dlp si Phase 1 échoue (timeout 90s)
+    3. Phase 3 : Transcription audio si tout échoue (timeout 360s)
+    
+    RÉSULTAT GARANTI ou erreur explicite.
+    """
+    start_time = time.time()
+    print(f"📝 [TRANSCRIPT] Starting extraction for {video_id}...", flush=True)
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # PHASE 1 : MÉTHODES TEXTE EN PARALLÈLE
+    # ═══════════════════════════════════════════════════════════════════
+    
+    print(f"  ⚡ [PHASE 1] Running 4 text methods in parallel...", flush=True)
+    
+    tasks = [
+        get_transcript_supadata(video_id, supadata_key),
+        get_transcript_ytapi(video_id),
+        get_transcript_invidious(video_id),
+        get_transcript_piped(video_id),
+    ]
+    
+    try:
+        results = await asyncio.wait_for(
+            asyncio.gather(*tasks, return_exceptions=True),
+            timeout=45
+        )
+        
+        for result in results:
+            if isinstance(result, tuple) and result[0] and len(result[0]) > 100:
+                duration = time.time() - start_time
+                print(f"  ✅ [PHASE 1] Success in {duration:.1f}s", flush=True)
+                return TranscriptResult(
+                    text=result[0],
+                    text_timestamped=result[1] or result[0],
+                    lang=result[2] or preferred_lang,
+                    source=TranscriptSource.SUPADATA,  # À ajuster selon la méthode
+                    duration_seconds=duration
+                )
+    except asyncio.TimeoutError:
+        print(f"  ⚠️ [PHASE 1] Timeout", flush=True)
+    except Exception as e:
+        print(f"  ⚠️ [PHASE 1] Error: {str(e)[:50]}", flush=True)
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # PHASE 2 : YT-DLP (SÉQUENTIEL)
+    # ═══════════════════════════════════════════════════════════════════
+    
+    print(f"  🔄 [PHASE 2] Trying yt-dlp methods...", flush=True)
+    
+    for method, name in [
+        (get_transcript_ytdlp, "manual"),
+        (get_transcript_ytdlp_auto, "auto"),
+    ]:
+        try:
+            result = await method(video_id)
+            if result[0] and len(result[0]) > 100:
+                duration = time.time() - start_time
+                print(f"  ✅ [PHASE 2] Success ({name}) in {duration:.1f}s", flush=True)
+                return TranscriptResult(
+                    text=result[0],
+                    text_timestamped=result[1] or result[0],
+                    lang=result[2] or preferred_lang,
+                    source=TranscriptSource.YTDLP,
+                    duration_seconds=duration
+                )
+        except Exception as e:
+            print(f"  ⚠️ [PHASE 2] {name} error: {str(e)[:50]}", flush=True)
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # PHASE 3 : TRANSCRIPTION AUDIO (DERNIER RECOURS)
+    # ═══════════════════════════════════════════════════════════════════
+    
+    print(f"  🎙️ [PHASE 3] Trying audio transcription...", flush=True)
+    
+    try:
+        result = await get_transcript_audio(video_id)
+        if result[0] and len(result[0]) > 100:
+            duration = time.time() - start_time
+            print(f"  ✅ [PHASE 3] Success in {duration:.1f}s", flush=True)
+            return TranscriptResult(
+                text=result[0],
+                text_timestamped=result[1] or result[0],
+                lang=result[2] or preferred_lang,
+                source=TranscriptSource.WHISPER,
+                duration_seconds=duration
+            )
+    except Exception as e:
+        print(f"  ⚠️ [PHASE 3] Error: {str(e)[:100]}", flush=True)
+    
+    # ═══════════════════════════════════════════════════════════════════
+    # ÉCHEC TOTAL
+    # ═══════════════════════════════════════════════════════════════════
+    
+    duration = time.time() - start_time
+    print(f"  ❌ [TRANSCRIPT] ALL METHODS FAILED for {video_id} after {duration:.1f}s", flush=True)
+    
+    return TranscriptResult(
+        text="",
+        text_timestamped="",
+        lang=preferred_lang,
+        source=TranscriptSource.NONE,
+        duration_seconds=duration,
+        confidence=0.0
+    )
+```
+
+---
+
+## VARIABLES D'ENVIRONNEMENT REQUISES
+
+```bash
+# Transcription APIs
+SUPADATA_API_KEY=sd_xxx          # PRIORITAIRE
+GROQ_API_KEY=gsk_xxx             # Whisper gratuit
+OPENAI_API_KEY=sk-xxx            # Whisper fallback
+DEEPGRAM_API_KEY=xxx             # Nova-2
+ASSEMBLYAI_API_KEY=xxx           # Premium fallback
+
+# Configuration
+TRANSCRIPT_TIMEOUT=360           # Timeout global
+CIRCUIT_BREAKER_THRESHOLD=5      # Échecs avant circuit open
+```
+
+---
+
+## TESTS DE VALIDATION
+
+Après chaque modification, tester avec ces vidéos :
+
+```python
+TEST_VIDEOS = [
+    # Vidéos normales
+    "dQw4w9WgXcQ",  # Musique - sous-titres auto EN
+    "jNQXAC9IVRw",  # Première vidéo YouTube
+    
+    # Cas difficiles
+    "VIDEO_FR_MANUAL_SUBS",  # Sous-titres français manuels
+    "VIDEO_NO_SUBS",         # Vidéo sans sous-titres (audio only)
+    "VIDEO_RESTRICTED",      # Vidéo avec restrictions géo
+]
+```
+
+---
+
+## MÉTRIQUES DE SUCCÈS
+
+- **Taux de réussite cible** : > 98%
+- **Temps moyen Phase 1** : < 10s
+- **Temps moyen Phase 2** : < 30s
+- **Temps moyen Phase 3** : < 120s
+- **Fallback audio utilisé** : < 5% des cas

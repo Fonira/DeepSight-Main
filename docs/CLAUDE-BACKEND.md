@@ -135,14 +135,53 @@ async def pro_route(user: User = Depends(require_plan("pro"))):
     return {"message": "Bienvenue Pro!"}
 ```
 
-## 💳 Système de crédits
+## 💳 Système de crédits & Limites (v3.1)
 
-| Plan | Crédits/mois | Chat/jour | Web Search | Playlists |
-|------|--------------|-----------|------------|-----------|
-| Free | 10 | 10 | ❌ | ❌ |
-| Starter | 50 | 40 | ❌ | ❌ |
-| Pro | 150 | 100 | ✅ (30/mois) | ✅ (50) |
-| Expert | 400 | ∞ | ✅ (100/mois) | ✅ (100) |
+| Plan | Crédits/mois | Analyses/jour | Chat/vidéo | Playlists |
+|------|--------------|---------------|------------|-----------|
+| Free | 500 | 5 | 5 | ❌ |
+| Starter | 5,000 | 20 | 20 | ❌ |
+| Pro | 25,000 | 50 | ∞ | ✅ (10 vidéos) |
+| Expert | 100,000 | 200 | ∞ | ✅ (50 vidéos) |
+| Unlimited | ∞ | ∞ | ∞ | ✅ (100 vidéos) |
+
+### Features bloquées par plan
+
+| Feature | Free | Starter | Pro | Expert |
+|---------|------|---------|-----|--------|
+| playlists | ❌ | ❌ | ✅ | ✅ |
+| export_csv | ❌ | ✅ | ✅ | ✅ |
+| export_excel | ❌ | ✅ | ✅ | ✅ |
+| tts | ❌ | ✅ | ✅ | ✅ |
+| batch_api | ❌ | ❌ | ❌ | ✅ |
+| deep_research | ❌ | ❌ | ❌ | ✅ |
+
+### Module `core/plan_limits.py` (NEW)
+
+```python
+from core.plan_limits import (
+    check_daily_analysis_limit,  # Vérifie quota quotidien
+    check_feature_access,        # Vérifie accès feature
+    get_user_limits_status,      # Status complet pour UI
+    increment_daily_usage,       # Incrémente compteur
+)
+```
+
+### Dépendances d'accès
+
+```python
+from auth.dependencies import check_daily_limit, require_feature
+
+# Vérifier limite quotidienne avant analyse
+@router.post("/analyze")
+async def analyze(user: User = Depends(check_daily_limit)):
+    ...
+
+# Bloquer feature par plan
+@router.post("/export/csv")
+async def export_csv(user: User = Depends(require_feature("export_csv"))):
+    ...
+```
 
 **Coûts en crédits**:
 - Analyse standard: 1 crédit
@@ -196,6 +235,37 @@ Système multi-fallback pour robustesse:
 ```
 
 ## 📡 Endpoints principaux
+
+### Auth & Limits
+```
+POST /api/auth/register           # Création compte
+POST /api/auth/login              # Connexion → tokens
+POST /api/auth/refresh            # Renouveler access token
+GET  /api/auth/me                 # Profil utilisateur
+GET  /api/auth/quota              # Quotas utilisateur
+GET  /api/auth/limits             # 🆕 Status complet limites (v3.1)
+PUT  /api/auth/preferences        # Modifier préférences
+```
+
+#### `GET /api/auth/limits` Response (v3.1)
+```json
+{
+  "plan": "starter",
+  "plan_info": { "name": "STARTER", "daily_analyses": 20, "price": 499 },
+  "daily_analyses": {
+    "limit": 20,
+    "used": 5,
+    "remaining": 15,
+    "percent_used": 25,
+    "is_unlimited": false
+  },
+  "credits": { "current": 4500, "monthly_allowance": 5000 },
+  "blocked_features": ["playlists", "batch_api", "deep_research"],
+  "upgrade_prompt": "Passez à Pro pour les playlists!",
+  "next_plan": "pro",
+  "next_plan_info": { "name": "PRO", "daily_analyses": 50, "price": 999 }
+}
+```
 
 ### Videos
 ```

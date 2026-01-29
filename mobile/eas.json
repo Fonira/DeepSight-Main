@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 7.0.0"
+    "version": ">= 7.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -56,12 +57,11 @@
   "submit": {
     "production": {
       "ios": {
-        "appleId": "contact@deepsight.app",
-        "ascAppId": "6740000000",
-        "appleTeamId": "XXXXXXXXXX",
+        "appleId": "maxime.fonira@hotmail.fr",
+        "appleTeamId": "XGPXQ9KQ2G",
         "sku": "com.deepsight.app",
         "language": "fr-FR",
-        "companyName": "Deep Sight",
+        "companyName": "Leparc Maxime",
         "appName": "Deep Sight"
       },
       "android": {

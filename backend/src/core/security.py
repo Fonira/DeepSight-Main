@@ -95,6 +95,10 @@ _rate_limits: Dict[int, Dict[str, Any]] = {}
 _token_blacklist: Dict[str, float] = {}
 _monthly_reset_cache: Dict[int, str] = {}
 
+# 🆕 IP-based rate limiting for unauthenticated requests
+_ip_rate_limits: Dict[str, Dict[str, Any]] = {}
+IP_RATE_LIMIT = {"requests_per_minute": 20, "burst": 10}  # Stricter for anonymous
+
 
 def _get_user_lock(user_id: int) -> asyncio.Lock:
     if user_id not in _user_locks:
@@ -199,7 +203,7 @@ async def check_rate_limit_for_auth(user_id: int, user_plan: str) -> Tuple[bool,
     limits = RATE_LIMITS.get(user_plan, RATE_LIMITS["free"])
     max_requests = limits["requests_per_minute"] * 2
     burst = limits["burst"] * 2
-    
+
     if user_id not in _rate_limits:
         _rate_limits[user_id] = {
             "count": 0,
@@ -208,9 +212,9 @@ async def check_rate_limit_for_auth(user_id: int, user_plan: str) -> Tuple[bool,
             "burst_count": 0,
             "burst_window": now
         }
-    
+
     rate_info = _rate_limits[user_id]
-    
+
     if rate_info["blocked_until"] > now:
         wait_time = int(rate_info["blocked_until"] - now)
         return False, "rate_limit_blocked", {
@@ -218,23 +222,119 @@ async def check_rate_limit_for_auth(user_id: int, user_plan: str) -> Tuple[bool,
             "wait_seconds": wait_time,
             "message": f"Trop de requêtes. Réessayez dans {wait_time}s"
         }
-    
+
     if now - rate_info["window_start"] > 60:
         rate_info["count"] = 0
         rate_info["window_start"] = now
-    
+
     if now - rate_info["burst_window"] > 10:
         rate_info["burst_count"] = 0
         rate_info["burst_window"] = now
-    
+
     rate_info["burst_count"] += 1
     rate_info["count"] += 1
-    
+
     remaining = max(0, max_requests - rate_info["count"])
     return True, "ok", {
         "remaining": remaining,
         "limit": max_requests
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🌐 IP-BASED RATE LIMITING — Pour requêtes non authentifiées
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def check_ip_rate_limit(
+    ip_address: str,
+    endpoint: str = ""
+) -> Tuple[bool, str, Dict[str, Any]]:
+    """
+    Rate limiting basé sur l'IP pour les requêtes non authentifiées.
+    Plus strict que le rate limiting utilisateur.
+    """
+    now = time.time()
+
+    # Endpoints exemptés
+    if is_endpoint_exempt(endpoint):
+        return True, "exempt", {"exempt": True, "endpoint": endpoint}
+
+    max_requests = IP_RATE_LIMIT["requests_per_minute"]
+    burst = IP_RATE_LIMIT["burst"]
+
+    # Normaliser l'IP (supprimer port si présent)
+    ip_key = ip_address.split(":")[0] if ":" in ip_address and not ip_address.startswith("[") else ip_address
+
+    if ip_key not in _ip_rate_limits:
+        _ip_rate_limits[ip_key] = {
+            "count": 0,
+            "window_start": now,
+            "blocked_until": 0,
+            "burst_count": 0,
+            "burst_window": now
+        }
+
+    rate_info = _ip_rate_limits[ip_key]
+
+    # Vérifier si bloqué
+    if rate_info["blocked_until"] > now:
+        wait_time = int(rate_info["blocked_until"] - now)
+        return False, "ip_rate_limit_blocked", {
+            "blocked": True,
+            "wait_seconds": wait_time,
+            "message": f"Too many requests from your IP. Retry in {wait_time}s",
+            "retry_after": wait_time
+        }
+
+    # Réinitialiser la fenêtre si expirée
+    if now - rate_info["window_start"] > 60:
+        rate_info["count"] = 0
+        rate_info["window_start"] = now
+
+    if now - rate_info["burst_window"] > 10:
+        rate_info["burst_count"] = 0
+        rate_info["burst_window"] = now
+
+    # Vérifier le burst
+    rate_info["burst_count"] += 1
+    if rate_info["burst_count"] > burst:
+        rate_info["blocked_until"] = now + 10  # 10s block pour IP
+        return False, "ip_burst_limit", {
+            "blocked": True,
+            "wait_seconds": 10,
+            "message": "Too many rapid requests. Wait 10 seconds.",
+            "retry_after": 10
+        }
+
+    # Vérifier le rate limit global
+    rate_info["count"] += 1
+    if rate_info["count"] > max_requests:
+        rate_info["blocked_until"] = now + 60  # 60s block pour IP
+        return False, "ip_rate_limit_exceeded", {
+            "blocked": True,
+            "wait_seconds": 60,
+            "message": f"Rate limit of {max_requests} requests/minute exceeded.",
+            "retry_after": 60
+        }
+
+    remaining = max_requests - rate_info["count"]
+    return True, "ok", {
+        "remaining": remaining,
+        "limit": max_requests,
+        "reset_in": int(60 - (now - rate_info["window_start"]))
+    }
+
+
+def cleanup_expired_ip_limits():
+    """Nettoie les entrées IP expirées pour libérer la mémoire."""
+    now = time.time()
+    expired = [
+        ip for ip, info in _ip_rate_limits.items()
+        if now - info["window_start"] > 300  # 5 minutes d'inactivité
+    ]
+    for ip in expired:
+        del _ip_rate_limits[ip]
+    return len(expired)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

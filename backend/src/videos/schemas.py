@@ -24,6 +24,83 @@ class AnalyzeVideoRequest(BaseModel):
     force_refresh: bool = Field(default=False, description="🆕 Ignorer le cache et forcer une nouvelle analyse")
 
 
+class AnalyzeVideoV2Request(BaseModel):
+    """
+    🆕 v2.0: Requête d'analyse avec customization complète.
+
+    Permet un contrôle fin de tous les paramètres d'analyse.
+    """
+    url: str = Field(..., description="URL de la vidéo YouTube")
+
+    # Mode et langue
+    mode: str = Field(default="standard", description="Mode: accessible, standard, expert")
+    lang: str = Field(default="fr", description="Langue: fr, en, es, de, it, pt")
+
+    # Modèle IA
+    model: Optional[str] = Field(default=None, description="Modèle: mistral-small-latest, mistral-medium-latest, mistral-large-latest")
+
+    # Catégorie
+    category: Optional[str] = Field(default=None, description="Catégorie forcée (None = auto-détection)")
+
+    # 🆕 Options de customization
+    customization: Optional[Dict[str, Any]] = Field(default=None, description="Options de customization avancées")
+
+    # Options d'analyse
+    deep_research: bool = Field(default=False, description="Recherche web approfondie (Pro/Expert)")
+    include_entities: bool = Field(default=True, description="Extraire les entités (personnes, concepts)")
+    include_timestamps: bool = Field(default=True, description="Inclure les timestamps dans l'analyse")
+    include_reliability: bool = Field(default=True, description="Calculer le score de fiabilité")
+
+    # Options de sortie
+    summary_length: str = Field(default="standard", description="Longueur: short, standard, detailed")
+    highlight_key_points: bool = Field(default=True, description="Mettre en évidence les points clés")
+    generate_toc: bool = Field(default=False, description="Générer une table des matières")
+
+    # Cache et performance
+    force_refresh: bool = Field(default=False, description="Ignorer le cache")
+    priority: str = Field(default="normal", description="Priorité: low, normal, high (Pro/Expert)")
+
+    # Webhook (pour notifications externes)
+    webhook_url: Optional[str] = Field(default=None, description="URL de callback quand l'analyse est terminée")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "mode": "standard",
+                "lang": "fr",
+                "deep_research": False,
+                "customization": {
+                    "focus_topics": ["technologie", "innovation"],
+                    "exclude_topics": [],
+                    "tone": "neutral",
+                    "audience": "general"
+                },
+                "summary_length": "standard",
+                "highlight_key_points": True
+            }
+        }
+
+
+class AnalyzeV2Response(BaseModel):
+    """Réponse de l'endpoint /analyze/v2"""
+    task_id: str
+    status: str
+    progress: int = 0
+    message: Optional[str] = None
+    estimated_duration_seconds: Optional[int] = None
+    cost: int = 1
+
+    # Infos vidéo (si disponibles immédiatement)
+    video_info: Optional[Dict[str, Any]] = None
+
+    # Options appliquées
+    applied_options: Optional[Dict[str, Any]] = None
+
+    # Erreur si échec immédiat
+    error: Optional[str] = None
+
+
 class AnalyzePlaylistRequest(BaseModel):
     """Requête pour analyser une playlist YouTube"""
     url: str = Field(..., description="URL de la playlist YouTube")

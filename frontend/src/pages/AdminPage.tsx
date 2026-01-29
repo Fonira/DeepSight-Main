@@ -69,7 +69,7 @@ const PLAN_CONFIG: Record<string, { color: string; bg: string; label: string }> 
 };
 
 export const AdminPage: React.FC = () => {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const { t, language } = useTranslation();
   const navigate = useNavigate();
   const { showToast, ToastComponent } = useToast();
@@ -101,7 +101,7 @@ export const AdminPage: React.FC = () => {
   const [editPlan, setEditPlan] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
-  const isUserAdmin = isAdmin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const isUserAdmin = user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
   // API Helper
   const adminFetch = useCallback(async (endpoint: string, options: RequestInit = {}) => {

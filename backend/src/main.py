@@ -421,8 +421,11 @@ async def health_detailed():
     - Status du cache (Redis/mémoire)
     - Statistiques d'utilisation
     - Informations système
+    - Métriques de rate limiting
+    - Stats des analyses actives
     """
     import time
+    import psutil
     from datetime import datetime
 
     start_time = time.time()
@@ -431,20 +434,38 @@ async def health_detailed():
         "version": VERSION,
         "environment": ENVIRONMENT,
         "timestamp": datetime.utcnow().isoformat(),
-        "checks": {}
+        "checks": {},
+        "metrics": {}
     }
 
     # Check database
     try:
         from db.database import async_session_maker
-        from sqlalchemy import text
+        from sqlalchemy import text, func, select
+        from db.database import User, Summary, TaskStatus
         async with async_session_maker() as session:
             db_start = time.time()
             await session.execute(text("SELECT 1"))
             db_latency = (time.time() - db_start) * 1000
+
+            # Stats de base
+            user_count = await session.execute(select(func.count()).select_from(User))
+            summary_count = await session.execute(select(func.count()).select_from(Summary))
+            active_tasks = await session.execute(
+                select(func.count()).select_from(TaskStatus).where(
+                    TaskStatus.status.in_(["pending", "processing"])
+                )
+            )
+
             health_data["checks"]["database"] = {
                 "status": "healthy",
-                "latency_ms": round(db_latency, 2)
+                "latency_ms": round(db_latency, 2),
+                "connection_pool": "active"
+            }
+            health_data["metrics"]["database"] = {
+                "total_users": user_count.scalar() or 0,
+                "total_summaries": summary_count.scalar() or 0,
+                "active_tasks": active_tasks.scalar() or 0
             }
     except Exception as e:
         health_data["checks"]["database"] = {
@@ -470,6 +491,35 @@ async def health_detailed():
             "error": str(e)[:100]
         }
 
+    # Check rate limiting metrics
+    try:
+        from core.security import _rate_limits, _ip_rate_limits, cleanup_expired_ip_limits
+        expired_cleaned = cleanup_expired_ip_limits()
+        health_data["metrics"]["rate_limiting"] = {
+            "active_user_sessions": len(_rate_limits),
+            "active_ip_sessions": len(_ip_rate_limits),
+            "expired_cleaned": expired_cleaned
+        }
+    except Exception as e:
+        health_data["metrics"]["rate_limiting"] = {
+            "error": str(e)[:50]
+        }
+
+    # System metrics
+    try:
+        process = psutil.Process()
+        health_data["metrics"]["system"] = {
+            "cpu_percent": psutil.cpu_percent(interval=0.1),
+            "memory_percent": psutil.virtual_memory().percent,
+            "process_memory_mb": round(process.memory_info().rss / 1024 / 1024, 2),
+            "process_threads": process.num_threads(),
+            "open_files": len(process.open_files()) if hasattr(process, 'open_files') else 0
+        }
+    except Exception as e:
+        health_data["metrics"]["system"] = {
+            "error": str(e)[:50]
+        }
+
     # Check external services
     health_data["checks"]["services"] = {
         "sentry": SENTRY_ENABLED,
@@ -480,13 +530,70 @@ async def health_detailed():
         "notifications_router": NOTIFICATIONS_ROUTER_AVAILABLE,
         "api_public_router": API_PUBLIC_ROUTER_AVAILABLE,
         "study_router": STUDY_ROUTER_AVAILABLE,
-        "academic_router": ACADEMIC_ROUTER_AVAILABLE
+        "academic_router": ACADEMIC_ROUTER_AVAILABLE,
+        "batch_router": BATCH_ROUTER_AVAILABLE
     }
+
+    # External API status
+    try:
+        from db.database import ApiStatus
+        async with async_session_maker() as session:
+            api_statuses = await session.execute(select(ApiStatus))
+            apis = api_statuses.scalars().all()
+            health_data["checks"]["external_apis"] = {
+                api.api_name: {
+                    "status": api.status,
+                    "error_count": api.error_count,
+                    "last_success": api.last_success_at.isoformat() if api.last_success_at else None
+                }
+                for api in apis
+            }
+    except Exception:
+        health_data["checks"]["external_apis"] = {}
 
     # Response time
     health_data["response_time_ms"] = round((time.time() - start_time) * 1000, 2)
 
+    # Determine overall status
+    if health_data["checks"].get("database", {}).get("status") == "unhealthy":
+        health_data["status"] = "unhealthy"
+    elif any(
+        check.get("status") == "unavailable"
+        for check in health_data["checks"].values()
+        if isinstance(check, dict) and "status" in check
+    ):
+        health_data["status"] = "degraded"
+
     return health_data
+
+
+@app.get("/health/ready")
+async def health_ready():
+    """
+    Readiness probe — Indique si le service est prêt à recevoir du trafic.
+    Utilisé par les load balancers pour les rolling deployments.
+    """
+    try:
+        from db.database import async_session_maker
+        from sqlalchemy import text
+        async with async_session_maker() as session:
+            await session.execute(text("SELECT 1"))
+        return {"ready": True, "version": VERSION}
+    except Exception as e:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=503,
+            content={"ready": False, "error": str(e)[:100]}
+        )
+
+
+@app.get("/health/live")
+async def health_live():
+    """
+    Liveness probe — Indique si le service est vivant.
+    Si ce check échoue, le conteneur sera redémarré.
+    """
+    return {"alive": True, "version": VERSION}
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # GESTION GLOBALE DES ERREURS
