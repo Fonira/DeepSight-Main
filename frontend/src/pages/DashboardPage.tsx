@@ -52,6 +52,9 @@ import { CreditAlert } from "../components/CreditAlert";
 import { AnalysisValueDisplay } from "../components/AnalysisValueDisplay";
 import { UpgradePromptModal } from "../components/UpgradePromptModal";
 import { FreeTrialLimitModal } from "../components/FreeTrialLimitModal";
+// 🎨 Customization Panel v2
+import { CustomizationPanel } from "../components/analysis/CustomizationPanel";
+import { AnalysisCustomization, DEFAULT_CUSTOMIZATION } from "../types/analysis";
 
 interface ChatMessage {
   id: string;
@@ -144,6 +147,10 @@ export const DashboardPage: React.FC = () => {
   // 🆕 États pour choix du modèle et recherche approfondie
   const [selectedModel, setSelectedModel] = useState<string>("mistral-small-latest");
   const [deepResearchEnabled, setDeepResearchEnabled] = useState(false);
+  
+  // 🎨 État pour la personnalisation avancée v2
+  const [analysisCustomization, setAnalysisCustomization] = useState<AnalysisCustomization>(DEFAULT_CUSTOMIZATION);
+  const [showCustomizationPanel, setShowCustomizationPanel] = useState(false);
   
   // États du chat
   const [chatOpen, setChatOpen] = useState(false);
@@ -416,18 +423,29 @@ export const DashboardPage: React.FC = () => {
         return;
       }
 
-      // === MODE URL: Analyse classique ===
+      // === MODE URL: Analyse classique avec personnalisation v2 ===
       if (smartInput.mode === 'url') {
         setVideoUrl(smartInput.url || '');
         setLoadingMessage(language === 'fr' ? "Démarrage de l'analyse..." : "Starting analysis...");
         
-        const response = await videoApi.analyze(
-          smartInput.url!, 
-          category, 
-          mode, 
-          selectedModel,
-          isExpertUser && deepResearchEnabled,
-          language  // 🌐 Langue de l'interface pour le résumé
+        // 🎨 Utiliser l'API v2 avec personnalisation avancée
+        const response = await videoApi.analyzeV2(
+          smartInput.url!,
+          {
+            category,
+            mode,
+            model: selectedModel,
+            deepResearch: isExpertUser && deepResearchEnabled,
+            lang: language,
+            // 🆕 Options de personnalisation v2
+            userPrompt: analysisCustomization.userPrompt || undefined,
+            antiAIDetection: analysisCustomization.antiAIDetection,
+            writingStyle: analysisCustomization.writingStyle,
+            targetLength: analysisCustomization.targetLength,
+            includeComments: analysisCustomization.includeComments,
+            includeMetadata: analysisCustomization.includeMetadata,
+            includeIntention: analysisCustomization.includeIntention,
+          }
         );
         
         // Cas 1: Analyse déjà en cache
@@ -497,13 +515,24 @@ export const DashboardPage: React.FC = () => {
     setVideoUrl(url);
     
     try {
-      const response = await videoApi.analyze(
-        url, 
-        category, 
-        mode, 
-        selectedModel,
-        isExpertUser && deepResearchEnabled,
-        language  // 🌐 Langue de l'interface pour le résumé
+      // 🎨 Utiliser l'API v2 avec personnalisation pour les vidéos découvertes
+      const response = await videoApi.analyzeV2(
+        url,
+        {
+          category,
+          mode,
+          model: selectedModel,
+          deepResearch: isExpertUser && deepResearchEnabled,
+          lang: language,
+          // 🆕 Options de personnalisation v2
+          userPrompt: analysisCustomization.userPrompt || undefined,
+          antiAIDetection: analysisCustomization.antiAIDetection,
+          writingStyle: analysisCustomization.writingStyle,
+          targetLength: analysisCustomization.targetLength,
+          includeComments: analysisCustomization.includeComments,
+          includeMetadata: analysisCustomization.includeMetadata,
+          includeIntention: analysisCustomization.includeIntention,
+        }
       );
       
       if (response.status === "completed" && response.result?.summary_id) {
@@ -817,6 +846,64 @@ export const DashboardPage: React.FC = () => {
                       {user.analysis_count}/{user.analysis_limit} {language === 'fr' ? 'analyses' : 'analyses'}
                     </div>
                   )}
+                </div>
+              )}
+              
+              {/* ═══════════════════════════════════════════════════════════════ */}
+              {/* 🎨 CUSTOMIZATION PANEL v2 — Personnalisation Avancée */}
+              {/* ═══════════════════════════════════════════════════════════════ */}
+              {smartInput.mode !== 'search' && (
+                <div className="mt-4 pt-4 border-t border-border-subtle">
+                  {/* Toggle button to show/hide panel */}
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomizationPanel(!showCustomizationPanel)}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-bg-tertiary hover:bg-bg-hover border border-border-default transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`
+                        w-10 h-10 rounded-lg flex items-center justify-center transition-all
+                        ${analysisCustomization.antiAIDetection 
+                          ? 'bg-green-500/20 text-green-400' 
+                          : 'bg-accent-primary/10 text-accent-primary'}
+                      `}>
+                        {analysisCustomization.antiAIDetection ? (
+                          <Shield className="w-5 h-5" />
+                        ) : (
+                          <Sparkles className="w-5 h-5" />
+                        )}
+                      </div>
+                      <div className="text-left">
+                        <span className="text-sm font-medium text-text-primary flex items-center gap-2">
+                          {language === 'fr' ? 'Personnalisation avancée' : 'Advanced Customization'}
+                          {analysisCustomization.antiAIDetection && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 font-semibold">
+                              Anti-IA ✓
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-xs text-text-muted">
+                          {analysisCustomization.userPrompt 
+                            ? (language === 'fr' ? 'Instructions personnalisées actives' : 'Custom instructions active')
+                            : (language === 'fr' ? 'Style, longueur, anti-détection IA...' : 'Style, length, anti-AI detection...')}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronDown className={`w-5 h-5 text-text-muted transition-transform duration-200 ${showCustomizationPanel ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {/* Expandable panel */}
+                  <div className={`
+                    overflow-hidden transition-all duration-300 ease-in-out
+                    ${showCustomizationPanel ? 'max-h-[800px] opacity-100 mt-4' : 'max-h-0 opacity-0'}
+                  `}>
+                    <CustomizationPanel
+                      onCustomizationChange={setAnalysisCustomization}
+                      initialCustomization={analysisCustomization}
+                      language={language as 'fr' | 'en'}
+                      disabled={loading}
+                    />
+                  </div>
                 </div>
               )}
             </div>

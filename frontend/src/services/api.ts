@@ -664,6 +664,54 @@ export const videoApi = {
   },
 
   /**
+   * 🎬 Analyse vidéo v2.0 avec personnalisation avancée
+   * @param url - URL YouTube
+   * @param options - Options d'analyse + customization
+   */
+  async analyzeV2(
+    url: string,
+    options?: {
+      category?: string;
+      mode?: string;
+      model?: string;
+      deepResearch?: boolean;
+      lang?: string;
+      // 🆕 Customization v2
+      userPrompt?: string;
+      antiAIDetection?: boolean;
+      writingStyle?: 'default' | 'human' | 'academic' | 'casual' | 'humorous' | 'feminine';
+      targetLength?: 'short' | 'medium' | 'long' | 'auto';
+      includeComments?: boolean;
+      includeMetadata?: boolean;
+      includeIntention?: boolean;
+    }
+  ): Promise<{ task_id: string; status: string; result?: { summary_id: number } }> {
+    const body: Record<string, unknown> = {
+      url,
+      category: options?.category || 'auto',
+      mode: options?.mode || 'standard',
+      model: options?.model || 'mistral-small-latest',
+      deep_research: options?.deepResearch || false,
+      lang: options?.lang || 'fr',
+    };
+
+    // 🆕 Customization v2 parameters (snake_case for backend)
+    if (options?.userPrompt) body.user_prompt = options.userPrompt;
+    if (options?.antiAIDetection !== undefined) body.anti_ai_detection = options.antiAIDetection;
+    if (options?.writingStyle) body.writing_style = options.writingStyle;
+    if (options?.targetLength) body.target_length = options.targetLength;
+    if (options?.includeComments !== undefined) body.include_comments = options.includeComments;
+    if (options?.includeMetadata !== undefined) body.include_metadata = options.includeMetadata;
+    if (options?.includeIntention !== undefined) body.include_intention = options.includeIntention;
+
+    return request('/api/videos/analyze/v2', {
+      method: 'POST',
+      body,
+      timeout: 300000,
+    });
+  },
+
+  /**
    * 🔀 Analyse hybride unifiée
    * Supporte: URL YouTube, texte brut, ou recherche intelligente
    */
