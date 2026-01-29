@@ -1,0 +1,58 @@
+---
+description: Expo / React Native — SDK 54, StyleSheet, useTheme. Trigger: @mobile
+globs: mobile/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Expo (Mobile)
+
+Règles pour l’app mobile DeepSight. Actif avec `@mobile` ou fichiers `mobile/**/*.{ts,tsx}`.
+
+## Stack
+
+- **Expo SDK 54** — React Native 0.81
+- **TypeScript strict** — types stricts pour props, state, handlers ; pas de `any`
+- **React Navigation 6** — navigation
+- **Zustand + TanStack Query** — state et requêtes
+- **expo-auth-session** — auth ; **expo-secure-store** — tokens
+
+## Conventions
+
+- **Styles** : `StyleSheet.create` uniquement. Pas de Tailwind, pas d’objets inline pour les styles statiques.
+- **Thème** : `useTheme()` de `contexts/ThemeContext` pour `colors`, `isDark` ; `constants/theme` pour `Spacing`, `BorderRadius`, `Typography`, `Shadows`.
+- **Composants** : fonctionnels ; `React.FC<Props>` ou type de retour explicite ; exporter `ComponentNameProps` et `default`.
+
+## Loading / erreur / vide
+
+- **Loading** : `ActivityIndicator` ou spinner du design system ; `colors.primary` pour le tint.
+- **Erreur** : message court avec `colors.error` ; optionnel `onRetry`.
+- **Vide** : `EmptyState` dans `components/EmptyState` quand adapté.
+
+## Fichiers clés
+
+| Fichier | Rôle |
+|---------|------|
+| `src/services/api.ts` | Client API (aligné avec le frontend) |
+| `src/contexts/AuthContext.tsx` | Auth + Google OAuth |
+| `src/constants/config.ts` | `API_BASE_URL`, `GOOGLE_CLIENT_ID` |
+| `src/constants/theme.ts` | Design system |
+
+## Structure composants
+
+```tsx
+export interface MyComponentProps {
+  title: string;
+  loading?: boolean;
+  error?: string | null;
+}
+
+export const MyComponent: React.FC<MyComponentProps> = ({ title, loading, error }) => {
+  const { colors } = useTheme();
+  // loading / error / contenu
+};
+
+const styles = StyleSheet.create({ container: { padding: Spacing.md } });
+export default MyComponent;
+```
+
+- **Emplacement** : réutilisables → `components/ui/` ; par feature → `components/<feature>/`. Mettre à jour les `index.ts`.

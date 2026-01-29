@@ -5,7 +5,7 @@
  * Uses @react-native-community/netinfo.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import NetInfo, { NetInfoState, NetInfoStateType } from '@react-native-community/netinfo';
 
 export interface NetworkStatus {
@@ -33,8 +33,10 @@ const defaultStatus: NetworkStatus = {
 
 export function useNetworkStatus(): UseNetworkStatusResult {
   const [status, setStatus] = useState<NetworkStatus>(defaultStatus);
+  const isMountedRef = useRef(true);
 
   const updateStatus = useCallback((state: NetInfoState) => {
+    if (!isMountedRef.current) return;
     setStatus({
       isConnected: state.isConnected ?? false,
       isInternetReachable: state.isInternetReachable,
@@ -51,13 +53,17 @@ export function useNetworkStatus(): UseNetworkStatusResult {
   }, [updateStatus]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     // Initial fetch
     NetInfo.fetch().then(updateStatus);
 
     // Subscribe to changes
     const unsubscribe = NetInfo.addEventListener(updateStatus);
 
-    return () => unsubscribe();
+    return () => {
+      isMountedRef.current = false;
+      unsubscribe();
+    };
   }, [updateStatus]);
 
   return { status, refresh };

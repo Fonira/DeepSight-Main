@@ -3,6 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": ".",
+    "skipLibCheck": true,
     "paths": {
       "@/*": [
         "src/*"
@@ -34,11 +35,7 @@
       "@/assets/*": [
         "src/assets/*"
       ]
-    },
-    "types": [
-      "react-native",
-      "@types/react"
-    ]
+    }
   },
   "include": [
     "**/*.ts",
