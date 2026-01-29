@@ -45,9 +45,9 @@ if DATABASE_URL:
     elif DATABASE_URL.startswith("postgresql://") and "+asyncpg" not in DATABASE_URL:
         DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-    # Activer SSL si on utilise un proxy externe (pas .internal)
-    if ".proxy.rlwy.net" in DATABASE_URL or ".railway.app" in DATABASE_URL:
-        _use_ssl = True
+    # Note: Railway proxy gère SSL termination, pas besoin de SSL côté client
+    # SSL uniquement si explicitement demandé dans l'URL
+    pass
 
     print(f"🐘 Using PostgreSQL database (SSL: {_use_ssl})", flush=True)
 else:
