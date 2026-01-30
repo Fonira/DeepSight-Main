@@ -17,6 +17,7 @@ import {
   Sparkles, BookOpen, Monitor, Zap, Download,
   ExternalLink, Palette, SlidersHorizontal, Layout
 } from 'lucide-react';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎛️ Types
@@ -199,20 +200,11 @@ export const Settings: React.FC = () => {
                   icon={isDark ? Moon : Sun}
                   iconColor={isDark ? 'text-indigo-400' : 'text-amber-500'}
                   title={tr('Thème', 'Theme')}
-                  description={isDark ? tr('Mode sombre activé', 'Dark mode enabled') : tr('Mode clair activé', 'Light mode enabled')}
+                  description={isDark 
+                    ? tr('Mode sombre — Confort visuel optimal', 'Dark mode — Optimal visual comfort') 
+                    : tr('Mode clair — Lumineux et épuré', 'Light mode — Bright and clean')}
                 >
-                  <button
-                    onClick={toggleTheme}
-                    className={`relative w-14 h-8 rounded-full transition-colors ${
-                      isDark ? 'bg-indigo-600' : 'bg-amber-400'
-                    }`}
-                  >
-                    <span className={`absolute top-1 w-6 h-6 rounded-full bg-white shadow-md transition-transform flex items-center justify-center ${
-                      isDark ? 'left-7' : 'left-1'
-                    }`}>
-                      {isDark ? <Moon className="w-3.5 h-3.5 text-indigo-600" /> : <Sun className="w-3.5 h-3.5 text-amber-500" />}
-                    </span>
-                  </button>
+                  <ThemeToggle variant="dropdown" showLabel />
                 </SettingRow>
 
                 {/* Langue */}

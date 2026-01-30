@@ -1,9 +1,11 @@
 /**
- * DEEP SIGHT v5.0 — ACADEMIC CLARITY DESIGN SYSTEM
+ * DEEP SIGHT v7.1 — ACADEMIC CLARITY DESIGN SYSTEM
  * Avec DoodleBackground React (70+ motifs SVG)
  * 
  * Les doodles sont gérés via le composant React DoodleBackground
  * Composant réutilisable avec adaptation dark/light mode
+ * 
+ * 🌗 v7.1: Ajout transitions fluides pour dark/light mode
  * 
  * @path src/index.css
  */
@@ -85,6 +87,39 @@
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
     --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.12);
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════════════
+     🌗 THEME TRANSITIONS — Smooth dark/light mode switching
+     ═══════════════════════════════════════════════════════════════════════════════ */
+  
+  /* Transition fluide lors du changement de thème */
+  .theme-transitioning,
+  .theme-transitioning *,
+  .theme-transitioning *::before,
+  .theme-transitioning *::after {
+    transition: 
+      background-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+      border-color 300ms cubic-bezier(0.4, 0, 0.2, 1),
+      color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      fill 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      stroke 200ms cubic-bezier(0.4, 0, 0.2, 1),
+      box-shadow 300ms cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 200ms cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  /* Éléments qui ne doivent pas transitionner (performance) */
+  .theme-transitioning .no-theme-transition,
+  .theme-transitioning video,
+  .theme-transitioning iframe,
+  .theme-transitioning canvas {
+    transition: none !important;
+  }
+
+  /* Variables de transition standard pour composants */
+  :root {
+    --theme-transition: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    --theme-transition-fast: 200ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   html {
