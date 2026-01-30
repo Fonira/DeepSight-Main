@@ -1,6 +1,6 @@
 import React from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { Sidebar } from "./Sidebar";
+import { Sidebar } from "./layout/Sidebar";
 import { AbyssalCreatures } from "./AbyssalCreatures";
 import { useAuth } from "../hooks/useAuth";
 
