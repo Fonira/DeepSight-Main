@@ -239,6 +239,7 @@ export const authApi = {
   },
 
   async login(email: string, password: string): Promise<{ access_token: string; refresh_token: string; user: User }> {
+    console.log('[API] Login request starting');
     const response = await request<{ access_token: string; refresh_token: string; user: User }>(
       '/api/auth/login',
       {
@@ -247,7 +248,18 @@ export const authApi = {
         requiresAuth: false,
       }
     );
-    await tokenStorage.setTokens(response.access_token, response.refresh_token);
+    console.log('[API] Login response received, storing tokens...');
+    
+    // Store tokens with explicit error handling
+    try {
+      await tokenStorage.setTokens(response.access_token, response.refresh_token);
+      console.log('[API] Tokens stored successfully');
+    } catch (tokenError) {
+      console.error('[API] Failed to store tokens:', tokenError);
+      // Still return response - the user state will be set even if tokens fail to store
+      // This prevents the login from appearing to fail when it actually succeeded
+    }
+    
     return response;
   },
 
