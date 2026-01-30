@@ -158,6 +158,7 @@
     "conceptMap": "Concept Map",
     "glossary": "Glossary",
     "inProgress": "Analysis in progress...",
+    "loading": "Loading analysis...",
     "complete": "Analysis complete",
     "failed": "Analysis failed",
     "noKeywords": "No keywords available",
