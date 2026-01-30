@@ -11,6 +11,7 @@ import Constants from 'expo-constants';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { LanguageProvider } from './src/contexts/LanguageContext';
+import { BackgroundAnalysisProvider } from './src/contexts/BackgroundAnalysisContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { ErrorBoundary, OfflineBanner } from './src/components/common';
 import { ToastProvider } from './src/components/ui/Toast';
@@ -143,9 +144,11 @@ export default function App() {
             <ThemeProvider>
               <LanguageProvider>
                 <AuthProvider>
-                  <ToastProvider>
-                    <AppContent />
-                  </ToastProvider>
+                  <BackgroundAnalysisProvider>
+                    <ToastProvider>
+                      <AppContent />
+                    </ToastProvider>
+                  </BackgroundAnalysisProvider>
                 </AuthProvider>
               </LanguageProvider>
             </ThemeProvider>
