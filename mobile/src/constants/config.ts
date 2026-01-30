@@ -72,13 +72,10 @@ export const ANALYSIS_CATEGORIES = [
   { id: 'education', label: 'Éducation' },
 ] as const;
 
-// AI Models
+// AI Models - Only Mistral models
 export const AI_MODELS = [
-  { id: 'gpt-4o-mini', label: 'GPT-4o Mini', provider: 'OpenAI' },
-  { id: 'gpt-4o', label: 'GPT-4o', provider: 'OpenAI' },
-  { id: 'claude-3-haiku', label: 'Claude 3 Haiku', provider: 'Anthropic' },
-  { id: 'claude-3-sonnet', label: 'Claude 3 Sonnet', provider: 'Anthropic' },
   { id: 'mistral-small', label: 'Mistral Small', provider: 'Mistral' },
+  { id: 'mistral-medium', label: 'Mistral Medium', provider: 'Mistral' },
   { id: 'mistral-large', label: 'Mistral Large', provider: 'Mistral' },
 ] as const;
 

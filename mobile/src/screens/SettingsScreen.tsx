@@ -76,7 +76,7 @@ export const SettingsScreen: React.FC = () => {
 
   // Local state for settings
   const [selectedMode, setSelectedMode] = useState(user?.default_mode || 'synthesis');
-  const [selectedModel, setSelectedModel] = useState(user?.default_model || 'gpt-4o-mini');
+  const [selectedModel, setSelectedModel] = useState(user?.default_model || 'mistral-small');
   const [selectedCategory, setSelectedCategory] = useState('auto');
   const [autoPlayVideos, setAutoPlayVideos] = useState(true);
   const [showTournesol, setShowTournesol] = useState(true);
@@ -161,7 +161,7 @@ export const SettingsScreen: React.FC = () => {
       t.settings.defaultModel,
       t.settings.selectModel || 'Select your preferred model',
       [
-        ...AI_MODELS.slice(0, 4).map(model => ({
+        ...AI_MODELS.map(model => ({
           text: `${model.label} (${model.provider})`,
           onPress: async () => {
             setSelectedModel(model.id);
@@ -222,7 +222,7 @@ export const SettingsScreen: React.FC = () => {
 
   const getDefaultModelLabel = () => {
     const model = AI_MODELS.find(m => m.id === selectedModel);
-    return model?.label || 'GPT-4o Mini';
+    return model?.label || 'Mistral Small';
   };
 
   const getDefaultCategoryLabel = () => {

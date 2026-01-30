@@ -78,6 +78,7 @@ export const AnalysisScreen: React.FC = () => {
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisStatus, setAnalysisStatus] = useState<string>('');
   const [analysisStep, setAnalysisStep] = useState(0); // 0-4 for StreamingProgress
+  const [isStreaming, setIsStreaming] = useState(false); // True only for new analyses in progress
 
   // Reliability and freshness state
   const [reliabilityData, setReliabilityData] = useState<{
@@ -192,6 +193,9 @@ export const AnalysisScreen: React.FC = () => {
     const backgroundTask = getTask(summaryId);
 
     if (backgroundTask) {
+      // This is an active streaming analysis
+      setIsStreaming(true);
+      
       // Subscribe to updates from the centralized polling in BackgroundAnalysisContext
       const unsubscribe = subscribeToTask(summaryId, (task) => {
         if (!isMountedRef.current) return;
@@ -204,8 +208,10 @@ export const AnalysisScreen: React.FC = () => {
 
           if (videoTask.status === 'completed' && videoTask.result) {
             // Task completed - load full summary data
+            setIsStreaming(false);
             loadCompletedAnalysis(videoTask.result.id || summaryId);
           } else if (videoTask.status === 'failed') {
+            setIsStreaming(false);
             setError(videoTask.error || t.analysis.failed);
             setIsLoading(false);
           }
@@ -220,8 +226,10 @@ export const AnalysisScreen: React.FC = () => {
         setAnalysisStep(calculateStepFromProgress(videoTask.progress));
 
         if (videoTask.status === 'completed' && videoTask.result) {
+          setIsStreaming(false);
           loadCompletedAnalysis(videoTask.result.id || summaryId);
         } else if (videoTask.status === 'failed') {
+          setIsStreaming(false);
           setError(videoTask.error || t.analysis.failed);
           setIsLoading(false);
         } else {
@@ -248,6 +256,7 @@ export const AnalysisScreen: React.FC = () => {
           // This shouldn't happen if using BackgroundAnalysisContext properly
           // but handle it gracefully
           if (isMountedRef.current) {
+            setIsStreaming(true); // Show streaming UI for processing tasks
             setAnalysisProgress(status.progress || 0);
             setAnalysisStatus(status.message || t.analysis.inProgress);
             setAnalysisStep(calculateStepFromProgress(status.progress || 0));
@@ -600,8 +609,8 @@ export const AnalysisScreen: React.FC = () => {
     }
   }, [summary]);
 
-  // Render loading state with StreamingProgress
-  if (isLoading && analysisProgress < 100) {
+  // Render streaming state (new analysis in progress)
+  if (isStreaming) {
     return (
       <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         <Header title={t.analysis.title} showBack />
@@ -614,6 +623,21 @@ export const AnalysisScreen: React.FC = () => {
               error={error || undefined}
             />
           </Card>
+        </View>
+      </View>
+    );
+  }
+
+  // Render simple loading state (loading existing analysis from history)
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+        <Header title={t.analysis.title} showBack />
+        <View style={styles.loadingContainer}>
+          <DeepSightSpinner size="lg" showGlow />
+          <Text style={[styles.loadingText, { color: colors.textSecondary, marginTop: Spacing.lg }]}>
+            {t.analysis.loading || 'Chargement...'}
+          </Text>
         </View>
       </View>
     );

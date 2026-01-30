@@ -91,52 +91,63 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let timeoutId: ReturnType<typeof setTimeout>;
     let isCompleted = false;
 
-    const completeInit = () => {
+    const completeInit = (reason: string) => {
       if (!isCompleted) {
         isCompleted = true;
         clearTimeout(timeoutId);
+        console.log('[Auth] Init complete:', reason);
         setIsLoading(false);
       }
     };
 
     const init = async () => {
+      console.log('[Auth] Starting initialization...');
       try {
         const hasTokens = await tokenStorage.hasTokens();
+        console.log('[Auth] Has tokens:', hasTokens);
+        
         if (!hasTokens) {
           // No tokens - complete immediately
-          completeInit();
+          completeInit('no tokens found');
           return;
         }
 
         // Try to get user data with a shorter timeout
+        console.log('[Auth] Fetching user data...');
         const userData = await authApi.getMe();
+        console.log('[Auth] User data received:', userData?.id, userData?.email);
+        
         if (!isCompleted) {
           setUser(userData);
-          await userStorage.setUser(userData);
+          console.log('[Auth] User set in state');
+          await userStorage.setUser(userData).catch(e => {
+            console.warn('[Auth] Failed to cache user:', e);
+          });
         }
       } catch (error) {
-        console.warn('Auth init error:', error);
+        console.warn('[Auth] Init error:', error);
         if (!isCompleted) {
+          console.log('[Auth] Clearing invalid tokens...');
           await tokenStorage.clearTokens().catch(() => {});
           await userStorage.clearUser().catch(() => {});
         }
       } finally {
-        completeInit();
+        completeInit('init finished');
       }
     };
 
     // Safety timeout: ensure loading ends after 5 seconds max
     timeoutId = setTimeout(() => {
       if (!isCompleted) {
-        console.warn('Auth init timeout (5s) - forcing loading complete');
-        completeInit();
+        console.warn('[Auth] Init timeout (5s) - forcing loading complete');
+        completeInit('timeout');
       }
     }, 5000);
 
     // Start init but don't let it block indefinitely
     init().catch((error) => {
-      console.error('Auth init fatal error:', error);
-      completeInit();
+      console.error('[Auth] Init fatal error:', error);
+      completeInit('fatal error');
     });
 
     return () => {
@@ -145,14 +156,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
+    console.log('[Auth] Login attempt for:', email);
     setIsLoading(true);
     setError(null);
     setPendingVerificationEmail(null);
     try {
       const response = await authApi.login(email, password);
+      console.log('[Auth] Login API response received:', {
+        hasAccessToken: !!response.access_token,
+        hasRefreshToken: !!response.refresh_token,
+        hasUser: !!response.user,
+        userId: response.user?.id,
+        userEmail: response.user?.email,
+      });
+      
+      // Validate response before setting user
+      if (!response.user) {
+        console.error('[Auth] Login response missing user object');
+        throw new Error('Réponse serveur invalide: utilisateur manquant');
+      }
+      
       setUser(response.user);
-      await userStorage.setUser(response.user);
+      console.log('[Auth] User set in state, isAuthenticated will become true');
+      
+      // Save user to storage (non-blocking, errors logged but not thrown)
+      try {
+        await userStorage.setUser(response.user);
+        console.log('[Auth] User saved to storage');
+      } catch (storageError) {
+        console.warn('[Auth] Failed to save user to storage:', storageError);
+        // Continue anyway - user is already in state
+      }
     } catch (err) {
+      console.error('[Auth] Login failed:', err);
       // Check for email verification required error
       if (err instanceof ApiError && err.isEmailNotVerified) {
         setPendingVerificationEmail(email);
@@ -164,6 +200,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       throw err;
     } finally {
       setIsLoading(false);
+      console.log('[Auth] Login flow complete, isLoading set to false');
     }
   }, []);
 
