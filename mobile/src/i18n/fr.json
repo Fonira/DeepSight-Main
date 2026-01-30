@@ -158,6 +158,7 @@
     "conceptMap": "Carte conceptuelle",
     "glossary": "Glossaire",
     "inProgress": "Analyse en cours...",
+    "loading": "Chargement de l'analyse...",
     "complete": "Analyse terminée",
     "failed": "Échec de l'analyse",
     "noKeywords": "Aucun mot-clé disponible",
