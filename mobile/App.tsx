@@ -16,7 +16,6 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 import { ErrorBoundary, OfflineBanner } from './src/components/common';
 import { ToastProvider } from './src/components/ui/Toast';
 import { QUERY_CONFIG } from './src/constants/config';
-import { Colors } from './src/constants/theme';
 
 // Check if running in Expo Go (has version mismatch issues with Reanimated/Worklets)
 const isExpoGo = Constants.appOwnership === 'expo';
