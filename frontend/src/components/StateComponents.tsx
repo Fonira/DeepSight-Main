@@ -11,7 +11,6 @@
 
 import React, { ReactNode } from 'react';
 import {
-  Loader2,
   AlertCircle,
   AlertTriangle,
   X,
@@ -30,6 +29,7 @@ import {
   CreditCard,
   ArrowRight,
 } from 'lucide-react';
+import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
 import { ApiError } from '../services/api';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -96,7 +96,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
       {/* Icon or Spinner */}
       {showSpinner && (
         <div className="mb-4">
-          {icon || <Loader2 className={`${classes.icon} text-accent-primary animate-spin`} />}
+          {icon || <DeepSightSpinner size="md" />}
         </div>
       )}
 

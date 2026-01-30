@@ -13,10 +13,11 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  X, Loader2, GraduationCap, GitBranch, Sparkles,
+  X, GraduationCap, GitBranch, Sparkles,
   AlertCircle, BookOpen, Brain, Download, ChevronRight,
   Zap, Settings, Plus, Minus, Info, Lock, Crown
 } from 'lucide-react';
+import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
 import { StudyCard } from './StudyCard';
 import { ConceptMap } from './ConceptMap';
 
@@ -670,8 +671,8 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
           {/* Loading View */}
           {viewMode === 'loading' && (
             <div className="py-16 text-center">
-              <div className="w-20 h-20 rounded-2xl bg-accent-primary-muted flex items-center justify-center mx-auto mb-6">
-                <Loader2 className="w-10 h-10 text-accent-primary animate-spin" />
+              <div className="flex justify-center mb-6">
+                <DeepSightSpinner size="lg" />
               </div>
               <h3 className="text-lg font-semibold text-text-primary mb-2">{t.generating}</h3>
               <p className="text-text-secondary">
@@ -749,7 +750,7 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                         className="w-full py-3 rounded-lg bg-accent-primary hover:bg-accent-primary-hover text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50"
                       >
                         {loading ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <DeepSightSpinnerMicro />
                         ) : (
                           <Plus className="w-4 h-4" />
                         )}

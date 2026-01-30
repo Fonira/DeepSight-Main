@@ -17,13 +17,14 @@ import ReactMarkdown from "react-markdown";
 import {
   Search, Trash2, Play, MessageCircle,
   ChevronRight, Clock, Video, Layers,
-  Grid, List, RefreshCw, BarChart2, Loader2,
+  Grid, List, RefreshCw, BarChart2,
   AlertCircle, X, Send, Globe, Bot, User,
   Minimize2, Maximize2, ExternalLink,
   // 🆕 Toolbar icons
   Copy, Check, GraduationCap, Brain, Tags,
   Download, FileText, FileDown, ChevronDown
 } from "lucide-react";
+import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from "./ui";
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
 import { Sidebar } from "../components/layout/Sidebar";
@@ -878,7 +879,7 @@ export const History: React.FC = () => {
             {/* Content */}
             {loading ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-accent-primary" />
+                <DeepSightSpinner size="md" />
               </div>
             ) : activeTab === "videos" ? (
               <section>
@@ -1170,7 +1171,7 @@ export const History: React.FC = () => {
                 className="flex-1 btn bg-red-500 hover:bg-red-600 text-white disabled:opacity-50"
               >
                 {clearLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <DeepSightSpinnerMicro />
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4 mr-2" />
@@ -1449,7 +1450,7 @@ const PlaylistCard: React.FC<{
             {isComplete ? (
               <Check className="w-3 h-3" />
             ) : (
-              <Loader2 className="w-3 h-3 animate-spin" />
+              <DeepSightSpinnerMicro />
             )}
             {isComplete
               ? (language === 'fr' ? 'Terminé' : 'Complete')
@@ -1575,7 +1576,7 @@ const PlaylistDetailView: React.FC<{
   if (loadingVideo) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-accent-primary" />
+        <DeepSightSpinner size="md" />
         <span className="ml-3 text-text-secondary">
           {language === 'fr' ? 'Chargement du résumé...' : 'Loading summary...'}
         </span>
@@ -1728,7 +1729,7 @@ const PlaylistDetailView: React.FC<{
                   className="btn btn-ghost text-xs"
                   disabled={exporting}
                 >
-                  {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  {exporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
                   Export
                   <ChevronDown className="w-3 h-3" />
                 </button>
@@ -2150,7 +2151,7 @@ const PlaylistDetailView: React.FC<{
                     onClick={() => setMetaShowExportMenu(!metaShowExportMenu)}
                     className="btn btn-ghost text-xs"
                   >
-                    {metaExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    {metaExporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
                     Export
                     <ChevronDown className="w-3 h-3" />
                   </button>

@@ -8,7 +8,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { billingApi } from '../services/api';
-import { CheckCircle, ArrowRight, Sparkles, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { CheckCircle, ArrowRight, Sparkles, RefreshCw, AlertCircle } from 'lucide-react';
+import { DeepSightSpinner } from '../components/ui';
 import DoodleBackground from '../components/DoodleBackground';
 
 function clearUserCache() {
@@ -152,8 +153,8 @@ export const PaymentSuccess: React.FC = () => {
           {/* Loading State */}
           {status === 'loading' && (
             <>
-              <div className="w-20 h-20 rounded-full bg-accent-primary/10 flex items-center justify-center mx-auto mb-6">
-                <Loader2 className="w-10 h-10 text-accent-primary animate-spin" />
+              <div className="flex justify-center mb-6">
+                <DeepSightSpinner size="lg" />
               </div>
               <h1 className="font-display text-2xl text-text-primary mb-3">
                 {t.payment.processing}

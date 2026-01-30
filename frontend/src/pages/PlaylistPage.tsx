@@ -19,12 +19,13 @@ import VideoDiscoveryModal from '../components/VideoDiscoveryModal';
 import { videoApi, playlistApi, PlaylistTaskStatus, ApiError } from '../services/api';
 import type { DiscoveryResponse, VideoCandidate } from '../services/api';
 import {
-  ListVideo, Play, Loader2, AlertCircle, Clock,
+  ListVideo, Play, AlertCircle, Clock,
   ChevronRight, Zap, Crown, Lock, ExternalLink, CheckCircle,
   RefreshCw, History, Settings2, Search, Sparkles, X,
   ListPlus, GraduationCap, TrendingUp, FileText, Save, BarChart3,
   Timer, Coffee, Rocket
 } from 'lucide-react';
+import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from '../components/ui';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -130,7 +131,7 @@ function getStepIcon(step: string) {
     case 'saving': return <Save className="w-4 h-4" />;
     case 'meta': return <Sparkles className="w-4 h-4 animate-pulse" />;
     case 'done': return <CheckCircle className="w-4 h-4" />;
-    default: return <Loader2 className="w-4 h-4 animate-spin" />;
+    default: return <DeepSightSpinnerMicro />;
   }
 }
 
@@ -572,13 +573,13 @@ export const PlaylistPage: React.FC = () => {
               }`}>
                 <div className="flex items-center gap-4 mb-4">
                   {/* Icône */}
-                  <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
-                    isCompleted ? 'bg-green-500/20' : 'bg-violet-500/20'
-                  }`}>
+                  <div className={`flex items-center justify-center transition-all`}>
                     {isCompleted ? (
-                      <CheckCircle className="w-7 h-7 text-green-400" />
+                      <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center">
+                        <CheckCircle className="w-7 h-7 text-green-400" />
+                      </div>
                     ) : (
-                      <Loader2 className="w-7 h-7 text-violet-400 animate-spin" />
+                      <DeepSightSpinner size="md" speed="normal" />
                     )}
                   </div>
 
@@ -728,8 +729,8 @@ export const PlaylistPage: React.FC = () => {
                 </div>
 
                 {loadingHistory ? (
-                  <div className="p-8 text-center">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-text-muted" />
+                  <div className="p-8 flex justify-center">
+                    <DeepSightSpinnerSmall />
                   </div>
                 ) : history.length === 0 ? (
                   <div className="p-8 text-center text-text-muted">

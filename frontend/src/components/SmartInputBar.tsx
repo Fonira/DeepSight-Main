@@ -9,9 +9,10 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  Link2, FileText, Search, ChevronDown, Loader2,
+  Link2, FileText, Search, ChevronDown,
   Globe, Sparkles, Info, ArrowRight, Wand2
 } from 'lucide-react';
+import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -393,7 +394,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
             }`}
           >
             {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <DeepSightSpinnerMicro />
             ) : (
               <ArrowRight className="w-5 h-5" />
             )}

@@ -9,11 +9,11 @@ import {
   Download,
   Copy,
   Check,
-  Loader2,
   FileText,
   Lock,
   ChevronRight,
 } from 'lucide-react';
+import { DeepSightSpinner } from '../ui';
 import { academicApi, BibliographyFormat } from '../../services/api';
 import { hasFeature, normalizePlanId } from '../../config/planPrivileges';
 
@@ -190,8 +190,7 @@ export const BibliographyModal: React.FC<BibliographyModalProps> = ({
           ) : loading ? (
             /* Loading */
             <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 text-accent-primary animate-spin mb-4" />
-              <p className="text-text-secondary">Generating bibliography...</p>
+              <DeepSightSpinner size="md" label="Generating bibliography..." showLabel />
             </div>
           ) : error ? (
             /* Error */

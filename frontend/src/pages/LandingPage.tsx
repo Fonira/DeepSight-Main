@@ -18,6 +18,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../hooks/useAuth";
 import DoodleBackground from "../components/DoodleBackground";
+import { DeepSightSpinnerHero } from "../components/ui";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎨 LOGO COMPONENT
@@ -383,18 +384,21 @@ const LandingPage: React.FC = () => {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      {/* DEMO VIDEO SECTION */}
+      {/* DEMO / HERO SPINNER SECTION — ✨ DeepSight Spinner XXL */}
       {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      <section className="py-8 sm:py-12 px-4 sm:px-6">
+      <section className="py-8 sm:py-16 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto">
-          <div className="card-elevated rounded-xl sm:rounded-2xl overflow-hidden aspect-video bg-bg-tertiary flex items-center justify-center border border-border-subtle">
-            <button className="w-14 h-14 sm:w-20 sm:h-20 rounded-full bg-bg-secondary border border-border-subtle flex items-center justify-center hover:scale-105 transition-transform active:scale-95">
-              <Play className="w-6 h-6 sm:w-8 sm:h-8 text-text-secondary ml-1" />
-            </button>
+          <div className="card-elevated rounded-xl sm:rounded-2xl overflow-hidden py-12 sm:py-20 bg-gradient-to-br from-bg-tertiary via-bg-secondary to-bg-tertiary flex flex-col items-center justify-center border border-border-subtle relative">
+            {/* ✨ DeepSight Hero Spinner — Logo animé impressionnant */}
+            <div className="relative">
+              <DeepSightSpinnerHero className="drop-shadow-2xl" />
+              {/* Glow effect */}
+              <div className="absolute inset-0 bg-gradient-radial from-accent-primary/20 via-purple-500/10 to-transparent blur-3xl -z-10 scale-150" />
+            </div>
+            <p className="text-center text-sm sm:text-base text-text-secondary mt-6 sm:mt-8 font-medium">
+              {language === 'fr' ? 'L\'IA qui analyse vos vidéos' : 'AI that analyzes your videos'}
+            </p>
           </div>
-          <p className="text-center text-xs sm:text-sm text-text-tertiary mt-3 sm:mt-4">
-            {language === 'fr' ? 'Aperçu de l\'interface' : 'Interface preview'}
-          </p>
         </div>
       </section>
 

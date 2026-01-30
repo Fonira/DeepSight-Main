@@ -10,8 +10,9 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   X, Check, Play, Clock, Eye, ThumbsUp, Star, Sparkles,
   AlertTriangle, BookOpen, TrendingUp, Calendar, Filter,
-  ChevronDown, ChevronUp, Loader2, Search, ExternalLink
+  ChevronDown, ChevronUp, Search, ExternalLink
 } from 'lucide-react';
+import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
 import type { VideoCandidate, DiscoveryResponse } from '../services/api';
 import { ThumbnailImage } from './ThumbnailImage';
 
@@ -561,7 +562,7 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-10 h-10 text-accent-primary animate-spin mb-4" />
+              <DeepSightSpinner size="lg" />
               <p className="text-text-secondary">Recherche en cours...</p>
             </div>
           ) : sortedCandidates.length === 0 ? (

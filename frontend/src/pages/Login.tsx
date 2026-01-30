@@ -10,7 +10,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { useTheme } from '../contexts/ThemeContext';
 import DoodleBackground from '../components/DoodleBackground';
-import { Mail, Lock, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
 
 // === Logo ===
 const Logo: React.FC = () => (
@@ -167,7 +168,7 @@ export const Login: React.FC = () => {
     return (
       <div className="min-h-screen bg-bg-primary flex items-center justify-center relative">
         <DoodleBackground variant="default" density={50} />
-        <Loader2 className="w-8 h-8 text-accent-primary animate-spin relative z-10" />
+        <DeepSightSpinner size="md" />
       </div>
     );
   }
@@ -296,7 +297,7 @@ export const Login: React.FC = () => {
                   className="w-full btn btn-accent py-3 text-base"
                 >
                   {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <DeepSightSpinnerMicro />
                   ) : (
                     t.common.confirm
                   )}
@@ -385,7 +386,7 @@ export const Login: React.FC = () => {
               className="w-full btn btn-accent py-3 text-base"
             >
               {loading ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <DeepSightSpinnerMicro />
               ) : isRegister ? (
                 t.auth.createAccount
               ) : (

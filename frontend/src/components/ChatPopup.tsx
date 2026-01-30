@@ -12,11 +12,12 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-  MessageCircle, X, Send, Loader2, Globe, Trash2,
+  MessageCircle, X, Send, Globe, Trash2,
   Minimize2, Maximize2, Sparkles, Bot, ExternalLink,
   Copy, Check, Shield, BookOpen, Lightbulb, Target, Info,
   GripVertical, Move
 } from 'lucide-react';
+import { DeepSightSpinnerMicro } from './ui';
 import { parseAskQuestions, ClickableQuestionsBlock } from './ClickableQuestions';
 import { cleanConceptMarkers } from './EnrichedMarkdown';
 import { EnrichedMarkdown } from './EnrichedMarkdown';
@@ -574,7 +575,7 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
                     <div className="flex justify-start">
                       <div className="rounded-xl px-4 py-3 bg-cyan-900/40 border border-cyan-500/30">
                         <div className="flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
+                          <DeepSightSpinnerMicro />
                           <span className="text-sm text-gray-300">{t.thinking}</span>
                         </div>
                       </div>

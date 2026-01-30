@@ -17,13 +17,14 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   ListVideo,
-  Play, Video, Send, ChevronDown, Loader2, Clock, Timer,
+  Play, Video, Send, ChevronDown, Clock, Timer,
   Star, Download, Globe, Sparkles, BookOpen, Shield,
   ExternalLink, Copy, Check, MessageCircle, X, Bot,
   AlertCircle, Minimize2, Maximize2, RefreshCw, Pause,
   Zap, FileText, FileDown, ChevronUp, Minus, GraduationCap, Brain,
   ChevronRight, Tags
 } from "lucide-react";
+import { DeepSightSpinner, DeepSightSpinnerMicro } from "../components/ui";
 import { EnrichedMarkdown } from "../components/EnrichedMarkdown";
 import { ConceptsGlossary } from "../components/ConceptsGlossary";
 import { videoApi, chatApi, reliabilityApi, ApiError } from "../services/api";
@@ -914,11 +915,9 @@ export const DashboardPage: React.FC = () => {
             {loading && (
               <div className="card p-8 mb-6 animate-fadeIn">
                 <div className="flex flex-col items-center text-center">
-                  {/* Icon avec animation améliorée */}
-                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6 bg-accent-primary-muted relative">
-                    <Loader2 className="w-10 h-10 text-accent-primary animate-spin" />
-                    {/* Effet de pulsation */}
-                    <div className="absolute inset-0 rounded-2xl bg-accent-primary/10 animate-ping" style={{ animationDuration: '2s' }} />
+                  {/* ✨ DeepSight Spinner — Logo animé */}
+                  <div className="mb-6">
+                    <DeepSightSpinner size="lg" speed="normal" />
                   </div>
                   
                   {/* Message principal */}
@@ -1247,7 +1246,7 @@ export const DashboardPage: React.FC = () => {
                           className="btn btn-ghost text-xs min-h-[36px] sm:min-h-[32px]"
                           disabled={exporting}
                         >
-                          {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                          {exporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
                           <span className="hidden sm:inline">Export</span>
                           <ChevronDown className="w-3 h-3" />
                         </button>

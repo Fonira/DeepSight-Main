@@ -11,7 +11,8 @@
  */
 
 import React, { useState, useEffect, memo } from 'react';
-import { BookOpen, ChevronDown, ChevronUp, User, Building2, Cpu, Lightbulb, HelpCircle, Loader2, RefreshCw } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronUp, User, Building2, Cpu, Lightbulb, HelpCircle, RefreshCw } from 'lucide-react';
+import { DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 TYPES
@@ -172,7 +173,7 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = memo(({
         </div>
         
         <div className="flex items-center gap-2">
-          {loading && <Loader2 className="w-4 h-4 text-accent-primary animate-spin" />}
+          {loading && <DeepSightSpinnerMicro />}
           {isExpanded ? (
             <ChevronUp className="w-5 h-5 text-text-muted" />
           ) : (
@@ -185,9 +186,9 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = memo(({
       {isExpanded && (
         <div className="mt-2 p-4 bg-bg-secondary rounded-xl border border-border-primary animate-fadeIn">
           {loading ? (
-            <div className="flex items-center justify-center py-8 text-text-muted">
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              {loadingText}
+            <div className="flex flex-col items-center justify-center py-8 text-text-muted gap-3">
+              <DeepSightSpinnerSmall />
+              <span>{loadingText}</span>
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-8 text-text-muted">
