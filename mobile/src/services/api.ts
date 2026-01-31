@@ -583,9 +583,12 @@ export const videoApi = {
   }): Promise<{
     videos: Array<VideoInfo & { quality_score: number; academic_relevance: number }>;
   }> {
-    return request('/api/videos/discover/best', {
+    const params = new URLSearchParams({
+      query,
+      languages: options?.language || 'fr,en',
+    });
+    return request(`/api/videos/discover/best?${params.toString()}`, {
       method: 'POST',
-      body: { query, ...options },
     });
   },
 
