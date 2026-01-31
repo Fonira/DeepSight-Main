@@ -216,6 +216,7 @@ const PaymentCancel = lazy(() => import("./pages/PaymentCancel"));
 // Pages protégées
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const PlaylistPage = lazy(() => import("./pages/PlaylistPage"));
+const PlaylistDetailPage = lazy(() => import("./pages/PlaylistDetailPage"));
 const History = lazy(() => import("./pages/History"));
 const UpgradePage = lazy(() => import("./pages/UpgradePage"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -233,7 +234,8 @@ const PREFETCH_MAP: Record<string, string[]> = {
   '/dashboard': ['/history', '/settings', '/playlists'],
   '/history': ['/dashboard'],
   '/settings': ['/account'],
-  '/playlists': ['/dashboard'],
+  '/playlists': ['/dashboard', '/playlist'],
+  '/playlist': ['/playlists', '/dashboard'],
   '/upgrade': ['/dashboard', '/payment/success'],
 };
 
@@ -242,6 +244,7 @@ const PAGE_LOADERS: Record<string, () => Promise<any>> = {
   '/history': () => import("./pages/History"),
   '/settings': () => import("./pages/Settings"),
   '/playlists': () => import("./pages/PlaylistPage"),
+  '/playlist': () => import("./pages/PlaylistDetailPage"),
   '/account': () => import("./pages/MyAccount"),
   '/login': () => import("./pages/Login"),
   '/upgrade': () => import("./pages/UpgradePage"),
@@ -389,6 +392,12 @@ const AppRoutes = () => {
                   <Route path="/playlists" element={
                     <Suspense fallback={<PageSkeleton variant="full" />}>
                       <PlaylistPage />
+                    </Suspense>
+                  } />
+                  
+                  <Route path="/playlist/:id" element={
+                    <Suspense fallback={<PageSkeleton variant="dashboard" />}>
+                      <PlaylistDetailPage />
                     </Suspense>
                   } />
                   
