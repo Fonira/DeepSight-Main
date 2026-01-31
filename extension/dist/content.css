@@ -1,0 +1,546 @@
+/* DeepSight Content Script Styles */
+
+/* Variables */
+:root {
+  --ds-primary: #6366f1;
+  --ds-primary-hover: #4f46e5;
+  --ds-secondary: #8b5cf6;
+  --ds-success: #22c55e;
+  --ds-error: #ef4444;
+  --ds-warning: #f59e0b;
+}
+
+/* Button */
+.deepsight-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: 'Roboto', 'YouTube Sans', -apple-system, sans-serif;
+  transition: all 0.2s ease;
+  margin-right: 8px;
+}
+
+.deepsight-btn.light {
+  background: linear-gradient(135deg, var(--ds-primary), var(--ds-secondary));
+  color: white;
+}
+
+.deepsight-btn.dark {
+  background: linear-gradient(135deg, var(--ds-primary), var(--ds-secondary));
+  color: white;
+}
+
+.deepsight-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.deepsight-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Panel */
+.deepsight-panel {
+  position: fixed;
+  top: 0;
+  right: -400px;
+  width: 400px;
+  height: 100vh;
+  z-index: 9999;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.2);
+  transition: right 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.deepsight-panel.open {
+  right: 0;
+}
+
+.deepsight-panel.light {
+  background: #ffffff;
+  color: #1f2937;
+}
+
+.deepsight-panel.dark {
+  background: #1e1e1e;
+  color: #e5e7eb;
+}
+
+/* Panel Header */
+.deepsight-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+  background: linear-gradient(135deg, var(--ds-primary), var(--ds-secondary));
+  color: white;
+}
+
+.deepsight-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.deepsight-panel-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.deepsight-panel-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Panel Content */
+.deepsight-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* Loading */
+.deepsight-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  gap: 16px;
+}
+
+.deepsight-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(99, 102, 241, 0.2);
+  border-top-color: var(--ds-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.deepsight-spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(99, 102, 241, 0.2);
+  border-top-color: var(--ds-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Auth */
+.deepsight-auth {
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.deepsight-auth-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.deepsight-auth h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.deepsight-auth p {
+  margin: 0 0 24px;
+  opacity: 0.8;
+}
+
+.deepsight-auth-note {
+  margin-top: 16px;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.deepsight-auth-note a {
+  color: var(--ds-primary);
+  text-decoration: none;
+}
+
+.deepsight-auth-note a:hover {
+  text-decoration: underline;
+}
+
+/* Buttons */
+.deepsight-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--ds-primary), var(--ds-secondary));
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.deepsight-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+}
+
+.deepsight-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.deepsight-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--ds-primary);
+  border: 1px solid var(--ds-primary);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+
+.deepsight-btn-secondary:hover {
+  background: var(--ds-primary);
+  color: white;
+}
+
+.deepsight-btn-full {
+  width: 100%;
+}
+
+/* Analysis UI */
+.deepsight-analysis-ui {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.deepsight-user-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: 8px;
+}
+
+.deepsight-credits {
+  font-weight: 600;
+  color: var(--ds-primary);
+}
+
+.deepsight-plan {
+  text-transform: uppercase;
+  font-size: 12px;
+  padding: 4px 8px;
+  background: var(--ds-primary);
+  color: white;
+  border-radius: 4px;
+}
+
+.deepsight-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.deepsight-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.deepsight-option span {
+  font-size: 13px;
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+.deepsight-option select {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: transparent;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.deepsight-panel.dark .deepsight-option select {
+  color: #e5e7eb;
+  background: #2d2d2d;
+}
+
+.deepsight-panel.light .deepsight-option select {
+  color: #1f2937;
+  background: #ffffff;
+}
+
+/* Progress */
+.deepsight-progress {
+  height: 6px;
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.deepsight-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--ds-primary), var(--ds-secondary));
+  transition: width 0.3s ease;
+}
+
+.deepsight-progress-text {
+  font-size: 13px;
+  text-align: center;
+  opacity: 0.8;
+  margin: 8px 0 0;
+}
+
+/* Result */
+.deepsight-result {
+  margin-top: 16px;
+}
+
+.deepsight-result.hidden {
+  display: none;
+}
+
+/* Summary */
+.deepsight-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.deepsight-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.deepsight-summary-header h3 {
+  margin: 0;
+  color: var(--ds-success);
+}
+
+.deepsight-summary-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.deepsight-category {
+  padding: 4px 8px;
+  background: rgba(99, 102, 241, 0.1);
+  border-radius: 4px;
+}
+
+.deepsight-reliability {
+  padding: 4px 8px;
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: 4px;
+}
+
+.deepsight-summary-content {
+  font-size: 14px;
+  line-height: 1.7;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.deepsight-summary-content h4 {
+  margin: 16px 0 8px;
+  font-size: 15px;
+  color: var(--ds-primary);
+}
+
+.deepsight-timestamp {
+  color: var(--ds-primary);
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.deepsight-timestamp:hover {
+  text-decoration: underline;
+}
+
+.deepsight-summary-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Chat */
+.deepsight-chat {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 80px);
+}
+
+.deepsight-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.deepsight-back {
+  background: none;
+  border: none;
+  color: var(--ds-primary);
+  cursor: pointer;
+  padding: 4px 8px;
+  font-size: 14px;
+}
+
+.deepsight-back:hover {
+  text-decoration: underline;
+}
+
+.deepsight-chat-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.deepsight-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.deepsight-chat-message {
+  padding: 12px;
+  border-radius: 12px;
+  max-width: 85%;
+}
+
+.deepsight-chat-message.user {
+  align-self: flex-end;
+  background: var(--ds-primary);
+  color: white;
+}
+
+.deepsight-chat-message.assistant {
+  align-self: flex-start;
+}
+
+.deepsight-panel.light .deepsight-chat-message.assistant {
+  background: #f3f4f6;
+}
+
+.deepsight-panel.dark .deepsight-chat-message.assistant {
+  background: #2d2d2d;
+}
+
+.deepsight-chat-message.loading {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.deepsight-chat-message.error {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--ds-error);
+}
+
+.deepsight-chat-message p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.deepsight-web-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 2px 6px;
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.deepsight-chat-input {
+  display: flex;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.deepsight-chat-input input {
+  flex: 1;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: transparent;
+  font-size: 14px;
+}
+
+.deepsight-panel.dark .deepsight-chat-input input {
+  color: #e5e7eb;
+}
+
+.deepsight-chat-input input:focus {
+  outline: none;
+  border-color: var(--ds-primary);
+}
+
+.deepsight-chat-input button {
+  padding: 12px 20px;
+}
+
+/* Error */
+.deepsight-error {
+  text-align: center;
+  padding: 24px;
+  color: var(--ds-error);
+}
+
+.deepsight-error button {
+  margin-top: 12px;
+}
+
+/* Responsive */
+@media (max-width: 450px) {
+  .deepsight-panel {
+    width: 100%;
+    right: -100%;
+  }
+}
+

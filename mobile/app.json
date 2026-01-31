@@ -26,7 +26,7 @@
       "config": {
         "usesNonExemptEncryption": false
       },
-      "buildNumber": "3"
+      "buildNumber": "5"
     },
     "android": {
       "adaptiveIcon": {
@@ -34,7 +34,7 @@
         "backgroundColor": "#0a0a0b"
       },
       "package": "com.deepsight.app",
-      "versionCode": 1,
+      "versionCode": 4,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"

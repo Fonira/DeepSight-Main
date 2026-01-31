@@ -1,7 +1,28 @@
 # 📚 Documentation Sync - TODOs
 
 **Généré le:** 30 janvier 2026  
+**Dernière mise à jour:** 30 janvier 2026 @ 20:00  
 **Période analysée:** 2 dernières semaines de commits
+
+---
+
+## 🔴 URGENT - Changements majeurs non documentés
+
+### 0. Extension Chrome YouTube ⭐ NOUVEAU
+**Commit:** `f8a66006` - "feat(extension): Add Chrome extension for YouTube" (30 jan 2026)
+
+**Composant majeur ajouté !** L'extension a son propre `README.md` mais :
+
+**À faire immédiatement:**
+- [ ] Mettre à jour `README.md` principal → ajouter `extension/` dans la structure
+- [ ] Ajouter section "Extension Chrome" dans le README principal
+- [ ] Corriger l'URL API dans `extension/README.md` (indique `deepsight-production` mais devrait être `deep-sight-backend-v3-production`)
+
+**Note:** L'extension est complète avec :
+- Manifest V3
+- React 18 + TypeScript + Webpack 5
+- Tailwind CSS
+- Documentation README dédiée (bien faite !)
 
 ---
 
@@ -101,13 +122,32 @@ DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/db
 
 ---
 
+### 9. BackgroundAnalysisProvider (nouveau context)
+**Commit:** `6557f258` - "fix(mobile): Add missing BackgroundAnalysisProvider to App.tsx"
+
+**À documenter:**
+- Architecture des Context providers de l'app mobile
+- Ordre d'imbrication des providers dans `App.tsx`
+- Fonctionnalité d'analyse en arrière-plan
+
+---
+
+### 10. Limitation modèles IA (Mistral only)
+**Commit:** `79ffe71d` - "fix(mobile): Fix history analysis loading + limit AI models to Mistral only"
+
+**À documenter:**
+- Quels modèles IA sont disponibles sur mobile vs web
+- Raison de la limitation à Mistral (coût ? perf ? disponibilité ?)
+
+---
+
 ## 🟢 Minor / Nice-to-have
 
-### 9. Version bump
+### 11. Version bump
 `docs/CLAUDE-BACKEND.md` indique "Version actuelle: 5.5.1"
 → Vérifier si la version est toujours à jour après ces commits
 
-### 10. TypeScript fixes frontend
+### 12. TypeScript fixes frontend
 **Commit:** `da65b2bf` - "fix(frontend): Resolve TypeScript errors"
 → Vérifier si des types publics de l'API ont changé
 
@@ -117,10 +157,12 @@ DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/db
 
 | Priorité | Action | Fichier cible |
 |----------|--------|---------------|
+| 🔴 **URGENT** | Ajouter extension Chrome au README | `/README.md` |
+| 🔴 **URGENT** | Corriger URL API extension | `extension/README.md` |
 | 🔴 Haute | Créer CONTRIBUTING.md | `/CONTRIBUTING.md` |
 | 🔴 Haute | Doc SSL Railway | `backend/README.md`, `docs/CLAUDE-BACKEND.md` |
 | 🟡 Moyenne | Doc système transcripts | `docs/CLAUDE-BACKEND.md` |
-| 🟡 Moyenne | Doc mobile complète | `mobile/README.md` (à créer) |
+| 🟡 Moyenne | Doc mobile complète | `mobile/README.md` |
 | 🟡 Moyenne | Doc hooks stability | `mobile/README.md` |
 | 🟢 Basse | Version check | `docs/CLAUDE-BACKEND.md` |
 
