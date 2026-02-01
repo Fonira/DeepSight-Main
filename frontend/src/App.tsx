@@ -223,6 +223,8 @@ const Settings = lazy(() => import("./pages/Settings"));
 const MyAccount = lazy(() => import("./pages/MyAccount"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const UsageDashboard = lazy(() => import("./pages/UsageDashboard"));
+const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
+const StudyPage = lazy(() => import("./pages/StudyPage"));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔮 PREFETCH CONFIGURATION
@@ -231,12 +233,13 @@ const UsageDashboard = lazy(() => import("./pages/UsageDashboard"));
 const PREFETCH_MAP: Record<string, string[]> = {
   '/': ['/dashboard', '/login'],
   '/login': ['/dashboard'],
-  '/dashboard': ['/history', '/settings', '/playlists'],
-  '/history': ['/dashboard'],
+  '/dashboard': ['/history', '/settings', '/playlists', '/analytics'],
+  '/history': ['/dashboard', '/analytics'],
   '/settings': ['/account'],
   '/playlists': ['/dashboard', '/playlist'],
   '/playlist': ['/playlists', '/dashboard'],
   '/upgrade': ['/dashboard', '/payment/success'],
+  '/analytics': ['/dashboard', '/history'],
 };
 
 const PAGE_LOADERS: Record<string, () => Promise<any>> = {
@@ -249,6 +252,7 @@ const PAGE_LOADERS: Record<string, () => Promise<any>> = {
   '/login': () => import("./pages/Login"),
   '/upgrade': () => import("./pages/UpgradePage"),
   '/payment/success': () => import("./pages/PaymentSuccess"),
+  '/analytics': () => import("./pages/AnalyticsPage"),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -416,6 +420,12 @@ const AppRoutes = () => {
                   <Route path="/usage" element={
                     <Suspense fallback={<PageSkeleton variant="dashboard" />}>
                       <UsageDashboard />
+                    </Suspense>
+                  } />
+                  
+                  <Route path="/analytics" element={
+                    <Suspense fallback={<PageSkeleton variant="dashboard" />}>
+                      <AnalyticsPage />
                     </Suspense>
                   } />
                   
