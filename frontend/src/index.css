@@ -775,3 +775,106 @@
   font-variant-numeric: tabular-nums;
   transition: all 0.3s ease-out;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   📇 FLASHCARD ANIMATIONS — Study Mode
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* 3D perspective container */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+/* Preserve 3D transform */
+.transform-style-preserve-3d {
+  transform-style: preserve-3d;
+}
+
+/* Backface hidden for flip effect */
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Y-axis rotation for flip */
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Swipe animations */
+@keyframes swipeLeft {
+  to {
+    transform: translateX(-150%) rotate(-20deg);
+    opacity: 0;
+  }
+}
+
+@keyframes swipeRight {
+  to {
+    transform: translateX(150%) rotate(20deg);
+    opacity: 0;
+  }
+}
+
+.animate-swipe-left {
+  animation: swipeLeft 0.3s ease-out forwards;
+}
+
+.animate-swipe-right {
+  animation: swipeRight 0.3s ease-out forwards;
+}
+
+/* Card flip transition */
+.flip-card {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.flip-card.flipped {
+  transform: rotateY(180deg);
+}
+
+/* Score counter animation */
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-count-up {
+  animation: countUp 0.5s ease-out;
+}
+
+/* Quiz option feedback */
+@keyframes correctPulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes incorrectShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20%, 60% {
+    transform: translateX(-4px);
+  }
+  40%, 80% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-correct {
+  animation: correctPulse 0.4s ease-out;
+}
+
+.animate-incorrect {
+  animation: incorrectShake 0.4s ease-out;
+}

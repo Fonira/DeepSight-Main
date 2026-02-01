@@ -1,195 +1,387 @@
 /**
- * 🎯 QuizQuestion — QCM Component with Feedback
- * Affiche une question à choix multiples avec feedback immédiat
+ * DEEP SIGHT — QuizQuestion Component
+ * Questions à choix multiples interactives
+ * 
+ * FONCTIONNALITÉS:
+ * - 🎯 QCM avec feedback visuel
+ * - 💡 Explication après réponse
+ * - 🔄 Animation de validation
+ * - 📊 Suivi du score
  */
 
-import React, { useState, useEffect } from 'react';
-import { Check, X, Lightbulb, ArrowRight, ChevronRight } from 'lucide-react';
-import type { StudyQuizQuestion } from '../../services/api';
+import React, { useState, useCallback, useEffect } from 'react';
+import {
+  CheckCircle, XCircle, ChevronRight, Lightbulb,
+  Trophy, RotateCcw, HelpCircle, Brain
+} from 'lucide-react';
 
-interface QuizQuestionProps {
-  question: StudyQuizQuestion;
-  questionNumber: number;
-  totalQuestions: number;
-  onAnswer: (selectedIndex: number, isCorrect: boolean) => void;
-  onNext: () => void;
-  showFeedback?: boolean;
+// ═══════════════════════════════════════════════════════════════════════════════
+// 📦 TYPES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface QuizQuestionData {
+  question: string;
+  options: string[];
+  correct: number;
+  explanation?: string;
 }
 
+interface QuizQuestionProps {
+  questions: QuizQuestionData[];
+  onComplete?: (score: number, total: number, answers: QuizAnswer[]) => void;
+  onProgress?: (current: number, total: number, score: number) => void;
+  isLoading?: boolean;
+  language?: 'fr' | 'en';
+}
+
+interface QuizAnswer {
+  questionIndex: number;
+  selected: number;
+  isCorrect: boolean;
+}
+
+interface QuizState {
+  currentIndex: number;
+  selectedAnswer: number | null;
+  showResult: boolean;
+  answers: QuizAnswer[];
+  isComplete: boolean;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎯 COMPOSANT PRINCIPAL
+// ═══════════════════════════════════════════════════════════════════════════════
+
 export const QuizQuestion: React.FC<QuizQuestionProps> = ({
-  question,
-  questionNumber,
-  totalQuestions,
-  onAnswer,
-  onNext,
-  showFeedback = true,
+  questions,
+  onComplete,
+  onProgress,
+  isLoading = false,
+  language = 'fr',
 }) => {
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [hasAnswered, setHasAnswered] = useState(false);
-  const [showExplanation, setShowExplanation] = useState(false);
+  const [state, setState] = useState<QuizState>({
+    currentIndex: 0,
+    selectedAnswer: null,
+    showResult: false,
+    answers: [],
+    isComplete: false,
+  });
 
-  const isCorrect = selectedAnswer === question.correct_index;
+  const [shake, setShake] = useState(false);
+  const [pulse, setPulse] = useState(false);
 
-  // Reset state when question changes
+  const t = {
+    fr: {
+      question: 'Question',
+      validate: 'Valider',
+      nextQuestion: 'Question suivante',
+      seeResults: 'Voir les résultats',
+      explanation: 'Explication',
+      completed: 'Quiz terminé !',
+      score: 'Votre score',
+      correctAnswers: 'bonnes réponses',
+      excellent: '🎉 Excellent travail !',
+      good: '👍 Bien joué !',
+      keepGoing: '💪 Continuez vos efforts !',
+      reviewContent: '📚 Revoyez le contenu',
+      retry: 'Recommencer',
+      reviewAnswers: 'Revoir les réponses',
+      loading: 'Génération du quiz...',
+      empty: 'Aucune question disponible',
+      selectAnswer: 'Sélectionnez une réponse',
+    },
+    en: {
+      question: 'Question',
+      validate: 'Validate',
+      nextQuestion: 'Next question',
+      seeResults: 'See results',
+      explanation: 'Explanation',
+      completed: 'Quiz completed!',
+      score: 'Your score',
+      correctAnswers: 'correct answers',
+      excellent: '🎉 Excellent work!',
+      good: '👍 Well done!',
+      keepGoing: '💪 Keep going!',
+      reviewContent: '📚 Review the content',
+      retry: 'Try again',
+      reviewAnswers: 'Review answers',
+      loading: 'Generating quiz...',
+      empty: 'No questions available',
+      selectAnswer: 'Select an answer',
+    },
+  }[language];
+
+  const score = state.answers.filter((a) => a.isCorrect).length;
+  const currentQuestion = questions[state.currentIndex];
+
+  // Report progress
   useEffect(() => {
-    setSelectedAnswer(null);
-    setHasAnswered(false);
-    setShowExplanation(false);
-  }, [question.question]);
+    onProgress?.(state.currentIndex + 1, questions.length, score);
+  }, [state.currentIndex, questions.length, score, onProgress]);
 
-  const handleSelectAnswer = (index: number) => {
-    if (hasAnswered) return;
-    
-    setSelectedAnswer(index);
-    setHasAnswered(true);
-    
-    const correct = index === question.correct_index;
-    onAnswer(index, correct);
-    
-    // Auto-show explanation after a delay
-    if (showFeedback && question.explanation) {
-      setTimeout(() => setShowExplanation(true), 800);
-    }
-  };
+  const handleSelectAnswer = useCallback((index: number) => {
+    if (state.showResult) return;
+    setState((prev) => ({ ...prev, selectedAnswer: index }));
+  }, [state.showResult]);
 
-  const getOptionStyle = (index: number) => {
-    if (!hasAnswered) {
-      return 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20';
-    }
-    
-    if (index === question.correct_index) {
-      return 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500 dark:border-emerald-400';
-    }
-    
-    if (index === selectedAnswer && !isCorrect) {
-      return 'bg-red-50 dark:bg-red-900/30 border-red-500 dark:border-red-400';
-    }
-    
-    return 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 opacity-50';
-  };
+  const handleValidate = useCallback(() => {
+    if (state.selectedAnswer === null) return;
 
-  const getOptionIcon = (index: number) => {
-    if (!hasAnswered) return null;
-    
-    if (index === question.correct_index) {
-      return <Check className="text-emerald-500" size={20} />;
-    }
-    
-    if (index === selectedAnswer && !isCorrect) {
-      return <X className="text-red-500" size={20} />;
-    }
-    
-    return null;
-  };
+    const isCorrect = state.selectedAnswer === currentQuestion.correct;
 
-  const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+    // Trigger animation
+    if (isCorrect) {
+      setPulse(true);
+      setTimeout(() => setPulse(false), 300);
+    } else {
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+    }
+
+    setState((prev) => ({
+      ...prev,
+      showResult: true,
+      answers: [
+        ...prev.answers,
+        {
+          questionIndex: prev.currentIndex,
+          selected: prev.selectedAnswer!,
+          isCorrect,
+        },
+      ],
+    }));
+  }, [state.selectedAnswer, state.currentIndex, currentQuestion?.correct]);
+
+  const handleNext = useCallback(() => {
+    if (state.currentIndex + 1 >= questions.length) {
+      const finalScore = state.answers.filter((a) => a.isCorrect).length;
+      setState((prev) => ({ ...prev, isComplete: true }));
+      onComplete?.(finalScore, questions.length, state.answers);
+    } else {
+      setState((prev) => ({
+        ...prev,
+        currentIndex: prev.currentIndex + 1,
+        selectedAnswer: null,
+        showResult: false,
+      }));
+    }
+  }, [state.currentIndex, state.answers, questions.length, onComplete]);
+
+  const handleRetry = useCallback(() => {
+    setState({
+      currentIndex: 0,
+      selectedAnswer: null,
+      showResult: false,
+      answers: [],
+      isComplete: false,
+    });
+  }, []);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mb-4" />
+        <p className="text-gray-400">{t.loading}</p>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (!questions || questions.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <HelpCircle className="w-12 h-12 text-gray-500 mb-4" />
+        <p className="text-gray-400">{t.empty}</p>
+      </div>
+    );
+  }
+
+  // Results screen
+  if (state.isComplete) {
+    const percentage = Math.round((score / questions.length) * 100);
+    const message =
+      percentage >= 80 ? t.excellent :
+      percentage >= 60 ? t.good :
+      percentage >= 40 ? t.keepGoing : t.reviewContent;
+
+    return (
+      <div className="py-8">
+        <div className="glass-panel rounded-2xl p-8 max-w-2xl mx-auto text-center">
+          <Trophy className={`w-20 h-20 mx-auto mb-4 ${
+            percentage >= 60 ? 'text-amber-400' : 'text-blue-400'
+          }`} />
+          
+          <h3 className="text-2xl font-bold text-white mb-2">{t.completed}</h3>
+          
+          <div className="text-5xl font-bold text-amber-400 my-6">
+            {score}/{questions.length}
+          </div>
+          
+          <p className="text-xl text-gray-300 mb-2">
+            {percentage}% {t.correctAnswers}
+          </p>
+          
+          <p className="text-lg text-gray-400 mb-8">{message}</p>
+
+          <button
+            onClick={handleRetry}
+            className="flex items-center gap-2 px-6 py-3 bg-amber-500/20 hover:bg-amber-500/30 
+                     text-amber-400 rounded-lg transition-colors mx-auto"
+          >
+            <RotateCcw className="w-5 h-5" />
+            {t.retry}
+          </button>
+        </div>
+
+        {/* Review answers */}
+        <div className="mt-8 max-w-2xl mx-auto">
+          <h4 className="text-lg font-semibold text-white mb-4">{t.reviewAnswers}</h4>
+          <div className="space-y-3">
+            {state.answers.map((answer, idx) => (
+              <div
+                key={idx}
+                className={`glass-panel rounded-xl p-4 border-l-4 ${
+                  answer.isCorrect ? 'border-emerald-500' : 'border-red-500'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  {answer.isCorrect ? (
+                    <CheckCircle className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                  )}
+                  <p className="text-gray-300 text-sm line-clamp-2">
+                    {questions[answer.questionIndex].question}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const progress = ((state.currentIndex + 1) / questions.length) * 100;
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      {/* Question header */}
+    <div className="max-w-2xl mx-auto">
+      {/* Progress */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-blue-500">
-            Question {questionNumber} / {totalQuestions}
+        <div className="flex justify-between items-center mb-2">
+          <span className="text-sm text-gray-400">
+            {t.question} {state.currentIndex + 1}/{questions.length}
           </span>
-          {hasAnswered && (
-            <span className={`text-sm font-semibold ${isCorrect ? 'text-emerald-500' : 'text-red-500'}`}>
-              {isCorrect ? '✓ Correct !' : '✗ Incorrect'}
-            </span>
-          )}
+          <span className="text-sm text-amber-400">
+            {score} / {state.answers.length} ✓
+          </span>
         </div>
-        <h3 className="text-xl font-semibold text-gray-800 dark:text-white leading-relaxed">
-          {question.question}
-        </h3>
+        <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-amber-500 to-amber-400 transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Question */}
+      <div className={`glass-panel rounded-xl p-6 mb-6 ${shake ? 'animate-shake' : ''} ${pulse ? 'animate-pulse' : ''}`}>
+        <div className="flex items-start gap-3">
+          <Brain className="w-6 h-6 text-amber-400 flex-shrink-0 mt-1" />
+          <p className="text-lg text-white font-medium leading-relaxed">
+            {currentQuestion.question}
+          </p>
+        </div>
       </div>
 
       {/* Options */}
       <div className="space-y-3 mb-6">
-        {question.options.map((option, index) => (
-          <button
-            key={index}
-            onClick={() => handleSelectAnswer(index)}
-            disabled={hasAnswered}
-            className={`w-full p-4 rounded-xl border-2 text-left transition-all duration-200 ${getOptionStyle(index)} ${
-              !hasAnswered ? 'cursor-pointer' : 'cursor-default'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              {/* Letter badge */}
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold ${
-                hasAnswered && index === question.correct_index
-                  ? 'bg-emerald-500 text-white'
-                  : hasAnswered && index === selectedAnswer && !isCorrect
-                    ? 'bg-red-500 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-              }`}>
-                {letters[index]}
+        {currentQuestion.options.map((option, index) => {
+          const isSelected = state.selectedAnswer === index;
+          const isCorrect = state.showResult && index === currentQuestion.correct;
+          const isWrong = state.showResult && isSelected && index !== currentQuestion.correct;
+
+          let bgClass = 'bg-gray-800/50 border-gray-600 hover:border-amber-500/50';
+          let textClass = 'text-gray-300';
+
+          if (isCorrect) {
+            bgClass = 'bg-emerald-500/20 border-emerald-500';
+            textClass = 'text-emerald-300';
+          } else if (isWrong) {
+            bgClass = 'bg-red-500/20 border-red-500';
+            textClass = 'text-red-300';
+          } else if (isSelected && !state.showResult) {
+            bgClass = 'bg-amber-500/20 border-amber-500';
+            textClass = 'text-amber-300';
+          }
+
+          return (
+            <button
+              key={index}
+              onClick={() => handleSelectAnswer(index)}
+              disabled={state.showResult}
+              className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 
+                        transition-all duration-200 text-left
+                        ${bgClass} ${state.showResult ? 'cursor-default' : 'cursor-pointer'}`}
+            >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center 
+                            font-semibold text-sm ${
+                              isCorrect ? 'bg-emerald-500 text-white' :
+                              isWrong ? 'bg-red-500 text-white' :
+                              isSelected ? 'bg-amber-500 text-white' :
+                              'bg-gray-700 text-gray-400'
+                            }`}>
+                {String.fromCharCode(65 + index)}
               </div>
-              
-              {/* Option text */}
-              <span className={`flex-1 ${
-                hasAnswered && index === question.correct_index
-                  ? 'text-emerald-700 dark:text-emerald-300 font-medium'
-                  : hasAnswered && index === selectedAnswer && !isCorrect
-                    ? 'text-red-700 dark:text-red-300'
-                    : 'text-gray-700 dark:text-gray-300'
-              }`}>
-                {option}
-              </span>
-              
-              {/* Result icon */}
-              {getOptionIcon(index)}
-            </div>
-          </button>
-        ))}
+              <span className={`flex-1 ${textClass}`}>{option}</span>
+              {state.showResult && isCorrect && (
+                <CheckCircle className="w-6 h-6 text-emerald-400" />
+              )}
+              {state.showResult && isWrong && (
+                <XCircle className="w-6 h-6 text-red-400" />
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* Explanation */}
-      {showFeedback && hasAnswered && question.explanation && (
-        <div 
-          className={`mb-6 p-4 rounded-xl transition-all duration-300 ${
-            showExplanation ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'
-          } ${
-            isCorrect 
-              ? 'bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800' 
-              : 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800'
-          }`}
-        >
+      {state.showResult && currentQuestion.explanation && (
+        <div className="glass-panel rounded-xl p-4 mb-6 border-l-4 border-amber-500 animate-fadeIn">
           <div className="flex items-start gap-3">
-            <Lightbulb className={`flex-shrink-0 mt-0.5 ${
-              isCorrect ? 'text-emerald-500' : 'text-amber-500'
-            }`} size={20} />
+            <Lightbulb className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">
-                Explication
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {question.explanation}
-              </p>
+              <p className="text-sm font-medium text-amber-400 mb-1">{t.explanation}</p>
+              <p className="text-sm text-gray-300">{currentQuestion.explanation}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Next button */}
-      {hasAnswered && (
-        <button
-          onClick={onNext}
-          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-medium hover:opacity-90 transition-opacity"
-        >
-          {questionNumber < totalQuestions ? (
-            <>
-              Question suivante
-              <ArrowRight size={18} />
-            </>
-          ) : (
-            <>
-              Voir les résultats
-              <ChevronRight size={18} />
-            </>
-          )}
-        </button>
-      )}
+      {/* Action button */}
+      <div className="flex justify-center">
+        {!state.showResult ? (
+          <button
+            onClick={handleValidate}
+            disabled={state.selectedAnswer === null}
+            className="flex items-center gap-2 px-8 py-3 bg-amber-500 hover:bg-amber-400 
+                     text-gray-900 font-semibold rounded-xl transition-colors
+                     disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {t.validate}
+          </button>
+        ) : (
+          <button
+            onClick={handleNext}
+            className="flex items-center gap-2 px-8 py-3 bg-amber-500 hover:bg-amber-400 
+                     text-gray-900 font-semibold rounded-xl transition-colors"
+          >
+            {state.currentIndex + 1 >= questions.length ? t.seeResults : t.nextQuestion}
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        )}
+      </div>
     </div>
   );
 };

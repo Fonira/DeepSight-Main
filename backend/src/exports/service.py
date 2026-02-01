@@ -1,6 +1,11 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║  📄 EXPORT SERVICE — Génération PDF, DOCX, TXT, Markdown                           ║
+╠════════════════════════════════════════════════════════════════════════════════════╣
+║  v2.0 — Professional PDF exports with branded design                               ║
+║  • WeasyPrint for beautiful HTML→PDF rendering                                     ║
+║  • Multiple export modes (full, summary, flashcards, study pack)                   ║
+║  • Fallback to ReportLab if WeasyPrint unavailable                                 ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -8,10 +13,24 @@ import os
 import io
 import re
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
 
-# Imports conditionnels pour les librairies d'export
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📦 IMPORTS — PDF Generator (WeasyPrint)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from .pdf_generator import (
+    generate_pdf as generate_pdf_weasyprint,
+    is_pdf_available as weasyprint_available,
+    PDF_EXPORT_OPTIONS,
+    PDFExportType
+)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📦 IMPORTS — DOCX (python-docx)
+# ═══════════════════════════════════════════════════════════════════════════════
+
 try:
     from docx import Document
     from docx.shared import Inches, Pt, RGBColor
@@ -21,15 +40,19 @@ try:
 except ImportError:
     DOCX_AVAILABLE = False
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📦 IMPORTS — PDF Fallback (ReportLab)
+# ═══════════════════════════════════════════════════════════════════════════════
+
 try:
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.colors import HexColor
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
     from reportlab.lib.units import cm
-    PDF_AVAILABLE = True
+    REPORTLAB_AVAILABLE = True
 except ImportError:
-    PDF_AVAILABLE = False
+    REPORTLAB_AVAILABLE = False
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -54,6 +77,28 @@ HEADER_TEMPLATE = """
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🔧 HELPER FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def format_duration(duration: int) -> str:
+    """Formate une durée en secondes en string lisible"""
+    if not duration:
+        return "N/A"
+    hours, remainder = divmod(duration, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours:
+        return f"{hours}h{minutes:02d}m{seconds:02d}s"
+    return f"{minutes}m{seconds:02d}s"
+
+
+def clean_filename(title: str, timestamp: str) -> str:
+    """Génère un nom de fichier sûr"""
+    safe_title = re.sub(r'[^\w\s-]', '', title)[:50].strip()
+    safe_title = re.sub(r'[-\s]+', '_', safe_title)
+    return f"deepsight_{safe_title}_{timestamp}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 📝 EXPORT TXT
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -69,17 +114,7 @@ def export_to_txt(
 ) -> str:
     """Exporte l'analyse en format texte brut"""
     
-    # Formatage durée
-    if duration:
-        hours, remainder = divmod(duration, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        if hours:
-            duration_str = f"{hours}h{minutes:02d}m{seconds:02d}s"
-        else:
-            duration_str = f"{minutes}m{seconds:02d}s"
-    else:
-        duration_str = "N/A"
-    
+    duration_str = format_duration(duration)
     date_str = created_at.strftime("%d/%m/%Y %H:%M") if created_at else datetime.now().strftime("%d/%m/%Y %H:%M")
     
     content = f"""{HEADER_TEMPLATE}
@@ -123,18 +158,12 @@ def export_to_markdown(
     thumbnail_url: str = "",
     entities: Dict = None,
     reliability_score: float = None,
-    created_at: datetime = None
+    created_at: datetime = None,
+    flashcards: List[Dict] = None
 ) -> str:
     """Exporte l'analyse en format Markdown"""
     
-    # Formatage durée
-    if duration:
-        hours, remainder = divmod(duration, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        duration_str = f"{hours}h{minutes:02d}m" if hours else f"{minutes}m{seconds:02d}s"
-    else:
-        duration_str = "N/A"
-    
+    duration_str = format_duration(duration) if duration else "N/A"
     date_str = created_at.strftime("%d/%m/%Y à %H:%M") if created_at else datetime.now().strftime("%d/%m/%Y à %H:%M")
     
     content = f"""# 🤿 Deep Sight — Analyse
@@ -190,6 +219,14 @@ def export_to_markdown(
                 content += f"- {org}\n"
             content += "\n"
     
+    # Flashcards
+    if flashcards:
+        content += "---\n\n## 📚 Flashcards de révision\n\n"
+        for i, card in enumerate(flashcards[:10], 1):
+            content += f"### Carte {i}\n"
+            content += f"**Q:** {card.get('front', card.get('question', ''))}\n\n"
+            content += f"**R:** {card.get('back', card.get('answer', ''))}\n\n"
+    
     content += """---
 
 *Généré par [Deep Sight](https://deepsightsynthesis.com) — Analyse intelligente de vidéos YouTube*
@@ -212,7 +249,8 @@ def export_to_docx(
     duration: int = 0,
     entities: Dict = None,
     reliability_score: float = None,
-    created_at: datetime = None
+    created_at: datetime = None,
+    flashcards: List[Dict] = None
 ) -> Optional[bytes]:
     """Exporte l'analyse en format DOCX"""
     
@@ -235,14 +273,7 @@ def export_to_docx(
     # Section vidéo
     doc.add_heading("📺 Vidéo analysée", level=1)
     
-    # Formatage durée
-    if duration:
-        hours, remainder = divmod(duration, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        duration_str = f"{hours}h{minutes:02d}m" if hours else f"{minutes}m{seconds:02d}s"
-    else:
-        duration_str = "N/A"
-    
+    duration_str = format_duration(duration)
     date_str = created_at.strftime("%d/%m/%Y à %H:%M") if created_at else datetime.now().strftime("%d/%m/%Y à %H:%M")
     
     # Tableau d'infos
@@ -308,6 +339,19 @@ def export_to_docx(
             for person in entities["persons"][:10]:
                 doc.add_paragraph(person, style='List Bullet')
     
+    # Flashcards
+    if flashcards:
+        doc.add_paragraph()
+        doc.add_heading("📚 Flashcards de révision", level=1)
+        for i, card in enumerate(flashcards[:10], 1):
+            doc.add_heading(f"Carte {i}", level=2)
+            p = doc.add_paragraph()
+            p.add_run("Question: ").bold = True
+            p.add_run(card.get('front', card.get('question', '')))
+            p = doc.add_paragraph()
+            p.add_run("Réponse: ").bold = True
+            p.add_run(card.get('back', card.get('answer', '')))
+    
     # Footer
     doc.add_paragraph()
     footer = doc.add_paragraph()
@@ -322,10 +366,10 @@ def export_to_docx(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 📄 EXPORT PDF
+# 📄 EXPORT PDF (ReportLab Fallback)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def export_to_pdf(
+def export_to_pdf_reportlab(
     title: str,
     channel: str,
     category: str,
@@ -337,9 +381,9 @@ def export_to_pdf(
     reliability_score: float = None,
     created_at: datetime = None
 ) -> Optional[bytes]:
-    """Exporte l'analyse en format PDF"""
+    """Export PDF de fallback avec ReportLab (moins stylé)"""
     
-    if not PDF_AVAILABLE:
+    if not REPORTLAB_AVAILABLE:
         return None
     
     buffer = io.BytesIO()
@@ -355,17 +399,15 @@ def export_to_pdf(
     # Styles
     styles = getSampleStyleSheet()
     
-    # Style personnalisé pour le titre
     title_style = ParagraphStyle(
         'CustomTitle',
         parent=styles['Heading1'],
         fontSize=24,
         textColor=HexColor(COLORS["primary"]),
         spaceAfter=20,
-        alignment=1  # Center
+        alignment=1
     )
     
-    # Style pour les sous-titres
     heading_style = ParagraphStyle(
         'CustomHeading',
         parent=styles['Heading2'],
@@ -375,7 +417,6 @@ def export_to_pdf(
         spaceAfter=10
     )
     
-    # Style pour le corps
     body_style = ParagraphStyle(
         'CustomBody',
         parent=styles['Normal'],
@@ -384,7 +425,6 @@ def export_to_pdf(
         spaceAfter=8
     )
     
-    # Style pour les infos
     info_style = ParagraphStyle(
         'InfoStyle',
         parent=styles['Normal'],
@@ -402,14 +442,7 @@ def export_to_pdf(
     # Infos vidéo
     story.append(Paragraph("📺 Vidéo analysée", heading_style))
     
-    # Formatage durée
-    if duration:
-        hours, remainder = divmod(duration, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        duration_str = f"{hours}h{minutes:02d}m" if hours else f"{minutes}m{seconds:02d}s"
-    else:
-        duration_str = "N/A"
-    
+    duration_str = format_duration(duration)
     date_str = created_at.strftime("%d/%m/%Y à %H:%M") if created_at else datetime.now().strftime("%d/%m/%Y à %H:%M")
     
     info_text = f"""
@@ -436,7 +469,6 @@ def export_to_pdf(
     
     for paragraph in summary_clean.split('\n\n'):
         if paragraph.strip():
-            # Escape les caractères spéciaux pour ReportLab
             safe_text = paragraph.strip().replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
             story.append(Paragraph(safe_text, body_style))
     
@@ -465,6 +497,74 @@ def export_to_pdf(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 📄 EXPORT PDF (Main - tries WeasyPrint first, then ReportLab)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def export_to_pdf(
+    title: str,
+    channel: str,
+    category: str,
+    mode: str,
+    summary: str,
+    video_url: str = "",
+    duration: int = 0,
+    thumbnail_url: str = "",
+    entities: Dict = None,
+    reliability_score: float = None,
+    created_at: datetime = None,
+    flashcards: List[Dict] = None,
+    sources: List[Dict] = None,
+    export_type: str = "full"
+) -> Optional[bytes]:
+    """
+    Exporte l'analyse en format PDF.
+    Utilise WeasyPrint si disponible, sinon ReportLab en fallback.
+    
+    Args:
+        export_type: "full" | "summary" | "flashcards" | "study"
+    """
+    
+    # Try WeasyPrint first (beautiful HTML→PDF)
+    if weasyprint_available():
+        pdf = generate_pdf_weasyprint(
+            title=title,
+            channel=channel,
+            category=category,
+            mode=mode,
+            summary=summary,
+            video_url=video_url,
+            duration=duration,
+            thumbnail_url=thumbnail_url,
+            entities=entities,
+            reliability_score=reliability_score,
+            created_at=created_at,
+            flashcards=flashcards,
+            sources=sources,
+            export_type=export_type
+        )
+        if pdf:
+            return pdf
+        print("⚠️ WeasyPrint failed, falling back to ReportLab", flush=True)
+    
+    # Fallback to ReportLab
+    if REPORTLAB_AVAILABLE:
+        return export_to_pdf_reportlab(
+            title=title,
+            channel=channel,
+            category=category,
+            mode=mode,
+            summary=summary,
+            video_url=video_url,
+            duration=duration,
+            entities=entities,
+            reliability_score=reliability_score,
+            created_at=created_at
+        )
+    
+    return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 FONCTION PRINCIPALE D'EXPORT
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -480,62 +580,89 @@ def export_summary(
     thumbnail_url: str = "",
     entities: Dict = None,
     reliability_score: float = None,
-    created_at: datetime = None
-) -> tuple[Optional[bytes | str], str, str]:
+    created_at: datetime = None,
+    flashcards: List[Dict] = None,
+    sources: List[Dict] = None,
+    pdf_export_type: str = "full"
+) -> Tuple[Optional[bytes | str], str, str]:
     """
     Exporte un résumé dans le format demandé.
+    
+    Args:
+        format: txt, md, docx, pdf
+        pdf_export_type: full, summary, flashcards, study (pour PDF uniquement)
     
     Returns:
         Tuple (content, filename, mimetype)
     """
     
     # Générer un nom de fichier safe
-    safe_title = re.sub(r'[^\w\s-]', '', title)[:50].strip()
-    safe_title = re.sub(r'[-\s]+', '_', safe_title)
     timestamp = datetime.now().strftime("%Y%m%d")
+    base_filename = clean_filename(title, timestamp)
     
     if format == "txt":
         content = export_to_txt(
             title, channel, category, mode, summary,
             video_url, duration, created_at
         )
-        return content, f"deepsight_{safe_title}_{timestamp}.txt", "text/plain"
+        return content, f"{base_filename}.txt", "text/plain"
     
     elif format == "md":
         content = export_to_markdown(
             title, channel, category, mode, summary,
             video_url, duration, thumbnail_url, entities,
-            reliability_score, created_at
+            reliability_score, created_at, flashcards
         )
-        return content, f"deepsight_{safe_title}_{timestamp}.md", "text/markdown"
+        return content, f"{base_filename}.md", "text/markdown"
     
     elif format == "docx":
         if not DOCX_AVAILABLE:
             return None, "", ""
         content = export_to_docx(
             title, channel, category, mode, summary,
-            video_url, duration, entities, reliability_score, created_at
+            video_url, duration, entities, reliability_score, 
+            created_at, flashcards
         )
-        return content, f"deepsight_{safe_title}_{timestamp}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        return content, f"{base_filename}.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     
     elif format == "pdf":
-        if not PDF_AVAILABLE:
-            return None, "", ""
         content = export_to_pdf(
-            title, channel, category, mode, summary,
-            video_url, duration, entities, reliability_score, created_at
+            title=title,
+            channel=channel,
+            category=category,
+            mode=mode,
+            summary=summary,
+            video_url=video_url,
+            duration=duration,
+            thumbnail_url=thumbnail_url,
+            entities=entities,
+            reliability_score=reliability_score,
+            created_at=created_at,
+            flashcards=flashcards,
+            sources=sources,
+            export_type=pdf_export_type
         )
-        return content, f"deepsight_{safe_title}_{timestamp}.pdf", "application/pdf"
+        if content is None:
+            return None, "", ""
+        
+        # Ajouter le type dans le nom de fichier
+        type_suffix = "" if pdf_export_type == "full" else f"_{pdf_export_type}"
+        return content, f"{base_filename}{type_suffix}.pdf", "application/pdf"
     
     else:
         return None, "", ""
 
 
-def get_available_formats() -> list[str]:
+def get_available_formats() -> List[str]:
     """Retourne la liste des formats d'export disponibles"""
     formats = ["txt", "md"]
     if DOCX_AVAILABLE:
         formats.append("docx")
-    if PDF_AVAILABLE:
+    if weasyprint_available() or REPORTLAB_AVAILABLE:
         formats.append("pdf")
     return formats
+
+
+def get_pdf_export_options() -> List[Dict]:
+    """Retourne les options d'export PDF disponibles"""
+    return PDF_EXPORT_OPTIONS

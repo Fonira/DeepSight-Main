@@ -446,6 +446,12 @@ const AppRoutes = () => {
                       <AdminPage />
                     </Suspense>
                   } />
+                  
+                  <Route path="/study/:summaryId" element={
+                    <Suspense fallback={<PageSkeleton variant="dashboard" />}>
+                      <StudyPage />
+                    </Suspense>
+                  } />
                 </Route>
 
                 {/* 404 Redirect */}
