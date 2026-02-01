@@ -10,7 +10,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import {
   BookOpen, Brain, ChevronLeft, Loader2, AlertCircle,
   BookMarked, HelpCircle, BarChart3, Trophy
@@ -18,6 +18,7 @@ import {
 import { FlashcardDeck, QuizQuestion, StudyProgress, ScoreCard } from '../components/Study';
 import type { Flashcard, FlashcardStats, QuizQuestionData } from '../components/Study';
 import { useTranslation } from '../hooks/useTranslation';
+import { studyApi, videoApi } from '../services/api';
 import DoodleBackground from '../components/DoodleBackground';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -34,43 +35,48 @@ interface StudyData {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🌐 API
+// 🌐 API (using studyApi service)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const API_URL = (import.meta.env.VITE_API_URL || 'https://deep-sight-backend-v3-production.up.railway.app').replace(/\/api\/?$/, '') + '/api';
-
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('access_token');
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : '',
-  };
-};
-
-const fetchStudyData = async (summaryId: string): Promise<StudyData> => {
-  const response = await fetch(`${API_URL}/videos/study/${summaryId}/card`, {
-    headers: getAuthHeaders(),
-  });
+const fetchStudyData = async (summaryId: string, generateFlashcards: boolean, generateQuiz: boolean): Promise<StudyData> => {
+  // First get the summary info for the title
+  const summary = await videoApi.getSummary(parseInt(summaryId));
   
-  if (!response.ok) {
-    throw new Error('Failed to fetch study data');
+  let flashcards: Flashcard[] = [];
+  let quiz: QuizQuestionData[] = [];
+
+  // Generate flashcards if requested (costs 1 credit)
+  if (generateFlashcards) {
+    try {
+      const flashcardsResponse = await studyApi.generateFlashcards(parseInt(summaryId));
+      flashcards = (flashcardsResponse.flashcards || []).map((item) => ({
+        front: item.front,
+        back: item.back,
+      }));
+    } catch (err) {
+      console.error('Error generating flashcards:', err);
+    }
+  }
+
+  // Generate quiz if requested (costs 1 credit)
+  if (generateQuiz) {
+    try {
+      const quizResponse = await studyApi.generateQuiz(parseInt(summaryId));
+      quiz = (quizResponse.quiz || []).map((q) => ({
+        question: q.question,
+        options: q.options,
+        correct: q.correct_index,
+        explanation: q.explanation || '',
+      }));
+    } catch (err) {
+      console.error('Error generating quiz:', err);
+    }
   }
   
-  const data = await response.json();
-  
-  // Transform API data to our format
   return {
-    flashcards: (data.flashcards || data.questions_answers || []).map((item: any) => ({
-      front: item.question || item.front,
-      back: item.answer || item.back,
-    })),
-    quiz: (data.quiz || []).map((q: any) => ({
-      question: q.question,
-      options: q.options,
-      correct: q.correct_index ?? q.correct,
-      explanation: q.explanation,
-    })),
-    videoTitle: data.source_video || data.title || 'Untitled',
+    flashcards,
+    quiz,
+    videoTitle: summary.video_title || 'Untitled',
     videoId: summaryId,
   };
 };
@@ -81,10 +87,12 @@ const fetchStudyData = async (summaryId: string): Promise<StudyData> => {
 
 export const StudyPage: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const { summaryId: paramSummaryId } = useParams<{ summaryId: string }>();
   const navigate = useNavigate();
   const { t, language } = useTranslation();
   
-  const summaryId = searchParams.get('id');
+  // Support both route param and query param for backwards compatibility
+  const summaryId = paramSummaryId || searchParams.get('id');
   const initialTab = (searchParams.get('tab') as TabType) || 'flashcards';
 
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
@@ -124,7 +132,12 @@ export const StudyPage: React.FC = () => {
     },
   }[language];
 
-  // Fetch study data
+  // State for tracking if content has been generated
+  const [hasGeneratedFlashcards, setHasGeneratedFlashcards] = useState(false);
+  const [hasGeneratedQuiz, setHasGeneratedQuiz] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // Fetch study data based on selected tab
   useEffect(() => {
     if (!summaryId) {
       setError(texts.noId);
@@ -134,23 +147,54 @@ export const StudyPage: React.FC = () => {
 
     const loadData = async () => {
       setIsLoading(true);
+      setIsGenerating(true);
       setError(null);
       
       try {
-        const data = await fetchStudyData(summaryId);
-        setStudyData(data);
-        setFlashcardProgress({ current: 0, total: data.flashcards.length });
-        setQuizProgress({ current: 0, total: data.quiz.length, score: 0 });
-      } catch (err) {
+        // Generate content for the active tab
+        const generateFlash = activeTab === 'flashcards' && !hasGeneratedFlashcards;
+        const generateQ = activeTab === 'quiz' && !hasGeneratedQuiz;
+        
+        const data = await fetchStudyData(summaryId, generateFlash, generateQ);
+        
+        // Merge with existing data
+        setStudyData(prev => ({
+          flashcards: generateFlash ? data.flashcards : (prev?.flashcards || []),
+          quiz: generateQ ? data.quiz : (prev?.quiz || []),
+          videoTitle: data.videoTitle,
+          videoId: data.videoId,
+        }));
+        
+        if (generateFlash) {
+          setHasGeneratedFlashcards(true);
+          setFlashcardProgress({ current: 0, total: data.flashcards.length });
+        }
+        if (generateQ) {
+          setHasGeneratedQuiz(true);
+          setQuizProgress({ current: 0, total: data.quiz.length, score: 0 });
+        }
+      } catch (err: any) {
         console.error('Error loading study data:', err);
-        setError(texts.error);
+        if (err.status === 402) {
+          setError(language === 'fr' ? 'Crédits insuffisants' : 'Insufficient credits');
+        } else {
+          setError(texts.error);
+        }
       } finally {
         setIsLoading(false);
+        setIsGenerating(false);
       }
     };
 
-    loadData();
-  }, [summaryId]);
+    // Only load if we need to generate content for the active tab
+    const needsGeneration = 
+      (activeTab === 'flashcards' && !hasGeneratedFlashcards) ||
+      (activeTab === 'quiz' && !hasGeneratedQuiz);
+    
+    if (needsGeneration || !studyData) {
+      loadData();
+    }
+  }, [summaryId, activeTab, hasGeneratedFlashcards, hasGeneratedQuiz]);
 
   // Handlers
   const handleFlashcardProgress = useCallback((current: number, total: number, stats: FlashcardStats) => {
