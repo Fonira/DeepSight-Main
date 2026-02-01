@@ -1,354 +1,500 @@
 /**
- * 📊 ANALYTICS PAGE — User statistics dashboard
+ * ╔════════════════════════════════════════════════════════════════════════════════════╗
+ * ║  📊 ANALYTICS PAGE — Dashboard des statistiques d'utilisation                      ║
+ * ╠════════════════════════════════════════════════════════════════════════════════════╣
+ * ║  ✅ Nombre d'analyses ce mois                                                      ║
+ * ║  ✅ Temps total de vidéos analysées                                                ║
+ * ║  ✅ Crédits utilisés/restants                                                      ║
+ * ║  ✅ Graphique d'activité (7 derniers jours)                                        ║
+ * ║  ✅ Top catégories analysées                                                       ║
+ * ║                                                                                    ║
+ * ║  🆕 v2.0: Utilise les composants Recharts pour de vrais graphiques                ║
+ * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import { Sidebar } from '../components/layout/Sidebar';
-import DoodleBackground from '../components/DoodleBackground';
-import { videoApi } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 import {
   BarChart3,
-  Clock,
   Video,
-  Coins,
+  Clock,
+  Zap,
   TrendingUp,
   Calendar,
-  Loader2,
-  Sparkles,
-  Target,
-  BookOpen,
+  RefreshCw,
+  ArrowRight,
+  Brain,
   MessageSquare,
-  FileText,
+  History,
+  Sparkles,
+  ChevronRight,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
+import { DashboardLayout } from '../components/layout/DashboardLayout';
+import { StatCard, ActivityChart, UsageProgress, CategoryPieChart } from '../components/analytics';
+import { useAuth } from '../hooks/useAuth';
+import { useTranslation } from '../hooks/useTranslation';
 
-interface UserStats {
-  totalAnalyses: number;
-  analysesThisMonth: number;
-  totalWatchTime: number;
-  creditsUsed: number;
-  creditsRemaining: number;
-  chatMessages: number;
-  exports: number;
-  weeklyActivity: number[];
-  topCategories: Array<{ name: string; count: number }>;
+// Types
+interface UsageStats {
+  plan: string;
+  plan_name: string;
+  plan_color: string;
+  credits_remaining: number;
+  credits_monthly: number;
+  credits_used_this_month: number;
+  credits_percent_used: number;
+  analyses_this_month: number;
+  analyses_total: number;
+  chat_daily_limit: number;
+  chat_used_today: number;
+  chat_remaining_today: number;
+  web_search_enabled: boolean;
+  member_since?: string;
 }
 
-const StatCard: React.FC<{
-  icon: React.ReactNode;
-  label: string;
-  value: string | number;
-  subtext?: string;
-  color: string;
-}> = ({ icon, label, value, subtext, color }) => (
-  <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-    <div className="flex items-start justify-between">
-      <div>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">{label}</p>
-        <p className="text-2xl font-bold">{value}</p>
-        {subtext && (
-          <p className="text-xs text-gray-400 mt-1">{subtext}</p>
-        )}
-      </div>
-      <div className={`p-3 rounded-xl ${color}`}>
-        {icon}
-      </div>
-    </div>
-  </div>
-);
+interface DetailedUsage {
+  period_days: number;
+  totals: {
+    analyses: number;
+    duration_seconds: number;
+    duration_formatted: string;
+    words_generated: number;
+    credits_used: number;
+  };
+  daily_analyses: { date: string; count: number }[];
+  categories: Record<string, number>;
+  models_used: Record<string, number>;
+  averages: {
+    analyses_per_day: number;
+    credits_per_day: number;
+  };
+}
 
-const ActivityChart: React.FC<{ data: number[] }> = ({ data }) => {
-  const max = Math.max(...data, 1);
-  const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-      <h3 className="font-semibold mb-4 flex items-center gap-2">
-        <BarChart3 className="w-5 h-5 text-purple-600" />
-        Activité des 7 derniers jours
-      </h3>
-      <div className="flex items-end justify-between h-40 gap-2">
-        {data.map((value, index) => (
-          <div key={index} className="flex-1 flex flex-col items-center">
-            <div
-              className="w-full bg-gradient-to-t from-purple-500 to-purple-400 rounded-t-lg transition-all hover:from-purple-600 hover:to-purple-500"
-              style={{ height: `${(value / max) * 100}%`, minHeight: value > 0 ? '8px' : '0' }}
-            />
-            <span className="text-xs text-gray-500 mt-2">{days[index]}</span>
-            <span className="text-xs font-medium">{value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+// API functions
+const fetchUsageStats = async (): Promise<UsageStats> => {
+  const token = localStorage.getItem('access_token');
+  const response = await fetch('/api/usage/stats', {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error('Failed to fetch usage stats');
+  return response.json();
 };
 
-const CreditProgress: React.FC<{ used: number; total: number }> = ({ used, total }) => {
-  const percentage = Math.min((used / total) * 100, 100);
-  const remaining = total - used;
-
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-      <h3 className="font-semibold mb-4 flex items-center gap-2">
-        <Coins className="w-5 h-5 text-yellow-500" />
-        Crédits du mois
-      </h3>
-      <div className="mb-4">
-        <div className="flex justify-between text-sm mb-2">
-          <span className="text-gray-500">Utilisés: {used}</span>
-          <span className="text-gray-500">Restants: {remaining}</span>
-        </div>
-        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all ${
-              percentage > 90
-                ? 'bg-red-500'
-                : percentage > 70
-                ? 'bg-yellow-500'
-                : 'bg-gradient-to-r from-green-400 to-emerald-500'
-            }`}
-            style={{ width: `${percentage}%` }}
-          />
-        </div>
-      </div>
-      <p className="text-sm text-gray-500">
-        {percentage < 50
-          ? '✨ Vous avez encore beaucoup de crédits disponibles !'
-          : percentage < 80
-          ? '📊 Bonne utilisation de vos crédits ce mois-ci'
-          : '⚠️ Attention, crédits bientôt épuisés'}
-      </p>
-    </div>
-  );
+const fetchDetailedUsage = async (days: number = 30): Promise<DetailedUsage> => {
+  const token = localStorage.getItem('access_token');
+  const response = await fetch(`/api/usage/detailed?days=${days}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) throw new Error('Failed to fetch detailed usage');
+  return response.json();
 };
 
-const CategoryList: React.FC<{ categories: Array<{ name: string; count: number }> }> = ({ categories }) => {
-  const total = categories.reduce((sum, cat) => sum + cat.count, 0);
-  const colors = [
-    'bg-purple-500',
-    'bg-blue-500',
-    'bg-emerald-500',
-    'bg-orange-500',
-    'bg-pink-500',
-  ];
-
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700">
-      <h3 className="font-semibold mb-4 flex items-center gap-2">
-        <Target className="w-5 h-5 text-emerald-500" />
-        Catégories les plus analysées
-      </h3>
-      <div className="space-y-3">
-        {categories.slice(0, 5).map((category, index) => (
-          <div key={category.name} className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${colors[index % colors.length]}`} />
-            <div className="flex-1">
-              <div className="flex justify-between text-sm mb-1">
-                <span>{category.name}</span>
-                <span className="text-gray-500">{category.count}</span>
-              </div>
-              <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                <div
-                  className={`h-full ${colors[index % colors.length]} rounded-full`}
-                  style={{ width: `${(category.count / total) * 100}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const AnalyticsPage: React.FC = () => {
+export const AnalyticsPage: React.FC = () => {
   const { user } = useAuth();
-  const [stats, setStats] = useState<UserStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { language } = useTranslation();
+  const navigate = useNavigate();
+  
+  const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
+  const [detailedUsage, setDetailedUsage] = useState<DetailedUsage | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  
+  const t = (fr: string, en: string) => language === 'fr' ? fr : en;
+
+  const loadData = async (showRefresh = false) => {
+    if (showRefresh) setRefreshing(true);
+    else setLoading(true);
+    
+    setError(null);
+    
+    try {
+      const [stats, detailed] = await Promise.all([
+        fetchUsageStats(),
+        fetchDetailedUsage(30)
+      ]);
+      setUsageStats(stats);
+      setDetailedUsage(detailed);
+    } catch (err) {
+      console.error('Failed to load analytics:', err);
+      setError(t(
+        'Impossible de charger les statistiques. Veuillez réessayer.',
+        'Unable to load statistics. Please try again.'
+      ));
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const loadStats = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Try to fetch real stats, fallback to mock data
-        try {
-          const history = await videoApi.getHistory(1, 100);
-          const analyses = history.items || [];
-          
-          // Calculate stats from history
-          const now = new Date();
-          const thisMonth = analyses.filter((a: any) => {
-            const date = new Date(a.created_at);
-            return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-          });
-          
-          // Weekly activity (last 7 days)
-          const weeklyActivity = [0, 0, 0, 0, 0, 0, 0];
-          analyses.forEach((a: any) => {
-            const date = new Date(a.created_at);
-            const daysDiff = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-            if (daysDiff < 7) {
-              weeklyActivity[6 - daysDiff]++;
-            }
-          });
-          
-          // Categories
-          const categoryMap: Record<string, number> = {};
-          analyses.forEach((a: any) => {
-            const cat = a.category || 'Général';
-            categoryMap[cat] = (categoryMap[cat] || 0) + 1;
-          });
-          const topCategories = Object.entries(categoryMap)
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count);
-          
-          setStats({
-            totalAnalyses: analyses.length,
-            analysesThisMonth: thisMonth.length,
-            totalWatchTime: analyses.reduce((sum: number, a: any) => sum + (a.duration || 0), 0),
-            creditsUsed: user?.credits_used || 0,
-            creditsRemaining: user?.credits_remaining || 0,
-            chatMessages: 0, // Would need separate API call
-            exports: 0, // Would need separate API call
-            weeklyActivity,
-            topCategories,
-          });
-        } catch (err) {
-          // Mock data if API fails
-          setStats({
-            totalAnalyses: 24,
-            analysesThisMonth: 8,
-            totalWatchTime: 4320,
-            creditsUsed: 450,
-            creditsRemaining: 550,
-            chatMessages: 156,
-            exports: 12,
-            weeklyActivity: [3, 5, 2, 4, 6, 1, 3],
-            topCategories: [
-              { name: 'Éducation', count: 8 },
-              { name: 'Technologie', count: 6 },
-              { name: 'Science', count: 5 },
-              { name: 'Actualités', count: 3 },
-              { name: 'Divertissement', count: 2 },
-            ],
-          });
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    loadData();
+  }, []);
 
-    loadStats();
-  }, [user]);
-
-  const formatWatchTime = (seconds: number) => {
+  // Format duration
+  const formatDuration = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
+    
     if (hours > 0) {
       return `${hours}h ${minutes}min`;
     }
     return `${minutes} min`;
   };
 
-  if (!user) {
-    return null;
+  // Format date
+  const formatDate = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="text-center">
+              <Loader2 className="w-10 h-10 text-accent-primary animate-spin mx-auto mb-4" />
+              <p className="text-text-secondary">
+                {t('Chargement des statistiques...', 'Loading statistics...')}
+              </p>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="card p-8 max-w-md text-center">
+              <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-4" />
+              <h2 className="text-lg font-semibold text-text-primary mb-2">
+                {t('Erreur de chargement', 'Loading Error')}
+              </h2>
+              <p className="text-text-secondary mb-4">{error}</p>
+              <button onClick={() => loadData()} className="btn btn-primary">
+                <RefreshCw className="w-4 h-4" />
+                {t('Réessayer', 'Try again')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900">
-      <Sidebar />
-
-      <main className="flex-1 relative overflow-hidden">
-        <DoodleBackground />
-
-        <div className="relative z-10 p-6 max-w-6xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
+    <DashboardLayout>
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
             <div className="flex items-center gap-3 mb-2">
-              <BarChart3 className="w-8 h-8 text-purple-600" />
-              <h1 className="text-3xl font-bold">Tableau de bord</h1>
+              <BarChart3 className="w-8 h-8 text-accent-primary" />
+              <h1 className="text-2xl font-bold text-text-primary">
+                {t('Analytics', 'Analytics')}
+              </h1>
             </div>
-            <p className="text-gray-600 dark:text-gray-400">
-              Suivez votre activité et vos statistiques d'utilisation
+            <p className="text-text-secondary">
+              {t(
+                'Visualisez votre utilisation et vos statistiques',
+                'View your usage and statistics'
+              )}
             </p>
           </div>
-
-          {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-purple-600 animate-spin mb-4" />
-              <p className="text-gray-600 dark:text-gray-400">
-                Chargement des statistiques...
-              </p>
-            </div>
-          ) : stats ? (
-            <div className="space-y-6">
-              {/* Main stats grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard
-                  icon={<Video className="w-6 h-6 text-white" />}
-                  label="Analyses ce mois"
-                  value={stats.analysesThisMonth}
-                  subtext={`${stats.totalAnalyses} au total`}
-                  color="bg-purple-500"
-                />
-                <StatCard
-                  icon={<Clock className="w-6 h-6 text-white" />}
-                  label="Temps analysé"
-                  value={formatWatchTime(stats.totalWatchTime)}
-                  subtext="Contenu vidéo total"
-                  color="bg-blue-500"
-                />
-                <StatCard
-                  icon={<MessageSquare className="w-6 h-6 text-white" />}
-                  label="Messages chat"
-                  value={stats.chatMessages}
-                  subtext="Questions posées"
-                  color="bg-emerald-500"
-                />
-                <StatCard
-                  icon={<FileText className="w-6 h-6 text-white" />}
-                  label="Exports"
-                  value={stats.exports}
-                  subtext="Documents générés"
-                  color="bg-orange-500"
-                />
-              </div>
-
-              {/* Charts row */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <ActivityChart data={stats.weeklyActivity} />
-                <CreditProgress
-                  used={stats.creditsUsed}
-                  total={stats.creditsUsed + stats.creditsRemaining}
-                />
-              </div>
-
-              {/* Categories */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <CategoryList categories={stats.topCategories} />
-                
-                {/* Tips card */}
-                <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl p-6 text-white">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Sparkles className="w-6 h-6" />
-                    <h3 className="font-semibold">Conseil du jour</h3>
-                  </div>
-                  <p className="text-purple-100 mb-4">
-                    Vous avez analysé {stats.analysesThisMonth} vidéos ce mois-ci ! 
-                    Continuez à explorer de nouveaux contenus pour enrichir vos connaissances.
-                  </p>
-                  <div className="flex items-center gap-2 text-sm text-purple-200">
-                    <TrendingUp className="w-4 h-4" />
-                    <span>+{Math.round(stats.analysesThisMonth * 1.2)} prévision pour le mois prochain</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : null}
+          
+          <button
+            onClick={() => loadData(true)}
+            className="btn btn-secondary"
+            disabled={refreshing}
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            {t('Actualiser', 'Refresh')}
+          </button>
         </div>
-      </main>
-    </div>
+
+        {/* Plan Banner */}
+        {usageStats && (
+          <div 
+            className="card mb-8 p-6 border-l-4"
+            style={{ borderLeftColor: usageStats.plan_color }}
+          >
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <div className="text-sm text-text-tertiary mb-1">
+                  {t('Plan actuel', 'Current plan')}
+                </div>
+                <div className="text-xl font-bold text-text-primary flex items-center gap-2">
+                  <Sparkles className="w-5 h-5" style={{ color: usageStats.plan_color }} />
+                  {usageStats.plan_name}
+                </div>
+                {usageStats.member_since && (
+                  <p className="text-xs text-text-muted mt-1">
+                    {t('Membre depuis', 'Member since')} {formatDate(usageStats.member_since)}
+                  </p>
+                )}
+              </div>
+              <button 
+                onClick={() => navigate('/upgrade')}
+                className="btn btn-primary"
+              >
+                {t('Gérer l\'abonnement', 'Manage subscription')}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Stats Grid - Row 1 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <StatCard
+            icon={Video}
+            title={t('Analyses ce mois', 'Analyses this month')}
+            value={usageStats?.analyses_this_month || 0}
+            subtitle={`${usageStats?.analyses_total || 0} ${t('au total', 'total')}`}
+            color="blue"
+            trend={detailedUsage ? {
+              value: Math.round((detailedUsage.averages.analyses_per_day || 0) * 10),
+              label: t('par rapport à la moyenne', 'vs average')
+            } : undefined}
+          />
+          
+          <StatCard
+            icon={Clock}
+            title={t('Temps analysé', 'Time analyzed')}
+            value={formatDuration(detailedUsage?.totals.duration_seconds || 0)}
+            subtitle={t('de contenu vidéo', 'of video content')}
+            color="purple"
+          />
+          
+          <StatCard
+            icon={Zap}
+            title={t('Crédits utilisés', 'Credits used')}
+            value={usageStats?.credits_used_this_month.toLocaleString() || 0}
+            subtitle={`${usageStats?.credits_remaining.toLocaleString() || 0} ${t('restants', 'remaining')}`}
+            color="amber"
+            progress={usageStats ? {
+              current: usageStats.credits_used_this_month,
+              max: usageStats.credits_monthly
+            } : undefined}
+          />
+          
+          <StatCard
+            icon={MessageSquare}
+            title={t('Messages IA', 'AI Messages')}
+            value={`${usageStats?.chat_used_today || 0}/${usageStats?.chat_daily_limit === -1 ? '∞' : usageStats?.chat_daily_limit}`}
+            subtitle={t('utilisés aujourd\'hui', 'used today')}
+            color="cyan"
+          />
+        </div>
+
+        {/* Row 2: Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          {/* Activity Chart - Takes 2 columns */}
+          <div className="lg:col-span-2">
+            <ActivityChart
+              data={detailedUsage?.daily_analyses || []}
+              language={language as 'fr' | 'en'}
+            />
+          </div>
+          
+          {/* Category Pie Chart */}
+          <CategoryPieChart
+            data={detailedUsage?.categories || {}}
+            language={language as 'fr' | 'en'}
+          />
+        </div>
+
+        {/* Row 3: Usage Progress & Additional Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Credits Usage */}
+          <UsageProgress
+            creditsUsed={usageStats?.credits_used_this_month || 0}
+            creditsTotal={usageStats?.credits_monthly || 0}
+            creditsRemaining={usageStats?.credits_remaining || 0}
+            language={language as 'fr' | 'en'}
+          />
+          
+          {/* Models Used */}
+          <div className="card p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                <Brain className="w-4.5 h-4.5 text-rose-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-text-primary">
+                  {t('Modèles utilisés', 'Models used')}
+                </h3>
+                <p className="text-xs text-text-tertiary">
+                  {t('Ce mois-ci', 'This month')}
+                </p>
+              </div>
+            </div>
+            
+            <div className="space-y-3">
+              {detailedUsage && Object.keys(detailedUsage.models_used).length > 0 ? (
+                Object.entries(detailedUsage.models_used)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([model, count]) => {
+                    const total = Object.values(detailedUsage.models_used).reduce((a, b) => a + b, 0);
+                    const percent = (count / total) * 100;
+                    
+                    // Model display names
+                    const modelNames: Record<string, { name: string; emoji: string }> = {
+                      'mistral-small-latest': { name: 'Mistral Small', emoji: '⚡' },
+                      'mistral-medium-latest': { name: 'Mistral Medium', emoji: '⚖️' },
+                      'mistral-large-latest': { name: 'Mistral Large', emoji: '🚀' },
+                    };
+                    
+                    const modelInfo = modelNames[model] || { name: model, emoji: '🤖' };
+                    
+                    return (
+                      <div key={model}>
+                        <div className="flex items-center justify-between text-sm mb-1">
+                          <span className="text-text-secondary flex items-center gap-1.5">
+                            <span>{modelInfo.emoji}</span>
+                            {modelInfo.name}
+                          </span>
+                          <span className="text-text-tertiary">
+                            {count} ({Math.round(percent)}%)
+                          </span>
+                        </div>
+                        <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-rose-500 to-pink-500 transition-all duration-500"
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })
+              ) : (
+                <p className="text-sm text-text-tertiary text-center py-4">
+                  {t('Aucune donnée disponible', 'No data available')}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="card p-5">
+          <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-accent-primary" />
+            {t('Actions rapides', 'Quick actions')}
+          </h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-3 p-4 rounded-xl bg-bg-tertiary hover:bg-bg-hover transition-colors text-left group"
+            >
+              <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <Video className="w-5 h-5 text-blue-500" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-text-primary">
+                  {t('Nouvelle analyse', 'New analysis')}
+                </p>
+                <p className="text-xs text-text-tertiary">
+                  {t('Analyser une vidéo', 'Analyze a video')}
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-text-tertiary group-hover:text-text-secondary transition-colors" />
+            </button>
+            
+            <button
+              onClick={() => navigate('/history')}
+              className="flex items-center gap-3 p-4 rounded-xl bg-bg-tertiary hover:bg-bg-hover transition-colors text-left group"
+            >
+              <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                <History className="w-5 h-5 text-purple-500" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-text-primary">
+                  {t('Historique', 'History')}
+                </p>
+                <p className="text-xs text-text-tertiary">
+                  {t('Voir vos analyses', 'View your analyses')}
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-text-tertiary group-hover:text-text-secondary transition-colors" />
+            </button>
+            
+            <button
+              onClick={() => navigate('/account')}
+              className="flex items-center gap-3 p-4 rounded-xl bg-bg-tertiary hover:bg-bg-hover transition-colors text-left group"
+            >
+              <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-amber-500" />
+              </div>
+              <div className="flex-1">
+                <p className="font-medium text-text-primary">
+                  {t('Mon compte', 'My account')}
+                </p>
+                <p className="text-xs text-text-tertiary">
+                  {t('Gérer votre profil', 'Manage your profile')}
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-text-tertiary group-hover:text-text-secondary transition-colors" />
+            </button>
+          </div>
+        </div>
+
+        {/* Insights Section */}
+        {detailedUsage && detailedUsage.totals.analyses > 0 && (
+          <div className="mt-6 card p-5 bg-gradient-to-br from-accent-primary/5 to-purple-500/5 border-accent-primary/20">
+            <h3 className="font-semibold text-text-primary mb-3 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-accent-primary" />
+              {t('Insights', 'Insights')}
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+              <div className="p-3 rounded-lg bg-bg-primary/50">
+                <p className="text-text-tertiary mb-1">{t('Moyenne quotidienne', 'Daily average')}</p>
+                <p className="text-lg font-bold text-text-primary">
+                  {detailedUsage.averages.analyses_per_day.toFixed(1)} {t('analyses', 'analyses')}
+                </p>
+              </div>
+              
+              <div className="p-3 rounded-lg bg-bg-primary/50">
+                <p className="text-text-tertiary mb-1">{t('Mots générés', 'Words generated')}</p>
+                <p className="text-lg font-bold text-text-primary">
+                  {(detailedUsage.totals.words_generated || 0).toLocaleString()}
+                </p>
+              </div>
+              
+              <div className="p-3 rounded-lg bg-bg-primary/50">
+                <p className="text-text-tertiary mb-1">{t('Temps économisé', 'Time saved')}</p>
+                <p className="text-lg font-bold text-text-primary">
+                  ~{Math.round((detailedUsage.totals.duration_seconds || 0) / 60 * 0.8)} min
+                </p>
+                <p className="text-xs text-text-muted">{t('(vs regarder les vidéos)', '(vs watching videos)')}</p>
+              </div>
+              
+              <div className="p-3 rounded-lg bg-bg-primary/50">
+                <p className="text-text-tertiary mb-1">{t('Catégorie favorite', 'Favorite category')}</p>
+                <p className="text-lg font-bold text-text-primary">
+                  {Object.keys(detailedUsage.categories).length > 0
+                    ? Object.entries(detailedUsage.categories).sort(([,a], [,b]) => b - a)[0][0]
+                    : '-'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
   );
 };
 
