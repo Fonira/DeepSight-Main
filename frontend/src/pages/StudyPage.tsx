@@ -227,14 +227,23 @@ export const StudyPage: React.FC = () => {
   };
 
   // Loading state
-  if (isLoading) {
+  if (isLoading && !studyData) {
+    const loadingMessage = isGenerating 
+      ? (activeTab === 'flashcards' 
+        ? (language === 'fr' ? 'Génération des flashcards...' : 'Generating flashcards...')
+        : (language === 'fr' ? 'Génération du quiz...' : 'Generating quiz...'))
+      : texts.loading;
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
         <DoodleBackground />
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="text-center">
             <Loader2 className="w-12 h-12 text-amber-400 animate-spin mx-auto mb-4" />
-            <p className="text-gray-400">{texts.loading}</p>
+            <p className="text-gray-400">{loadingMessage}</p>
+            <p className="text-gray-500 text-sm mt-2">
+              {language === 'fr' ? 'Coût: 1 crédit' : 'Cost: 1 credit'}
+            </p>
           </div>
         </div>
       </div>

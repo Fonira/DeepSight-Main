@@ -29,6 +29,7 @@ import {
   PaymentSuccessScreen,
   PaymentCancelScreen,
   LegalScreen,
+  StudyScreen,
 } from '../screens';
 import { Typography, Spacing, BorderRadius } from '../constants/theme';
 import type { RootStackParamList, MainTabParamList } from '../types';
@@ -203,6 +204,13 @@ const MainStack: React.FC = () => {
       <Stack.Screen
         name="PlaylistDetail"
         component={PlaylistDetailScreen}
+      />
+      <Stack.Screen
+        name="StudyTools"
+        component={StudyScreen}
+        options={{
+          animation: 'slide_from_right',
+        }}
       />
     </Stack.Navigator>
   );

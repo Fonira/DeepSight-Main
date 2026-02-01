@@ -16,3 +16,4 @@ export { AnalysisScreen } from './AnalysisScreen';
 export { PaymentSuccessScreen } from './PaymentSuccessScreen';
 export { PaymentCancelScreen } from './PaymentCancelScreen';
 export { LegalScreen } from './LegalScreen';
+export { StudyScreen } from './StudyScreen';

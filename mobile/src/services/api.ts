@@ -1229,23 +1229,93 @@ export const billingApi = {
 // ============================================
 // Study Tools API
 // ============================================
+// Study API Types
+export interface StudyQuizQuestion {
+  question: string;
+  options: string[];
+  correct_index: number;
+  explanation?: string;
+}
+
+export interface StudyFlashcard {
+  front: string;
+  back: string;
+  category?: string;
+}
+
+export interface QuizResponse {
+  success: boolean;
+  summary_id: number;
+  quiz: StudyQuizQuestion[];
+  title: string;
+  difficulty: string;
+}
+
+export interface FlashcardsResponse {
+  success: boolean;
+  summary_id: number;
+  flashcards: StudyFlashcard[];
+  title: string;
+}
+
+export interface MindmapResponse {
+  success: boolean;
+  summary_id: number;
+  mermaid_code: string;
+  concepts: Array<{ name: string; children?: string[] }>;
+  title: string;
+}
+
 export const studyApi = {
-  async generateQuiz(summaryId: string, questionCount: number = 5): Promise<{ quiz: Array<{ question: string; options: string[]; correct: number; explanation: string }> }> {
+  /**
+   * 🎯 Génère un quiz de compréhension
+   * Coût: 1 crédit
+   */
+  async generateQuiz(summaryId: string): Promise<QuizResponse> {
     return request(`/api/study/quiz/${summaryId}`, {
       method: 'POST',
-      body: { question_count: questionCount },
+      timeout: 120000,
     });
   },
 
-  async generateMindmap(summaryId: string): Promise<{ mindmap: string }> {
-    return request(`/api/study/mindmap/${summaryId}`, {
-      method: 'POST',
-    });
-  },
-
-  async generateFlashcards(summaryId: string): Promise<{ flashcards: Array<{ front: string; back: string }> }> {
+  /**
+   * 📇 Génère des flashcards de révision
+   * Coût: 1 crédit
+   */
+  async generateFlashcards(summaryId: string): Promise<FlashcardsResponse> {
     return request(`/api/study/flashcards/${summaryId}`, {
       method: 'POST',
+      timeout: 120000,
+    });
+  },
+
+  /**
+   * 🌳 Génère un mindmap (carte conceptuelle)
+   * Coût: 1 crédit
+   */
+  async generateMindmap(summaryId: string): Promise<MindmapResponse> {
+    return request(`/api/study/mindmap/${summaryId}`, {
+      method: 'POST',
+      timeout: 120000,
+    });
+  },
+
+  /**
+   * 📚 Génère tous les outils d'étude en une fois
+   * Coût: 2 crédits
+   */
+  async generateAll(summaryId: string): Promise<{
+    success: boolean;
+    summary_id: number;
+    materials: {
+      quiz?: StudyQuizQuestion[];
+      flashcards?: StudyFlashcard[];
+      mindmap?: MindmapResponse;
+    };
+  }> {
+    return request(`/api/study/all/${summaryId}`, {
+      method: 'POST',
+      timeout: 180000,
     });
   },
 };
