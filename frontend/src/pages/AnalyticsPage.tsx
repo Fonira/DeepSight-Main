@@ -72,6 +72,17 @@ interface DetailedUsage {
   };
 }
 
+interface RecentAnalysis {
+  id: number;
+  video_id: string;
+  video_title: string;
+  video_channel: string;
+  video_duration: number;
+  thumbnail_url: string;
+  category: string;
+  created_at: string;
+}
+
 // API functions
 const fetchUsageStats = async (): Promise<UsageStats> => {
   const token = localStorage.getItem('access_token');
@@ -91,6 +102,16 @@ const fetchDetailedUsage = async (days: number = 30): Promise<DetailedUsage> => 
   return response.json();
 };
 
+const fetchRecentAnalyses = async (limit: number = 5): Promise<RecentAnalysis[]> => {
+  const token = localStorage.getItem('access_token');
+  const response = await fetch(`/api/history/videos?page=1&per_page=${limit}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!response.ok) return [];
+  const data = await response.json();
+  return data.items || data || [];
+};
+
 export const AnalyticsPage: React.FC = () => {
   const { user } = useAuth();
   const { language } = useTranslation();
@@ -98,6 +119,7 @@ export const AnalyticsPage: React.FC = () => {
   
   const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
   const [detailedUsage, setDetailedUsage] = useState<DetailedUsage | null>(null);
+  const [recentAnalyses, setRecentAnalyses] = useState<RecentAnalysis[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -111,12 +133,14 @@ export const AnalyticsPage: React.FC = () => {
     setError(null);
     
     try {
-      const [stats, detailed] = await Promise.all([
+      const [stats, detailed, recent] = await Promise.all([
         fetchUsageStats(),
-        fetchDetailedUsage(30)
+        fetchDetailedUsage(30),
+        fetchRecentAnalyses(5)
       ]);
       setUsageStats(stats);
       setDetailedUsage(detailed);
+      setRecentAnalyses(recent);
     } catch (err) {
       console.error('Failed to load analytics:', err);
       setError(t(
@@ -386,6 +410,106 @@ export const AnalyticsPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Recent Analyses */}
+        {recentAnalyses.length > 0 && (
+          <div className="card p-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-text-primary flex items-center gap-2">
+                <History className="w-5 h-5 text-purple-500" />
+                {t('Dernières analyses', 'Recent analyses')}
+              </h3>
+              <button
+                onClick={() => navigate('/history')}
+                className="text-sm text-accent-primary hover:underline flex items-center gap-1"
+              >
+                {t('Tout voir', 'View all')}
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {recentAnalyses.map((analysis) => {
+                const categoryEmoji: Record<string, string> = {
+                  interview_podcast: "🎙️", science: "🔬", tech: "💻",
+                  education: "📚", finance: "💰", gaming: "🎮",
+                  culture: "🎨", news: "📰", health: "🏥", general: "📺",
+                };
+                
+                const formatVideoDuration = (seconds: number): string => {
+                  if (!seconds) return "0:00";
+                  const h = Math.floor(seconds / 3600);
+                  const m = Math.floor((seconds % 3600) / 60);
+                  if (h > 0) return `${h}h ${m}m`;
+                  return `${m} min`;
+                };
+                
+                const formatRelativeDate = (dateString: string): string => {
+                  const date = new Date(dateString);
+                  const now = new Date();
+                  const diffMs = now.getTime() - date.getTime();
+                  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                  
+                  if (language === 'fr') {
+                    if (diffDays === 0) return "Aujourd'hui";
+                    if (diffDays === 1) return "Hier";
+                    if (diffDays < 7) return `Il y a ${diffDays} jours`;
+                    return date.toLocaleDateString("fr-FR");
+                  } else {
+                    if (diffDays === 0) return "Today";
+                    if (diffDays === 1) return "Yesterday";
+                    if (diffDays < 7) return `${diffDays} days ago`;
+                    return date.toLocaleDateString("en-US");
+                  }
+                };
+                
+                return (
+                  <div
+                    key={analysis.id}
+                    onClick={() => navigate(`/dashboard?id=${analysis.id}`)}
+                    className="flex items-center gap-4 p-3 rounded-xl bg-bg-tertiary/50 hover:bg-bg-tertiary transition-all cursor-pointer group"
+                  >
+                    {/* Thumbnail */}
+                    <div className="w-20 h-12 rounded-lg overflow-hidden bg-bg-secondary flex-shrink-0 relative">
+                      {analysis.thumbnail_url ? (
+                        <img 
+                          src={analysis.thumbnail_url} 
+                          alt={analysis.video_title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Video className="w-6 h-6 text-text-tertiary" />
+                        </div>
+                      )}
+                      {analysis.video_duration && (
+                        <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-white text-[10px] font-medium">
+                          {formatVideoDuration(analysis.video_duration)}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-medium text-text-primary truncate group-hover:text-accent-primary transition-colors">
+                        {analysis.video_title}
+                      </h4>
+                      <div className="flex items-center gap-2 text-xs text-text-tertiary mt-1">
+                        <span>{categoryEmoji[analysis.category || 'general'] || '📺'}</span>
+                        <span className="truncate">{analysis.video_channel}</span>
+                        <span>•</span>
+                        <span>{formatRelativeDate(analysis.created_at)}</span>
+                      </div>
+                    </div>
+
+                    {/* Arrow */}
+                    <ChevronRight className="w-4 h-4 text-text-tertiary group-hover:text-accent-primary group-hover:translate-x-1 transition-all flex-shrink-0" />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Quick Actions */}
         <div className="card p-5">
