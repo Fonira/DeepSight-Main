@@ -566,22 +566,16 @@ async def google_token_login(
 
 
 
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🦊 GITLAB OAUTH
+# 🦊 GITLAB OAUTH (Désactivé - fonctionnalité non implémentée)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/gitlab/login", response_model=AuthUrlResponse)
 async def gitlab_login():
-    """Retourne l'URL d'authentification GitLab"""
-    if not GITLAB_OAUTH_CONFIG.get("ENABLED"):
-        raise HTTPException(status_code=400, detail="GitLab OAuth non activé")
-
-    auth_url = get_gitlab_auth_url()
-
-    if not auth_url:
-        raise HTTPException(status_code=500, detail="Erreur configuration OAuth GitLab")
-
-    return AuthUrlResponse(auth_url=auth_url)
+    """GitLab OAuth non implémenté"""
+    raise HTTPException(status_code=501, detail="GitLab OAuth non implémenté")
 
 
 @router.get("/gitlab/callback")
@@ -591,32 +585,8 @@ async def gitlab_callback(
     error: Optional[str] = None,
     session: AsyncSession = Depends(get_session)
 ):
-    """Callback GitLab OAuth — redirige vers le frontend avec tokens"""
-    if error:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error={error}", status_code=302)
-
-    if not code:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=no_code", status_code=302)
-
-    token_data = await exchange_gitlab_code(code)
-
-    if not token_data or "access_token" not in token_data:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=token_exchange_failed", status_code=302)
-
-    gitlab_user = await get_gitlab_user_info(token_data["access_token"])
-
-    if not gitlab_user:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=userinfo_failed", status_code=302)
-
-    success, user, message, session_token = await login_or_register_gitlab_user(session, gitlab_user)
-
-    if not success or not user:
-        return RedirectResponse(url=f"{FRONTEND_URL}/login?error=auth_failed", status_code=302)
-
-    access_token = create_access_token(user.id, user.is_admin, session_token)
-    refresh_token = create_refresh_token(user.id, session_token)
-
+    """GitLab OAuth callback non implémenté"""
     return RedirectResponse(
-        url=f"{FRONTEND_URL}/auth/callback?access_token={access_token}&refresh_token={refresh_token}",
+        url=f"{FRONTEND_URL}/login?error=gitlab_not_implemented",
         status_code=302
     )

@@ -216,12 +216,15 @@ const PaymentCancel = lazy(() => import("./pages/PaymentCancel"));
 // Pages protégées
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const PlaylistPage = lazy(() => import("./pages/PlaylistPage"));
+const PlaylistDetailPage = lazy(() => import("./pages/PlaylistDetailPage"));
 const History = lazy(() => import("./pages/History"));
 const UpgradePage = lazy(() => import("./pages/UpgradePage"));
 const Settings = lazy(() => import("./pages/Settings"));
 const MyAccount = lazy(() => import("./pages/MyAccount"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const UsageDashboard = lazy(() => import("./pages/UsageDashboard"));
+const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
+const StudyPage = lazy(() => import("./pages/StudyPage"));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔮 PREFETCH CONFIGURATION
@@ -230,11 +233,13 @@ const UsageDashboard = lazy(() => import("./pages/UsageDashboard"));
 const PREFETCH_MAP: Record<string, string[]> = {
   '/': ['/dashboard', '/login'],
   '/login': ['/dashboard'],
-  '/dashboard': ['/history', '/settings', '/playlists'],
-  '/history': ['/dashboard'],
+  '/dashboard': ['/history', '/settings', '/playlists', '/analytics'],
+  '/history': ['/dashboard', '/analytics'],
   '/settings': ['/account'],
-  '/playlists': ['/dashboard'],
+  '/playlists': ['/dashboard', '/playlist'],
+  '/playlist': ['/playlists', '/dashboard'],
   '/upgrade': ['/dashboard', '/payment/success'],
+  '/analytics': ['/dashboard', '/history'],
 };
 
 const PAGE_LOADERS: Record<string, () => Promise<any>> = {
@@ -242,10 +247,12 @@ const PAGE_LOADERS: Record<string, () => Promise<any>> = {
   '/history': () => import("./pages/History"),
   '/settings': () => import("./pages/Settings"),
   '/playlists': () => import("./pages/PlaylistPage"),
+  '/playlist': () => import("./pages/PlaylistDetailPage"),
   '/account': () => import("./pages/MyAccount"),
   '/login': () => import("./pages/Login"),
   '/upgrade': () => import("./pages/UpgradePage"),
   '/payment/success': () => import("./pages/PaymentSuccess"),
+  '/analytics': () => import("./pages/AnalyticsPage"),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -392,6 +399,12 @@ const AppRoutes = () => {
                     </Suspense>
                   } />
                   
+                  <Route path="/playlist/:id" element={
+                    <Suspense fallback={<PageSkeleton variant="dashboard" />}>
+                      <PlaylistDetailPage />
+                    </Suspense>
+                  } />
+                  
                   <Route path="/history" element={
                     <Suspense fallback={<PageSkeleton variant="full" />}>
                       <History />
@@ -410,6 +423,12 @@ const AppRoutes = () => {
                     </Suspense>
                   } />
                   
+                  <Route path="/analytics" element={
+                    <Suspense fallback={<PageSkeleton variant="dashboard" />}>
+                      <AnalyticsPage />
+                    </Suspense>
+                  } />
+                  
                   <Route path="/settings" element={
                     <Suspense fallback={<PageSkeleton variant="form" />}>
                       <Settings />
@@ -425,6 +444,12 @@ const AppRoutes = () => {
                   <Route path="/admin" element={
                     <Suspense fallback={<PageSkeleton variant="dashboard" />}>
                       <AdminPage />
+                    </Suspense>
+                  } />
+                  
+                  <Route path="/study/:summaryId" element={
+                    <Suspense fallback={<PageSkeleton variant="dashboard" />}>
+                      <StudyPage />
                     </Suspense>
                   } />
                 </Route>

@@ -177,6 +177,9 @@ export const AnalysisScreen: React.FC = () => {
     }
   }, [t.errors.generic]);
 
+  // Track if we're using local polling (for non-background tasks)
+  const localPollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // Initial load and subscription setup
   useEffect(() => {
     if (!summaryId) {
@@ -253,14 +256,57 @@ export const AnalysisScreen: React.FC = () => {
         if (status.status === 'completed' && status.summary_id) {
           await loadCompletedAnalysis(status.summary_id);
         } else if (status.status === 'processing') {
-          // This shouldn't happen if using BackgroundAnalysisContext properly
-          // but handle it gracefully
+          // Task is processing but not in BackgroundAnalysisContext
+          // Start local polling to track progress
           if (isMountedRef.current) {
-            setIsStreaming(true); // Show streaming UI for processing tasks
+            setIsStreaming(true);
             setAnalysisProgress(status.progress || 0);
             setAnalysisStatus(status.message || t.analysis.inProgress);
             setAnalysisStep(calculateStepFromProgress(status.progress || 0));
             setIsLoading(false);
+
+            // Start local polling for this task
+            if (!localPollingRef.current) {
+              localPollingRef.current = setInterval(async () => {
+                if (!isMountedRef.current) {
+                  if (localPollingRef.current) {
+                    clearInterval(localPollingRef.current);
+                    localPollingRef.current = null;
+                  }
+                  return;
+                }
+
+                try {
+                  const pollStatus = await videoApi.getStatus(summaryId);
+                  if (!isMountedRef.current) return;
+
+                  if (pollStatus.status === 'completed' && pollStatus.summary_id) {
+                    // Stop polling and load completed analysis
+                    if (localPollingRef.current) {
+                      clearInterval(localPollingRef.current);
+                      localPollingRef.current = null;
+                    }
+                    setIsStreaming(false);
+                    await loadCompletedAnalysis(pollStatus.summary_id);
+                  } else if (pollStatus.status === 'failed') {
+                    // Stop polling on failure
+                    if (localPollingRef.current) {
+                      clearInterval(localPollingRef.current);
+                      localPollingRef.current = null;
+                    }
+                    setIsStreaming(false);
+                    setError(pollStatus.error || t.analysis.failed);
+                  } else {
+                    // Update progress
+                    setAnalysisProgress(pollStatus.progress || 0);
+                    setAnalysisStatus(pollStatus.message || t.analysis.inProgress);
+                    setAnalysisStep(calculateStepFromProgress(pollStatus.progress || 0));
+                  }
+                } catch (pollError) {
+                  console.error('Local polling error:', pollError);
+                }
+              }, 2500); // Poll every 2.5 seconds (same as BackgroundAnalysisContext)
+            }
           }
         } else if (status.status === 'failed') {
           if (isMountedRef.current) {
@@ -286,6 +332,11 @@ export const AnalysisScreen: React.FC = () => {
 
     return () => {
       isMountedRef.current = false;
+      // Clean up local polling on unmount
+      if (localPollingRef.current) {
+        clearInterval(localPollingRef.current);
+        localPollingRef.current = null;
+      }
     };
   }, [summaryId, getTask, subscribeToTask, calculateStepFromProgress, loadCompletedAnalysis, t.analysis.inProgress, t.analysis.failed, t.errors.generic]);
 

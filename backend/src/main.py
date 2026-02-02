@@ -89,6 +89,21 @@ from playlists.router import router as playlists_router
 from history.history_router import router as history_router
 from db.database import init_db, close_db
 
+# 🚦 Rate Limiting & Cache
+try:
+    from middleware.rate_limiter import RateLimitMiddleware, init_rate_limiter
+    RATE_LIMITER_AVAILABLE = True
+except ImportError as e:
+    RATE_LIMITER_AVAILABLE = False
+    print(f"⚠️ Rate limiter not available: {e}", flush=True)
+
+try:
+    from core.cache import init_cache, cache_service
+    CACHE_AVAILABLE = True
+except ImportError as e:
+    CACHE_AVAILABLE = False
+    print(f"⚠️ Cache service not available: {e}", flush=True)
+
 # ✅ NOUVEAU: Import du Profile router (avec fallback si absent)
 try:
     from profile.router import router as profile_router
@@ -105,8 +120,13 @@ except ImportError as e:
     TOURNESOL_ROUTER_AVAILABLE = False
     print(f"⚠️ Tournesol router not available: {e}", flush=True)
 
-# 🎙️ TTS router supprimé (fonctionnalité audio retirée)
-TTS_ROUTER_AVAILABLE = False
+# 🎙️ TTS router (Text-to-Speech for summaries)
+try:
+    from tts.router import router as tts_router
+    TTS_ROUTER_AVAILABLE = True
+except ImportError as e:
+    TTS_ROUTER_AVAILABLE = False
+    print(f"⚠️ TTS router not available: {e}", flush=True)
 
 # 📊 NOUVEAU: Import du Usage router (statistiques)
 try:
@@ -279,6 +299,19 @@ async def initialize_database_background():
         _app_state["migrations_completed"] = True
         logger.info("Migrations completed successfully")
 
+        # Étape 3: Initialiser le cache (Redis si disponible, sinon in-memory)
+        if CACHE_AVAILABLE:
+            redis_url = os.environ.get("REDIS_URL")
+            await init_cache(redis_url)
+            logger.info("Cache service initialized", 
+                       backend="redis" if cache_service.is_redis else "memory")
+        
+        # Étape 4: Initialiser le rate limiter avec Redis si disponible
+        if RATE_LIMITER_AVAILABLE:
+            redis_url = os.environ.get("REDIS_URL")
+            await init_rate_limiter(redis_url)
+            logger.info("Rate limiter initialized")
+
         # Marquer l'app comme prête
         _app_state["ready"] = True
         logger.info("🟢 Application fully ready to serve requests")
@@ -337,6 +370,22 @@ if LOGGING_AVAILABLE:
     app.add_middleware(LoggingMiddleware)
     app.add_middleware(PerformanceMiddleware)
     logger.info("Logging middlewares enabled")
+
+# 🚦 Rate Limiting Middleware
+if RATE_LIMITER_AVAILABLE:
+    app.add_middleware(
+        RateLimitMiddleware,
+        exclude_paths=[
+            "/health",
+            "/health/ready",
+            "/api/health",
+            "/docs",
+            "/openapi.json",
+            "/redoc",
+            "/",
+        ]
+    )
+    logger.info("Rate limiting middleware enabled")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # INCLUSION DES ROUTERS
@@ -546,7 +595,21 @@ async def debug_info():
             "profile": PROFILE_ROUTER_AVAILABLE,
             "tournesol": TOURNESOL_ROUTER_AVAILABLE,
             "tts": TTS_ROUTER_AVAILABLE,
-        }
+        },
+        "rate_limiter": RATE_LIMITER_AVAILABLE,
+        "cache": CACHE_AVAILABLE,
+    }
+
+
+@app.get("/debug/cache")
+async def debug_cache():
+    """Statistiques du cache (admin uniquement en prod)"""
+    if not CACHE_AVAILABLE:
+        return {"error": "Cache not available"}
+    
+    return {
+        "status": "ok",
+        "stats": cache_service.get_stats(),
     }
 
 if __name__ == "__main__":

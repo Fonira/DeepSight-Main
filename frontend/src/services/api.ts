@@ -1344,6 +1344,105 @@ export const adminApi = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 📚 STUDY API — Flashcards, Quiz, Mindmap
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface StudyQuizQuestion {
+  question: string;
+  options: string[];
+  correct_index: number;
+  explanation?: string;
+}
+
+export interface StudyFlashcardItem {
+  front: string;
+  back: string;
+  category?: string;
+}
+
+export interface QuizResponse {
+  success: boolean;
+  summary_id: number;
+  quiz: StudyQuizQuestion[];
+  title: string;
+  difficulty: string;
+}
+
+export interface FlashcardsResponse {
+  success: boolean;
+  summary_id: number;
+  flashcards: StudyFlashcardItem[];
+  title: string;
+}
+
+export interface MindmapResponse {
+  success: boolean;
+  summary_id: number;
+  mermaid_code: string;
+  concepts: Array<{ name: string; children?: string[] }>;
+  title: string;
+}
+
+export interface StudyAllResponse {
+  success: boolean;
+  summary_id: number;
+  materials: {
+    quiz?: StudyQuizQuestion[];
+    flashcards?: StudyFlashcardItem[];
+    mindmap?: {
+      mermaid_code: string;
+      concepts: Array<{ name: string; children?: string[] }>;
+    };
+  };
+}
+
+export const studyApi = {
+  /**
+   * 🎯 Génère un quiz de compréhension
+   * Coût: 1 crédit
+   */
+  async generateQuiz(summaryId: number): Promise<QuizResponse> {
+    return request(`/api/study/quiz/${summaryId}`, {
+      method: 'POST',
+      timeout: 120000,
+    });
+  },
+
+  /**
+   * 📇 Génère des flashcards de révision
+   * Coût: 1 crédit
+   */
+  async generateFlashcards(summaryId: number): Promise<FlashcardsResponse> {
+    return request(`/api/study/flashcards/${summaryId}`, {
+      method: 'POST',
+      timeout: 120000,
+    });
+  },
+
+  /**
+   * 🌳 Génère un mindmap (carte conceptuelle)
+   * Coût: 1 crédit
+   */
+  async generateMindmap(summaryId: number): Promise<MindmapResponse> {
+    return request(`/api/study/mindmap/${summaryId}`, {
+      method: 'POST',
+      timeout: 120000,
+    });
+  },
+
+  /**
+   * 📚 Génère tous les outils d'étude en une fois
+   * Coût: 2 crédits
+   */
+  async generateAll(summaryId: number): Promise<StudyAllResponse> {
+    return request(`/api/study/all/${summaryId}`, {
+      method: 'POST',
+      timeout: 180000,
+    });
+  },
+};
+
 // Export par défaut
 export default {
   auth: authApi,
@@ -1357,4 +1456,5 @@ export default {
   tournesol: tournesolApi,
   admin: adminApi,
   academic: academicApi,
+  study: studyApi,
 };

@@ -682,7 +682,7 @@ export const PlaylistPage: React.FC = () => {
                           const pid = (progress as ExtendedPlaylistTaskStatus).result?.playlist_id ||
                                      (progress as ExtendedPlaylistTaskStatus).playlist_id;
                           if (pid) {
-                            navigate(`/history?playlist=${pid}`);
+                            navigate(`/playlist/${pid}`);
                           } else {
                             navigate('/history');
                           }
@@ -742,7 +742,7 @@ export const PlaylistPage: React.FC = () => {
                       <div
                         key={item.playlist_id}
                         className="p-4 hover:bg-bg-secondary/50 transition-colors cursor-pointer"
-                        onClick={() => navigate(`/history?playlist=${item.playlist_id}`)}
+                        onClick={() => navigate(`/playlist/${item.playlist_id}`)}
                       >
                         <div className="flex items-center gap-4">
                           {item.thumbnail_url ? (

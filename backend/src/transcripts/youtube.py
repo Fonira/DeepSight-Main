@@ -54,6 +54,14 @@ from core.config import (
     get_openai_key, get_assemblyai_key, TRANSCRIPT_CONFIG
 )
 
+# 💾 Cache pour les transcripts (TTL 24h)
+try:
+    from core.cache import cache_service, make_cache_key
+    CACHE_AVAILABLE = True
+except ImportError:
+    CACHE_AVAILABLE = False
+    print("⚠️ [YOUTUBE] Cache not available, transcripts won't be cached", flush=True)
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════

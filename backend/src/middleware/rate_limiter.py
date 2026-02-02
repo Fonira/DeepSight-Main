@@ -1,6 +1,6 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
-║  🚦 RATE LIMITER MIDDLEWARE v2.0 — Protection contre les abus                      ║
+║  🚦 RATE LIMITER MIDDLEWARE v2.1 — Protection contre les abus                      ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
 ║  FONCTIONNALITÉS:                                                                  ║
 ║  • 📊 Sliding window rate limiting (précis)                                       ║
@@ -8,11 +8,15 @@
 ║  • 🔑 Limites différenciées par plan utilisateur                                  ║
 ║  • 📈 Headers de quota standards (X-RateLimit-*)                                  ║
 ║  • 💾 Backend Redis avec fallback in-memory                                       ║
+║  • 📝 Logging des violations pour monitoring                                       ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
+
+v2.1: Ajout du logging des violations et limites spécifiques register/login
 """
 
 import time
 import asyncio
+import logging
 from datetime import datetime
 from typing import Optional, Callable, Dict, Any, Tuple
 from dataclasses import dataclass
@@ -22,6 +26,10 @@ from fastapi import Request, Response, HTTPException
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+# Logger dédié aux violations de rate limit
+rate_limit_logger = logging.getLogger("rate_limit")
+rate_limit_logger.setLevel(logging.WARNING)
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -29,9 +37,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 # Limites par défaut (requests/window_seconds)
 DEFAULT_LIMITS = {
     "global": (1000, 60),      # 1000 req/min global
-    "auth": (5, 60),           # 5 tentatives de login/min
-    "analysis": (10, 60),      # 10 analyses/min
-    "chat": (30, 60),          # 30 messages chat/min
+    "auth_login": (5, 60),     # 5 tentatives de login/min par IP
+    "auth_register": (3, 60),  # 3 inscriptions/min par IP (anti-spam)
+    "analysis": (10, 60),      # 10 analyses/min par user
+    "chat": (30, 60),          # 30 messages chat/min par user
+    "chat_ask": (30, 60),      # 30 questions/min par user
     "api": (100, 60),          # 100 appels API/min
     "export": (20, 60),        # 20 exports/min
     "tts": (10, 60),           # 10 TTS/min
@@ -48,12 +58,13 @@ PLAN_MULTIPLIERS = {
 
 # Endpoints et leurs catégories de rate limit
 ENDPOINT_CATEGORIES = {
-    "/api/auth/login": "auth",
-    "/api/auth/register": "auth",
+    "/api/auth/login": "auth_login",
+    "/api/auth/register": "auth_register",
     "/api/videos/analyze": "analysis",
     "/api/videos/stream": "analysis",
     "/api/chat": "chat",
     "/api/chat/message": "chat",
+    "/api/chat/ask": "chat_ask",
     "/api/export": "export",
     "/api/tts": "tts",
 }
@@ -337,11 +348,26 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         result = await rate_limiter.check_request(request)
         
         if not result.allowed:
+            # 📝 Log la violation pour monitoring
+            client_ip = request.client.host if request.client else "unknown"
+            forwarded = request.headers.get("X-Forwarded-For")
+            if forwarded:
+                client_ip = forwarded.split(",")[0].strip()
+            
+            user = getattr(request.state, "user", None)
+            user_info = f"user_id={user.id}" if user else f"ip={client_ip}"
+            
+            rate_limit_logger.warning(
+                f"🚫 Rate limit exceeded: {request.method} {path} | "
+                f"{user_info} | limit={result.limit} | retry_after={result.retry_after}s"
+            )
+            
             return JSONResponse(
                 status_code=429,
                 content={
                     "detail": "Rate limit exceeded",
                     "retry_after": result.retry_after,
+                    "message": f"Trop de requêtes. Réessayez dans {result.retry_after} secondes.",
                 },
                 headers={
                     "X-RateLimit-Limit": str(result.limit),

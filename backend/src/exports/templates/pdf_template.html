@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Deep Sight Analysis</title>
+    <style>
+        /* ═══════════════════════════════════════════════════════════════════════════
+           🎨 DEEP SIGHT PDF STYLES — Professional Analysis Export
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
+        
+        :root {
+            --primary: #0D4F4F;
+            --primary-light: #1A6B6B;
+            --secondary: #D4A574;
+            --accent: #00CED1;
+            --text: #1A1A2E;
+            --text-light: #4A4A5A;
+            --background: #FFFFFF;
+            --surface: #F8FAFA;
+            --border: #E0E6E6;
+        }
+        
+        @page {
+            size: A4;
+            margin: 2cm 2.5cm;
+            @top-center {
+                content: element(header);
+            }
+            @bottom-center {
+                content: "Page " counter(page) " / " counter(pages);
+                font-family: 'Inter', sans-serif;
+                font-size: 9pt;
+                color: var(--text-light);
+            }
+        }
+        
+        @page:first {
+            @top-center { content: none; }
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-size: 11pt;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--background);
+        }
+        
+        /* ═══════════════════════════════════════════════════════════════════════════
+           📄 HEADER (Running header for subsequent pages)
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        .running-header {
+            position: running(header);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 0.5cm;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 0.5cm;
+        }
+        
+        .running-header .logo-small {
+            font-size: 10pt;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .running-header .doc-title {
+            font-size: 9pt;
+            color: var(--text-light);
+            max-width: 70%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        /* ═══════════════════════════════════════════════════════════════════════════
+           🎯 COVER PAGE
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        .cover-page {
+            page-break-after: always;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 2cm 0;
+        }
+        
+        .logo-container {
+            text-align: center;
+            margin-bottom: 3cm;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+        }
+        
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 28pt;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: 2px;
+            margin-top: 0.5cm;
+        }
+        
+        .logo-subtitle {
+            font-size: 11pt;
+            color: var(--text-light);
+            margin-top: 0.3cm;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+        
+        .cover-title {
+            text-align: center;
+            margin-bottom: 2cm;
+        }
+        
+        .cover-title h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 22pt;
+            font-weight: 600;
+            color: var(--text);
+            line-height: 1.3;
+            margin-bottom: 0.5cm;
+        }
+        
+        .cover-title .channel {
+            font-size: 13pt;
+            color: var(--primary);
+            font-weight: 500;
+        }
+        
+        .cover-meta {
+            display: flex;
+            justify-content: center;
+            gap: 2cm;
+            margin-top: 2cm;
+            padding-top: 1cm;
+            border-top: 2px solid var(--border);
+        }
+        
+        .meta-item {
+            text-align: center;
+        }
+        
+        .meta-label {
+            font-size: 9pt;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-light);
+            margin-bottom: 0.2cm;
+        }
+        
+        .meta-value {
+            font-size: 11pt;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .cover-footer {
+            margin-top: auto;
+            text-align: center;
+            padding-top: 2cm;
+        }
+        
+        .cover-footer .date {
+            font-size: 10pt;
+            color: var(--text-light);
+        }
+        
+        .cover-footer .url {
+            font-size: 9pt;
+            color: var(--accent);
+            margin-top: 0.3cm;
+            word-break: break-all;
+        }
+        
+        /* ═══════════════════════════════════════════════════════════════════════════
+           📑 TABLE OF CONTENTS
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        .toc-page {
+            page-break-after: always;
+        }
+        
+        .toc-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 18pt;
+            color: var(--primary);
+            margin-bottom: 1cm;
+            padding-bottom: 0.3cm;
+            border-bottom: 2px solid var(--secondary);
+        }
+        
+        .toc-list {
+            list-style: none;
+        }
+        
+        .toc-item {
+            display: flex;
+            align-items: baseline;
+            padding: 0.4cm 0;
+            border-bottom: 1px dotted var(--border);
+        }
+        
+        .toc-number {
+            font-weight: 600;
+            color: var(--primary);
+            width: 1.5cm;
+            flex-shrink: 0;
+        }
+        
+        .toc-text {
+            flex-grow: 1;
+        }
+        
+        .toc-page-num {
+            color: var(--text-light);
+            margin-left: 0.5cm;
+        }
+        
+        /* ═══════════════════════════════════════════════════════════════════════════
+           📖 CONTENT SECTIONS
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        .section {
+            margin-bottom: 1.5cm;
+        }
+        
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.4cm;
+            margin-bottom: 0.6cm;
+            padding-bottom: 0.3cm;
+            border-bottom: 2px solid var(--primary);
+        }
+        
+        .section-icon {
+            font-size: 18pt;
+        }
+        
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 16pt;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        .section-content {
+            padding-left: 0.3cm;
+        }
+        
+        /* ═══════════════════════════════════════════════════════════════════════════
+           📋 SUMMARY STYLING
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        .summary-content {
+            text-align: justify;
+        }
+        
+        .summary-content h2 {
+            font-size: 14pt;
+            font-weight: 600;
+            color: var(--primary);
+            margin-top: 0.8cm;
+            margin-bottom: 0.4cm;
+        }
+        
+        .summary-content h3 {
+            font-size: 12pt;
+            font-weight: 600;
+            color: var(--primary-light);
+            margin-top: 0.6cm;
+            margin-bottom: 0.3cm;
+        }
+        
+        .summary-content p {
+            margin-bottom: 0.5cm;
+        }
+        
+        .summary-content ul, .summary-content ol {
+            margin: 0.4cm 0;
+            padding-left: 0.8cm;
+        }
+        
+        .summary-content li {
+            margin-bottom: 0.2cm;
+        }
+        
+        .summary-content blockquote {
+            margin: 0.5cm 0;
+            padding: 0.4cm 0.6cm;
+            border-left: 3px solid var(--secondary);
+            background: var(--surface);
+            font-style: italic;
+        }
+        
+        .summary-content strong {
+            color: var(--primary);
+        }
+        
+        /* ═══════════════════════════════════════════════════════════════════════════
+           💡 KEY CONCEPTS BOX
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        .concepts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5cm;
+        }
+        
+        .concept-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.4cm;
+        }
+        
+        .concept-card .concept-name {
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 0.2cm;
+        }
+        
+        .concept-card .concept-desc {
+            font-size: 10pt;
+            color: var(--text-light);
+        }
+        
+        /* ═══════════════════════════════════════════════════════════════════════════
+           ⏱️ TIMESTAMPS
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        .timestamps-list {
+            list-style: none;
+        }
+        
+        .timestamp-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.4cm;
+            padding: 0.3cm 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .timestamp-time {
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 10pt;
+            font-weight: 600;
+            color: var(--accent);
+            background: var(--surface);
+            padding: 0.1cm 0.3cm;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+        
+        .timestamp-text {
+            flex-grow: 1;
+        }
+        
+        /* ═══════════════════════════════════════════════════════════════════════════
+           📊 RELIABILITY SCORE
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        .reliability-box {
+            display: flex;
+            align-items: center;
+            gap: 0.5cm;
+            padding: 0.5cm;
+            background: var(--surface);
+            border-radius: 6px;
+        }
+        
+        .reliability-score {
+            font-size: 24pt;
+            font-weight: 700;
+        }
+        
+        .reliability-score.high { color: #22C55E; }
+        .reliability-score.medium { color: #F59E0B; }
+        .reliability-score.low { color: #EF4444; }
+        
+        .reliability-label {
+            font-size: 10pt;
+            color: var(--text-light);
+        }
+        
+        .reliability-bar {
+            flex-grow: 1;
+            height: 8px;
+            background: var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .reliability-fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+        
+        .reliability-fill.high { background: #22C55E; }
+        .reliability-fill.medium { background: #F59E0B; }
+        .reliability-fill.low { background: #EF4444; }
+        
+        /* ═══════════════════════════════════════════════════════════════════════════
+           🏷️ ENTITIES / TAGS
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        .entities-group {
+            margin-bottom: 0.6cm;
+        }
+        
+        .entities-label {
+            font-size: 10pt;
+            font-weight: 600;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.3cm;
+        }
+        
+        .tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.2cm;
+        }
+        
+        .tag {
+            display: inline-block;
+            padding: 0.15cm 0.4cm;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 9pt;
+            color: var(--text);
+        }
+        
+        .tag.person { border-color: #3B82F6; color: #3B82F6; }
+        .tag.org { border-color: #8B5CF6; color: #8B5CF6; }
+        .tag.concept { border-color: var(--secondary); color: #B8956A; }
+        
+        /* ═══════════════════════════════════════════════════════════════════════════
+           📚 FLASHCARDS
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        .flashcards-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5cm;
+        }
+        
+        .flashcard {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        
+        .flashcard-front {
+            background: var(--primary);
+            color: white;
+            padding: 0.4cm;
+            font-weight: 500;
+            font-size: 10pt;
+        }
+        
+        .flashcard-back {
+            background: var(--surface);
+            padding: 0.4cm;
+            font-size: 10pt;
+        }
+        
+        /* ═══════════════════════════════════════════════════════════════════════════
+           🔗 SOURCES
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        .sources-list {
+            list-style: none;
+        }
+        
+        .source-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.3cm;
+            padding: 0.3cm 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .source-number {
+            font-weight: 600;
+            color: var(--primary);
+            font-size: 10pt;
+        }
+        
+        .source-content {
+            flex-grow: 1;
+        }
+        
+        .source-title {
+            font-weight: 500;
+            margin-bottom: 0.1cm;
+        }
+        
+        .source-url {
+            font-size: 9pt;
+            color: var(--accent);
+            word-break: break-all;
+        }
+        
+        /* ═══════════════════════════════════════════════════════════════════════════
+           📄 FOOTER
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        .document-footer {
+            margin-top: 2cm;
+            padding-top: 0.5cm;
+            border-top: 2px solid var(--border);
+            text-align: center;
+        }
+        
+        .footer-text {
+            font-size: 9pt;
+            color: var(--text-light);
+        }
+        
+        .footer-url {
+            font-size: 10pt;
+            color: var(--primary);
+            font-weight: 500;
+        }
+        
+        /* ═══════════════════════════════════════════════════════════════════════════
+           🖨️ PRINT UTILITIES
+           ═══════════════════════════════════════════════════════════════════════════ */
+        
+        .page-break {
+            page-break-before: always;
+        }
+        
+        .no-break {
+            page-break-inside: avoid;
+        }
+        
+        .hide-print {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Running Header (appears on pages after cover) -->
+    <div class="running-header">
+        <span class="logo-small">🤿 Deep Sight</span>
+        <span class="doc-title">{{ title }}</span>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════
+         COVER PAGE
+         ═══════════════════════════════════════════════════════════════════════════ -->
+    <div class="cover-page">
+        <div class="logo-container">
+            <!-- SVG Logo -->
+            <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="oceanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#0D4F4F"/>
+                        <stop offset="100%" style="stop-color:#00CED1"/>
+                    </linearGradient>
+                </defs>
+                <circle cx="50" cy="50" r="45" fill="url(#oceanGrad)"/>
+                <path d="M50 25 C35 25 25 38 25 50 C25 65 35 75 50 75 C65 75 75 65 75 50 C75 38 65 25 50 25 M50 35 C60 35 65 43 65 50 C65 60 58 65 50 65 C42 65 35 60 35 50 C35 43 40 35 50 35" fill="white" opacity="0.9"/>
+                <circle cx="50" cy="50" r="12" fill="white"/>
+                <circle cx="50" cy="50" r="6" fill="#0D4F4F"/>
+                <path d="M30 78 L40 85 L60 85 L70 78" stroke="#D4A574" stroke-width="3" fill="none" stroke-linecap="round"/>
+            </svg>
+            <div class="logo-text">DEEP SIGHT</div>
+            <div class="logo-subtitle">Analyse Intelligente</div>
+        </div>
+        
+        <div class="cover-title">
+            <h1>{{ title }}</h1>
+            {% if channel %}
+            <div class="channel">{{ channel }}</div>
+            {% endif %}
+        </div>
+        
+        <div class="cover-meta">
+            {% if duration %}
+            <div class="meta-item">
+                <div class="meta-label">Durée</div>
+                <div class="meta-value">{{ duration_formatted }}</div>
+            </div>
+            {% endif %}
+            <div class="meta-item">
+                <div class="meta-label">Catégorie</div>
+                <div class="meta-value">{{ category }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Mode</div>
+                <div class="meta-value">{{ mode }}</div>
+            </div>
+        </div>
+        
+        <div class="cover-footer">
+            <div class="date">Analysé le {{ date }}</div>
+            {% if video_url %}
+            <div class="url">{{ video_url }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════
+         TABLE OF CONTENTS
+         ═══════════════════════════════════════════════════════════════════════════ -->
+    {% if show_toc %}
+    <div class="toc-page">
+        <h2 class="toc-title">📑 Table des matières</h2>
+        <ul class="toc-list">
+            <li class="toc-item">
+                <span class="toc-number">1.</span>
+                <span class="toc-text">Synthèse</span>
+            </li>
+            {% if show_concepts and entities and entities.concepts %}
+            <li class="toc-item">
+                <span class="toc-number">2.</span>
+                <span class="toc-text">Concepts clés</span>
+            </li>
+            {% endif %}
+            {% if show_timestamps and timestamps %}
+            <li class="toc-item">
+                <span class="toc-number">3.</span>
+                <span class="toc-text">Chapitres & Timestamps</span>
+            </li>
+            {% endif %}
+            {% if entities and (entities.persons or entities.organizations) %}
+            <li class="toc-item">
+                <span class="toc-number">4.</span>
+                <span class="toc-text">Entités mentionnées</span>
+            </li>
+            {% endif %}
+            {% if show_flashcards and flashcards %}
+            <li class="toc-item">
+                <span class="toc-number">5.</span>
+                <span class="toc-text">Flashcards de révision</span>
+            </li>
+            {% endif %}
+            {% if reliability_score %}
+            <li class="toc-item">
+                <span class="toc-number">6.</span>
+                <span class="toc-text">Score de fiabilité</span>
+            </li>
+            {% endif %}
+            {% if sources %}
+            <li class="toc-item">
+                <span class="toc-number">7.</span>
+                <span class="toc-text">Sources</span>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════════════════════════════════════════════════════════════
+         MAIN CONTENT
+         ═══════════════════════════════════════════════════════════════════════════ -->
+    
+    <!-- Summary Section -->
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon">📋</span>
+            <h2 class="section-title">Synthèse</h2>
+        </div>
+        <div class="section-content summary-content">
+            {{ summary_html | safe }}
+        </div>
+    </div>
+    
+    <!-- Key Concepts -->
+    {% if show_concepts and entities and entities.concepts %}
+    <div class="section page-break">
+        <div class="section-header">
+            <span class="section-icon">💡</span>
+            <h2 class="section-title">Concepts clés</h2>
+        </div>
+        <div class="section-content">
+            <div class="tags-container">
+                {% for concept in entities.concepts[:15] %}
+                <span class="tag concept">{{ concept }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Timestamps -->
+    {% if show_timestamps and timestamps %}
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon">⏱️</span>
+            <h2 class="section-title">Chapitres & Timestamps</h2>
+        </div>
+        <div class="section-content">
+            <ul class="timestamps-list">
+                {% for ts in timestamps %}
+                <li class="timestamp-item no-break">
+                    <span class="timestamp-time">{{ ts.time }}</span>
+                    <span class="timestamp-text">{{ ts.text }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Entities -->
+    {% if entities and (entities.persons or entities.organizations) %}
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon">🏷️</span>
+            <h2 class="section-title">Entités mentionnées</h2>
+        </div>
+        <div class="section-content">
+            {% if entities.persons %}
+            <div class="entities-group">
+                <div class="entities-label">👤 Personnes</div>
+                <div class="tags-container">
+                    {% for person in entities.persons[:10] %}
+                    <span class="tag person">{{ person }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            {% if entities.organizations %}
+            <div class="entities-group">
+                <div class="entities-label">🏢 Organisations</div>
+                <div class="tags-container">
+                    {% for org in entities.organizations[:10] %}
+                    <span class="tag org">{{ org }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Flashcards -->
+    {% if show_flashcards and flashcards %}
+    <div class="section page-break">
+        <div class="section-header">
+            <span class="section-icon">📚</span>
+            <h2 class="section-title">Flashcards de révision</h2>
+        </div>
+        <div class="section-content">
+            <div class="flashcards-grid">
+                {% for card in flashcards[:12] %}
+                <div class="flashcard no-break">
+                    <div class="flashcard-front">{{ card.front }}</div>
+                    <div class="flashcard-back">{{ card.back }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Reliability Score -->
+    {% if reliability_score %}
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon">📊</span>
+            <h2 class="section-title">Score de fiabilité</h2>
+        </div>
+        <div class="section-content">
+            <div class="reliability-box no-break">
+                <div class="reliability-score {{ reliability_class }}">{{ reliability_score }}/100</div>
+                <div>
+                    <div class="reliability-label">{{ reliability_label }}</div>
+                    <div class="reliability-bar">
+                        <div class="reliability-fill {{ reliability_class }}" style="width: {{ reliability_score }}%;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Sources -->
+    {% if sources %}
+    <div class="section">
+        <div class="section-header">
+            <span class="section-icon">🔗</span>
+            <h2 class="section-title">Sources</h2>
+        </div>
+        <div class="section-content">
+            <ul class="sources-list">
+                {% for source in sources %}
+                <li class="source-item no-break">
+                    <span class="source-number">[{{ loop.index }}]</span>
+                    <div class="source-content">
+                        <div class="source-title">{{ source.title }}</div>
+                        {% if source.url %}
+                        <div class="source-url">{{ source.url }}</div>
+                        {% endif %}
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Document Footer -->
+    <div class="document-footer">
+        <div class="footer-text">Document généré automatiquement par</div>
+        <div class="footer-url">Deep Sight — deepsightsynthesis.com</div>
+    </div>
+</body>
+</html>
