@@ -11,7 +11,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { useTheme } from '../contexts/ThemeContext';
 import DoodleBackground from '../components/DoodleBackground';
 import { Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
-import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
+import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from '../components/ui';
 
 // === Logo ===
 const Logo: React.FC = () => (

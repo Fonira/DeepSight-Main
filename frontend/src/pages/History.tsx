@@ -24,7 +24,7 @@ import {
   Copy, Check, GraduationCap, Brain, Tags,
   Download, FileText, FileDown, ChevronDown
 } from "lucide-react";
-import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from "./ui";
+import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from "../components/ui";
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
 import { Sidebar } from "../components/layout/Sidebar";

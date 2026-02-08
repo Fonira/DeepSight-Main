@@ -15,7 +15,7 @@ import {
   ChevronRight, Edit2, Trash2, Plus, X, RefreshCw,
   FileText, Crown, CreditCard, Mail, Check
 } from 'lucide-react';
-import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
+import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from '../components/ui';
 import { API_URL } from '../services/api';
 import { useToast } from '../components/Toast';
 
