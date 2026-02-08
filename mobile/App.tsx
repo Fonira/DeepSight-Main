@@ -12,10 +12,16 @@ import { AuthProvider } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { LanguageProvider } from './src/contexts/LanguageContext';
 import { BackgroundAnalysisProvider } from './src/contexts/BackgroundAnalysisContext';
+import { ErrorProvider } from './src/contexts/ErrorContext';
+import { OfflineProvider } from './src/contexts/OfflineContext';
+import { PlanProvider } from './src/contexts/PlanContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { ErrorBoundary, OfflineBanner } from './src/components/common';
 import { ToastProvider } from './src/components/ui/Toast';
 import { QUERY_CONFIG } from './src/constants/config';
+import { Colors } from './src/constants/theme';
+import { initCrashReporting, setUser, captureException } from './src/services/CrashReporting';
+import { tokenManager } from './src/services/TokenManager';
 
 // Check if running in Expo Go (has version mismatch issues with Reanimated/Worklets)
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -29,7 +35,12 @@ const DoodleBackground = !isExpoGo
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
 
-// Create query client
+// Initialize crash reporting early
+initCrashReporting().catch(err => {
+  console.warn('Failed to initialize crash reporting:', err);
+});
+
+// Create query client with error handling
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -37,6 +48,12 @@ const queryClient = new QueryClient({
       gcTime: QUERY_CONFIG.CACHE_TIME,
       retry: QUERY_CONFIG.RETRY_COUNT,
       refetchOnWindowFocus: false,
+    },
+    mutations: {
+      onError: (error) => {
+        // Report mutation errors to crash reporting
+        captureException(error, { tags: { type: 'mutation' } });
+      },
     },
   },
 });
@@ -73,6 +90,9 @@ export default function App() {
 
     async function prepare() {
       try {
+        // Initialize token manager for proactive refresh
+        await tokenManager.initialize();
+
         // Pre-load custom fonts with timeout
         const fontLoadPromise = Font.loadAsync({
           'DMSans-Regular': require('./src/assets/fonts/DMSans-Regular.ttf'),
@@ -93,6 +113,7 @@ export default function App() {
         await new Promise(resolve => setTimeout(resolve, 300));
       } catch (e) {
         console.warn('Error loading fonts:', e);
+        captureException(e, { tags: { phase: 'init' } });
       } finally {
         if (!isComplete) {
           isComplete = true;
@@ -137,20 +158,30 @@ export default function App() {
             onError={(error, errorInfo) => {
               // Log error to console in development
               console.error('App Error:', error, errorInfo);
-              // In production, you would send this to an error tracking service
+              // Report to crash tracking service
+              captureException(error, {
+                extra: { componentStack: errorInfo?.componentStack },
+                tags: { boundary: 'root' },
+              });
             }}
           >
-            <ThemeProvider>
-              <LanguageProvider>
-                <AuthProvider>
-                  <BackgroundAnalysisProvider>
-                    <ToastProvider>
-                      <AppContent />
-                    </ToastProvider>
-                  </BackgroundAnalysisProvider>
-                </AuthProvider>
-              </LanguageProvider>
-            </ThemeProvider>
+            <ErrorProvider>
+              <OfflineProvider>
+                <ThemeProvider>
+                  <LanguageProvider>
+                    <AuthProvider>
+                      <PlanProvider>
+                        <BackgroundAnalysisProvider>
+                          <ToastProvider>
+                            <AppContent />
+                          </ToastProvider>
+                        </BackgroundAnalysisProvider>
+                      </PlanProvider>
+                    </AuthProvider>
+                  </LanguageProvider>
+                </ThemeProvider>
+              </OfflineProvider>
+            </ErrorProvider>
           </ErrorBoundary>
         </QueryClientProvider>
       </SafeAreaProvider>

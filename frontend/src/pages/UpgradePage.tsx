@@ -18,13 +18,14 @@ import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
 import {
-  Check, X, Sparkles, Zap, Crown, Loader2,
+  Check, X, Sparkles, Zap, Crown,
   ArrowUp, ArrowDown, AlertCircle, RefreshCw,
   BookOpen, ChevronDown, ChevronUp, Key,
   Infinity, ListVideo, Headphones, GraduationCap,
   Gift, Clock, Shield, Users, Brain, FileText,
   Star, Lightbulb, TrendingUp
 } from 'lucide-react';
+import { DeepSightSpinnerMicro } from '../components/ui';
 import { billingApi } from '../services/api';
 import {
   PLANS_INFO,
@@ -416,16 +417,16 @@ export const UpgradePage: React.FC = () => {
       <DoodleBackground variant="default" density={50} />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
-      <main className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
-        <div className="min-h-screen p-6 lg:p-8">
+      <main className={`transition-all duration-300 relative z-10 lg:${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
+        <div className="min-h-screen p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
           <div className="max-w-7xl mx-auto">
 
             {/* Header */}
-            <header className="text-center mb-10">
-              <h1 className="font-display text-3xl md:text-4xl font-bold text-text-primary mb-3">
+            <header className="text-center mb-8 sm:mb-10">
+              <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-text-primary mb-2 sm:mb-3 px-2">
                 {language === 'fr' ? 'Choisissez votre plan' : 'Choose your plan'}
               </h1>
-              <p className="text-text-secondary max-w-2xl mx-auto">
+              <p className="text-text-secondary text-sm sm:text-base max-w-2xl mx-auto px-4">
                 {language === 'fr'
                   ? 'Débloquez des fonctionnalités puissantes pour analyser le contenu vidéo.'
                   : 'Unlock powerful features to analyze video content.'}
@@ -434,10 +435,10 @@ export const UpgradePage: React.FC = () => {
 
             {/* Alerts */}
             {subscriptionStatus?.cancel_at_period_end && (
-              <div className="card p-4 mb-6 border-amber-500/30 bg-amber-500/10 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-400" />
-                  <span className="text-amber-300 text-sm">
+              <div className="card p-3 sm:p-4 mb-4 sm:mb-6 border-amber-500/30 bg-amber-500/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 flex-shrink-0" />
+                  <span className="text-amber-300 text-xs sm:text-sm">
                     {language === 'fr'
                       ? `Abonnement annulé. Accès jusqu'au ${new Date(subscriptionStatus.current_period_end!).toLocaleDateString()}`
                       : `Subscription cancelled. Access until ${new Date(subscriptionStatus.current_period_end!).toLocaleDateString()}`}
@@ -449,7 +450,7 @@ export const UpgradePage: React.FC = () => {
                     const status = await billingApi.getSubscriptionStatus();
                     setSubscriptionStatus(status);
                   }}
-                  className="text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                  className="text-xs sm:text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1 min-h-[44px] px-3 py-2 rounded-lg bg-amber-500/10 active:scale-95 transition-all"
                 >
                   <RefreshCw className="w-4 h-4" />
                   {language === 'fr' ? 'Réactiver' : 'Reactivate'}
@@ -458,27 +459,27 @@ export const UpgradePage: React.FC = () => {
             )}
 
             {error && (
-              <div className="card p-4 mb-6 border-red-500/30 bg-red-500/10 text-red-300 text-sm flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" /> {error}
+              <div className="card p-3 sm:p-4 mb-4 sm:mb-6 border-red-500/30 bg-red-500/10 text-red-300 text-xs sm:text-sm flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
               </div>
             )}
 
             {success && (
-              <div className="card p-4 mb-6 border-green-500/30 bg-green-500/10 text-green-300 text-sm flex items-center gap-2">
-                <Check className="w-4 h-4" /> {success}
+              <div className="card p-3 sm:p-4 mb-4 sm:mb-6 border-green-500/30 bg-green-500/10 text-green-300 text-xs sm:text-sm flex items-center gap-2">
+                <Check className="w-4 h-4 flex-shrink-0" /> {success}
               </div>
             )}
 
             {/* 🆓 Pro Trial Banner */}
             {trialEligible && currentPlan === 'free' && (
-              <div className="card p-6 mb-8 bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-fuchsia-500/10 border-violet-500/30 overflow-hidden relative">
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-violet-500/20 rounded-full blur-3xl" />
-                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-fuchsia-500/20 rounded-full blur-3xl" />
+              <div className="card p-4 sm:p-6 mb-6 sm:mb-8 bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-fuchsia-500/10 border-violet-500/30 overflow-hidden relative">
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-violet-500/20 rounded-full blur-3xl hidden sm:block" />
+                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-fuchsia-500/20 rounded-full blur-3xl hidden sm:block" />
 
-                <div className="relative flex flex-col md:flex-row items-center gap-6">
+                <div className="relative flex flex-col items-center gap-4 sm:gap-6 md:flex-row">
                   <div className="flex-shrink-0">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-xl shadow-violet-500/30">
-                      <Gift className="w-10 h-10 text-white" />
+                    <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-xl shadow-violet-500/30">
+                      <Gift className="w-7 h-7 sm:w-10 sm:h-10 text-white" />
                     </div>
                   </div>
 
@@ -487,23 +488,23 @@ export const UpgradePage: React.FC = () => {
                       <Sparkles className="w-3 h-3" />
                       {language === 'fr' ? 'Offre limitée' : 'Limited offer'}
                     </div>
-                    <h2 className="text-2xl font-bold text-text-primary mb-2">
+                    <h2 className="text-lg sm:text-2xl font-bold text-text-primary mb-2">
                       {language === 'fr' ? 'Essayez Pro gratuitement pendant 7 jours' : 'Try Pro free for 7 days'}
                     </h2>
-                    <p className="text-text-secondary mb-4 max-w-xl">
+                    <p className="text-text-secondary text-xs sm:text-base mb-4 max-w-xl">
                       {language === 'fr'
                         ? 'Accédez à toutes les fonctionnalités Pro : 300 analyses/mois, chat illimité, playlists, et bien plus. Sans engagement.'
                         : 'Access all Pro features: 300 analyses/month, unlimited chat, playlists, and more. No commitment.'}
                     </p>
 
-                    <div className="flex flex-wrap gap-2 mb-4 justify-center md:justify-start">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 justify-center md:justify-start">
                       {[
                         { icon: Crown, text: language === 'fr' ? '300 analyses' : '300 analyses' },
                         { icon: Infinity, text: language === 'fr' ? 'Chat illimité' : 'Unlimited chat' },
                         { icon: ListVideo, text: language === 'fr' ? 'Playlists' : 'Playlists' },
                         { icon: Clock, text: language === 'fr' ? '7 jours gratuits' : '7 days free' },
                       ].map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-bg-tertiary/50 text-text-secondary text-xs">
+                        <div key={idx} className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-bg-tertiary/50 text-text-secondary text-[10px] sm:text-xs">
                           <item.icon className="w-3 h-3 text-violet-400" />
                           {item.text}
                         </div>
@@ -511,17 +512,17 @@ export const UpgradePage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex-shrink-0">
+                  <div className="flex-shrink-0 w-full md:w-auto">
                     <button
                       onClick={handleStartTrial}
                       disabled={trialLoading}
-                      className="px-8 py-4 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold text-lg shadow-xl shadow-violet-500/30 hover:opacity-90 transition-all flex items-center gap-2"
+                      className="w-full md:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold text-sm sm:text-lg shadow-xl shadow-violet-500/30 hover:opacity-90 transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-95"
                     >
                       {trialLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
+                        <DeepSightSpinnerMicro />
                       ) : (
                         <>
-                          <Gift className="w-5 h-5" />
+                          <Gift className="w-4 h-4 sm:w-5 sm:h-5" />
                           {language === 'fr' ? 'Commencer l\'essai' : 'Start free trial'}
                         </>
                       )}
@@ -535,11 +536,11 @@ export const UpgradePage: React.FC = () => {
             )}
 
             {/* View Toggle */}
-            <div className="flex justify-center mb-8">
+            <div className="flex justify-center mb-6 sm:mb-8">
               <div className="inline-flex bg-bg-tertiary rounded-xl p-1">
                 <button
                   onClick={() => setViewMode('cards')}
-                  className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'cards'
+                  className={`px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[44px] active:scale-95 ${viewMode === 'cards'
                     ? 'bg-accent-primary text-white shadow-lg'
                     : 'text-text-secondary hover:text-text-primary'
                     }`}
@@ -548,7 +549,7 @@ export const UpgradePage: React.FC = () => {
                 </button>
                 <button
                   onClick={() => setViewMode('table')}
-                  className={`px-5 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'table'
+                  className={`px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[44px] active:scale-95 hidden sm:block ${viewMode === 'table'
                     ? 'bg-accent-primary text-white shadow-lg'
                     : 'text-text-secondary hover:text-text-primary'
                     }`}
@@ -561,8 +562,8 @@ export const UpgradePage: React.FC = () => {
             {/* Cards View */}
             {viewMode === 'cards' && (
               <>
-                {/* Plan Cards - 5 colonnes */}
-                <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4 mb-12">
+                {/* Plan Cards - 5 colonnes on desktop, 1 on mobile, 2 on tablet */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8 sm:mb-12">
                   {PLANS_INFO.map((plan) => {
                     const Icon = getPlanIcon(plan.id);
                     const isCurrent = plan.id === currentPlan;
@@ -573,7 +574,7 @@ export const UpgradePage: React.FC = () => {
                     return (
                       <div
                         key={plan.id}
-                        className={`card relative overflow-hidden transition-all duration-300 hover:scale-[1.02] ${isCurrent ? 'ring-2 ring-green-500/50' : ''
+                        className={`card relative overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isCurrent ? 'ring-2 ring-green-500/50' : ''
                           } ${plan.popular ? 'ring-2 ring-violet-500/50 shadow-xl shadow-violet-500/10' : ''
                           } ${plan.recommended ? 'ring-2 ring-amber-500/50 shadow-xl shadow-amber-500/10' : ''}`}
                       >
@@ -595,27 +596,27 @@ export const UpgradePage: React.FC = () => {
                           </div>
                         )}
 
-                        <div className="p-4 pt-8">
+                        <div className="p-3 sm:p-4 pt-7 sm:pt-8">
                           {/* Icon & Name */}
-                          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-4 shadow-lg`}>
-                            <Icon className="w-6 h-6 text-white" />
+                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-3 sm:mb-4 shadow-lg`}>
+                            <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                           </div>
 
-                          <h3 className="text-xl font-bold text-text-primary mb-0.5">{plan.name[lang]}</h3>
-                          <p className="text-xs text-text-tertiary mb-3">{plan.description[lang]}</p>
+                          <h3 className="text-lg sm:text-xl font-bold text-text-primary mb-0.5">{plan.name[lang]}</h3>
+                          <p className="text-xs text-text-tertiary mb-2 sm:mb-3">{plan.description[lang]}</p>
 
                           {/* Price */}
-                          <div className="mb-4">
-                            <span className="text-3xl font-display font-bold text-text-primary">
+                          <div className="mb-3 sm:mb-4">
+                            <span className="text-2xl sm:text-3xl font-display font-bold text-text-primary">
                               {plan.price === 0 ? '0' : (plan.price / 100).toFixed(2).replace('.', ',')}
                             </span>
-                            <span className="text-text-tertiary text-sm ml-1">€/{language === 'fr' ? 'mois' : 'mo'}</span>
+                            <span className="text-text-tertiary text-xs sm:text-sm ml-1">€/{language === 'fr' ? 'mois' : 'mo'}</span>
                           </div>
 
                           {/* Key Features */}
-                          <div className="space-y-2 mb-4 min-h-[140px]">
+                          <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4 min-h-[120px] sm:min-h-[140px]">
                             {features.slice(0, 6).map((feature, idx) => (
-                              <div key={idx} className="flex items-center gap-2 text-xs">
+                              <div key={idx} className="flex items-center gap-2 text-[11px] sm:text-xs">
                                 <div className={`w-4 h-4 rounded-full ${feature.included
                                   ? feature.highlight
                                     ? 'bg-amber-500/20'
@@ -638,10 +639,10 @@ export const UpgradePage: React.FC = () => {
                             <button
                               onClick={handleStartTrial}
                               disabled={trialLoading}
-                              className="w-full py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:opacity-90 shadow-lg"
+                              className="w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:opacity-90 shadow-lg min-h-[44px] active:scale-95"
                             >
                               {trialLoading ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <DeepSightSpinnerMicro />
                               ) : (
                                 <>
                                   <Gift className="w-4 h-4" />
@@ -653,7 +654,7 @@ export const UpgradePage: React.FC = () => {
                             <button
                               onClick={() => handleChangePlan(plan.id)}
                               disabled={isCurrent || loading === plan.id || plan.id === 'free'}
-                              className={`w-full py-2.5 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 ${isCurrent
+                              className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-95 ${isCurrent
                                 ? 'bg-green-500/20 text-green-400 cursor-default'
                                 : isHigher
                                   ? `bg-gradient-to-r ${plan.gradient} text-white hover:opacity-90 shadow-lg`
@@ -663,7 +664,7 @@ export const UpgradePage: React.FC = () => {
                                 }`}
                             >
                               {loading === plan.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <DeepSightSpinnerMicro />
                               ) : isCurrent ? (
                                 <><Check className="w-4 h-4" /> {language === 'fr' ? 'Actuel' : 'Current'}</>
                               ) : isHigher ? (
@@ -683,23 +684,23 @@ export const UpgradePage: React.FC = () => {
 
                 {/* Section Étudiant */}
                 {currentPlan === 'free' && (
-                  <div className="card p-8 mb-8 bg-gradient-to-br from-emerald-500/10 to-green-500/10 border-emerald-500/30">
-                    <div className="flex flex-col md:flex-row items-center gap-8">
+                  <div className="card p-4 sm:p-8 mb-6 sm:mb-8 bg-gradient-to-br from-emerald-500/10 to-green-500/10 border-emerald-500/30">
+                    <div className="flex flex-col md:flex-row items-center gap-4 sm:gap-8">
                       <div className="flex-1">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-sm font-medium mb-4">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs sm:text-sm font-medium mb-3 sm:mb-4">
                           <GraduationCap className="w-4 h-4" />
                           {language === 'fr' ? 'Spécial Étudiants' : 'Student Special'}
                         </div>
-                        <h2 className="text-2xl font-bold text-text-primary mb-3">
+                        <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2 sm:mb-3">
                           {language === 'fr' ? 'Révisez 10x plus vite' : 'Study 10x faster'}
                         </h2>
-                        <p className="text-text-secondary mb-4">
+                        <p className="text-text-secondary text-sm sm:text-base mb-4">
                           {language === 'fr'
                             ? 'Transformez n\'importe quelle vidéo éducative en fiches de révision, cartes mentales et flashcards.'
                             : 'Transform any educational video into study notes, mind maps and flashcards.'}
                         </p>
 
-                        <div className="grid grid-cols-2 gap-3 mb-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 sm:mb-6">
                           {STUDENT_EXCLUSIVES.map((feature, idx) => {
                             const Icon = feature.icon;
                             return (
@@ -707,9 +708,9 @@ export const UpgradePage: React.FC = () => {
                                 <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
                                   <Icon className="w-4 h-4 text-emerald-400" />
                                 </div>
-                                <div>
-                                  <p className="text-sm font-medium text-text-primary">{feature.title[lang]}</p>
-                                  <p className="text-xs text-text-tertiary">{feature.description[lang]}</p>
+                                <div className="min-w-0">
+                                  <p className="text-xs sm:text-sm font-medium text-text-primary">{feature.title[lang]}</p>
+                                  <p className="text-[10px] sm:text-xs text-text-tertiary">{feature.description[lang]}</p>
                                 </div>
                               </div>
                             );
@@ -719,10 +720,10 @@ export const UpgradePage: React.FC = () => {
                         <button
                           onClick={() => handleChangePlan('student')}
                           disabled={loading === 'student'}
-                          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-semibold shadow-lg shadow-emerald-500/25 hover:opacity-90 transition-opacity"
+                          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-semibold text-sm shadow-lg shadow-emerald-500/25 hover:opacity-90 transition-opacity min-h-[44px] active:scale-95"
                         >
                           {loading === 'student' ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <DeepSightSpinnerMicro />
                           ) : (
                             <>
                               <GraduationCap className="w-5 h-5" />
@@ -742,25 +743,25 @@ export const UpgradePage: React.FC = () => {
 
                 {/* Section Pro */}
                 {(currentPlan === 'free' || currentPlan === 'student' || currentPlan === 'starter') && (
-                  <div className="card p-8 mb-8 bg-gradient-to-br from-violet-500/10 to-purple-500/10 border-violet-500/30">
-                    <div className="text-center mb-8">
-                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-500/20 text-violet-400 text-sm font-semibold mb-4">
+                  <div className="card p-4 sm:p-8 mb-6 sm:mb-8 bg-gradient-to-br from-violet-500/10 to-purple-500/10 border-violet-500/30">
+                    <div className="text-center mb-6 sm:mb-8">
+                      <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-violet-500/20 text-violet-400 text-xs sm:text-sm font-semibold mb-3 sm:mb-4">
                         <Crown className="w-4 h-4" />
                         {language === 'fr' ? 'Le plus populaire' : 'Most Popular'}
                       </div>
-                      <h2 className="text-2xl font-bold text-text-primary mb-2">
+                      <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">
                         {language === 'fr' ? 'Pourquoi choisir Pro ?' : 'Why choose Pro?'}
                       </h2>
                     </div>
 
-                    <div className="grid md:grid-cols-4 gap-4 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
                       {PRO_EXCLUSIVES.map((feature, idx) => {
                         const Icon = feature.icon;
                         return (
-                          <div key={idx} className="p-4 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-violet-500/30 transition-colors">
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="w-10 h-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
-                                <Icon className="w-5 h-5 text-violet-400" />
+                          <div key={idx} className="p-3 sm:p-4 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-violet-500/30 transition-colors active:scale-[0.98]">
+                            <div className="flex items-start justify-between mb-2 sm:mb-3">
+                              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
+                                <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-violet-400" />
                               </div>
                               {feature.badge && (
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400">
@@ -768,8 +769,8 @@ export const UpgradePage: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                            <h3 className="font-semibold text-text-primary mb-1 text-sm">{feature.title[lang]}</h3>
-                            <p className="text-xs text-text-tertiary">{feature.description[lang]}</p>
+                            <h3 className="font-semibold text-text-primary mb-1 text-xs sm:text-sm">{feature.title[lang]}</h3>
+                            <p className="text-[10px] sm:text-xs text-text-tertiary">{feature.description[lang]}</p>
                           </div>
                         );
                       })}
@@ -779,10 +780,10 @@ export const UpgradePage: React.FC = () => {
                       <button
                         onClick={() => handleChangePlan('pro')}
                         disabled={loading === 'pro'}
-                        className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold shadow-lg shadow-violet-500/25 hover:opacity-90 transition-opacity"
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-violet-500/25 hover:opacity-90 transition-opacity min-h-[44px] active:scale-95"
                       >
                         {loading === 'pro' ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <DeepSightSpinnerMicro />
                         ) : (
                           <>
                             <Crown className="w-5 h-5" />
@@ -796,30 +797,30 @@ export const UpgradePage: React.FC = () => {
 
                 {/* Section Équipe */}
                 {currentPlan !== 'team' && (
-                  <div className="card p-8 mb-8 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/30">
-                    <div className="text-center mb-8">
-                      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/20 text-amber-400 text-sm font-semibold mb-4">
+                  <div className="card p-4 sm:p-8 mb-6 sm:mb-8 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/30">
+                    <div className="text-center mb-6 sm:mb-8">
+                      <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-amber-500/20 text-amber-400 text-xs sm:text-sm font-semibold mb-3 sm:mb-4">
                         <Users className="w-4 h-4" />
                         {language === 'fr' ? 'Pour les équipes' : 'For Teams'}
                       </div>
-                      <h2 className="text-2xl font-bold text-text-primary mb-2">
+                      <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">
                         {language === 'fr' ? 'Besoin de plus ?' : 'Need more?'}
                       </h2>
-                      <p className="text-text-secondary max-w-2xl mx-auto">
+                      <p className="text-text-secondary text-sm sm:text-base max-w-2xl mx-auto px-2">
                         {language === 'fr'
                           ? 'Le plan Équipe offre l\'API, le multi-utilisateurs et des limites étendues.'
                           : 'The Team plan offers API access, multi-users and extended limits.'}
                       </p>
                     </div>
 
-                    <div className="grid md:grid-cols-4 gap-4 mb-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
                       {TEAM_EXCLUSIVES.map((feature, idx) => {
                         const Icon = feature.icon;
                         return (
-                          <div key={idx} className="p-4 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-amber-500/30 transition-colors">
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                                <Icon className="w-5 h-5 text-amber-400" />
+                          <div key={idx} className="p-3 sm:p-4 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-amber-500/30 transition-colors active:scale-[0.98]">
+                            <div className="flex items-start justify-between mb-2 sm:mb-3">
+                              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                                <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
                               </div>
                               {feature.badge && (
                                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
@@ -827,8 +828,8 @@ export const UpgradePage: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                            <h3 className="font-semibold text-text-primary mb-1 text-sm">{feature.title[lang]}</h3>
-                            <p className="text-xs text-text-tertiary">{feature.description[lang]}</p>
+                            <h3 className="font-semibold text-text-primary mb-1 text-xs sm:text-sm">{feature.title[lang]}</h3>
+                            <p className="text-[10px] sm:text-xs text-text-tertiary">{feature.description[lang]}</p>
                           </div>
                         );
                       })}
@@ -838,10 +839,10 @@ export const UpgradePage: React.FC = () => {
                       <button
                         onClick={() => handleChangePlan('team')}
                         disabled={loading === 'team'}
-                        className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold shadow-lg shadow-amber-500/25 hover:opacity-90 transition-opacity"
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-sm shadow-lg shadow-amber-500/25 hover:opacity-90 transition-opacity min-h-[44px] active:scale-95"
                       >
                         {loading === 'team' ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
+                          <DeepSightSpinnerMicro />
                         ) : (
                           <>
                             <Users className="w-5 h-5" />
@@ -854,35 +855,35 @@ export const UpgradePage: React.FC = () => {
                 )}
 
                 {/* Témoignages */}
-                <div className="mb-12">
-                  <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-text-primary mb-2">
+                <div className="mb-8 sm:mb-12">
+                  <div className="text-center mb-6 sm:mb-8">
+                    <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">
                       {language === 'fr' ? 'Ils nous font confiance' : 'They trust us'}
                     </h2>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     {TESTIMONIALS.map((testimonial, idx) => {
                       const planConfig = PLANS_INFO.find(p => p.id === testimonial.plan);
                       return (
                         <div
                           key={idx}
-                          className="card p-6 hover:scale-[1.02] transition-transform cursor-pointer"
+                          className="card p-4 sm:p-6 hover:scale-[1.02] active:scale-[0.98] transition-transform cursor-pointer"
                           onClick={() => handleChangePlan(testimonial.plan)}
                         >
-                          <div className="flex items-start gap-4">
-                            <div className="text-4xl">{testimonial.avatar}</div>
-                            <div className="flex-1">
-                              <p className="text-text-secondary italic mb-3 text-sm">
+                          <div className="flex items-start gap-3 sm:gap-4">
+                            <div className="text-3xl sm:text-4xl flex-shrink-0">{testimonial.avatar}</div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-text-secondary italic mb-2 sm:mb-3 text-xs sm:text-sm">
                                 "{testimonial.text[lang]}"
                               </p>
-                              <div className="flex items-center justify-between">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                 <div>
-                                  <p className="font-semibold text-text-primary text-sm">{testimonial.author}</p>
-                                  <p className="text-xs text-text-tertiary">{testimonial.role[lang]}</p>
+                                  <p className="font-semibold text-text-primary text-xs sm:text-sm">{testimonial.author}</p>
+                                  <p className="text-[10px] sm:text-xs text-text-tertiary">{testimonial.role[lang]}</p>
                                 </div>
                                 {planConfig && (
-                                  <div className={`px-3 py-1 rounded-full bg-gradient-to-r ${planConfig.gradient} text-white text-xs font-medium`}>
+                                  <div className={`px-2 sm:px-3 py-1 rounded-full bg-gradient-to-r ${planConfig.gradient} text-white text-[10px] sm:text-xs font-medium self-start sm:self-auto`}>
                                     {planConfig.name[lang]}
                                   </div>
                                 )}
@@ -976,7 +977,7 @@ export const UpgradePage: React.FC = () => {
                               : 'bg-bg-tertiary text-text-muted'
                             }`}
                         >
-                          {loading === plan.id ? <Loader2 className="w-3 h-3 animate-spin" />
+                          {loading === plan.id ? <DeepSightSpinnerMicro />
                             : isCurrent ? (language === 'fr' ? 'Actuel' : 'Current')
                               : isHigher ? (language === 'fr' ? 'Choisir' : 'Select')
                                 : '-'}
@@ -990,25 +991,25 @@ export const UpgradePage: React.FC = () => {
 
             {/* Cancel */}
             {currentPlan !== 'free' && !subscriptionStatus?.cancel_at_period_end && (
-              <div className="text-center mb-8">
+              <div className="text-center mb-6 sm:mb-8">
                 <button
                   onClick={handleCancelSubscription}
                   disabled={loading === 'cancel'}
-                  className="text-sm text-text-tertiary hover:text-red-400 transition-colors flex items-center gap-2 mx-auto"
+                  className="text-xs sm:text-sm text-text-tertiary hover:text-red-400 transition-colors flex items-center gap-2 mx-auto min-h-[44px] px-4 py-2 active:scale-95"
                 >
-                  {loading === 'cancel' && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {loading === 'cancel' && <DeepSightSpinnerMicro />}
                   {language === 'fr' ? 'Annuler mon abonnement' : 'Cancel subscription'}
                 </button>
               </div>
             )}
 
             {/* FAQ */}
-            <div className="card p-6 mb-8">
-              <h3 className="font-bold text-lg text-text-primary mb-5 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-accent-primary" />
+            <div className="card p-4 sm:p-6 mb-6 sm:mb-8">
+              <h3 className="font-bold text-base sm:text-lg text-text-primary mb-4 sm:mb-5 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-accent-primary" />
                 {language === 'fr' ? 'Questions fréquentes' : 'FAQ'}
               </h3>
-              <div className="grid md:grid-cols-2 gap-6 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-xs sm:text-sm">
                 <div className="space-y-1">
                   <p className="font-semibold text-text-primary">{language === 'fr' ? "Comment fonctionne l'essai gratuit ?" : 'How does the free trial work?'}</p>
                   <p className="text-text-secondary">{language === 'fr' ? '7 jours Pro gratuits, sans carte bancaire. Annulez à tout moment.' : '7 days Pro free, no credit card. Cancel anytime.'}</p>
@@ -1029,7 +1030,7 @@ export const UpgradePage: React.FC = () => {
             </div>
 
             {/* Contact */}
-            <div className="text-center text-sm text-text-tertiary">
+            <div className="text-center text-xs sm:text-sm text-text-tertiary pb-4">
               {language === 'fr' ? 'Questions ? ' : 'Questions? '}
               <a href="mailto:contact@deepsightsynthesis.com" className="text-accent-primary hover:underline">
                 contact@deepsightsynthesis.com
@@ -1041,24 +1042,24 @@ export const UpgradePage: React.FC = () => {
 
       {/* Confirm Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="card p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-lg font-bold text-text-primary mb-3 flex items-center gap-2">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
+          <div className="card p-4 sm:p-6 w-full sm:max-w-md shadow-2xl rounded-t-2xl sm:rounded-2xl">
+            <h3 className="text-base sm:text-lg font-bold text-text-primary mb-2 sm:mb-3 flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-amber-400" />
               {language === 'fr' ? 'Confirmer le changement' : 'Confirm change'}
             </h3>
-            <p className="text-text-secondary text-sm mb-5">
+            <p className="text-text-secondary text-xs sm:text-sm mb-4 sm:mb-5">
               {language === 'fr'
                 ? `Passer au plan ${PLANS_INFO.find(p => p.id === showConfirmModal.plan)?.name[lang]} ? Vos avantages actuels restent actifs jusqu'à la fin de la période.`
                 : `Switch to ${PLANS_INFO.find(p => p.id === showConfirmModal.plan)?.name[lang]}? Current benefits stay active until period end.`}
             </p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowConfirmModal(null)} className="btn-secondary">
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 sm:justify-end">
+              <button onClick={() => setShowConfirmModal(null)} className="btn-secondary min-h-[44px] active:scale-95">
                 {language === 'fr' ? 'Annuler' : 'Cancel'}
               </button>
               <button
                 onClick={() => executeChangePlan(showConfirmModal.plan, showConfirmModal.action)}
-                className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-medium transition-colors"
+                className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-medium transition-colors min-h-[44px] active:scale-95"
               >
                 {language === 'fr' ? 'Confirmer' : 'Confirm'}
               </button>

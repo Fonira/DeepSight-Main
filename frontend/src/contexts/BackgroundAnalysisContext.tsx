@@ -276,16 +276,19 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
       let response;
       
       if (params.playlistUrl) {
-        response = await playlistApi.analyzePlaylist(
+        response = await playlistApi.analyze(
           params.playlistUrl,
-          params.mode,
-          params.category === 'auto' ? undefined : params.category
+          {
+            mode: params.mode,
+            category: params.category === 'auto' ? undefined : params.category,
+          }
         );
       } else if (params.urls) {
         response = await playlistApi.analyzeCorpus(
           params.urls,
-          params.mode,
-          params.category === 'auto' ? undefined : params.category
+          {
+            mode: params.mode,
+          }
         );
       } else {
         throw new Error('URL de playlist ou corpus requis');
@@ -359,7 +362,7 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
             }
           }));
         } else {
-          const status = await playlistApi.getTaskStatus(apiTaskId);
+          const status = await playlistApi.getStatus(apiTaskId);
           
           setTasks(prev => prev.map(t => {
             if (t.id !== localId) return t;

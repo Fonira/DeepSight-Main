@@ -24,6 +24,83 @@ class AnalyzeVideoRequest(BaseModel):
     force_refresh: bool = Field(default=False, description="🆕 Ignorer le cache et forcer une nouvelle analyse")
 
 
+class AnalyzeVideoV2Request(BaseModel):
+    """
+    🆕 v2.0: Requête d'analyse avec customization complète.
+
+    Permet un contrôle fin de tous les paramètres d'analyse.
+    """
+    url: str = Field(..., description="URL de la vidéo YouTube")
+
+    # Mode et langue
+    mode: str = Field(default="standard", description="Mode: accessible, standard, expert")
+    lang: str = Field(default="fr", description="Langue: fr, en, es, de, it, pt")
+
+    # Modèle IA
+    model: Optional[str] = Field(default=None, description="Modèle: mistral-small-latest, mistral-medium-latest, mistral-large-latest")
+
+    # Catégorie
+    category: Optional[str] = Field(default=None, description="Catégorie forcée (None = auto-détection)")
+
+    # 🆕 Options de customization
+    customization: Optional[Dict[str, Any]] = Field(default=None, description="Options de customization avancées")
+
+    # Options d'analyse
+    deep_research: bool = Field(default=False, description="Recherche web approfondie (Pro/Expert)")
+    include_entities: bool = Field(default=True, description="Extraire les entités (personnes, concepts)")
+    include_timestamps: bool = Field(default=True, description="Inclure les timestamps dans l'analyse")
+    include_reliability: bool = Field(default=True, description="Calculer le score de fiabilité")
+
+    # Options de sortie
+    summary_length: str = Field(default="standard", description="Longueur: short, standard, detailed")
+    highlight_key_points: bool = Field(default=True, description="Mettre en évidence les points clés")
+    generate_toc: bool = Field(default=False, description="Générer une table des matières")
+
+    # Cache et performance
+    force_refresh: bool = Field(default=False, description="Ignorer le cache")
+    priority: str = Field(default="normal", description="Priorité: low, normal, high (Pro/Expert)")
+
+    # Webhook (pour notifications externes)
+    webhook_url: Optional[str] = Field(default=None, description="URL de callback quand l'analyse est terminée")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "mode": "standard",
+                "lang": "fr",
+                "deep_research": False,
+                "customization": {
+                    "focus_topics": ["technologie", "innovation"],
+                    "exclude_topics": [],
+                    "tone": "neutral",
+                    "audience": "general"
+                },
+                "summary_length": "standard",
+                "highlight_key_points": True
+            }
+        }
+
+
+class AnalyzeV2Response(BaseModel):
+    """Réponse de l'endpoint /analyze/v2"""
+    task_id: str
+    status: str
+    progress: int = 0
+    message: Optional[str] = None
+    estimated_duration_seconds: Optional[int] = None
+    cost: int = 1
+
+    # Infos vidéo (si disponibles immédiatement)
+    video_info: Optional[Dict[str, Any]] = None
+
+    # Options appliquées
+    applied_options: Optional[Dict[str, Any]] = None
+
+    # Erreur si échec immédiat
+    error: Optional[str] = None
+
+
 class AnalyzePlaylistRequest(BaseModel):
     """Requête pour analyser une playlist YouTube"""
     url: str = Field(..., description="URL de la playlist YouTube")
@@ -353,3 +430,434 @@ class CreditEstimation(BaseModel):
     user_credits: int = 0
     sufficient: bool = True
     message: str = ""
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🆕 V2.1 — ANALYSE PERSONNALISÉE AVANCÉE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class WritingStyle(str, Enum):
+    """Style d'écriture pour la synthèse"""
+    NEUTRAL = "neutral"           # Factuel, objectif
+    ACADEMIC = "academic"         # Style universitaire, formel
+    JOURNALISTIC = "journalistic" # Style journalistique, dynamique
+    CONVERSATIONAL = "conversational"  # Accessible, décontracté
+    PROFESSIONAL = "professional"  # Business, corporate
+    CREATIVE = "creative"         # Narratif, storytelling
+    TECHNICAL = "technical"       # Documentation technique
+    PEDAGOGICAL = "pedagogical"   # Éducatif, explicatif
+
+
+class SentimentType(str, Enum):
+    """Type de sentiment d'un commentaire"""
+    POSITIVE = "positive"
+    NEGATIVE = "negative"
+    NEUTRAL = "neutral"
+    MIXED = "mixed"
+
+
+class CommentCategory(str, Enum):
+    """Catégorie d'un commentaire YouTube"""
+    CONSTRUCTIVE = "constructive"     # Feedback utile, questions pertinentes
+    PRAISE = "praise"                 # Compliments, encouragements
+    CRITICISM = "criticism"           # Critique (constructive ou non)
+    QUESTION = "question"             # Question à l'auteur
+    SPAM = "spam"                     # Spam, pub
+    TOXIC = "toxic"                   # Commentaire toxique
+    OFF_TOPIC = "off_topic"           # Hors sujet
+    INFORMATIVE = "informative"       # Ajoute de l'information
+
+
+class PropagandaRisk(str, Enum):
+    """Niveau de risque de propagande"""
+    NONE = "none"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class SponsorshipType(str, Enum):
+    """Type de sponsorship détecté"""
+    NONE = "none"
+    DISCLOSED = "disclosed"           # Sponsorship déclaré
+    SUSPECTED = "suspected"           # Potentiel non déclaré
+    AFFILIATE = "affiliate"           # Liens affiliés
+    PRODUCT_PLACEMENT = "product_placement"
+
+
+class AnalysisCustomization(BaseModel):
+    """
+    🆕 Options de personnalisation avancées pour l'analyse.
+    
+    Permet un contrôle granulaire sur le style, le format et le contenu.
+    """
+    # === Prompt utilisateur ===
+    user_prompt: Optional[str] = Field(
+        default=None,
+        description="Instructions personnalisées de l'utilisateur (ex: 'Focus sur les aspects techniques')",
+        max_length=2000
+    )
+    
+    # === Style d'écriture ===
+    writing_style: WritingStyle = Field(
+        default=WritingStyle.NEUTRAL,
+        description="Style d'écriture de la synthèse"
+    )
+    
+    # === Anti-détection IA ===
+    anti_ai_detection: bool = Field(
+        default=False,
+        description="🔒 Activer les techniques anti-détection IA (Pro/Expert uniquement)"
+    )
+    humanize_level: int = Field(
+        default=0,
+        ge=0,
+        le=3,
+        description="Niveau d'humanisation: 0=off, 1=subtil, 2=modéré, 3=fort"
+    )
+    
+    # === Focus thématique ===
+    focus_topics: List[str] = Field(
+        default=[],
+        description="Sujets sur lesquels se concentrer",
+        max_length=10
+    )
+    exclude_topics: List[str] = Field(
+        default=[],
+        description="Sujets à éviter ou minimiser",
+        max_length=10
+    )
+    
+    # === Public cible ===
+    target_audience: Optional[str] = Field(
+        default=None,
+        description="Public cible (ex: 'étudiants', 'professionnels IT', 'grand public')"
+    )
+    expertise_level: str = Field(
+        default="intermediate",
+        description="Niveau d'expertise attendu: beginner, intermediate, expert"
+    )
+    
+    # === Format de sortie ===
+    include_quotes: bool = Field(
+        default=True,
+        description="Inclure des citations directes de la vidéo"
+    )
+    include_statistics: bool = Field(
+        default=True,
+        description="Inclure les statistiques et chiffres mentionnés"
+    )
+    bullet_points_preferred: bool = Field(
+        default=False,
+        description="Préférer les listes à puces au texte continu"
+    )
+    max_sections: int = Field(
+        default=0,
+        ge=0,
+        le=20,
+        description="Nombre max de sections (0=auto)"
+    )
+    
+    # === Analyse des commentaires ===
+    analyze_comments: bool = Field(
+        default=False,
+        description="🆕 Analyser les commentaires YouTube (Pro/Expert)"
+    )
+    comments_limit: int = Field(
+        default=100,
+        ge=10,
+        le=500,
+        description="Nombre de commentaires à analyser"
+    )
+    
+    # === Métadonnées enrichies ===
+    detect_sponsorship: bool = Field(
+        default=True,
+        description="Détecter les sponsorships et placements de produits"
+    )
+    detect_propaganda: bool = Field(
+        default=False,
+        description="🆕 Analyser les risques de propagande/désinformation"
+    )
+    extract_public_figures: bool = Field(
+        default=True,
+        description="Extraire les personnalités publiques mentionnées"
+    )
+    analyze_publication_intent: bool = Field(
+        default=False,
+        description="🆕 Analyser l'intention de publication (Pro/Expert)"
+    )
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "user_prompt": "Focus sur les implications éthiques et les controverses",
+                "writing_style": "academic",
+                "anti_ai_detection": True,
+                "humanize_level": 2,
+                "focus_topics": ["éthique", "impact social"],
+                "target_audience": "chercheurs",
+                "analyze_comments": True,
+                "detect_propaganda": True
+            }
+        }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 💬 COMMENTAIRES YOUTUBE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class YouTubeComment(BaseModel):
+    """Un commentaire YouTube analysé"""
+    comment_id: str
+    author: str
+    author_channel_id: Optional[str] = None
+    text: str
+    like_count: int = 0
+    reply_count: int = 0
+    published_at: Optional[datetime] = None
+    is_reply: bool = False
+    parent_id: Optional[str] = None
+    
+    # Analyse
+    sentiment: SentimentType = SentimentType.NEUTRAL
+    sentiment_score: float = Field(default=0.0, ge=-1.0, le=1.0)
+    category: CommentCategory = CommentCategory.CONSTRUCTIVE
+    is_constructive: bool = False
+    relevance_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    
+    # Contenu extrait
+    questions_asked: List[str] = []
+    key_points: List[str] = []
+
+
+class CommentsAnalysis(BaseModel):
+    """Analyse complète des commentaires d'une vidéo"""
+    video_id: str
+    total_comments: int
+    analyzed_count: int
+    
+    # Distribution des sentiments
+    sentiment_distribution: Dict[str, int] = {
+        "positive": 0,
+        "negative": 0,
+        "neutral": 0,
+        "mixed": 0
+    }
+    average_sentiment: float = 0.0
+    
+    # Distribution des catégories
+    category_distribution: Dict[str, int] = {}
+    
+    # Métriques
+    constructive_ratio: float = 0.0
+    engagement_score: float = 0.0
+    controversy_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Score de controverse (polarisation)")
+    
+    # Contenu agrégé
+    top_questions: List[str] = []
+    top_criticisms: List[str] = []
+    top_praises: List[str] = []
+    key_insights: List[str] = []
+    
+    # Commentaires représentatifs
+    top_constructive: List[YouTubeComment] = []
+    top_critical: List[YouTubeComment] = []
+    
+    # Résumé généré
+    summary: Optional[str] = None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📊 MÉTADONNÉES ENRICHIES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class PublicFigure(BaseModel):
+    """Une personnalité publique mentionnée"""
+    name: str
+    role: Optional[str] = None  # Ex: "Physicien", "Politicien", "CEO"
+    organization: Optional[str] = None
+    mentions_count: int = 1
+    context: Optional[str] = None  # Contexte de la mention
+    wikipedia_url: Optional[str] = None
+    sentiment_towards: SentimentType = SentimentType.NEUTRAL
+
+
+class SponsorshipInfo(BaseModel):
+    """Information sur un sponsorship détecté"""
+    type: SponsorshipType = SponsorshipType.NONE
+    brands: List[str] = []
+    disclosed: bool = True
+    disclosure_timestamp: Optional[int] = None  # En secondes
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    evidence: List[str] = []  # Citations/segments
+
+
+class PropagandaAnalysis(BaseModel):
+    """Analyse des risques de propagande"""
+    risk_level: PropagandaRisk = PropagandaRisk.NONE
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    
+    # Indicateurs détectés
+    emotional_manipulation: bool = False
+    cherry_picking: bool = False
+    false_dichotomy: bool = False
+    appeal_to_authority: bool = False
+    loaded_language: bool = False
+    ad_hominem: bool = False
+    strawman: bool = False
+    
+    # Détails
+    detected_techniques: List[str] = []
+    problematic_segments: List[Dict[str, Any]] = []
+    
+    # Recommandation
+    recommendation: str = ""
+
+
+class PublicationIntent(BaseModel):
+    """Analyse de l'intention de publication"""
+    primary_intent: str = "informer"  # informer, divertir, vendre, convaincre, éduquer
+    secondary_intents: List[str] = []
+    
+    # Scores
+    educational_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    entertainment_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    commercial_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    persuasion_score: float = Field(default=0.0, ge=0.0, le=1.0)
+    
+    # Audience cible détectée
+    target_audience: Optional[str] = None
+    expertise_level_required: str = "general"
+    
+    # Analyse
+    call_to_actions: List[str] = []
+    monetization_detected: bool = False
+    confidence: float = 0.0
+
+
+class VideoMetadataEnriched(BaseModel):
+    """Métadonnées enrichies d'une vidéo"""
+    video_id: str
+    
+    # Infos de base
+    title: str
+    channel: str
+    channel_id: Optional[str] = None
+    duration: int = 0
+    view_count: int = 0
+    like_count: int = 0
+    comment_count: int = 0
+    published_at: Optional[datetime] = None
+    
+    # Analyse enrichie
+    public_figures: List[PublicFigure] = []
+    sponsorship: SponsorshipInfo = SponsorshipInfo()
+    propaganda_analysis: Optional[PropagandaAnalysis] = None
+    publication_intent: Optional[PublicationIntent] = None
+    
+    # Tags et catégories
+    detected_topics: List[str] = []
+    youtube_category: Optional[str] = None
+    deepsight_category: Optional[str] = None
+    
+    # Qualité et fiabilité
+    channel_credibility_score: Optional[float] = None
+    content_quality_indicators: Dict[str, Any] = {}
+    
+    # Timestamps des sections
+    chapters: List[Dict[str, Any]] = []
+    
+    # Liens externes mentionnés
+    external_links: List[str] = []
+    sources_mentioned: List[str] = []
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🆕 REQUÊTE V2.1 AVEC CUSTOMIZATION COMPLÈTE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class AnalyzeRequestV2(BaseModel):
+    """
+    🆕 v2.1: Requête d'analyse avec TOUTES les options de personnalisation.
+    
+    C'est la version la plus complète de l'API d'analyse.
+    """
+    url: str = Field(..., description="URL de la vidéo YouTube")
+    
+    # Mode et langue
+    mode: str = Field(default="standard", description="Mode: accessible, standard, expert")
+    lang: str = Field(default="fr", description="Langue: fr, en, es, de, it, pt")
+    
+    # Modèle IA
+    model: Optional[str] = Field(default=None, description="Modèle IA à utiliser")
+    
+    # Catégorie
+    category: Optional[str] = Field(default=None, description="Catégorie forcée (None = auto-détection)")
+    
+    # 🆕 Customization avancée
+    customization: Optional[AnalysisCustomization] = Field(
+        default=None,
+        description="Options de personnalisation avancées"
+    )
+    
+    # Options d'analyse
+    deep_research: bool = Field(default=False, description="Recherche web approfondie (Pro/Expert)")
+    include_entities: bool = Field(default=True, description="Extraire les entités")
+    include_timestamps: bool = Field(default=True, description="Inclure les timestamps")
+    include_reliability: bool = Field(default=True, description="Calculer le score de fiabilité")
+    
+    # Options de sortie
+    summary_length: str = Field(default="standard", description="Longueur: short, standard, detailed")
+    highlight_key_points: bool = Field(default=True, description="Mettre en évidence les points clés")
+    generate_toc: bool = Field(default=False, description="Générer une table des matières")
+    
+    # Cache et performance
+    force_refresh: bool = Field(default=False, description="Ignorer le cache")
+    priority: str = Field(default="normal", description="Priorité: low, normal, high")
+    
+    # Webhook
+    webhook_url: Optional[str] = Field(default=None, description="URL de callback")
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                "mode": "expert",
+                "lang": "fr",
+                "customization": {
+                    "user_prompt": "Focus sur les aspects scientifiques et les sources citées",
+                    "writing_style": "academic",
+                    "anti_ai_detection": True,
+                    "humanize_level": 2,
+                    "analyze_comments": True,
+                    "detect_propaganda": True,
+                    "analyze_publication_intent": True
+                },
+                "deep_research": True,
+                "summary_length": "detailed"
+            }
+        }
+
+
+class AnalyzeResponseV2(BaseModel):
+    """Réponse enrichie de l'analyse v2.1"""
+    task_id: str
+    status: str
+    progress: int = 0
+    message: Optional[str] = None
+    estimated_duration_seconds: Optional[int] = None
+    cost: int = 1
+    
+    # Infos vidéo
+    video_info: Optional[VideoMetadataEnriched] = None
+    
+    # Options appliquées
+    applied_customization: Optional[AnalysisCustomization] = None
+    
+    # Résultats partiels (si disponibles)
+    comments_analysis: Optional[CommentsAnalysis] = None
+    
+    # Erreur
+    error: Optional[str] = None

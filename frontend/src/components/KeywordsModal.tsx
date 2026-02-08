@@ -11,9 +11,10 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { 
   X, Copy, Check, Hash, Sparkles, 
-  Filter, Search, Loader2, ExternalLink, 
+  Filter, Search, ExternalLink, 
   BookOpen, Zap, Globe, Star
 } from 'lucide-react';
+import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
 import { EnrichedConcept } from '../services/api';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -319,7 +320,7 @@ export const KeywordsModal: React.FC<KeywordsModalProps> = memo(({
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Loader2 className="w-10 h-10 text-accent-primary animate-spin mb-4" />
+              <DeepSightSpinner size="lg" />
               <p className="text-text-secondary font-medium">
                 {language === 'fr' ? 'Génération des définitions...' : 'Generating definitions...'}
               </p>

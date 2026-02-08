@@ -173,14 +173,14 @@ const INITIAL_STATE: AnalysisState = {
 export const useAnalysisStore = create<AnalysisStore>()(
   devtools(
     persist(
-      immer((set, get) => ({
+      immer((set, _get) => ({
         ...INITIAL_STATE,
 
         // ═══════════════════════════════════════════════════════════════════════
         // 🎬 ANALYSIS ACTIONS
         // ═══════════════════════════════════════════════════════════════════════
         
-        startAnalysis: (videoId: string) => {
+        startAnalysis: (_videoId: string) => {
           set((state) => {
             state.status = 'loading';
             state.progress = 0;
@@ -223,7 +223,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
             state.streamingText = '';
             
             // Add to recent if not already present
-            const exists = state.recentSummaries.some(s => s.id === summary.id);
+            const exists = state.recentSummaries.some((s: Summary) => s.id === summary.id);
             if (!exists) {
               state.recentSummaries = [summary, ...state.recentSummaries.slice(0, 19)];
             }
@@ -268,7 +268,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
             }
             
             // Toggle in recent
-            const recentIdx = state.recentSummaries.findIndex(s => s.id === summaryId);
+            const recentIdx = state.recentSummaries.findIndex((s: Summary) => s.id === summaryId);
             if (recentIdx !== -1) {
               const summary = state.recentSummaries[recentIdx];
               summary.is_favorite = !summary.is_favorite;
@@ -277,7 +277,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
               if (summary.is_favorite) {
                 state.favoriteSummaries = [summary, ...state.favoriteSummaries];
               } else {
-                state.favoriteSummaries = state.favoriteSummaries.filter(s => s.id !== summaryId);
+                state.favoriteSummaries = state.favoriteSummaries.filter((s: Summary) => s.id !== summaryId);
               }
             }
           });
@@ -285,8 +285,8 @@ export const useAnalysisStore = create<AnalysisStore>()(
         
         deleteSummary: (summaryId: number) => {
           set((state) => {
-            state.recentSummaries = state.recentSummaries.filter(s => s.id !== summaryId);
-            state.favoriteSummaries = state.favoriteSummaries.filter(s => s.id !== summaryId);
+            state.recentSummaries = state.recentSummaries.filter((s: Summary) => s.id !== summaryId);
+            state.favoriteSummaries = state.favoriteSummaries.filter((s: Summary) => s.id !== summaryId);
             
             if (state.currentSummary?.id === summaryId) {
               state.currentSummary = null;
@@ -297,7 +297,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
         
         addToRecent: (summary: Summary) => {
           set((state) => {
-            const exists = state.recentSummaries.some(s => s.id === summary.id);
+            const exists = state.recentSummaries.some((s: Summary) => s.id === summary.id);
             if (!exists) {
               state.recentSummaries = [summary, ...state.recentSummaries.slice(0, 49)];
             }

@@ -17,13 +17,14 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   ListVideo,
-  Play, Video, Send, ChevronDown, Loader2, Clock, Timer,
+  Play, Video, Send, ChevronDown, Clock, Timer,
   Star, Download, Globe, Sparkles, BookOpen, Shield,
   ExternalLink, Copy, Check, MessageCircle, X, Bot,
   AlertCircle, Minimize2, Maximize2, RefreshCw, Pause,
   Zap, FileText, FileDown, ChevronUp, Minus, GraduationCap, Brain,
   ChevronRight, Tags
 } from "lucide-react";
+import { DeepSightSpinner, DeepSightSpinnerMicro } from "../components/ui";
 import { EnrichedMarkdown } from "../components/EnrichedMarkdown";
 import { ConceptsGlossary } from "../components/ConceptsGlossary";
 import { videoApi, chatApi, reliabilityApi, ApiError } from "../services/api";
@@ -52,6 +53,9 @@ import { CreditAlert } from "../components/CreditAlert";
 import { AnalysisValueDisplay } from "../components/AnalysisValueDisplay";
 import { UpgradePromptModal } from "../components/UpgradePromptModal";
 import { FreeTrialLimitModal } from "../components/FreeTrialLimitModal";
+// 🎨 Customization Panel v2
+import { CustomizationPanel } from "../components/analysis/CustomizationPanel";
+import { AnalysisCustomization, DEFAULT_CUSTOMIZATION } from "../types/analysis";
 
 interface ChatMessage {
   id: string;
@@ -145,6 +149,10 @@ export const DashboardPage: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<string>("mistral-small-latest");
   const [deepResearchEnabled, setDeepResearchEnabled] = useState(false);
   
+  // 🎨 État pour la personnalisation avancée v2
+  const [analysisCustomization, setAnalysisCustomization] = useState<AnalysisCustomization>(DEFAULT_CUSTOMIZATION);
+  const [showCustomizationPanel, setShowCustomizationPanel] = useState(false);
+  
   // États du chat
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMinimized, setChatMinimized] = useState(false);
@@ -192,8 +200,7 @@ export const DashboardPage: React.FC = () => {
   const pollingRef = useRef<boolean>(false);
 
   const isProUser = user?.plan === "pro" || user?.plan === "team" || user?.plan === "expert";
-  const isTeamOrHigher = user?.plan === "team" || user?.plan === "expert" || user?.plan === "unlimited";
-  const isStarterPlus = user?.plan === "student" || user?.plan === "starter" || user?.plan === "pro" || user?.plan === "team" || user?.plan === "expert" || user?.plan === "unlimited";
+  // Note: isTeamOrHigher et isStarterPlus réservés pour futures fonctionnalités
   const isExpertUser = user?.plan === "expert" || user?.plan === "unlimited";
   
   // 🆕 Configuration des modèles selon le plan
@@ -211,7 +218,7 @@ export const DashboardPage: React.FC = () => {
     return models;
   }, [user?.plan, language]);
   
-  const SUGGESTED_QUESTIONS = language === 'fr' ? SUGGESTED_QUESTIONS_FR : SUGGESTED_QUESTIONS_EN;
+  // SUGGESTED_QUESTIONS disponible pour le chat: language === 'fr' ? SUGGESTED_QUESTIONS_FR : SUGGESTED_QUESTIONS_EN
 
   // === SESSION ONLY: Ne plus persister la dernière analyse ===
   // L'analyse reste uniquement pour la session courante (pas de localStorage)
@@ -306,7 +313,7 @@ export const DashboardPage: React.FC = () => {
 
   // === Handlers timecodes ===
   
-  const handleTimecodeClick = useCallback((seconds: number, info: TimecodeInfo) => {
+  const handleTimecodeClick = useCallback((seconds: number, _info?: TimecodeInfo) => {
     if (playerVisible && playerRef.current) {
       playerRef.current.seekTo(seconds);
     } else {
@@ -417,18 +424,29 @@ export const DashboardPage: React.FC = () => {
         return;
       }
 
-      // === MODE URL: Analyse classique ===
+      // === MODE URL: Analyse classique avec personnalisation v2 ===
       if (smartInput.mode === 'url') {
         setVideoUrl(smartInput.url || '');
         setLoadingMessage(language === 'fr' ? "Démarrage de l'analyse..." : "Starting analysis...");
         
-        const response = await videoApi.analyze(
-          smartInput.url!, 
-          category, 
-          mode, 
-          selectedModel,
-          isExpertUser && deepResearchEnabled,
-          language  // 🌐 Langue de l'interface pour le résumé
+        // 🎨 Utiliser l'API v2 avec personnalisation avancée
+        const response = await videoApi.analyzeV2(
+          smartInput.url!,
+          {
+            category,
+            mode,
+            model: selectedModel,
+            deepResearch: isExpertUser && deepResearchEnabled,
+            lang: language,
+            // 🆕 Options de personnalisation v2
+            userPrompt: analysisCustomization.userPrompt || undefined,
+            antiAIDetection: analysisCustomization.antiAIDetection,
+            writingStyle: analysisCustomization.writingStyle,
+            targetLength: analysisCustomization.targetLength,
+            includeComments: analysisCustomization.includeComments,
+            includeMetadata: analysisCustomization.includeMetadata,
+            includeIntention: analysisCustomization.includeIntention,
+          }
         );
         
         // Cas 1: Analyse déjà en cache
@@ -444,14 +462,10 @@ export const DashboardPage: React.FC = () => {
           return;
         }
         
-        // Cas 2: Nouvelle analyse en cours
+        // Cas 2: Nouvelle analyse en cours (task asynchrone)
         if (response.task_id && response.status !== "completed") {
           pollingRef.current = true;
           await pollTaskStatus(response.task_id);
-        } else if (response.summary) {
-          setSelectedSummary(response.summary);
-          setPlayerVisible(false);
-          await refreshUser(true);
         }
         return;
       }
@@ -502,13 +516,24 @@ export const DashboardPage: React.FC = () => {
     setVideoUrl(url);
     
     try {
-      const response = await videoApi.analyze(
-        url, 
-        category, 
-        mode, 
-        selectedModel,
-        isExpertUser && deepResearchEnabled,
-        language  // 🌐 Langue de l'interface pour le résumé
+      // 🎨 Utiliser l'API v2 avec personnalisation pour les vidéos découvertes
+      const response = await videoApi.analyzeV2(
+        url,
+        {
+          category,
+          mode,
+          model: selectedModel,
+          deepResearch: isExpertUser && deepResearchEnabled,
+          lang: language,
+          // 🆕 Options de personnalisation v2
+          userPrompt: analysisCustomization.userPrompt || undefined,
+          antiAIDetection: analysisCustomization.antiAIDetection,
+          writingStyle: analysisCustomization.writingStyle,
+          targetLength: analysisCustomization.targetLength,
+          includeComments: analysisCustomization.includeComments,
+          includeMetadata: analysisCustomization.includeMetadata,
+          includeIntention: analysisCustomization.includeIntention,
+        }
       );
       
       if (response.status === "completed" && response.result?.summary_id) {
@@ -702,27 +727,30 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-bg-primary relative">
       <DoodleBackground variant="default" density={50} />
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-      
-      {/* Main content */}
-      <main className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
-        <div className="min-h-screen p-6 lg:p-8">
+      {/* Sidebar hidden on mobile - using DashboardLayout's hamburger menu */}
+      <div className="hidden lg:block">
+        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      </div>
+
+      {/* Main content - responsive margin */}
+      <main className={`transition-all duration-300 relative z-10 lg:${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
+        <div className="min-h-screen p-4 sm:p-6 lg:p-8">
           <div className="max-w-5xl mx-auto">
-            
-            {/* Header */}
-            <header className="mb-8">
-              <h1 className="font-display text-2xl mb-2 text-text-primary">
+
+            {/* Header - with top padding on mobile for hamburger button */}
+            <header className="mb-6 lg:mb-8 pt-2 lg:pt-0">
+              <h1 className="font-display text-xl sm:text-2xl mb-2 text-text-primary">
                 {language === 'fr' ? 'Analyse vidéo' : 'Video Analysis'}
               </h1>
-              <p className="text-text-secondary text-sm">
-                {language === 'fr' 
+              <p className="text-text-secondary text-xs sm:text-sm">
+                {language === 'fr'
                   ? 'URL YouTube, texte brut, ou recherche intelligente de vidéos.'
                   : 'YouTube URL, raw text, or intelligent video search.'}
               </p>
             </header>
 
             {/* 🆕 Smart Input Section */}
-            <div className="card p-6 mb-6">
+            <div className="card p-4 sm:p-6 mb-4 sm:mb-6">
               <SmartInputBar
                 value={smartInput}
                 onChange={setSmartInput}
@@ -735,16 +763,16 @@ export const DashboardPage: React.FC = () => {
 
               {/* Options - Only show for non-search modes (search has its own options) */}
               {smartInput.mode !== 'search' && (
-                <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border-subtle">
-                  {/* Mode */}
-                  <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 mt-4 pt-4 border-t border-border-subtle">
+                  {/* Mode - Full width on mobile */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <span className="text-xs text-text-tertiary uppercase tracking-wider font-medium">Mode</span>
-                    <div className="flex rounded-lg bg-bg-tertiary p-1">
+                    <div className="flex rounded-lg bg-bg-tertiary p-1 w-full sm:w-auto">
                       {MODES.map((m) => (
                         <button
                           key={m.id}
                           onClick={() => setMode(m.id)}
-                          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                          className={`flex-1 sm:flex-none px-3 py-2 sm:py-1.5 rounded-md text-sm font-medium transition-all ${
                             mode === m.id
                               ? 'bg-bg-elevated text-text-primary shadow-sm'
                               : 'text-text-tertiary hover:text-text-secondary'
@@ -757,15 +785,15 @@ export const DashboardPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Catégorie */}
-                  <div className="flex items-center gap-2">
+                  {/* Catégorie - Full width on mobile */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                     <span className="text-xs text-text-tertiary uppercase tracking-wider font-medium">
                       {language === 'fr' ? 'Catégorie' : 'Category'}
                     </span>
                     <select
                       value={category}
                       onChange={(e) => setCategory(e.target.value)}
-                      className="bg-bg-tertiary border border-border-default rounded-lg px-3 py-1.5 text-sm text-text-primary cursor-pointer"
+                      className="w-full sm:w-auto bg-bg-tertiary border border-border-default rounded-lg px-3 py-2 sm:py-1.5 text-sm text-text-primary cursor-pointer"
                     >
                       {CATEGORIES.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -777,14 +805,14 @@ export const DashboardPage: React.FC = () => {
 
                   {/* Sélecteur de modèle (selon le plan) */}
                   {availableModels.length > 1 && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                       <span className="text-xs text-text-tertiary uppercase tracking-wider font-medium">
                         {language === 'fr' ? 'Modèle' : 'Model'}
                       </span>
                       <select
                         value={selectedModel}
                         onChange={(e) => setSelectedModel(e.target.value)}
-                        className="bg-bg-tertiary border border-border-default rounded-lg px-3 py-1.5 text-sm text-text-primary cursor-pointer"
+                        className="w-full sm:w-auto bg-bg-tertiary border border-border-default rounded-lg px-3 py-2 sm:py-1.5 text-sm text-text-primary cursor-pointer"
                       >
                         {availableModels.map((m) => (
                           <option key={m.id} value={m.id}>
@@ -799,7 +827,7 @@ export const DashboardPage: React.FC = () => {
                   {isExpertUser && (
                     <div className="flex items-center gap-2">
                       <label className="flex items-center gap-2 cursor-pointer">
-                        <div 
+                        <div
                           className={`relative w-10 h-5 rounded-full transition-all ${deepResearchEnabled ? 'bg-purple-500' : 'bg-gray-600'}`}
                           onClick={() => setDeepResearchEnabled(!deepResearchEnabled)}
                         >
@@ -815,10 +843,68 @@ export const DashboardPage: React.FC = () => {
 
                   {/* Quota */}
                   {user && (
-                    <div className="ml-auto text-xs text-text-tertiary">
+                    <div className="sm:ml-auto text-xs text-text-tertiary text-center sm:text-right">
                       {user.analysis_count}/{user.analysis_limit} {language === 'fr' ? 'analyses' : 'analyses'}
                     </div>
                   )}
+                </div>
+              )}
+              
+              {/* ═══════════════════════════════════════════════════════════════ */}
+              {/* 🎨 CUSTOMIZATION PANEL v2 — Personnalisation Avancée */}
+              {/* ═══════════════════════════════════════════════════════════════ */}
+              {smartInput.mode !== 'search' && (
+                <div className="mt-4 pt-4 border-t border-border-subtle">
+                  {/* Toggle button to show/hide panel */}
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomizationPanel(!showCustomizationPanel)}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-bg-tertiary hover:bg-bg-hover border border-border-default transition-all group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`
+                        w-10 h-10 rounded-lg flex items-center justify-center transition-all
+                        ${analysisCustomization.antiAIDetection 
+                          ? 'bg-green-500/20 text-green-400' 
+                          : 'bg-accent-primary/10 text-accent-primary'}
+                      `}>
+                        {analysisCustomization.antiAIDetection ? (
+                          <Shield className="w-5 h-5" />
+                        ) : (
+                          <Sparkles className="w-5 h-5" />
+                        )}
+                      </div>
+                      <div className="text-left">
+                        <span className="text-sm font-medium text-text-primary flex items-center gap-2">
+                          {language === 'fr' ? 'Personnalisation avancée' : 'Advanced Customization'}
+                          {analysisCustomization.antiAIDetection && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 font-semibold">
+                              Anti-IA ✓
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-xs text-text-muted">
+                          {analysisCustomization.userPrompt 
+                            ? (language === 'fr' ? 'Instructions personnalisées actives' : 'Custom instructions active')
+                            : (language === 'fr' ? 'Style, longueur, anti-détection IA...' : 'Style, length, anti-AI detection...')}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronDown className={`w-5 h-5 text-text-muted transition-transform duration-200 ${showCustomizationPanel ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {/* Expandable panel */}
+                  <div className={`
+                    overflow-hidden transition-all duration-300 ease-in-out
+                    ${showCustomizationPanel ? 'max-h-[800px] opacity-100 mt-4' : 'max-h-0 opacity-0'}
+                  `}>
+                    <CustomizationPanel
+                      onCustomizationChange={setAnalysisCustomization}
+                      initialCustomization={analysisCustomization}
+                      language={language as 'fr' | 'en'}
+                      disabled={loading}
+                    />
+                  </div>
                 </div>
               )}
             </div>
@@ -829,11 +915,9 @@ export const DashboardPage: React.FC = () => {
             {loading && (
               <div className="card p-8 mb-6 animate-fadeIn">
                 <div className="flex flex-col items-center text-center">
-                  {/* Icon avec animation améliorée */}
-                  <div className="w-20 h-20 rounded-2xl flex items-center justify-center mb-6 bg-accent-primary-muted relative">
-                    <Loader2 className="w-10 h-10 text-accent-primary animate-spin" />
-                    {/* Effet de pulsation */}
-                    <div className="absolute inset-0 rounded-2xl bg-accent-primary/10 animate-ping" style={{ animationDuration: '2s' }} />
+                  {/* ✨ DeepSight Spinner — Logo animé */}
+                  <div className="mb-6">
+                    <DeepSightSpinner size="lg" speed="normal" />
                   </div>
                   
                   {/* Message principal */}
@@ -947,10 +1031,10 @@ export const DashboardPage: React.FC = () => {
                 {/* Video Info Card */}
                 <div className="card overflow-hidden">
                   <div className="flex flex-col lg:flex-row">
-                    {/* Thumbnail / Player */}
-                    <div className="lg:w-96 flex-shrink-0 relative bg-bg-tertiary">
+                    {/* Thumbnail / Player - responsive height */}
+                    <div className="w-full lg:w-96 flex-shrink-0 relative bg-bg-tertiary">
                       {playerVisible ? (
-                        <div className="relative aspect-video lg:aspect-auto lg:h-full">
+                        <div className="relative aspect-video">
                           <YouTubePlayer
                             ref={playerRef}
                             videoId={selectedSummary.video_id}
@@ -959,14 +1043,14 @@ export const DashboardPage: React.FC = () => {
                           />
                           <button
                             onClick={() => setPlayerVisible(false)}
-                            className="absolute top-2 right-2 w-8 h-8 rounded-lg bg-bg-primary/80 backdrop-blur flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+                            className="absolute top-2 right-2 w-10 h-10 sm:w-8 sm:h-8 rounded-lg bg-bg-primary/80 backdrop-blur flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
                           >
-                            <X className="w-4 h-4" />
+                            <X className="w-5 h-5 sm:w-4 sm:h-4" />
                           </button>
                         </div>
                       ) : (
                         <div
-                          className="aspect-video lg:aspect-auto lg:h-full relative cursor-pointer group"
+                          className="aspect-video relative cursor-pointer group"
                           onClick={() => setPlayerVisible(true)}
                         >
                           <ThumbnailImage
@@ -976,9 +1060,9 @@ export const DashboardPage: React.FC = () => {
                             category={selectedSummary.category}
                             className="w-full h-full object-cover"
                           />
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <div className="w-16 h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-                              <Play className="w-7 h-7 text-bg-primary ml-1" />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                              <Play className="w-6 h-6 sm:w-7 sm:h-7 text-bg-primary ml-1" />
                             </div>
                           </div>
                           {/* Durée */}
@@ -989,28 +1073,28 @@ export const DashboardPage: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Info */}
-                    <div className="flex-1 p-5">
-                      <div className="flex items-start justify-between gap-4 mb-3">
-                        <h2 className="font-display text-xl leading-tight text-text-primary">
+                    {/* Info - responsive padding */}
+                    <div className="flex-1 p-4 sm:p-5">
+                      <div className="flex items-start justify-between gap-3 sm:gap-4 mb-2 sm:mb-3">
+                        <h2 className="font-display text-lg sm:text-xl leading-tight text-text-primary line-clamp-2">
                           {selectedSummary.video_title}
                         </h2>
                         <a
                           href={`https://youtube.com/watch?v=${selectedSummary.video_id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex-shrink-0 text-text-tertiary hover:text-accent-primary transition-colors"
+                          className="flex-shrink-0 text-text-tertiary hover:text-accent-primary transition-colors p-1"
                         >
                           <ExternalLink className="w-5 h-5" />
                         </a>
                       </div>
 
-                      <p className="text-text-secondary text-sm mb-4">
+                      <p className="text-text-secondary text-xs sm:text-sm mb-3 sm:mb-4">
                         {selectedSummary.video_channel}
                       </p>
 
-                      {/* Badges */}
-                      <div className="flex flex-wrap gap-2 mb-4">
+                      {/* Badges - scrollable on mobile */}
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-4">
                         <span className="badge">
                           <Clock className="w-3.5 h-3.5" />
                           {formatDuration(selectedSummary.video_duration || 0)}
@@ -1108,79 +1192,81 @@ export const DashboardPage: React.FC = () => {
 
                 {/* Summary Content */}
                 <div className="card">
-                  <div className="panel-header">
+                  {/* Panel header - responsive */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-5 border-b border-border-subtle">
                     <h3 className="font-semibold text-text-primary flex items-center gap-2">
                       <BookOpen className="w-5 h-5 text-accent-primary" />
                       {language === 'fr' ? 'Analyse' : 'Analysis'}
                     </h3>
-                    <div className="flex items-center gap-2">
+                    {/* Action buttons - scrollable on mobile */}
+                    <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0">
                       {/* Copy */}
                       <button
                         onClick={handleCopy}
-                        className="btn btn-ghost text-xs"
+                        className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
                       >
                         {copied ? <Check className="w-4 h-4 text-accent-success" /> : <Copy className="w-4 h-4" />}
-                        {copied ? (language === 'fr' ? 'Copié' : 'Copied') : (language === 'fr' ? 'Copier' : 'Copy')}
+                        <span className="hidden sm:inline">{copied ? (language === 'fr' ? 'Copié' : 'Copied') : (language === 'fr' ? 'Copier' : 'Copy')}</span>
                       </button>
 
                       {/* 🎓 Citation académique */}
                       <button
                         onClick={() => setShowCitationModal(true)}
-                        className="btn btn-ghost text-xs"
+                        className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
                         title={language === 'fr' ? 'Générer une citation académique' : 'Generate academic citation'}
                       >
                         <GraduationCap className="w-4 h-4" />
-                        {language === 'fr' ? 'Citer' : 'Cite'}
+                        <span className="hidden sm:inline">{language === 'fr' ? 'Citer' : 'Cite'}</span>
                       </button>
 
                       {/* 📚 Outils d'étude (fiches + mindmap) */}
                       <button
                         onClick={() => setShowStudyToolsModal(true)}
-                        className="btn btn-ghost text-xs"
+                        className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
                         title={language === 'fr' ? 'Fiches de révision et arbre pédagogique' : 'Study cards and concept map'}
                       >
                         <Brain className="w-4 h-4" />
-                        {language === 'fr' ? 'Réviser' : 'Study'}
+                        <span className="hidden sm:inline">{language === 'fr' ? 'Réviser' : 'Study'}</span>
                       </button>
 
                       {/* 🏷️ Mots-clés */}
                       <button
                         onClick={handleOpenKeywordsModal}
-                        className="btn btn-ghost text-xs"
+                        className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
                         title={language === 'fr' ? 'Voir les mots-clés extraits' : 'View extracted keywords'}
                       >
                         <Tags className="w-4 h-4" />
-                        {language === 'fr' ? 'Mots-clés' : 'Keywords'}
+                        <span className="hidden sm:inline">{language === 'fr' ? 'Mots-clés' : 'Keywords'}</span>
                       </button>
 
                       {/* Export */}
-                      <div className="relative">
+                      <div className="relative flex-shrink-0">
                         <button
                           onClick={() => setShowExportMenu(!showExportMenu)}
-                          className="btn btn-ghost text-xs"
+                          className="btn btn-ghost text-xs min-h-[36px] sm:min-h-[32px]"
                           disabled={exporting}
                         >
-                          {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                          Export
+                          {exporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
+                          <span className="hidden sm:inline">Export</span>
                           <ChevronDown className="w-3 h-3" />
                         </button>
                         {showExportMenu && (
                           <div className="absolute right-0 top-full mt-1 w-40 bg-bg-elevated border border-border-default rounded-lg shadow-lg z-10 py-1">
                             <button
                               onClick={() => handleExport('pdf')}
-                              className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                              className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
                             >
                               <FileText className="w-4 h-4" /> PDF
                             </button>
                             <button
                               onClick={() => handleExport('md')}
-                              className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                              className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
                             >
                               <FileDown className="w-4 h-4" /> Markdown
                             </button>
                             <button
                               onClick={() => handleExport('txt')}
-                              className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                              className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
                             >
                               <FileText className="w-4 h-4" /> Texte
                             </button>
@@ -1191,19 +1277,19 @@ export const DashboardPage: React.FC = () => {
                       {/* Chat toggle */}
                       <button
                         onClick={() => { setChatOpen(!chatOpen); setChatMinimized(false); }}
-                        className={`btn ${chatOpen ? 'btn-primary' : 'btn-secondary'} text-xs`}
+                        className={`btn ${chatOpen ? 'btn-primary' : 'btn-secondary'} text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]`}
                       >
                         <MessageCircle className="w-4 h-4" />
-                        Chat
+                        <span className="hidden sm:inline">Chat</span>
                         {chatQuota && (
                           <span className="ml-1 text-xs opacity-70">
-                            ({chatQuota.used}/{chatQuota.limit})
+                            {chatQuota.used}/{chatQuota.limit}
                           </span>
                         )}
                       </button>
                     </div>
                   </div>
-                  <div className="panel-body prose max-w-none">
+                  <div className="p-4 sm:p-5 prose max-w-none">
                     <EnrichedMarkdown 
                       language={language}
                       onTimecodeClick={handleTimecodeClick}

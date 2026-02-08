@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, U
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_session, User
-from auth.dependencies import get_current_user, get_verified_user, require_plan
+from auth.dependencies import get_current_user, get_verified_user, require_plan, check_daily_limit, require_feature
 from core.config import PLAN_LIMITS, CATEGORIES
 
 # Import du système de sécurité
@@ -71,6 +71,20 @@ from .enriched_definitions import (
     get_enriched_definitions, extract_terms_from_text, get_category_info, CATEGORIES
 )
 
+# 🆕 v2.1: Import des nouveaux modules d'analyse avancée
+try:
+    from .youtube_comments import analyze_comments
+    from .metadata_enriched import get_enriched_metadata, detect_sponsorship, detect_propaganda_risk
+    from .anti_ai_prompts import build_customized_prompt, get_anti_ai_prompt, get_style_instruction
+    from .schemas import (
+        AnalysisCustomization, WritingStyle, AnalyzeRequestV2, AnalyzeResponseV2,
+        CommentsAnalysis, VideoMetadataEnriched
+    )
+    ADVANCED_ANALYSIS_AVAILABLE = True
+except ImportError as e:
+    ADVANCED_ANALYSIS_AVAILABLE = False
+    print(f"⚠️ [VIDEO] Advanced analysis modules not available: {e}", flush=True)
+
 # 🕐 Import du système de fraîcheur et fact-check LITE
 try:
     from .freshness_factcheck import (
@@ -115,7 +129,7 @@ _task_store: Dict[str, Dict[str, Any]] = {}
 async def analyze_video(
     request: AnalyzeVideoRequest,
     background_tasks: BackgroundTasks,
-    current_user: User = Depends(get_verified_user),  # 🔐 Email vérifié obligatoire
+    current_user: User = Depends(check_daily_limit),  # 🔐 Email vérifié + limite quotidienne
     session: AsyncSession = Depends(get_session)
 ):
     """
@@ -271,6 +285,1273 @@ async def analyze_video(
         message="Analysis started",
         result={"cost": credit_cost, "deep_research": deep_research}
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🆕 ANALYSE V2 — Customization complète
+# ═══════════════════════════════════════════════════════════════════════════════
+
+from .schemas import AnalyzeVideoV2Request, AnalyzeV2Response
+
+@router.post("/analyze/v2", response_model=AnalyzeV2Response)
+async def analyze_video_v2(
+    request: AnalyzeVideoV2Request,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(check_daily_limit),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🆕 v2.0: Analyse vidéo avec customization complète.
+
+    Fonctionnalités avancées:
+    - Options de customization détaillées
+    - Contrôle de la longueur du résumé
+    - Génération de table des matières (TOC)
+    - Webhook de notification
+    - Priorité de traitement (Pro/Expert)
+
+    SÉCURITÉ:
+    - Email vérifié obligatoire
+    - Rate limiting appliqué
+    - Crédits réservés AVANT l'opération
+    """
+    print(f"📥 [v2.0] Analyze request: {request.url} by user {current_user.id}", flush=True)
+
+    # Extraire l'ID vidéo
+    video_id = extract_video_id(request.url)
+    if not video_id:
+        raise HTTPException(status_code=400, detail={
+            "code": "invalid_url",
+            "message": "Invalid YouTube URL"
+        })
+
+    # Déterminer le modèle
+    plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
+    model = request.model or plan_limits.get("default_model", "mistral-small-latest")
+
+    # Vérifier que le modèle est autorisé
+    allowed_models = plan_limits.get("models", ["mistral-small-latest"])
+    if model not in allowed_models:
+        model = allowed_models[0]
+
+    # Vérifier deep_research
+    deep_research = request.deep_research and plan_limits.get("deep_research_enabled", False)
+    deep_research_cost = plan_limits.get("deep_research_credits_cost", 0) if deep_research else 0
+
+    # Calculer le coût
+    if SECURITY_AVAILABLE:
+        credit_cost = get_credit_cost("video_analysis", model)
+    else:
+        credit_cost = 1
+    credit_cost += deep_research_cost
+
+    # Bonus de coût pour options avancées
+    if request.generate_toc:
+        credit_cost += 1  # TOC coûte 1 crédit supplémentaire
+    if request.summary_length == "detailed":
+        credit_cost += 1  # Résumé détaillé coûte 1 crédit supplémentaire
+
+    # Vérifier les crédits
+    if SECURITY_AVAILABLE:
+        can_analyze, reason, info = await secure_check_can_analyze(
+            session, current_user.id, model
+        )
+    else:
+        can_analyze, reason, credits_remaining, estimated_cost = await check_can_analyze(session, current_user.id)
+        info = {"credits": credits_remaining, "cost": estimated_cost}
+
+    if not can_analyze:
+        raise HTTPException(status_code=403, detail={
+            "code": reason,
+            "message": info.get("message", f"Cannot analyze: {reason}"),
+            "credits": info.get("credits", 0),
+            "cost": credit_cost,
+            **info
+        })
+
+    # Vérifier le cache (sauf si force_refresh)
+    if not request.force_refresh:
+        existing = await get_summary_by_video_id(session, video_id, current_user.id)
+        if existing and existing.mode == request.mode:
+            from datetime import timedelta
+            cache_age = datetime.now() - existing.created_at
+            if cache_age < timedelta(days=7):
+                print(f"💾 [CACHE HIT] v2: summary_id={existing.id}", flush=True)
+                return AnalyzeV2Response(
+                    task_id=f"cached_{existing.id}",
+                    status="completed",
+                    progress=100,
+                    message="✅ Analyse retrouvée en cache (gratuit!)",
+                    cost=0,
+                    video_info={
+                        "video_id": existing.video_id,
+                        "title": existing.video_title,
+                        "channel": existing.video_channel,
+                    },
+                    applied_options={
+                        "mode": existing.mode,
+                        "lang": existing.lang,
+                        "cached": True,
+                        "cache_age_days": cache_age.days
+                    }
+                )
+
+    # Générer l'ID de tâche
+    if SECURITY_AVAILABLE:
+        task_id = generate_secure_operation_id(current_user.id, "video_analysis_v2")
+    else:
+        task_id = str(uuid4())
+
+    # Réserver les crédits
+    if SECURITY_AVAILABLE:
+        reserved, reserve_reason, reserve_info = await reserve_credits(
+            session, current_user.id, credit_cost, task_id, "video_analysis_v2"
+        )
+        if not reserved:
+            raise HTTPException(status_code=403, detail={
+                "code": reserve_reason,
+                "message": f"Could not reserve credits: {reserve_reason}",
+                **reserve_info
+            })
+        print(f"🔒 [v2] Credits reserved: {credit_cost} for task {task_id[:12]}", flush=True)
+
+    # Préparer les options de customization
+    customization_options = {
+        "summary_length": request.summary_length,
+        "highlight_key_points": request.highlight_key_points,
+        "generate_toc": request.generate_toc,
+        "include_entities": request.include_entities,
+        "include_timestamps": request.include_timestamps,
+        "include_reliability": request.include_reliability,
+        "priority": request.priority if current_user.plan in ["pro", "expert", "unlimited"] else "normal",
+        "webhook_url": request.webhook_url,
+        "custom": request.customization or {}
+    }
+
+    # Stocker la tâche
+    _task_store[task_id] = {
+        "status": "pending",
+        "progress": 0,
+        "message": "Initializing v2 analysis...",
+        "user_id": current_user.id,
+        "video_id": video_id,
+        "credit_cost": credit_cost,
+        "deep_research": deep_research,
+        "v2_options": customization_options
+    }
+
+    print(f"🚀 [v2] Task created: {task_id}", flush=True)
+
+    # Créer en DB
+    await create_task(session, task_id, current_user.id, "video_analysis_v2")
+
+    # Estimer la durée
+    estimated_duration = 30 if request.summary_length == "short" else (60 if request.summary_length == "standard" else 90)
+    if deep_research:
+        estimated_duration += 30
+
+    # Lancer l'analyse en background
+    background_tasks.add_task(
+        _analyze_video_background_v2,
+        task_id=task_id,
+        video_id=video_id,
+        url=request.url,
+        mode=request.mode,
+        category=request.category,
+        lang=request.lang,
+        model=model,
+        user_id=current_user.id,
+        user_plan=current_user.plan,
+        credit_cost=credit_cost,
+        deep_research=deep_research,
+        options=customization_options
+    )
+
+    return AnalyzeV2Response(
+        task_id=task_id,
+        status="pending",
+        progress=0,
+        message="Analysis v2 started with custom options",
+        estimated_duration_seconds=estimated_duration,
+        cost=credit_cost,
+        applied_options=customization_options
+    )
+
+
+async def _analyze_video_background_v2(
+    task_id: str,
+    video_id: str,
+    url: str,
+    mode: str,
+    category: Optional[str],
+    lang: str,
+    model: str,
+    user_id: int,
+    user_plan: str,
+    credit_cost: int,
+    deep_research: bool,
+    options: Dict[str, Any]
+):
+    """
+    🆕 v2.0: Background analysis avec options de customization.
+
+    Ajoute le support de:
+    - Longueur de résumé variable
+    - Table des matières
+    - Points clés mis en évidence
+    - Webhook de notification
+    """
+    from db.database import async_session_maker
+    import httpx
+
+    print(f"🔧 [v2.0] Background task started: {task_id}", flush=True)
+
+    # Déterminer le niveau d'enrichissement
+    if deep_research:
+        enrichment_level = EnrichmentLevel.DEEP
+    else:
+        enrichment_level = get_enrichment_level(user_plan)
+
+    try:
+        async with async_session_maker() as session:
+            _task_store[task_id]["status"] = "processing"
+            _task_store[task_id]["progress"] = 5
+            _task_store[task_id]["message"] = "🚀 Démarrage de l'analyse v2..."
+
+            # 1. Récupérer les infos vidéo
+            _task_store[task_id]["progress"] = 10
+            _task_store[task_id]["message"] = "📺 Récupération des infos vidéo..."
+
+            video_info = await get_video_info(video_id)
+            if not video_info:
+                raise Exception("Could not fetch video info")
+
+            # 2. Extraire la transcription
+            _task_store[task_id]["progress"] = 20
+            _task_store[task_id]["message"] = "📝 Extraction du transcript..."
+
+            transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id)
+            if not transcript:
+                raise Exception("No transcript available for this video")
+
+            if not lang or lang == "auto":
+                lang = detected_lang or "fr"
+
+            # 3. Détecter la catégorie
+            _task_store[task_id]["progress"] = 30
+            _task_store[task_id]["message"] = "🏷️ Détection de la catégorie..."
+
+            if not category or category == "auto":
+                category, confidence = detect_category(
+                    title=video_info["title"],
+                    description=video_info.get("description", ""),
+                    transcript=transcript[:3000],
+                    channel=video_info.get("channel", ""),
+                    tags=video_info.get("tags", []),
+                    youtube_categories=video_info.get("categories", [])
+                )
+            else:
+                confidence = 0.9
+
+            # 4. Enrichissement web (si activé)
+            web_context = None
+            enrichment_sources = []
+
+            if enrichment_level != EnrichmentLevel.NONE:
+                _task_store[task_id]["progress"] = 40
+                _task_store[task_id]["message"] = f"🌐 Recherche web ({enrichment_level.value})..."
+
+                try:
+                    web_context, enrichment_sources, actual_level = await get_pre_analysis_context(
+                        video_title=video_info["title"],
+                        video_channel=video_info.get("channel", ""),
+                        category=category,
+                        transcript=transcript,
+                        plan=user_plan,
+                        lang=lang
+                    )
+                except Exception as e:
+                    print(f"⚠️ [v2.0] Web enrichment failed: {e}", flush=True)
+
+            # 5. Générer le résumé avec les options de customization
+            _task_store[task_id]["progress"] = 55
+            _task_store[task_id]["message"] = "🧠 Génération du résumé personnalisé..."
+
+            # Ajuster le prompt selon les options
+            summary_instructions = []
+            if options.get("summary_length") == "short":
+                summary_instructions.append("Fais un résumé COURT et CONCIS (max 500 mots).")
+            elif options.get("summary_length") == "detailed":
+                summary_instructions.append("Fais un résumé DÉTAILLÉ et EXHAUSTIF (1500+ mots).")
+
+            if options.get("highlight_key_points"):
+                summary_instructions.append("Mets en évidence les points clés avec des marqueurs **gras**.")
+
+            if options.get("generate_toc"):
+                summary_instructions.append("Commence par une table des matières structurée.")
+
+            # Customization utilisateur
+            custom = options.get("custom", {})
+            if custom.get("focus_topics"):
+                summary_instructions.append(f"Concentre-toi sur ces sujets: {', '.join(custom['focus_topics'])}")
+            if custom.get("exclude_topics"):
+                summary_instructions.append(f"Évite ces sujets: {', '.join(custom['exclude_topics'])}")
+            if custom.get("tone") == "formal":
+                summary_instructions.append("Utilise un ton formel et académique.")
+            elif custom.get("tone") == "casual":
+                summary_instructions.append("Utilise un ton accessible et décontracté.")
+
+            custom_context = "\n".join(summary_instructions) if summary_instructions else None
+
+            # Combiner web_context et custom_context
+            full_context = None
+            if web_context and custom_context:
+                full_context = f"{web_context}\n\n--- Instructions personnalisées ---\n{custom_context}"
+            elif web_context:
+                full_context = web_context
+            elif custom_context:
+                full_context = custom_context
+
+            # Détecter si chunking nécessaire
+            transcript_to_analyze = transcript_timestamped or transcript
+            video_duration = video_info.get("duration", 0)
+            needs_chunk, word_count, chunk_reason = needs_chunking(transcript_to_analyze)
+
+            if needs_chunk:
+                _task_store[task_id]["message"] = f"📚 Vidéo longue ({word_count} mots)..."
+
+                def update_progress(progress: int, message: str):
+                    _task_store[task_id]["progress"] = progress
+                    _task_store[task_id]["message"] = message
+
+                summary_content = await analyze_long_video(
+                    title=video_info["title"],
+                    transcript=transcript_to_analyze,
+                    video_duration=video_duration,
+                    category=category,
+                    lang=lang,
+                    mode=mode,
+                    model=model,
+                    web_context=full_context,
+                    progress_callback=update_progress,
+                    transcript_timestamped=transcript_timestamped
+                )
+            else:
+                summary_content = await generate_summary(
+                    title=video_info["title"],
+                    transcript=transcript_to_analyze,
+                    category=category,
+                    lang=lang,
+                    mode=mode,
+                    model=model,
+                    duration=video_duration,
+                    channel=video_info.get("channel", ""),
+                    description=video_info.get("description", ""),
+                    web_context=full_context
+                )
+
+            if not summary_content:
+                raise Exception("Failed to generate summary")
+
+            # 6. Extraire les entités (si demandé)
+            entities = None
+            if options.get("include_entities", True):
+                _task_store[task_id]["progress"] = 75
+                _task_store[task_id]["message"] = "🔍 Extraction des entités..."
+                entities = await extract_entities(summary_content, lang=lang)
+
+            # 7. Calculer la fiabilité (si demandé)
+            reliability = None
+            if options.get("include_reliability", True):
+                _task_store[task_id]["progress"] = 85
+                _task_store[task_id]["message"] = "⚖️ Calcul du score de fiabilité..."
+                reliability = await calculate_reliability_score(summary_content, entities or {}, lang=lang)
+
+                if enrichment_sources:
+                    reliability_bonus = {
+                        EnrichmentLevel.FULL: 8,
+                        EnrichmentLevel.DEEP: 15
+                    }.get(enrichment_level, 0)
+                    reliability = min(98, reliability + reliability_bonus)
+
+            # 8. Consommer les crédits et sauvegarder
+            _task_store[task_id]["progress"] = 92
+            _task_store[task_id]["message"] = "💾 Sauvegarde des résultats..."
+
+            if SECURITY_AVAILABLE:
+                await consume_reserved_credits(
+                    session, user_id, task_id,
+                    f"Video v2: {video_info['title'][:50]} ({model})"
+                )
+            else:
+                await deduct_credit(session, user_id, credit_cost, f"Video v2: {video_info['title'][:50]}")
+
+            enrichment_metadata = None
+            if enrichment_sources:
+                enrichment_metadata = {
+                    "level": enrichment_level.value,
+                    "sources": enrichment_sources,
+                    "enriched_at": datetime.utcnow().isoformat(),
+                    "v2_options": options
+                }
+
+            summary_id = await save_summary(
+                session=session,
+                user_id=user_id,
+                video_id=video_id,
+                video_title=video_info["title"],
+                video_channel=video_info.get("channel", "Unknown"),
+                video_duration=video_info.get("duration", 0),
+                video_url=url,
+                thumbnail_url=video_info.get("thumbnail_url", f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"),
+                category=category,
+                category_confidence=confidence,
+                lang=lang,
+                mode=mode,
+                model_used=model,
+                summary_content=summary_content,
+                transcript_context=transcript_timestamped or transcript,
+                video_upload_date=video_info.get("upload_date"),
+                entities_extracted=entities,
+                reliability_score=reliability,
+                enrichment_data=enrichment_metadata
+            )
+
+            # Incrémenter le quota quotidien
+            try:
+                from core.plan_limits import increment_daily_usage
+                await increment_daily_usage(session, user_id)
+            except Exception as quota_err:
+                print(f"⚠️ [v2] Quota increment failed: {quota_err}", flush=True)
+
+            # 9. Marquer comme terminé
+            final_word_count = len(summary_content.split())
+            enrichment_badge = get_enrichment_badge(enrichment_level, lang)
+
+            _task_store[task_id] = {
+                "status": "completed",
+                "progress": 100,
+                "message": f"✅ Analyse v2 terminée {enrichment_badge}".strip(),
+                "user_id": user_id,
+                "result": {
+                    "summary_id": summary_id,
+                    "video_id": video_id,
+                    "video_title": video_info["title"],
+                    "word_count": final_word_count,
+                    "category": category,
+                    "reliability_score": reliability,
+                    "v2_options_applied": options,
+                    "enrichment": {
+                        "level": enrichment_level.value,
+                        "sources_count": len(enrichment_sources),
+                    } if enrichment_level != EnrichmentLevel.NONE else None
+                }
+            }
+
+            await update_task_status(
+                session, task_id,
+                status="completed",
+                progress=100,
+                result=_task_store[task_id]["result"]
+            )
+
+            # Notification SSE
+            try:
+                await notify_analysis_complete(
+                    user_id=user_id,
+                    summary_id=summary_id,
+                    video_title=video_info["title"],
+                    video_id=video_id,
+                    cached=False
+                )
+            except Exception as notify_err:
+                print(f"⚠️ [v2] Notification failed: {notify_err}", flush=True)
+
+            # Webhook (si configuré)
+            webhook_url = options.get("webhook_url")
+            if webhook_url:
+                try:
+                    async with httpx.AsyncClient() as client:
+                        await client.post(
+                            webhook_url,
+                            json={
+                                "event": "analysis_complete",
+                                "task_id": task_id,
+                                "summary_id": summary_id,
+                                "video_id": video_id,
+                                "status": "completed"
+                            },
+                            timeout=10.0
+                        )
+                    print(f"🔔 [v2] Webhook sent to {webhook_url}", flush=True)
+                except Exception as webhook_err:
+                    print(f"⚠️ [v2] Webhook failed: {webhook_err}", flush=True)
+
+            print(f"✅ [v2.0] Task completed: {task_id}", flush=True)
+
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ [v2] Analysis error for task {task_id}: {error_msg}", flush=True)
+
+        if SECURITY_AVAILABLE:
+            await release_reserved_credits(user_id, task_id)
+
+        _task_store[task_id] = {
+            "status": "failed",
+            "progress": 0,
+            "message": f"Error: {error_msg}",
+            "user_id": user_id,
+            "error": error_msg
+        }
+
+        try:
+            await notify_analysis_failed(
+                user_id=user_id,
+                video_title=video_info.get("title", "Vidéo") if 'video_info' in dir() else "Vidéo",
+                error=error_msg[:200]
+            )
+        except Exception:
+            pass
+
+        try:
+            async with async_session_maker() as session:
+                await update_task_status(session, task_id, status="failed", progress=0, error=error_msg)
+        except Exception:
+            pass
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🆕 ANALYSE V2.1 — Customization AVANCÉE avec anti-AI, commentaires, etc.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/analyze/v2.1")
+async def analyze_video_v2_1(
+    request: AnalyzeRequestV2 if ADVANCED_ANALYSIS_AVAILABLE else AnalyzeVideoV2Request,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(check_daily_limit),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🆕 v2.1: Analyse vidéo avec TOUTES les options de personnalisation avancées.
+
+    Fonctionnalités exclusives v2.1:
+    - 🔒 Anti-détection IA (humanisation du texte)
+    - 🎨 Styles d'écriture (académique, journalistique, conversationnel...)
+    - 💬 Analyse des commentaires YouTube
+    - 📊 Métadonnées enrichies (sponsorship, propagande, figures publiques)
+    - 🎯 Analyse de l'intention de publication
+    - ✍️ Prompts personnalisés
+
+    SÉCURITÉ:
+    - Email vérifié obligatoire
+    - Pro/Expert requis pour certaines fonctionnalités
+    - Rate limiting appliqué
+    """
+    print(f"📥 [v2.1] Advanced analyze request: {request.url} by user {current_user.id}", flush=True)
+
+    if not ADVANCED_ANALYSIS_AVAILABLE:
+        raise HTTPException(status_code=501, detail={
+            "code": "feature_unavailable",
+            "message": "Advanced analysis features are not available"
+        })
+
+    # Extraire l'ID vidéo
+    video_id = extract_video_id(request.url)
+    if not video_id:
+        raise HTTPException(status_code=400, detail={
+            "code": "invalid_url",
+            "message": "Invalid YouTube URL"
+        })
+
+    # Déterminer le modèle
+    plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
+    model = request.model or plan_limits.get("default_model", "mistral-small-latest")
+
+    # Vérifier que le modèle est autorisé
+    allowed_models = plan_limits.get("models", ["mistral-small-latest"])
+    if model not in allowed_models:
+        model = allowed_models[0]
+
+    # Options de customization
+    customization = request.customization or AnalysisCustomization()
+    
+    # Vérifier les permissions pour fonctionnalités avancées
+    is_premium = current_user.plan in ["pro", "expert", "unlimited"]
+    
+    # Anti-AI detection: Pro/Expert only
+    if customization.anti_ai_detection and not is_premium:
+        customization.anti_ai_detection = False
+        print(f"⚠️ [v2.1] Anti-AI disabled (requires Pro/Expert)", flush=True)
+    
+    # Analyse des commentaires: Pro/Expert only
+    if customization.analyze_comments and not is_premium:
+        customization.analyze_comments = False
+        print(f"⚠️ [v2.1] Comments analysis disabled (requires Pro/Expert)", flush=True)
+    
+    # Analyse de propagande: Expert only
+    if customization.detect_propaganda and current_user.plan not in ["expert", "unlimited"]:
+        customization.detect_propaganda = False
+        print(f"⚠️ [v2.1] Propaganda analysis disabled (requires Expert)", flush=True)
+    
+    # Analyse d'intention: Pro/Expert only
+    if customization.analyze_publication_intent and not is_premium:
+        customization.analyze_publication_intent = False
+
+    # Deep research
+    deep_research = request.deep_research and plan_limits.get("deep_research_enabled", False)
+    deep_research_cost = plan_limits.get("deep_research_credits_cost", 0) if deep_research else 0
+
+    # Calculer le coût de base
+    if SECURITY_AVAILABLE:
+        credit_cost = get_credit_cost("video_analysis", model)
+    else:
+        credit_cost = 1
+    credit_cost += deep_research_cost
+
+    # Coûts supplémentaires pour options avancées
+    if request.generate_toc:
+        credit_cost += 1
+    if request.summary_length == "detailed":
+        credit_cost += 1
+    if customization.analyze_comments:
+        credit_cost += 2  # Analyse des commentaires coûte 2 crédits
+    if customization.anti_ai_detection and customization.humanize_level >= 2:
+        credit_cost += 1  # Humanisation forte coûte 1 crédit
+    if customization.detect_propaganda:
+        credit_cost += 1  # Analyse de propagande coûte 1 crédit
+
+    # Vérifier les crédits
+    if SECURITY_AVAILABLE:
+        can_analyze, reason, info = await secure_check_can_analyze(
+            session, current_user.id, model
+        )
+    else:
+        can_analyze, reason, credits_remaining, estimated_cost = await check_can_analyze(session, current_user.id)
+        info = {"credits": credits_remaining, "cost": estimated_cost}
+
+    if not can_analyze:
+        raise HTTPException(status_code=403, detail={
+            "code": reason,
+            "message": info.get("message", f"Cannot analyze: {reason}"),
+            "credits": info.get("credits", 0),
+            "cost": credit_cost,
+            **info
+        })
+
+    # Vérifier le cache (sauf si force_refresh)
+    if not request.force_refresh:
+        existing = await get_summary_by_video_id(session, video_id, current_user.id)
+        if existing and existing.mode == request.mode:
+            from datetime import timedelta
+            cache_age = datetime.now() - existing.created_at
+            if cache_age < timedelta(days=7):
+                print(f"💾 [CACHE HIT] v2.1: summary_id={existing.id}", flush=True)
+                return {
+                    "task_id": f"cached_{existing.id}",
+                    "status": "completed",
+                    "progress": 100,
+                    "message": "✅ Analyse retrouvée en cache (gratuit!)",
+                    "cost": 0,
+                    "video_info": {
+                        "video_id": existing.video_id,
+                        "title": existing.video_title,
+                        "channel": existing.video_channel,
+                    },
+                    "applied_customization": None,
+                    "comments_analysis": None
+                }
+
+    # Générer l'ID de tâche
+    if SECURITY_AVAILABLE:
+        task_id = generate_secure_operation_id(current_user.id, "video_analysis_v2.1")
+    else:
+        task_id = str(uuid4())
+
+    # Réserver les crédits
+    if SECURITY_AVAILABLE:
+        reserved, reserve_reason, reserve_info = await reserve_credits(
+            session, current_user.id, credit_cost, task_id, "video_analysis_v2.1"
+        )
+        if not reserved:
+            raise HTTPException(status_code=403, detail={
+                "code": reserve_reason,
+                "message": f"Could not reserve credits: {reserve_reason}",
+                **reserve_info
+            })
+        print(f"🔒 [v2.1] Credits reserved: {credit_cost} for task {task_id[:12]}", flush=True)
+
+    # Préparer les options complètes
+    full_options = {
+        "summary_length": request.summary_length,
+        "highlight_key_points": request.highlight_key_points,
+        "generate_toc": request.generate_toc,
+        "include_entities": request.include_entities,
+        "include_timestamps": request.include_timestamps,
+        "include_reliability": request.include_reliability,
+        "priority": request.priority if is_premium else "normal",
+        "webhook_url": request.webhook_url,
+        # v2.1 specific options
+        "customization": {
+            "user_prompt": customization.user_prompt,
+            "writing_style": customization.writing_style.value if customization.writing_style else "neutral",
+            "anti_ai_detection": customization.anti_ai_detection,
+            "humanize_level": customization.humanize_level,
+            "focus_topics": customization.focus_topics,
+            "exclude_topics": customization.exclude_topics,
+            "target_audience": customization.target_audience,
+            "expertise_level": customization.expertise_level,
+            "include_quotes": customization.include_quotes,
+            "include_statistics": customization.include_statistics,
+            "bullet_points_preferred": customization.bullet_points_preferred,
+            "analyze_comments": customization.analyze_comments,
+            "comments_limit": customization.comments_limit,
+            "detect_sponsorship": customization.detect_sponsorship,
+            "detect_propaganda": customization.detect_propaganda,
+            "extract_public_figures": customization.extract_public_figures,
+            "analyze_publication_intent": customization.analyze_publication_intent
+        }
+    }
+
+    # Stocker la tâche
+    _task_store[task_id] = {
+        "status": "pending",
+        "progress": 0,
+        "message": "Initializing v2.1 advanced analysis...",
+        "user_id": current_user.id,
+        "video_id": video_id,
+        "credit_cost": credit_cost,
+        "deep_research": deep_research,
+        "v2_1_options": full_options
+    }
+
+    print(f"🚀 [v2.1] Task created: {task_id} with advanced options", flush=True)
+
+    # Créer en DB
+    await create_task(session, task_id, current_user.id, "video_analysis_v2.1")
+
+    # Estimer la durée
+    estimated_duration = 45  # Base
+    if request.summary_length == "detailed":
+        estimated_duration += 20
+    if deep_research:
+        estimated_duration += 30
+    if customization.analyze_comments:
+        estimated_duration += 20
+    if customization.detect_propaganda:
+        estimated_duration += 10
+
+    # Lancer l'analyse en background
+    background_tasks.add_task(
+        _analyze_video_background_v2_1,
+        task_id=task_id,
+        video_id=video_id,
+        url=request.url,
+        mode=request.mode,
+        category=request.category,
+        lang=request.lang,
+        model=model,
+        user_id=current_user.id,
+        user_plan=current_user.plan,
+        credit_cost=credit_cost,
+        deep_research=deep_research,
+        options=full_options
+    )
+
+    return {
+        "task_id": task_id,
+        "status": "pending",
+        "progress": 0,
+        "message": "Analysis v2.1 started with advanced customization",
+        "estimated_duration_seconds": estimated_duration,
+        "cost": credit_cost,
+        "applied_customization": full_options.get("customization"),
+        "comments_analysis": None
+    }
+
+
+async def _analyze_video_background_v2_1(
+    task_id: str,
+    video_id: str,
+    url: str,
+    mode: str,
+    category: Optional[str],
+    lang: str,
+    model: str,
+    user_id: int,
+    user_plan: str,
+    credit_cost: int,
+    deep_research: bool,
+    options: Dict[str, Any]
+):
+    """
+    🆕 v2.1: Background analysis avec TOUTES les fonctionnalités avancées.
+
+    Nouvelles fonctionnalités:
+    - 🔒 Anti-détection IA avec humanisation
+    - 🎨 Styles d'écriture personnalisés
+    - 💬 Analyse des commentaires YouTube
+    - 📊 Métadonnées enrichies
+    - 🎯 Analyse d'intention de publication
+    """
+    from db.database import async_session_maker
+    import httpx
+
+    print(f"🔧 [v2.1] Advanced background task started: {task_id}", flush=True)
+
+    # Extraire les options de customization
+    custom_opts = options.get("customization", {})
+    
+    # Déterminer le niveau d'enrichissement
+    if deep_research:
+        enrichment_level = EnrichmentLevel.DEEP
+    else:
+        enrichment_level = get_enrichment_level(user_plan)
+
+    # Variables pour les résultats
+    comments_analysis_result = None
+    metadata_enriched_result = None
+    video_info = None
+
+    try:
+        async with async_session_maker() as session:
+            _task_store[task_id]["status"] = "processing"
+            _task_store[task_id]["progress"] = 3
+            _task_store[task_id]["message"] = "🚀 Démarrage de l'analyse avancée v2.1..."
+
+            # ═══════════════════════════════════════════════════════════════════
+            # 1. RÉCUPÉRER LES INFOS VIDÉO
+            # ═══════════════════════════════════════════════════════════════════
+            _task_store[task_id]["progress"] = 8
+            _task_store[task_id]["message"] = "📺 Récupération des infos vidéo..."
+
+            video_info = await get_video_info(video_id)
+            if not video_info:
+                raise Exception("Could not fetch video info")
+
+            # ═══════════════════════════════════════════════════════════════════
+            # 2. EXTRAIRE LA TRANSCRIPTION
+            # ═══════════════════════════════════════════════════════════════════
+            _task_store[task_id]["progress"] = 15
+            _task_store[task_id]["message"] = "📝 Extraction du transcript..."
+
+            transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id)
+            if not transcript:
+                raise Exception("No transcript available for this video")
+
+            if not lang or lang == "auto":
+                lang = detected_lang or "fr"
+
+            # ═══════════════════════════════════════════════════════════════════
+            # 3. DÉTECTER LA CATÉGORIE
+            # ═══════════════════════════════════════════════════════════════════
+            _task_store[task_id]["progress"] = 22
+            _task_store[task_id]["message"] = "🏷️ Détection de la catégorie..."
+
+            if not category or category == "auto":
+                category, confidence = detect_category(
+                    title=video_info["title"],
+                    description=video_info.get("description", ""),
+                    transcript=transcript[:3000],
+                    channel=video_info.get("channel", ""),
+                    tags=video_info.get("tags", []),
+                    youtube_categories=video_info.get("categories", [])
+                )
+            else:
+                confidence = 0.9
+
+            # ═══════════════════════════════════════════════════════════════════
+            # 4. 🆕 ANALYSE DES COMMENTAIRES (si activée)
+            # ═══════════════════════════════════════════════════════════════════
+            if custom_opts.get("analyze_comments", False):
+                _task_store[task_id]["progress"] = 28
+                _task_store[task_id]["message"] = "💬 Analyse des commentaires YouTube..."
+                
+                try:
+                    comments_limit = custom_opts.get("comments_limit", 100)
+                    comments_analysis_result = await analyze_comments(
+                        video_id=video_id,
+                        limit=comments_limit,
+                        use_ai=True,
+                        video_title=video_info["title"],
+                        lang=lang,
+                        model=model
+                    )
+                    print(f"✅ [v2.1] Comments analysis: {comments_analysis_result.analyzed_count} comments", flush=True)
+                except Exception as e:
+                    print(f"⚠️ [v2.1] Comments analysis failed: {e}", flush=True)
+
+            # ═══════════════════════════════════════════════════════════════════
+            # 5. 🆕 MÉTADONNÉES ENRICHIES
+            # ═══════════════════════════════════════════════════════════════════
+            _task_store[task_id]["progress"] = 35
+            _task_store[task_id]["message"] = "📊 Extraction des métadonnées enrichies..."
+            
+            try:
+                metadata_enriched_result = await get_enriched_metadata(
+                    video_id=video_id,
+                    title=video_info["title"],
+                    description=video_info.get("description", ""),
+                    transcript=transcript[:5000],
+                    channel=video_info.get("channel", ""),
+                    tags=video_info.get("tags", []),
+                    category=category,
+                    analyze_propaganda=custom_opts.get("detect_propaganda", False),
+                    analyze_intent=custom_opts.get("analyze_publication_intent", False),
+                    extract_figures=custom_opts.get("extract_public_figures", True),
+                    lang=lang
+                )
+                print(f"✅ [v2.1] Metadata enriched: sponsorship={metadata_enriched_result.sponsorship.type.value}", flush=True)
+            except Exception as e:
+                print(f"⚠️ [v2.1] Metadata enrichment failed: {e}", flush=True)
+
+            # ═══════════════════════════════════════════════════════════════════
+            # 6. ENRICHISSEMENT WEB
+            # ═══════════════════════════════════════════════════════════════════
+            web_context = None
+            enrichment_sources = []
+
+            if enrichment_level != EnrichmentLevel.NONE:
+                _task_store[task_id]["progress"] = 42
+                _task_store[task_id]["message"] = f"🌐 Recherche web ({enrichment_level.value})..."
+
+                try:
+                    web_context, enrichment_sources, actual_level = await get_pre_analysis_context(
+                        video_title=video_info["title"],
+                        video_channel=video_info.get("channel", ""),
+                        category=category,
+                        transcript=transcript,
+                        plan=user_plan,
+                        lang=lang
+                    )
+                except Exception as e:
+                    print(f"⚠️ [v2.1] Web enrichment failed: {e}", flush=True)
+
+            # ═══════════════════════════════════════════════════════════════════
+            # 7. 🆕 CONSTRUIRE LE PROMPT PERSONNALISÉ
+            # ═══════════════════════════════════════════════════════════════════
+            _task_store[task_id]["progress"] = 50
+            _task_store[task_id]["message"] = "🧠 Construction du prompt personnalisé..."
+
+            # Instructions de base selon les options
+            base_instructions = []
+            
+            if options.get("summary_length") == "short":
+                base_instructions.append("Fais un résumé COURT et CONCIS (max 500 mots).")
+            elif options.get("summary_length") == "detailed":
+                base_instructions.append("Fais un résumé DÉTAILLÉ et EXHAUSTIF (1500+ mots).")
+
+            if options.get("highlight_key_points"):
+                base_instructions.append("Mets en évidence les points clés avec des marqueurs **gras**.")
+
+            if options.get("generate_toc"):
+                base_instructions.append("Commence par une table des matières structurée.")
+
+            if custom_opts.get("include_quotes", True):
+                base_instructions.append("Inclus des citations directes pertinentes de la vidéo.")
+
+            if custom_opts.get("include_statistics", True):
+                base_instructions.append("Mentionne les statistiques et chiffres importants.")
+
+            if custom_opts.get("bullet_points_preferred", False):
+                base_instructions.append("Utilise des listes à puces quand c'est pertinent.")
+
+            base_prompt = "\n".join(base_instructions) if base_instructions else ""
+
+            # Utiliser le module anti_ai_prompts pour construire le prompt complet
+            writing_style = WritingStyle(custom_opts.get("writing_style", "neutral"))
+            
+            customized_prompt = build_customized_prompt(
+                base_prompt=base_prompt,
+                writing_style=writing_style,
+                anti_ai_detection=custom_opts.get("anti_ai_detection", False),
+                humanize_level=custom_opts.get("humanize_level", 0),
+                user_prompt=custom_opts.get("user_prompt"),
+                target_audience=custom_opts.get("target_audience"),
+                focus_topics=custom_opts.get("focus_topics", []),
+                exclude_topics=custom_opts.get("exclude_topics", []),
+                lang=lang
+            )
+
+            # Combiner avec le contexte web
+            full_context = None
+            if web_context and customized_prompt:
+                full_context = f"{web_context}\n\n{customized_prompt}"
+            elif web_context:
+                full_context = web_context
+            elif customized_prompt:
+                full_context = customized_prompt
+
+            # ═══════════════════════════════════════════════════════════════════
+            # 8. GÉNÉRER LE RÉSUMÉ
+            # ═══════════════════════════════════════════════════════════════════
+            _task_store[task_id]["progress"] = 58
+            _task_store[task_id]["message"] = "🧠 Génération du résumé personnalisé..."
+
+            transcript_to_analyze = transcript_timestamped or transcript
+            video_duration = video_info.get("duration", 0)
+            needs_chunk, word_count, chunk_reason = needs_chunking(transcript_to_analyze)
+
+            if needs_chunk:
+                _task_store[task_id]["message"] = f"📚 Vidéo longue ({word_count} mots)..."
+
+                def update_progress(progress: int, message: str):
+                    _task_store[task_id]["progress"] = progress
+                    _task_store[task_id]["message"] = message
+
+                summary_content = await analyze_long_video(
+                    title=video_info["title"],
+                    transcript=transcript_to_analyze,
+                    video_duration=video_duration,
+                    category=category,
+                    lang=lang,
+                    mode=mode,
+                    model=model,
+                    web_context=full_context,
+                    progress_callback=update_progress,
+                    transcript_timestamped=transcript_timestamped
+                )
+            else:
+                summary_content = await generate_summary(
+                    title=video_info["title"],
+                    transcript=transcript_to_analyze,
+                    category=category,
+                    lang=lang,
+                    mode=mode,
+                    model=model,
+                    duration=video_duration,
+                    channel=video_info.get("channel", ""),
+                    description=video_info.get("description", ""),
+                    web_context=full_context
+                )
+
+            if not summary_content:
+                raise Exception("Failed to generate summary")
+
+            # ═══════════════════════════════════════════════════════════════════
+            # 9. EXTRAIRE LES ENTITÉS
+            # ═══════════════════════════════════════════════════════════════════
+            entities = None
+            if options.get("include_entities", True):
+                _task_store[task_id]["progress"] = 75
+                _task_store[task_id]["message"] = "🔍 Extraction des entités..."
+                entities = await extract_entities(summary_content, lang=lang)
+
+            # ═══════════════════════════════════════════════════════════════════
+            # 10. CALCULER LA FIABILITÉ
+            # ═══════════════════════════════════════════════════════════════════
+            reliability = None
+            if options.get("include_reliability", True):
+                _task_store[task_id]["progress"] = 82
+                _task_store[task_id]["message"] = "⚖️ Calcul du score de fiabilité..."
+                reliability = await calculate_reliability_score(summary_content, entities or {}, lang=lang)
+
+                # Bonus si enrichi avec web
+                if enrichment_sources:
+                    reliability_bonus = {
+                        EnrichmentLevel.FULL: 8,
+                        EnrichmentLevel.DEEP: 15
+                    }.get(enrichment_level, 0)
+                    reliability = min(98, reliability + reliability_bonus)
+
+                # Malus si propagande détectée
+                if metadata_enriched_result and metadata_enriched_result.propaganda_analysis:
+                    prop = metadata_enriched_result.propaganda_analysis
+                    if prop.risk_level.value in ["high", "critical"]:
+                        reliability = max(20, reliability - 20)
+                    elif prop.risk_level.value == "medium":
+                        reliability = max(30, reliability - 10)
+
+            # ═══════════════════════════════════════════════════════════════════
+            # 11. SAUVEGARDER
+            # ═══════════════════════════════════════════════════════════════════
+            _task_store[task_id]["progress"] = 90
+            _task_store[task_id]["message"] = "💾 Sauvegarde des résultats..."
+
+            if SECURITY_AVAILABLE:
+                await consume_reserved_credits(
+                    session, user_id, task_id,
+                    f"Video v2.1: {video_info['title'][:50]} ({model})"
+                )
+            else:
+                await deduct_credit(session, user_id, credit_cost, f"Video v2.1: {video_info['title'][:50]}")
+
+            # Préparer les métadonnées d'enrichissement
+            enrichment_metadata = {
+                "level": enrichment_level.value,
+                "sources": enrichment_sources,
+                "enriched_at": datetime.utcnow().isoformat(),
+                "v2_1_options": options,
+                "comments_analyzed": comments_analysis_result.analyzed_count if comments_analysis_result else 0,
+                "sponsorship_detected": metadata_enriched_result.sponsorship.type.value if metadata_enriched_result else None,
+                "propaganda_risk": metadata_enriched_result.propaganda_analysis.risk_level.value if metadata_enriched_result and metadata_enriched_result.propaganda_analysis else None
+            }
+
+            summary_id = await save_summary(
+                session=session,
+                user_id=user_id,
+                video_id=video_id,
+                video_title=video_info["title"],
+                video_channel=video_info.get("channel", "Unknown"),
+                video_duration=video_info.get("duration", 0),
+                video_url=url,
+                thumbnail_url=video_info.get("thumbnail_url", f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"),
+                category=category,
+                category_confidence=confidence,
+                lang=lang,
+                mode=mode,
+                model_used=model,
+                summary_content=summary_content,
+                transcript_context=transcript_timestamped or transcript,
+                video_upload_date=video_info.get("upload_date"),
+                entities_extracted=entities,
+                reliability_score=reliability,
+                enrichment_data=enrichment_metadata
+            )
+
+            # Incrémenter le quota
+            try:
+                from core.plan_limits import increment_daily_usage
+                await increment_daily_usage(session, user_id)
+            except Exception as quota_err:
+                print(f"⚠️ [v2.1] Quota increment failed: {quota_err}", flush=True)
+
+            # ═══════════════════════════════════════════════════════════════════
+            # 12. MARQUER COMME TERMINÉ
+            # ═══════════════════════════════════════════════════════════════════
+            final_word_count = len(summary_content.split())
+            enrichment_badge = get_enrichment_badge(enrichment_level, lang)
+
+            # Préparer le résultat des commentaires
+            comments_result = None
+            if comments_analysis_result:
+                comments_result = {
+                    "analyzed_count": comments_analysis_result.analyzed_count,
+                    "sentiment_distribution": comments_analysis_result.sentiment_distribution,
+                    "average_sentiment": comments_analysis_result.average_sentiment,
+                    "constructive_ratio": comments_analysis_result.constructive_ratio,
+                    "controversy_score": comments_analysis_result.controversy_score,
+                    "top_questions": comments_analysis_result.top_questions,
+                    "summary": comments_analysis_result.summary
+                }
+
+            # Préparer les métadonnées enrichies
+            metadata_result = None
+            if metadata_enriched_result:
+                metadata_result = {
+                    "public_figures": [
+                        {"name": f.name, "role": f.role, "organization": f.organization}
+                        for f in metadata_enriched_result.public_figures[:10]
+                    ],
+                    "sponsorship": {
+                        "type": metadata_enriched_result.sponsorship.type.value,
+                        "brands": metadata_enriched_result.sponsorship.brands,
+                        "disclosed": metadata_enriched_result.sponsorship.disclosed
+                    },
+                    "propaganda_analysis": {
+                        "risk_level": metadata_enriched_result.propaganda_analysis.risk_level.value,
+                        "techniques": metadata_enriched_result.propaganda_analysis.detected_techniques,
+                        "recommendation": metadata_enriched_result.propaganda_analysis.recommendation
+                    } if metadata_enriched_result.propaganda_analysis else None,
+                    "publication_intent": {
+                        "primary": metadata_enriched_result.publication_intent.primary_intent,
+                        "educational_score": metadata_enriched_result.publication_intent.educational_score,
+                        "commercial_score": metadata_enriched_result.publication_intent.commercial_score
+                    } if metadata_enriched_result.publication_intent else None
+                }
+
+            _task_store[task_id] = {
+                "status": "completed",
+                "progress": 100,
+                "message": f"✅ Analyse v2.1 terminée {enrichment_badge}".strip(),
+                "user_id": user_id,
+                "result": {
+                    "summary_id": summary_id,
+                    "video_id": video_id,
+                    "video_title": video_info["title"],
+                    "word_count": final_word_count,
+                    "category": category,
+                    "reliability_score": reliability,
+                    "v2_1_options_applied": options.get("customization"),
+                    "comments_analysis": comments_result,
+                    "metadata_enriched": metadata_result,
+                    "enrichment": {
+                        "level": enrichment_level.value,
+                        "sources_count": len(enrichment_sources),
+                    } if enrichment_level != EnrichmentLevel.NONE else None
+                }
+            }
+
+            await update_task_status(
+                session, task_id,
+                status="completed",
+                progress=100,
+                result=_task_store[task_id]["result"]
+            )
+
+            # Notification SSE
+            try:
+                await notify_analysis_complete(
+                    user_id=user_id,
+                    summary_id=summary_id,
+                    video_title=video_info["title"],
+                    video_id=video_id,
+                    cached=False
+                )
+            except Exception as notify_err:
+                print(f"⚠️ [v2.1] Notification failed: {notify_err}", flush=True)
+
+            # Webhook
+            webhook_url = options.get("webhook_url")
+            if webhook_url:
+                try:
+                    async with httpx.AsyncClient() as client:
+                        await client.post(
+                            webhook_url,
+                            json={
+                                "event": "analysis_complete",
+                                "task_id": task_id,
+                                "summary_id": summary_id,
+                                "video_id": video_id,
+                                "status": "completed",
+                                "version": "v2.1"
+                            },
+                            timeout=10.0
+                        )
+                    print(f"🔔 [v2.1] Webhook sent to {webhook_url}", flush=True)
+                except Exception as webhook_err:
+                    print(f"⚠️ [v2.1] Webhook failed: {webhook_err}", flush=True)
+
+            print(f"✅ [v2.1] Task completed: {task_id}", flush=True)
+
+    except Exception as e:
+        error_msg = str(e)
+        print(f"❌ [v2.1] Analysis error for task {task_id}: {error_msg}", flush=True)
+
+        if SECURITY_AVAILABLE:
+            await release_reserved_credits(user_id, task_id)
+
+        _task_store[task_id] = {
+            "status": "failed",
+            "progress": 0,
+            "message": f"Error: {error_msg}",
+            "user_id": user_id,
+            "error": error_msg
+        }
+
+        try:
+            await notify_analysis_failed(
+                user_id=user_id,
+                video_title=video_info.get("title", "Vidéo") if video_info else "Vidéo",
+                error=error_msg[:200]
+            )
+        except Exception:
+            pass
+
+        try:
+            async with async_session_maker() as session:
+                await update_task_status(session, task_id, status="failed", progress=0, error=error_msg)
+        except Exception:
+            pass
 
 
 async def _analyze_video_background_v6(
@@ -579,7 +1860,15 @@ async def _analyze_video_background_v6(
             )
             
             print(f"💾 Summary saved: id={summary_id}", flush=True)
-            
+
+            # 🎫 Incrémenter le compteur quotidien d'analyses
+            try:
+                from core.plan_limits import increment_daily_usage
+                daily_count = await increment_daily_usage(session, user_id)
+                print(f"📊 [QUOTA] User {user_id} daily usage: {daily_count}", flush=True)
+            except Exception as quota_err:
+                print(f"⚠️ [QUOTA] Failed to increment daily usage: {quota_err}", flush=True)
+
             # ═══════════════════════════════════════════════════════════════════
             # 9. MARQUER COMME TERMINÉ
             # ═══════════════════════════════════════════════════════════════════
@@ -1019,11 +2308,15 @@ async def update_notes(
     session: AsyncSession = Depends(get_session)
 ):
     """Met à jour les notes d'un résumé"""
+    from core.sanitize import sanitize_text
+
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found")
-    
-    await update_summary(session, summary_id, current_user.id, notes=data.get("notes", ""))
+
+    # 🛡️ Sanitize user input
+    notes = sanitize_text(data.get("notes", ""), max_length=10000)
+    await update_summary(session, summary_id, current_user.id, notes=notes)
     return {"success": True}
 
 
@@ -1035,11 +2328,15 @@ async def update_tags(
     session: AsyncSession = Depends(get_session)
 ):
     """Met à jour les tags d'un résumé"""
+    from core.sanitize import sanitize_text
+
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found")
-    
-    await update_summary(session, summary_id, current_user.id, tags=data.get("tags", ""))
+
+    # 🛡️ Sanitize user input
+    tags = sanitize_text(data.get("tags", ""), max_length=500)
+    await update_summary(session, summary_id, current_user.id, tags=tags)
     return {"success": True}
 
 

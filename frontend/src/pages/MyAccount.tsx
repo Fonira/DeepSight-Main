@@ -14,12 +14,13 @@ import { billingApi, authApi } from '../services/api';
 import { useToast } from '../components/Toast';
 import {
   User, Shield, Key, Trash2, LogOut, Check,
-  AlertCircle, Loader2, Eye, EyeOff, Copy, RefreshCw, Lock,
+  AlertCircle, Eye, EyeOff, Copy, RefreshCw, Lock,
   ExternalLink, Mail, Calendar, Crown, CreditCard, Sparkles,
   ChevronRight, Hash, AlertTriangle, Zap, Clock,
   MessageSquare, Search, FileText, Download, Headphones,
   Users, Code, GraduationCap, Brain, BookOpen
 } from 'lucide-react';
+import { DeepSightSpinnerMicro } from '../components/ui';
 import {
   PLAN_FEATURES,
   PLAN_LIMITS,
@@ -775,7 +776,7 @@ export const MyAccount: React.FC = () => {
                       <div className="flex flex-wrap gap-3">
                         {!apiKey.status?.has_api_key ? (
                           <button onClick={handleGenerateKey} disabled={apiKey.loading} className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-accent-primary text-white font-medium hover:opacity-90 disabled:opacity-50">
-                            {apiKey.loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Key className="w-4 h-4" />}
+                            {apiKey.loading ? <DeepSightSpinnerMicro /> : <Key className="w-4 h-4" />}
                             {tr('Générer une clé API', 'Generate API Key')}
                           </button>
                         ) : (
@@ -895,7 +896,7 @@ export const MyAccount: React.FC = () => {
                         disabled={deleteConfirmText !== (language === 'fr' ? 'SUPPRIMER' : 'DELETE') || deleteLoading}
                         className="px-4 py-2 rounded-lg bg-error text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       >
-                        {deleteLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {deleteLoading && <DeepSightSpinnerMicro />}
                         {tr('Supprimer définitivement', 'Delete permanently')}
                       </button>
                       <button onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); setDeletePassword(''); }} className="px-4 py-2 rounded-lg bg-bg-tertiary text-sm hover:bg-bg-hover transition-colors">

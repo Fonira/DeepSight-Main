@@ -165,10 +165,10 @@ class User(Base):
 class Summary(Base):
     """Table des résumés/analyses de vidéos"""
     __tablename__ = "summaries"
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    
+
     # Vidéo
     video_id = Column(String(20), nullable=False)
     video_title = Column(String(500))
@@ -177,43 +177,48 @@ class Summary(Base):
     video_url = Column(String(500))
     thumbnail_url = Column(Text)  # Changed to Text for base64 images
     video_upload_date = Column(String(50))
-    
+
     # Analyse
     category = Column(String(50))
     category_confidence = Column(Float)
     lang = Column(String(5))
     mode = Column(String(20))
     model_used = Column(String(50))
-    
+
     # Contenu
     summary_content = Column(Text)
     transcript_context = Column(Text)  # Transcription pour le chat
     word_count = Column(Integer)
-    
+
     # Fact-checking et entités
     fact_check_result = Column(Text)
     entities_extracted = Column(Text)  # JSON
     reliability_score = Column(Float)
     tags = Column(Text)
-    
+
     # Playlist
     playlist_id = Column(String(100), index=True)
     playlist_position = Column(Integer)
-    
+
     # Favoris et notes
     is_favorite = Column(Boolean, default=False)
     notes = Column(Text)
-    
+
     # Timestamp
     created_at = Column(DateTime, default=func.now())
-    
+
     # Relations
     user = relationship("User", back_populates="summaries")
     chat_messages = relationship("ChatMessage", back_populates="summary", cascade="all, delete-orphan")
-    
+
     __table_args__ = (
         Index('idx_summaries_user', 'user_id'),
         Index('idx_summaries_playlist', 'playlist_id'),
+        # 🆕 Indexes optimisés pour les requêtes fréquentes
+        Index('idx_summaries_user_created', 'user_id', 'created_at'),  # Pour history pagination
+        Index('idx_summaries_user_video', 'user_id', 'video_id'),      # Pour duplicate check
+        Index('idx_summaries_user_favorite', 'user_id', 'is_favorite'), # Pour filtrage favoris
+        Index('idx_summaries_user_category', 'user_id', 'category'),   # Pour filtrage catégorie
     )
 
 
@@ -547,10 +552,51 @@ async def close_db():
 
 
 def hash_password(password: str) -> str:
-    """Hash un mot de passe avec le salt Deep Sight"""
-    return hashlib.sha256(
-        (f"deepsight_v1_ocean_salt_{password}").encode()
-    ).hexdigest()
+    """
+    Hash un mot de passe de manière sécurisée.
+
+    Utilise bcrypt pour les nouveaux hashs, mais reste compatible
+    avec les anciens hashs SHA256 pour la migration.
+    """
+    try:
+        import bcrypt
+        # Utiliser bcrypt pour un hashing sécurisé
+        salt = bcrypt.gensalt(rounds=12)
+        return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+    except ImportError:
+        # Fallback SHA256 si bcrypt non disponible
+        print("⚠️ bcrypt not available, using SHA256 fallback", flush=True)
+        return hashlib.sha256(
+            (f"deepsight_v1_ocean_salt_{password}").encode()
+        ).hexdigest()
+
+
+def verify_password(password: str, password_hash: str) -> bool:
+    """
+    Vérifie un mot de passe contre son hash.
+
+    Compatible avec:
+    - Nouveaux hashs bcrypt ($2b$...)
+    - Anciens hashs SHA256 (64 caractères hex)
+    """
+    if not password_hash:
+        return False
+
+    # Détection du type de hash
+    if password_hash.startswith('$2b$') or password_hash.startswith('$2a$'):
+        # Hash bcrypt
+        try:
+            import bcrypt
+            return bcrypt.checkpw(password.encode('utf-8'), password_hash.encode('utf-8'))
+        except ImportError:
+            print("⚠️ bcrypt not available for verification", flush=True)
+            return False
+    else:
+        # Ancien hash SHA256 - vérification et migration recommandée
+        legacy_hash = hashlib.sha256(
+            (f"deepsight_v1_ocean_salt_{password}").encode()
+        ).hexdigest()
+        return legacy_hash == password_hash
 
 
 async def create_admin_if_not_exists():

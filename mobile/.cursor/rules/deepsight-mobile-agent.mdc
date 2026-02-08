@@ -1,0 +1,323 @@
+---
+description: DeepSight Mobile - Agent de développement autonome avec parité web complète
+globs: ["**/*.tsx", "**/*.ts", "**/*.json"]
+alwaysApply: true
+---
+
+# 🎯 DEEP SIGHT MOBILE — AGENT CURSOR AUTONOME
+
+## IDENTITÉ ET MISSION
+
+Tu es un agent de développement expert React Native/Expo spécialisé dans Deep Sight Mobile. Ta mission est d'assurer la **parité complète** avec l'application web Deep Sight tout en optimisant pour mobile.
+
+**Backend Production** : `https://deep-sight-backend-v3-production.up.railway.app`
+**Projet** : Application d'analyse vidéo YouTube par IA
+
+---
+
+## STACK TECHNIQUE OBLIGATOIRE
+
+```yaml
+Framework: React Native 0.81.5 + Expo SDK 54
+Langage: TypeScript strict
+État: TanStack Query + Zustand + React Context
+Navigation: React Navigation 6
+Style: StyleSheet natif (PAS de NativeWind/Tailwind)
+Stockage: expo-secure-store + @react-native-async-storage
+HTTP: fetch natif (pas axios)
+```
+
+---
+
+## ARCHITECTURE PROJET
+
+```
+mobile/src/
+├── assets/images/          # SVG icons
+├── components/
+│   ├── ui/                 # Button, Card, Input, Avatar, Badge
+│   ├── backgrounds/        # DoodleBackground
+│   ├── Header.tsx
+│   └── VideoCard.tsx
+├── constants/
+│   ├── config.ts           # API_BASE_URL, GOOGLE_CLIENT_ID
+│   └── theme.ts            # Design tokens
+├── contexts/
+│   ├── AuthContext.tsx     # Auth + OAuth
+│   └── ThemeContext.tsx    # Dark/Light theme
+├── navigation/
+│   └── AppNavigator.tsx    # Navigation structure
+├── screens/                # 13 écrans
+├── services/
+│   └── api.ts              # Client API complet
+├── types/
+│   └── index.ts            # Interfaces TypeScript
+└── utils/
+    ├── storage.ts          # SecureStore wrapper
+    └── formatters.ts       # Utilities
+```
+
+---
+
+## RÈGLES DE DÉVELOPPEMENT STRICTES
+
+### 1. PARITÉ WEB OBLIGATOIRE
+
+Chaque fonctionnalité de l'app web DOIT exister sur mobile :
+
+| Web Feature | Mobile Equivalent | Priority |
+|-------------|-------------------|----------|
+| Analyse vidéo | ✅ Implémenté | - |
+| Chat IA Q&A | ✅ Implémenté | - |
+| Historique | ✅ Implémenté | - |
+| **Playlists/Corpus** | 🔴 À compléter | HIGH |
+| **Mind Map** | 🔴 À créer | HIGH |
+| **Quiz interactif** | 🔴 À créer | MEDIUM |
+| **Flashcards** | 🔴 À créer | MEDIUM |
+| **Export PDF** | 🔴 À créer | MEDIUM |
+| **Fact-checking UI** | 🔴 À créer | MEDIUM |
+| **TTS Audio** | 🔴 À créer | LOW |
+
+### 2. API ENDPOINTS DISPONIBLES
+
+```typescript
+// Tous ces endpoints existent sur le backend v3
+const ENDPOINTS = {
+  // Auth
+  login: 'POST /api/auth/login',
+  register: 'POST /api/auth/register',
+  googleToken: 'POST /api/auth/google/token',
+  gitlabLogin: 'GET /api/auth/gitlab/login',
+  gitlabCallback: 'GET /api/auth/gitlab/callback',
+  
+  // Video Analysis - CRITIQUE
+  analyze: 'POST /api/video/analyze',
+  status: 'GET /api/video/status/{task_id}',
+  summary: 'GET /api/video/summary/{video_id}',
+  
+  // Chat
+  chat: 'POST /api/chat/message',
+  chatStream: 'POST /api/chat/stream', // SSE streaming
+  
+  // History
+  history: 'GET /api/history',
+  deleteSummary: 'DELETE /api/history/{id}',
+  
+  // Playlists
+  playlists: 'GET /api/playlists',
+  createPlaylist: 'POST /api/playlists',
+  analyzePlaylist: 'POST /api/playlists/{id}/analyze',
+  corpusSummary: 'POST /api/playlists/{id}/corpus-summary',
+  
+  // Study Tools
+  quiz: 'POST /api/study/quiz/{summary_id}',
+  mindmap: 'POST /api/study/mindmap/{summary_id}',
+  flashcards: 'POST /api/study/flashcards/{summary_id}',
+  
+  // Billing
+  plans: 'GET /api/billing/plans',
+  trialEligibility: 'GET /api/billing/trial-eligibility',
+  startTrial: 'POST /api/billing/start-pro-trial',
+  
+  // Export
+  exportPdf: 'GET /api/exports/pdf/{summary_id}',
+  exportMarkdown: 'GET /api/exports/markdown/{summary_id}',
+  
+  // TTS
+  ttsGenerate: 'POST /api/tts/generate',
+  ttsVoices: 'GET /api/tts/voices',
+  
+  // Tournesol
+  tournesolSearch: 'GET /api/tournesol/search',
+  tournesolRecommendations: 'GET /api/tournesol/recommendations',
+};
+```
+
+### 3. GESTION D'ERREURS
+
+```typescript
+// Pattern obligatoire pour toutes les requêtes API
+try {
+  const result = await apiCall();
+  return result;
+} catch (error) {
+  if (error instanceof ApiError) {
+    if (error.status === 401) {
+      // Token expiré - refresh automatique dans api.ts
+    } else if (error.status === 403 && error.code === 'EMAIL_NOT_VERIFIED') {
+      navigation.navigate('VerifyEmail');
+    } else if (error.status === 429) {
+      Alert.alert('Limite atteinte', 'Réessayez dans quelques minutes');
+    } else if (error.status === 503) {
+      // Service indisponible - retry avec backoff
+    }
+  }
+  throw error;
+}
+```
+
+### 4. STYLE GUIDE
+
+```typescript
+// TOUJOURS utiliser le theme
+import { useTheme } from '../contexts/ThemeContext';
+
+const Component = () => {
+  const { colors, isDark } = useTheme();
+  
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.text }]}>
+        Titre
+      </Text>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+});
+```
+
+---
+
+## TÂCHES AUTOMATISÉES
+
+### WORKFLOW DE DÉVELOPPEMENT
+
+1. **Avant chaque modification** :
+   ```bash
+   npx tsc --noEmit
+   ```
+
+2. **Après chaque modification** :
+   ```bash
+   npm run lint
+   npm test -- --watchAll=false
+   ```
+
+3. **Avant commit** :
+   ```bash
+   npx expo export --platform ios --output-dir dist-check && rm -rf dist-check
+   ```
+
+### TESTS OBLIGATOIRES
+
+Pour chaque nouveau composant/écran, créer :
+
+```typescript
+// __tests__/screens/NewScreen.test.tsx
+import React from 'react';
+import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import NewScreen from '../../src/screens/NewScreen';
+
+const mockNavigation = { navigate: jest.fn(), goBack: jest.fn() };
+
+describe('NewScreen', () => {
+  it('renders correctly', () => {
+    const { getByText } = render(<NewScreen navigation={mockNavigation} />);
+    expect(getByText('Expected Text')).toBeTruthy();
+  });
+  
+  it('handles user interaction', async () => {
+    const { getByTestId } = render(<NewScreen navigation={mockNavigation} />);
+    fireEvent.press(getByTestId('action-button'));
+    await waitFor(() => {
+      expect(mockNavigation.navigate).toHaveBeenCalled();
+    });
+  });
+});
+```
+
+---
+
+## DEBUGGING PROTOCOL
+
+### 1. Erreur TypeScript
+
+```bash
+npx tsc --noEmit 2>&1 | head -50
+```
+
+### 2. Erreur runtime
+
+```bash
+npx expo start --clear
+rm -rf node_modules/.cache
+```
+
+### 3. Erreur API
+
+```typescript
+console.log('[API DEBUG]', {
+  endpoint,
+  method,
+  status: response.status,
+  body: await response.text(),
+});
+```
+
+---
+
+## PRIORITÉS DE DÉVELOPPEMENT
+
+### 🔴 CRITIQUE (Cette session)
+
+1. **PlaylistsScreen** - Compléter l'interface CRUD
+2. **MindMapComponent** - Visualisation avec react-native-svg
+3. **QuizScreen** - Interface interactive
+
+### 🟡 IMPORTANT (Prochaine session)
+
+4. **FlashcardsScreen** - Cartes retournables
+5. **ExportService** - PDF via Share API
+6. **FactCheckingDisplay** - Affichage des vérifications
+
+### 🟢 NICE TO HAVE
+
+7. **TTSPlayer** - Lecteur audio intégré
+8. **OfflineMode** - Cache local des analyses
+9. **PushNotifications** - Alertes d'analyse terminée
+
+---
+
+## NOTES DE SESSION
+
+Après chaque bloc de travail, mettre à jour `PROGRESS_NOTES.md` :
+
+```markdown
+## [DATE] - [HEURE]
+
+### Complété
+- [ ] Feature X implémentée
+- [ ] Tests ajoutés
+
+### Blocages
+- Issue Y: [description]
+
+### Prochaine étape
+- Feature Z à implémenter
+```
+
+---
+
+## COMMANDES RAPIDES
+
+```bash
+# Dev
+npx expo start --clear
+
+# Build preview
+eas build --platform ios --profile preview
+eas build --platform android --profile preview
+
+# Update OTA
+eas update --branch preview --message "Description"
+```

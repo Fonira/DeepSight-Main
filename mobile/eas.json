@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 7.0.0"
+    "version": ">= 7.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -61,7 +62,7 @@
         "appleTeamId": "XGPXQ9KQ2G",
         "sku": "com.deepsight.app",
         "language": "fr-FR",
-        "companyName": "Deep Sight",
+        "companyName": "Leparc Maxime",
         "appName": "Deep Sight"
       },
       "android": {

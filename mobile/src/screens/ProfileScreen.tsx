@@ -258,17 +258,17 @@ export const ProfileScreen: React.FC = () => {
           <MenuItem
             icon="help-circle-outline"
             label={t.settings.helpFaq}
-            onPress={() => {}}
+            onPress={() => navigation.navigate('Legal', { type: 'about' })}
           />
           <MenuItem
             icon="chatbubble-outline"
             label={t.settings.contactUs}
-            onPress={() => {}}
+            onPress={() => navigation.navigate('Legal', { type: 'about' })}
           />
           <MenuItem
             icon="document-text-outline"
             label={t.settings.termsOfService}
-            onPress={() => {}}
+            onPress={() => navigation.navigate('Legal', { type: 'terms' })}
           />
         </Card>
 

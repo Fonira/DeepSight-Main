@@ -14,10 +14,11 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  MessageCircle, X, Send, Loader2, Globe, Bot, User,
+  MessageCircle, X, Send, Globe, Bot, User,
   Minimize2, Maximize2, Layers, Move, Copy, Check,
   ExternalLink
 } from 'lucide-react';
+import { DeepSightSpinnerMicro } from './ui';
 import { parseAskQuestions, ClickableQuestionsBlock } from './ClickableQuestions';
 // 🔧 v2.0: Import depuis EnrichedMarkdown (plus de WikiTooltip séparé)
 import { EnrichedMarkdown, cleanConceptMarkers } from './EnrichedMarkdown';
@@ -377,10 +378,8 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
                     </div>
                   )})}
                   {isLoading && (
-                    <div className="flex gap-2">
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center ${isPlaylist ? 'bg-purple-500/30' : 'bg-cyan-500/30'}`}>
-                        <Loader2 className={`w-3.5 h-3.5 animate-spin ${isPlaylist ? 'text-purple-300' : 'text-cyan-300'}`} />
-                      </div>
+                    <div className="flex gap-2 items-center">
+                      <DeepSightSpinnerMicro className="flex-shrink-0" />
                       <div className="bg-gray-800/80 rounded-xl px-3 py-2">
                         <span className="text-sm text-gray-400">{t.thinking}</span>
                       </div>

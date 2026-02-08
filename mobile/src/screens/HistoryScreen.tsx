@@ -21,6 +21,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { historyApi } from '../services/api';
 import { Header, VideoCard, EmptyState } from '../components';
+import { VideoCardSkeleton } from '../components/ui/Skeleton';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { useIsOffline } from '../hooks/useNetworkStatus';
 import type { RootStackParamList, MainTabParamList, AnalysisSummary, HistoryFilters } from '../types';
@@ -450,8 +451,10 @@ export const HistoryScreen: React.FC = () => {
 
       {/* Analysis List */}
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <DeepSightSpinner size="lg" showGlow />
+        <View style={styles.skeletonContainer}>
+          {[1, 2, 3, 4].map((i) => (
+            <VideoCardSkeleton key={i} style={styles.skeletonCard} />
+          ))}
         </View>
       ) : (
         <FlatList
@@ -547,6 +550,14 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  skeletonContainer: {
+    flex: 1,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.md,
+  },
+  skeletonCard: {
+    marginBottom: Spacing.lg,
   },
   listContent: {
     paddingHorizontal: Spacing.lg,

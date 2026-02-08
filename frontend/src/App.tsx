@@ -22,6 +22,7 @@ import { PrivateRoute } from "./components/PrivateRoute";
 import { SkipLink } from "./components/SkipLink";
 import { InstallPrompt, UpdatePrompt } from "./components/InstallPrompt";
 import { LoadingWordGlobal } from "./components/LoadingWord";
+import { ErrorBoundary as RouteErrorBoundary } from "./components/ErrorBoundary";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 QUERY CLIENT CONFIGURATION
@@ -350,33 +351,43 @@ const AppRoutes = () => {
                 <Route path="/" element={<HomeRoute />} />
                 
                 <Route path="/login" element={
-                  <Suspense fallback={<PageSkeleton variant="simple" />}>
-                    <Login />
-                  </Suspense>
+                  <RouteErrorBoundary variant="full" componentName="Login">
+                    <Suspense fallback={<PageSkeleton variant="simple" />}>
+                      <Login />
+                    </Suspense>
+                  </RouteErrorBoundary>
                 } />
-                
+
                 <Route path="/auth/callback" element={
-                  <Suspense fallback={<PageSkeleton variant="simple" />}>
-                    <AuthCallback />
-                  </Suspense>
+                  <RouteErrorBoundary variant="full" componentName="AuthCallback">
+                    <Suspense fallback={<PageSkeleton variant="simple" />}>
+                      <AuthCallback />
+                    </Suspense>
+                  </RouteErrorBoundary>
                 } />
-                
+
                 <Route path="/legal" element={
-                  <Suspense fallback={<PageSkeleton variant="full" />}>
-                    <LegalPage />
-                  </Suspense>
+                  <RouteErrorBoundary variant="full" componentName="LegalPage">
+                    <Suspense fallback={<PageSkeleton variant="full" />}>
+                      <LegalPage />
+                    </Suspense>
+                  </RouteErrorBoundary>
                 } />
-                
+
                 <Route path="/payment/success" element={
-                  <Suspense fallback={<PageSkeleton variant="simple" />}>
-                    <PaymentSuccess />
-                  </Suspense>
+                  <RouteErrorBoundary variant="full" componentName="PaymentSuccess">
+                    <Suspense fallback={<PageSkeleton variant="simple" />}>
+                      <PaymentSuccess />
+                    </Suspense>
+                  </RouteErrorBoundary>
                 } />
-                
+
                 <Route path="/payment/cancel" element={
-                  <Suspense fallback={<PageSkeleton variant="simple" />}>
-                    <PaymentCancel />
-                  </Suspense>
+                  <RouteErrorBoundary variant="full" componentName="PaymentCancel">
+                    <Suspense fallback={<PageSkeleton variant="simple" />}>
+                      <PaymentCancel />
+                    </Suspense>
+                  </RouteErrorBoundary>
                 } />
                 
                 {/* Routes protégées */}
@@ -388,15 +399,19 @@ const AppRoutes = () => {
                   }
                 >
                   <Route path="/dashboard" element={
-                    <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-                      <DashboardPage />
-                    </Suspense>
+                    <RouteErrorBoundary variant="full" componentName="DashboardPage">
+                      <Suspense fallback={<PageSkeleton variant="dashboard" />}>
+                        <DashboardPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
                   } />
-                  
+
                   <Route path="/playlists" element={
-                    <Suspense fallback={<PageSkeleton variant="full" />}>
-                      <PlaylistPage />
-                    </Suspense>
+                    <RouteErrorBoundary variant="full" componentName="PlaylistPage">
+                      <Suspense fallback={<PageSkeleton variant="full" />}>
+                        <PlaylistPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
                   } />
                   
                   <Route path="/playlist/:id" element={
@@ -406,21 +421,27 @@ const AppRoutes = () => {
                   } />
                   
                   <Route path="/history" element={
-                    <Suspense fallback={<PageSkeleton variant="full" />}>
-                      <History />
-                    </Suspense>
+                    <RouteErrorBoundary variant="full" componentName="History">
+                      <Suspense fallback={<PageSkeleton variant="full" />}>
+                        <History />
+                      </Suspense>
+                    </RouteErrorBoundary>
                   } />
-                  
+
                   <Route path="/upgrade" element={
-                    <Suspense fallback={<PageSkeleton variant="form" />}>
-                      <UpgradePage />
-                    </Suspense>
+                    <RouteErrorBoundary variant="full" componentName="UpgradePage">
+                      <Suspense fallback={<PageSkeleton variant="form" />}>
+                        <UpgradePage />
+                      </Suspense>
+                    </RouteErrorBoundary>
                   } />
-                  
+
                   <Route path="/usage" element={
-                    <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-                      <UsageDashboard />
-                    </Suspense>
+                    <RouteErrorBoundary variant="full" componentName="UsageDashboard">
+                      <Suspense fallback={<PageSkeleton variant="dashboard" />}>
+                        <UsageDashboard />
+                      </Suspense>
+                    </RouteErrorBoundary>
                   } />
                   
                   <Route path="/analytics" element={
@@ -430,21 +451,27 @@ const AppRoutes = () => {
                   } />
                   
                   <Route path="/settings" element={
-                    <Suspense fallback={<PageSkeleton variant="form" />}>
-                      <Settings />
-                    </Suspense>
+                    <RouteErrorBoundary variant="full" componentName="Settings">
+                      <Suspense fallback={<PageSkeleton variant="form" />}>
+                        <Settings />
+                      </Suspense>
+                    </RouteErrorBoundary>
                   } />
-                  
+
                   <Route path="/account" element={
-                    <Suspense fallback={<PageSkeleton variant="form" />}>
-                      <MyAccount />
-                    </Suspense>
+                    <RouteErrorBoundary variant="full" componentName="MyAccount">
+                      <Suspense fallback={<PageSkeleton variant="form" />}>
+                        <MyAccount />
+                      </Suspense>
+                    </RouteErrorBoundary>
                   } />
-                  
+
                   <Route path="/admin" element={
-                    <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-                      <AdminPage />
-                    </Suspense>
+                    <RouteErrorBoundary variant="full" componentName="AdminPage">
+                      <Suspense fallback={<PageSkeleton variant="dashboard" />}>
+                        <AdminPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
                   } />
                   
                   <Route path="/study/:summaryId" element={

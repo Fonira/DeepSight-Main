@@ -24,7 +24,7 @@ from core.config import (
     JWT_CONFIG, GOOGLE_OAUTH_CONFIG, EMAIL_CONFIG, 
     PLAN_LIMITS, FRONTEND_URL, APP_URL, ADMIN_CONFIG
 )
-from db.database import User, ChatQuota, WebSearchUsage, hash_password
+from db.database import User, ChatQuota, WebSearchUsage, hash_password, verify_password
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔑 SESSION TOKEN FUNCTIONS
@@ -247,8 +247,8 @@ async def create_user(
 
 
 async def authenticate_user(
-    session: AsyncSession, 
-    email: str, 
+    session: AsyncSession,
+    email: str,
     password: str
 ) -> Tuple[bool, Optional[User], str, Optional[str]]:
     """
@@ -257,12 +257,26 @@ async def authenticate_user(
     Retourne: (success, user, message, session_token)
     """
     user = await get_user_by_email(session, email)
-    
+
     if not user:
+        # 🔐 SECURITY LOG: Tentative de connexion avec email inexistant
+        print(f"🔒 [SECURITY] Failed login attempt - unknown email: {email[:3]}***", flush=True)
         return False, None, "❌ Email ou mot de passe incorrect", None
-    
-    if user.password_hash != hash_password(password):
+
+    # 🔐 Utiliser verify_password pour compatibilité bcrypt/SHA256
+    if not verify_password(password, user.password_hash):
+        # 🔐 SECURITY LOG: Mot de passe incorrect
+        print(f"🔒 [SECURITY] Failed login attempt - wrong password for user_id: {user.id}", flush=True)
         return False, None, "❌ Email ou mot de passe incorrect", None
+
+    # 🔄 Migration automatique vers bcrypt si ancien hash SHA256
+    if user.password_hash and not user.password_hash.startswith('$2'):
+        try:
+            user.password_hash = hash_password(password)
+            await session.commit()
+            print(f"🔐 Migrated password hash to bcrypt for user {user.id}", flush=True)
+        except Exception:
+            pass  # Non-bloquant si la migration échoue
     
     # Vérifier si l'email doit être vérifié
     # IMPORTANT: Seulement si Resend est réellement configuré
@@ -400,16 +414,18 @@ async def change_password(
 ) -> Tuple[bool, str]:
     """Change le mot de passe"""
     user = await get_user_by_id(session, user_id)
-    
+
     if not user:
         return False, "❌ Utilisateur non trouvé"
-    
-    if user.password_hash != hash_password(current_password):
+
+    # 🔐 Utiliser verify_password pour compatibilité bcrypt/SHA256
+    if not verify_password(current_password, user.password_hash):
         return False, "❌ Mot de passe actuel incorrect"
-    
+
+    # Toujours hasher avec bcrypt
     user.password_hash = hash_password(new_password)
     await session.commit()
-    
+
     return True, "✅ Mot de passe modifié"
 
 

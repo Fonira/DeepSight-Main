@@ -32,8 +32,8 @@ import {
   ExternalLink,
   MessageCircle,
   FileText,
-  Loader2,
 } from 'lucide-react';
+import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
@@ -437,7 +437,7 @@ export const VirtualHistoryList = forwardRef<VirtualHistoryListRef, VirtualHisto
                 }}
                 className="flex items-center justify-center py-4"
               >
-                <Loader2 className="w-6 h-6 animate-spin text-accent-primary" />
+                <DeepSightSpinnerSmall />
                 <span className="ml-2 text-text-secondary">
                   {language === 'fr' ? 'Chargement...' : 'Loading...'}
                 </span>

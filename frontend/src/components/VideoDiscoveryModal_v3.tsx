@@ -14,9 +14,10 @@ import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import {
   X, Check, Play, Clock, Eye, ThumbsUp, Star, Sparkles,
   AlertTriangle, BookOpen, TrendingUp, Calendar, Filter,
-  ChevronDown, ChevronUp, Loader2, Search, ExternalLink,
+  ChevronDown, ChevronUp, Search, ExternalLink,
   Globe, Languages
 } from 'lucide-react';
+import { DeepSightSpinner } from './ui';
 import type { VideoCandidate, DiscoveryResponse } from '../services/api';
 import { ThumbnailImage } from './ThumbnailImage';
 
@@ -214,10 +215,6 @@ const VideoCard: React.FC<{
           <span className="flex items-center gap-1">
             <Eye className="w-3 h-3" />
             {formatViews(video.view_count || 0)}
-          </span>
-          <span className="flex items-center gap-1">
-            <ThumbsUp className="w-3 h-3" />
-            {formatViews(video.like_count || 0)}
           </span>
           <span className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />
@@ -764,10 +761,8 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
         >
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-10 h-10 text-accent-primary animate-spin mb-4" />
-              <p className="text-text-secondary">
-                {language === 'fr' ? 'Recherche en cours...' : 'Searching...'}
-              </p>
+              <DeepSightSpinner size="lg" showLabel label={language === 'fr' ? 'Recherche en cours...' : 'Searching...'} />
+              <p className="text-xs text-text-tertiary mt-2">
               <p className="text-xs text-text-tertiary mt-2">
                 {language === 'fr' 
                   ? 'Recherche parallèle dans toutes les langues sélectionnées'

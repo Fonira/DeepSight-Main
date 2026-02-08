@@ -7,7 +7,6 @@ import React, { useState, useCallback } from 'react';
 import {
   GraduationCap,
   Search,
-  Loader2,
   AlertCircle,
   FileText,
   RefreshCw,
@@ -16,6 +15,7 @@ import {
   ChevronUp,
   ChevronDown,
 } from 'lucide-react';
+import { DeepSightSpinner } from '../ui';
 import { academicApi, AcademicPaper } from '../../services/api';
 import { hasFeature, getLimit, normalizePlanId } from '../../config/planPrivileges';
 import { PaperCard } from './PaperCard';
@@ -169,10 +169,7 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
           {/* Loading state */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 text-accent-primary animate-spin mb-4" />
-              <p className="text-text-secondary text-sm">
-                {t('Recherche en cours...', 'Searching...')}
-              </p>
+              <DeepSightSpinner size="md" label={t('Recherche en cours...', 'Searching...')} showLabel />
             </div>
           )}
 

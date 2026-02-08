@@ -179,13 +179,13 @@ async def delete_account(
     Requiert le mot de passe pour les comptes email.
     Les comptes Google peuvent être supprimés sans mot de passe.
     """
-    from .service import hash_password
+    from db.database import verify_password
 
     # Vérifier le mot de passe pour les comptes avec mot de passe
     if current_user.password_hash:
         if not data.password:
             raise HTTPException(status_code=400, detail="Mot de passe requis")
-        if current_user.password_hash != hash_password(data.password):
+        if not verify_password(data.password, current_user.password_hash):
             raise HTTPException(status_code=401, detail="Mot de passe incorrect")
 
     # Invalider la session avant suppression
@@ -368,6 +368,30 @@ async def get_quota(
     """Retourne les quotas de l'utilisateur"""
     quota = await get_user_quota(session, current_user.id)
     return QuotaResponse(**quota)
+
+
+@router.get("/limits")
+async def get_plan_limits(
+    current_user = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    🎫 Retourne le statut complet des limites pour l'utilisateur.
+
+    Inclut:
+    - Limites quotidiennes d'analyses (utilisées/max)
+    - Crédits restants
+    - Features bloquées
+    - Suggestion d'upgrade
+
+    Utile pour afficher les alertes d'upgrade dans l'interface.
+    """
+    from core.plan_limits import get_user_limits_status
+
+    lang = current_user.default_lang or "fr"
+    limits_status = await get_user_limits_status(session, current_user, lang)
+
+    return limits_status
 
 
 @router.put("/preferences", response_model=MessageResponse)

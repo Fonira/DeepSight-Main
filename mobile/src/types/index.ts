@@ -1,5 +1,18 @@
 import { PlanType } from '../constants/config';
 
+// Re-export analysis customization types
+export {
+  WritingStyle,
+  AnalysisCustomization,
+  AnalysisRequestV2,
+  DEFAULT_CUSTOMIZATION,
+  CUSTOMIZATION_STORAGE_KEY,
+  WRITING_STYLE_CONFIG,
+  VOCABULARY_CONFIG,
+  LENGTH_CONFIG,
+} from './analysis';
+export type { VocabularyComplexity, TargetLength, FormalityLevel } from './analysis';
+
 // User Types
 export interface User {
   id: number;
@@ -192,7 +205,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
 
   // Modal screens
-  Analysis: { videoUrl?: string; summaryId?: string };
+  Analysis: { videoUrl?: string; summaryId?: string; videoId?: string };
   VideoPlayer: { videoId: string; startTime?: number };
   Chat: { summaryId: string };
   StudyTools: { summaryId: string };
@@ -206,7 +219,7 @@ export type RootStackParamList = {
   PaymentCancel: undefined;
 
   // Legal screen
-  Legal: undefined;
+  Legal: { type?: 'privacy' | 'terms' | 'about' } | undefined;
 
   // Playlist detail
   PlaylistDetail: { playlistId: string };

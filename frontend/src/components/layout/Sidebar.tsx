@@ -303,117 +303,160 @@ const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
 interface SidebarProps {
   collapsed?: boolean;
   onToggle?: () => void;
+  /** Mobile: is sidebar open (visible) */
+  mobileOpen?: boolean;
+  /** Mobile: callback to close sidebar */
+  onMobileClose?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ collapsed = false, onToggle }) => {
+export const Sidebar: React.FC<SidebarProps> = ({
+  collapsed = false,
+  onToggle,
+  mobileOpen = false,
+  onMobileClose
+}) => {
   const { t, language } = useTranslation();
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const isProUser = user?.plan === 'pro' || user?.plan === 'team' || user?.plan === 'expert' || user?.plan === 'unlimited';
-  
+
   const ADMIN_EMAIL = "maximeleparc3@gmail.com";
-  const isUserAdmin = isAdmin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const isUserAdmin = user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
   const handleLogoClick = () => {
     navigate('/dashboard');
+    // Close mobile menu after navigation
+    onMobileClose?.();
+  };
+
+  const handleNavClick = () => {
+    // Close mobile menu after navigation
+    onMobileClose?.();
   };
 
   return (
-    <aside
-      className={`fixed left-0 top-0 h-screen bg-bg-secondary border-r border-border-subtle flex flex-col z-40 transition-all duration-300 ${
-        collapsed ? 'w-[72px]' : 'w-[260px]'
-      }`}
-    >
-      {/* Header */}
-      <div className={`h-16 flex items-center justify-between border-b border-border-subtle ${collapsed ? 'px-4' : 'px-4'}`}>
-        <Logo collapsed={collapsed} onClick={handleLogoClick} />
-        {onToggle && (
-          <button
-            onClick={onToggle}
-            className="w-7 h-7 rounded-md flex items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-bg-hover transition-colors"
-          >
-            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-          </button>
-        )}
-      </div>
+    <>
+      {/* Mobile overlay backdrop */}
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity"
+          onClick={onMobileClose}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        <NavItem
-          to="/dashboard"
-          icon={LayoutDashboard}
-          label={t.nav.analysis}
-          collapsed={collapsed}
-        />
-        <NavItem
-          to="/history"
-          icon={History}
-          label={t.nav.history}
-          collapsed={collapsed}
-        />
-        <NavItem
-          to="/playlists"
-          icon={ListVideo}
-          label={t.nav.playlists}
-          collapsed={collapsed}
-          badge={isProUser ? undefined : "Pro"}
-        />
+      <aside
+        className={`fixed left-0 top-0 h-screen bg-bg-secondary border-r border-border-subtle flex flex-col z-40 transition-all duration-300
+          ${collapsed ? 'w-[72px]' : 'w-[260px]'}
+          ${/* Mobile: slide in/out */ ''}
+          lg:translate-x-0
+          ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}
+      >
+        {/* Header */}
+        <div className={`h-16 flex items-center justify-between border-b border-border-subtle ${collapsed ? 'px-4' : 'px-4'}`}>
+          <Logo collapsed={collapsed} onClick={handleLogoClick} />
+          <div className="flex items-center gap-2">
+            {/* Mobile close button */}
+            {onMobileClose && (
+              <button
+                onClick={onMobileClose}
+                className="lg:hidden w-8 h-8 rounded-md flex items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-bg-hover transition-colors"
+                aria-label="Fermer le menu"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            )}
+            {/* Desktop collapse toggle */}
+            {onToggle && (
+              <button
+                onClick={onToggle}
+                className="hidden lg:flex w-7 h-7 rounded-md items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-bg-hover transition-colors"
+              >
+                {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+              </button>
+            )}
+          </div>
+        </div>
 
-        <div className="h-px bg-border-subtle my-4" />
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1" onClick={handleNavClick}>
+          <NavItem
+            to="/dashboard"
+            icon={LayoutDashboard}
+            label={t.nav.analysis}
+            collapsed={collapsed}
+          />
+          <NavItem
+            to="/history"
+            icon={History}
+            label={t.nav.history}
+            collapsed={collapsed}
+          />
+          <NavItem
+            to="/playlists"
+            icon={ListVideo}
+            label={t.nav.playlists}
+            collapsed={collapsed}
+            badge={isProUser ? undefined : "Pro"}
+          />
 
-        <NavItem
-          to="/settings"
-          icon={Settings}
-          label={t.nav.settings}
-          collapsed={collapsed}
-        />
-        <NavItem
-          to="/account"
-          icon={User}
-          label={t.nav.myAccount}
-          collapsed={collapsed}
-        />
-        <NavItem
-          to="/upgrade"
-          icon={CreditCard}
-          label={t.nav.subscription}
-          collapsed={collapsed}
-        />
-        <NavItem
-          to="/usage"
-          icon={BarChart3}
-          label={t.nav.usage || (language === 'fr' ? 'Utilisation' : 'Usage')}
-          collapsed={collapsed}
-        />
+          <div className="h-px bg-border-subtle my-4" />
 
-        {isUserAdmin && (
-          <>
-            <div className="h-px bg-border-subtle my-4" />
-            <NavItem
-              to="/admin"
-              icon={Shield}
-              label={t.nav.admin}
-              collapsed={collapsed}
-              badge="🔐"
-            />
-          </>
-        )}
+          <NavItem
+            to="/settings"
+            icon={Settings}
+            label={t.nav.settings}
+            collapsed={collapsed}
+          />
+          <NavItem
+            to="/account"
+            icon={User}
+            label={t.nav.myAccount}
+            collapsed={collapsed}
+          />
+          <NavItem
+            to="/upgrade"
+            icon={CreditCard}
+            label={t.nav.subscription}
+            collapsed={collapsed}
+          />
+          <NavItem
+            to="/usage"
+            icon={BarChart3}
+            label={t.nav.usage || (language === 'fr' ? 'Utilisation' : 'Usage')}
+            collapsed={collapsed}
+          />
 
-        <div className="h-px bg-border-subtle my-4" />
-        <NavItem
-          to="/legal"
-          icon={Scale}
-          label={t.nav.legal}
-          collapsed={collapsed}
-        />
-      </nav>
+          {isUserAdmin && (
+            <>
+              <div className="h-px bg-border-subtle my-4" />
+              <NavItem
+                to="/admin"
+                icon={Shield}
+                label={t.nav.admin}
+                collapsed={collapsed}
+                badge="🔐"
+              />
+            </>
+          )}
 
-      {/* Footer avec User */}
-      <div className="border-t border-border-subtle">
-        <UserCard collapsed={collapsed} />
-      </div>
-    </aside>
+          <div className="h-px bg-border-subtle my-4" />
+          <NavItem
+            to="/legal"
+            icon={Scale}
+            label={t.nav.legal}
+            collapsed={collapsed}
+          />
+        </nav>
+
+        {/* Footer avec User */}
+        <div className="border-t border-border-subtle">
+          <UserCard collapsed={collapsed} />
+        </div>
+      </aside>
+    </>
   );
 };
 

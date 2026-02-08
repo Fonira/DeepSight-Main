@@ -276,9 +276,9 @@ def require_credits(min_credits: int = 1):
         # Plan unlimited = toujours OK
         if current_user.plan == "unlimited":
             return current_user
-        
+
         credits = current_user.credits or 0
-        
+
         if credits < min_credits:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -291,5 +291,69 @@ def require_credits(min_credits: int = 1):
                 }
             )
         return current_user
-    
+
     return check_credits
+
+
+async def check_daily_limit(
+    current_user: User = Depends(get_verified_user),
+    session: AsyncSession = Depends(get_session)
+) -> User:
+    """
+    🎫 Vérifie la limite quotidienne d'analyses.
+    Usage: Depends(check_daily_limit)
+
+    Plans limits:
+    - free: 5 analyses/jour
+    - starter: 20 analyses/jour
+    - pro: 50 analyses/jour
+    - expert: 200 analyses/jour
+    - unlimited: illimité
+    """
+    from core.plan_limits import check_daily_analysis_limit
+
+    can_analyze, error_info = await check_daily_analysis_limit(
+        session, current_user, lang=current_user.default_lang or "fr"
+    )
+
+    if not can_analyze:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=error_info
+        )
+
+    return current_user
+
+
+def require_feature(feature: str):
+    """
+    🔐 Factory de dépendance pour vérifier l'accès à une feature.
+    Usage: Depends(require_feature("playlists"))
+
+    Features:
+    - playlists: Analyse de playlists
+    - export_csv: Export CSV
+    - export_excel: Export Excel
+    - batch_api: API batch
+    - tts: Text-to-speech
+    - deep_research: Recherche approfondie
+    - web_search: Recherche web
+    """
+    async def check_feature(
+        current_user: User = Depends(get_verified_user)
+    ) -> User:
+        from core.plan_limits import check_feature_access
+
+        has_access, error_info = check_feature_access(
+            current_user, feature, lang=current_user.default_lang or "fr"
+        )
+
+        if not has_access:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=error_info
+            )
+
+        return current_user
+
+    return check_feature

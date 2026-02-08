@@ -13,7 +13,7 @@
 
 import React, { memo, useCallback, useMemo, useRef, useEffect } from 'react';
 import { 
-  Loader2, 
+  
   CheckCircle2, 
   XCircle, 
   Pause, 
@@ -27,6 +27,7 @@ import {
   Clock,
   AlertCircle
 } from 'lucide-react';
+import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
 import { 
   useAnalysisStream, 
   StreamStatus, 
@@ -128,7 +129,7 @@ const StepIndicator = memo<StepIndicatorProps>(({ step, isLast, lang }) => {
           aria-label={`${label}: ${step.status}`}
         >
           {step.status === 'active' ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
+            <DeepSightSpinnerMicro />
           ) : step.status === 'complete' ? (
             <CheckCircle2 className="w-5 h-5" />
           ) : step.status === 'error' ? (
@@ -401,7 +402,7 @@ export const StreamingAnalysis: React.FC<StreamingAnalysisProps> = memo(({
                 'bg-accent-primary/20 text-accent-primary'}
             `}>
               {isStreaming || isPaused ? (
-                <Loader2 className={`w-5 h-5 ${!isPaused ? 'animate-spin' : ''}`} />
+                <DeepSightSpinnerMicro />
               ) : isComplete ? (
                 <CheckCircle2 className="w-5 h-5" />
               ) : isError ? (

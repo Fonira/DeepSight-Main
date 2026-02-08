@@ -10,11 +10,12 @@ import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
 import { 
-  Shield, Users, BarChart3, Lock, Loader2, 
+  Shield, Users, BarChart3, Lock, 
   AlertCircle, TrendingUp, Activity, Search, ChevronLeft,
   ChevronRight, Edit2, Trash2, Plus, X, RefreshCw,
   FileText, Crown, CreditCard, Mail, Check
 } from 'lucide-react';
+import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
 import { API_URL } from '../services/api';
 import { useToast } from '../components/Toast';
 
@@ -69,7 +70,7 @@ const PLAN_CONFIG: Record<string, { color: string; bg: string; label: string }> 
 };
 
 export const AdminPage: React.FC = () => {
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const { t, language } = useTranslation();
   const navigate = useNavigate();
   const { showToast, ToastComponent } = useToast();
@@ -101,7 +102,7 @@ export const AdminPage: React.FC = () => {
   const [editPlan, setEditPlan] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
-  const isUserAdmin = isAdmin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const isUserAdmin = user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
   // API Helper
   const adminFetch = useCallback(async (endpoint: string, options: RequestInit = {}) => {
@@ -352,7 +353,7 @@ export const AdminPage: React.FC = () => {
 
             {loading ? (
               <div className="card p-12 text-center">
-                <Loader2 className="w-8 h-8 text-accent-primary animate-spin mx-auto mb-4" />
+                <DeepSightSpinner size="md" />
                 <p className="text-text-tertiary">{language === 'fr' ? 'Chargement...' : 'Loading...'}</p>
               </div>
             ) : (
@@ -739,7 +740,7 @@ export const AdminPage: React.FC = () => {
                 disabled={actionLoading}
                 className="flex-1 px-4 py-2 rounded-lg bg-accent-primary text-white hover:bg-accent-primary-hover transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {actionLoading && <DeepSightSpinnerMicro />}
                 {language === 'fr' ? 'Enregistrer' : 'Save'}
               </button>
             </div>
@@ -804,7 +805,7 @@ export const AdminPage: React.FC = () => {
                 disabled={actionLoading || creditsAmount <= 0}
                 className="flex-1 px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {actionLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                {actionLoading && <DeepSightSpinnerMicro />}
                 {language === 'fr' ? 'Ajouter' : 'Add'}
               </button>
             </div>
