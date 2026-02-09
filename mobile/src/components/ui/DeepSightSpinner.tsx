@@ -1,30 +1,42 @@
 /**
- * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  ✨ DEEPSIGHT SPINNER — Logo qui tourne (vraie image)                              ║
- * ╠════════════════════════════════════════════════════════════════════════════════════╣
- * ║  - Utilise le VRAI logo DeepSight                                                  ║
- * ║  - Rotation fluide du gouvernail                                                   ║
- * ║  - Effets de glow cosmic en arrière-plan                                          ║
- * ╚════════════════════════════════════════════════════════════════════════════════════╝
+ * DeepSight Spinner — 2-layer cosmic wheel (matches web version)
+ *
+ * Layer 1: spinner-cosmic.jpg — fixed cosmic flames background
+ * Layer 2: spinner-wheel.jpg — rotating wheel overlay
+ * Both masked into a circle via borderRadius.
  */
 
 import React, { useEffect, useRef } from 'react';
 import { View, Image, Animated, Easing, StyleSheet, Text } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 
-// Logo asset
-const logoSource = require('../../../assets/logo.png');
+const cosmicSource = require('../../../assets/images/spinner-cosmic.jpg');
+const wheelSource = require('../../../assets/images/spinner-wheel.jpg');
 
 type SpinnerSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+type SpeedPreset = 'slow' | 'normal' | 'fast';
+
+const speedMap: Record<SpeedPreset, number> = {
+  slow: 8000,
+  normal: 5000,
+  fast: 2000,
+};
 
 interface DeepSightSpinnerProps {
   size?: SpinnerSize;
   label?: string;
   showLabel?: boolean;
-  /** Durée d'une rotation complète en ms */
+  /** Full rotation duration in ms */
   duration?: number;
-  /** Afficher les effets de glow */
+  /** Speed preset — alternative to duration */
+  speed?: SpeedPreset;
+  /** Kept for backward compatibility (unused) */
+  color?: string;
+  /** Show glow is now ignored (no gradient), kept for API compat */
   showGlow?: boolean;
+  /** Custom image source for the wheel layer */
+  source?: any;
+  /** Control animation */
+  isAnimating?: boolean;
   style?: object;
 }
 
@@ -40,114 +52,102 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
   size = 'md',
   label = 'Chargement...',
   showLabel = false,
-  duration = 3000,
-  showGlow = true,
+  duration,
+  speed,
+  color: _color,
+  showGlow: _showGlow,
+  source,
+  isAnimating = true,
   style,
 }) => {
+  const resolvedDuration = duration ?? (speed ? speedMap[speed] : 5000);
   const pixelSize = sizeMap[size];
-  const glowSize = pixelSize * 1.5;
-  
-  // Animation de rotation
+  const wheelSize = Math.round(pixelSize * 0.92);
+
   const spinValue = useRef(new Animated.Value(0)).current;
-  // Animation de pulse pour le glow
-  const pulseValue = useRef(new Animated.Value(0.8)).current;
-  
+  const labelPulse = useRef(new Animated.Value(0.6)).current;
+
   useEffect(() => {
-    // Rotation infinie
+    if (!isAnimating) return;
+
     const spinAnimation = Animated.loop(
       Animated.timing(spinValue, {
         toValue: 1,
-        duration: duration,
+        duration: resolvedDuration,
         easing: Easing.linear,
         useNativeDriver: true,
       })
     );
-    
-    // Pulse du glow
+
     const pulseAnimation = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseValue, {
+        Animated.timing(labelPulse, {
           toValue: 1,
           duration: 1000,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
-        Animated.timing(pulseValue, {
-          toValue: 0.8,
+        Animated.timing(labelPulse, {
+          toValue: 0.6,
           duration: 1000,
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
       ])
     );
-    
+
     spinAnimation.start();
-    pulseAnimation.start();
-    
+    if (showLabel) pulseAnimation.start();
+
     return () => {
       spinAnimation.stop();
       pulseAnimation.stop();
     };
-  }, [duration]);
-  
+  }, [resolvedDuration, isAnimating, showLabel]);
+
   const spin = spinValue.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
-  
+
   return (
     <View style={[styles.container, style]}>
-      <View style={{ width: glowSize, height: glowSize, alignItems: 'center', justifyContent: 'center' }}>
-        
-        {/* Glow cosmic background - STATIQUE (juste pulse) */}
-        {showGlow && (
-          <Animated.View 
-            style={[
-              styles.glowContainer,
-              {
-                width: glowSize,
-                height: glowSize,
-                borderRadius: glowSize / 2,
-                opacity: pulseValue,
-                transform: [{
-                  scale: pulseValue.interpolate({
-                    inputRange: [0.8, 1],
-                    outputRange: [1, 1.1],
-                  })
-                }],
-              }
-            ]}
-          >
-            <LinearGradient
-              colors={[
-                'rgba(59, 130, 246, 0.4)',
-                'rgba(139, 92, 246, 0.3)',
-                'rgba(249, 115, 22, 0.4)',
-              ]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[StyleSheet.absoluteFill, { borderRadius: glowSize / 2 }]}
-            />
-          </Animated.View>
-        )}
-        
-        {/* Logo qui TOURNE */}
+      <View
+        style={{
+          width: pixelSize,
+          height: pixelSize,
+          borderRadius: pixelSize / 2,
+          overflow: 'hidden',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {/* Layer 1: Cosmic flames — FIXED */}
+        <Image
+          source={cosmicSource}
+          style={{
+            ...StyleSheet.absoluteFillObject,
+            width: pixelSize,
+            height: pixelSize,
+          }}
+          resizeMode="cover"
+        />
+
+        {/* Layer 2: Wheel — ROTATES */}
         <Animated.Image
-          source={logoSource}
-          style={[
-            styles.logo,
-            {
-              width: pixelSize,
-              height: pixelSize,
-              transform: [{ rotate: spin }],
-            }
-          ]}
-          resizeMode="contain"
+          source={source || wheelSource}
+          style={{
+            width: wheelSize,
+            height: wheelSize,
+            opacity: 0.85,
+            transform: [{ rotate: spin }],
+          }}
+          resizeMode="cover"
         />
       </View>
-      
+
       {showLabel && (
-        <Animated.Text style={[styles.label, { opacity: pulseValue }]}>
+        <Animated.Text style={[styles.label, { opacity: labelPulse }]}>
           {label}
         </Animated.Text>
       )}
@@ -160,13 +160,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  glowContainer: {
-    position: 'absolute',
-    overflow: 'hidden',
-  },
-  logo: {
-    zIndex: 10,
-  },
   label: {
     marginTop: 12,
     fontSize: 14,
@@ -175,7 +168,6 @@ const styles = StyleSheet.create({
   },
 });
 
-// Variants rapides
 export const DeepSightSpinnerSmall: React.FC<{ style?: object }> = (props) => (
   <DeepSightSpinner size="sm" {...props} />
 );
