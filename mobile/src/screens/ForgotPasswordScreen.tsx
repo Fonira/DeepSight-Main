@@ -23,7 +23,7 @@ type ForgotPasswordNavigationProp = NativeStackNavigationProp<RootStackParamList
 
 export const ForgotPasswordScreen: React.FC = () => {
   const { colors } = useTheme();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { forgotPassword, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<ForgotPasswordNavigationProp>();
   const insets = useSafeAreaInsets();
@@ -43,7 +43,7 @@ export const ForgotPasswordScreen: React.FC = () => {
       return false;
     }
     if (!/\S+@\S+\.\S+/.test(email)) {
-      setEmailError(t.errors.invalidUrl);
+      setEmailError(t.errors.invalidEmail);
       return false;
     }
     setEmailError('');
@@ -82,10 +82,12 @@ export const ForgotPasswordScreen: React.FC = () => {
               <Ionicons name="mail" size={48} color={colors.accentSuccess} />
             </View>
             <Text style={[styles.successTitle, { color: colors.textPrimary }]}>
-              {t.notifications.analysisReady}
+              {language === 'fr' ? 'Email envoyé !' : 'Email sent!'}
             </Text>
             <Text style={[styles.successText, { color: colors.textSecondary }]}>
-              {email}
+              {language === 'fr'
+                ? `Si un compte existe pour ${email}, vous recevrez un email de réinitialisation.`
+                : `If an account exists for ${email}, you'll receive a password reset email.`}
             </Text>
             <Button
               title={t.auth.signIn}

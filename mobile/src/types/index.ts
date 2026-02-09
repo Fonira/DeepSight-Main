@@ -219,7 +219,7 @@ export type RootStackParamList = {
   PaymentCancel: undefined;
 
   // Legal screen
-  Legal: { type?: 'privacy' | 'terms' | 'about' } | undefined;
+  Legal: { type?: 'privacy' | 'terms' | 'legal' | 'about' } | undefined;
 
   // Playlist detail
   PlaylistDetail: { playlistId: string };

@@ -1,5 +1,6 @@
 import { API_BASE_URL, TIMEOUTS } from '../constants/config';
 import { tokenStorage } from '../utils/storage';
+import NetInfo from '@react-native-community/netinfo';
 import type {
   User,
   AnalysisSummary,
@@ -23,7 +24,17 @@ interface RequestConfig {
   body?: unknown;
   timeout?: number;
   requiresAuth?: boolean;
+  retries?: number;
 }
+
+// Offline detection
+const checkConnectivity = async (): Promise<boolean> => {
+  const state = await NetInfo.fetch();
+  return state.isConnected ?? true;
+};
+
+// Retry helper with exponential backoff
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // API Error class
 export class ApiError extends Error {
@@ -85,7 +96,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
   }
 };
 
-// Base request function with retry and token refresh
+// Base request function with retry, offline detection, and token refresh
 const request = async <T>(
   endpoint: string,
   config: RequestConfig = {}
@@ -96,7 +107,14 @@ const request = async <T>(
     body,
     timeout = TIMEOUTS.DEFAULT,
     requiresAuth = true,
+    retries = 2,
   } = config;
+
+  // Offline detection
+  const isConnected = await checkConnectivity();
+  if (!isConnected) {
+    throw new ApiError('No internet connection', 0, 'OFFLINE');
+  }
 
   // Build headers
   const requestHeaders: Record<string, string> = {
@@ -212,12 +230,27 @@ const request = async <T>(
     clearTimeout(timeoutId);
 
     if (error instanceof ApiError) {
+      // Retry on server errors (5xx) or timeout, but not on client errors (4xx)
+      const isRetryable = error.status >= 500 || error.code === 'TIMEOUT';
+      if (isRetryable && retries > 0) {
+        await wait(1000 * (3 - retries)); // Exponential backoff: 1s, 2s
+        return request<T>(endpoint, { ...config, retries: retries - 1 });
+      }
       throw error;
     }
 
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
+        if (retries > 0) {
+          await wait(1000 * (3 - retries));
+          return request<T>(endpoint, { ...config, retries: retries - 1 });
+        }
         throw new ApiError('Request timeout', 408, 'TIMEOUT');
+      }
+      // Network error - retry
+      if (retries > 0) {
+        await wait(1000 * (3 - retries));
+        return request<T>(endpoint, { ...config, retries: retries - 1 });
       }
       throw new ApiError(error.message, 0, 'NETWORK_ERROR');
     }
@@ -987,19 +1020,34 @@ export const chatApi = {
     return request('/api/chat/ask', {
       method: 'POST',
       body: {
-        summary_id: summaryId,
+        summary_id: Number(summaryId),
         question: message,
         use_web_search: options?.useWebSearch ?? false,
-        mode: options?.mode,
+        mode: options?.mode || 'standard',
       },
+      timeout: 120000,
     });
   },
 
   async getHistory(summaryId: string): Promise<{ messages: ChatMessage[] }> {
-    const response = await request<{ messages: ChatMessage[]; quota_info?: Record<string, unknown> }>(
+    const response = await request<{ messages: Array<{
+      id: number;
+      role: 'user' | 'assistant';
+      content: string;
+      created_at: string;
+      web_search_used?: boolean;
+      sources?: Array<{ url: string; title: string }>;
+    }>; quota_info?: Record<string, unknown> }>(
       `/api/chat/history/${summaryId}`
     );
-    return { messages: response.messages || [] };
+    // Transform backend response (created_at, numeric id) to mobile ChatMessage format
+    const messages: ChatMessage[] = (response.messages || []).map(m => ({
+      id: String(m.id),
+      role: m.role,
+      content: m.content,
+      timestamp: m.created_at,
+    }));
+    return { messages };
   },
 
   async getQuota(summaryId: string): Promise<{ used: number; limit: number; remaining: number }> {
@@ -1048,10 +1096,10 @@ export const chatApi = {
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
       body: JSON.stringify({
-        summary_id: summaryId,
+        summary_id: Number(summaryId),
         question: message,
         use_web_search: options?.useWebSearch ?? false,
-        mode: options?.mode,
+        mode: options?.mode || 'standard',
       }),
     });
 
@@ -1181,6 +1229,13 @@ export const playlistApi = {
     };
   },
 
+  async addVideoToPlaylist(playlistId: string, summaryId: string): Promise<void> {
+    return request(`/api/playlists/${playlistId}/videos`, {
+      method: 'POST',
+      body: { summary_id: summaryId },
+    });
+  },
+
   async generateCorpusSummary(playlistId: string): Promise<{ summary: string }> {
     return request(`/api/playlists/${playlistId}/corpus-summary`, {
       method: 'POST',
@@ -1197,11 +1252,12 @@ export const billingApi = {
     return request('/api/billing/plans', { requiresAuth: false });
   },
 
-  async createCheckout(planId: string): Promise<{ url: string }> {
-    return request('/api/billing/create-checkout', {
+  async createCheckout(planId: string): Promise<{ url: string; session_id: string }> {
+    const response = await request<{ checkout_url: string; session_id: string }>('/api/billing/create-checkout', {
       method: 'POST',
       body: { plan_id: planId },
     });
+    return { url: response.checkout_url, session_id: response.session_id };
   },
 
   async getTrialEligibility(): Promise<{ eligible: boolean; reason?: string }> {
@@ -1215,7 +1271,8 @@ export const billingApi = {
   },
 
   async getPortalUrl(): Promise<{ url: string }> {
-    return request('/api/billing/portal');
+    const response = await request<{ portal_url: string }>('/api/billing/portal');
+    return { url: response.portal_url };
   },
 
   async getSubscriptionStatus(): Promise<Subscription | null> {
