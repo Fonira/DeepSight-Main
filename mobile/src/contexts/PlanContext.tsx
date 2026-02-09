@@ -196,7 +196,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(false);
 
   const plan = user?.plan || PLANS.FREE;
-  const features = PLAN_FEATURES[plan];
+  const features = PLAN_FEATURES[plan] || PLAN_FEATURES[PLANS.FREE];
 
   // Fetch usage stats
   const refreshUsage = useCallback(async () => {

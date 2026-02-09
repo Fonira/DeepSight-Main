@@ -155,6 +155,7 @@ export default function App() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <ErrorBoundary
+            showDetails={__DEV__}
             onError={(error, errorInfo) => {
               // Log error to console in development
               console.error('App Error:', error, errorInfo);

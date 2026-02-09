@@ -150,7 +150,7 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
     onClose();
   };
 
-  const testimonial = TESTIMONIALS[currentTestimonial];
+  const testimonial = TESTIMONIALS?.[currentTestimonial] ?? TESTIMONIALS?.[0];
 
   // Progress bar width animation
   const progressWidth = progressAnim.interpolate({
@@ -322,49 +322,51 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
             </View>
 
             {/* Testimonial carousel */}
-            <View style={[styles.testimonialCard, { backgroundColor: colors.bgSecondary }]}>
-              <View style={styles.testimonialHeader}>
-                <View style={styles.testimonialAvatar}>
-                  <Text style={styles.testimonialAvatarText}>
-                    {testimonial.name.charAt(0)}
-                  </Text>
+            {testimonial && (
+              <View style={[styles.testimonialCard, { backgroundColor: colors.bgSecondary }]}>
+                <View style={styles.testimonialHeader}>
+                  <View style={styles.testimonialAvatar}>
+                    <Text style={styles.testimonialAvatarText}>
+                      {testimonial.name.charAt(0)}
+                    </Text>
+                  </View>
+                  <View style={styles.testimonialInfo}>
+                    <Text style={[styles.testimonialName, { color: colors.textPrimary }]}>
+                      {testimonial.name}
+                    </Text>
+                    <Text style={[styles.testimonialRole, { color: colors.textTertiary }]}>
+                      {language === 'fr' ? testimonial.role.fr : testimonial.role.en}
+                    </Text>
+                  </View>
+                  <View style={styles.ratingContainer}>
+                    {[...Array(testimonial.rating)].map((_, i) => (
+                      <Ionicons key={i} name="star" size={12} color="#F59E0B" />
+                    ))}
+                  </View>
                 </View>
-                <View style={styles.testimonialInfo}>
-                  <Text style={[styles.testimonialName, { color: colors.textPrimary }]}>
-                    {testimonial.name}
-                  </Text>
-                  <Text style={[styles.testimonialRole, { color: colors.textTertiary }]}>
-                    {language === 'fr' ? testimonial.role.fr : testimonial.role.en}
-                  </Text>
-                </View>
-                <View style={styles.ratingContainer}>
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Ionicons key={i} name="star" size={12} color="#F59E0B" />
+                <Text style={[styles.testimonialQuote, { color: colors.textSecondary }]}>
+                  "{language === 'fr' ? testimonial.quote.fr : testimonial.quote.en}"
+                </Text>
+
+                {/* Carousel indicators */}
+                <View style={styles.carouselIndicators}>
+                  {TESTIMONIALS.map((_, index) => (
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => setCurrentTestimonial(index)}
+                      style={[
+                        styles.indicator,
+                        {
+                          backgroundColor: index === currentTestimonial
+                            ? colors.accentPrimary
+                            : colors.bgTertiary,
+                        },
+                      ]}
+                    />
                   ))}
                 </View>
               </View>
-              <Text style={[styles.testimonialQuote, { color: colors.textSecondary }]}>
-                "{language === 'fr' ? testimonial.quote.fr : testimonial.quote.en}"
-              </Text>
-
-              {/* Carousel indicators */}
-              <View style={styles.carouselIndicators}>
-                {TESTIMONIALS.map((_, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    onPress={() => setCurrentTestimonial(index)}
-                    style={[
-                      styles.indicator,
-                      {
-                        backgroundColor: index === currentTestimonial
-                          ? colors.accentPrimary
-                          : colors.bgTertiary,
-                      },
-                    ]}
-                  />
-                ))}
-              </View>
-            </View>
+            )}
 
             {/* CTA Buttons */}
             <View style={styles.actions}>

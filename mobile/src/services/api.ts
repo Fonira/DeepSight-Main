@@ -814,7 +814,7 @@ export const historyApi = {
     }>(`/api/history/videos?${params.toString()}`);
 
     // Transform backend response to mobile format
-    const items: AnalysisSummary[] = response.items.map((item) => ({
+    const items: AnalysisSummary[] = (response.items || []).map((item) => ({
       id: String(item.id),
       title: item.video_title || 'Sans titre',
       videoId: item.video_id,
