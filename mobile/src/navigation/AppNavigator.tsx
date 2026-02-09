@@ -1,17 +1,14 @@
-import React, { useMemo, useCallback } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, StyleSheet } from 'react-native';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { DeepSightSpinner } from '../components/loading';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { AnimatedTabBarIcon } from '../components/navigation';
+import { CustomTabBar } from '../components/navigation';
 import {
   LandingScreen,
   LoginScreen,
@@ -33,92 +30,22 @@ import {
   LegalScreen,
   StudyScreen,
 } from '../screens';
-import { Typography, Spacing, BorderRadius } from '../constants/theme';
 import type { RootStackParamList, MainTabParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-// Bottom Tab Navigator
+// Bottom Tab Navigator with custom TabBar
 const MainTabs: React.FC = () => {
-  const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
-
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.bgSecondary,
-          borderTopColor: colors.border,
-          borderTopWidth: StyleSheet.hairlineWidth,
-          paddingTop: Spacing.sm,
-          paddingBottom: insets.bottom > 0 ? insets.bottom : Spacing.sm,
-          height: 60 + (insets.bottom > 0 ? insets.bottom : Spacing.sm),
-        },
-        tabBarActiveTintColor: colors.accentPrimary,
-        tabBarInactiveTintColor: colors.textTertiary,
-        tabBarLabelStyle: {
-          fontSize: Typography.fontSize.xs,
-          fontFamily: Typography.fontFamily.bodyMedium,
-          marginTop: Spacing.xs,
-        },
-        tabBarIcon: ({ focused, color }) => {
-          let iconName: keyof typeof Ionicons.glyphMap;
-
-          switch (route.name) {
-            case 'Dashboard':
-              iconName = focused ? 'home' : 'home-outline';
-              break;
-            case 'History':
-              iconName = focused ? 'time' : 'time-outline';
-              break;
-            case 'Playlists':
-              iconName = focused ? 'list' : 'list-outline';
-              break;
-            case 'Profile':
-              iconName = focused ? 'person' : 'person-outline';
-              break;
-            default:
-              iconName = 'help-outline';
-          }
-
-          return (
-            <AnimatedTabBarIcon
-              name={iconName}
-              focused={focused}
-              color={color}
-              size={24}
-            />
-          );
-        },
-      })}
-      screenListeners={{
-        tabPress: () => {
-          Haptics.selectionAsync();
-        },
-      }}
+      tabBar={(props) => <CustomTabBar {...props} />}
+      screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen
-        name="Dashboard"
-        component={DashboardScreen}
-        options={{ tabBarLabel: 'Accueil' }}
-      />
-      <Tab.Screen
-        name="History"
-        component={HistoryScreen}
-        options={{ tabBarLabel: 'Historique' }}
-      />
-      <Tab.Screen
-        name="Playlists"
-        component={PlaylistsScreen}
-        options={{ tabBarLabel: 'Playlists' }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{ tabBarLabel: 'Profil' }}
-      />
+      <Tab.Screen name="Dashboard" component={DashboardScreen} />
+      <Tab.Screen name="History" component={HistoryScreen} />
+      <Tab.Screen name="Playlists" component={PlaylistsScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
 };
@@ -142,14 +69,8 @@ const AuthStack: React.FC = () => {
       />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen
-        name="ForgotPassword"
-        component={ForgotPasswordScreen}
-      />
-      <Stack.Screen
-        name="VerifyEmail"
-        component={VerifyEmailScreen}
-      />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
     </Stack.Navigator>
   );
 };
@@ -175,51 +96,26 @@ const MainStack: React.FC = () => {
           presentation: 'modal',
         }}
       />
-      <Stack.Screen
-        name="Settings"
-        component={SettingsScreen}
-      />
-      <Stack.Screen
-        name="Account"
-        component={AccountScreen}
-      />
-      <Stack.Screen
-        name="Upgrade"
-        component={UpgradeScreen}
-      />
-      <Stack.Screen
-        name="Usage"
-        component={UsageScreen}
-      />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="Account" component={AccountScreen} />
+      <Stack.Screen name="Upgrade" component={UpgradeScreen} />
+      <Stack.Screen name="Usage" component={UsageScreen} />
       <Stack.Screen
         name="PaymentSuccess"
         component={PaymentSuccessScreen}
-        options={{
-          animation: 'fade',
-          gestureEnabled: false,
-        }}
+        options={{ animation: 'fade', gestureEnabled: false }}
       />
       <Stack.Screen
         name="PaymentCancel"
         component={PaymentCancelScreen}
-        options={{
-          animation: 'fade',
-        }}
+        options={{ animation: 'fade' }}
       />
-      <Stack.Screen
-        name="Legal"
-        component={LegalScreen}
-      />
-      <Stack.Screen
-        name="PlaylistDetail"
-        component={PlaylistDetailScreen}
-      />
+      <Stack.Screen name="Legal" component={LegalScreen} />
+      <Stack.Screen name="PlaylistDetail" component={PlaylistDetailScreen} />
       <Stack.Screen
         name="StudyTools"
         component={StudyScreen}
-        options={{
-          animation: 'slide_from_right',
-        }}
+        options={{ animation: 'slide_from_right' }}
       />
     </Stack.Navigator>
   );
@@ -235,13 +131,11 @@ const linking: LinkingOptions<RootStackParamList> = {
   ],
   config: {
     screens: {
-      // Auth screens
       Landing: 'welcome',
       Login: 'login',
       Register: 'register',
       ForgotPassword: 'forgot-password',
       VerifyEmail: 'verify-email',
-      // Main screens
       MainTabs: {
         screens: {
           Dashboard: 'home',
@@ -268,7 +162,6 @@ export const AppNavigator: React.FC = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const { colors, isDark } = useTheme();
 
-  // Memoize navigation theme
   const navigationTheme = useMemo(() => ({
     dark: isDark,
     colors: {
@@ -290,14 +183,7 @@ export const AppNavigator: React.FC = () => {
   }
 
   return (
-    <NavigationContainer
-      linking={linking}
-      theme={navigationTheme}
-      onStateChange={(state) => {
-        // Analytics tracking could be added here
-        // e.g., analytics.logScreenView(currentRouteName);
-      }}
-    >
+    <NavigationContainer linking={linking} theme={navigationTheme}>
       {isAuthenticated ? <MainStack /> : <AuthStack />}
     </NavigationContainer>
   );

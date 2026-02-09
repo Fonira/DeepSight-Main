@@ -4,9 +4,10 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
   Alert,
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -15,8 +16,10 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Header, Card, Avatar, Badge, LanguageToggle, CreditDisplay } from '../components';
-import { Spacing, Typography, BorderRadius } from '../constants/theme';
+import { Header } from '../components/Header';
+import { Card, Avatar, Badge, LanguageToggle, CreditDisplay, AnimatedToggle } from '../components/ui';
+import { sp, borderRadius } from '../theme/spacing';
+import { fontFamily, fontSize } from '../theme/typography';
 import { formatNumber } from '../utils/formatters';
 import { normalizePlanId, getPlanInfo } from '../config/planPrivileges';
 import type { RootStackParamList } from '../types';
@@ -43,7 +46,7 @@ const MenuItem: React.FC<MenuItemProps> = ({
   const { colors } = useTheme();
 
   return (
-    <TouchableOpacity
+    <Pressable
       style={[styles.menuItem, { borderBottomColor: colors.border }]}
       onPress={() => {
         Haptics.selectionAsync();
@@ -51,7 +54,7 @@ const MenuItem: React.FC<MenuItemProps> = ({
       }}
     >
       <View style={styles.menuItemLeft}>
-        <View style={[styles.menuIcon, { backgroundColor: danger ? `${colors.accentError}15` : colors.bgElevated }]}>
+        <View style={[styles.menuIcon, { backgroundColor: danger ? `${colors.accentError}15` : colors.glassBg }]}>
           <Ionicons
             name={icon}
             size={20}
@@ -71,9 +74,9 @@ const MenuItem: React.FC<MenuItemProps> = ({
         {rightBadge && (
           <Badge label={rightBadge} variant="primary" size="sm" />
         )}
-        <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
+        <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 };
 
@@ -84,7 +87,6 @@ export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<ProfileNavigationProp>();
   const insets = useSafeAreaInsets();
 
-  // Normalize user plan
   const userPlan = normalizePlanId(user?.plan);
   const planInfo = getPlanInfo(userPlan);
 
@@ -119,168 +121,172 @@ export const ProfileScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Card */}
-        <Card variant="elevated" style={styles.profileCard}>
-          <View style={styles.profileHeader}>
-            <Avatar uri={user?.avatar_url} name={user?.username} size="xl" />
-            <View style={styles.profileInfo}>
-              <Text style={[styles.profileName, { color: colors.textPrimary }]}>
-                {user?.username || t.admin.user}
-              </Text>
-              <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>
-                {user?.email}
-              </Text>
-              <Badge
-                label={getPlanLabel()}
-                variant={userPlan === 'free' ? 'default' : 'primary'}
-                style={{ marginTop: Spacing.sm }}
-              />
+        <Animated.View entering={FadeInDown.duration(400)}>
+          <Card variant="elevated" style={styles.profileCard}>
+            <View style={styles.profileHeader}>
+              <Avatar uri={user?.avatar_url} name={user?.username} size="xl" />
+              <View style={styles.profileInfo}>
+                <Text style={[styles.profileName, { color: colors.textPrimary }]}>
+                  {user?.username || t.admin.user}
+                </Text>
+                <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>
+                  {user?.email}
+                </Text>
+                <Badge
+                  label={getPlanLabel()}
+                  variant={userPlan === 'free' ? 'default' : 'primary'}
+                  style={{ marginTop: sp.sm }}
+                />
+              </View>
             </View>
-          </View>
 
-          {/* Credits Display */}
-          <CreditDisplay variant="full" />
+            <CreditDisplay variant="full" />
 
-          {/* Stats */}
-          <View style={[styles.statsRow, { borderTopColor: colors.border, marginTop: Spacing.md }]}>
-            <View style={styles.stat}>
-              <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-                {formatNumber(user?.total_videos || 0)}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-                {t.playlists.videos}
-              </Text>
+            <View style={[styles.statsRow, { borderTopColor: colors.border, marginTop: sp.md }]}>
+              <View style={styles.stat}>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>
+                  {formatNumber(user?.total_videos || 0)}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
+                  {t.playlists.videos}
+                </Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.stat}>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>
+                  {formatNumber(user?.total_words || 0)}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
+                  {t.admin.wordsGenerated}
+                </Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.stat}>
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>
+                  {formatNumber(user?.total_playlists || 0)}
+                </Text>
+                <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
+                  {t.playlists.title}
+                </Text>
+              </View>
             </View>
-            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.stat}>
-              <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-                {formatNumber(user?.total_words || 0)}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-                {t.admin.wordsGenerated}
-              </Text>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.stat}>
-              <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-                {formatNumber(user?.total_playlists || 0)}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-                {t.playlists.title}
-              </Text>
-            </View>
-          </View>
-        </Card>
+          </Card>
+        </Animated.View>
 
         {/* Account Section */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          {t.settings.account}
-        </Text>
-        <Card variant="elevated" style={styles.menuCard}>
-          <MenuItem
-            icon="person-outline"
-            label={t.settings.account}
-            onPress={() => navigation.navigate('Account')}
-          />
-          <MenuItem
-            icon="star-outline"
-            label={t.settings.subscription}
-            onPress={() => navigation.navigate('Upgrade')}
-            rightBadge={getPlanLabel()}
-          />
-          <MenuItem
-            icon="analytics-outline"
-            label={t.settings.usage}
-            onPress={() => navigation.navigate('Usage')}
-            rightText={`${user?.credits || 0}/${user?.credits_monthly || 20}`}
-          />
-        </Card>
+        <Animated.View entering={FadeInDown.delay(100).duration(400)}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+            {t.settings.account}
+          </Text>
+          <Card variant="elevated" style={styles.menuCard}>
+            <MenuItem
+              icon="person-outline"
+              label={t.settings.account}
+              onPress={() => navigation.navigate('Account')}
+            />
+            <MenuItem
+              icon="star-outline"
+              label={t.settings.subscription}
+              onPress={() => navigation.navigate('Upgrade')}
+              rightBadge={getPlanLabel()}
+            />
+            <MenuItem
+              icon="analytics-outline"
+              label={t.settings.usage}
+              onPress={() => navigation.navigate('Usage')}
+              rightText={`${user?.credits || 0}/${user?.credits_monthly || 20}`}
+            />
+          </Card>
+        </Animated.View>
 
         {/* Preferences Section */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          {t.settings.preferences}
-        </Text>
-        <Card variant="elevated" style={styles.menuCard}>
-          <MenuItem
-            icon="settings-outline"
-            label={t.nav.settings}
-            onPress={() => navigation.navigate('Settings')}
-          />
-          <TouchableOpacity
-            style={[styles.menuItem, { borderBottomColor: colors.border }]}
-            onPress={() => {
-              Haptics.selectionAsync();
-              toggleTheme();
-            }}
-          >
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: colors.bgElevated }]}>
-                <Ionicons
-                  name={isDark ? 'moon' : 'sunny'}
-                  size={20}
-                  color={colors.accentPrimary}
-                />
+        <Animated.View entering={FadeInDown.delay(200).duration(400)}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+            {t.settings.preferences}
+          </Text>
+          <Card variant="elevated" style={styles.menuCard}>
+            <MenuItem
+              icon="settings-outline"
+              label={t.nav.settings}
+              onPress={() => navigation.navigate('Settings')}
+            />
+            <Pressable
+              style={[styles.menuItem, { borderBottomColor: colors.border }]}
+              onPress={() => {
+                Haptics.selectionAsync();
+                toggleTheme();
+              }}
+            >
+              <View style={styles.menuItemLeft}>
+                <View style={[styles.menuIcon, { backgroundColor: colors.glassBg }]}>
+                  <Ionicons
+                    name={isDark ? 'moon' : 'sunny'}
+                    size={20}
+                    color={colors.accentPrimary}
+                  />
+                </View>
+                <Text style={[styles.menuLabel, { color: colors.textPrimary }]}>
+                  {t.settings.darkMode}
+                </Text>
               </View>
-              <Text style={[styles.menuLabel, { color: colors.textPrimary }]}>
-                {t.settings.darkMode}
-              </Text>
-            </View>
-            <View style={[styles.toggle, { backgroundColor: isDark ? colors.accentPrimary : colors.bgTertiary }]}>
-              <View
-                style={[
-                  styles.toggleKnob,
-                  isDark ? styles.toggleKnobActive : styles.toggleKnobInactive,
-                ]}
+              <AnimatedToggle
+                value={isDark}
+                onValueChange={() => toggleTheme()}
               />
-            </View>
-          </TouchableOpacity>
-          <View style={[styles.menuItem, { borderBottomColor: colors.border }]}>
-            <View style={styles.menuItemLeft}>
-              <View style={[styles.menuIcon, { backgroundColor: colors.bgElevated }]}>
-                <Ionicons
-                  name="language-outline"
-                  size={20}
-                  color={colors.accentPrimary}
-                />
+            </Pressable>
+            <View style={[styles.menuItem, { borderBottomColor: colors.border }]}>
+              <View style={styles.menuItemLeft}>
+                <View style={[styles.menuIcon, { backgroundColor: colors.glassBg }]}>
+                  <Ionicons
+                    name="language-outline"
+                    size={20}
+                    color={colors.accentPrimary}
+                  />
+                </View>
+                <Text style={[styles.menuLabel, { color: colors.textPrimary }]}>
+                  {t.settings.language}
+                </Text>
               </View>
-              <Text style={[styles.menuLabel, { color: colors.textPrimary }]}>
-                {t.settings.language}
-              </Text>
+              <LanguageToggle compact />
             </View>
-            <LanguageToggle compact />
-          </View>
-        </Card>
+          </Card>
+        </Animated.View>
 
         {/* Support Section */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          {t.settings.support}
-        </Text>
-        <Card variant="elevated" style={styles.menuCard}>
-          <MenuItem
-            icon="help-circle-outline"
-            label={t.settings.helpFaq}
-            onPress={() => navigation.navigate('Legal', { type: 'about' })}
-          />
-          <MenuItem
-            icon="chatbubble-outline"
-            label={t.settings.contactUs}
-            onPress={() => navigation.navigate('Legal', { type: 'about' })}
-          />
-          <MenuItem
-            icon="document-text-outline"
-            label={t.settings.termsOfService}
-            onPress={() => navigation.navigate('Legal', { type: 'terms' })}
-          />
-        </Card>
+        <Animated.View entering={FadeInDown.delay(300).duration(400)}>
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+            {t.settings.support}
+          </Text>
+          <Card variant="elevated" style={styles.menuCard}>
+            <MenuItem
+              icon="help-circle-outline"
+              label={t.settings.helpFaq}
+              onPress={() => navigation.navigate('Legal', { type: 'about' })}
+            />
+            <MenuItem
+              icon="chatbubble-outline"
+              label={t.settings.contactUs}
+              onPress={() => navigation.navigate('Legal', { type: 'about' })}
+            />
+            <MenuItem
+              icon="document-text-outline"
+              label={t.settings.termsOfService}
+              onPress={() => navigation.navigate('Legal', { type: 'terms' })}
+            />
+          </Card>
+        </Animated.View>
 
         {/* Logout */}
-        <Card variant="elevated" style={[styles.menuCard, { marginTop: Spacing.lg }]}>
-          <MenuItem
-            icon="log-out-outline"
-            label={t.auth.signOut}
-            onPress={handleLogout}
-            danger
-          />
-        </Card>
+        <Animated.View entering={FadeInDown.delay(400).duration(400)}>
+          <Card variant="elevated" style={[styles.menuCard, { marginTop: sp.lg }]}>
+            <MenuItem
+              icon="log-out-outline"
+              label={t.auth.signOut}
+              onPress={handleLogout}
+              danger
+            />
+          </Card>
+        </Animated.View>
 
         {/* App Version */}
         <Text style={[styles.version, { color: colors.textMuted }]}>
@@ -299,61 +305,61 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingHorizontal: sp.lg,
+    paddingTop: sp.md,
   },
   profileCard: {
-    marginBottom: Spacing.xl,
+    marginBottom: sp.xl,
   },
   profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.lg,
+    padding: sp.lg,
   },
   profileInfo: {
     flex: 1,
-    marginLeft: Spacing.lg,
+    marginLeft: sp.lg,
   },
   profileName: {
-    fontSize: Typography.fontSize.xl,
-    fontFamily: Typography.fontFamily.bodySemiBold,
+    fontSize: fontSize.xl,
+    fontFamily: fontFamily.bodySemiBold,
   },
   profileEmail: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.body,
-    marginTop: Spacing.xs,
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.body,
+    marginTop: sp.xs,
   },
   statsRow: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    paddingVertical: Spacing.lg,
-    paddingHorizontal: Spacing.md,
+    paddingVertical: sp.lg,
+    paddingHorizontal: sp.md,
   },
   stat: {
     flex: 1,
     alignItems: 'center',
   },
   statValue: {
-    fontSize: Typography.fontSize.xl,
-    fontFamily: Typography.fontFamily.bodySemiBold,
+    fontSize: fontSize.xl,
+    fontFamily: fontFamily.bodySemiBold,
   },
   statLabel: {
-    fontSize: Typography.fontSize.xs,
-    fontFamily: Typography.fontFamily.body,
-    marginTop: Spacing.xs,
+    fontSize: fontSize.xs,
+    fontFamily: fontFamily.body,
+    marginTop: sp.xs,
   },
   statDivider: {
     width: 1,
     height: '100%',
   },
   sectionTitle: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.bodySemiBold,
+    fontSize: fontSize.xs,
+    fontFamily: fontFamily.bodySemiBold,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: Spacing.sm,
-    marginTop: Spacing.md,
-    paddingHorizontal: Spacing.xs,
+    letterSpacing: 0.8,
+    marginBottom: sp.sm,
+    marginTop: sp.lg,
+    paddingHorizontal: sp.xs,
   },
   menuCard: {
     padding: 0,
@@ -362,60 +368,44 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
+    paddingVertical: sp.md,
+    paddingHorizontal: sp.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
+    minHeight: 52,
   },
   menuItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    marginRight: sp.md,
   },
   menuIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.md,
+    width: 34,
+    height: 34,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.md,
+    marginRight: sp.md,
   },
   menuLabel: {
-    fontSize: Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.body,
+    fontSize: fontSize.base,
+    fontFamily: fontFamily.body,
   },
   menuItemRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: sp.sm,
   },
   menuRightText: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.body,
-  },
-  toggle: {
-    width: 50,
-    height: 30,
-    borderRadius: 15,
-    padding: 2,
-    justifyContent: 'center',
-  },
-  toggleKnob: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#FFFFFF',
-  },
-  toggleKnobActive: {
-    alignSelf: 'flex-end',
-  },
-  toggleKnobInactive: {
-    alignSelf: 'flex-start',
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.body,
   },
   version: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.body,
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.body,
     textAlign: 'center',
-    marginTop: Spacing.xl,
-    marginBottom: Spacing.lg,
+    marginTop: sp.xl,
+    marginBottom: sp.lg,
   },
 });
 

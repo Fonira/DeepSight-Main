@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Header, Card, Badge, DeepSightSpinner } from '../components';
+import { Header, Card, Badge, Button, DeepSightSpinner } from '../components';
 import { usageApi } from '../services/api';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { normalizePlanId, getPlanInfo } from '../config/planPrivileges';
@@ -41,21 +41,24 @@ export const UsageScreen: React.FC = () => {
   const [detailedUsage, setDetailedUsage] = useState<DetailedUsage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const creditsUsed = (user?.credits_monthly || 20) - (user?.credits || 0);
   const creditsTotal = user?.credits_monthly || 20;
   const usagePercent = Math.min((creditsUsed / creditsTotal) * 100, 100);
 
   const loadDetailedUsage = useCallback(async () => {
+    setError(null);
     try {
       const data = await usageApi.getDetailedUsage('month');
       setDetailedUsage(data);
-    } catch (error) {
-      console.error('Failed to load detailed usage:', error);
+    } catch (err) {
+      console.error('Failed to load detailed usage:', err);
+      setError(t.errors.generic);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadDetailedUsage();
@@ -70,6 +73,39 @@ export const UsageScreen: React.FC = () => {
   const getPlanLabel = () => {
     return language === 'fr' ? planInfo.name.fr : planInfo.name.en;
   };
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+        <Header title={t.settings.usage} showBack />
+        <View style={styles.fullLoadingContainer}>
+          <DeepSightSpinner size="lg" showGlow />
+        </View>
+      </View>
+    );
+  }
+
+  if (error && !detailedUsage) {
+    return (
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+        <Header title={t.settings.usage} showBack />
+        <View style={styles.errorContainer}>
+          <Ionicons name="cloud-offline-outline" size={48} color={colors.accentError} />
+          <Text style={[styles.errorText, { color: colors.textPrimary }]}>
+            {error}
+          </Text>
+          <Button
+            title={t.common.retry}
+            variant="outline"
+            onPress={() => {
+              setIsLoading(true);
+              loadDetailedUsage();
+            }}
+          />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
@@ -275,12 +311,6 @@ export const UsageScreen: React.FC = () => {
           </>
         )}
 
-        {/* Loading Indicator */}
-        {isLoading && (
-          <View style={styles.loadingContainer}>
-            <DeepSightSpinner size="md" showGlow />
-          </View>
-        )}
       </ScrollView>
     </View>
   );
@@ -482,9 +512,23 @@ const styles = StyleSheet.create({
     minWidth: 30,
     textAlign: 'right',
   },
-  loadingContainer: {
-    padding: Spacing.xl,
+  fullLoadingContainer: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.xl,
+    gap: Spacing.md,
+  },
+  errorText: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.body,
+    textAlign: 'center',
+    marginTop: Spacing.md,
   },
 });
 

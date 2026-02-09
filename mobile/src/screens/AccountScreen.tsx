@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
   Alert,
   Modal,
   TextInput,
@@ -217,12 +217,12 @@ export const AccountScreen: React.FC = () => {
         {/* Avatar Section */}
         <View style={styles.avatarSection}>
           <Avatar uri={user?.avatar_url} name={user?.username} size="xl" />
-          <TouchableOpacity
+          <Pressable
             style={[styles.changeAvatarButton, { backgroundColor: colors.accentPrimary }]}
             onPress={handleAvatarPress}
           >
             <Ionicons name="camera" size={16} color="#FFFFFF" />
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         {/* Account Info */}
@@ -315,7 +315,7 @@ export const AccountScreen: React.FC = () => {
           {t.settings.security}
         </Text>
         <Card variant="elevated" style={styles.securityCard}>
-          <TouchableOpacity
+          <Pressable
             style={[styles.securityItem, { borderBottomColor: colors.border }]}
             onPress={handleChangePassword}
           >
@@ -326,7 +326,7 @@ export const AccountScreen: React.FC = () => {
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-          </TouchableOpacity>
+          </Pressable>
           <View style={[styles.securityItem, { borderBottomWidth: 0 }]}>
             <View style={styles.securityItemLeft}>
               <Ionicons name="shield-checkmark-outline" size={20} color={colors.accentSuccess} />
@@ -347,7 +347,7 @@ export const AccountScreen: React.FC = () => {
           {t.settings.dangerZone}
         </Text>
         <Card variant="elevated" style={styles.dangerCard}>
-          <TouchableOpacity
+          <Pressable
             style={styles.dangerItem}
             onPress={handleDeleteAccount}
           >
@@ -358,7 +358,7 @@ export const AccountScreen: React.FC = () => {
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={colors.accentError} />
-          </TouchableOpacity>
+          </Pressable>
         </Card>
       </ScrollView>
 
@@ -409,7 +409,7 @@ export const AccountScreen: React.FC = () => {
             </View>
 
             <View style={styles.modalActions}>
-              <TouchableOpacity
+              <Pressable
                 style={[styles.modalButton, styles.modalCancelButton, { borderColor: colors.border }]}
                 onPress={() => setShowDeleteModal(false)}
                 disabled={isDeleting}
@@ -417,9 +417,9 @@ export const AccountScreen: React.FC = () => {
                 <Text style={[styles.modalButtonText, { color: colors.textPrimary }]}>
                   {t.common.cancel}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
 
-              <TouchableOpacity
+              <Pressable
                 style={[styles.modalButton, styles.modalDeleteButton, { backgroundColor: colors.accentError }]}
                 onPress={handleConfirmDelete}
                 disabled={isDeleting}
@@ -431,7 +431,7 @@ export const AccountScreen: React.FC = () => {
                     {t.common.delete}
                   </Text>
                 )}
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -450,9 +450,9 @@ export const AccountScreen: React.FC = () => {
               <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
                 {t.settings.profilePicture}
               </Text>
-              <TouchableOpacity onPress={() => setShowAvatarModal(false)}>
+              <Pressable onPress={() => setShowAvatarModal(false)}>
                 <Ionicons name="close" size={24} color={colors.textSecondary} />
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             {/* Preview */}
@@ -471,7 +471,7 @@ export const AccountScreen: React.FC = () => {
 
             {/* Actions */}
             <View style={styles.avatarActions}>
-              <TouchableOpacity
+              <Pressable
                 style={[styles.avatarActionButton, { backgroundColor: colors.bgSecondary }]}
                 onPress={pickImage}
                 disabled={isUploadingAvatar}
@@ -480,9 +480,9 @@ export const AccountScreen: React.FC = () => {
                 <Text style={[styles.avatarActionText, { color: colors.textPrimary }]}>
                   {t.common.chooseFromLibrary || 'Choose from Library'}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
 
-              <TouchableOpacity
+              <Pressable
                 style={[styles.avatarActionButton, { backgroundColor: colors.bgSecondary }]}
                 onPress={takePhoto}
                 disabled={isUploadingAvatar}
@@ -491,12 +491,12 @@ export const AccountScreen: React.FC = () => {
                 <Text style={[styles.avatarActionText, { color: colors.textPrimary }]}>
                   {t.common.takePhoto || 'Take Photo'}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             {/* Upload Button */}
             {selectedImage && (
-              <TouchableOpacity
+              <Pressable
                 style={[styles.uploadButton, { backgroundColor: colors.accentPrimary }]}
                 onPress={handleUploadAvatar}
                 disabled={isUploadingAvatar}
@@ -511,7 +511,7 @@ export const AccountScreen: React.FC = () => {
                     </Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </Pressable>
             )}
           </View>
         </View>

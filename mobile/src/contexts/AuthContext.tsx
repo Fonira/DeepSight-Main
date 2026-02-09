@@ -290,11 +290,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(true);
     try {
       await authApi.logout();
-    } catch {}
-    setUser(null);
-    await tokenStorage.clearTokens();
-    await userStorage.clearUser();
-    setIsLoading(false);
+    } catch {
+      // Server logout may fail (expired token, network), continue with local cleanup
+    }
+    try {
+      setUser(null);
+      await tokenStorage.clearTokens();
+      await userStorage.clearUser();
+    } catch (cleanupError) {
+      console.warn('[Auth] Logout cleanup error:', cleanupError);
+      // Ensure user is still cleared even if storage fails
+      setUser(null);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const forgotPassword = useCallback(async (email: string) => {

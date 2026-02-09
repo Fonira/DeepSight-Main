@@ -4,9 +4,8 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
+  Pressable,
   RefreshControl,
-  ActivityIndicator,
   Alert,
   ScrollView,
 } from 'react-native';
@@ -21,8 +20,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { playlistApi } from '../services/api';
-import { Header, Card, Badge, Button, VideoCard, UpgradePromptModal } from '../components';
-import { Spacing, Typography, BorderRadius, Colors } from '../constants/theme';
+import { Header, Card, Badge, Button, VideoCard, UpgradePromptModal, DeepSightSpinner } from '../components';
+import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { formatDate } from '../utils/formatters';
 import { normalizePlanId, hasFeature, getMinPlanForFeature, getPlanInfo } from '../config/planPrivileges';
 import type { RootStackParamList, Playlist, AnalysisSummary } from '../types';
@@ -52,12 +51,14 @@ export const PlaylistDetailScreen: React.FC = () => {
   const [corpusSummary, setCorpusSummary] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isGeneratingSynthesis, setIsGeneratingSynthesis] = useState(false);
   const [activeTab, setActiveTab] = useState<'videos' | 'synthesis'>('videos');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Load playlist details
   const loadPlaylistDetails = useCallback(async () => {
+    setError(null);
     try {
       const response = await playlistApi.getPlaylistDetails(playlistId);
       setPlaylist(response.playlist);
@@ -65,11 +66,11 @@ export const PlaylistDetailScreen: React.FC = () => {
       setCorpusSummary(response.corpusSummary || null);
     } catch (err) {
       console.error('Error loading playlist details:', err);
-      Alert.alert(t.common.error, t.errors.generic);
+      setError(t.errors.generic);
     } finally {
       setIsLoading(false);
     }
-  }, [playlistId]);
+  }, [playlistId, t]);
 
   useEffect(() => {
     loadPlaylistDetails();
@@ -153,7 +154,29 @@ export const PlaylistDetailScreen: React.FC = () => {
       <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         <Header title={t.playlists.title} showBack />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accentPrimary} />
+          <DeepSightSpinner size="lg" showGlow />
+        </View>
+      </View>
+    );
+  }
+
+  if (error && !playlist) {
+    return (
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+        <Header title={t.playlists.title} showBack />
+        <View style={styles.errorContainer}>
+          <Ionicons name="cloud-offline-outline" size={48} color={colors.accentError} />
+          <Text style={[styles.errorText, { color: colors.textPrimary }]}>
+            {error}
+          </Text>
+          <Button
+            title={t.common.retry}
+            variant="outline"
+            onPress={() => {
+              setIsLoading(true);
+              loadPlaylistDetails();
+            }}
+          />
         </View>
       </View>
     );
@@ -244,7 +267,7 @@ export const PlaylistDetailScreen: React.FC = () => {
 
       {/* Tabs */}
       <View style={[styles.tabsContainer, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity
+        <Pressable
           style={[
             styles.tab,
             activeTab === 'videos' && { borderBottomColor: colors.accentPrimary },
@@ -264,8 +287,8 @@ export const PlaylistDetailScreen: React.FC = () => {
           >
             {t.playlists.videos}
           </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </Pressable>
+        <Pressable
           style={[
             styles.tab,
             activeTab === 'synthesis' && { borderBottomColor: colors.accentPrimary },
@@ -285,7 +308,7 @@ export const PlaylistDetailScreen: React.FC = () => {
           >
             {t.playlists.synthesis}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {/* Tab Content */}
@@ -404,6 +427,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
     textAlign: 'center',
+    marginTop: Spacing.md,
   },
   headerSection: {
     flexDirection: 'row',

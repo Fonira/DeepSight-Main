@@ -4,7 +4,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
+  Pressable,
   RefreshControl,
   Alert,
   TextInput,
@@ -21,9 +21,8 @@ import { Image } from 'expo-image';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { playlistApi, videoApi } from '../services/api';
+import { playlistApi } from '../services/api';
 import { Header, Card, EmptyState, Button, Badge, UpgradePromptModal, DeepSightSpinner } from '../components';
-import { GlassCard } from '../components/ui/GlassCard';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { normalizePlanId, hasFeature, getLimit, getMinPlanForFeature, getPlanInfo } from '../config/planPrivileges';
 import type { Playlist, RootStackParamList } from '../types';
@@ -47,6 +46,7 @@ export const PlaylistsScreen: React.FC = () => {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Create playlist modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -64,16 +64,17 @@ export const PlaylistsScreen: React.FC = () => {
 
   // Load playlists from API
   const loadPlaylists = useCallback(async () => {
+    setError(null);
     try {
       const response = await playlistApi.getPlaylists();
       setPlaylists(response.playlists || []);
     } catch (err) {
       console.error('Error loading playlists:', err);
-      // Don't show error alert on initial load failure
+      setError(t.errors.generic);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadPlaylists();
@@ -217,10 +218,10 @@ export const PlaylistsScreen: React.FC = () => {
 
   const renderPlaylistItem = useCallback(
     ({ item }: { item: Playlist }) => (
-      <TouchableOpacity
+      <Pressable
         onPress={() => handlePlaylistPress(item)}
         onLongPress={() => handleDeletePlaylist(item)}
-        activeOpacity={0.7}
+        style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
       >
         <Card variant="elevated" style={styles.playlistCard}>
           <View style={styles.playlistContent}>
@@ -256,7 +257,7 @@ export const PlaylistsScreen: React.FC = () => {
             <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
           </View>
         </Card>
-      </TouchableOpacity>
+      </Pressable>
     ),
     [colors]
   );
@@ -286,7 +287,7 @@ export const PlaylistsScreen: React.FC = () => {
 
       {/* Pro Feature Banner (shown for non-Pro users) */}
       {!hasPlaylistAccess && (
-        <TouchableOpacity
+        <Pressable
           style={[styles.proBanner, { backgroundColor: `${colors.accentPrimary}15` }]}
           onPress={() => setShowUpgradeModal(true)}
         >
@@ -307,12 +308,12 @@ export const PlaylistsScreen: React.FC = () => {
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={colors.accentPrimary} />
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       {/* Action Buttons */}
       <View style={styles.actionsContainer}>
-        <TouchableOpacity
+        <Pressable
           style={[
             styles.actionCard,
             { backgroundColor: colors.bgElevated },
@@ -338,9 +339,9 @@ export const PlaylistsScreen: React.FC = () => {
           ) : (
             <Ionicons name="arrow-forward" size={20} color={colors.textTertiary} />
           )}
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
+        <Pressable
           style={[
             styles.actionCard,
             { backgroundColor: colors.bgElevated },
@@ -366,7 +367,7 @@ export const PlaylistsScreen: React.FC = () => {
           ) : (
             <Ionicons name="arrow-forward" size={20} color={colors.textTertiary} />
           )}
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {/* Stats */}
@@ -400,12 +401,31 @@ export const PlaylistsScreen: React.FC = () => {
         </Text>
       )}
 
+      {/* Error State */}
+      {error && !isLoading && playlists.length === 0 && (
+        <View style={styles.errorContainer}>
+          <Ionicons name="cloud-offline-outline" size={48} color={colors.accentError} />
+          <Text style={[styles.errorText, { color: colors.textPrimary }]}>
+            {error}
+          </Text>
+          <Button
+            title={t.common.retry}
+            variant="outline"
+            onPress={() => {
+              setIsLoading(true);
+              loadPlaylists();
+            }}
+            style={styles.retryButton}
+          />
+        </View>
+      )}
+
       {/* Playlist List */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <DeepSightSpinner size="lg" showGlow />
         </View>
-      ) : (
+      ) : error && playlists.length === 0 ? null : (
         <FlatList
           data={playlists}
           renderItem={renderPlaylistItem}
@@ -439,9 +459,9 @@ export const PlaylistsScreen: React.FC = () => {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalContainer}
         >
-          <TouchableOpacity
+          <Pressable
             style={styles.modalOverlay}
-            activeOpacity={1}
+
             onPress={() => setShowCreateModal(false)}
           />
           <View style={[styles.modalContent, { backgroundColor: colors.bgSecondary }]}>
@@ -498,9 +518,9 @@ export const PlaylistsScreen: React.FC = () => {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalContainer}
         >
-          <TouchableOpacity
+          <Pressable
             style={styles.modalOverlay}
-            activeOpacity={1}
+
             onPress={() => setShowAnalyzeModal(false)}
           />
           <View style={[styles.modalContent, { backgroundColor: colors.bgSecondary }]}>
@@ -662,6 +682,21 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.xl,
+    gap: Spacing.md,
+  },
+  errorText: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.body,
+    textAlign: 'center',
+  },
+  retryButton: {
+    marginTop: Spacing.md,
   },
   listContent: {
     paddingHorizontal: Spacing.lg,

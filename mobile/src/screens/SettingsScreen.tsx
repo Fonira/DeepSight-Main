@@ -3,8 +3,8 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
+  SectionList,
+  Pressable,
   Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,55 +15,93 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Header, Card } from '../components';
-import { Spacing, Typography, BorderRadius } from '../constants/theme';
-import { ANALYSIS_MODES, AI_MODELS, LANGUAGES, STORAGE_KEYS } from '../constants/config';
+import { Header } from '../components/Header';
+import { Card, AnimatedToggle } from '../components/ui';
+import { sp, borderRadius } from '../theme/spacing';
+import { fontFamily, fontSize } from '../theme/typography';
+import { ANALYSIS_MODES, AI_MODELS, LANGUAGES } from '../constants/config';
 import { userApi } from '../services/api';
 
-interface SettingItemProps {
+interface SettingItemData {
+  key: string;
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   value?: string;
-  onPress: () => void;
-  showChevron?: boolean;
+  type: 'navigate' | 'toggle' | 'info';
+  toggleValue?: boolean;
+  onPress?: () => void;
+  onToggle?: (value: boolean) => void;
+  destructive?: boolean;
 }
 
-const SettingItem: React.FC<SettingItemProps> = ({
-  icon,
-  label,
-  value,
-  onPress,
-  showChevron = true,
-}) => {
+interface SectionData {
+  title: string;
+  data: SettingItemData[];
+}
+
+const SettingItem: React.FC<{
+  item: SettingItemData;
+  isLast: boolean;
+}> = ({ item, isLast }) => {
   const { colors } = useTheme();
 
   return (
-    <TouchableOpacity
-      style={[styles.settingItem, { borderBottomColor: colors.border }]}
+    <Pressable
+      style={[
+        styles.settingItem,
+        !isLast && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+      ]}
       onPress={() => {
-        Haptics.selectionAsync();
-        onPress();
+        if (item.type === 'toggle' && item.onToggle) {
+          item.onToggle(!item.toggleValue);
+        } else if (item.onPress) {
+          Haptics.selectionAsync();
+          item.onPress();
+        }
       }}
     >
       <View style={styles.settingItemLeft}>
-        <View style={[styles.settingIcon, { backgroundColor: colors.bgElevated }]}>
-          <Ionicons name={icon} size={20} color={colors.accentPrimary} />
+        <View style={[styles.settingIcon, { backgroundColor: colors.glassBg }]}>
+          <Ionicons
+            name={item.icon}
+            size={18}
+            color={item.destructive ? colors.accentError : colors.accentPrimary}
+          />
         </View>
-        <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-          {label}
+        <Text
+          style={[
+            styles.settingLabel,
+            { color: item.destructive ? colors.accentError : colors.textPrimary },
+          ]}
+        >
+          {item.label}
         </Text>
       </View>
-      <View style={styles.settingItemRight}>
-        {value && (
-          <Text style={[styles.settingValue, { color: colors.textTertiary }]}>
-            {value}
-          </Text>
-        )}
-        {showChevron && (
-          <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-        )}
-      </View>
-    </TouchableOpacity>
+
+      {item.type === 'toggle' && item.onToggle && (
+        <AnimatedToggle
+          value={!!item.toggleValue}
+          onValueChange={item.onToggle}
+        />
+      )}
+
+      {item.type === 'navigate' && (
+        <View style={styles.settingItemRight}>
+          {item.value && (
+            <Text style={[styles.settingValue, { color: colors.textMuted }]} numberOfLines={1}>
+              {item.value}
+            </Text>
+          )}
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </View>
+      )}
+
+      {item.type === 'info' && item.value && (
+        <Text style={[styles.settingValue, { color: colors.textMuted }]}>
+          {item.value}
+        </Text>
+      )}
+    </Pressable>
   );
 };
 
@@ -74,42 +112,23 @@ export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
-  // Local state for settings
   const [selectedMode, setSelectedMode] = useState(user?.default_mode || 'synthesis');
   const [selectedModel, setSelectedModel] = useState(user?.default_model || 'mistral-small');
-  const [selectedCategory, setSelectedCategory] = useState('auto');
   const [autoPlayVideos, setAutoPlayVideos] = useState(true);
   const [showTournesol, setShowTournesol] = useState(true);
   const [reduceMotion, setReduceMotion] = useState(false);
 
-  // Categories for default
-  const CATEGORIES = [
-    { id: 'auto', label: 'Auto-detect', labelEn: 'Auto-detect' },
-    { id: 'interview', label: 'Interview', labelEn: 'Interview' },
-    { id: 'tech', label: 'Tech', labelEn: 'Tech' },
-    { id: 'science', label: 'Science', labelEn: 'Science' },
-    { id: 'education', label: 'Éducation', labelEn: 'Education' },
-    { id: 'finance', label: 'Finance', labelEn: 'Finance' },
-    { id: 'gaming', label: 'Gaming', labelEn: 'Gaming' },
-    { id: 'culture', label: 'Culture', labelEn: 'Culture' },
-    { id: 'news', label: 'Actualités', labelEn: 'News' },
-    { id: 'health', label: 'Santé', labelEn: 'Health' },
-  ];
-
-  // Load saved settings on mount
   useEffect(() => {
     const loadSettings = async () => {
       try {
         const savedMode = await AsyncStorage.getItem('deepsight_default_mode');
         const savedModel = await AsyncStorage.getItem('deepsight_default_model');
-        const savedCategory = await AsyncStorage.getItem('deepsight_default_category');
         const savedAutoPlay = await AsyncStorage.getItem('deepsight_autoplay_videos');
         const savedTournesol = await AsyncStorage.getItem('deepsight_show_tournesol');
         const savedReduceMotion = await AsyncStorage.getItem('deepsight_reduce_motion');
 
         if (savedMode) setSelectedMode(savedMode);
         if (savedModel) setSelectedModel(savedModel);
-        if (savedCategory) setSelectedCategory(savedCategory);
         if (savedAutoPlay !== null) setAutoPlayVideos(savedAutoPlay === 'true');
         if (savedTournesol !== null) setShowTournesol(savedTournesol === 'true');
         if (savedReduceMotion !== null) setReduceMotion(savedReduceMotion === 'true');
@@ -123,332 +142,144 @@ export const SettingsScreen: React.FC = () => {
   const savePreference = async (key: string, value: string) => {
     try {
       await AsyncStorage.setItem(key, value);
-      // Try to update on server if user is authenticated
       if (user) {
         try {
           await userApi.updatePreferences({ [key]: value });
           await refreshUser();
         } catch {
-          // Server update failed, but local save succeeded
+          // Server update failed, local save succeeded
         }
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       console.error('Failed to save preference:', error);
-      Alert.alert(t.common.error, t.errors?.saveFailed || 'Failed to save setting.');
     }
   };
 
   const handleSelectMode = () => {
-    Alert.alert(
-      t.settings.defaultMode,
-      t.settings.selectMode || 'Select your preferred mode',
-      [
-        ...ANALYSIS_MODES.map(mode => ({
-          text: mode.label,
-          onPress: async () => {
-            setSelectedMode(mode.id);
-            await savePreference('deepsight_default_mode', mode.id);
-          },
-        })),
-        { text: t.common.cancel, style: 'cancel' as const },
-      ]
-    );
+    Alert.alert(t.settings.defaultMode, undefined, [
+      ...ANALYSIS_MODES.map(mode => ({
+        text: mode.label,
+        onPress: async () => {
+          setSelectedMode(mode.id);
+          await savePreference('deepsight_default_mode', mode.id);
+        },
+      })),
+      { text: t.common.cancel, style: 'cancel' as const },
+    ]);
   };
 
   const handleSelectModel = () => {
-    Alert.alert(
-      t.settings.defaultModel,
-      t.settings.selectModel || 'Select your preferred model',
-      [
-        ...AI_MODELS.map(model => ({
-          text: `${model.label} (${model.provider})`,
-          onPress: async () => {
-            setSelectedModel(model.id);
-            await savePreference('deepsight_default_model', model.id);
-          },
-        })),
-        { text: t.common.cancel, style: 'cancel' as const },
-      ]
-    );
+    Alert.alert(t.settings.defaultModel, undefined, [
+      ...AI_MODELS.map(model => ({
+        text: `${model.label} (${model.provider})`,
+        onPress: async () => {
+          setSelectedModel(model.id);
+          await savePreference('deepsight_default_model', model.id);
+        },
+      })),
+      { text: t.common.cancel, style: 'cancel' as const },
+    ]);
   };
 
   const handleSelectLanguage = () => {
-    Alert.alert(
-      t.settings.language,
-      t.settings.selectLanguage || 'Select your language',
-      [
-        ...LANGUAGES.map(lang => ({
-          text: `${lang.flag} ${lang.label}`,
-          onPress: async () => {
-            await setLanguage(lang.code as 'fr' | 'en');
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          },
-        })),
-        { text: t.common.cancel, style: 'cancel' as const },
-      ]
-    );
-  };
-
-  const handleNotifications = () => {
-    Alert.alert(
-      t.settings.notifications,
-      t.settings.notificationsComingSoon || 'Notification settings coming soon.',
-      [{ text: t.common.close || 'OK' }]
-    );
+    Alert.alert(t.settings.language, undefined, [
+      ...LANGUAGES.map(lang => ({
+        text: `${lang.flag} ${lang.label}`,
+        onPress: async () => {
+          await setLanguage(lang.code as 'fr' | 'en');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        },
+      })),
+      { text: t.common.cancel, style: 'cancel' as const },
+    ]);
   };
 
   const handleClearCache = () => {
-    Alert.alert(
-      t.settings.clearCache,
-      t.settings.clearCacheConfirm || 'Are you sure you want to clear the app cache?',
-      [
-        { text: t.common.cancel, style: 'cancel' },
-        {
-          text: t.settings.clear || 'Clear',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(t.success?.generic || 'Success', t.settings.cacheClearedMessage || 'Cache has been cleared.');
-          },
+    Alert.alert(t.settings.clearCache, t.settings.clearCacheConfirm || 'Clear app cache?', [
+      { text: t.common.cancel, style: 'cancel' },
+      {
+        text: t.settings.clear || 'Clear',
+        style: 'destructive',
+        onPress: () => {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         },
-      ]
-    );
+      },
+    ]);
   };
 
-  const getDefaultModeLabel = () => {
-    const mode = ANALYSIS_MODES.find(m => m.id === selectedMode);
-    return mode?.label || 'Synthèse';
-  };
+  const getModeLabel = () => ANALYSIS_MODES.find(m => m.id === selectedMode)?.label || 'Synthese';
+  const getModelLabel = () => AI_MODELS.find(m => m.id === selectedModel)?.label || 'Mistral Small';
+  const getLangLabel = () => LANGUAGES.find(l => l.code === language)?.label || 'Francais';
 
-  const getDefaultModelLabel = () => {
-    const model = AI_MODELS.find(m => m.id === selectedModel);
-    return model?.label || 'Mistral Small';
-  };
-
-  const getDefaultCategoryLabel = () => {
-    const category = CATEGORIES.find(c => c.id === selectedCategory);
-    return language === 'en' ? category?.labelEn || 'Auto-detect' : category?.label || 'Auto-detect';
-  };
-
-  const handleSelectCategory = () => {
-    Alert.alert(
-      t.settings.defaultCategory,
-      t.settings.selectCategory,
-      [
-        ...CATEGORIES.map(cat => ({
-          text: language === 'en' ? cat.labelEn : cat.label,
-          onPress: async () => {
-            setSelectedCategory(cat.id);
-            await savePreference('deepsight_default_category', cat.id);
-          },
-        })),
-        { text: t.common.cancel, style: 'cancel' as const },
-      ]
-    );
-  };
-
-  const handleToggleAutoPlay = async () => {
-    const newValue = !autoPlayVideos;
-    setAutoPlayVideos(newValue);
-    await savePreference('deepsight_autoplay_videos', newValue.toString());
-  };
-
-  const handleToggleTournesol = async () => {
-    const newValue = !showTournesol;
-    setShowTournesol(newValue);
-    await savePreference('deepsight_show_tournesol', newValue.toString());
-  };
-
-  const handleToggleReduceMotion = async () => {
-    const newValue = !reduceMotion;
-    setReduceMotion(newValue);
-    await savePreference('deepsight_reduce_motion', newValue.toString());
-  };
+  const sections: SectionData[] = [
+    {
+      title: t.nav.analysis,
+      data: [
+        { key: 'mode', icon: 'document-text-outline', label: t.settings.defaultMode, value: getModeLabel(), type: 'navigate', onPress: handleSelectMode },
+        { key: 'model', icon: 'hardware-chip-outline', label: t.settings.defaultModel, value: getModelLabel(), type: 'navigate', onPress: handleSelectModel },
+      ],
+    },
+    {
+      title: t.settings.appearance,
+      data: [
+        { key: 'dark', icon: isDark ? 'moon' : 'sunny', label: t.settings.darkMode, type: 'toggle', toggleValue: isDark, onToggle: () => toggleTheme() },
+        { key: 'lang', icon: 'language-outline', label: t.settings.language, value: getLangLabel(), type: 'navigate', onPress: handleSelectLanguage },
+        { key: 'motion', icon: 'speedometer-outline', label: t.settings.reduceMotion, type: 'toggle', toggleValue: reduceMotion, onToggle: async (v: boolean) => { setReduceMotion(v); await savePreference('deepsight_reduce_motion', v.toString()); } },
+      ],
+    },
+    {
+      title: t.settings.videoPlayback,
+      data: [
+        { key: 'autoplay', icon: 'play-circle-outline', label: t.settings.autoPlayVideos, type: 'toggle', toggleValue: autoPlayVideos, onToggle: async (v: boolean) => { setAutoPlayVideos(v); await savePreference('deepsight_autoplay_videos', v.toString()); } },
+        { key: 'tournesol', icon: 'flower-outline', label: t.settings.showTournesol, type: 'toggle', toggleValue: showTournesol, onToggle: async (v: boolean) => { setShowTournesol(v); await savePreference('deepsight_show_tournesol', v.toString()); } },
+      ],
+    },
+    {
+      title: t.settings.dataStorage || 'Data & Storage',
+      data: [
+        { key: 'cache', icon: 'trash-outline', label: t.settings.clearCache, type: 'navigate', onPress: handleClearCache, destructive: true },
+      ],
+    },
+    {
+      title: t.settings.about,
+      data: [
+        { key: 'version', icon: 'information-circle-outline', label: t.settings.version, value: '1.0.0', type: 'info' },
+      ],
+    },
+  ];
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <Header title={t.nav.settings} showBack />
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
+      <SectionList
+        sections={sections}
+        keyExtractor={(item) => item.key}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + sp.xl }]}
         showsVerticalScrollIndicator={false}
-      >
-        {/* Analysis Settings */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          {t.nav.analysis}
-        </Text>
-        <Card variant="elevated" style={styles.settingsCard}>
-          <SettingItem
-            icon="document-text-outline"
-            label={t.settings.defaultMode}
-            value={getDefaultModeLabel()}
-            onPress={handleSelectMode}
-          />
-          <SettingItem
-            icon="hardware-chip-outline"
-            label={t.settings.defaultModel}
-            value={getDefaultModelLabel()}
-            onPress={handleSelectModel}
-          />
-          <SettingItem
-            icon="pricetag-outline"
-            label={t.settings.defaultCategory}
-            value={getDefaultCategoryLabel()}
-            onPress={handleSelectCategory}
-          />
-        </Card>
-
-        {/* Video Playback */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          {t.settings.videoPlayback}
-        </Text>
-        <Card variant="elevated" style={styles.settingsCard}>
-          <TouchableOpacity
-            style={[styles.settingItem, { borderBottomColor: colors.border }]}
-            onPress={handleToggleAutoPlay}
-          >
-            <View style={styles.settingItemLeft}>
-              <View style={[styles.settingIcon, { backgroundColor: colors.bgElevated }]}>
-                <Ionicons name="play-circle-outline" size={20} color={colors.accentPrimary} />
+        stickySectionHeadersEnabled={false}
+        renderSectionHeader={({ section }) => (
+          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+            {section.title}
+          </Text>
+        )}
+        renderItem={({ item, index, section }) => (
+          <View style={index === 0 ? [styles.cardWrapper, { backgroundColor: colors.bgCard, borderColor: colors.border }] : undefined}>
+            {index === 0 && (
+              <View style={[styles.sectionCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+                {section.data.map((sItem, sIndex) => (
+                  <SettingItem
+                    key={sItem.key}
+                    item={sItem}
+                    isLast={sIndex === section.data.length - 1}
+                  />
+                ))}
               </View>
-              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-                {t.settings.autoPlayVideos}
-              </Text>
-            </View>
-            <View style={[styles.toggle, { backgroundColor: autoPlayVideos ? colors.accentPrimary : colors.bgTertiary }]}>
-              <View
-                style={[
-                  styles.toggleKnob,
-                  autoPlayVideos ? styles.toggleKnobActive : styles.toggleKnobInactive,
-                ]}
-              />
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.settingItem, { borderBottomColor: colors.border }]}
-            onPress={handleToggleTournesol}
-          >
-            <View style={styles.settingItemLeft}>
-              <View style={[styles.settingIcon, { backgroundColor: colors.bgElevated }]}>
-                <Ionicons name="flower-outline" size={20} color={colors.accentPrimary} />
-              </View>
-              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-                {t.settings.showTournesol}
-              </Text>
-            </View>
-            <View style={[styles.toggle, { backgroundColor: showTournesol ? colors.accentPrimary : colors.bgTertiary }]}>
-              <View
-                style={[
-                  styles.toggleKnob,
-                  showTournesol ? styles.toggleKnobActive : styles.toggleKnobInactive,
-                ]}
-              />
-            </View>
-          </TouchableOpacity>
-        </Card>
-
-        {/* Appearance Settings */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          {t.settings.appearance}
-        </Text>
-        <Card variant="elevated" style={styles.settingsCard}>
-          <TouchableOpacity
-            style={[styles.settingItem, { borderBottomColor: colors.border }]}
-            onPress={() => {
-              Haptics.selectionAsync();
-              toggleTheme();
-            }}
-          >
-            <View style={styles.settingItemLeft}>
-              <View style={[styles.settingIcon, { backgroundColor: colors.bgElevated }]}>
-                <Ionicons
-                  name={isDark ? 'moon' : 'sunny'}
-                  size={20}
-                  color={colors.accentPrimary}
-                />
-              </View>
-              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-                {t.settings.darkMode}
-              </Text>
-            </View>
-            <View style={[styles.toggle, { backgroundColor: isDark ? colors.accentPrimary : colors.bgTertiary }]}>
-              <View
-                style={[
-                  styles.toggleKnob,
-                  isDark ? styles.toggleKnobActive : styles.toggleKnobInactive,
-                ]}
-              />
-            </View>
-          </TouchableOpacity>
-          <SettingItem
-            icon="language-outline"
-            label={t.settings.language}
-            value={LANGUAGES.find(l => l.code === language)?.label || 'Francais'}
-            onPress={handleSelectLanguage}
-          />
-          <TouchableOpacity
-            style={[styles.settingItem, { borderBottomColor: 'transparent' }]}
-            onPress={handleToggleReduceMotion}
-          >
-            <View style={styles.settingItemLeft}>
-              <View style={[styles.settingIcon, { backgroundColor: colors.bgElevated }]}>
-                <Ionicons name="speedometer-outline" size={20} color={colors.accentPrimary} />
-              </View>
-              <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
-                {t.settings.reduceMotion}
-              </Text>
-            </View>
-            <View style={[styles.toggle, { backgroundColor: reduceMotion ? colors.accentPrimary : colors.bgTertiary }]}>
-              <View
-                style={[
-                  styles.toggleKnob,
-                  reduceMotion ? styles.toggleKnobActive : styles.toggleKnobInactive,
-                ]}
-              />
-            </View>
-          </TouchableOpacity>
-        </Card>
-
-        {/* Notifications */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          {t.settings.notifications}
-        </Text>
-        <Card variant="elevated" style={styles.settingsCard}>
-          <SettingItem
-            icon="notifications-outline"
-            label={t.settings.manageNotifications || 'Manage notifications'}
-            onPress={handleNotifications}
-          />
-        </Card>
-
-        {/* Data & Storage */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          {t.settings.dataStorage || 'Data & Storage'}
-        </Text>
-        <Card variant="elevated" style={styles.settingsCard}>
-          <SettingItem
-            icon="trash-outline"
-            label={t.settings.clearCache}
-            onPress={handleClearCache}
-            showChevron={false}
-          />
-        </Card>
-
-        {/* App Info */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-          {t.settings.about}
-        </Text>
-        <Card variant="elevated" style={styles.settingsCard}>
-          <SettingItem
-            icon="information-circle-outline"
-            label={t.settings.version}
-            value="1.0.0"
-            onPress={() => {}}
-            showChevron={false}
-          />
-        </Card>
-      </ScrollView>
+            )}
+          </View>
+        )}
+      />
     </View>
   );
 };
@@ -457,77 +288,66 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
+  listContent: {
+    paddingHorizontal: sp.lg,
+    paddingTop: sp.sm,
   },
   sectionTitle: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.bodySemiBold,
+    fontSize: fontSize.xs,
+    fontFamily: fontFamily.bodySemiBold,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: Spacing.sm,
-    marginTop: Spacing.md,
-    paddingHorizontal: Spacing.xs,
+    letterSpacing: 0.8,
+    marginBottom: sp.sm,
+    marginTop: sp.lg,
+    paddingHorizontal: sp.xs,
   },
-  settingsCard: {
-    padding: 0,
+  cardWrapper: {
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginBottom: sp.xs,
+  },
+  sectionCard: {
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    overflow: 'hidden',
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: sp.md,
+    paddingHorizontal: sp.lg,
+    minHeight: 52,
   },
   settingItemLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    marginRight: sp.md,
   },
   settingIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.md,
+    width: 34,
+    height: 34,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.md,
+    marginRight: sp.md,
   },
   settingLabel: {
-    fontSize: Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.body,
+    fontSize: fontSize.base,
+    fontFamily: fontFamily.body,
+    flex: 1,
   },
   settingItemRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: sp.xs,
+    maxWidth: 150,
   },
   settingValue: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.body,
-  },
-  toggle: {
-    width: 50,
-    height: 30,
-    borderRadius: 15,
-    padding: 2,
-    justifyContent: 'center',
-  },
-  toggleKnob: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#FFFFFF',
-  },
-  toggleKnobActive: {
-    alignSelf: 'flex-end',
-  },
-  toggleKnobInactive: {
-    alignSelf: 'flex-start',
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.body,
   },
 });
 

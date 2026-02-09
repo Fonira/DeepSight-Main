@@ -5,10 +5,11 @@ import {
   StyleSheet,
   FlatList,
   TextInput,
-  TouchableOpacity,
+  Pressable,
   RefreshControl,
   Alert,
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { DeepSightSpinner } from '../components/loading';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,14 +23,13 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { historyApi } from '../services/api';
 import { Header, VideoCard, EmptyState } from '../components';
 import { VideoCardSkeleton } from '../components/ui/Skeleton';
-import { Spacing, Typography, BorderRadius } from '../constants/theme';
+import { sp, borderRadius } from '../theme/spacing';
+import { fontFamily, fontSize } from '../theme/typography';
 import { useIsOffline } from '../hooks/useNetworkStatus';
 import type { RootStackParamList, MainTabParamList, AnalysisSummary, HistoryFilters } from '../types';
 
-// Cache key for offline storage
 const HISTORY_CACHE_KEY = 'deepsight_history_cache';
 
-// Composite type for navigating to both tab screens and stack screens
 type HistoryNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'History'>,
   NativeStackNavigationProp<RootStackParamList>
@@ -56,10 +56,8 @@ export const HistoryScreen: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [isUsingCache, setIsUsingCache] = useState(false);
 
-  // Track previous offline state to detect offline→online transitions
   const wasOfflineRef = useRef(isOffline);
 
-  // Filter options - using translation keys
   const modes = [
     { key: 'standard', label: t.modes.standard },
     { key: 'deep', label: t.modes.deep },
@@ -81,7 +79,6 @@ export const HistoryScreen: React.FC = () => {
       setIsLoadingMore(true);
     }
 
-    // If offline, load from cache
     if (isOffline) {
       try {
         const cached = await AsyncStorage.getItem(HISTORY_CACHE_KEY);
@@ -89,7 +86,7 @@ export const HistoryScreen: React.FC = () => {
           const cachedData = JSON.parse(cached);
           setAnalyses(cachedData);
           setIsUsingCache(true);
-          setHasMore(false); // Can't load more when offline
+          setHasMore(false);
         }
       } catch (e) {
         console.error('Failed to load cached history:', e);
@@ -100,7 +97,6 @@ export const HistoryScreen: React.FC = () => {
       return;
     }
 
-    // Online: fetch from API
     setIsUsingCache(false);
     try {
       const filters: HistoryFilters = {
@@ -114,7 +110,6 @@ export const HistoryScreen: React.FC = () => {
 
       if (reset || pageNum === 1) {
         setAnalyses(response.items);
-        // Cache the first page results for offline use
         try {
           await AsyncStorage.setItem(HISTORY_CACHE_KEY, JSON.stringify(response.items));
         } catch (e) {
@@ -128,7 +123,6 @@ export const HistoryScreen: React.FC = () => {
       setPage(pageNum);
     } catch (error) {
       console.error('Failed to load history:', error);
-      // Try to load from cache on error
       try {
         const cached = await AsyncStorage.getItem(HISTORY_CACHE_KEY);
         if (cached) {
@@ -150,14 +144,11 @@ export const HistoryScreen: React.FC = () => {
     loadAnalyses(1, true);
   }, [loadAnalyses]);
 
-  // Detect offline→online transition and refresh data
   useEffect(() => {
-    // If we were offline and now we're online, refresh the data
     if (wasOfflineRef.current && !isOffline) {
       setIsUsingCache(false);
       loadAnalyses(1, true);
     }
-    // Update the ref for next comparison
     wasOfflineRef.current = isOffline;
   }, [isOffline, loadAnalyses]);
 
@@ -246,7 +237,7 @@ export const HistoryScreen: React.FC = () => {
     if (!isLoadingMore) return null;
     return (
       <View style={styles.loadingFooter}>
-        <DeepSightSpinner size="sm" speed="fast" />
+        <DeepSightSpinner size="sm" />
       </View>
     );
   };
@@ -281,14 +272,14 @@ export const HistoryScreen: React.FC = () => {
       <Header title={t.history.title} />
 
       {/* Search Bar */}
-      <View style={styles.searchSection}>
+      <Animated.View entering={FadeInDown.duration(300)} style={styles.searchSection}>
         <View
           style={[
             styles.searchContainer,
-            { backgroundColor: colors.bgElevated, borderColor: colors.border },
+            { backgroundColor: colors.glassBg, borderColor: colors.glassBorder },
           ]}
         >
-          <Ionicons name="search" size={20} color={colors.textTertiary} />
+          <Ionicons name="search" size={20} color={colors.textMuted} />
           <TextInput
             style={[styles.searchInput, { color: colors.textPrimary }]}
             placeholder={t.history.searchHistory}
@@ -297,16 +288,16 @@ export const HistoryScreen: React.FC = () => {
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color={colors.textTertiary} />
-            </TouchableOpacity>
+            <Pressable onPress={() => setSearchQuery('')}>
+              <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+            </Pressable>
           )}
         </View>
 
-        <TouchableOpacity
+        <Pressable
           style={[
             styles.filterButton,
-            { backgroundColor: colors.bgElevated, borderColor: colors.border },
+            { backgroundColor: colors.glassBg, borderColor: colors.glassBorder },
             showFavoritesOnly && { backgroundColor: colors.accentPrimary, borderColor: colors.accentPrimary },
           ]}
           onPress={toggleFavoritesFilter}
@@ -314,14 +305,14 @@ export const HistoryScreen: React.FC = () => {
           <Ionicons
             name={showFavoritesOnly ? 'heart' : 'heart-outline'}
             size={20}
-            color={showFavoritesOnly ? '#FFFFFF' : colors.textTertiary}
+            color={showFavoritesOnly ? '#FFFFFF' : colors.textMuted}
           />
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
+        <Pressable
           style={[
             styles.filterButton,
-            { backgroundColor: colors.bgElevated, borderColor: colors.border },
+            { backgroundColor: colors.glassBg, borderColor: colors.glassBorder },
             showFilters && { backgroundColor: colors.accentSecondary, borderColor: colors.accentSecondary },
           ]}
           onPress={() => {
@@ -332,92 +323,90 @@ export const HistoryScreen: React.FC = () => {
           <Ionicons
             name="options-outline"
             size={20}
-            color={showFilters ? '#FFFFFF' : colors.textTertiary}
+            color={showFilters ? '#FFFFFF' : colors.textMuted}
           />
-        </TouchableOpacity>
+        </Pressable>
 
-        <TouchableOpacity
+        <Pressable
           style={[
             styles.filterButton,
-            { backgroundColor: colors.bgElevated, borderColor: colors.border },
+            { backgroundColor: colors.glassBg, borderColor: colors.glassBorder },
           ]}
           onPress={toggleViewMode}
         >
           <Ionicons
             name={viewMode === 'list' ? 'grid-outline' : 'list-outline'}
             size={20}
-            color={colors.textTertiary}
+            color={colors.textMuted}
           />
-        </TouchableOpacity>
-      </View>
+        </Pressable>
+      </Animated.View>
 
       {/* Filter Chips */}
       {showFilters && (
-        <View style={styles.filtersContainer}>
-          {/* Mode Filter */}
+        <Animated.View entering={FadeInDown.duration(300)} style={styles.filtersContainer}>
           <View style={styles.filterRow}>
             <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t.dashboard.selectMode}:</Text>
             <View style={styles.filterChips}>
-              <TouchableOpacity
+              <Pressable
                 style={[
                   styles.filterChip,
-                  { backgroundColor: !selectedMode ? colors.accentPrimary : colors.bgElevated },
+                  { backgroundColor: !selectedMode ? colors.accentPrimary : colors.glassBg },
                 ]}
                 onPress={() => setSelectedMode(null)}
               >
                 <Text style={[styles.filterChipText, { color: !selectedMode ? '#FFFFFF' : colors.textSecondary }]}>
                   {t.common.all}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
               {modes.map((mode) => (
-                <TouchableOpacity
+                <Pressable
                   key={mode.key}
                   style={[
                     styles.filterChip,
-                    { backgroundColor: selectedMode === mode.key ? colors.accentPrimary : colors.bgElevated },
+                    { backgroundColor: selectedMode === mode.key ? colors.accentPrimary : colors.glassBg },
                   ]}
                   onPress={() => setSelectedMode(selectedMode === mode.key ? null : mode.key)}
                 >
                   <Text style={[styles.filterChipText, { color: selectedMode === mode.key ? '#FFFFFF' : colors.textSecondary }]}>
                     {mode.label}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </View>
           </View>
 
-          {/* Category Filter */}
           <View style={styles.filterRow}>
             <Text style={[styles.filterLabel, { color: colors.textSecondary }]}>{t.dashboard.selectCategory}:</Text>
             <View style={styles.filterChips}>
-              <TouchableOpacity
+              <Pressable
                 style={[
                   styles.filterChip,
-                  { backgroundColor: !selectedCategory ? colors.accentPrimary : colors.bgElevated },
+                  { backgroundColor: !selectedCategory ? colors.accentPrimary : colors.glassBg },
                 ]}
                 onPress={() => setSelectedCategory(null)}
               >
                 <Text style={[styles.filterChipText, { color: !selectedCategory ? '#FFFFFF' : colors.textSecondary }]}>
                   {t.history.allCategories}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
               {categories.map((cat) => (
-                <TouchableOpacity
+                <Pressable
                   key={cat.key}
                   style={[
                     styles.filterChip,
-                    { backgroundColor: selectedCategory === cat.key ? colors.accentPrimary : colors.bgElevated },
+                    { backgroundColor: selectedCategory === cat.key ? colors.accentPrimary : colors.glassBg },
                   ]}
                   onPress={() => setSelectedCategory(selectedCategory === cat.key ? null : cat.key)}
                 >
                   <Text style={[styles.filterChipText, { color: selectedCategory === cat.key ? '#FFFFFF' : colors.textSecondary }]}>
                     {cat.label}
                   </Text>
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </View>
           </View>
-        </View>
+        </Animated.View>
       )}
 
       {/* Offline/Cache Notice */}
@@ -440,9 +429,9 @@ export const HistoryScreen: React.FC = () => {
             <Ionicons
               name={viewMode === 'list' ? 'list' : 'grid'}
               size={14}
-              color={colors.textTertiary}
+              color={colors.textMuted}
             />
-            <Text style={[styles.viewModeText, { color: colors.textTertiary }]}>
+            <Text style={[styles.viewModeText, { color: colors.textMuted }]}>
               {viewMode === 'list' ? t.history.listView : t.history.gridView}
             </Text>
           </View>
@@ -458,7 +447,7 @@ export const HistoryScreen: React.FC = () => {
         </View>
       ) : (
         <FlatList
-          key={viewMode} // Force re-render when view mode changes
+          key={viewMode}
           data={analyses}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
@@ -481,7 +470,6 @@ export const HistoryScreen: React.FC = () => {
           onEndReachedThreshold={0.3}
           ListFooterComponent={renderFooter}
           ListEmptyComponent={renderEmpty}
-          // Performance optimizations
           removeClippedSubviews={true}
           maxToRenderPerBatch={10}
           windowSize={5}
@@ -499,105 +487,100 @@ const styles = StyleSheet.create({
   },
   searchSection: {
     flexDirection: 'row',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    gap: Spacing.sm,
+    paddingHorizontal: sp.lg,
+    paddingVertical: sp.md,
+    gap: sp.sm,
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: BorderRadius.lg,
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: sp.md,
+    gap: sp.sm,
   },
   searchInput: {
     flex: 1,
-    fontSize: Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.body,
-    paddingVertical: Spacing.sm,
+    fontSize: fontSize.base,
+    fontFamily: fontFamily.body,
+    paddingVertical: sp.sm,
   },
   filterButton: {
-    width: 48,
-    height: 48,
+    width: 46,
+    height: 46,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderRadius: BorderRadius.lg,
+    borderRadius: borderRadius.lg,
   },
   resultsInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.sm,
+    paddingHorizontal: sp.lg,
+    paddingBottom: sp.sm,
   },
   resultsText: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.body,
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.body,
   },
   viewModeIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.xs,
+    gap: sp.xs,
   },
   viewModeText: {
-    fontSize: Typography.fontSize.xs,
-    fontFamily: Typography.fontFamily.body,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    fontSize: fontSize.xs,
+    fontFamily: fontFamily.body,
   },
   skeletonContainer: {
     flex: 1,
-    paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.md,
+    paddingHorizontal: sp.lg,
+    paddingTop: sp.md,
   },
   skeletonCard: {
-    marginBottom: Spacing.lg,
+    marginBottom: sp.lg,
   },
   listContent: {
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: sp.lg,
   },
   emptyListContent: {
     flexGrow: 1,
   },
   loadingFooter: {
-    paddingVertical: Spacing.lg,
+    paddingVertical: sp.lg,
     alignItems: 'center',
   },
   filtersContainer: {
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
+    paddingHorizontal: sp.lg,
+    paddingBottom: sp.md,
   },
   filterRow: {
-    marginBottom: Spacing.sm,
+    marginBottom: sp.sm,
   },
   filterLabel: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.bodyMedium,
-    marginBottom: Spacing.xs,
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.bodyMedium,
+    marginBottom: sp.xs,
   },
   filterChips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.xs,
+    gap: sp.xs,
   },
   filterChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
+    paddingHorizontal: sp.md,
+    paddingVertical: sp.xs,
+    borderRadius: borderRadius.full,
   },
   filterChipText: {
-    fontSize: Typography.fontSize.xs,
-    fontFamily: Typography.fontFamily.bodyMedium,
+    fontSize: fontSize.xs,
+    fontFamily: fontFamily.bodyMedium,
   },
   gridRow: {
     justifyContent: 'space-between',
-    gap: Spacing.md,
+    gap: sp.md,
   },
   gridItem: {
     flex: 1,
@@ -607,12 +590,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Spacing.sm,
-    gap: Spacing.xs,
+    paddingVertical: sp.sm,
+    gap: sp.xs,
   },
   offlineText: {
-    fontFamily: Typography.fontFamily.body,
-    fontSize: Typography.fontSize.xs,
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
   },
 });
 

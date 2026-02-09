@@ -4,14 +4,14 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
   Alert,
   RefreshControl,
-  Animated,
   LayoutAnimation,
   Platform,
   UIManager,
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,7 +27,9 @@ import { Header, VideoCard, Card, Badge, Avatar, FreeTrialLimitModal } from '../
 import SmartInputBar from '../components/SmartInputBar';
 import { CustomizationPanel } from '../components/customization';
 import { VideoDiscoveryModal } from '../components/VideoDiscoveryModal';
-import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
+import { sp, borderRadius } from '../theme/spacing';
+import { fontFamily, fontSize } from '../theme/typography';
+import { gradients } from '../theme/colors';
 import { isValidYouTubeUrl, formatCredits } from '../utils/formatters';
 import { useIsOffline } from '../hooks/useNetworkStatus';
 import {
@@ -43,7 +45,6 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// Composite type for navigating to both tab screens and stack screens
 type DashboardNavigationProp = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Dashboard'>,
   NativeStackNavigationProp<RootStackParamList>
@@ -57,7 +58,6 @@ export const DashboardScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const isOffline = useIsOffline();
 
-  // Normalize user plan
   const userPlan = normalizePlanId(user?.plan);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -66,13 +66,9 @@ export const DashboardScreen: React.FC = () => {
   const [favorites, setFavorites] = useState<AnalysisSummary[]>([]);
   const [estimatedCredits, setEstimatedCredits] = useState<number | undefined>(undefined);
 
-  // Free trial limit modal state
   const [showFreeTrialModal, setShowFreeTrialModal] = useState(false);
   const [analysesUsedThisMonth, setAnalysesUsedThisMonth] = useState(0);
-  // Note: lastVideoDuration reserved for future FreeTrialLimitModal enhancement
-  // Currently the modal shows 0 for duration, which is acceptable as a placeholder
 
-  // Video discovery modal state
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [pendingSearchData, setPendingSearchData] = useState<{
     mode: string;
@@ -82,11 +78,9 @@ export const DashboardScreen: React.FC = () => {
     searchQuery: string;
   } | null>(null);
 
-  // Customization panel state
   const [showCustomization, setShowCustomization] = useState(false);
   const [customization, setCustomization] = useState<AnalysisCustomization>(DEFAULT_CUSTOMIZATION);
 
-  // Handle customization toggle with animation
   const toggleCustomization = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -96,7 +90,7 @@ export const DashboardScreen: React.FC = () => {
   const loadRecentAnalyses = useCallback(async () => {
     try {
       const response = await historyApi.getHistory(1, 5);
-      setRecentAnalyses(response.items);
+      setRecentAnalyses(response.items ?? []);
     } catch (error) {
       console.error('Failed to load recent analyses:', error);
     }
@@ -105,7 +99,7 @@ export const DashboardScreen: React.FC = () => {
   const loadFavorites = useCallback(async () => {
     try {
       const favs = await historyApi.getFavorites(3);
-      setFavorites(favs);
+      setFavorites(favs ?? []);
     } catch (error) {
       console.error('Failed to load favorites:', error);
     }
@@ -122,7 +116,6 @@ export const DashboardScreen: React.FC = () => {
     loadFavorites();
   }, [loadRecentAnalyses, loadFavorites]);
 
-  // Track analyses used this month from user data
   useEffect(() => {
     if (user?.analyses_this_month !== undefined) {
       setAnalysesUsedThisMonth(user.analyses_this_month);
@@ -140,14 +133,12 @@ export const DashboardScreen: React.FC = () => {
     deepResearch?: boolean;
     model?: string;
   }) => {
-    // Block submission when offline
     if (isOffline) {
       Alert.alert(t.common.error, t.errors.offlineError);
       return;
     }
 
-    // Check credits
-    if (user && user.credits <= 0) {
+    if (user && (user.credits ?? 0) <= 0) {
       Alert.alert(
         t.errors.noCredits,
         t.chat.upgradeForMore,
@@ -159,7 +150,6 @@ export const DashboardScreen: React.FC = () => {
       return;
     }
 
-    // Validate URL if input type is URL
     if (data.inputType === 'url' && !isValidYouTubeUrl(data.value)) {
       Alert.alert(t.common.error, t.errors.invalidYoutubeUrl);
       return;
@@ -169,8 +159,17 @@ export const DashboardScreen: React.FC = () => {
     setIsAnalyzing(true);
 
     try {
-      // Build the analysis request based on input type
-      const analysisRequest: any = {
+      const analysisRequest: {
+        mode: string;
+        category: string;
+        language: string;
+        deep_research: boolean;
+        model: string;
+        url?: string;
+        raw_text?: string;
+        title?: string;
+        source?: string;
+      } = {
         mode: data.mode,
         category: data.category,
         language: data.language || 'fr',
@@ -185,21 +184,19 @@ export const DashboardScreen: React.FC = () => {
         analysisRequest.title = data.title;
         analysisRequest.source = data.source;
       } else if (data.inputType === 'search') {
-        // For search, show the VideoDiscoveryModal for user to select a video
         setPendingSearchData({
           mode: data.mode,
           category: data.category,
           language: data.language || 'fr',
           deepResearch: data.deepResearch || false,
-          searchQuery: data.value, // Pass the search query to pre-fill the modal
+          searchQuery: data.value,
         });
         setShowDiscoveryModal(true);
         setIsAnalyzing(false);
-        return; // Exit early - analysis will continue after video selection
+        return;
       }
 
-      // Use V2 API with customization options if any customization is set
-      const hasCustomization = 
+      const hasCustomization =
         customization.userPrompt ||
         customization.antiAIDetection ||
         customization.writingStyle !== DEFAULT_CUSTOMIZATION.writingStyle ||
@@ -208,9 +205,8 @@ export const DashboardScreen: React.FC = () => {
         customization.vocabularyComplexity !== DEFAULT_CUSTOMIZATION.vocabularyComplexity;
 
       let task_id: string;
-      
+
       if (hasCustomization) {
-        // Use V2 API with customization
         const result = await videoApi.analyzeVideoV2({
           ...analysisRequest,
           customization: {
@@ -226,24 +222,17 @@ export const DashboardScreen: React.FC = () => {
         });
         task_id = result.task_id;
       } else {
-        // Use standard API for non-customized requests
         const result = await videoApi.analyze(analysisRequest);
         task_id = result.task_id;
       }
 
-      // For free users, track analysis and potentially show upgrade modal
       if (userPlan === 'free') {
         const newCount = analysesUsedThisMonth + 1;
         setAnalysesUsedThisMonth(newCount);
-
-        // Check if we should show the upgrade prompt
         const promptStatus = shouldShowUpgradePrompt(userPlan, newCount);
-
         if (promptStatus === 'blocked') {
-          // User has hit the limit - show modal immediately
           setShowFreeTrialModal(true);
         } else if (promptStatus === 'warning') {
-          // User is approaching limit - show modal after a delay
           setTimeout(() => {
             setShowFreeTrialModal(true);
           }, 2000);
@@ -251,7 +240,7 @@ export const DashboardScreen: React.FC = () => {
       }
 
       navigation.navigate('Analysis', {
-        videoUrl: analysisRequest.url,
+        videoUrl: (analysisRequest as { url?: string }).url,
         summaryId: task_id,
       });
     } catch (error) {
@@ -270,13 +259,11 @@ export const DashboardScreen: React.FC = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       const { isFavorite } = await historyApi.toggleFavorite(summary.id);
-      // Update local state
       setRecentAnalyses((prev) =>
         prev.map((item) =>
           item.id === summary.id ? { ...item, isFavorite } : item
         )
       );
-      // Reload favorites if needed
       if (!isFavorite) {
         setFavorites((prev) => prev.filter((item) => item.id !== summary.id));
       } else {
@@ -287,7 +274,6 @@ export const DashboardScreen: React.FC = () => {
     }
   };
 
-  // Handle video selection from discovery modal
   const handleVideoSelect = async (videoId: string, videoUrl: string) => {
     if (!pendingSearchData) return;
 
@@ -304,15 +290,14 @@ export const DashboardScreen: React.FC = () => {
         deep_research: pendingSearchData.deepResearch,
       };
 
-      // Use V2 API with customization options if any customization is set
-      const hasCustomization = 
+      const hasCustomization =
         customization.userPrompt ||
         customization.antiAIDetection ||
         customization.writingStyle !== DEFAULT_CUSTOMIZATION.writingStyle ||
         customization.targetLength !== DEFAULT_CUSTOMIZATION.targetLength;
 
       let task_id: string;
-      
+
       if (hasCustomization) {
         const result = await videoApi.analyzeVideoV2({
           ...analysisRequest,
@@ -333,7 +318,6 @@ export const DashboardScreen: React.FC = () => {
         task_id = result.task_id;
       }
 
-      // For free users, track analysis
       if (userPlan === 'free') {
         const newCount = analysesUsedThisMonth + 1;
         setAnalysesUsedThisMonth(newCount);
@@ -375,7 +359,7 @@ export const DashboardScreen: React.FC = () => {
         }
       >
         {/* Welcome Section */}
-        <View style={styles.welcomeSection}>
+        <Animated.View entering={FadeInDown.duration(400)} style={styles.welcomeSection}>
           <View style={styles.welcomeHeader}>
             <View>
               <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>
@@ -385,15 +369,15 @@ export const DashboardScreen: React.FC = () => {
                 {user?.username || t.admin.user}
               </Text>
             </View>
-            <TouchableOpacity onPress={() => navigation.navigate('Account')}>
+            <Pressable onPress={() => navigation.navigate('Account')}>
               <Avatar uri={user?.avatar_url} name={user?.username} size="lg" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
           {/* Credits Card */}
           <Card variant="elevated" style={styles.creditsCard}>
             <LinearGradient
-              colors={Colors.gradientPrimary}
+              colors={[...gradients.primary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.creditsGradient}
@@ -415,45 +399,44 @@ export const DashboardScreen: React.FC = () => {
                 </View>
               </View>
               {userPlan === 'free' && (
-                <TouchableOpacity
+                <Pressable
                   style={styles.upgradeButton}
                   onPress={() => navigation.navigate('Upgrade')}
                 >
                   <Text style={styles.upgradeText}>{t.nav.upgrade}</Text>
                   <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
-                </TouchableOpacity>
+                </Pressable>
               )}
             </LinearGradient>
           </Card>
-        </View>
+        </Animated.View>
 
-        {/* Analysis Input Section - SmartInputBar */}
-        <View style={styles.analysisSection}>
+        {/* Analysis Input Section */}
+        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.analysisSection}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
               {t.dashboard.title}
             </Text>
-            
-            {/* Customization Toggle Button */}
-            <TouchableOpacity
+
+            <Pressable
               style={[
                 styles.customizeButton,
-                { 
-                  backgroundColor: showCustomization 
-                    ? colors.accentPrimary 
-                    : colors.bgTertiary,
+                {
+                  backgroundColor: showCustomization
+                    ? colors.accentPrimary
+                    : colors.glassBg,
                   borderColor: showCustomization
                     ? colors.accentPrimary
-                    : colors.border,
+                    : colors.glassBorder,
                 },
               ]}
               onPress={toggleCustomization}
               accessibilityLabel="Personnaliser"
             >
-              <Ionicons 
-                name={showCustomization ? 'options' : 'options-outline'} 
-                size={16} 
-                color={showCustomization ? '#FFFFFF' : colors.textSecondary} 
+              <Ionicons
+                name={showCustomization ? 'options' : 'options-outline'}
+                size={16}
+                color={showCustomization ? '#FFFFFF' : colors.textSecondary}
               />
               <Text style={[
                 styles.customizeButtonText,
@@ -466,10 +449,9 @@ export const DashboardScreen: React.FC = () => {
                   <Ionicons name="shield-checkmark" size={12} color="#10B981" />
                 </View>
               )}
-            </TouchableOpacity>
+            </Pressable>
           </View>
 
-          {/* Customization Panel (Collapsible) */}
           {showCustomization && (
             <Card variant="elevated" style={styles.customizationCard}>
               <CustomizationPanel
@@ -492,26 +474,23 @@ export const DashboardScreen: React.FC = () => {
               userPlan={user?.plan}
             />
           </Card>
-        </View>
+        </Animated.View>
 
         {/* Favorites Section */}
         {favorites.length > 0 && (
-          <View style={styles.recentSection}>
+          <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.recentSection}>
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleRow}>
-                <Ionicons name="heart" size={18} color={colors.accentError} style={{ marginRight: Spacing.xs }} />
+                <Ionicons name="heart" size={18} color={colors.accentError} style={{ marginRight: sp.xs }} />
                 <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
                   {t.history.favorites || 'Favoris'}
                 </Text>
               </View>
-              <TouchableOpacity onPress={() => {
-                // Navigate to History with favorites filter active
-                navigation.navigate('History');
-              }}>
+              <Pressable onPress={() => navigation.navigate('History')}>
                 <Text style={[styles.seeAllText, { color: colors.accentPrimary }]}>
                   {t.dashboard.viewAll}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             {favorites.map((analysis) => (
@@ -524,21 +503,21 @@ export const DashboardScreen: React.FC = () => {
                 compact
               />
             ))}
-          </View>
+          </Animated.View>
         )}
 
         {/* Recent Analyses */}
         {recentAnalyses.length > 0 && (
-          <View style={styles.recentSection}>
+          <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.recentSection}>
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
                 {t.dashboard.recentAnalyses}
               </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('History')}>
+              <Pressable onPress={() => navigation.navigate('History')}>
                 <Text style={[styles.seeAllText, { color: colors.accentPrimary }]}>
                   {t.dashboard.viewAll}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
 
             {recentAnalyses.map((analysis) => (
@@ -551,45 +530,47 @@ export const DashboardScreen: React.FC = () => {
                 compact
               />
             ))}
-          </View>
+          </Animated.View>
         )}
 
         {/* Quick Stats */}
-        <View style={styles.statsSection}>
+        <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.statsSection}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
             {t.admin.statistics}
           </Text>
           <View style={styles.statsGrid}>
             <Card variant="elevated" style={styles.statCard}>
-              <Ionicons name="videocam" size={24} color={colors.accentPrimary} />
+              <View style={[styles.statIconWrap, { backgroundColor: `${colors.accentPrimary}15` }]}>
+                <Ionicons name="videocam" size={22} color={colors.accentPrimary} />
+              </View>
               <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                 {user?.total_videos || 0}
               </Text>
-              <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>
                 {t.admin.videosAnalyzed}
               </Text>
             </Card>
             <Card variant="elevated" style={styles.statCard}>
-              <Ionicons name="document-text" size={24} color={colors.accentSecondary} />
+              <View style={[styles.statIconWrap, { backgroundColor: `${colors.accentSecondary}15` }]}>
+                <Ionicons name="document-text" size={22} color={colors.accentSecondary} />
+              </View>
               <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                 {user?.total_words ? `${Math.round(user.total_words / 1000)}k` : '0'}
               </Text>
-              <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>
                 {t.admin.wordsGenerated}
               </Text>
             </Card>
           </View>
-        </View>
+        </Animated.View>
       </ScrollView>
 
-      {/* Free Trial Limit Modal */}
       <FreeTrialLimitModal
         visible={showFreeTrialModal}
         onClose={() => setShowFreeTrialModal(false)}
         analysesUsed={analysesUsedThisMonth}
-        lastVideoDuration={0} // Placeholder - could be enhanced to track actual duration
+        lastVideoDuration={0}
         onStartTrial={() => {
-          // TODO: Implement trial start logic
           navigation.navigate('Upgrade');
         }}
         onUpgrade={() => {
@@ -597,7 +578,6 @@ export const DashboardScreen: React.FC = () => {
         }}
       />
 
-      {/* Video Discovery Modal for Search Mode */}
       <VideoDiscoveryModal
         visible={showDiscoveryModal}
         onClose={() => {
@@ -619,32 +599,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: sp.lg,
   },
   welcomeSection: {
-    marginBottom: Spacing.xl,
+    marginBottom: sp.xl,
   },
   welcomeHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.lg,
+    marginBottom: sp.lg,
   },
   welcomeText: {
-    fontSize: Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.body,
+    fontSize: fontSize.base,
+    fontFamily: fontFamily.body,
   },
   userName: {
-    fontSize: Typography.fontSize['2xl'],
-    fontFamily: Typography.fontFamily.bodySemiBold,
+    fontSize: fontSize['2xl'],
+    fontFamily: fontFamily.bodySemiBold,
   },
   creditsCard: {
     padding: 0,
     overflow: 'hidden',
   },
   creditsGradient: {
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
+    padding: sp.lg,
+    borderRadius: borderRadius.lg,
   },
   creditsContent: {
     flexDirection: 'row',
@@ -653,14 +633,14 @@ const styles = StyleSheet.create({
   },
   creditsLabel: {
     color: 'rgba(255,255,255,0.8)',
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.body,
-    marginBottom: Spacing.xs,
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.body,
+    marginBottom: sp.xs,
   },
   creditsValue: {
     color: '#FFFFFF',
-    fontSize: Typography.fontSize['3xl'],
-    fontFamily: Typography.fontFamily.bodySemiBold,
+    fontSize: fontSize['3xl'],
+    fontFamily: fontFamily.bodySemiBold,
   },
   planBadge: {
     alignItems: 'flex-end',
@@ -668,97 +648,104 @@ const styles = StyleSheet.create({
   upgradeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: Spacing.md,
+    marginTop: sp.md,
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
+    paddingHorizontal: sp.md,
+    paddingVertical: sp.sm,
+    borderRadius: borderRadius.full,
   },
   upgradeText: {
     color: '#FFFFFF',
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.bodyMedium,
-    marginRight: Spacing.xs,
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.bodyMedium,
+    marginRight: sp.xs,
   },
   analysisSection: {
-    marginBottom: Spacing.xl,
+    marginBottom: sp.xl,
   },
   sectionTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontFamily: Typography.fontFamily.bodySemiBold,
-    marginBottom: Spacing.md,
+    fontSize: fontSize.lg,
+    fontFamily: fontFamily.bodySemiBold,
+    marginBottom: sp.md,
   },
   smartInputCard: {
     padding: 0,
     overflow: 'hidden',
   },
   recentSection: {
-    marginBottom: Spacing.xl,
+    marginBottom: sp.xl,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: sp.md,
   },
   sectionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   seeAllText: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.bodyMedium,
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.bodyMedium,
   },
   statsSection: {
-    marginBottom: Spacing.xl,
+    marginBottom: sp.xl,
   },
   statsGrid: {
     flexDirection: 'row',
-    gap: Spacing.md,
+    gap: sp.md,
   },
   statCard: {
     flex: 1,
     alignItems: 'center',
-    padding: Spacing.lg,
+    padding: sp.lg,
+  },
+  statIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: sp.sm,
   },
   statValue: {
-    fontSize: Typography.fontSize['2xl'],
-    fontFamily: Typography.fontFamily.bodySemiBold,
-    marginTop: Spacing.sm,
+    fontSize: fontSize['2xl'],
+    fontFamily: fontFamily.bodySemiBold,
+    marginTop: sp.xs,
   },
   statLabel: {
-    fontSize: Typography.fontSize.xs,
-    fontFamily: Typography.fontFamily.body,
-    marginTop: Spacing.xs,
+    fontSize: fontSize.xs,
+    fontFamily: fontFamily.body,
+    marginTop: sp.xs,
     textAlign: 'center',
   },
-  // Customization section styles
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: sp.md,
   },
   customizeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
+    paddingHorizontal: sp.md,
+    paddingVertical: sp.sm,
+    borderRadius: borderRadius.full,
     borderWidth: 1,
-    gap: Spacing.xs,
+    gap: sp.xs,
   },
   customizeButtonText: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.bodyMedium,
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.bodyMedium,
   },
   antiAIIndicator: {
-    marginLeft: Spacing.xs,
+    marginLeft: sp.xs,
   },
   customizationCard: {
     padding: 0,
-    marginBottom: Spacing.md,
+    marginBottom: sp.md,
     overflow: 'hidden',
   },
 });

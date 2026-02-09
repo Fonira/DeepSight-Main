@@ -6,32 +6,41 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  TouchableOpacity,
-  Alert,
+  Pressable,
   Image,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withDelay,
+  FadeInDown,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Haptics from 'expo-haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Button, Input } from '../components/ui';
-import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
+import { gradients } from '../theme/colors';
+import { sp, borderRadius } from '../theme/spacing';
+import { fontFamily, fontSize } from '../theme/typography';
 import type { RootStackParamList } from '../types';
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 export const LoginScreen: React.FC = () => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { t } = useLanguage();
   const { login, loginWithGoogle, isLoading, error, clearError, pendingVerificationEmail, clearPendingVerification } = useAuth();
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const insets = useSafeAreaInsets();
 
-  // Navigate to verification if email needs verification
   useEffect(() => {
     if (pendingVerificationEmail) {
       navigation.navigate('VerifyEmail', { email: pendingVerificationEmail });
@@ -44,10 +53,20 @@ export const LoginScreen: React.FC = () => {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
 
-  // Clear any stale errors when screen loads
+  // Animated logo
+  const logoScale = useSharedValue(0.8);
+  const logoOpacity = useSharedValue(0);
+
   useEffect(() => {
+    logoOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
+    logoScale.value = withDelay(200, withSpring(1, { damping: 12, stiffness: 100 }));
     clearError();
-  }, [clearError]);
+  }, [logoScale, logoOpacity, clearError]);
+
+  const logoAnimStyle = useAnimatedStyle(() => ({
+    opacity: logoOpacity.value,
+    transform: [{ scale: logoScale.value }],
+  }));
 
   const validateForm = (): boolean => {
     let isValid = true;
@@ -78,33 +97,46 @@ export const LoginScreen: React.FC = () => {
 
   const handleLogin = async () => {
     if (!validateForm()) return;
-
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await login(email, password);
     } catch (err) {
-      // Error is handled by AuthContext
+      // Handled by AuthContext
     }
   };
 
   const handleGoogleLogin = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       await loginWithGoogle();
     } catch (err) {
-      // Error is displayed via the error state from AuthContext
-      // No need to show an alert as the error banner will appear
+      // Error displayed via error state
     }
-  };
-
-  const handleForgotPassword = () => {
-    navigation.navigate('ForgotPassword');
-  };
-
-  const handleRegister = () => {
-    navigation.navigate('Register');
   };
 
   return (
     <View style={styles.container}>
+      {/* Gradient background */}
+      <LinearGradient
+        colors={isDark
+          ? ['#0a0a0f', '#0f0f1a', '#0a0a0f']
+          : ['#f8f9ff', '#f0f0ff', '#ffffff']
+        }
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* Subtle accent glow */}
+      {isDark && (
+        <View style={styles.glowContainer}>
+          <LinearGradient
+            colors={['rgba(59,130,246,0.08)', 'transparent']}
+            style={styles.glow}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+          />
+        </View>
+      )}
+
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -112,41 +144,48 @@ export const LoginScreen: React.FC = () => {
         <ScrollView
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingTop: insets.top + Spacing.xxl, paddingBottom: insets.bottom + Spacing.xxl },
+            { paddingTop: insets.top + sp['3xl'], paddingBottom: insets.bottom + sp['3xl'] },
           ]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Logo */}
-          <View style={styles.logoContainer}>
-            <Image
-              source={require('../assets/images/icon.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
+          {/* Animated Logo */}
+          <Animated.View style={[styles.logoContainer, logoAnimStyle]}>
+            <View style={[styles.logoGlow, { shadowColor: colors.accentPrimary }]}>
+              <Image
+                source={require('../assets/images/icon.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
             <View style={styles.logoText}>
               <Text style={[styles.logoDeep, { color: colors.accentPrimary }]}>Deep</Text>
               <Text style={[styles.logoSight, { color: colors.textPrimary }]}>Sight</Text>
             </View>
-          </View>
+          </Animated.View>
 
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
-            {t.auth.welcomeBack}
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            {t.auth.subtitle}
-          </Text>
+          <Animated.View entering={FadeInDown.delay(400).duration(500)}>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>
+              {t.auth.welcomeBack}
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              {t.auth.subtitle}
+            </Text>
+          </Animated.View>
 
           {/* Error message */}
           {error && (
-            <View style={[styles.errorContainer, { backgroundColor: `${colors.accentError}15` }]}>
+            <Animated.View
+              entering={FadeInDown.duration(300)}
+              style={[styles.errorContainer, { backgroundColor: `${colors.accentError}15`, borderColor: `${colors.accentError}30` }]}
+            >
               <Ionicons name="alert-circle" size={20} color={colors.accentError} />
               <Text style={[styles.errorText, { color: colors.accentError }]}>{error}</Text>
-            </View>
+            </Animated.View>
           )}
 
           {/* Form */}
-          <View style={styles.form}>
+          <Animated.View entering={FadeInDown.delay(500).duration(500)} style={styles.form}>
             <Input
               label={t.auth.email}
               placeholder="email@example.com"
@@ -170,48 +209,52 @@ export const LoginScreen: React.FC = () => {
               error={passwordError}
             />
 
-            <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotPassword}>
+            <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotPassword}>
               <Text style={[styles.forgotPasswordText, { color: colors.accentPrimary }]}>
                 {t.settings.changePassword}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
 
             <Button
               title={t.auth.signIn}
               onPress={handleLogin}
               loading={isLoading}
               fullWidth
+              size="lg"
               style={styles.loginButton}
             />
-          </View>
+          </Animated.View>
 
           {/* Divider */}
-          <View style={styles.divider}>
+          <Animated.View entering={FadeInDown.delay(600).duration(500)} style={styles.divider}>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.textTertiary }]}>{t.common.or}</Text>
+            <Text style={[styles.dividerText, { color: colors.textMuted }]}>{t.common.or}</Text>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-          </View>
+          </Animated.View>
 
-          {/* Social login */}
-          <Button
-            title={t.auth.loginWithGoogle}
-            variant="outline"
-            onPress={handleGoogleLogin}
-            fullWidth
-            icon={<Ionicons name="logo-google" size={20} color={colors.textPrimary} />}
-          />
+          {/* Google login */}
+          <Animated.View entering={FadeInDown.delay(700).duration(500)}>
+            <Button
+              title={t.auth.loginWithGoogle}
+              variant="outline"
+              onPress={handleGoogleLogin}
+              fullWidth
+              size="lg"
+              icon={<Ionicons name="logo-google" size={20} color={colors.textPrimary} />}
+            />
+          </Animated.View>
 
           {/* Register link */}
-          <View style={styles.registerContainer}>
+          <Animated.View entering={FadeInDown.delay(800).duration(500)} style={styles.registerContainer}>
             <Text style={[styles.registerText, { color: colors.textSecondary }]}>
               {t.auth.noAccount}{' '}
             </Text>
-            <TouchableOpacity onPress={handleRegister}>
+            <Pressable onPress={() => navigation.navigate('Register')}>
               <Text style={[styles.registerLink, { color: colors.accentPrimary }]}>
                 {t.auth.signUp}
               </Text>
-            </TouchableOpacity>
-          </View>
+            </Pressable>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -221,102 +264,118 @@ export const LoginScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+  },
+  glowContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 300,
+  },
+  glow: {
+    flex: 1,
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: Spacing.xl,
+    paddingHorizontal: sp.xl,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: Spacing.xxxl,
+    marginBottom: sp['3xl'],
+  },
+  logoGlow: {
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 8,
+    marginBottom: sp.md,
   },
   logoImage: {
-    width: 80,
-    height: 80,
-    borderRadius: BorderRadius.xl,
-    marginBottom: Spacing.md,
+    width: 88,
+    height: 88,
+    borderRadius: borderRadius.xl,
   },
   logoText: {
     flexDirection: 'row',
   },
   logoDeep: {
-    fontSize: Typography.fontSize['3xl'],
-    fontFamily: Typography.fontFamily.bodySemiBold,
+    fontSize: fontSize['3xl'],
+    fontFamily: fontFamily.bodySemiBold,
   },
   logoSight: {
-    fontSize: Typography.fontSize['3xl'],
-    fontFamily: Typography.fontFamily.bodySemiBold,
+    fontSize: fontSize['3xl'],
+    fontFamily: fontFamily.bodySemiBold,
   },
   title: {
-    fontSize: Typography.fontSize['2xl'],
-    fontFamily: Typography.fontFamily.bodySemiBold,
+    fontSize: fontSize['2xl'],
+    fontFamily: fontFamily.bodySemiBold,
     textAlign: 'center',
-    marginBottom: Spacing.sm,
+    marginBottom: sp.sm,
   },
   subtitle: {
-    fontSize: Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.body,
+    fontSize: fontSize.base,
+    fontFamily: fontFamily.body,
     textAlign: 'center',
-    marginBottom: Spacing.xxl,
+    marginBottom: sp['2xl'],
   },
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginBottom: Spacing.lg,
+    padding: sp.md,
+    borderRadius: borderRadius.md,
+    marginBottom: sp.lg,
+    borderWidth: 1,
   },
   errorText: {
     flex: 1,
-    marginLeft: Spacing.sm,
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.body,
+    marginLeft: sp.sm,
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.body,
   },
   form: {
-    marginBottom: Spacing.lg,
+    marginBottom: sp.lg,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
-    marginTop: -Spacing.sm,
-    marginBottom: Spacing.lg,
+    marginTop: -sp.sm,
+    marginBottom: sp.lg,
   },
   forgotPasswordText: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.bodyMedium,
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.bodyMedium,
   },
   loginButton: {
-    marginTop: Spacing.sm,
+    marginTop: sp.sm,
   },
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: Spacing.xl,
+    marginVertical: sp.xl,
   },
   dividerLine: {
     flex: 1,
     height: 1,
   },
   dividerText: {
-    marginHorizontal: Spacing.md,
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.body,
+    marginHorizontal: sp.md,
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.body,
   },
   registerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: Spacing.xl,
+    marginTop: sp.xl,
   },
   registerText: {
-    fontSize: Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.body,
+    fontSize: fontSize.base,
+    fontFamily: fontFamily.body,
   },
   registerLink: {
-    fontSize: Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.bodySemiBold,
+    fontSize: fontSize.base,
+    fontFamily: fontFamily.bodySemiBold,
   },
 });
 
