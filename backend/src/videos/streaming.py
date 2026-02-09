@@ -33,6 +33,17 @@ from core.config import get_mistral_key, get_perplexity_key
 from core.cache import cache, get_cache
 from transcripts.youtube import get_transcript_with_timestamps
 
+# 🌐 Web enrichment pré-analyse (Perplexity)
+try:
+    from videos.web_enrichment import get_pre_analysis_context
+    WEB_ENRICHMENT_AVAILABLE = True
+except ImportError as e:
+    WEB_ENRICHMENT_AVAILABLE = False
+    print(f"⚠️ [STREAMING] Web enrichment unavailable: {e}", flush=True)
+    
+    async def get_pre_analysis_context(*args, **kwargs):
+        return None, [], None
+
 # Import conditionnel de httpx pour le streaming
 try:
     import httpx
@@ -50,6 +61,7 @@ class StreamEventType(str, Enum):
     METADATA = "metadata"
     TRANSCRIPT = "transcript"
     TRANSCRIPT_COMPLETE = "transcript_complete"
+    PROGRESS = "progress"
     ANALYSIS_START = "analysis_start"
     TOKEN = "token"
     ANALYSIS_COMPLETE = "analysis_complete"
@@ -174,9 +186,11 @@ async def stream_mistral_analysis(
     mode: str = "standard",
     lang: str = "fr",
     model: str = "mistral-small-latest",
+    web_context: str = None,
 ) -> AsyncGenerator[str, None]:
     """
     Stream les tokens d'analyse depuis Mistral AI.
+    🆕 v3.0: Supporte le contexte web pré-analyse (Perplexity)
     
     Yields:
         Tokens individuels de la réponse
@@ -187,30 +201,107 @@ async def stream_mistral_analysis(
     
     # Construire le prompt selon le mode
     mode_instructions = {
-        "accessible": "Utilise un langage simple et accessible au grand public. Évite le jargon technique.",
-        "standard": "Utilise un niveau de langage équilibré, accessible mais précis.",
-        "expert": "Utilise un vocabulaire technique approprié et entre dans les détails.",
+        "accessible": "Utilise un langage simple et accessible au grand public. Évite le jargon technique." if lang == "fr" else "Use simple, accessible language. Avoid technical jargon.",
+        "standard": "Utilise un niveau de langage équilibré, accessible mais précis." if lang == "fr" else "Use balanced language, accessible but precise.",
+        "expert": "Utilise un vocabulaire technique approprié et entre dans les détails." if lang == "fr" else "Use appropriate technical vocabulary and go into details.",
     }
     
-    system_prompt = f"""Tu es un analyste expert qui synthétise des vidéos YouTube.
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 🧠 PROMPT ENRICHI avec règles épistémiques
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    epistemic_rules = """
+⚠️ IMPÉRATIF ÉPISTÉMIQUE — RÈGLES ABSOLUES:
+• FAIT VÉRIFIÉ (✅): Information factuelle vérifiable — à présenter comme tel
+• OPINION (⚖️): Point de vue de l'auteur — toujours signaler "Selon l'auteur..."
+• HYPOTHÈSE (❓): Proposition non prouvée — utiliser le conditionnel
+• À VÉRIFIER (⚠️): Affirmation extraordinaire sans source
+
+RÈGLES D'OR:
+1. Ne JAMAIS présenter une opinion comme un fait
+2. Toujours attribuer les affirmations à leur source ("L'auteur affirme que...")
+3. Si le contexte web contredit la vidéo, le signaler explicitement
+4. NE PAS inventer ou deviner des informations que tu ne connais pas — signale plutôt "information non vérifiée"
+""" if lang == "fr" else """
+⚠️ EPISTEMIC IMPERATIVE — ABSOLUTE RULES:
+• VERIFIED FACT (✅): Verifiable factual information
+• OPINION (⚖️): Author's viewpoint — always signal "According to the author..."
+• HYPOTHESIS (❓): Unproven proposition — use conditional
+• TO VERIFY (⚠️): Extraordinary claim without source
+
+GOLDEN RULES:
+1. NEVER present an opinion as a fact
+2. Always attribute claims to their source
+3. If web context contradicts the video, signal it explicitly
+4. Do NOT invent or guess information you don't know — flag as "unverified" instead
+"""
+    
+    system_prompt = f"""Tu es un analyste expert qui synthétise des vidéos YouTube avec rigueur factuelle.
 {mode_instructions.get(mode, mode_instructions["standard"])}
 
-Règles:
-- Structure ta réponse avec des sections claires (## titres)
-- Utilise des listes à puces pour les points clés
-- Cite les moments importants avec des timestamps si disponibles
-- Reste factuel et nuancé
-- Signale les opinions vs les faits"""
+{epistemic_rules}
+
+Structure ta réponse avec:
+- 🚀 Synthèse Express (30 secondes) — résumé ultra-concis
+- 📖 Analyse Détaillée — avec sous-sections thématiques
+- 🎯 Points Clés — les enseignements principaux
+- ⚖️ Analyse Critique — forces, faiblesses, biais éventuels
+""" if lang == "fr" else f"""You are an expert analyst who synthesizes YouTube videos with factual rigor.
+{mode_instructions.get(mode, mode_instructions["standard"])}
+
+{epistemic_rules}
+
+Structure your response with:
+- 🚀 Express Summary (30 seconds) — ultra-concise summary
+- 📖 Detailed Analysis — with thematic sub-sections
+- 🎯 Key Points — main takeaways
+- ⚖️ Critical Analysis — strengths, weaknesses, potential biases
+"""
+
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 📝 USER PROMPT avec contexte web optionnel
+    # ═══════════════════════════════════════════════════════════════════════════
+    
+    web_section = ""
+    if web_context:
+        web_section = f"""
+
+═══════════════════════════════════════════════════════════════════════════════
+📡 CONTEXTE WEB ACTUEL (Recherche Perplexity — données à jour)
+═══════════════════════════════════════════════════════════════════════════════
+
+{web_context}
+
+═══════════════════════════════════════════════════════════════════════════════
+⚠️ INSTRUCTIONS IMPORTANTES:
+- Utilise ce contexte web pour VÉRIFIER et ENRICHIR les faits de la vidéo
+- Si des informations de la vidéo sont OBSOLÈTES ou INCORRECTES, signale-le
+- Ajoute une section "📡 Mise à jour factuelle" si des infos ont changé depuis la vidéo
+- Privilégie TOUJOURS les données web actuelles sur les affirmations de la vidéo
+═══════════════════════════════════════════════════════════════════════════════
+"""
 
     user_prompt = f"""Analyse cette vidéo YouTube:
 
 **Titre:** {title}
 **Chaîne:** {channel}
-
+{web_section}
 **Transcription:**
 {transcript[:40000]}
 
-Génère une analyse complète en {lang}."""
+Génère une analyse complète et rigoureuse en {"français" if lang == "fr" else "anglais"}."""
+
+    # Tokens dynamiques selon mode
+    max_tokens_map = {
+        "accessible": 2500,
+        "standard": 5000,
+        "expert": 10000,
+    }
+    max_tokens = max_tokens_map.get(mode, 5000)
+    
+    # +20% si contexte web (plus de contenu à analyser)
+    if web_context:
+        max_tokens = int(max_tokens * 1.2)
 
     try:
         async with httpx.AsyncClient() as client:
@@ -227,7 +318,7 @@ Génère une analyse complète en {lang}."""
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
                     ],
-                    "max_tokens": 4000,
+                    "max_tokens": max_tokens,
                     "temperature": 0.3,
                     "stream": True,
                 },
@@ -350,11 +441,80 @@ async def analysis_stream_generator(
             return
         
         # ═══════════════════════════════════════════════════════════════════════
+        # 🌐 WEB ENRICHMENT PRÉ-ANALYSE (Perplexity)
+        # ═══════════════════════════════════════════════════════════════════════
+        web_context = None
+        
+        if web_enrich and WEB_ENRICHMENT_AVAILABLE:
+            try:
+                # Déterminer le plan utilisateur
+                user_plan = "free"
+                if user:
+                    user_plan = getattr(user, 'plan', 'free') or 'free'
+                
+                # Toujours enrichir pour les plans payants, 
+                # mais aussi en mode "auto" pour tous les utilisateurs
+                # sur les sujets tech/science qui évoluent vite
+                should_enrich = user_plan in ('pro', 'expert', 'admin')
+                
+                # 🆕 Enrichissement auto même pour free/starter sur sujets à risque
+                if not should_enrich:
+                    fast_changing_keywords = [
+                        'ai', 'gpt', 'claude', 'llm', 'model', 'opus', 'sonnet',
+                        'gemini', 'mistral', 'openai', 'anthropic', 'google',
+                        'crypto', 'bitcoin', 'election', 'guerre', 'war',
+                        'version', 'release', 'update', 'nouveau', 'new',
+                    ]
+                    title_lower = metadata.get("title", "").lower()
+                    transcript_start = transcript[:500].lower()
+                    for kw in fast_changing_keywords:
+                        if kw in title_lower or kw in transcript_start:
+                            should_enrich = True
+                            print(f"🌐 [AUTO-ENRICH] Keyword '{kw}' detected → auto web enrichment", flush=True)
+                            break
+                
+                if should_enrich:
+                    yield format_sse_event(StreamEventType.PROGRESS, {
+                        "step": "web_enrichment",
+                        "message": "🌐 Recherche web pour vérification des faits...",
+                        "progress": 35,
+                    })
+                    
+                    web_text, sources, level = await get_pre_analysis_context(
+                        video_title=metadata.get("title", ""),
+                        video_channel=metadata.get("channel", ""),
+                        category="technology",  # TODO: detect from metadata
+                        transcript=transcript,
+                        plan=user_plan if user_plan in ('pro', 'expert', 'admin') else 'pro',
+                        lang=lang,
+                    )
+                    
+                    if web_text:
+                        web_context = web_text
+                        print(f"✅ [WEB-ENRICH] Got {len(web_context)} chars, {len(sources)} sources", flush=True)
+                        
+                        yield format_sse_event(StreamEventType.PROGRESS, {
+                            "step": "web_enrichment_complete",
+                            "message": f"✅ {len(sources)} sources web trouvées",
+                            "progress": 40,
+                            "sources_count": len(sources),
+                        })
+                    else:
+                        print(f"⚠️ [WEB-ENRICH] No context returned", flush=True)
+                        
+            except Exception as e:
+                print(f"⚠️ [WEB-ENRICH] Error (non-blocking): {e}", flush=True)
+                # Non-blocking: on continue sans enrichissement
+        
+        session.progress = 40
+        
+        # ═══════════════════════════════════════════════════════════════════════
         # 🧠 ANALYSIS
         # ═══════════════════════════════════════════════════════════════════════
         yield format_sse_event(StreamEventType.ANALYSIS_START, {
             "model": model,
             "mode": mode,
+            "web_enriched": web_context is not None,
         })
         
         token_count = 0
@@ -366,6 +526,7 @@ async def analysis_stream_generator(
             mode=mode,
             lang=lang,
             model=model,
+            web_context=web_context,
         ):
             if session.cancelled:
                 yield format_sse_event(StreamEventType.ERROR, {
