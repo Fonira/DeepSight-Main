@@ -20,13 +20,17 @@ from typing import Optional, Dict, List, Any
 from enum import Enum
 
 # Try WeasyPrint first (beautiful HTML-based PDFs)
+# Catches both ImportError (not installed) and OSError (missing system libs like pango/cairo on Railway)
 try:
     from weasyprint import HTML, CSS
     from weasyprint.text.fonts import FontConfiguration
     WEASYPRINT_AVAILABLE = True
-except ImportError:
+except (ImportError, OSError) as e:
     WEASYPRINT_AVAILABLE = False
-    print("⚠️ WeasyPrint not installed. PDF exports will use fallback.", flush=True)
+    HTML = None
+    CSS = None
+    FontConfiguration = None
+    print(f"⚠️ WeasyPrint unavailable ({type(e).__name__}: {e}). PDF exports will use fallback.", flush=True)
 
 # Jinja2 for HTML templates
 try:
