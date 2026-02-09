@@ -1,24 +1,20 @@
 /**
- * Skeleton - Composant de placeholder pour chargement
- *
- * Utilisation:
- * <Skeleton width={200} height={20} />
- * <Skeleton.Text lines={3} />
- * <Skeleton.Card />
- * <Skeleton.Avatar size={48} />
+ * Skeleton - Premium shimmer loading placeholders
+ * Uses Reanimated for smooth 60fps shimmer effect
  */
-
-import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  StyleSheet,
-  Animated,
-  ViewStyle,
-  StyleProp,
-} from 'react-native';
+import React from 'react';
+import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  interpolate,
+} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
-import { BorderRadius, Spacing } from '../../constants/theme';
+import { borderRadius as br, sp } from '../../theme/spacing';
+import { useEffect } from 'react';
 
 interface SkeletonProps {
   width?: number | `${number}%`;
@@ -36,61 +32,50 @@ export const Skeleton: React.FC<SkeletonProps> & {
 } = ({
   width = '100%',
   height = 16,
-  borderRadius = BorderRadius.sm,
+  borderRadius = br.sm,
   style,
   animated = true,
 }) => {
-  const { colors } = useTheme();
-  const animatedValue = useRef(new Animated.Value(0)).current;
+  const { colors, isDark } = useTheme();
+  const shimmerValue = useSharedValue(0);
 
   useEffect(() => {
     if (!animated) return;
-
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(animatedValue, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animatedValue, {
-          toValue: 0,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
+    shimmerValue.value = withRepeat(
+      withTiming(1, { duration: 1200 }),
+      -1,
+      false,
     );
+  }, [animated, shimmerValue]);
 
-    animation.start();
-
-    return () => animation.stop();
-  }, [animated, animatedValue]);
-
-  const opacity = animated
-    ? animatedValue.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0.3, 0.7],
-      })
-    : 0.5;
+  const animatedShimmer = useAnimatedStyle(() => {
+    return {
+      opacity: interpolate(
+        shimmerValue.value,
+        [0, 0.5, 1],
+        [0.3, 0.6, 0.3],
+      ),
+    };
+  });
 
   return (
     <Animated.View
       style={[
-        styles.skeleton,
         {
           width,
           height,
           borderRadius,
-          backgroundColor: colors.bgTertiary,
-          opacity,
+          backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+          overflow: 'hidden',
         },
+        animated && animatedShimmer,
         style,
       ]}
     />
   );
 };
 
-// Skeleton.Text - Multiple lines of text
+// Skeleton.Text
 interface SkeletonTextProps {
   lines?: number;
   lineHeight?: number;
@@ -102,7 +87,7 @@ interface SkeletonTextProps {
 const SkeletonText: React.FC<SkeletonTextProps> = ({
   lines = 3,
   lineHeight = 14,
-  spacing = Spacing.sm,
+  spacing = sp.sm,
   lastLineWidth = '60%',
   style,
 }) => {
@@ -120,7 +105,7 @@ const SkeletonText: React.FC<SkeletonTextProps> = ({
   );
 };
 
-// Skeleton.Card - Card placeholder
+// Skeleton.Card
 interface SkeletonCardProps {
   hasImage?: boolean;
   imageHeight?: number;
@@ -155,14 +140,14 @@ const SkeletonCard: React.FC<SkeletonCardProps> = ({
       )}
       <View style={styles.cardContent}>
         <Skeleton width="80%" height={20} />
-        <Skeleton width="50%" height={14} style={{ marginTop: Spacing.sm }} />
-        <SkeletonText lines={2} style={{ marginTop: Spacing.md }} />
+        <Skeleton width="50%" height={14} style={{ marginTop: sp.sm }} />
+        <SkeletonText lines={2} style={{ marginTop: sp.md }} />
       </View>
     </View>
   );
 };
 
-// Skeleton.Avatar - Circular avatar placeholder
+// Skeleton.Avatar
 interface SkeletonAvatarProps {
   size?: number;
   style?: StyleProp<ViewStyle>;
@@ -182,7 +167,7 @@ const SkeletonAvatar: React.FC<SkeletonAvatarProps> = ({
   );
 };
 
-// Skeleton.ListItem - List item with avatar and text
+// Skeleton.ListItem
 interface SkeletonListItemProps {
   hasAvatar?: boolean;
   avatarSize?: number;
@@ -215,10 +200,10 @@ const SkeletonListItem: React.FC<SkeletonListItemProps> = ({
       <View style={styles.listItemContent}>
         <Skeleton width="70%" height={16} />
         {lines > 1 && (
-          <Skeleton width="50%" height={12} style={{ marginTop: Spacing.xs }} />
+          <Skeleton width="50%" height={12} style={{ marginTop: sp.xs }} />
         )}
         {lines > 2 && (
-          <Skeleton width="90%" height={12} style={{ marginTop: Spacing.xs }} />
+          <Skeleton width="90%" height={12} style={{ marginTop: sp.xs }} />
         )}
       </View>
     </View>
@@ -248,30 +233,18 @@ export const VideoCardSkeleton: React.FC<{ style?: StyleProp<ViewStyle> }> = ({
         style,
       ]}
     >
-      {/* Thumbnail */}
-      <Skeleton
-        width="100%"
-        height={180}
-        borderRadius={BorderRadius.lg}
-      />
-
-      {/* Content */}
+      <Skeleton width="100%" height={180} borderRadius={br.lg} />
       <View style={styles.videoCardContent}>
-        {/* Title */}
         <Skeleton width="90%" height={18} />
-        <Skeleton width="60%" height={18} style={{ marginTop: Spacing.xs }} />
-
-        {/* Channel + Duration */}
+        <Skeleton width="60%" height={18} style={{ marginTop: sp.xs }} />
         <View style={styles.videoCardMeta}>
           <SkeletonAvatar size={24} />
-          <Skeleton width={100} height={14} style={{ marginLeft: Spacing.sm }} />
+          <Skeleton width={100} height={14} style={{ marginLeft: sp.sm }} />
           <Skeleton width={50} height={14} style={{ marginLeft: 'auto' }} />
         </View>
-
-        {/* Tags */}
         <View style={styles.videoCardTags}>
-          <Skeleton width={60} height={24} borderRadius={BorderRadius.full} />
-          <Skeleton width={80} height={24} borderRadius={BorderRadius.full} style={{ marginLeft: Spacing.sm }} />
+          <Skeleton width={60} height={24} borderRadius={br.full} />
+          <Skeleton width={80} height={24} borderRadius={br.full} style={{ marginLeft: sp.sm }} />
         </View>
       </View>
     </View>
@@ -280,42 +253,32 @@ export const VideoCardSkeleton: React.FC<{ style?: StyleProp<ViewStyle> }> = ({
 
 // Analysis Screen Skeleton
 export const AnalysisSkeleton: React.FC = () => {
-  const { colors } = useTheme();
-
   return (
     <View style={styles.analysisContainer}>
-      {/* Header */}
       <View style={styles.analysisHeader}>
-        <Skeleton width={40} height={40} borderRadius={BorderRadius.full} />
+        <Skeleton width={40} height={40} borderRadius={br.full} />
         <View style={styles.analysisHeaderText}>
           <Skeleton width="80%" height={20} />
-          <Skeleton width="50%" height={14} style={{ marginTop: Spacing.xs }} />
+          <Skeleton width="50%" height={14} style={{ marginTop: sp.xs }} />
         </View>
       </View>
-
-      {/* Progress */}
       <Skeleton
         width="100%"
         height={8}
-        borderRadius={BorderRadius.full}
-        style={{ marginVertical: Spacing.lg }}
+        borderRadius={br.full}
+        style={{ marginVertical: sp.lg }}
       />
-
-      {/* Content */}
-      <SkeletonText lines={8} lineHeight={16} spacing={Spacing.md} />
+      <SkeletonText lines={8} lineHeight={16} spacing={sp.md} />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  skeleton: {
-    overflow: 'hidden',
-  },
   textContainer: {
     width: '100%',
   },
   card: {
-    borderRadius: BorderRadius.lg,
+    borderRadius: br.lg,
     borderWidth: 1,
     overflow: 'hidden',
   },
@@ -324,39 +287,39 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 0,
   },
   cardContent: {
-    padding: Spacing.lg,
+    padding: sp.lg,
   },
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: Spacing.lg,
+    padding: sp.lg,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   listItemAvatar: {
-    marginRight: Spacing.md,
+    marginRight: sp.md,
   },
   listItemContent: {
     flex: 1,
   },
   videoCard: {
-    borderRadius: BorderRadius.lg,
+    borderRadius: br.lg,
     borderWidth: 1,
     overflow: 'hidden',
   },
   videoCardContent: {
-    padding: Spacing.lg,
+    padding: sp.lg,
   },
   videoCardMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: Spacing.md,
+    marginTop: sp.md,
   },
   videoCardTags: {
     flexDirection: 'row',
-    marginTop: Spacing.md,
+    marginTop: sp.md,
   },
   analysisContainer: {
-    padding: Spacing.lg,
+    padding: sp.lg,
   },
   analysisHeader: {
     flexDirection: 'row',
@@ -364,7 +327,7 @@ const styles = StyleSheet.create({
   },
   analysisHeaderText: {
     flex: 1,
-    marginLeft: Spacing.md,
+    marginLeft: sp.md,
   },
 });
 

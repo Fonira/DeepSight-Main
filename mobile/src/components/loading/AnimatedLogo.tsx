@@ -64,10 +64,17 @@ export const AnimatedLogo: React.FC<AnimatedLogoProps> = ({
   // Resolve size from preset or number
   const resolvedSize = typeof size === 'number' ? size : SIZE_PRESETS[size];
 
+  // Map numeric size to nearest SpinnerSize preset
+  const spinnerSize = typeof size === 'string' ? (size === 'xl' ? 'xl' : size) as 'sm' | 'md' | 'lg' | 'xl' :
+    resolvedSize <= 24 ? 'xs' as const :
+    resolvedSize <= 32 ? 'sm' as const :
+    resolvedSize <= 48 ? 'md' as const :
+    resolvedSize <= 64 ? 'lg' as const : 'xl' as const;
+
   return (
     <View style={[styles.container, { width: resolvedSize, height: resolvedSize }]}>
       <DeepSightSpinner
-        size={resolvedSize}
+        size={spinnerSize}
         speed={resolvedSpeed}
         showGlow={showGlow}
         source={source}

@@ -16,7 +16,15 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Spacing, Typography, BorderRadius } from '../../constants/theme';
-import type { VerdictType, FactCheckClaim } from './parseFactCheckResult';
+export type VerdictType = 'verified' | 'disputed' | 'unverified' | 'mixed' | 'misleading' | 'partially_true';
+
+export interface FactCheckClaim {
+  text: string;
+  verdict: VerdictType;
+  confidence: number;
+  sources?: Array<{ url: string; title: string }>;
+  explanation?: string;
+}
 
 interface FactCheckCardProps {
   claim: FactCheckClaim;

@@ -1,19 +1,30 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
-  TouchableOpacity,
+  Pressable,
   Text,
   StyleSheet,
   ActivityIndicator,
   ViewStyle,
   TextStyle,
-  TouchableOpacityProps,
+  PressableProps,
+  View,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
-import { BorderRadius, Spacing, Typography, Colors } from '../../constants/theme';
+import { gradients } from '../../theme/colors';
+import { borderRadius, sp } from '../../theme/spacing';
+import { fontFamily, fontSize } from '../../theme/typography';
+import { springs } from '../../theme/animations';
 
-interface ButtonProps extends TouchableOpacityProps {
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+interface ButtonProps extends Omit<PressableProps, 'style'> {
   title: string;
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
@@ -22,6 +33,7 @@ interface ButtonProps extends TouchableOpacityProps {
   iconPosition?: 'left' | 'right';
   fullWidth?: boolean;
   haptic?: boolean;
+  style?: ViewStyle;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -39,44 +51,53 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const { colors } = useTheme();
+  const scale = useSharedValue(1);
 
-  const handlePress = (event: any) => {
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = useCallback(() => {
+    scale.value = withSpring(0.96, springs.button);
+  }, [scale]);
+
+  const handlePressOut = useCallback(() => {
+    scale.value = withSpring(1, springs.button);
+  }, [scale]);
+
+  const handlePress = useCallback((event: any) => {
     if (haptic && !disabled && !loading) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     onPress?.(event);
-  };
+  }, [haptic, disabled, loading, onPress]);
 
-  const sizeStyles: Record<string, { container: ViewStyle; text: TextStyle }> = {
+  const sizeMap: Record<string, { container: ViewStyle; text: TextStyle }> = {
     sm: {
-      container: { paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md },
-      text: { fontSize: Typography.fontSize.sm },
+      container: { paddingVertical: sp.sm, paddingHorizontal: sp.md, minHeight: 36 },
+      text: { fontSize: fontSize.sm },
     },
     md: {
-      container: { paddingVertical: Spacing.md, paddingHorizontal: Spacing.lg },
-      text: { fontSize: Typography.fontSize.base },
+      container: { paddingVertical: sp.md, paddingHorizontal: sp.lg, minHeight: 44 },
+      text: { fontSize: fontSize.base },
     },
     lg: {
-      container: { paddingVertical: Spacing.lg, paddingHorizontal: Spacing.xl },
-      text: { fontSize: Typography.fontSize.lg },
+      container: { paddingVertical: sp.lg, paddingHorizontal: sp.xl, minHeight: 52 },
+      text: { fontSize: fontSize.lg },
     },
   };
 
-  const variantStyles: Record<string, { container: ViewStyle; text: TextStyle }> = {
+  const variantMap: Record<string, { container: ViewStyle; text: TextStyle }> = {
     primary: {
       container: {},
-      text: { color: '#FFFFFF' },
+      text: { color: '#ffffff' },
     },
     secondary: {
-      container: { backgroundColor: colors.bgElevated },
+      container: { backgroundColor: colors.bgElevated, borderWidth: 1, borderColor: colors.border },
       text: { color: colors.textPrimary },
     },
     outline: {
-      container: {
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        borderColor: colors.border,
-      },
+      container: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.borderLight },
       text: { color: colors.textPrimary },
     },
     ghost: {
@@ -85,76 +106,76 @@ export const Button: React.FC<ButtonProps> = ({
     },
     danger: {
       container: { backgroundColor: colors.accentError },
-      text: { color: '#FFFFFF' },
+      text: { color: '#ffffff' },
     },
   };
 
   const containerStyle: ViewStyle = {
     ...styles.container,
-    ...sizeStyles[size].container,
-    ...variantStyles[variant].container,
-    ...(fullWidth && { width: '100%' }),
+    ...sizeMap[size].container,
+    ...variantMap[variant].container,
+    ...(fullWidth && { width: '100%' as any }),
     ...(disabled && { opacity: 0.5 }),
   };
 
   const textStyle: TextStyle = {
     ...styles.text,
-    ...sizeStyles[size].text,
-    ...variantStyles[variant].text,
+    ...sizeMap[size].text,
+    ...variantMap[variant].text,
   };
 
   const content = (
-    <>
+    <View style={styles.contentRow}>
       {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={variantStyles[variant].text.color}
-        />
+        <ActivityIndicator size="small" color={variantMap[variant].text.color as string} />
       ) : (
         <>
-          {icon && iconPosition === 'left' && (
-            <Text style={styles.iconLeft}>{icon}</Text>
-          )}
+          {icon && iconPosition === 'left' && <View style={styles.iconLeft}>{icon}</View>}
           <Text style={textStyle}>{title}</Text>
-          {icon && iconPosition === 'right' && (
-            <Text style={styles.iconRight}>{icon}</Text>
-          )}
+          {icon && iconPosition === 'right' && <View style={styles.iconRight}>{icon}</View>}
         </>
       )}
-    </>
+    </View>
   );
 
   if (variant === 'primary') {
     return (
-      <TouchableOpacity
+      <AnimatedPressable
         onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         disabled={disabled || loading}
-        activeOpacity={0.8}
-        style={[{ borderRadius: BorderRadius.lg }, fullWidth && { width: '100%' }, style]}
+        style={[
+          animatedStyle,
+          { borderRadius: borderRadius.lg },
+          fullWidth && { width: '100%' as any },
+          style,
+        ]}
         {...props}
       >
         <LinearGradient
-          colors={Colors.gradientPrimary}
+          colors={gradients.primary}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={[containerStyle, { backgroundColor: undefined }]}
+          style={[containerStyle, { backgroundColor: undefined, borderWidth: 0 }]}
         >
           {content}
         </LinearGradient>
-      </TouchableOpacity>
+      </AnimatedPressable>
     );
   }
 
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       onPress={handlePress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       disabled={disabled || loading}
-      activeOpacity={0.7}
-      style={[containerStyle, style]}
+      style={[animatedStyle, containerStyle, style]}
       {...props}
     >
       {content}
-    </TouchableOpacity>
+    </AnimatedPressable>
   );
 };
 
@@ -163,17 +184,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: BorderRadius.lg,
+    borderRadius: borderRadius.lg,
+  },
+  contentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   text: {
-    fontFamily: Typography.fontFamily.bodySemiBold,
+    fontFamily: fontFamily.bodySemiBold,
     textAlign: 'center',
   },
   iconLeft: {
-    marginRight: Spacing.sm,
+    marginRight: sp.sm,
   },
   iconRight: {
-    marginLeft: Spacing.sm,
+    marginLeft: sp.sm,
   },
 });
 

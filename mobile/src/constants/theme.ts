@@ -1,160 +1,77 @@
+/**
+ * DeepSight Mobile - Legacy Theme Exports
+ * Bridges old imports to new theme system in src/theme/
+ * All colors now aligned with web design system
+ */
+
+import { darkColors, lightColors, gradients } from '../theme/colors';
+import { fontFamily, fontSize, lineHeight } from '../theme/typography';
+import { sp, borderRadius } from '../theme/spacing';
+import { shadows } from '../theme/shadows';
+import { duration } from '../theme/animations';
+
 export const Colors = {
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // 🌙 DARK THEME (Default) - WCAG AAA Compliant
-  // ═══════════════════════════════════════════════════════════════════════════════
-
-  // Backgrounds
-  bgPrimary: '#0a0a0b',
-  bgSecondary: '#111113',
-  bgTertiary: '#181819',
-  bgElevated: '#1f1f23',
-  bgHover: '#272a2a',
-  bgCard: '#16161a',
-
-  // Text - PURE WHITE for maximum dark mode readability
-  textPrimary: '#FFFFFF',    // Pure white - maximum contrast
-  textSecondary: '#D0D0D8',  // Brighter for better readability
-  textTertiary: '#B0B0B8',   // Brighter secondary text
-  textMuted: '#909098',      // Brighter muted text
-
-  // Accent
-  accentPrimary: '#6366F1',
-  accentPrimaryLight: '#818CF8',
-  accentSecondary: '#F59E0B',
-  accentSuccess: '#10B981',
-  accentError: '#EF4444',
-  accentWarning: '#F59E0B',
-  accentInfo: '#3B82F6',
-
-  // Borders
-  border: '#27272A',
-  borderLight: '#3F3F46',
+  // Dark theme (default) - aligned with web
+  ...darkColors,
 
   // Gradients
-  gradientPrimary: ['#6366F1', '#8B5CF6'] as const,
-  gradientSecondary: ['#F59E0B', '#EF4444'] as const,
-  gradientDark: ['#0a0a0b', '#111113'] as const,
+  gradientPrimary: gradients.primary,
+  gradientSecondary: gradients.warm,
+  gradientDark: gradients.dark,
+  gradientAccent: gradients.accent,
+  gradientCard: gradients.card,
 
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // ☀️ LIGHT THEME - Complete color set
-  // ═══════════════════════════════════════════════════════════════════════════════
-  light: {
-    // Backgrounds
-    bgPrimary: '#FFFFFF',
-    bgSecondary: '#F5F5F7',
-    bgTertiary: '#EBEBF0',
-    bgElevated: '#FFFFFF',
-    bgHover: '#F0F0F2',
-    bgCard: '#FFFFFF',
-
-    // Text - High contrast for readability
-    textPrimary: '#1A1A1B',
-    textSecondary: '#4A4A4F',
-    textTertiary: '#6A6A70',
-    textMuted: '#8A8A90',
-
-    // Borders
-    border: '#E5E5E8',
-    borderLight: '#D4D4D8',
-
-    // Accents (same as dark for brand consistency)
-    accentPrimary: '#5856D6',
-    accentPrimaryLight: '#7A79E8',
-    accentSecondary: '#F59E0B',
-    accentSuccess: '#059669',
-    accentError: '#DC2626',
-    accentWarning: '#D97706',
-    accentInfo: '#2563EB',
-  }
+  // Light theme
+  light: { ...lightColors },
 };
 
 export const Spacing = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
-  xxl: 24,
-  xxxl: 32,
+  xs: sp.xs,
+  sm: sp.sm,
+  md: sp.md,
+  lg: sp.lg,
+  xl: sp.xl,
+  xxl: sp['2xl'],
+  xxxl: sp['3xl'],
 };
 
 export const BorderRadius = {
-  sm: 6,
-  md: 8,
-  lg: 12,
-  xl: 16,
-  xxl: 20,
-  full: 9999,
+  sm: borderRadius.sm,
+  md: borderRadius.md,
+  lg: borderRadius.lg,
+  xl: borderRadius.xl,
+  xxl: borderRadius['2xl'],
+  full: borderRadius.full,
 };
 
 export const Typography = {
-  // Font families
-  fontFamily: {
-    display: 'Cormorant-Bold',
-    body: 'DMSans-Regular',
-    bodyMedium: 'DMSans-Medium',
-    bodySemiBold: 'DMSans-SemiBold',
-    bodyBold: 'DMSans-Bold',
-    mono: 'JetBrainsMono-Regular',
-  },
-
-  // Font sizes
+  fontFamily,
   fontSize: {
-    xs: 12,
-    sm: 14,
-    base: 16,
-    lg: 18,
-    xl: 20,
-    xxl: 24,
-    '2xl': 24,
-    '3xl': 30,
-    '4xl': 36,
+    xs: fontSize.xs,
+    sm: fontSize.sm,
+    base: fontSize.base,
+    lg: fontSize.lg,
+    xl: fontSize.xl,
+    xxl: fontSize['2xl'],
+    '2xl': fontSize['2xl'],
+    '3xl': fontSize['3xl'],
+    '4xl': fontSize['4xl'],
   },
-
-  // Line heights
-  lineHeight: {
-    tight: 1.2,
-    normal: 1.5,
-    relaxed: 1.75,
-  },
+  lineHeight,
 };
 
 export const Shadows = {
-  sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  xl: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 12,
-  },
+  sm: shadows.sm,
+  md: shadows.md,
+  lg: shadows.lg,
+  xl: shadows.xl,
 };
 
 export const Animation = {
-  fast: 150,
-  base: 200,
-  slow: 300,
-  slower: 500,
+  fast: duration.fast,
+  base: duration.base,
+  slow: duration.slow,
+  slower: duration.slower,
 };
 
 export default {

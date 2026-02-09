@@ -23,7 +23,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { studyApi, videoApi } from '../services/api';
-import { GlassCard } from '../components/ui/GlassCard';
 import { Button } from '../components/ui/Button';
 import { FlashcardsComponent } from '../components/study/FlashcardsComponent';
 import { QuizComponent, QuizQuestion } from '../components/study/QuizComponent';
@@ -68,7 +67,7 @@ export const StudyScreen: React.FC = () => {
     const loadSummary = async () => {
       try {
         const summary = await videoApi.getSummary(summaryId);
-        setTitle(summary.video_title || 'Étude');
+        setTitle(summary.title || 'Étude');
       } catch (err) {
         console.error('Failed to load summary:', err);
       }
@@ -337,7 +336,6 @@ export const StudyScreen: React.FC = () => {
       <Header
         title={language === 'fr' ? 'Mode Étude' : 'Study Mode'}
         showBack
-        onBack={() => navigation.goBack()}
       />
       <View style={[styles.content, { paddingBottom: insets.bottom }]}>
         {renderContent()}

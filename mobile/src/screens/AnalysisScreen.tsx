@@ -413,8 +413,27 @@ export const AnalysisScreen: React.FC = () => {
         timestamp: new Date().toISOString(),
       };
       setChatMessages(prev => [...prev, assistantMessage]);
-    } catch (err) {
-      Alert.alert(t.common.error, t.chat.errors.failed);
+    } catch (err: any) {
+      // Specific error messages based on error type
+      let errorMessage = t.chat.errors.failed;
+      if (err?.status === 402) {
+        errorMessage = language === 'fr'
+          ? 'Quota de chat dépassé. Passez à un plan supérieur.'
+          : 'Chat quota exceeded. Please upgrade your plan.';
+      } else if (err?.status === 429) {
+        errorMessage = language === 'fr'
+          ? 'Trop de requêtes. Veuillez patienter un moment.'
+          : 'Too many requests. Please wait a moment.';
+      } else if (err?.code === 'TIMEOUT') {
+        errorMessage = language === 'fr'
+          ? 'La réponse a pris trop de temps. Réessayez.'
+          : 'Response took too long. Please try again.';
+      } else if (err?.code === 'NETWORK_ERROR') {
+        errorMessage = language === 'fr'
+          ? 'Erreur réseau. Vérifiez votre connexion.'
+          : 'Network error. Check your connection.';
+      }
+      Alert.alert(t.common.error, errorMessage);
       // Remove the user message on error
       setChatMessages(prev => prev.filter(m => m.id !== newUserMessage.id));
       setChatInput(userMessage);
@@ -467,7 +486,7 @@ export const AnalysisScreen: React.FC = () => {
     setActiveStudyTool('quiz');
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      const result = await studyApi.generateQuiz(summary.id, 5);
+      const result = await studyApi.generateQuiz(summary.id);
       // Transform API response to QuizQuestion format
       const questions: QuizQuestion[] = (result.quiz || []).map((q: any) => ({
         question: q.question,
@@ -507,7 +526,7 @@ export const AnalysisScreen: React.FC = () => {
       // If it's just text, we'll create a simple mind map from concepts
       let mapData: MindMapData;
 
-      if (typeof result.mindmap === 'string') {
+      if (typeof result.mermaid_code === 'string') {
         // Create mind map from concepts if mindmap is just text
         const nodes: MindMapNode[] = [
           { id: 'main', label: summary.title || t.analysis.concepts, type: 'main' },
@@ -537,7 +556,7 @@ export const AnalysisScreen: React.FC = () => {
         };
       } else {
         // Use structured response
-        mapData = result.mindmap as MindMapData;
+        mapData = (result as any).mindmap as MindMapData;
       }
 
       setMindMapData(mapData);

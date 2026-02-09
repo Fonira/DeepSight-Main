@@ -51,7 +51,9 @@
     "videos": "vidéos",
     "chooseFromLibrary": "Choisir dans la galerie",
     "takePhoto": "Prendre une photo",
-    "upload": "Téléverser"
+    "upload": "Téléverser",
+    "skip": "Passer",
+    "start": "Commencer"
   },
   "nav": {
     "dashboard": "Tableau de bord",

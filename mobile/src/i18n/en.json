@@ -51,7 +51,9 @@
     "videos": "videos",
     "chooseFromLibrary": "Choose from Library",
     "takePhoto": "Take Photo",
-    "upload": "Upload"
+    "upload": "Upload",
+    "skip": "Skip",
+    "start": "Get Started"
   },
   "nav": {
     "dashboard": "Dashboard",
