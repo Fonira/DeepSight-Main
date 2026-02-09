@@ -8,6 +8,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { View, Image, Animated, Easing, StyleSheet, Text } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const cosmicSource = require('../../../assets/images/spinner-cosmic.jpg');
 const wheelSource = require('../../../assets/images/spinner-wheel.jpg');
@@ -60,6 +61,7 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
   isAnimating = true,
   style,
 }) => {
+  const { colors } = useTheme();
   const resolvedDuration = duration ?? (speed ? speedMap[speed] : 5000);
   const pixelSize = sizeMap[size];
   const wheelSize = Math.round(pixelSize * 0.92);
@@ -147,7 +149,7 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
       </View>
 
       {showLabel && (
-        <Animated.Text style={[styles.label, { opacity: labelPulse }]}>
+        <Animated.Text style={[styles.label, { opacity: labelPulse, color: colors.textTertiary }]}>
           {label}
         </Animated.Text>
       )}

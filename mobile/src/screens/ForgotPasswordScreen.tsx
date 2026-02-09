@@ -15,6 +15,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Button, Input } from '../components/ui';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import type { RootStackParamList } from '../types';
@@ -27,6 +28,7 @@ export const ForgotPasswordScreen: React.FC = () => {
   const { forgotPassword, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<ForgotPasswordNavigationProp>();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('creative');
 
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState('');

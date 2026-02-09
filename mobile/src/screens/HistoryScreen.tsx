@@ -20,6 +20,7 @@ import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { historyApi } from '../services/api';
 import { Header, VideoCard, EmptyState } from '../components';
 import { VideoCardSkeleton } from '../components/ui/Skeleton';
@@ -41,6 +42,7 @@ export const HistoryScreen: React.FC = () => {
   const navigation = useNavigation<HistoryNavigationProp>();
   const insets = useSafeAreaInsets();
   const isOffline = useIsOffline();
+  useScreenDoodleVariant('video');
 
   const [analyses, setAnalyses] = useState<AnalysisSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);

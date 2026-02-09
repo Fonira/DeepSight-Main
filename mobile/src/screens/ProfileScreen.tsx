@@ -16,6 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Header } from '../components/Header';
 import { Card, Avatar, Badge, LanguageToggle, CreditDisplay, AnimatedToggle } from '../components/ui';
 import { sp, borderRadius } from '../theme/spacing';
@@ -86,6 +87,7 @@ export const ProfileScreen: React.FC = () => {
   const { user, logout } = useAuth();
   const navigation = useNavigation<ProfileNavigationProp>();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('default');
 
   const userPlan = normalizePlanId(user?.plan);
   const planInfo = getPlanInfo(userPlan);

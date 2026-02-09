@@ -15,6 +15,7 @@ import { BackgroundAnalysisProvider } from './src/contexts/BackgroundAnalysisCon
 import { ErrorProvider } from './src/contexts/ErrorContext';
 import { OfflineProvider } from './src/contexts/OfflineContext';
 import { PlanProvider } from './src/contexts/PlanContext';
+import { DoodleVariantProvider, useDoodleVariant } from './src/contexts/DoodleVariantContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { ErrorBoundary, OfflineBanner } from './src/components/common';
 import { ToastProvider } from './src/components/ui/Toast';
@@ -61,14 +62,15 @@ const queryClient = new QueryClient({
 // App content with theme-aware status bar and background
 const AppContent: React.FC = () => {
   const { isDark, colors } = useTheme();
+  const { variant } = useDoodleVariant();
 
   return (
     <View style={[styles.appContainer, { backgroundColor: colors.bgPrimary }]}>
       <OfflineBanner />
-      {/* DoodleBackground is disabled in Expo Go due to Worklets version mismatch */}
+      {/* DoodleBackground variant changes per screen via DoodleVariantContext */}
       {DoodleBackground && (
         <Suspense fallback={null}>
-          <DoodleBackground />
+          <DoodleBackground variant={variant} />
         </Suspense>
       )}
       <StatusBar style={isDark ? 'light' : 'dark'} />
@@ -170,9 +172,11 @@ export default function App() {
                     <AuthProvider>
                       <PlanProvider>
                         <BackgroundAnalysisProvider>
-                          <ToastProvider>
-                            <AppContent />
-                          </ToastProvider>
+                          <DoodleVariantProvider>
+                            <ToastProvider>
+                              <AppContent />
+                            </ToastProvider>
+                          </DoodleVariantProvider>
                         </BackgroundAnalysisProvider>
                       </PlanProvider>
                     </AuthProvider>

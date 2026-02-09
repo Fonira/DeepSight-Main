@@ -15,6 +15,7 @@ import type { RouteProp } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Button } from '../components/ui';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import type { RootStackParamList } from '../types';
@@ -31,6 +32,7 @@ export const VerifyEmailScreen: React.FC = () => {
   const navigation = useNavigation<VerifyEmailNavigationProp>();
   const route = useRoute<VerifyEmailRouteProp>();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('creative');
 
   const email = route.params?.email || '';
   const [code, setCode] = useState('');

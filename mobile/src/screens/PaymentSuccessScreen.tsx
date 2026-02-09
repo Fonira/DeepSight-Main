@@ -19,6 +19,7 @@ import type { RouteProp } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import type { RootStackParamList } from '../types';
@@ -33,6 +34,7 @@ export const PaymentSuccessScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<PaymentSuccessRouteProp>();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('creative');
 
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;

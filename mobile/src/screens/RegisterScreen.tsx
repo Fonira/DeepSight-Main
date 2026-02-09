@@ -15,6 +15,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Button, Input } from '../components/ui';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import type { RootStackParamList } from '../types';
@@ -27,6 +28,7 @@ export const RegisterScreen: React.FC = () => {
   const { register, isLoading, error, clearError } = useAuth();
   const navigation = useNavigation<RegisterScreenNavigationProp>();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('creative');
 
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');

@@ -26,6 +26,7 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Button, Input } from '../components/ui';
 import { gradients } from '../theme/colors';
 import { sp, borderRadius } from '../theme/spacing';
@@ -40,6 +41,7 @@ export const LoginScreen: React.FC = () => {
   const { login, loginWithGoogle, isLoading, error, clearError, pendingVerificationEmail, clearPendingVerification } = useAuth();
   const navigation = useNavigation<LoginScreenNavigationProp>();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('creative');
 
   useEffect(() => {
     if (pendingVerificationEmail) {

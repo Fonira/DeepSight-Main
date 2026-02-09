@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { studyApi, videoApi } from '../services/api';
 import { Button } from '../components/ui/Button';
 import { FlashcardsComponent } from '../components/study/FlashcardsComponent';
@@ -49,6 +50,7 @@ export const StudyScreen: React.FC = () => {
   const { t, language } = useLanguage();
   const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('academic');
 
   const { summaryId } = route.params;
 

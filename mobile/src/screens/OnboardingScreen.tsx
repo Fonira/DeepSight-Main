@@ -26,6 +26,7 @@ import * as Haptics from 'expo-haptics';
 
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Button } from '../components/ui';
 import {
   OnboardingAnalyzeIllustration,
@@ -97,6 +98,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
   const { colors } = useTheme();
   const { t } = useLanguage();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('creative');
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useSharedValue(0);

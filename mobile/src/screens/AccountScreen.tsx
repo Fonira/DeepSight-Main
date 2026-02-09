@@ -19,6 +19,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Header, Card, Avatar, Button, Input, DeepSightSpinner } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { userApi, authApi, ApiError } from '../services/api';
@@ -28,6 +29,7 @@ export const AccountScreen: React.FC = () => {
   const { t } = useLanguage();
   const { user, refreshUser, logout, forgotPassword } = useAuth();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('tech');
 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);

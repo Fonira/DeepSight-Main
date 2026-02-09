@@ -23,7 +23,7 @@ const FRESHNESS_CONFIG: Record<FreshnessLevel, { color: string; icon: string; la
     labelEn: 'Fresh',
   },
   recent: {
-    color: '#84CC16', // lime
+    color: Colors.accentSuccess,
     icon: 'time',
     labelFr: 'Assez récent',
     labelEn: 'Recent',

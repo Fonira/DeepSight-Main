@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Header, Card, Badge, Button, DeepSightSpinner } from '../components';
 import { usageApi } from '../services/api';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
@@ -32,6 +33,7 @@ export const UsageScreen: React.FC = () => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('analysis');
   const isEn = language === 'en';
 
   // Normalize user plan

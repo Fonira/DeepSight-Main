@@ -5,9 +5,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Appearance,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+import { darkColors, lightColors } from '../../theme/colors';
 
 interface Props {
   children: ReactNode;
@@ -22,15 +24,19 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
-// Default colors (can't use hooks in class components)
-const colors = {
-  bgPrimary: '#0A0A0B',
-  bgSecondary: '#141416',
-  textPrimary: '#F5F5F7',
-  textSecondary: '#A1A1A6',
-  textTertiary: '#6B6B70',
-  accentError: '#FF453A',
-  accentPrimary: '#8B5CF6',
+// Dynamic colors based on system theme (class components can't use hooks)
+const getColors = () => {
+  const isDark = Appearance.getColorScheme() !== 'light';
+  const source = isDark ? darkColors : lightColors;
+  return {
+    bgPrimary: source.bgPrimary,
+    bgSecondary: source.bgSecondary,
+    textPrimary: source.textPrimary,
+    textSecondary: source.textSecondary,
+    textTertiary: source.textTertiary,
+    accentError: source.accentError,
+    accentPrimary: source.accentSecondary, // violet
+  };
 };
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -72,9 +78,10 @@ export class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
-      // Default error UI
+      // Default error UI - use dynamic colors for theme support
+      const colors = getColors();
       return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
           <View style={styles.content}>
             <View style={[styles.iconContainer, { backgroundColor: `${colors.accentError}20` }]}>
               <Ionicons name="bug-outline" size={48} color={colors.accentError} />
@@ -138,7 +145,7 @@ export const withErrorBoundary = <P extends object>(
   };
 };
 
-// Simple error fallback component
+// Simple error fallback component (functional → can use hooks)
 export const ErrorFallback: React.FC<{
   error?: Error;
   resetError?: () => void;
@@ -149,35 +156,37 @@ export const ErrorFallback: React.FC<{
   resetError,
   title = 'Une erreur s\'est produite',
   message = 'Veuillez réessayer ou revenir en arrière.',
-}) => (
-  <View style={styles.fallbackContainer}>
-    <Ionicons name="alert-circle" size={48} color={colors.accentError} />
-    <Text style={[styles.fallbackTitle, { color: colors.textPrimary }]}>
-      {title}
-    </Text>
-    <Text style={[styles.fallbackMessage, { color: colors.textSecondary }]}>
-      {message}
-    </Text>
-    {error && __DEV__ && (
-      <Text style={[styles.fallbackError, { color: colors.textTertiary }]}>
-        {error.message}
+}) => {
+  const themeColors = getColors();
+  return (
+    <View style={styles.fallbackContainer}>
+      <Ionicons name="alert-circle" size={48} color={themeColors.accentError} />
+      <Text style={[styles.fallbackTitle, { color: themeColors.textPrimary }]}>
+        {title}
       </Text>
-    )}
-    {resetError && (
-      <TouchableOpacity
-        style={[styles.fallbackButton, { backgroundColor: colors.accentPrimary }]}
-        onPress={resetError}
-      >
-        <Text style={styles.fallbackButtonText}>Réessayer</Text>
-      </TouchableOpacity>
-    )}
-  </View>
-);
+      <Text style={[styles.fallbackMessage, { color: themeColors.textSecondary }]}>
+        {message}
+      </Text>
+      {error && __DEV__ && (
+        <Text style={[styles.fallbackError, { color: themeColors.textTertiary }]}>
+          {error.message}
+        </Text>
+      )}
+      {resetError && (
+        <TouchableOpacity
+          style={[styles.fallbackButton, { backgroundColor: themeColors.accentPrimary }]}
+          onPress={resetError}
+        >
+          <Text style={styles.fallbackButtonText}>Réessayer</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.bgPrimary,
     justifyContent: 'center',
     alignItems: 'center',
     padding: Spacing.lg,

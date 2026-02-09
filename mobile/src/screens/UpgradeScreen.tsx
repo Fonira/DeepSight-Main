@@ -15,6 +15,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Header, Card, Badge, Button } from '../components';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
 import { billingApi, ApiError } from '../services/api';
@@ -226,6 +227,7 @@ export const UpgradeScreen: React.FC = () => {
   const { t, language } = useLanguage();
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('creative');
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);

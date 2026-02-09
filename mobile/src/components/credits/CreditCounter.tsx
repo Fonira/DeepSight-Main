@@ -75,17 +75,17 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
     if (percentage <= 10) {
       return {
         level: 'critical',
-        color: '#F97316', // Orange
-        bgColor: '#F9731615',
-        borderColor: '#F9731630',
+        color: colors.accentWarning,
+        bgColor: `${colors.accentWarning}15`,
+        borderColor: `${colors.accentWarning}30`,
       };
     }
     if (percentage <= 25) {
       return {
         level: 'warning',
-        color: '#EAB308', // Amber
-        bgColor: '#EAB30815',
-        borderColor: '#EAB30830',
+        color: colors.accentWarning,
+        bgColor: `${colors.accentWarning}15`,
+        borderColor: `${colors.accentWarning}30`,
       };
     }
     return {

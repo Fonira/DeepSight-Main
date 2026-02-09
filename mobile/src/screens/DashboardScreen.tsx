@@ -22,6 +22,7 @@ import * as Haptics from 'expo-haptics';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { videoApi, historyApi } from '../services/api';
 import { Header, VideoCard, Card, Badge, Avatar, FreeTrialLimitModal } from '../components';
 import SmartInputBar from '../components/SmartInputBar';
@@ -57,6 +58,7 @@ export const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<DashboardNavigationProp>();
   const insets = useSafeAreaInsets();
   const isOffline = useIsOffline();
+  useScreenDoodleVariant('analysis');
 
   const userPlan = normalizePlanId(user?.plan);
 

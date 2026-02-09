@@ -27,7 +27,16 @@
       "Bash(git rm:*)",
       "Bash(git merge:*)",
       "Bash(railway status:*)",
-      "Bash(railway whoami:*)"
+      "Bash(railway whoami:*)",
+      "Bash(test:*)",
+      "Bash(find:*)",
+      "Bash(file:*)",
+      "Bash(tr:*)",
+      "Bash(npx webpack:*)",
+      "WebSearch",
+      "WebFetch(domain:greasyfork.org)",
+      "Bash(done)",
+      "Bash(python3 -c \"import sys; sys.path.insert\\(0, ''.''\\); exec\\(open\\(''main.py''\\).read\\(\\).split\\(''if __name__''\\)[0]\\)\")"
     ]
   }
 }

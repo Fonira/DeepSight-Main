@@ -65,8 +65,8 @@ const VERDICT_CONFIG: Record<VerdictType, {
     icon: 'help-circle',
     labelFr: 'Non vérifié',
     labelEn: 'Unverified',
-    color: '#6B7280',
-    bgColor: '#6B728020',
+    color: '#9CA3AF',
+    bgColor: '#9CA3AF20',
   },
   mixed: {
     icon: 'remove-circle',

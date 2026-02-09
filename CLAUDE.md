@@ -12,6 +12,32 @@
 
 ---
 
+## ⚠️ BEHAVIORAL RULES (MANDATORY)
+
+### Scope Control
+- **ALWAYS ask the user what specific task to do** before starting any work
+- **NEVER run typecheck/lint/build on unrelated parts of the project** unless explicitly asked
+- **NEVER fix issues outside the requested scope** — if you spot issues elsewhere, mention them but don't fix them
+- **Stay laser-focused on the specific task requested** — no "while I'm here" side-fixes
+- If `git diff` shows many uncommitted changes, **do NOT assume they need fixing** — they may be intentional WIP
+
+### Before Starting Work
+1. Confirm you understand the exact task
+2. Identify which component(s) are involved (backend / frontend / mobile / extension)
+3. Only touch files directly related to the task
+4. If the task is ambiguous, **ask for clarification instead of guessing**
+
+### Error Handling
+- If you encounter errors in unrelated files during your work, **report them but do not fix them**
+- Never launch parallel agents to fix mass lint/typecheck errors unless the user explicitly asks
+- Prefer targeted `eslint --fix` commands over manual file-by-file corrections for bulk unused-import issues
+
+### Commit Discipline
+- Suggest atomic commits after each logical change
+- Never leave the codebase in a worse state than you found it
+
+---
+
 ## Repository Structure
 
 ```
@@ -404,4 +430,18 @@ ApiUsage
 
 ---
 
-*Last updated: January 2026*
+## Design System (à respecter sur Web, Mobile et Extension)
+- **Dark mode first** : fond #0a0a0f, surfaces #12121a, borders white/5%
+- **Accents** : Bleu #3b82f6, Violet #8b5cf6, Cyan #06b6d4
+- **Typo** : Inter (body), JetBrains Mono (code)
+- **Radius** : 6px (sm), 10px (md), 16px (lg)
+- **Spacing** : système 4px (4,8,12,16,24,32,48,64)
+- **Animations** : Framer Motion (web), Reanimated 3 (mobile), transitions 200ms cubic-bezier(0.4,0,0.2,1)
+- **Glassmorphism** : backdrop-blur-xl bg-white/5 border border-white/10
+- **Composants partagés** : logique et hooks dans /shared/ quand possible
+- **Responsive** : Mobile 375px, Tablet 768px, Desktop 1280px, Wide 1536px
+- **Accessibilité** : AA minimum, aria-labels, focus management
+
+---
+
+*Last updated: February 2026*

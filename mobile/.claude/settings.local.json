@@ -1,0 +1,40 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(for dir in video study export citation factcheck enrichment chat tournesol credits analysis loading content concepts academic audio navigation illustrations)",
+      "Bash(do echo -n \"$dir: \")",
+      "Bash(if [ -d \"C:/Users/33667/DeepSight-Main/mobile/src/components/$dir\" ])",
+      "Bash(then ls \"C:/Users/33667/DeepSight-Main/mobile/src/components/$dir\")",
+      "Bash(else echo \"MISSING!\")",
+      "Bash(fi)",
+      "Bash(done)",
+      "Bash(node -e:*)",
+      "Bash(npx expo export:*)",
+      "Bash(npx jest:*)",
+      "Bash(npm install:*)",
+      "Bash(npm ls:*)",
+      "Bash(timeout 30 npx expo start:*)",
+      "Bash(npx jest-expo:*)",
+      "Bash(npm info:*)",
+      "Bash(timeout:*)",
+      "Bash(ping:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(npx expo start:*)",
+      "WebFetch(domain:localhost)",
+      "Bash(curl:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd /c:*)",
+      "Bash(cmd.exe /c \"taskkill /PID 33308 /F /T\")",
+      "Bash(set CI=1)",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(cmd.exe /c \"netstat -ano | findstr :8090 | findstr LISTENING\")",
+      "Bash(cmd.exe /c \"taskkill /PID 33308 /F /T & taskkill /PID 3056 /F /T\")",
+      "Bash(powershell:*)"
+    ]
+  }
+}

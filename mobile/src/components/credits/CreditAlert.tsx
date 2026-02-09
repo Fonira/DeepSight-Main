@@ -94,9 +94,9 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
     },
     critical: {
       icon: 'warning' as const,
-      color: '#F97316',
-      bgColor: '#F9731615',
-      borderColor: '#F9731630',
+      color: colors.accentWarning,
+      bgColor: `${colors.accentWarning}15`,
+      borderColor: `${colors.accentWarning}30`,
       title: language === 'fr' ? 'Crédits presque épuisés' : 'Credits almost depleted',
       message: language === 'fr'
         ? `Il vous reste ${credits} crédits`
@@ -104,9 +104,9 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
     },
     warning: {
       icon: 'information-circle' as const,
-      color: '#EAB308',
-      bgColor: '#EAB30815',
-      borderColor: '#EAB30830',
+      color: colors.accentWarning,
+      bgColor: `${colors.accentWarning}15`,
+      borderColor: `${colors.accentWarning}30`,
       title: language === 'fr' ? 'Crédits limités' : 'Limited credits',
       message: language === 'fr'
         ? `Il vous reste ${credits} crédits (${Math.round(percentage)}%)`

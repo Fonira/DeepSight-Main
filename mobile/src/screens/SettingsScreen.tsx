@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Header } from '../components/Header';
 import { Card, AnimatedToggle } from '../components/ui';
 import { sp, borderRadius } from '../theme/spacing';
@@ -111,6 +112,7 @@ export const SettingsScreen: React.FC = () => {
   const { language, setLanguage, t } = useLanguage();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('tech');
 
   const [selectedMode, setSelectedMode] = useState(user?.default_mode || 'synthesis');
   const [selectedModel, setSelectedModel] = useState(user?.default_model || 'mistral-small');

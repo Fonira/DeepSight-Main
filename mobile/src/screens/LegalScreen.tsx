@@ -17,6 +17,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Header } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import type { RootStackParamList } from '../types';
@@ -30,6 +31,7 @@ export const LegalScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<LegalRouteProp>();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('academic');
 
   // Use route param if provided, default to 'terms'
   const initialTab = route.params?.type || 'terms';

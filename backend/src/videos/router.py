@@ -38,8 +38,9 @@ except ImportError:
 from .schemas import (
     AnalyzeVideoRequest, AnalyzePlaylistRequest, UpdateSummaryRequest,
     SummaryResponse, SummaryListItem, HistoryResponse, CategoryResponse,
-    TaskStatusResponse, VideoInfoResponse
+    TaskStatusResponse, VideoInfoResponse, ExtensionSummaryResponse
 )
+from .summary_extractor import extract_extension_summary
 from .service import (
     check_can_analyze, deduct_credit, save_summary,
     get_summary_by_id, get_summary_by_video_id, get_user_history,
@@ -2042,25 +2043,43 @@ async def get_task_status(
 # 📋 RÉSUMÉS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@router.get("/summary/{summary_id}", response_model=SummaryResponse)
+@router.get("/summary/{summary_id}")
 async def get_summary(
     summary_id: int,
+    format: Optional[str] = Query(default=None, description="Format de réponse: full (défaut) ou extension"),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session)
 ):
-    """Récupère un résumé par son ID"""
+    """
+    Récupère un résumé par son ID.
+
+    Query params:
+        format: "full" (défaut) retourne l'analyse complète,
+                "extension" retourne un JSON condensé pour l'extension Chrome.
+    """
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Summary not found")
-    
-    # Construire la réponse
+
+    # Format condensé pour l'extension Chrome
+    if format == "extension":
+        return extract_extension_summary(
+            summary_id=summary.id,
+            summary_content=summary.summary_content,
+            video_title=summary.video_title,
+            category=summary.category,
+            reliability_score=summary.reliability_score,
+            tags=summary.tags,
+        )
+
+    # Format complet (défaut)
     entities = None
     if summary.entities_extracted:
         try:
             entities = json.loads(summary.entities_extracted) if isinstance(summary.entities_extracted, str) else summary.entities_extracted
         except:
             pass
-    
+
     return SummaryResponse(
         id=summary.id,
         video_id=summary.video_id,

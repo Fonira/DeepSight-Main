@@ -19,6 +19,7 @@ import { Image } from 'expo-image';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { playlistApi } from '../services/api';
 import { Header, Card, Badge, Button, VideoCard, UpgradePromptModal, DeepSightSpinner } from '../components';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
@@ -36,6 +37,7 @@ export const PlaylistDetailScreen: React.FC = () => {
   const navigation = useNavigation<PlaylistDetailNavigationProp>();
   const route = useRoute<PlaylistDetailRouteProp>();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('video');
   const isEn = language === 'en';
 
   // Plan access checks

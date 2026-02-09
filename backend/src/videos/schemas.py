@@ -422,6 +422,29 @@ class HybridAnalysisResponse(BaseModel):
     result: Optional[Dict[str, Any]] = None
 
 
+class ExtensionKeyPoint(BaseModel):
+    """Un point clé condensé pour l'extension Chrome."""
+    type: str = Field(..., description="Type: strong, weak, insight, data")
+    icon: str = Field(..., description="Emoji icon: ✅, ⚠️, 💡, 📊")
+    text: str = Field(..., description="Texte condensé (max 80 chars)")
+
+
+class ExtensionSummary(BaseModel):
+    """Résumé condensé pour l'extension Chrome."""
+    verdict: str = Field(..., description="Verdict court de l'analyse")
+    confidence_score: int = Field(ge=0, le=100, description="Score de confiance 0-100")
+    category: str = Field(..., description="Catégorie détectée")
+    key_points: List[ExtensionKeyPoint] = Field(default_factory=list, description="3-6 points clés")
+    tags: List[str] = Field(default_factory=list, description="Tags thématiques")
+    video_title: str = Field(..., description="Titre de la vidéo")
+    full_analysis_url: str = Field(..., description="URL vers l'analyse complète")
+
+
+class ExtensionSummaryResponse(BaseModel):
+    """Réponse condensée pour l'extension Chrome (format=extension)."""
+    extension_summary: ExtensionSummary
+
+
 class CreditEstimation(BaseModel):
     """Estimation du coût en crédits"""
     base_cost: int = 1

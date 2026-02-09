@@ -25,6 +25,7 @@ import Animated, {
   FadeInUp,
 } from 'react-native-reanimated';
 import { useTheme } from '../contexts/ThemeContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Button } from '../components/ui';
 import { GlassCard } from '../components/ui/GlassCard';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
@@ -72,6 +73,7 @@ export const LandingScreen: React.FC = () => {
   const { colors } = useTheme();
   const navigation = useNavigation<LandingScreenNavigationProp>();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('creative');
 
   // Floating animation for logo
   const floatY = useSharedValue(0);

@@ -17,6 +17,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import type { RootStackParamList } from '../types';
 
@@ -27,6 +28,7 @@ export const PaymentCancelScreen: React.FC = () => {
   const { language } = useLanguage();
   const navigation = useNavigation<NavigationProp>();
   const insets = useSafeAreaInsets();
+  useScreenDoodleVariant('creative');
 
   const handleRetryPayment = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
