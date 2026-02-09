@@ -73,10 +73,9 @@ const isRawText = (videoId: string): boolean => {
 /**
  * Composant placeholder pour les textes bruts
  */
-const TextPlaceholder: React.FC<{ category?: string; title: string; className?: string }> = ({ 
-  category, 
-  title,
-  className = '' 
+const TextPlaceholder: React.FC<{ category?: string; title: string; className?: string }> = ({
+  category,
+  className = ''
 }) => {
   const style = categoryStyles[category || ''] || defaultStyle;
   

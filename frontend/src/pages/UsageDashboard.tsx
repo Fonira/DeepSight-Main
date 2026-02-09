@@ -9,15 +9,16 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import {
   BarChart3, Zap, MessageSquare, Globe, TrendingUp, CreditCard, ArrowRight,
   Sparkles, Info, CheckCircle, XCircle, Brain, Search, Play, BookOpen,
   Video, ChevronDown, ChevronRight, Youtube, FileText, Layers, Clock,
-  Lightbulb, Download, Share2, History, Settings, HelpCircle, Star,
-  Compass, Target, Users, Shield, Wand2, ListChecks, BarChart2, 
-  MousePointerClick, Languages, Headphones, FileDown, Link2, Bookmark
+  Lightbulb, Download, History, Settings, Star,
+  Compass, Wand2,
+  Languages, Headphones, FileDown, Link2, Bookmark,
+  type LucideIcon,
 } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useTranslation } from '../hooks/useTranslation';
@@ -100,7 +101,17 @@ const PERPLEXITY_INFO = {
 // 📚 GUIDE D'UTILISATION COMPLET
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const USER_GUIDE = {
+interface GuideItem {
+  icon: LucideIcon;
+  title: { fr: string; en: string };
+  description: { fr: string; en: string };
+  steps?: { fr: string[]; en: string[] };
+  modes?: Array<{ name: { fr: string; en: string }; desc: { fr: string; en: string } }>;
+  tips?: { fr: string[]; en: string[] };
+  badge?: { fr: string; en: string };
+}
+
+const USER_GUIDE: { sections: Array<{ id: string; icon: LucideIcon; title: { fr: string; en: string }; color: string; items: GuideItem[] }> } = {
   sections: [
     {
       id: 'getting-started',

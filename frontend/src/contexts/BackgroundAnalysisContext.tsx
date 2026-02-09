@@ -12,7 +12,7 @@
  */
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
-import { videoApi, playlistApi, TaskStatus, PlaylistTaskStatus, Summary } from '../services/api';
+import { videoApi, playlistApi, Summary } from '../services/api';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
@@ -96,7 +96,6 @@ const STORAGE_KEY = 'deepsight_pending_tasks';
 export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [tasks, setTasks] = useState<AnalysisTask[]>([]);
   const [hasNewCompletedTask, setHasNewCompletedTask] = useState(false);
-  const [hasNewFailedTask, setHasNewFailedTask] = useState(false);
   const [isRestoring, setIsRestoring] = useState(true);
   const pollingIntervals = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
@@ -338,16 +337,15 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
                 status: 'completed' as const,
                 progress: 100,
                 message: 'Analyse terminée !',
-                result: status.result,
-                videoTitle: status.result.title,
-                thumbnail: status.result.thumbnail_url,
+                result: status.result?.summary,
+                videoTitle: status.result?.summary?.video_title || videoTask.videoTitle,
+                thumbnail: status.result?.summary?.thumbnail_url || videoTask.thumbnail,
                 completedAt: new Date(),
               };
             } else if (status.status === 'failed') {
               clearInterval(interval);
               pollingIntervals.current.delete(localId);
-              setHasNewFailedTask(true);
-              
+
               return {
                 ...videoTask,
                 status: 'failed' as const,
@@ -387,8 +385,7 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
             } else if (status.status === 'failed') {
               clearInterval(interval);
               pollingIntervals.current.delete(localId);
-              setHasNewFailedTask(true);
-              
+
               return {
                 ...playlistTask,
                 status: 'failed' as const,

@@ -6,11 +6,11 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   BookOpen, Clock, Tag, ChevronDown, ChevronRight, Play,
-  Lightbulb, Users, Building2, Shield, Star, Copy, Check,
-  ExternalLink, Share2, Bookmark, Volume2
+  Lightbulb, Users, Building2, Shield, Copy, Check,
+  ExternalLink
 } from 'lucide-react';
 import { EnrichedMarkdown } from './EnrichedMarkdown';
 import { ThumbnailImage } from './ThumbnailImage';
@@ -533,7 +533,6 @@ interface SectionProps {
 }
 
 const Section: React.FC<SectionProps> = ({
-  id,
   title,
   icon,
   isExpanded,

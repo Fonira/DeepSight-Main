@@ -13,13 +13,10 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import { 
-  useQuery, 
-  useMutation, 
+import {
+  useQuery,
+  useMutation,
   useQueryClient,
-  QueryClient,
-  UseQueryOptions,
-  UseMutationOptions,
   QueryKey,
 } from '@tanstack/react-query';
 import { useCallback, useMemo, useRef } from 'react';
@@ -254,7 +251,7 @@ async function smartFetch<T>(
   const fetchOptions: RequestInit = {
     method,
     headers: requestHeaders,
-    ...(body && { body: JSON.stringify(body) }),
+    ...(body ? { body: JSON.stringify(body) } : {}),
   };
 
   let lastError: Error | null = null;

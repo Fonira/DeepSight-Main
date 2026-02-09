@@ -17,18 +17,18 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   ListVideo,
-  Play, Video, Send, ChevronDown, Clock, Timer,
-  Star, Download, Globe, Sparkles, BookOpen, Shield,
-  ExternalLink, Copy, Check, MessageCircle, X, Bot,
-  AlertCircle, Minimize2, Maximize2, RefreshCw, Pause,
-  Zap, FileText, FileDown, ChevronUp, Minus, GraduationCap, Brain,
-  ChevronRight, Tags
+  Play, Video, ChevronDown, Clock, Timer,
+  Download, Sparkles, BookOpen, Shield,
+  ExternalLink, Copy, Check, MessageCircle, X,
+  AlertCircle,
+  FileText, FileDown, GraduationCap, Brain,
+  Tags
 } from "lucide-react";
 import { DeepSightSpinner, DeepSightSpinnerMicro } from "../components/ui";
 import { EnrichedMarkdown } from "../components/EnrichedMarkdown";
 import { ConceptsGlossary } from "../components/ConceptsGlossary";
 import { videoApi, chatApi, reliabilityApi, ApiError } from "../services/api";
-import type { Summary, TaskStatus, ChatQuota, DiscoveryResponse, VideoCandidate, ReliabilityResult, EnrichedConcept, EnrichedConceptsResponse } from "../services/api";
+import type { Summary, TaskStatus, ChatQuota, DiscoveryResponse, VideoCandidate, ReliabilityResult, EnrichedConcept } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from '../hooks/useTranslation';
 import { YouTubePlayer, YouTubePlayerRef } from "../components/YouTubePlayer";
@@ -39,7 +39,7 @@ import { FloatingChatWindow } from "../components/FloatingChatWindow";
 import { CitationExport } from "../components/CitationExport";
 import { StudyToolsModal } from "../components/StudyToolsModal";
 import { KeywordsModal } from "../components/KeywordsModal";
-import DoodleBackground from "../components/DoodleBackground";
+import DoodleBackground from '../components/DoodleBackground';
 import SmartInputBar, { SmartInputValue } from "../components/SmartInputBar";
 import { AcademicSourcesPanel } from "../components/academic";
 // LoadingWordWidget désormais global dans App.tsx
@@ -84,20 +84,6 @@ const MODES = [
   { id: "expert", name: "Expert", desc: "Technique" },
 ] as const;
 
-const SUGGESTED_QUESTIONS_FR = [
-  "Quels sont les points principaux ?",
-  "Résume en 3 bullet points",
-  "Y a-t-il des biais dans cette vidéo ?",
-  "Quelles sont les sources citées ?",
-];
-
-const SUGGESTED_QUESTIONS_EN = [
-  "What are the main points?",
-  "Summarize in 3 bullet points",
-  "Are there any biases in this video?",
-  "What sources are cited?",
-];
-
 const formatDuration = (seconds: number): string => {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -123,12 +109,12 @@ const isPlaylistUrl = (url: string): boolean => {
 
 export const DashboardPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
-  const { t, language } = useTranslation();
+  const { language } = useTranslation();
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
-  
+  const [searchParams] = useSearchParams();
+
   // États principaux
-  const [videoUrl, setVideoUrl] = useState("");
+  const [, setVideoUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingMessage, setLoadingMessage] = useState("");
@@ -155,8 +141,7 @@ export const DashboardPage: React.FC = () => {
   
   // États du chat
   const [chatOpen, setChatOpen] = useState(false);
-  const [chatMinimized, setChatMinimized] = useState(false);
-  const [chatExpanded, setChatExpanded] = useState(true); // Grand par défaut
+  const [, setChatMinimized] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -172,7 +157,7 @@ export const DashboardPage: React.FC = () => {
   const [showKeywordsModal, setShowKeywordsModal] = useState(false);
   // 💰 Monetization states
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradeLimitType, setUpgradeLimitType] = useState<'credits' | 'chat' | 'analysis'>('credits');
+  const [upgradeLimitType] = useState<'credits' | 'chat' | 'analysis'>('credits');
   const [showFreeTrialModal, setShowFreeTrialModal] = useState(false);
   const [analysisCountThisMonth, setAnalysisCountThisMonth] = useState(0);
   const [lastAnalysisTimeSaved, setLastAnalysisTimeSaved] = useState(0);
@@ -321,14 +306,6 @@ export const DashboardPage: React.FC = () => {
       setPlayerVisible(true);
     }
   }, [playerVisible]);
-
-  const summaryMarkdownComponents = useMemo(() => {
-    return createTimecodeMarkdownComponents({
-      mode: "embedded",
-      onTimecodeClick: handleTimecodeClick,
-      linkClassName: "text-accent-primary hover:text-accent-primary-hover underline underline-offset-2 cursor-pointer transition-colors font-medium",
-    });
-  }, [handleTimecodeClick]);
 
   const chatMarkdownComponents = useMemo(() => {
     return createTimecodeMarkdownComponents({
@@ -698,9 +675,10 @@ export const DashboardPage: React.FC = () => {
     if (!selectedSummary?.id) return;
     setExporting(true);
     setShowExportMenu(false);
-    
+
+    const formatMap: Record<string, 'pdf' | 'markdown' | 'text'> = { pdf: 'pdf', md: 'markdown', txt: 'text' };
     try {
-      const blob = await videoApi.exportSummary(selectedSummary.id, format);
+      const blob = await videoApi.exportSummary(selectedSummary.id, formatMap[format]);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -726,20 +704,20 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
-      <DoodleBackground variant="default" density={50} />
+      <DoodleBackground variant="analysis" />
       {/* Sidebar hidden on mobile - using DashboardLayout's hamburger menu */}
       <div className="hidden lg:block">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       </div>
 
       {/* Main content - responsive margin */}
-      <main className={`transition-all duration-300 relative z-10 lg:${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
+      <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
         <div className="min-h-screen p-4 sm:p-6 lg:p-8">
           <div className="max-w-5xl mx-auto">
 
             {/* Header - with top padding on mobile for hamburger button */}
             <header className="mb-6 lg:mb-8 pt-2 lg:pt-0">
-              <h1 className="font-display text-xl sm:text-2xl mb-2 text-text-primary">
+              <h1 className="font-semibold text-xl sm:text-2xl mb-2 text-text-primary">
                 {language === 'fr' ? 'Analyse vidéo' : 'Video Analysis'}
               </h1>
               <p className="text-text-secondary text-xs sm:text-sm">
@@ -1038,7 +1016,7 @@ export const DashboardPage: React.FC = () => {
                           <YouTubePlayer
                             ref={playerRef}
                             videoId={selectedSummary.video_id}
-                            startTime={playerStartTime}
+                            initialTime={playerStartTime}
                             className="w-full h-full"
                           />
                           <button
@@ -1076,7 +1054,7 @@ export const DashboardPage: React.FC = () => {
                     {/* Info - responsive padding */}
                     <div className="flex-1 p-4 sm:p-5">
                       <div className="flex items-start justify-between gap-3 sm:gap-4 mb-2 sm:mb-3">
-                        <h2 className="font-display text-lg sm:text-xl leading-tight text-text-primary line-clamp-2">
+                        <h2 className="font-semibold text-lg sm:text-xl leading-tight text-text-primary line-clamp-2">
                           {selectedSummary.video_title}
                         </h2>
                         <a
@@ -1133,10 +1111,11 @@ export const DashboardPage: React.FC = () => {
 
                       {/* 🌻 Tournesol Integration */}
                       <div className="pt-3 border-t border-border-subtle">
-                        <TournesolMini 
-                          videoId={selectedSummary.video_id}
-                          onExpand={() => setShowTournesolDetails(!showTournesolDetails)}
-                        />
+                        <div onClick={() => setShowTournesolDetails(!showTournesolDetails)} className="cursor-pointer">
+                          <TournesolMini
+                            videoId={selectedSummary.video_id}
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1145,9 +1124,9 @@ export const DashboardPage: React.FC = () => {
                 {/* Tournesol Details (expandable) */}
                 {showTournesolDetails && (
                   <div className="card p-5 animate-fadeIn">
-                    <TournesolWidget 
+                    <TournesolWidget
                       videoId={selectedSummary.video_id}
-                      showDetails={true}
+                      variant="full"
                     />
                   </div>
                 )}
@@ -1442,8 +1421,7 @@ export const DashboardPage: React.FC = () => {
         isOpen={showFreeTrialModal}
         onClose={() => setShowFreeTrialModal(false)}
         analysisCount={analysisCountThisMonth}
-        maxFreeAnalyses={4}
-        timeSavedSeconds={lastAnalysisTimeSaved}
+        videoDurationSeconds={lastAnalysisTimeSaved}
       />
 
       {/* 🆕 CSS pour l'animation shimmer */}

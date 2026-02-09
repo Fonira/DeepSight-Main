@@ -153,7 +153,7 @@ export const ActivityChart: React.FC<ActivityChartProps> = ({
               radius={[4, 4, 0, 0]}
               maxBarSize={40}
             >
-              {processedData.map((entry, index) => (
+              {processedData.map((_entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 
                   fill={index === processedData.length - 1 ? ACCENT_LIGHT : ACCENT_COLOR}

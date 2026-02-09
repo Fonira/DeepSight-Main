@@ -12,7 +12,7 @@ import {
   Link2, FileText, Search, ChevronDown,
   Globe, Sparkles, Info, ArrowRight, Wand2
 } from 'lucide-react';
-import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
+import { DeepSightSpinnerMicro } from './ui';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES

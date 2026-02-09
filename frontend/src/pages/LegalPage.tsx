@@ -10,7 +10,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
   Scale, Shield, FileText, Mail, Phone, 
-  Building, Globe, Server, Lock, Eye, Trash2,
+  Building, Server, Lock, Eye, Trash2,
   AlertCircle, CreditCard, RefreshCw, Users, BookOpen
 } from 'lucide-react';
 import DoodleBackground from '../components/DoodleBackground';
@@ -859,7 +859,7 @@ const LegalPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative">
-      <DoodleBackground variant="academic" density={40} />
+      <DoodleBackground variant="academic" />
       {/* Header */}
       <header className="border-b border-white/10 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-4">

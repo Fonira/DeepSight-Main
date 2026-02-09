@@ -83,7 +83,6 @@ const getConceptTypeConfig = (type: string) => {
 export const ConceptMap: React.FC<ConceptMapProps> = ({
   data,
   language = 'fr',
-  onExport
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);

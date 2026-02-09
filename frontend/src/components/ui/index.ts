@@ -1,15 +1,9 @@
 /**
- * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  🎨 UI COMPONENTS INDEX — Deep Sight                                               ║
- * ╠════════════════════════════════════════════════════════════════════════════════════╣
- * ║  Exports centralisés des composants UI réutilisables                               ║
- * ╚════════════════════════════════════════════════════════════════════════════════════╝
+ * DEEP SIGHT v9.0 — UI Components Index
+ * Centralized exports for all reusable UI primitives.
  */
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ✨ DEEPSIGHT SPINNER — Logo animé officiel
-// ═══════════════════════════════════════════════════════════════════════════════
-
+// Spinner
 export {
   DeepSightSpinner,
   DeepSightSpinnerMicro,
@@ -18,4 +12,41 @@ export {
   DeepSightSpinnerHero,
 } from './DeepSightSpinner';
 
-export type { default as DeepSightSpinnerDefault } from './DeepSightSpinner';
+// Motion / Animation
+export {
+  easings,
+  fadeInUp,
+  fadeIn,
+  scaleIn,
+  slideInRight,
+  slideInLeft,
+  staggerContainer,
+  staggerItem,
+  FadeInUp,
+  FadeIn,
+  ScaleIn,
+  StaggerContainer,
+  StaggerItem,
+  PageTransition,
+  HoverCard,
+  AnimatedNumber,
+  motion,
+  AnimatePresence,
+} from './motion';
+
+// Skeleton
+export { Skeleton, SkeletonCard, SkeletonRow } from './Skeleton';
+
+// Toggle
+export { Toggle } from './Toggle';
+
+// Dropdown
+export { Dropdown } from './Dropdown';
+export type { DropdownItem } from './Dropdown';
+
+// Tooltip
+export { Tooltip } from './Tooltip';
+
+// DataTable
+export { DataTable } from './DataTable';
+export type { Column } from './DataTable';

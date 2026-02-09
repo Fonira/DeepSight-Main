@@ -16,9 +16,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  ExternalLink, Info, Users, Scale, Shield, BookOpen, 
-  Sparkles, X, ChevronDown, ChevronUp, Clock, Plus,
-  AlertTriangle, TrendingUp, Heart, Zap
+  ExternalLink, Info, Users, Scale, Shield, BookOpen,
+  Sparkles, X, ChevronDown, ChevronUp, Plus,
+  AlertTriangle, Heart, Zap
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════════

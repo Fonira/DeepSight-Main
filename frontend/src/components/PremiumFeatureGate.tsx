@@ -9,7 +9,7 @@
  */
 
 import React, { useState, ReactNode } from 'react';
-import { Lock, Crown, Sparkles, ArrowRight, Zap } from 'lucide-react';
+import { Lock, Crown, Sparkles, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
@@ -23,7 +23,6 @@ import {
   getPlanInfo,
   getMinPlanForFeature,
   normalizePlanId,
-  PLANS_INFO,
 } from '../config/planPrivileges';
 import { UpgradePromptModal } from './UpgradePromptModal';
 

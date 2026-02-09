@@ -12,10 +12,10 @@
 
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
-  X, Check, Play, Clock, Eye, ThumbsUp, Star, Sparkles,
-  AlertTriangle, BookOpen, TrendingUp, Calendar, Filter,
+  X, Check, Play, Eye, Sparkles,
+  AlertTriangle, BookOpen, Calendar,
   ChevronDown, ChevronUp, Search, ExternalLink,
-  Globe, Languages
+  Languages
 } from 'lucide-react';
 import { DeepSightSpinner } from './ui';
 import type { VideoCandidate, DiscoveryResponse } from '../services/api';
@@ -762,7 +762,6 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12">
               <DeepSightSpinner size="lg" showLabel label={language === 'fr' ? 'Recherche en cours...' : 'Searching...'} />
-              <p className="text-xs text-text-tertiary mt-2">
               <p className="text-xs text-text-tertiary mt-2">
                 {language === 'fr' 
                   ? 'Recherche parallèle dans toutes les langues sélectionnées'

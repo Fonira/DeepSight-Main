@@ -15,7 +15,7 @@ export const PaymentCancel: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary flex items-center justify-center p-6 relative">
-      <DoodleBackground variant="default" density={40} />
+      <DoodleBackground variant="creative" />
       <div className="max-w-md w-full text-center relative z-10">
         <div className="card-elevated p-10 rounded-2xl">
           {/* Cancel Icon */}
@@ -24,7 +24,7 @@ export const PaymentCancel: React.FC = () => {
           </div>
 
           {/* Title */}
-          <h1 className="font-display text-2xl mb-3">
+          <h1 className="font-semibold text-2xl mb-3">
             {t.payment.cancel.title}
           </h1>
 

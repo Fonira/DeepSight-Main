@@ -10,7 +10,6 @@ import { useTranslation } from '../hooks/useTranslation';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Sidebar } from '../components/layout/Sidebar';
-import DoodleBackground from '../components/DoodleBackground';
 import {
   Settings as SettingsIcon, Globe, Moon, Sun, Bell, BellOff,
   Keyboard, Info, Check, RotateCcw,
@@ -18,6 +17,7 @@ import {
   ExternalLink, Palette, SlidersHorizontal, Layout
 } from 'lucide-react';
 import { ThemeToggle } from '../components/ThemeToggle';
+import DoodleBackground from '../components/DoodleBackground';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎛️ Types
@@ -40,7 +40,7 @@ interface Preferences {
 export const Settings: React.FC = () => {
   const { language } = useTranslation();
   const { setLanguage } = useLanguage();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   // Préférences locales (stockées dans localStorage)
@@ -161,19 +161,19 @@ export const Settings: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
-      <DoodleBackground variant="default" density={50} />
+      <DoodleBackground variant="tech" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       
       <main 
         id="main-content"
-        className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}
+        className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}
       >
         <div className="min-h-screen p-6 lg:p-8">
           <div className="max-w-2xl mx-auto space-y-6">
             
             {/* Header */}
             <header className="mb-8">
-              <h1 className="font-display text-2xl mb-2 flex items-center gap-3 text-text-primary">
+              <h1 className="text-2xl font-semibold mb-2 flex items-center gap-3 text-text-primary">
                 <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
                   <SettingsIcon className="w-5 h-5 text-accent-primary" />
                 </div>

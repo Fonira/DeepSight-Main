@@ -22,6 +22,7 @@ export default defineConfig({
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
           'vendor-query': ['@tanstack/react-query'],
           'vendor-ui': ['lucide-react'],
+          'vendor-motion': ['framer-motion'],
           'vendor-markdown': ['react-markdown', 'remark-gfm'],
           'vendor-state': ['zustand'],
         },
@@ -43,6 +44,7 @@ export default defineConfig({
       '@tanstack/react-query',
       'lucide-react',
       'zustand',
+      'framer-motion',
     ],
   },
 });

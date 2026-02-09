@@ -10,7 +10,7 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import React, { Suspense, lazy, useEffect, useCallback, useState, useRef, ReactNode, Component, ErrorInfo } from "react";
+import { Suspense, lazy, useEffect, useRef, ReactNode, Component, ErrorInfo } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./hooks/useAuth";

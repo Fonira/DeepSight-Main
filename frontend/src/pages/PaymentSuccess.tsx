@@ -24,7 +24,7 @@ export const PaymentSuccess: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, refreshUser } = useAuth();
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
@@ -146,7 +146,7 @@ export const PaymentSuccess: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary flex items-center justify-center p-6 relative">
-      <DoodleBackground variant="default" density={40} />
+      <DoodleBackground variant="creative" />
       <div className="max-w-md w-full text-center relative z-10">
         <div className="card p-10">
           
@@ -156,7 +156,7 @@ export const PaymentSuccess: React.FC = () => {
               <div className="flex justify-center mb-6">
                 <DeepSightSpinner size="lg" />
               </div>
-              <h1 className="font-display text-2xl text-text-primary mb-3">
+              <h1 className="font-semibold text-2xl text-text-primary mb-3">
                 {t.payment.processing}
               </h1>
               <p className="text-text-secondary">
@@ -172,7 +172,7 @@ export const PaymentSuccess: React.FC = () => {
                 <CheckCircle className="w-10 h-10 text-emerald-500" />
               </div>
 
-              <h1 className="font-display text-2xl text-text-primary mb-3">
+              <h1 className="font-semibold text-2xl text-text-primary mb-3">
                 {t.payment.success.title}
               </h1>
 
@@ -244,7 +244,7 @@ export const PaymentSuccess: React.FC = () => {
                 <AlertCircle className="w-10 h-10 text-amber-500" />
               </div>
 
-              <h1 className="font-display text-2xl text-text-primary mb-3">
+              <h1 className="font-semibold text-2xl text-text-primary mb-3">
                 {t.upgrade.processing}
               </h1>
 

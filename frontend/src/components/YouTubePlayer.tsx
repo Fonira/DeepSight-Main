@@ -5,7 +5,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from "react";
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import { Play, Pause, X, ExternalLink, Volume2, VolumeX, RotateCcw } from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════════════════════════

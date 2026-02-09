@@ -5,7 +5,7 @@
  * Affiche un dropdown avec la liste des notifications récentes.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Bell, Check, X, ExternalLink, AlertCircle, CheckCircle } from 'lucide-react';
 import { useNotifications, DeepSightNotification } from '../hooks/useNotifications';
 import { useNavigate } from 'react-router-dom';

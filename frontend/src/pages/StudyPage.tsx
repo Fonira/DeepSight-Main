@@ -13,7 +13,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import {
   BookOpen, Brain, ChevronLeft, Loader2, AlertCircle,
-  BookMarked, HelpCircle, BarChart3, Trophy
+  BookMarked, HelpCircle
 } from 'lucide-react';
 import { FlashcardDeck, QuizQuestion, StudyProgress, ScoreCard } from '../components/Study';
 import type { Flashcard, FlashcardStats, QuizQuestionData } from '../components/Study';
@@ -89,7 +89,7 @@ export const StudyPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const { summaryId: paramSummaryId } = useParams<{ summaryId: string }>();
   const navigate = useNavigate();
-  const { t, language } = useTranslation();
+  const { language } = useTranslation();
   
   // Support both route param and query param for backwards compatibility
   const summaryId = paramSummaryId || searchParams.get('id');
@@ -236,7 +236,7 @@ export const StudyPage: React.FC = () => {
     
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-        <DoodleBackground />
+        {/* Background handled by CSS design system v8.0 */}
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="text-center">
             <Loader2 className="w-12 h-12 text-amber-400 animate-spin mx-auto mb-4" />
@@ -254,7 +254,7 @@ export const StudyPage: React.FC = () => {
   if (error || !studyData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-        <DoodleBackground />
+        {/* Background handled by CSS design system v8.0 */}
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="text-center glass-panel rounded-2xl p-8 max-w-md">
             <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
@@ -280,8 +280,8 @@ export const StudyPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-      <DoodleBackground />
-      
+      <DoodleBackground variant="academic" />
+
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">

@@ -11,28 +11,28 @@
  * - ⏱️ Timecodes cliquables
  */
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import {
   Search, Trash2, Play, MessageCircle,
   ChevronRight, Clock, Video, Layers,
   Grid, List, RefreshCw, BarChart2,
-  AlertCircle, X, Send, Globe, Bot, User,
-  Minimize2, Maximize2, ExternalLink,
+  AlertCircle, X,
+  Maximize2, ExternalLink,
   // 🆕 Toolbar icons
   Copy, Check, GraduationCap, Brain, Tags,
   Download, FileText, FileDown, ChevronDown
 } from "lucide-react";
-import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from "../components/ui";
+import { DeepSightSpinner, DeepSightSpinnerMicro } from "../components/ui";
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
 import { Sidebar } from "../components/layout/Sidebar";
 import { TournesolMini } from "../components/TournesolWidget";
 import { createTimecodeMarkdownComponents } from "../components/TimecodeRenderer";
 import { FloatingChatWindow } from "../components/FloatingChatWindow";
-import DoodleBackground from "../components/DoodleBackground";
-import { ThumbnailImage, isRawTextVideo } from "../components/ThumbnailImage";
+import DoodleBackground from '../components/DoodleBackground';
+import { ThumbnailImage } from "../components/ThumbnailImage";
 // 🆕 Toolbar components
 import { CitationExport } from "../components/CitationExport";
 import { StudyToolsModal } from "../components/StudyToolsModal";
@@ -364,7 +364,7 @@ const useHistoryApi = () => {
 export const History: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { t, language } = useTranslation();
+  const { language } = useTranslation();
   const { user } = useAuth();
   const api = useHistoryApi();
 
@@ -398,7 +398,7 @@ export const History: React.FC = () => {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatWebSearch, setChatWebSearch] = useState(false);
-  const [chatExpanded, setChatExpanded] = useState(true); // Étendu par défaut
+  const [, setChatExpanded] = useState(true); // Étendu par défaut
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // 🗑️ Clear History Modal
@@ -671,10 +671,10 @@ export const History: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
-      <DoodleBackground variant="default" density={50} />
+      <DoodleBackground variant="video" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       
-      <main className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
+      <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
         <div className="min-h-screen p-6 lg:p-8">
           <div className="max-w-6xl mx-auto">
             
@@ -682,7 +682,7 @@ export const History: React.FC = () => {
             <header className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h1 className="font-display text-2xl mb-2 text-text-primary">
+                  <h1 className="font-semibold text-2xl mb-2 text-text-primary">
                     {language === 'fr' ? 'Historique' : 'History'}
                   </h1>
                   <p className="text-text-secondary text-sm">
@@ -718,7 +718,7 @@ export const History: React.FC = () => {
                         <Video className="w-5 h-5 text-accent-primary" />
                       </div>
                       <div>
-                        <p className="text-2xl font-display font-semibold text-text-primary">{stats.total_videos}</p>
+                        <p className="text-2xl font-semibold font-semibold text-text-primary">{stats.total_videos}</p>
                         <p className="text-xs text-text-tertiary">{language === 'fr' ? 'Vidéos' : 'Videos'}</p>
                       </div>
                     </div>
@@ -729,7 +729,7 @@ export const History: React.FC = () => {
                         <Layers className="w-5 h-5 text-purple-600" />
                       </div>
                       <div>
-                        <p className="text-2xl font-display font-semibold text-text-primary">{stats.total_playlists}</p>
+                        <p className="text-2xl font-semibold font-semibold text-text-primary">{stats.total_playlists}</p>
                         <p className="text-xs text-text-tertiary">Playlists</p>
                       </div>
                     </div>
@@ -740,7 +740,7 @@ export const History: React.FC = () => {
                         <BarChart2 className="w-5 h-5 text-green-600" />
                       </div>
                       <div>
-                        <p className="text-2xl font-display font-semibold text-text-primary">
+                        <p className="text-2xl font-semibold font-semibold text-text-primary">
                           {(stats.total_words / 1000).toFixed(0)}k
                         </p>
                         <p className="text-xs text-text-tertiary">{language === 'fr' ? 'Mots' : 'Words'}</p>
@@ -753,7 +753,7 @@ export const History: React.FC = () => {
                         <Clock className="w-5 h-5 text-amber-600" />
                       </div>
                       <div>
-                        <p className="text-2xl font-display font-semibold text-text-primary">
+                        <p className="text-2xl font-semibold font-semibold text-text-primary">
                           {stats.total_duration_formatted || '0h'}
                         </p>
                         <p className="text-xs text-text-tertiary">{language === 'fr' ? 'Durée' : 'Duration'}</p>
@@ -889,7 +889,7 @@ export const History: React.FC = () => {
                     <Video className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h2 className="font-display text-lg text-text-primary flex items-center gap-2">
+                    <h2 className="font-semibold text-lg text-text-primary flex items-center gap-2">
                       {language === 'fr' ? 'Vidéos individuelles' : 'Individual Videos'}
                       <span className="text-sm font-normal text-blue-600 dark:text-blue-400">
                         ({videos.length} {language === 'fr' ? 'analyses' : 'analyses'})
@@ -946,7 +946,7 @@ export const History: React.FC = () => {
                 language={language}
                 onBack={() => { setSelectedPlaylist(null); setSelectedPlaylistVideo(null); }}
                 onBackToVideos={handleBackToPlaylistVideos}
-                onChat={() => handleOpenPlaylistChat({ ...selectedPlaylist, playlist_url: '', completed_at: '', thumbnail_url: '' })}
+                onChat={() => handleOpenPlaylistChat({ ...selectedPlaylist, playlist_url: '', completed_at: '', thumbnail_url: '', has_meta_analysis: false, created_at: new Date().toISOString() })}
                 onViewVideo={handleViewPlaylistVideo}
                 onChatVideo={handleOpenPlaylistVideoChat}
               />
@@ -958,7 +958,7 @@ export const History: React.FC = () => {
                     <Layers className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h2 className="font-display text-lg text-text-primary flex items-center gap-2">
+                    <h2 className="font-semibold text-lg text-text-primary flex items-center gap-2">
                       {language === 'fr' ? 'Playlists & Corpus' : 'Playlists & Corpus'}
                       <span className="text-sm font-normal text-purple-600 dark:text-purple-400">
                         ({playlists.length} {language === 'fr' ? 'collections' : 'collections'})
@@ -1071,7 +1071,7 @@ export const History: React.FC = () => {
                 <Trash2 className="w-6 h-6 text-red-500" />
               </div>
               <div>
-                <h3 className="font-display text-lg text-text-primary">
+                <h3 className="font-semibold text-lg text-text-primary">
                   {language === 'fr' ? 'Supprimer l\'historique' : 'Clear History'}
                 </h3>
                 <p className="text-sm text-text-tertiary">
@@ -1234,7 +1234,7 @@ const VideoCard: React.FC<{
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <TournesolMini videoId={video.video_id} compact />
+            <TournesolMini videoId={video.video_id} />
             <button
               onClick={(e) => { e.stopPropagation(); onChat(); }}
               className="p-2 rounded-lg text-text-tertiary hover:text-accent-primary hover:bg-accent-primary-muted transition-colors"
@@ -1285,7 +1285,7 @@ const VideoCard: React.FC<{
           <div className="flex items-center gap-2">
             <span className="badge text-xs">{emoji} {video.category}</span>
           </div>
-          <TournesolMini videoId={video.video_id} compact />
+          <TournesolMini videoId={video.video_id} />
         </div>
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-border-subtle">
           <span className="text-xs text-text-muted">{formatRelativeDate(video.created_at, language)}</span>
@@ -1543,8 +1543,9 @@ const PlaylistDetailView: React.FC<{
     setExporting(true);
     setShowExportMenu(false);
 
+    const formatMap: Record<string, 'pdf' | 'markdown' | 'text'> = { pdf: 'pdf', md: 'markdown', txt: 'text' };
     try {
-      const blob = await videoApi.exportSummary(selectedVideo.id, format);
+      const blob = await videoApi.exportSummary(selectedVideo.id, formatMap[format]);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -1650,7 +1651,7 @@ const PlaylistDetailView: React.FC<{
 
             {/* Info */}
             <div className="flex-1">
-              <h1 className="text-xl font-display font-semibold text-text-primary mb-2">
+              <h1 className="text-xl font-semibold font-semibold text-text-primary mb-2">
                 {selectedVideo.video_title}
               </h1>
               <p className="text-text-secondary mb-3">{selectedVideo.video_channel}</p>
@@ -1879,7 +1880,7 @@ const PlaylistDetailView: React.FC<{
             <Layers className="w-8 h-8 text-purple-600" />
           </div>
           <div>
-            <h1 className="text-xl font-display font-semibold text-text-primary">{playlist.playlist_title}</h1>
+            <h1 className="text-xl font-semibold font-semibold text-text-primary">{playlist.playlist_title}</h1>
             <p className="text-text-secondary">
               {playlist.num_processed}/{playlist.num_videos} {language === 'fr' ? 'vidéos analysées' : 'videos analyzed'}
               {' • '}
@@ -2070,7 +2071,7 @@ const PlaylistDetailView: React.FC<{
             onClick={() => setMetaExpanded(!metaExpanded)}
           >
             <div className="flex items-center justify-between">
-              <h2 className="font-display font-semibold text-white flex items-center gap-3">
+              <h2 className="font-semibold font-semibold text-white flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
                   <BarChart2 className="w-5 h-5 text-white" />
                 </div>

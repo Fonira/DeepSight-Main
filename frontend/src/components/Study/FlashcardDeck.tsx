@@ -13,7 +13,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   RotateCcw, ChevronLeft, ChevronRight, Check, X,
-  Shuffle, Eye, EyeOff, BookOpen, Sparkles
+  Shuffle, BookOpen, Sparkles
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════════

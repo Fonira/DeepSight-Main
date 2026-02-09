@@ -7,11 +7,10 @@
 
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { 
-  Home, 
-  Search, 
-  FolderOpen, 
-  Clock, 
+import {
+  Home,
+  FolderOpen,
+  Clock,
   User,
   Sparkles
 } from 'lucide-react';

@@ -11,10 +11,9 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import React, { 
-  useRef, 
-  useCallback, 
-  useMemo, 
+import {
+  useRef,
+  useCallback,
   memo,
   forwardRef,
   useImperativeHandle,
@@ -22,18 +21,17 @@ import React, {
   useEffect,
 } from 'react';
 import { useVirtualizer, VirtualItem } from '@tanstack/react-virtual';
-import { 
-  Play, 
-  Clock, 
-  Calendar, 
-  Star, 
+import {
+  Play,
+  Calendar,
+  Star,
   MoreVertical,
   Trash2,
   ExternalLink,
   MessageCircle,
   FileText,
 } from 'lucide-react';
-import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
+import { DeepSightSpinnerSmall } from './ui';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES

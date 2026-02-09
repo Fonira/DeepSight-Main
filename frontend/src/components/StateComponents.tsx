@@ -23,13 +23,11 @@ import {
   History,
   Bookmark,
   FolderOpen,
-  Wifi,
   WifiOff,
   Lock,
   CreditCard,
-  ArrowRight,
 } from 'lucide-react';
-import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
+import { DeepSightSpinner } from './ui';
 import { ApiError } from '../services/api';
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -14,8 +14,8 @@ import React, { useState } from 'react';
 import {
   BookOpen, ChevronDown, ChevronRight, Check, X,
   Lightbulb, HelpCircle, CheckCircle, XCircle,
-  Download, Printer, Star, AlertCircle, Clock,
-  Brain, Target, Sparkles, GraduationCap
+  Download, Printer, Star, Clock,
+  Brain, Target, Sparkles
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -119,9 +119,6 @@ export const StudyCard: React.FC<StudyCardProps> = ({
   data,
   language = 'fr',
   onExport,
-  onGenerateMore,
-  canGenerateMore = false,
-  isGenerating = false
 }) => {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['key_points', 'quiz']));
   const [revealedAnswers, setRevealedAnswers] = useState<Set<number>>(new Set());

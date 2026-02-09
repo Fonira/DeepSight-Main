@@ -590,6 +590,8 @@
     }
   },
   "payment": {
+    "processing": "Traitement en cours...",
+    "redirecting": "Vérification de votre paiement, veuillez patienter...",
     "success": {
       "title": "Paiement réussi !",
       "subtitle": "Merci pour votre abonnement. Vos avantages sont maintenant actifs.",

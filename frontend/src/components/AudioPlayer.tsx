@@ -13,11 +13,11 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  PlayIcon,
-  PauseIcon,
-  SpeakerWaveIcon,
-  SpeakerXMarkIcon,
-} from '@heroicons/react/24/solid';
+  Play as PlayIcon,
+  Pause as PauseIcon,
+  Volume2 as SpeakerWaveIcon,
+  VolumeX as SpeakerXMarkIcon,
+} from 'lucide-react';
 
 interface AudioPlayerProps {
   /** Audio source URL */
@@ -54,7 +54,6 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [error, setError] = useState<string | null>(null);

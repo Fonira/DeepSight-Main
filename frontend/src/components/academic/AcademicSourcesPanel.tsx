@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { DeepSightSpinner } from '../ui';
 import { academicApi, AcademicPaper } from '../../services/api';
-import { hasFeature, getLimit, normalizePlanId } from '../../config/planPrivileges';
+import { hasFeature, normalizePlanId } from '../../config/planPrivileges';
 import { PaperCard } from './PaperCard';
 import { BibliographyModal } from './BibliographyModal';
 

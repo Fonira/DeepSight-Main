@@ -8,11 +8,11 @@
 
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
-  X, Check, Play, Clock, Eye, ThumbsUp, Star, Sparkles,
-  AlertTriangle, BookOpen, TrendingUp, Calendar, Filter,
+  X, Check, Play, Eye, ThumbsUp, Sparkles,
+  AlertTriangle, BookOpen, Calendar,
   ChevronDown, ChevronUp, Search, ExternalLink
 } from 'lucide-react';
-import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
+import { DeepSightSpinner } from './ui';
 import type { VideoCandidate, DiscoveryResponse } from '../services/api';
 import { ThumbnailImage } from './ThumbnailImage';
 
@@ -145,13 +145,13 @@ const VideoCard: React.FC<{
         
         {/* Duration overlay */}
         <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/80 text-white text-xs font-medium">
-          {formatDuration(video.duration)}
+          {formatDuration(video.duration || 0)}
         </div>
-        
+
         {/* Tournesol score badge (if not a pick but has score) */}
-        {!video.is_tournesol_pick && video.tournesol_score > 0 && (
+        {!video.is_tournesol_pick && (video.tournesol_score ?? 0) > 0 && (
           <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-yellow-500/90 text-black text-xs font-bold flex items-center gap-1">
-            🌻 {Math.round(video.tournesol_score)}
+            🌻 {Math.round(video.tournesol_score || 0)}
           </div>
         )}
       </div>
@@ -172,20 +172,20 @@ const VideoCard: React.FC<{
         <div className="flex items-center gap-3 text-xs text-text-tertiary mb-2">
           <span className="flex items-center gap-1">
             <Eye className="w-3 h-3" />
-            {formatViews(video.view_count)}
+            {formatViews(video.view_count || 0)}
           </span>
           <span className="flex items-center gap-1">
             <ThumbsUp className="w-3 h-3" />
-            {formatViews(video.like_count)}
+            {formatViews(video.view_count || 0)}
           </span>
           <span className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />
-            {formatDate(video.published_at)}
+            {formatDate(video.published_at ?? null)}
           </span>
         </div>
         
         {/* Sources detected */}
-        {video.detected_sources > 0 && (
+        {(video.detected_sources ?? 0) > 0 && (
           <div className="flex items-center gap-1 text-xs text-blue-500 mb-2">
             <BookOpen className="w-3 h-3" />
             <span>{video.detected_sources} {t.sources}</span>
@@ -193,7 +193,7 @@ const VideoCard: React.FC<{
         )}
         
         {/* Matched terms */}
-        {video.matched_query_terms.length > 0 && (
+        {video.matched_query_terms && video.matched_query_terms.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">
             {video.matched_query_terms.slice(0, 4).map((term, i) => (
               <span 
@@ -220,15 +220,15 @@ const VideoCard: React.FC<{
           <div className="mt-2 pt-2 border-t border-border-subtle space-y-2 animate-fadeIn">
             {/* Score bars */}
             <div className="space-y-1.5">
-              <ScoreBar label={t.academic} value={video.academic_score} color="blue" />
-              <ScoreBar label={t.engagement} value={video.engagement_score} color="green" />
-              <ScoreBar label={t.freshness} value={video.freshness_score} color="purple" />
-              {video.clickbait_penalty > 0 && (
-                <ScoreBar 
-                  label={t.clickbait} 
-                  value={video.clickbait_penalty} 
-                  color="red" 
-                  isNegative 
+              <ScoreBar label={t.academic} value={video.academic_score || 0} color="blue" />
+              <ScoreBar label={t.engagement} value={video.engagement_score || 0} color="green" />
+              <ScoreBar label={t.freshness} value={video.freshness_score || 0} color="purple" />
+              {(video.clickbait_penalty || 0) > 0 && (
+                <ScoreBar
+                  label={t.clickbait}
+                  value={video.clickbait_penalty || 0}
+                  color="red"
+                  isNegative
                 />
               )}
             </div>
@@ -420,7 +420,7 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
     // Sort
     switch (sortBy) {
       case 'views':
-        return filtered.sort((a, b) => b.view_count - a.view_count);
+        return filtered.sort((a, b) => (b.view_count || 0) - (a.view_count || 0));
       case 'date':
         return filtered.sort((a, b) => {
           if (!a.published_at) return 1;
@@ -428,10 +428,10 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
           return new Date(b.published_at).getTime() - new Date(a.published_at).getTime();
         });
       case 'academic':
-        return filtered.sort((a, b) => b.academic_score - a.academic_score);
+        return filtered.sort((a, b) => (b.academic_score || 0) - (a.academic_score || 0));
       case 'quality':
       default:
-        return filtered.sort((a, b) => b.quality_score - a.quality_score);
+        return filtered.sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0));
     }
   }, [discovery?.candidates, sortBy, filterContentType]);
   

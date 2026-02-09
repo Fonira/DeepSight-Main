@@ -11,7 +11,6 @@ import {
   Cell,
   ResponsiveContainer,
   Tooltip,
-  Legend
 } from 'recharts';
 import { PieChart as PieIcon, Folder } from 'lucide-react';
 
@@ -19,6 +18,7 @@ interface CategoryData {
   name: string;
   value: number;
   emoji?: string;
+  percentage?: number;
 }
 
 interface CategoryPieChartProps {
@@ -85,7 +85,7 @@ const CustomTooltip = ({ active, payload, language }: any) => {
   return null;
 };
 
-const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name, emoji }: any) => {
+const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, emoji }: any) => {
   if (percent < 0.08) return null; // Ne pas afficher les labels trop petits
   
   const RADIAN = Math.PI / 180;
@@ -189,7 +189,7 @@ export const CategoryPieChart: React.FC<CategoryPieChartProps> = ({
               dataKey="value"
               paddingAngle={2}
             >
-              {chartData.map((entry, index) => (
+              {chartData.map((_, index) => (
                 <Cell 
                   key={`cell-${index}`} 
                   fill={COLORS[index % COLORS.length]}

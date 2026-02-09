@@ -1,5 +1,12 @@
-import React, { useEffect } from 'react';
+/**
+ * DEEP SIGHT v8.0 — Premium Toast Notifications
+ * Slide-in from corner, progress bar, auto-dismiss, Framer Motion
+ */
+
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckCircle2, XCircle, Info, AlertTriangle, X } from 'lucide-react';
 
 interface ToastProps {
   message: string;
@@ -8,58 +15,93 @@ interface ToastProps {
   onClose: () => void;
 }
 
-export const Toast: React.FC<ToastProps> = ({ message, type = 'info', duration = 3000, onClose }) => {
+const toastConfig = {
+  success: {
+    icon: CheckCircle2,
+    border: 'border-emerald-500/30',
+    bg: 'bg-emerald-500/10',
+    text: 'text-emerald-400',
+    progress: 'bg-emerald-500',
+  },
+  error: {
+    icon: XCircle,
+    border: 'border-red-500/30',
+    bg: 'bg-red-500/10',
+    text: 'text-red-400',
+    progress: 'bg-red-500',
+  },
+  info: {
+    icon: Info,
+    border: 'border-accent-primary/30',
+    bg: 'bg-accent-primary-muted',
+    text: 'text-accent-primary-hover',
+    progress: 'bg-accent-primary',
+  },
+  warning: {
+    icon: AlertTriangle,
+    border: 'border-amber-500/30',
+    bg: 'bg-amber-500/10',
+    text: 'text-amber-400',
+    progress: 'bg-amber-500',
+  },
+};
+
+export const Toast: React.FC<ToastProps> = ({ message, type = 'info', duration = 4000, onClose }) => {
+  const [isVisible, setIsVisible] = useState(true);
+  const config = toastConfig[type];
+  const Icon = config.icon;
+
   useEffect(() => {
-    const timer = setTimeout(onClose, duration);
+    const timer = setTimeout(() => {
+      setIsVisible(false);
+      setTimeout(onClose, 200);
+    }, duration);
     return () => clearTimeout(timer);
   }, [duration, onClose]);
 
-  const styles = {
-    success: 'border-emerald-400/50 bg-gradient-to-br from-emerald-900/90 to-emerald-950/90',
-    error: 'border-red-400/50 bg-gradient-to-br from-red-900/90 to-red-950/90',
-    info: 'border-cyan-glow/50 bg-gradient-to-br from-teal-deep/90 to-abyss/90',
-    warning: 'border-amber-400/50 bg-gradient-to-br from-amber-900/90 to-amber-950/90'
-  };
-
-  const icons = {
-    success: '✓',
-    error: '✕',
-    info: 'ℹ',
-    warning: '⚠'
-  };
-
   return createPortal(
-    <div
-      className="fixed top-6 right-6 z-[200] max-w-md"
-      style={{
-        animation: 'slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
-      }}
-    >
-      <div className={`
-        glass-panel border-2 ${styles[type]} p-4 pr-12
-        backdrop-blur-xl shadow-2xl rounded-lg
-        relative overflow-hidden
-      `}>
-        <div
-          className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-cyan-glow to-gold-primary"
-          style={{
-            animation: `shrink ${duration}ms linear`
-          }}
-        />
-
-        <div className="flex items-start gap-3">
-          <span className="text-2xl">{icons[type]}</span>
-          <p className="text-cream text-sm leading-relaxed flex-1">{message}</p>
-        </div>
-
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 w-6 h-6 rounded text-cream/60 hover:text-cream hover:bg-white/10 transition-all duration-200"
+    <AnimatePresence>
+      {isVisible && (
+        <motion.div
+          className="fixed top-4 right-4 z-[400] max-w-sm w-full pointer-events-auto"
+          initial={{ opacity: 0, x: 50, scale: 0.95 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, x: 30, scale: 0.97 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
         >
-          ✕
-        </button>
-      </div>
-    </div>,
+          <div className={`
+            relative overflow-hidden rounded-lg border ${config.border}
+            bg-bg-elevated backdrop-blur-xl shadow-lg
+          `}>
+            <div className="flex items-start gap-3 p-3.5 pr-10">
+              <div className={`flex-shrink-0 p-1 rounded-md ${config.bg}`}>
+                <Icon className={`w-4 h-4 ${config.text}`} />
+              </div>
+              <p className="text-sm text-text-primary leading-relaxed flex-1">{message}</p>
+            </div>
+
+            {/* Close button */}
+            <button
+              onClick={() => { setIsVisible(false); setTimeout(onClose, 150); }}
+              className="absolute top-3 right-3 w-6 h-6 rounded-md text-text-muted hover:text-text-secondary hover:bg-bg-hover transition-all flex items-center justify-center"
+              aria-label="Dismiss"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Progress bar */}
+            <div className="h-0.5 bg-border-subtle">
+              <motion.div
+                className={`h-full ${config.progress}`}
+                initial={{ width: '100%' }}
+                animate={{ width: '0%' }}
+                transition={{ duration: duration / 1000, ease: 'linear' }}
+              />
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
     document.body
   );
 };

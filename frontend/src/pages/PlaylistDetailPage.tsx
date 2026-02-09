@@ -9,18 +9,18 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useNavigate, useParams } from 'react-router-dom';
+
 import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
-import { playlistApi, videoApi, Summary } from '../services/api';
+import { playlistApi, Summary } from '../services/api';
 import {
-  ListVideo, Play, Loader2, AlertCircle, Clock, ArrowLeft,
-  ChevronRight, Crown, ExternalLink, CheckCircle, XCircle,
+  ListVideo, Loader2, AlertCircle, Clock, ArrowLeft,
+  ChevronRight, CheckCircle, XCircle,
   RefreshCw, Sparkles, BarChart3, PieChart, TrendingUp,
-  FileText, Timer, Video, Calendar, Tag, Layers, MessageSquare,
-  ThumbsUp, Eye, Book, Target
+  FileText, Video, Tag, Layers, MessageSquare,
+  Target
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -277,11 +277,9 @@ const VideoListItem: React.FC<{
 // ═══════════════════════════════════════════════════════════════════
 
 export const PlaylistDetailPage: React.FC = () => {
-  const { user } = useAuth();
-  const { t, language } = useTranslation();
+  const { language } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
 
   // UI State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -472,7 +470,7 @@ export const PlaylistDetailPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex min-h-screen bg-bg-primary">
-        <DoodleBackground />
+        {/* Background handled by CSS design system v8.0 */}
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -489,7 +487,7 @@ export const PlaylistDetailPage: React.FC = () => {
   if (error || !playlist) {
     return (
       <div className="flex min-h-screen bg-bg-primary">
-        <DoodleBackground />
+        {/* Background handled by CSS design system v8.0 */}
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
@@ -513,7 +511,7 @@ export const PlaylistDetailPage: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-bg-primary">
-      <DoodleBackground />
+      <DoodleBackground variant="video" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
       <main className="flex-1 overflow-x-hidden">

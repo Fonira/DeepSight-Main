@@ -11,9 +11,9 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Trophy, Star, Target, Clock, Zap, Share2,
+  Trophy, Target, Clock, Share2,
   Download, RotateCcw, CheckCircle, XCircle,
-  Award, Medal, Crown, Sparkles, TrendingUp
+  Medal, Crown, TrendingUp
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -46,7 +46,6 @@ interface PerformanceLevel {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const ScoreCard: React.FC<ScoreCardProps> = ({
-  score,
   total,
   correct,
   incorrect,

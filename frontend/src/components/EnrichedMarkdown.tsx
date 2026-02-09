@@ -53,7 +53,7 @@ function markTimecodes(text: string): string {
   // Regex pour [MM:SS] ou [H:MM:SS]
   const timecodeRegex = /\[(\d{1,2}):(\d{2})(?::(\d{2}))?\]/g;
   
-  return text.replace(timecodeRegex, (match, p1, p2, p3) => {
+  return text.replace(timecodeRegex, (_match, p1, p2, p3) => {
     const part1 = parseInt(p1, 10);
     const part2 = parseInt(p2, 10);
     const part3 = p3 ? parseInt(p3, 10) : undefined;
@@ -308,7 +308,6 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
 
 export const EnrichedMarkdown: React.FC<EnrichedMarkdownProps> = memo(({
   children = '',
-  language = 'fr',
   onTimecodeClick,
   className = '',
 }) => {

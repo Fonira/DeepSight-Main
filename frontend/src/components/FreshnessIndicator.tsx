@@ -11,7 +11,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Clock, AlertTriangle, Info, CheckCircle, 
-  ChevronDown, ChevronUp, RefreshCw, ExternalLink,
+  ChevronDown, ChevronUp, RefreshCw,
   TrendingUp, Zap
 } from 'lucide-react';
 
@@ -116,7 +116,7 @@ const WARNING_LEVEL_CONFIG = {
 
 export const FreshnessIndicator: React.FC<FreshnessIndicatorProps> = ({
   summaryId,
-  videoTitle,
+  videoTitle: _videoTitle,
   freshnessData: initialData,
   onRequestVerification,
   compact = false,
@@ -211,8 +211,8 @@ export const FreshnessIndicator: React.FC<FreshnessIndicatorProps> = ({
   return (
     <div className={`rounded-xl border ${className}`}>
       {/* Header avec avertissement */}
-      {data.warning_message && WarningIcon && (
-        <div 
+      {data.warning_message && WarningIcon && 'bgColor' in warningConfig && (
+        <div
           className={`
             p-4 rounded-t-xl border-b
             ${warningConfig.bgColor} ${warningConfig.borderColor}
@@ -221,7 +221,7 @@ export const FreshnessIndicator: React.FC<FreshnessIndicatorProps> = ({
           <div className="flex items-start gap-3">
             <WarningIcon className={`w-5 h-5 ${warningConfig.textColor} flex-shrink-0 mt-0.5`} />
             <div className="flex-1">
-              <p className={`text-sm font-medium ${warningConfig.textColor}`}>
+              <p className={`text-sm font-medium ${'textColor' in warningConfig ? warningConfig.textColor : ''}`}>
                 {data.warning_message}
               </p>
               

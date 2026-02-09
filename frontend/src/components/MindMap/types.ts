@@ -25,6 +25,7 @@ export interface ConceptNodeData {
   description: string;
   type: 'central' | 'primary' | 'secondary' | 'detail';
   relatedTo?: string[];
+  [key: string]: unknown;
 }
 
 export type NodeType = 'central' | 'primary' | 'secondary' | 'detail';

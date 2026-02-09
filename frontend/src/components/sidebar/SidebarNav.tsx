@@ -1,6 +1,5 @@
 import React from "react";
 import { Video, BookOpen, History, Gem, Settings, Crown } from "lucide-react";
-import { useLocation } from "react-router-dom";
 import { SidebarNavItem } from "./SidebarNavItem";
 
 interface SidebarNavProps {
@@ -12,7 +11,6 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   isAdmin = false,
   onNavigate,
 }) => {
-  const location = useLocation();
 
   const navItems = [
     { path: "/dashboard", icon: Video, label: "Vidéo" },

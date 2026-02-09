@@ -15,7 +15,7 @@ import {
   ChevronRight, Edit2, Trash2, Plus, X, RefreshCw,
   FileText, Crown, CreditCard, Mail, Check
 } from 'lucide-react';
-import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from '../components/ui';
+import { DeepSightSpinner, DeepSightSpinnerMicro } from '../components/ui';
 import { API_URL } from '../services/api';
 import { useToast } from '../components/Toast';
 
@@ -71,7 +71,7 @@ const PLAN_CONFIG: Record<string, { color: string; bg: string; label: string }> 
 
 export const AdminPage: React.FC = () => {
   const { user } = useAuth();
-  const { t, language } = useTranslation();
+  const { language } = useTranslation();
   const navigate = useNavigate();
   const { showToast, ToastComponent } = useToast();
 
@@ -257,15 +257,15 @@ export const AdminPage: React.FC = () => {
   if (!isUserAdmin) {
     return (
       <div className="min-h-screen bg-bg-primary relative">
-        <DoodleBackground variant="default" density={50} />
+        {/* Background handled by CSS design system v8.0 */}
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <main className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
+        <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
           <div className="min-h-screen flex items-center justify-center p-6">
             <div className="max-w-md text-center">
               <div className="w-20 h-20 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-6">
                 <Lock className="w-10 h-10 text-red-500" />
               </div>
-              <h1 className="font-display text-2xl mb-4">
+              <h1 className="font-semibold text-2xl mb-4">
                 {language === 'fr' ? 'Accès refusé' : 'Access denied'}
               </h1>
               <p className="text-text-secondary mb-8">
@@ -297,10 +297,10 @@ export const AdminPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
-      <DoodleBackground variant="default" density={50} />
+      <DoodleBackground variant="tech" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       
-      <main className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
+      <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
         <div className="min-h-screen p-6 lg:p-8">
           <div className="max-w-7xl mx-auto">
             
@@ -308,7 +308,7 @@ export const AdminPage: React.FC = () => {
             <header className="mb-8">
               <div className="flex items-center gap-2 mb-2">
                 <Shield className="w-6 h-6 text-accent-primary" />
-                <h1 className="font-display text-2xl">Administration</h1>
+                <h1 className="font-semibold text-2xl">Administration</h1>
               </div>
               <p className="text-text-secondary text-sm">
                 {language === 'fr' 
@@ -369,7 +369,7 @@ export const AdminPage: React.FC = () => {
                             <Users className="w-5 h-5 text-blue-600" />
                           </div>
                         </div>
-                        <p className="text-2xl font-display font-semibold">{stats.total_users}</p>
+                        <p className="text-2xl font-semibold font-semibold">{stats.total_users}</p>
                         <p className="text-sm text-text-tertiary">
                           {language === 'fr' ? 'Utilisateurs' : 'Users'}
                         </p>
@@ -381,7 +381,7 @@ export const AdminPage: React.FC = () => {
                             <Activity className="w-5 h-5 text-green-600" />
                           </div>
                         </div>
-                        <p className="text-2xl font-display font-semibold">{stats.new_users_today}</p>
+                        <p className="text-2xl font-semibold font-semibold">{stats.new_users_today}</p>
                         <p className="text-sm text-text-tertiary">
                           {language === 'fr' ? 'Nouveaux aujourd\'hui' : 'New today'}
                         </p>
@@ -393,7 +393,7 @@ export const AdminPage: React.FC = () => {
                             <BarChart3 className="w-5 h-5 text-purple-600" />
                           </div>
                         </div>
-                        <p className="text-2xl font-display font-semibold">{stats.total_videos}</p>
+                        <p className="text-2xl font-semibold font-semibold">{stats.total_videos}</p>
                         <p className="text-sm text-text-tertiary">
                           {language === 'fr' ? 'Vidéos analysées' : 'Videos analyzed'}
                         </p>
@@ -405,7 +405,7 @@ export const AdminPage: React.FC = () => {
                             <CreditCard className="w-5 h-5 text-amber-600" />
                           </div>
                         </div>
-                        <p className="text-2xl font-display font-semibold">€{stats.revenue_estimate.toFixed(0)}</p>
+                        <p className="text-2xl font-semibold font-semibold">€{stats.revenue_estimate.toFixed(0)}</p>
                         <p className="text-sm text-text-tertiary">
                           {language === 'fr' ? 'Revenus (mois)' : 'Revenue (month)'}
                         </p>
@@ -699,7 +699,7 @@ export const AdminPage: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-bg-primary rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="font-display text-lg">{language === 'fr' ? 'Modifier le plan' : 'Edit Plan'}</h3>
+              <h3 className="font-semibold text-lg">{language === 'fr' ? 'Modifier le plan' : 'Edit Plan'}</h3>
               <button onClick={() => setShowUserModal(false)} className="p-2 rounded-lg hover:bg-bg-hover">
                 <X className="w-5 h-5" />
               </button>
@@ -753,7 +753,7 @@ export const AdminPage: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-bg-primary rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="font-display text-lg">{language === 'fr' ? 'Ajouter des crédits' : 'Add Credits'}</h3>
+              <h3 className="font-semibold text-lg">{language === 'fr' ? 'Ajouter des crédits' : 'Add Credits'}</h3>
               <button onClick={() => setShowCreditsModal(false)} className="p-2 rounded-lg hover:bg-bg-hover">
                 <X className="w-5 h-5" />
               </button>

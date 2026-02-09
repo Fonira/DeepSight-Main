@@ -14,10 +14,10 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, GraduationCap, GitBranch, Sparkles,
-  AlertCircle, BookOpen, Brain, Download, ChevronRight,
+  AlertCircle, BookOpen, Brain, ChevronRight,
   Zap, Settings, Plus, Minus, Info, Lock, Crown
 } from 'lucide-react';
-import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
+import { DeepSightSpinner, DeepSightSpinnerMicro } from './ui';
 import { StudyCard } from './StudyCard';
 import { ConceptMap } from './ConceptMap';
 
@@ -295,10 +295,6 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
     setError(null);
   };
 
-  const handleBackToOptions = () => {
-    setViewMode('options');
-  };
-
   const texts = {
     fr: {
       title: 'Outils d\'étude',
@@ -392,7 +388,7 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
                 <GraduationCap className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-display font-semibold">{t.title}</h2>
+                <h2 className="text-xl font-semibold">{t.title}</h2>
                 <p className="text-purple-100 text-sm">{t.subtitle}</p>
               </div>
             </div>

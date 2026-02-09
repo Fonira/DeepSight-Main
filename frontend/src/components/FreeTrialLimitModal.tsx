@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { X, Zap, GraduationCap, Star, Crown, Sparkles, ArrowRight, Check, Clock, BookOpen, Brain, TrendingUp, Users } from 'lucide-react';
+import { X, Zap, GraduationCap, Star, Crown, Sparkles, ArrowRight, Check, Clock, BookOpen, Brain, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
@@ -87,7 +87,6 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
 
   // Get student plan info
   const studentPlan = PLANS_INFO.find(p => p.id === 'student')!;
-  const proPlan = PLANS_INFO.find(p => p.id === 'pro')!;
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">

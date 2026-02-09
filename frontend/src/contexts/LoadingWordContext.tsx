@@ -12,7 +12,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useLanguage } from './LanguageContext';
-import { DEFAULT_WORDS, getRandomWord, WordData } from '../data/defaultWords';
+import { getRandomWord, WordData } from '../data/defaultWords';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -162,7 +162,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
     // Limiter la taille du cache
     if (displayedWords.size > 50) {
       const iterator = displayedWords.values();
-      displayedWords.delete(iterator.next().value);
+      displayedWords.delete(iterator.next().value as string);
     }
   }, [language]);
 
@@ -181,7 +181,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
       // Limiter la taille du cache
       if (displayedWords.size > 50) {
         const iterator = displayedWords.values();
-        displayedWords.delete(iterator.next().value);
+        displayedWords.delete(iterator.next().value as string);
       }
     }
     // PAS DE FALLBACK LOCAL - Si historique existe, on n'affiche QUE l'historique

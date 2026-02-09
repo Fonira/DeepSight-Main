@@ -11,7 +11,7 @@
 
 import React from 'react';
 import {
-  CheckCircle, XCircle, Clock, Target, Zap,
+  CheckCircle, XCircle, Clock, Target,
   TrendingUp, Award
 } from 'lucide-react';
 

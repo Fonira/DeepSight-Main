@@ -1,11 +1,11 @@
 /**
- * DEEP SIGHT v5.2 — Sidebar
- * Navigation latérale sobre et fonctionnelle
- * ✅ Utilise le système i18n centralisé
+ * DEEP SIGHT v8.0 — Premium Sidebar
+ * Collapsible with tooltip, active indicator, glassmorphism
  */
 
 import React from "react";
 import { NavLink, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   History,
@@ -25,86 +25,60 @@ import {
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
 
-// === Logo cliquable vers la page principale ===
+// === Logo ===
 const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({ collapsed, onClick }) => {
   const [imageError, setImageError] = React.useState(false);
   const { t } = useTranslation();
-  
-  // New compass/star logo SVG fallback (simplified version of the cosmic logo)
+
   const LogoSVG = () => (
-    <svg viewBox="0 0 100 100" className="w-full h-full">
+    <svg viewBox="0 0 32 32" className="w-full h-full">
       <defs>
-        <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#00D4FF" />
-          <stop offset="25%" stopColor="#8B5CF6" />
-          <stop offset="50%" stopColor="#FF00FF" />
-          <stop offset="75%" stopColor="#FF8C00" />
-          <stop offset="100%" stopColor="#FFD700" />
+        <linearGradient id="sidebarLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#6366f1" />
+          <stop offset="50%" stopColor="#8b5cf6" />
+          <stop offset="100%" stopColor="#06b6d4" />
         </linearGradient>
-        <radialGradient id="cosmicBg" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#1a0a2e" />
-          <stop offset="100%" stopColor="#0a0a0b" />
-        </radialGradient>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
-          <feMerge>
-            <feMergeNode in="coloredBlur"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
-        </filter>
       </defs>
-      {/* Background */}
-      <circle cx="50" cy="50" r="48" fill="url(#cosmicBg)" />
-      {/* Outer ring */}
-      <circle cx="50" cy="50" r="42" fill="none" stroke="url(#logoGradient)" strokeWidth="1.5" opacity="0.6" />
-      {/* Inner rings */}
-      <circle cx="50" cy="50" r="32" fill="none" stroke="url(#logoGradient)" strokeWidth="1" opacity="0.5" />
-      <circle cx="50" cy="50" r="22" fill="none" stroke="url(#logoGradient)" strokeWidth="1" opacity="0.4" />
-      {/* 8-pointed star */}
+      <rect width="32" height="32" rx="8" fill="var(--bg-tertiary)" />
       <path
-        d="M50 8 L54 38 L84 42 L58 50 L84 58 L54 62 L50 92 L46 62 L16 58 L42 50 L16 42 L46 38 Z"
-        fill="url(#logoGradient)"
-        filter="url(#glow)"
+        d="M16 6 L18 13 L25 14 L19 17 L25 20 L18 21 L16 28 L14 21 L7 20 L13 17 L7 14 L14 13 Z"
+        fill="url(#sidebarLogoGrad)"
         opacity="0.9"
       />
-      {/* Center point */}
-      <circle cx="50" cy="50" r="4" fill="#0a0a0b" />
     </svg>
   );
-  
+
   return (
-    <button 
+    <button
       onClick={onClick}
-      className="flex items-center gap-3 group cursor-pointer hover:opacity-90 transition-all"
+      className="flex items-center gap-2.5 group cursor-pointer hover:opacity-90 transition-all"
       title={t.nav.dashboard}
     >
-      <div className="relative w-10 h-10 flex-shrink-0 rounded-xl overflow-hidden flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-        <div 
-          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-          style={{
-            background: 'radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, transparent 70%)',
-            filter: 'blur(8px)',
-          }}
-        />
+      <div className="relative w-8 h-8 flex-shrink-0 rounded-lg overflow-hidden flex items-center justify-center">
         {!imageError ? (
           <img
             src="/deep-sight-logo.png"
             alt="Deep Sight"
-            className="w-full h-full object-contain relative z-10"
-            style={{ filter: 'drop-shadow(0 2px 8px rgba(99, 102, 241, 0.5))' }}
+            className="w-full h-full object-contain"
             onError={() => setImageError(true)}
           />
         ) : (
-          <div className="w-full h-full relative z-10">
-            <LogoSVG />
-          </div>
+          <LogoSVG />
         )}
       </div>
-      {!collapsed && (
-        <span className="font-display text-lg font-semibold tracking-tight bg-gradient-to-r from-violet-400 via-indigo-400 to-cyan-400 bg-clip-text text-transparent">
-          Deep Sight
-        </span>
-      )}
+      <AnimatePresence>
+        {!collapsed && (
+          <motion.span
+            initial={{ opacity: 0, width: 0 }}
+            animate={{ opacity: 1, width: 'auto' }}
+            exit={{ opacity: 0, width: 0 }}
+            transition={{ duration: 0.15 }}
+            className="font-semibold text-sm tracking-tight text-gradient whitespace-nowrap overflow-hidden"
+          >
+            Deep Sight
+          </motion.span>
+        )}
+      </AnimatePresence>
     </button>
   );
 };
@@ -120,8 +94,8 @@ interface NavItemProps {
 }
 
 const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, collapsed, badge, external }) => {
-  const baseClasses = "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium";
-  
+  const baseClasses = "flex items-center gap-2.5 px-2.5 py-2 rounded-md transition-all text-[0.8125rem] font-medium relative";
+
   if (external) {
     return (
       <a
@@ -131,11 +105,11 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, collapsed, bad
         className={`${baseClasses} text-text-secondary hover:text-text-primary hover:bg-bg-hover`}
         title={collapsed ? label : undefined}
       >
-        <Icon className="w-5 h-5 flex-shrink-0" />
+        <Icon className="w-[18px] h-[18px] flex-shrink-0" />
         {!collapsed && (
           <>
-            <span className="flex-1">{label}</span>
-            <ExternalLink className="w-3.5 h-3.5 text-text-muted" />
+            <span className="flex-1 truncate">{label}</span>
+            <ExternalLink className="w-3 h-3 text-text-muted" />
           </>
         )}
       </a>
@@ -148,21 +122,41 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, collapsed, bad
       className={({ isActive }) =>
         `${baseClasses} ${
           isActive
-            ? 'bg-accent-primary-muted text-accent-primary'
+            ? 'bg-accent-primary-muted text-accent-primary-hover'
             : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
         }`
       }
       title={collapsed ? label : undefined}
     >
-      <Icon className="w-5 h-5 flex-shrink-0" />
-      {!collapsed && (
+      {({ isActive }) => (
         <>
-          <span className="flex-1">{label}</span>
-          {badge && (
-            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-accent-secondary-muted text-accent-secondary">
-              {badge}
-            </span>
+          {/* Active indicator bar */}
+          {isActive && (
+            <motion.div
+              layoutId="sidebar-active"
+              className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-accent-primary rounded-r-full"
+              transition={{ type: "spring", stiffness: 350, damping: 30 }}
+            />
           )}
+          <Icon className="w-[18px] h-[18px] flex-shrink-0" />
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.div
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.15 }}
+                className="flex items-center flex-1 min-w-0 gap-2"
+              >
+                <span className="flex-1 truncate">{label}</span>
+                {badge && (
+                  <span className="px-1.5 py-0.5 rounded-full text-[0.625rem] font-medium bg-accent-secondary-muted text-accent-secondary">
+                    {badge}
+                  </span>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
     </NavLink>
@@ -170,11 +164,7 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, collapsed, bad
 };
 
 // === User Card ===
-interface UserCardProps {
-  collapsed?: boolean;
-}
-
-const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
+const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -182,11 +172,11 @@ const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
   if (!user) return null;
 
   const planLabels: Record<string, string> = {
-    free: `🆓 ${t.upgrade.plans.free.name}`,
-    starter: `⚡ ${t.upgrade.plans.starter.name}`,
-    pro: `⭐ ${t.upgrade.plans.pro.name}`,
-    expert: `👑 ${t.upgrade.plans.expert.name}`,
-    unlimited: '👑 Admin',
+    free: t.upgrade.plans.free.name,
+    starter: t.upgrade.plans.starter.name,
+    pro: t.upgrade.plans.pro.name,
+    expert: t.upgrade.plans.expert.name,
+    unlimited: 'Admin',
   };
 
   const planColors: Record<string, string> = {
@@ -198,7 +188,7 @@ const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
   };
 
   const planBgColors: Record<string, string> = {
-    free: 'bg-gray-500/10',
+    free: 'bg-bg-tertiary',
     starter: 'bg-emerald-500/10',
     pro: 'bg-amber-500/10',
     expert: 'bg-purple-500/10',
@@ -212,19 +202,15 @@ const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
     navigate('/');
   };
 
-  const formatCredits = (credits: number) => {
-    return credits.toLocaleString();
-  };
-
   if (collapsed) {
     return (
-      <div className="p-2">
+      <div className="p-2 flex justify-center">
         <button
           onClick={handleLogout}
-          className="w-full p-2 rounded-lg hover:bg-bg-hover transition-colors"
+          className="w-8 h-8 rounded-md hover:bg-bg-hover transition-colors flex items-center justify-center"
           title={t.nav.logout}
         >
-          <div className={`w-8 h-8 rounded-full ${planBgColors[currentPlan]} flex items-center justify-center ${planColors[currentPlan]} font-medium text-sm`}>
+          <div className={`w-7 h-7 rounded-full ${planBgColors[currentPlan]} flex items-center justify-center ${planColors[currentPlan]} font-medium text-xs`}>
             {user.email?.charAt(0).toUpperCase() || 'U'}
           </div>
         </button>
@@ -234,61 +220,63 @@ const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
 
   return (
     <div className="p-3">
-      <div className="p-3 rounded-xl bg-bg-tertiary border border-border-subtle">
-        <div className="flex items-center gap-3 mb-3">
-          <div className={`w-10 h-10 rounded-full ${planBgColors[currentPlan]} flex items-center justify-center ${planColors[currentPlan]} font-semibold`}>
+      <div className="p-3 rounded-lg bg-bg-tertiary/50 border border-border-subtle">
+        <div className="flex items-center gap-2.5 mb-2.5">
+          <div className={`w-8 h-8 rounded-full ${planBgColors[currentPlan]} flex items-center justify-center ${planColors[currentPlan]} font-semibold text-xs`}>
             {user.email?.charAt(0).toUpperCase() || 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-text-primary truncate">
+            <p className="text-xs font-medium text-text-primary truncate">
               {user.email?.split('@')[0] || 'User'}
             </p>
-            <p className={`text-xs font-semibold ${planColors[currentPlan]}`}>
+            <p className={`text-[0.625rem] font-semibold ${planColors[currentPlan]}`}>
               {planLabels[currentPlan]}
             </p>
           </div>
         </div>
 
         {user.credits !== undefined && (
-          <div className="mb-3 p-2 rounded-lg bg-bg-hover">
-            <div className="flex items-center justify-between text-xs mb-1">
+          <div className="mb-2.5 p-2 rounded-md bg-bg-primary/50">
+            <div className="flex items-center justify-between text-[0.625rem] mb-1">
               <span className="text-text-tertiary flex items-center gap-1">
                 <Sparkles className="w-3 h-3" />
                 {t.dashboard.credits}
               </span>
-              <span className={`font-bold ${planColors[currentPlan]}`}>
-                {formatCredits(user.credits)}
+              <span className={`font-bold tabular-nums ${planColors[currentPlan]}`}>
+                {user.credits.toLocaleString()}
               </span>
             </div>
             {user.credits_monthly && user.credits_monthly > 0 && (
-              <div className="h-1.5 rounded-full bg-bg-primary overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${
-                    currentPlan === 'free' ? 'bg-gray-500' :
+              <div className="h-1 rounded-full bg-bg-hover overflow-hidden">
+                <motion.div
+                  className={`h-full rounded-full ${
+                    currentPlan === 'free' ? 'bg-text-muted' :
                     currentPlan === 'starter' ? 'bg-emerald-500' :
                     currentPlan === 'pro' ? 'bg-amber-500' :
                     'bg-purple-500'
                   }`}
-                  style={{ width: `${Math.min((user.credits / user.credits_monthly) * 100, 100)}%` }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min((user.credits / user.credits_monthly) * 100, 100)}%` }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
                 />
               </div>
             )}
           </div>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {currentPlan === 'free' && (
             <button
               onClick={() => navigate('/upgrade')}
-              className="flex-1 px-3 py-1.5 rounded-lg bg-accent-primary text-white text-xs font-medium hover:bg-accent-primary-hover transition-colors flex items-center justify-center gap-1.5"
+              className="flex-1 px-2.5 py-1.5 rounded-md bg-accent-primary text-white text-[0.6875rem] font-medium hover:bg-accent-primary-hover transition-colors flex items-center justify-center gap-1"
             >
-              <Sparkles className="w-3.5 h-3.5" />
+              <Sparkles className="w-3 h-3" />
               {t.nav.upgrade}
             </button>
           )}
           <button
             onClick={handleLogout}
-            className="px-3 py-1.5 rounded-lg bg-bg-hover text-text-secondary text-xs font-medium hover:text-text-primary transition-colors"
+            className="px-2.5 py-1.5 rounded-md bg-bg-hover text-text-tertiary text-[0.6875rem] font-medium hover:text-text-primary transition-colors"
             title={t.nav.logout}
           >
             <LogOut className="w-3.5 h-3.5" />
@@ -299,13 +287,11 @@ const UserCard: React.FC<UserCardProps> = ({ collapsed }) => {
   );
 };
 
-// === Sidebar principale ===
+// === Sidebar ===
 interface SidebarProps {
   collapsed?: boolean;
   onToggle?: () => void;
-  /** Mobile: is sidebar open (visible) */
   mobileOpen?: boolean;
-  /** Mobile: callback to close sidebar */
   onMobileClose?: () => void;
 }
 
@@ -320,138 +306,92 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navigate = useNavigate();
 
   const isProUser = user?.plan === 'pro' || user?.plan === 'team' || user?.plan === 'expert' || user?.plan === 'unlimited';
-
   const ADMIN_EMAIL = "maximeleparc3@gmail.com";
   const isUserAdmin = user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
   const handleLogoClick = () => {
     navigate('/dashboard');
-    // Close mobile menu after navigation
     onMobileClose?.();
   };
 
   const handleNavClick = () => {
-    // Close mobile menu after navigation
     onMobileClose?.();
   };
 
   return (
     <>
-      {/* Mobile overlay backdrop */}
-      {mobileOpen && (
-        <div
-          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity"
-          onClick={onMobileClose}
-          aria-hidden="true"
-        />
-      )}
+      {/* Mobile overlay */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={onMobileClose}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
 
       <aside
-        className={`fixed left-0 top-0 h-screen bg-bg-secondary border-r border-border-subtle flex flex-col z-40 transition-all duration-300
-          ${collapsed ? 'w-[72px]' : 'w-[260px]'}
-          ${/* Mobile: slide in/out */ ''}
+        className={`fixed left-0 top-0 h-screen bg-bg-secondary/95 backdrop-blur-xl border-r border-border-subtle flex flex-col z-40 transition-all duration-200 ease-out
+          ${collapsed ? 'w-[60px]' : 'w-[240px]'}
           lg:translate-x-0
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
       >
         {/* Header */}
-        <div className={`h-16 flex items-center justify-between border-b border-border-subtle ${collapsed ? 'px-4' : 'px-4'}`}>
+        <div className={`h-14 flex items-center justify-between border-b border-border-subtle ${collapsed ? 'px-3 justify-center' : 'px-3.5'}`}>
           <Logo collapsed={collapsed} onClick={handleLogoClick} />
-          <div className="flex items-center gap-2">
-            {/* Mobile close button */}
+          <div className="flex items-center gap-1">
             {onMobileClose && (
               <button
                 onClick={onMobileClose}
-                className="lg:hidden w-8 h-8 rounded-md flex items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-bg-hover transition-colors"
-                aria-label="Fermer le menu"
+                className="lg:hidden w-7 h-7 rounded-md flex items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-bg-hover transition-colors"
+                aria-label="Close menu"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
             )}
-            {/* Desktop collapse toggle */}
             {onToggle && (
               <button
                 onClick={onToggle}
-                className="hidden lg:flex w-7 h-7 rounded-md items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-bg-hover transition-colors"
+                className="hidden lg:flex w-6 h-6 rounded-md items-center justify-center text-text-muted hover:text-text-secondary hover:bg-bg-hover transition-colors"
+                aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               >
-                {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+                {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
               </button>
             )}
           </div>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1" onClick={handleNavClick}>
-          <NavItem
-            to="/dashboard"
-            icon={LayoutDashboard}
-            label={t.nav.analysis}
-            collapsed={collapsed}
-          />
-          <NavItem
-            to="/history"
-            icon={History}
-            label={t.nav.history}
-            collapsed={collapsed}
-          />
-          <NavItem
-            to="/playlists"
-            icon={ListVideo}
-            label={t.nav.playlists}
-            collapsed={collapsed}
-            badge={isProUser ? undefined : "Pro"}
-          />
+        <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5" onClick={handleNavClick}>
+          <NavItem to="/dashboard" icon={LayoutDashboard} label={t.nav.analysis} collapsed={collapsed} />
+          <NavItem to="/history" icon={History} label={t.nav.history} collapsed={collapsed} />
+          <NavItem to="/playlists" icon={ListVideo} label={t.nav.playlists} collapsed={collapsed} badge={isProUser ? undefined : "Pro"} />
 
-          <div className="h-px bg-border-subtle my-4" />
+          <div className="h-px bg-border-subtle my-3 mx-1" />
 
-          <NavItem
-            to="/settings"
-            icon={Settings}
-            label={t.nav.settings}
-            collapsed={collapsed}
-          />
-          <NavItem
-            to="/account"
-            icon={User}
-            label={t.nav.myAccount}
-            collapsed={collapsed}
-          />
-          <NavItem
-            to="/upgrade"
-            icon={CreditCard}
-            label={t.nav.subscription}
-            collapsed={collapsed}
-          />
-          <NavItem
-            to="/usage"
-            icon={BarChart3}
-            label={t.nav.usage || (language === 'fr' ? 'Utilisation' : 'Usage')}
-            collapsed={collapsed}
-          />
+          <NavItem to="/settings" icon={Settings} label={t.nav.settings} collapsed={collapsed} />
+          <NavItem to="/account" icon={User} label={t.nav.myAccount} collapsed={collapsed} />
+          <NavItem to="/upgrade" icon={CreditCard} label={t.nav.subscription} collapsed={collapsed} />
+          <NavItem to="/usage" icon={BarChart3} label={t.nav.usage || (language === 'fr' ? 'Utilisation' : 'Usage')} collapsed={collapsed} />
 
           {isUserAdmin && (
             <>
-              <div className="h-px bg-border-subtle my-4" />
-              <NavItem
-                to="/admin"
-                icon={Shield}
-                label={t.nav.admin}
-                collapsed={collapsed}
-                badge="🔐"
-              />
+              <div className="h-px bg-border-subtle my-3 mx-1" />
+              <NavItem to="/admin" icon={Shield} label={t.nav.admin} collapsed={collapsed} />
             </>
           )}
 
-          <div className="h-px bg-border-subtle my-4" />
-          <NavItem
-            to="/legal"
-            icon={Scale}
-            label={t.nav.legal}
-            collapsed={collapsed}
-          />
+          <div className="h-px bg-border-subtle my-3 mx-1" />
+          <NavItem to="/legal" icon={Scale} label={t.nav.legal} collapsed={collapsed} />
         </nav>
 
-        {/* Footer avec User */}
+        {/* User */}
         <div className="border-t border-border-subtle">
           <UserCard collapsed={collapsed} />
         </div>

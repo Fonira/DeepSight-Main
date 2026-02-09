@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { StatCard, ActivityChart, UsageProgress, CategoryPieChart } from '../components/analytics';
-import { useAuth } from '../hooks/useAuth';
+
 import { useTranslation } from '../hooks/useTranslation';
 
 // Types
@@ -113,7 +113,7 @@ const fetchRecentAnalyses = async (limit: number = 5): Promise<RecentAnalysis[]>
 };
 
 export const AnalyticsPage: React.FC = () => {
-  const { user } = useAuth();
+
   const { language } = useTranslation();
   const navigate = useNavigate();
   

@@ -590,6 +590,8 @@
     }
   },
   "payment": {
+    "processing": "Processing...",
+    "redirecting": "Verifying your payment, please wait...",
     "success": {
       "title": "Payment successful!",
       "subtitle": "Thank you for your subscription. Your benefits are now active.",

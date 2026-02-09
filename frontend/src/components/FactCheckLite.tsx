@@ -12,7 +12,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { 
-  Shield, AlertTriangle, CheckCircle, Info, Search,
+  Shield, AlertTriangle, Info, Search,
   ChevronDown, ChevronUp, ExternalLink, Sparkles,
   AlertCircle, HelpCircle, TrendingUp, Eye, Lock
 } from 'lucide-react';
@@ -41,11 +41,11 @@ interface FactCheckLiteData {
 }
 
 interface ReliabilityResult {
-  freshness: any;
-  fact_check_lite: FactCheckLiteData;
-  analysis_type: string;
-  user_plan: string;
-  full_factcheck_available: boolean;
+  freshness?: any;
+  fact_check_lite?: FactCheckLiteData;
+  analysis_type?: string;
+  user_plan?: string;
+  full_factcheck_available?: boolean;
 }
 
 interface FactCheckLiteProps {
@@ -151,6 +151,13 @@ export const FactCheckLite: React.FC<FactCheckLiteProps> = ({
   }
 
   const factCheck = data.fact_check_lite;
+
+  if (!factCheck) {
+    return (
+      <div className={`animate-pulse bg-bg-tertiary rounded-xl ${compact ? 'h-16' : 'h-48'} ${className}`} />
+    );
+  }
+
   const confidenceLevel = getConfidenceLevel(factCheck.overall_confidence);
   const confidenceConfig = CONFIDENCE_CONFIG[confidenceLevel];
 

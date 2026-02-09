@@ -41,7 +41,7 @@ interface UseNotificationsOptions {
 }
 
 export function useNotifications(options: UseNotificationsOptions = {}) {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const token = getAccessToken();
   const [isConnected, setIsConnected] = useState(false);
   const [notifications, setNotifications] = useState<DeepSightNotification[]>([]);

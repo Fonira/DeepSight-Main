@@ -53,7 +53,6 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   showWord = false,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [videoLoaded, setVideoLoaded] = useState(false);
   const [videoError, setVideoError] = useState(false);
   const pixelSize = typeof size === 'number' ? size : sizeMap[size];
 
@@ -64,7 +63,6 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
     const playVideo = async () => {
       try {
         await video.play();
-        setVideoLoaded(true);
       } catch {
         // Autoplay bloqué, on continue
       }

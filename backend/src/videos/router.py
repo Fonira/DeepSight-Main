@@ -1975,7 +1975,30 @@ async def get_task_status(
     session: AsyncSession = Depends(get_session)
 ):
     """Récupère le status d'une tâche d'analyse"""
-    
+
+    # Gérer les task_id de cache (format: cached_<summary_id>)
+    if task_id.startswith("cached_"):
+        try:
+            summary_id = int(task_id.replace("cached_", ""))
+            summary = await get_summary_by_id(session, summary_id, current_user.id)
+            if summary:
+                return TaskStatusResponse(
+                    task_id=task_id,
+                    status="completed",
+                    progress=100,
+                    message="✅ Analyse retrouvée en cache (gratuit!)",
+                    result={
+                        "summary_id": summary.id,
+                        "cached": True,
+                        "video_title": summary.video_title,
+                        "category": summary.category,
+                        "cost": 0,
+                    }
+                )
+        except (ValueError, Exception):
+            pass
+        raise HTTPException(status_code=404, detail="Task not found")
+
     # Vérifier le cache mémoire d'abord
     if task_id in _task_store:
         task = _task_store[task_id]

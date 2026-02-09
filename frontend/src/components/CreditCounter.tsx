@@ -11,14 +11,13 @@
  */
 
 import React, { useMemo } from 'react';
-import { Coins, Zap, AlertTriangle, TrendingUp, Clock } from 'lucide-react';
+import { Coins, Zap, AlertTriangle, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import {
   normalizePlanId,
   PLAN_LIMITS,
-  CONVERSION_TRIGGERS,
   shouldShowLowCreditsAlert
 } from '../config/planPrivileges';
 

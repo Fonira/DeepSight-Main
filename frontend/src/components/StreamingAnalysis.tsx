@@ -27,7 +27,7 @@ import {
   Clock,
   AlertCircle
 } from 'lucide-react';
-import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
+import { DeepSightSpinnerMicro } from './ui';
 import { 
   useAnalysisStream, 
   StreamStatus, 

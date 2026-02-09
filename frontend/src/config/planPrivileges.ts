@@ -690,7 +690,7 @@ export function hasFeature(plan: PlanId | string | undefined, feature: keyof Pla
  */
 export function getLimit(plan: PlanId | string | undefined, limit: keyof PlanLimits): number {
   const planId = normalizePlanId(plan as string);
-  return PLAN_LIMITS[planId]?.[limit] ?? 0;
+  return Number(PLAN_LIMITS[planId]?.[limit] ?? 0);
 }
 
 /**

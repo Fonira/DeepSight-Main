@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
@@ -32,7 +32,6 @@ import {
   PLAN_LIMITS,
   PLAN_FEATURES,
   TESTIMONIALS,
-  CONVERSION_TRIGGERS,
   normalizePlanId,
   type PlanId,
 } from '../config/planPrivileges';
@@ -205,7 +204,6 @@ interface SubscriptionStatus {
 export const UpgradePage: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const { language } = useTranslation();
-  const navigate = useNavigate();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -414,16 +412,16 @@ export const UpgradePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
-      <DoodleBackground variant="default" density={50} />
+      <DoodleBackground variant="creative" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
-      <main className={`transition-all duration-300 relative z-10 lg:${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}>
+      <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
         <div className="min-h-screen p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
           <div className="max-w-7xl mx-auto">
 
             {/* Header */}
             <header className="text-center mb-8 sm:mb-10">
-              <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold text-text-primary mb-2 sm:mb-3 px-2">
+              <h1 className="font-semibold text-2xl sm:text-3xl md:text-4xl font-bold text-text-primary mb-2 sm:mb-3 px-2">
                 {language === 'fr' ? 'Choisissez votre plan' : 'Choose your plan'}
               </h1>
               <p className="text-text-secondary text-sm sm:text-base max-w-2xl mx-auto px-4">
@@ -607,7 +605,7 @@ export const UpgradePage: React.FC = () => {
 
                           {/* Price */}
                           <div className="mb-3 sm:mb-4">
-                            <span className="text-2xl sm:text-3xl font-display font-bold text-text-primary">
+                            <span className="text-2xl sm:text-3xl font-semibold font-bold text-text-primary">
                               {plan.price === 0 ? '0' : (plan.price / 100).toFixed(2).replace('.', ',')}
                             </span>
                             <span className="text-text-tertiary text-xs sm:text-sm ml-1">€/{language === 'fr' ? 'mois' : 'mo'}</span>

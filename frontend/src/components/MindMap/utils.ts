@@ -4,7 +4,7 @@
  */
 
 import type { Node, Edge } from '@xyflow/react';
-import type { Concept, ConceptNodeData, NodeType, NODE_SIZES } from './types';
+import type { Concept, ConceptNodeData } from './types';
 
 const SPACING = {
   LEVEL_X: 300,  // Horizontal spacing between levels

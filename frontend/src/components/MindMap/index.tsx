@@ -14,12 +14,10 @@ import React, { useCallback, useMemo, useState, useRef } from 'react';
 import {
   ReactFlow,
   Background,
-  Controls,
   MiniMap,
   useNodesState,
   useEdgesState,
   type Node,
-  type Edge,
   type NodeTypes,
   Panel,
   useReactFlow,
@@ -31,11 +29,9 @@ import {
   ZoomOut,
   Maximize2,
   Download,
-  RefreshCw,
   GitBranch,
   Layers,
   Route,
-  Info,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -111,7 +107,7 @@ const MindMapInner: React.FC<MindMapProps> = ({
 }) => {
   const t = texts[language];
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const { fitView, zoomIn, zoomOut, getNodes, getEdges } = useReactFlow();
+  const { fitView, zoomIn, zoomOut } = useReactFlow();
   
   // State
   const [activeTab, setActiveTab] = useState<'map' | 'concepts' | 'path'>('map');
@@ -131,13 +127,15 @@ const MindMapInner: React.FC<MindMapProps> = ({
     return { initialNodes: nodes, initialEdges: edges };
   }, [data.concepts, videoTitle]);
   
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, , onNodesChange] = useNodesState(initialNodes);
+  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
   
   // Handle node click
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
+    const label = node.data?.label;
+    const labelStr = typeof label === 'string' ? label.toLowerCase() : '';
     const concept = data.concepts.find(
-      c => c.name.toLowerCase() === node.data.label?.toLowerCase()
+      c => c.name.toLowerCase() === labelStr
     );
     setSelectedConcept(concept || null);
   }, [data.concepts]);
@@ -319,7 +317,7 @@ const MindMapInner: React.FC<MindMapProps> = ({
             <Background color="#374151" gap={20} />
             <MiniMap
               nodeColor={(node) => {
-                const type = node.data?.type || 'secondary';
+                const type = (node.data?.type as string) || 'secondary';
                 const colors: Record<string, string> = {
                   central: '#8b5cf6',
                   primary: '#3b82f6',

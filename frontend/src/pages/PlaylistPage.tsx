@@ -8,7 +8,7 @@
  * - Messages d'encouragement pour les longues analyses
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
@@ -19,10 +19,10 @@ import VideoDiscoveryModal from '../components/VideoDiscoveryModal';
 import { videoApi, playlistApi, PlaylistTaskStatus, ApiError } from '../services/api';
 import type { DiscoveryResponse, VideoCandidate } from '../services/api';
 import {
-  ListVideo, Play, AlertCircle, Clock,
-  ChevronRight, Zap, Crown, Lock, ExternalLink, CheckCircle,
-  RefreshCw, History, Settings2, Search, Sparkles, X,
-  ListPlus, GraduationCap, TrendingUp, FileText, Save, BarChart3,
+  ListVideo, Play, AlertCircle,
+  ChevronRight, ExternalLink, CheckCircle,
+  RefreshCw, History, Sparkles, X,
+  FileText, Save, BarChart3,
   Timer, Coffee, Rocket
 } from 'lucide-react';
 import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from '../components/ui';
@@ -154,13 +154,11 @@ const MAX_VIDEOS_OPTIONS = [5, 10, 15, 20, 30, 40, 50];
 
 export const PlaylistPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
-  const { t, language } = useTranslation();
+  const { language } = useTranslation();
   const navigate = useNavigate();
 
   // UI State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [showOptions, setShowOptions] = useState(false);
-
   // Input State
   const [smartInput, setSmartInput] = useState<SmartInputValue>({
     mode: 'url',
@@ -179,19 +177,18 @@ export const PlaylistPage: React.FC = () => {
   // Discovery State
   const [discoveryResult, setDiscoveryResult] = useState<DiscoveryResponse | null>(null);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
-  const [selectedVideos, setSelectedVideos] = useState<VideoCandidate[]>([]);
+  const [, setSelectedVideos] = useState<VideoCandidate[]>([]);
 
   // History State
   const [history, setHistory] = useState<PlaylistHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
 
   // Options - 🆕 Limite par défaut à 10, max 50
-  const [videoCount, setVideoCount] = useState(5);
+  const [videoCount] = useState(5);
   const [maxVideos, setMaxVideos] = useState(10);
   const [mode, setMode] = useState<'accessible' | 'standard' | 'expert'>('accessible');
 
   // User info - Pro/Team/Expert/Unlimited can use playlists
-  const isProUser = user?.plan === 'pro' || user?.plan === 'team' || user?.plan === 'expert' || user?.plan === 'unlimited';
   const userCredits = user?.credits || 0;
 
   // ═══════════════════════════════════════════════════════════════════
@@ -224,7 +221,7 @@ export const PlaylistPage: React.FC = () => {
     try {
       setLoadingHistory(true);
       const data = await playlistApi.getHistory({ limit: 10 });
-      setHistory(data.items || []);
+      setHistory((data.items || []) as unknown as PlaylistHistoryItem[]);
     } catch (err) {
       console.error('Error loading playlist history:', err);
       // 🆕 Ne pas afficher d'erreur si l'endpoint n'existe pas encore
@@ -424,10 +421,6 @@ export const PlaylistPage: React.FC = () => {
     throw new Error('Timeout');
   };
 
-  const navigateToAnalysis = (summaryId: number) => {
-    navigate(`/dashboard?id=${summaryId}`);
-  };
-
   // ═══════════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════════
@@ -445,7 +438,7 @@ export const PlaylistPage: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-bg-primary">
-      <DoodleBackground />
+      <DoodleBackground variant="video" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
       <main className="flex-1 overflow-x-hidden">

@@ -18,7 +18,6 @@ import {
   Shield,
   ShieldCheck,
   ChevronDown,
-  ChevronUp,
   Info,
   Sparkles,
   MessageSquare,

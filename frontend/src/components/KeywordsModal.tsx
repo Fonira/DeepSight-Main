@@ -11,10 +11,10 @@
 import React, { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { 
   X, Copy, Check, Hash, Sparkles, 
-  Filter, Search, ExternalLink, 
+  Search, ExternalLink,
   BookOpen, Zap, Globe, Star
 } from 'lucide-react';
-import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
+import { DeepSightSpinner } from './ui';
 import { EnrichedConcept } from '../services/api';
 
 // ═══════════════════════════════════════════════════════════════════════════════

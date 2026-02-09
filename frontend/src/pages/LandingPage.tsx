@@ -1,99 +1,124 @@
 /**
- * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  🚀 DEEP SIGHT LANDING PAGE v6.0 — Optimisée Conversion                             ║
- * ║  Design académique + Pricing aligné avec UpgradePage                                ║
- * ╚════════════════════════════════════════════════════════════════════════════════════╝
+ * DEEP SIGHT v8.0 — Premium Landing Page
+ * Inspired by Linear/Vercel — gradient mesh hero, scroll animations, glassmorphism
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, useInView } from "framer-motion";
 import {
-  Play, ArrowRight, Check, X, Sparkles,
-  Youtube, Brain, Shield, MessageSquare, FileText,
-  Zap, BookOpen, Search, BarChart3, Globe, Clock,
-  ChevronRight, Users, GraduationCap, Newspaper,
-  Star, Crown, Rocket, TrendingUp
+  ArrowRight, Check, X, Sparkles,
+  Brain, Shield, MessageSquare, FileText,
+  Zap, ChevronRight, Users, GraduationCap, Newspaper,
+  Star, Crown, Rocket
 } from "lucide-react";
 import { useTranslation } from '../hooks/useTranslation';
-import { useTheme } from "../contexts/ThemeContext";
 import { useAuth } from "../hooks/useAuth";
-import DoodleBackground from "../components/DoodleBackground";
-import { DeepSightSpinnerHero } from "../components/ui";
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🎨 LOGO COMPONENT
+// ANIMATION HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const ease = [0.4, 0, 0.2, 1] as const;
+
+const ScrollReveal: React.FC<{
+  children: React.ReactNode;
+  className?: string;
+  delay?: number;
+}> = ({ children, className, delay = 0 }) => {
+  const ref = React.useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-60px" });
+
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      initial={{ opacity: 0, y: 24 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
+      transition={{ duration: 0.5, ease, delay }}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+const StaggerReveal: React.FC<{
+  children: React.ReactNode;
+  className?: string;
+}> = ({ children, className }) => {
+  const ref = React.useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-40px" });
+
+  return (
+    <motion.div
+      ref={ref}
+      className={className}
+      initial="hidden"
+      animate={isInView ? "visible" : "hidden"}
+      variants={{
+        hidden: { opacity: 0 },
+        visible: {
+          opacity: 1,
+          transition: { staggerChildren: 0.08, delayChildren: 0.1 },
+        },
+      }}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+const StaggerItem: React.FC<{
+  children: React.ReactNode;
+  className?: string;
+}> = ({ children, className }) => (
+  <motion.div
+    className={className}
+    variants={{
+      hidden: { opacity: 0, y: 16 },
+      visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease } },
+    }}
+  >
+    {children}
+  </motion.div>
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// LOGO COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const Logo: React.FC<{ className?: string }> = ({ className = "" }) => {
   const [imageError, setImageError] = React.useState(false);
-  
-  // New compass/star logo SVG fallback (simplified version of the cosmic logo)
-  const LogoSVG = () => (
-    <svg viewBox="0 0 100 100" className="w-full h-full">
-      <defs>
-        <linearGradient id="logoGradientLanding" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#00D4FF" />
-          <stop offset="25%" stopColor="#8B5CF6" />
-          <stop offset="50%" stopColor="#FF00FF" />
-          <stop offset="75%" stopColor="#FF8C00" />
-          <stop offset="100%" stopColor="#FFD700" />
-        </linearGradient>
-        <radialGradient id="cosmicBgLanding" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#1a0a2e" />
-          <stop offset="100%" stopColor="#0a0a0b" />
-        </radialGradient>
-        <filter id="glowLanding">
-          <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
-          <feMerge>
-            <feMergeNode in="coloredBlur"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
-        </filter>
-      </defs>
-      {/* Background */}
-      <circle cx="50" cy="50" r="48" fill="url(#cosmicBgLanding)" />
-      {/* Outer ring */}
-      <circle cx="50" cy="50" r="42" fill="none" stroke="url(#logoGradientLanding)" strokeWidth="1.5" opacity="0.6" />
-      {/* Inner rings */}
-      <circle cx="50" cy="50" r="32" fill="none" stroke="url(#logoGradientLanding)" strokeWidth="1" opacity="0.5" />
-      <circle cx="50" cy="50" r="22" fill="none" stroke="url(#logoGradientLanding)" strokeWidth="1" opacity="0.4" />
-      {/* 8-pointed star */}
-      <path
-        d="M50 8 L54 38 L84 42 L58 50 L84 58 L54 62 L50 92 L46 62 L16 58 L42 50 L16 42 L46 38 Z"
-        fill="url(#logoGradientLanding)"
-        filter="url(#glowLanding)"
-        opacity="0.9"
-      />
-      {/* Center point */}
-      <circle cx="50" cy="50" r="4" fill="#0a0a0b" />
-    </svg>
-  );
 
   return (
-    <div className={`flex items-center gap-3 ${className}`}>
-      <div className="relative w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center group">
-        <div 
-          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl"
-          style={{
-            background: 'radial-gradient(circle, rgba(212, 165, 116, 0.3) 0%, rgba(74, 144, 217, 0.2) 50%, transparent 70%)',
-            filter: 'blur(8px)',
-          }}
-        />
+    <div className={`flex items-center gap-2.5 ${className}`}>
+      <div className="relative w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center">
         {!imageError ? (
           <img
             src="/deep-sight-logo.png"
             alt="Deep Sight"
-            className="w-full h-full object-contain relative z-10 transition-transform duration-300 group-hover:scale-110"
-            style={{ filter: 'drop-shadow(0 2px 8px rgba(212, 165, 116, 0.4)) drop-shadow(0 0 6px rgba(74, 144, 217, 0.3))' }}
+            className="w-full h-full object-contain"
             onError={() => setImageError(true)}
           />
         ) : (
-          <div className="w-full h-full relative z-10">
-            <LogoSVG />
-          </div>
+          <svg viewBox="0 0 32 32" className="w-full h-full">
+            <defs>
+              <linearGradient id="landingLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#6366f1" />
+                <stop offset="50%" stopColor="#8b5cf6" />
+                <stop offset="100%" stopColor="#06b6d4" />
+              </linearGradient>
+            </defs>
+            <rect width="32" height="32" rx="8" fill="var(--bg-tertiary)" />
+            <path
+              d="M16 6 L18 13 L25 14 L19 17 L25 20 L18 21 L16 28 L14 21 L7 20 L13 17 L7 14 L14 13 Z"
+              fill="url(#landingLogoGrad)"
+              opacity="0.9"
+            />
+          </svg>
         )}
       </div>
-      <span className="font-display text-xl font-semibold tracking-tight bg-gradient-to-r from-amber-200 via-blue-300 to-purple-400 bg-clip-text text-transparent">
+      <span className="font-semibold text-sm tracking-tight text-text-primary">
         Deep Sight
       </span>
     </div>
@@ -101,7 +126,7 @@ const Logo: React.FC<{ className?: string }> = ({ className = "" }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📊 PLANS CONFIGURATION — ALIGNÉ AVEC planPrivileges.ts et UpgradePage
+// PLANS CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
 type PlanId = 'free' | 'starter' | 'pro' | 'expert';
@@ -112,8 +137,7 @@ interface PlanConfig {
   description: { fr: string; en: string };
   price: number;
   icon: React.ElementType;
-  gradient: string;
-  iconBg: string;
+  color: string;
   popular?: boolean;
   recommended?: boolean;
   features: Array<{
@@ -130,8 +154,7 @@ const PLANS: PlanConfig[] = [
     description: { fr: 'Pour explorer', en: 'To explore' },
     price: 0,
     icon: Zap,
-    gradient: 'from-slate-500 to-slate-600',
-    iconBg: 'bg-slate-500',
+    color: 'text-text-tertiary',
     features: [
       { text: { fr: '5 analyses/mois', en: '5 analyses/month' }, included: true },
       { text: { fr: 'Synthèse express', en: 'Express summary' }, included: true },
@@ -147,8 +170,7 @@ const PLANS: PlanConfig[] = [
     description: { fr: 'Pour les réguliers', en: 'For regular users' },
     price: 4.99,
     icon: Star,
-    gradient: 'from-blue-500 to-blue-600',
-    iconBg: 'bg-blue-500',
+    color: 'text-blue-400',
     features: [
       { text: { fr: '50 analyses/mois', en: '50 analyses/month' }, included: true },
       { text: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, included: true },
@@ -164,8 +186,7 @@ const PLANS: PlanConfig[] = [
     description: { fr: 'Pour les power users', en: 'For power users' },
     price: 9.99,
     icon: Crown,
-    gradient: 'from-violet-500 to-purple-600',
-    iconBg: 'bg-violet-500',
+    color: 'text-violet-400',
     popular: true,
     features: [
       { text: { fr: '200 analyses/mois', en: '200 analyses/month' }, included: true },
@@ -182,8 +203,7 @@ const PLANS: PlanConfig[] = [
     description: { fr: 'Pour les professionnels', en: 'For professionals' },
     price: 14.99,
     icon: Rocket,
-    gradient: 'from-amber-500 to-orange-500',
-    iconBg: 'bg-amber-500',
+    color: 'text-amber-400',
     recommended: true,
     features: [
       { text: { fr: 'Analyses illimitées', en: 'Unlimited analyses' }, included: true, highlight: true },
@@ -196,14 +216,14 @@ const PLANS: PlanConfig[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🎯 FEATURES PRINCIPALES
+// FEATURES
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const getFeatures = (language: string) => [
   {
     icon: Brain,
     title: language === 'fr' ? 'Analyse intelligente' : 'Smart Analysis',
-    description: language === 'fr' 
+    description: language === 'fr'
       ? 'IA avancée qui comprend le contexte, identifie les arguments clés et structure l\'information.'
       : 'Advanced AI that understands context, identifies key arguments and structures information.',
   },
@@ -231,7 +251,7 @@ const getFeatures = (language: string) => [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 👥 AUDIENCES CIBLES
+// AUDIENCES
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const getAudiences = (language: string) => [
@@ -259,7 +279,7 @@ const getAudiences = (language: string) => [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📊 STATS HERO
+// STATS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const stats = [
@@ -269,20 +289,19 @@ const stats = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🚀 LANDING PAGE COMPONENT
+// LANDING PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { t, language } = useTranslation();
-  const { theme } = useTheme();
+  const { language } = useTranslation();
   const { user, isLoading } = useAuth();
   const lang = language as 'fr' | 'en';
 
   const features = getFeatures(language);
   const audiences = getAudiences(language);
 
-  // Redirect si déjà connecté
+  // Redirect if logged in
   useEffect(() => {
     if (!isLoading && user) {
       navigate('/dashboard');
@@ -291,365 +310,423 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative overflow-hidden">
-      {/* Background */}
-      <DoodleBackground density={0.3} opacity={0.15} />
+      {/* Gradient mesh background */}
+      <div className="fixed inset-0 pointer-events-none" aria-hidden="true">
+        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-accent-primary/[0.07] rounded-full blur-[120px]" />
+        <div className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-violet-500/[0.05] rounded-full blur-[100px]" />
+        <div className="absolute bottom-1/4 left-1/3 w-[400px] h-[400px] bg-cyan-500/[0.04] rounded-full blur-[100px]" />
+      </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      {/* HEADER */}
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-bg-primary/80 border-b border-border-subtle">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+      {/* ─── HEADER ─── */}
+      <header className="sticky top-0 z-50 backdrop-blur-xl bg-bg-primary/70 border-b border-border-subtle/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <Logo />
 
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/login')}
-              className="text-xs sm:text-sm text-text-secondary hover:text-text-primary transition-colors hidden sm:block"
+              className="text-sm text-text-secondary hover:text-text-primary transition-colors hidden sm:block"
             >
               {language === 'fr' ? 'Connexion' : 'Sign in'}
             </button>
-            <button
+            <motion.button
               onClick={() => navigate('/login')}
-              className="btn btn-primary text-xs sm:text-sm px-3 sm:px-5 py-2"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
               <span className="hidden sm:inline">{language === 'fr' ? 'Commencer' : 'Get Started'}</span>
               <span className="sm:hidden">{language === 'fr' ? 'Essayer' : 'Start'}</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </motion.button>
           </div>
         </div>
       </header>
 
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      {/* HERO SECTION */}
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      <section className="relative py-12 sm:py-24 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto text-center">
+      {/* ─── HERO ─── */}
+      <section className="relative py-20 sm:py-32 px-4 sm:px-6">
+        <div className="max-w-4xl mx-auto text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-accent-primary/10 border border-accent-primary/20 mb-6 sm:mb-8">
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent-primary" />
-            <span className="text-xs sm:text-sm text-accent-primary font-medium">
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease, delay: 0.1 }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent-primary/10 border border-accent-primary/20 mb-8"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-accent-primary" />
+            <span className="text-xs text-accent-primary font-medium">
               {language === 'fr' ? 'Analyse vidéo par IA' : 'AI Video Analysis'}
             </span>
-          </div>
+          </motion.div>
 
           {/* Headline */}
-          <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-display-lg mb-4 sm:mb-6 leading-tight">
-            {language === 'fr' ? 'Transformez vos vidéos' : 'Transform your videos'}
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease, delay: 0.2 }}
+            className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight leading-[1.1] mb-6"
+          >
+            <span className="text-text-primary">
+              {language === 'fr' ? 'Transformez vos vidéos' : 'Transform your videos'}
+            </span>
             <br />
-            <span className="text-accent-primary">
+            <span className="bg-gradient-to-r from-accent-primary via-violet-400 to-cyan-400 bg-clip-text text-transparent">
               {language === 'fr' ? 'en connaissances' : 'into knowledge'}
             </span>
-          </h1>
+          </motion.h1>
 
           {/* Subheadline */}
-          <p className="text-sm sm:text-base md:text-lg text-text-secondary max-w-2xl mx-auto mb-8 sm:mb-10 px-2">
+          <motion.p
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease, delay: 0.3 }}
+            className="text-base sm:text-lg text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed"
+          >
             {language === 'fr'
               ? 'Deep Sight analyse, synthétise et vérifie le contenu de vos vidéos YouTube. Conçu pour les chercheurs, journalistes et professionnels exigeants.'
               : 'Deep Sight analyzes, synthesizes and verifies your YouTube video content. Built for demanding researchers, journalists and professionals.'}
-          </p>
+          </motion.p>
 
           {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-12">
-            <button
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease, delay: 0.4 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-16"
+          >
+            <motion.button
               onClick={() => navigate('/login')}
-              className="btn btn-accent w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-3.5 text-sm sm:text-base shadow-lg shadow-accent-primary/25"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 rounded-lg bg-accent-primary text-white font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
               {language === 'fr' ? 'Essayer gratuitement' : 'Try for free'}
-              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
-            </button>
+              <ArrowRight className="w-4 h-4" />
+            </motion.button>
             <a
               href="#features"
-              className="text-text-secondary hover:text-text-primary transition-colors flex items-center gap-2 text-sm sm:text-base"
+              className="text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1.5 text-sm"
             >
               {language === 'fr' ? 'En savoir plus' : 'Learn more'}
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3.5 h-3.5" />
             </a>
-          </div>
+          </motion.div>
 
           {/* Stats */}
-          <div className="flex items-center justify-center gap-6 sm:gap-12">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, ease, delay: 0.6 }}
+            className="flex items-center justify-center gap-10 sm:gap-16"
+          >
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
-                <div className="font-display text-xl sm:text-2xl font-semibold text-text-primary">
+                <div className="text-xl sm:text-2xl font-semibold text-text-primary tabular-nums">
                   {stat.value}
                 </div>
-                <div className="text-xs sm:text-sm text-text-tertiary">
+                <div className="text-xs text-text-tertiary mt-0.5">
                   {stat.label[lang]}
                 </div>
               </div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      {/* DEMO / HERO SPINNER SECTION — ✨ DeepSight Spinner XXL */}
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
+      {/* ─── DEMO VISUAL ─── */}
       <section className="py-8 sm:py-16 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="card-elevated rounded-xl sm:rounded-2xl overflow-hidden py-12 sm:py-20 bg-gradient-to-br from-bg-tertiary via-bg-secondary to-bg-tertiary flex flex-col items-center justify-center border border-border-subtle relative">
-            {/* ✨ DeepSight Hero Spinner — Logo animé impressionnant */}
-            <div className="relative">
-              <DeepSightSpinnerHero className="drop-shadow-2xl" />
-              {/* Glow effect */}
-              <div className="absolute inset-0 bg-gradient-radial from-accent-primary/20 via-purple-500/10 to-transparent blur-3xl -z-10 scale-150" />
+        <ScrollReveal className="max-w-4xl mx-auto">
+          <div className="relative rounded-2xl overflow-hidden border border-border-subtle bg-bg-secondary/60 backdrop-blur-sm">
+            {/* Gradient top bar */}
+            <div className="h-px bg-gradient-to-r from-transparent via-accent-primary/50 to-transparent" />
+
+            <div className="py-16 sm:py-24 flex flex-col items-center justify-center relative">
+              {/* Animated logo visual */}
+              <motion.div
+                className="relative w-20 h-20 sm:w-24 sm:h-24 mb-6"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+              >
+                <div className="absolute inset-0 rounded-full border border-accent-primary/20" />
+                <div className="absolute inset-2 rounded-full border border-violet-500/15" />
+                <div className="absolute inset-4 rounded-full border border-cyan-500/10" />
+                <motion.div
+                  className="absolute inset-0 flex items-center justify-center"
+                  animate={{ rotate: -360 }}
+                  transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+                >
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-accent-primary via-violet-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-accent-primary/30">
+                    <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                  </div>
+                </motion.div>
+              </motion.div>
+
+              {/* Glow */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="w-48 h-48 bg-accent-primary/10 rounded-full blur-[60px]" />
+              </div>
+
+              <p className="text-sm text-text-secondary font-medium relative z-10">
+                {language === 'fr' ? 'L\'IA qui analyse vos vidéos' : 'AI that analyzes your videos'}
+              </p>
             </div>
-            <p className="text-center text-sm sm:text-base text-text-secondary mt-6 sm:mt-8 font-medium">
-              {language === 'fr' ? 'L\'IA qui analyse vos vidéos' : 'AI that analyzes your videos'}
-            </p>
+
+            {/* Gradient bottom bar */}
+            <div className="h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent" />
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      {/* FEATURES SECTION */}
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      <section id="features" className="py-12 sm:py-20 px-4 sm:px-6">
+      {/* ─── FEATURES ─── */}
+      <section id="features" className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-10 sm:mb-16">
-            <h2 className="font-display text-2xl sm:text-3xl md:text-display-sm mb-3 sm:mb-4">
+          <ScrollReveal className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-text-primary mb-3">
               {language === 'fr' ? 'Fonctionnalités clés' : 'Key Features'}
             </h2>
-            <p className="text-text-secondary text-sm sm:text-base max-w-xl mx-auto px-2">
+            <p className="text-text-secondary text-sm sm:text-base max-w-lg mx-auto">
               {language === 'fr'
                 ? 'Des outils puissants pour extraire le maximum de valeur de chaque vidéo.'
                 : 'Powerful tools to extract maximum value from every video.'}
             </p>
-          </div>
+          </ScrollReveal>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            {features.map((feature, index) => (
-              <div
-                key={feature.title}
-                className="card p-4 sm:p-6 hover:border-accent-primary/30 transition-all"
-              >
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-accent-primary/10 flex items-center justify-center mb-3 sm:mb-4">
-                  <feature.icon className="w-5 h-5 sm:w-6 sm:h-6 text-accent-primary" />
+          <StaggerReveal className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {features.map((feature) => (
+              <StaggerItem key={feature.title}>
+                <div className="group p-5 rounded-xl border border-border-subtle bg-bg-secondary/40 backdrop-blur-sm hover:border-accent-primary/30 hover:bg-bg-secondary/70 transition-all duration-200">
+                  <div className="w-10 h-10 rounded-lg bg-accent-primary/10 flex items-center justify-center mb-4 group-hover:bg-accent-primary/15 transition-colors">
+                    <feature.icon className="w-5 h-5 text-accent-primary" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-text-primary mb-1.5">
+                    {feature.title}
+                  </h3>
+                  <p className="text-text-tertiary text-xs leading-relaxed">
+                    {feature.description}
+                  </p>
                 </div>
-                <h3 className="text-base sm:text-lg font-semibold text-text-primary mb-1.5 sm:mb-2">
-                  {feature.title}
-                </h3>
-                <p className="text-text-secondary text-xs sm:text-sm leading-relaxed">
-                  {feature.description}
-                </p>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerReveal>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      {/* AUDIENCES SECTION */}
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      <section className="py-12 sm:py-20 px-4 sm:px-6 bg-bg-secondary/50">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-10 sm:mb-16">
-            <h2 className="font-display text-2xl sm:text-3xl md:text-display-sm mb-3 sm:mb-4">
+      {/* ─── AUDIENCES ─── */}
+      <section className="py-16 sm:py-24 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto">
+          <ScrollReveal className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-text-primary mb-3">
               {language === 'fr' ? 'Conçu pour vous' : 'Built for you'}
             </h2>
-            <p className="text-text-secondary text-sm sm:text-base max-w-xl mx-auto px-2">
+            <p className="text-text-secondary text-sm sm:text-base max-w-lg mx-auto">
               {language === 'fr'
                 ? 'Que vous soyez chercheur, journaliste ou professionnel, Deep Sight s\'adapte à vos besoins.'
                 : 'Whether you\'re a researcher, journalist or professional, Deep Sight adapts to your needs.'}
             </p>
-          </div>
+          </ScrollReveal>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+          <StaggerReveal className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             {audiences.map((audience) => (
-              <div key={audience.title} className="text-center p-4 sm:p-8">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-bg-tertiary border border-border-subtle flex items-center justify-center mx-auto mb-4 sm:mb-6">
-                  <audience.icon className="w-5 h-5 sm:w-7 sm:h-7 text-accent-primary" />
+              <StaggerItem key={audience.title} className="text-center">
+                <div className="w-14 h-14 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center mx-auto mb-5">
+                  <audience.icon className="w-6 h-6 text-accent-primary" />
                 </div>
-                <h3 className="text-base sm:text-lg font-semibold text-text-primary mb-2 sm:mb-3">
+                <h3 className="text-base font-semibold text-text-primary mb-2">
                   {audience.title}
                 </h3>
-                <p className="text-text-secondary text-xs sm:text-sm leading-relaxed">
+                <p className="text-text-secondary text-sm leading-relaxed max-w-xs mx-auto">
                   {audience.description}
                 </p>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerReveal>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      {/* PRICING SECTION — STYLE UPGRADE PAGE */}
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      <section id="pricing" className="py-12 sm:py-20 px-4 sm:px-6">
+      {/* ─── PRICING ─── */}
+      <section id="pricing" className="py-16 sm:py-24 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-10 sm:mb-16">
-            <h2 className="font-display text-2xl sm:text-3xl md:text-display-sm mb-3 sm:mb-4">
+          <ScrollReveal className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-text-primary mb-3">
               {language === 'fr' ? 'Tarification simple' : 'Simple Pricing'}
             </h2>
-            <p className="text-text-secondary text-sm sm:text-base max-w-xl mx-auto px-2">
+            <p className="text-text-secondary text-sm sm:text-base max-w-lg mx-auto">
               {language === 'fr'
                 ? 'Commencez gratuitement, évoluez selon vos besoins. Sans engagement.'
                 : 'Start for free, scale as you need. No commitment.'}
             </p>
-          </div>
+          </ScrollReveal>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <StaggerReveal className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
             {PLANS.map((plan) => {
               const Icon = plan.icon;
               const isPopular = plan.popular;
               const isRecommended = plan.recommended;
 
+
               return (
-                <div
-                  key={plan.id}
-                  className={`card p-4 sm:p-6 relative transition-all hover:scale-[1.02] active:scale-[0.98] ${
-                    isPopular
-                      ? 'border-violet-500/50 ring-1 ring-violet-500/20 shadow-lg shadow-violet-500/10'
-                      : isRecommended
-                      ? 'border-amber-500/50 ring-1 ring-amber-500/20 shadow-lg shadow-amber-500/10'
-                      : ''
-                  }`}
-                >
-                  {/* Badge */}
-                  {isPopular && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-violet-500 text-white text-xs font-medium whitespace-nowrap">
-                      {language === 'fr' ? 'Populaire' : 'Popular'}
-                    </div>
-                  )}
-                  {isRecommended && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-amber-500 text-white text-xs font-medium whitespace-nowrap">
-                      {language === 'fr' ? 'Recommandé' : 'Recommended'}
-                    </div>
-                  )}
-
-                  {/* Header */}
-                  <div className="flex items-center gap-3 mb-3 sm:mb-4">
-                    <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl ${plan.iconBg} flex items-center justify-center flex-shrink-0`}>
-                      <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-text-primary text-sm sm:text-base">
-                        {plan.name[lang]}
-                      </h3>
-                      <p className="text-xs text-text-tertiary truncate">
-                        {plan.description[lang]}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Price */}
-                  <div className="mb-4 sm:mb-6">
-                    <span className="text-2xl sm:text-3xl font-display font-semibold text-text-primary">
-                      {plan.price === 0 ? '0' : plan.price.toFixed(2).replace('.', ',')}
-                    </span>
-                    <span className="text-text-tertiary text-xs sm:text-sm ml-1">
-                      €/{language === 'fr' ? 'mois' : 'month'}
-                    </span>
-                  </div>
-
-                  {/* Features */}
-                  <div className="space-y-2 sm:space-y-3 mb-4 sm:mb-6">
-                    {plan.features.map((feature, i) => (
-                      <div
-                        key={i}
-                        className={`flex items-start gap-2 sm:gap-3 text-xs sm:text-sm ${
-                          feature.included
-                            ? feature.highlight
-                              ? 'text-accent-primary font-medium'
-                              : 'text-text-secondary'
-                            : 'text-text-muted line-through'
-                        }`}
-                      >
-                        {feature.included ? (
-                          <Check className={`w-3.5 h-3.5 sm:w-4 sm:h-4 mt-0.5 flex-shrink-0 ${
-                            feature.highlight ? 'text-accent-primary' : 'text-accent-success'
-                          }`} />
-                        ) : (
-                          <X className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-text-muted mt-0.5 flex-shrink-0" />
-                        )}
-                        <span>{feature.text[lang]}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* CTA */}
-                  <button
-                    onClick={() => navigate('/login')}
-                    className={`w-full py-2.5 sm:py-3 rounded-xl font-medium text-xs sm:text-sm transition-all min-h-[44px] active:scale-95 ${
+                <StaggerItem key={plan.id}>
+                  <div
+                    className={`relative p-5 rounded-xl border transition-all h-full flex flex-col ${
                       isPopular
-                        ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:opacity-90 shadow-lg'
+                        ? 'border-violet-500/40 bg-violet-500/[0.04] shadow-lg shadow-violet-500/10'
                         : isRecommended
-                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 shadow-lg'
-                        : 'btn-secondary'
+                        ? 'border-amber-500/40 bg-amber-500/[0.04] shadow-lg shadow-amber-500/10'
+                        : 'border-border-subtle bg-bg-secondary/40 hover:border-border-default'
                     }`}
                   >
-                    {plan.price === 0
-                      ? (language === 'fr' ? 'Commencer gratuitement' : 'Start for free')
-                      : (language === 'fr' ? `Choisir ${plan.name.fr}` : `Choose ${plan.name.en}`)}
-                  </button>
-                </div>
+                    {/* Badge */}
+                    {isPopular && (
+                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-violet-500 text-white text-[0.6875rem] font-medium">
+                        {language === 'fr' ? 'Populaire' : 'Popular'}
+                      </div>
+                    )}
+                    {isRecommended && (
+                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-amber-500 text-white text-[0.6875rem] font-medium">
+                        {language === 'fr' ? 'Recommandé' : 'Recommended'}
+                      </div>
+                    )}
+
+                    {/* Header */}
+                    <div className="flex items-center gap-2.5 mb-4">
+                      <div className={`w-8 h-8 rounded-lg ${
+                        isPopular ? 'bg-violet-500/15' :
+                        isRecommended ? 'bg-amber-500/15' :
+                        'bg-bg-tertiary'
+                      } flex items-center justify-center`}>
+                        <Icon className={`w-4 h-4 ${plan.color}`} />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-text-primary text-sm">
+                          {plan.name[lang]}
+                        </h3>
+                        <p className="text-[0.6875rem] text-text-tertiary">
+                          {plan.description[lang]}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Price */}
+                    <div className="mb-5">
+                      <span className="text-2xl font-semibold text-text-primary tabular-nums">
+                        {plan.price === 0 ? '0' : plan.price.toFixed(2).replace('.', ',')}
+                      </span>
+                      <span className="text-text-tertiary text-xs ml-1">
+                        €/{language === 'fr' ? 'mois' : 'month'}
+                      </span>
+                    </div>
+
+                    {/* Features */}
+                    <div className="space-y-2.5 mb-6 flex-1">
+                      {plan.features.map((feature, i) => (
+                        <div
+                          key={i}
+                          className={`flex items-start gap-2 text-xs ${
+                            feature.included
+                              ? feature.highlight
+                                ? 'text-accent-primary'
+                                : 'text-text-secondary'
+                              : 'text-text-muted line-through'
+                          }`}
+                        >
+                          {feature.included ? (
+                            <Check className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
+                              feature.highlight ? 'text-accent-primary' : 'text-emerald-400'
+                            }`} />
+                          ) : (
+                            <X className="w-3.5 h-3.5 text-text-muted mt-0.5 flex-shrink-0" />
+                          )}
+                          <span>{feature.text[lang]}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* CTA */}
+                    <motion.button
+                      onClick={() => navigate('/login')}
+                      className={`w-full py-2.5 rounded-lg font-medium text-sm transition-all ${
+                        isPopular
+                          ? 'bg-violet-500 text-white hover:bg-violet-600'
+                          : isRecommended
+                          ? 'bg-amber-500 text-white hover:bg-amber-600'
+                          : 'bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-border-subtle'
+                      }`}
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {plan.price === 0
+                        ? (language === 'fr' ? 'Commencer gratuitement' : 'Start for free')
+                        : (language === 'fr' ? `Choisir ${plan.name.fr}` : `Choose ${plan.name.en}`)}
+                    </motion.button>
+                  </div>
+                </StaggerItem>
               );
             })}
-          </div>
+          </StaggerReveal>
 
-          {/* Garantie */}
-          <p className="text-center text-xs sm:text-sm text-text-tertiary mt-6 sm:mt-8 px-2">
-            {language === 'fr'
-              ? '✓ Sans engagement • ✓ Annulation facile • ✓ Paiement sécurisé Stripe'
-              : '✓ No commitment • ✓ Easy cancellation • ✓ Secure Stripe payment'}
-          </p>
+          {/* Guarantee */}
+          <ScrollReveal delay={0.2} className="text-center mt-8">
+            <p className="text-xs text-text-tertiary">
+              {language === 'fr'
+                ? 'Sans engagement · Annulation facile · Paiement sécurisé Stripe'
+                : 'No commitment · Easy cancellation · Secure Stripe payment'}
+            </p>
+          </ScrollReveal>
         </div>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      {/* CTA FINAL */}
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      <section className="py-12 sm:py-20 px-4 sm:px-6">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="card-elevated p-6 sm:p-12 rounded-xl sm:rounded-2xl relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-accent-primary/10 to-purple-500/10" />
+      {/* ─── CTA FINAL ─── */}
+      <section className="py-16 sm:py-24 px-4 sm:px-6">
+        <ScrollReveal className="max-w-3xl mx-auto">
+          <div className="relative p-8 sm:p-14 rounded-2xl border border-border-subtle bg-bg-secondary/50 backdrop-blur-sm text-center overflow-hidden">
+            {/* Gradient overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-accent-primary/[0.06] via-transparent to-violet-500/[0.06]" />
 
             <div className="relative z-10">
-              <h2 className="font-display text-xl sm:text-2xl md:text-display-sm mb-3 sm:mb-4">
+              <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-text-primary mb-3">
                 {language === 'fr' ? 'Prêt à commencer ?' : 'Ready to start?'}
               </h2>
-              <p className="text-text-secondary text-sm sm:text-base mb-6 sm:mb-8 max-w-lg mx-auto px-2">
+              <p className="text-text-secondary text-sm sm:text-base mb-8 max-w-md mx-auto">
                 {language === 'fr'
                   ? 'Rejoignez les chercheurs et professionnels qui utilisent Deep Sight pour analyser leurs vidéos.'
                   : 'Join the researchers and professionals who use Deep Sight to analyze their videos.'}
               </p>
-              <button
+              <motion.button
                 onClick={() => navigate('/login')}
-                className="btn btn-accent w-full sm:w-auto px-6 sm:px-8 py-3 text-sm sm:text-base min-h-[44px] active:scale-95"
+                className="inline-flex items-center gap-2 px-7 py-3 rounded-lg bg-accent-primary text-white font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
               >
                 {language === 'fr' ? 'Créer un compte gratuit' : 'Create free account'}
-                <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
-              </button>
+                <ArrowRight className="w-4 h-4" />
+              </motion.button>
             </div>
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      {/* FOOTER */}
-      {/* ═══════════════════════════════════════════════════════════════════════════════ */}
-      <footer className="py-8 sm:py-12 px-4 sm:px-6 border-t border-border-subtle">
+      {/* ─── FOOTER ─── */}
+      <footer className="py-10 px-4 sm:px-6 border-t border-border-subtle/50">
         <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col items-center gap-4 sm:gap-6 md:flex-row md:justify-between">
+          <div className="flex flex-col items-center gap-5 md:flex-row md:justify-between">
             <Logo />
 
-            <div className="flex items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-6">
               <a
                 href="/legal"
-                className="text-xs sm:text-sm text-text-tertiary hover:text-text-primary transition-colors min-h-[44px] flex items-center"
+                className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"
               >
                 {language === 'fr' ? 'Mentions légales' : 'Legal'}
               </a>
               <a
                 href="mailto:contact@deepsightsynthesis.com"
-                className="text-xs sm:text-sm text-text-tertiary hover:text-text-primary transition-colors min-h-[44px] flex items-center"
+                className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"
               >
                 Contact
               </a>
             </div>
 
-            <p className="text-xs sm:text-sm text-text-muted text-center">
+            <p className="text-xs text-text-muted">
               © 2024 Deep Sight — RCS Lyon 994 558 898
             </p>
           </div>

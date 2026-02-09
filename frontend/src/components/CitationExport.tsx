@@ -111,8 +111,7 @@ const formatDate = (isoDate?: string, locale: string = 'fr'): {
   iso: string;
 } => {
   const date = isoDate ? new Date(isoDate) : new Date();
-  const localeCode = locale === 'fr' ? 'fr-FR' : 'en-US';
-  
+
   return {
     year: date.getFullYear().toString(),
     month: date.toLocaleDateString('en-US', { month: 'long' }),
@@ -322,7 +321,7 @@ export const CitationExport: React.FC<CitationExportProps> = ({
                 <GraduationCap className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-xl font-display font-semibold">{t.title}</h2>
+                <h2 className="text-xl font-semibold">{t.title}</h2>
                 <p className="text-blue-100 text-sm">{t.subtitle}</p>
               </div>
             </div>

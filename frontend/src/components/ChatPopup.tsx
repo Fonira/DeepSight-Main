@@ -10,16 +10,15 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  MessageCircle, X, Send, Globe, Trash2,
+  X, Send, Globe, Trash2,
   Minimize2, Maximize2, Sparkles, Bot, ExternalLink,
   Copy, Check, Shield, BookOpen, Lightbulb, Target, Info,
-  GripVertical, Move
+  Move
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from './ui';
 import { parseAskQuestions, ClickableQuestionsBlock } from './ClickableQuestions';
-import { cleanConceptMarkers } from './EnrichedMarkdown';
 import { EnrichedMarkdown } from './EnrichedMarkdown';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -105,10 +104,7 @@ const AssistantMessage: React.FC<{
   
   // 🔮 Parser les questions cliquables
   const { beforeQuestions, questions } = parseAskQuestions(message.content);
-  
-  // Pour le copier-coller, nettoyer les marqueurs
-  const cleanContent = cleanConceptMarkers(message.content);
-  
+
   return (
     <div className="w-full max-w-[98%]">
       <div
@@ -326,7 +322,7 @@ const useResizable = (
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const ChatPopup: React.FC<ChatPopupProps> = ({
-  isOpen, onToggle, videoTitle, videoId, summaryId, messages, quota,
+  isOpen, onToggle, videoTitle, summaryId, messages, quota,
   isLoading = false, webSearchEnabled = false, isProUser = false,
   suggestedQuestions = [], onSendMessage, onClearHistory, onToggleWebSearch,
   onTimecodeClick, language = 'fr', storageKey = 'chat-popup',
@@ -601,7 +597,7 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
               )}
               <form onSubmit={handleSubmit} className="flex gap-2">
                 <input ref={inputRef} type="text" value={input} onChange={(e) => setInput(e.target.value)}
-                  placeholder={t.placeholder} disabled={isLoading || !summaryId || (quota && !quota.can_ask)}
+                  placeholder={t.placeholder} disabled={!!(isLoading || !summaryId || (quota && !quota.can_ask))}
                   className="flex-1 px-3 py-2 rounded-lg text-sm text-gray-100 placeholder-gray-500 bg-cyan-900/40 border border-cyan-500/30 focus:border-cyan-400/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 disabled:opacity-50 transition-all" />
                 <button type="submit" disabled={!input.trim() || isLoading || !summaryId}
                   className="px-3 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-40 flex items-center"

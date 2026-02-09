@@ -9,7 +9,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
-import DoodleBackground from '../components/DoodleBackground';
 import { billingApi, authApi } from '../services/api';
 import { useToast } from '../components/Toast';
 import {
@@ -29,6 +28,7 @@ import {
   type PlanId
 } from '../config/planPrivileges';
 import { Link, useNavigate } from 'react-router-dom';
+import DoodleBackground from '../components/DoodleBackground';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔐 Types
@@ -487,12 +487,12 @@ export const MyAccount: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
-      <DoodleBackground variant="default" density={50} />
+      <DoodleBackground variant="tech" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       
       <main 
         id="main-content"
-        className={`transition-all duration-300 relative z-10 ${sidebarCollapsed ? 'ml-[72px]' : 'ml-[260px]'}`}
+        className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}
       >
         <div className="min-h-screen p-6 lg:p-8">
           <div className="max-w-2xl mx-auto space-y-6">
@@ -504,7 +504,7 @@ export const MyAccount: React.FC = () => {
                   {user?.email?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 <div>
-                  <h1 className="font-display text-2xl text-text-primary flex items-center gap-2">
+                  <h1 className="text-2xl font-semibold text-text-primary flex items-center gap-2">
                     {tr('Mon compte', 'My Account')}
                   </h1>
                   <p className="text-text-secondary text-sm flex items-center gap-2 mt-1">

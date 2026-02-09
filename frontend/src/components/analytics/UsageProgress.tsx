@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Zap, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Zap, AlertTriangle } from 'lucide-react';
 
 interface UsageProgressProps {
   creditsUsed: number;
