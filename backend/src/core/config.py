@@ -54,6 +54,9 @@ SUPADATA_API_KEY = os.environ.get("SUPADATA_API_KEY", "")
 # Perplexity (recherche web)
 PERPLEXITY_API_KEY = os.environ.get("PERPLEXITY_API_KEY", "")
 
+# Brave Search (fact-checking complémentaire)
+BRAVE_SEARCH_API_KEY = os.environ.get("BRAVE_SEARCH_API_KEY", "")
+
 # OpenAI (GPT-4 pour questions complexes - Pro/Expert)
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 
@@ -421,6 +424,10 @@ def get_perplexity_key() -> str:
     """Retourne la clé API Perplexity"""
     return PERPLEXITY_API_KEY
 
+def get_brave_key() -> str:
+    """Retourne la clé API Brave Search"""
+    return BRAVE_SEARCH_API_KEY
+
 def get_openai_key() -> str:
     """Retourne la clé API OpenAI (pour GPT-4)"""
     return OPENAI_API_KEY
@@ -487,6 +494,7 @@ if __name__ != "__main__":
     print(f"📧 Email: {EMAIL_CONFIG.get('ENABLED', False)}", flush=True)
     print(f"🤖 Mistral: {'✓' if MISTRAL_API_KEY else '✗'}", flush=True)
     print(f"🔍 Perplexity: {'✓' if PERPLEXITY_API_KEY else '✗'}", flush=True)
+    print(f"🦁 Brave Search: {'✓' if BRAVE_SEARCH_API_KEY else '✗'}", flush=True)
     print(f"📝 Supadata: {'✓' if SUPADATA_API_KEY else '✗'}", flush=True)
     print(f"", flush=True)
     print(f"🎙️ Audio Transcription Services (v6.0):", flush=True)

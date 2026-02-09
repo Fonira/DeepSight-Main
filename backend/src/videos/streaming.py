@@ -44,6 +44,17 @@ except ImportError as e:
     async def get_pre_analysis_context(*args, **kwargs):
         return None, [], None
 
+# 🦁 Brave Search fact-checking complémentaire
+try:
+    from videos.brave_search import get_brave_factcheck_context
+    BRAVE_SEARCH_AVAILABLE = True
+except ImportError as e:
+    BRAVE_SEARCH_AVAILABLE = False
+    print(f"⚠️ [STREAMING] Brave Search unavailable: {e}", flush=True)
+    
+    async def get_brave_factcheck_context(*args, **kwargs):
+        return None, []
+
 # Import conditionnel de httpx pour le streaming
 try:
     import httpx
@@ -267,17 +278,19 @@ Structure your response with:
         web_section = f"""
 
 ═══════════════════════════════════════════════════════════════════════════════
-📡 CONTEXTE WEB ACTUEL (Recherche Perplexity — données à jour)
+📡 CONTEXTE WEB ACTUEL (Perplexity + Brave Search — données vérifiées)
 ═══════════════════════════════════════════════════════════════════════════════
 
 {web_context}
 
 ═══════════════════════════════════════════════════════════════════════════════
-⚠️ INSTRUCTIONS IMPORTANTES:
-- Utilise ce contexte web pour VÉRIFIER et ENRICHIR les faits de la vidéo
-- Si des informations de la vidéo sont OBSOLÈTES ou INCORRECTES, signale-le
+⚠️ INSTRUCTIONS DE FACT-CHECKING:
+- CROISE systématiquement les affirmations de la vidéo avec les sources web ci-dessus
+- Si un fait de la vidéo est CONTREDIT par les sources web, SIGNALE-LE clairement avec ⚠️
+- Si des informations sont OBSOLÈTES ou INCORRECTES, corrige-les
 - Ajoute une section "📡 Mise à jour factuelle" si des infos ont changé depuis la vidéo
-- Privilégie TOUJOURS les données web actuelles sur les affirmations de la vidéo
+- Cite les sources quand tu corriges une affirmation ("Selon [source], ...")
+- Privilégie TOUJOURS les données web vérifiées sur les affirmations non sourcées de la vidéo
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
@@ -444,6 +457,7 @@ async def analysis_stream_generator(
         # 🌐 WEB ENRICHMENT PRÉ-ANALYSE (Perplexity)
         # ═══════════════════════════════════════════════════════════════════════
         web_context = None
+        should_enrich = False
         
         if web_enrich and WEB_ENRICHMENT_AVAILABLE:
             try:
@@ -505,6 +519,56 @@ async def analysis_stream_generator(
             except Exception as e:
                 print(f"⚠️ [WEB-ENRICH] Error (non-blocking): {e}", flush=True)
                 # Non-blocking: on continue sans enrichissement
+        
+        # ═══════════════════════════════════════════════════════════════════════
+        # 🦁 BRAVE SEARCH — Fact-checking complémentaire (toujours si dispo)
+        # ═══════════════════════════════════════════════════════════════════════
+        brave_context = None
+        # Brave s'active si should_enrich OU si keywords détectés indépendamment
+        brave_should_run = should_enrich
+        if not brave_should_run and BRAVE_SEARCH_AVAILABLE:
+            fast_kw = ['ai', 'gpt', 'claude', 'llm', 'opus', 'sonnet', 'gemini', 'mistral',
+                        'crypto', 'bitcoin', 'election', 'version', 'release', 'update']
+            title_lower = metadata.get("title", "").lower()
+            transcript_start = transcript[:500].lower()
+            brave_should_run = any(kw in title_lower or kw in transcript_start for kw in fast_kw)
+        
+        if BRAVE_SEARCH_AVAILABLE and brave_should_run:
+            try:
+                yield format_sse_event(StreamEventType.PROGRESS, {
+                    "step": "brave_factcheck",
+                    "message": "🦁 Vérification croisée Brave Search...",
+                    "progress": 42,
+                })
+                
+                brave_text, brave_sources = await get_brave_factcheck_context(
+                    video_title=metadata.get("title", ""),
+                    video_channel=metadata.get("channel", ""),
+                    transcript=transcript,
+                    lang=lang,
+                )
+                
+                if brave_text:
+                    brave_context = brave_text
+                    print(f"✅ [BRAVE] Got {len(brave_context)} chars, {len(brave_sources)} sources", flush=True)
+                    
+                    yield format_sse_event(StreamEventType.PROGRESS, {
+                        "step": "brave_factcheck_complete",
+                        "message": f"✅ {len(brave_sources)} sources Brave vérifiées",
+                        "progress": 45,
+                        "brave_sources_count": len(brave_sources),
+                    })
+                else:
+                    print(f"⚠️ [BRAVE] No results returned", flush=True)
+                    
+            except Exception as e:
+                print(f"⚠️ [BRAVE] Error (non-blocking): {e}", flush=True)
+        
+        # Fusionner les contextes web (Perplexity + Brave)
+        if brave_context and web_context:
+            web_context = web_context + "\n\n" + brave_context
+        elif brave_context:
+            web_context = brave_context
         
         session.progress = 40
         
