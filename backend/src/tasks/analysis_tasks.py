@@ -138,7 +138,7 @@ async def _analyze_video_async(
         task.update_progress(35, 100, "Détection de la catégorie...")
         
         if category == "auto":
-            detected = detect_category(transcript[:5000], "", "")
+            detected = detect_category(title="", transcript=transcript[:5000])
             category = detected[0] if detected else "general"
         
         # ═══════════════════════════════════════════════════════════════════════

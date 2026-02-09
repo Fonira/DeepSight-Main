@@ -2907,7 +2907,7 @@ async def _analyze_raw_text_background(
             detected_category = category
             category_confidence = 1.0
         else:
-            detected_category, category_confidence = detect_category(text[:5000], lang)
+            detected_category, category_confidence = detect_category(title="", transcript=text[:5000])
         
         _task_store[task_id]["progress"] = 15
         _task_store[task_id]["message"] = "Analyse du contexte et génération du titre..."

@@ -295,8 +295,9 @@ IMPORTANT:
             data = response.json()
             content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
             
-            # Extraire les citations si disponibles
-            citations = data.get("citations", [])
+            # Extraire les citations si disponibles (Perplexity peut retourner une liste ou un dict)
+            raw_citations = data.get("citations", [])
+            citations = list(raw_citations.values()) if isinstance(raw_citations, dict) else raw_citations if isinstance(raw_citations, list) else []
             
             # Nettoyer le JSON
             content = content.strip()
