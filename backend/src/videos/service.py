@@ -506,24 +506,12 @@ async def update_task_status(
 async def get_task(
     session: AsyncSession,
     task_id: str
-) -> Optional[Dict[str, Any]]:
-    """Récupère le statut d'une tâche"""
+) -> Optional[TaskStatus]:
+    """Récupère le statut d'une tâche (ORM object)"""
     result = await session.execute(
         select(TaskStatus).where(TaskStatus.task_id == task_id)
     )
-    task = result.scalar_one_or_none()
-    
-    if not task:
-        return None
-    
-    return {
-        "task_id": task.task_id,
-        "status": task.status,
-        "progress": task.progress,
-        "result": json.loads(task.result) if task.result else None,
-        "error": task.error_message,
-        "created_at": task.created_at.isoformat() if task.created_at else None
-    }
+    return result.scalar_one_or_none()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
