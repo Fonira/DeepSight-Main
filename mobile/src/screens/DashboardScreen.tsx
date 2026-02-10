@@ -352,6 +352,7 @@ export const DashboardScreen: React.FC = () => {
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 80 }]}
         showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -371,7 +372,10 @@ export const DashboardScreen: React.FC = () => {
                 {user?.username || t.admin.user}
               </Text>
             </View>
-            <Pressable onPress={() => navigation.navigate('Account')}>
+            <Pressable
+              onPress={() => navigation.navigate('Account')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
               <Avatar uri={user?.avatar_url} name={user?.username} size="lg" />
             </Pressable>
           </View>
@@ -691,6 +695,9 @@ const styles = StyleSheet.create({
   seeAllText: {
     fontSize: fontSize.sm,
     fontFamily: fontFamily.bodyMedium,
+    minHeight: 44,
+    textAlignVertical: 'center',
+    lineHeight: 44,
   },
   statsSection: {
     marginBottom: sp.xl,

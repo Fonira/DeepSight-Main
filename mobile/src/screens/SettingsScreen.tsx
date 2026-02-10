@@ -260,6 +260,7 @@ export const SettingsScreen: React.FC = () => {
         keyExtractor={(item) => item.key}
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + sp.xl }]}
         showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
         stickySectionHeadersEnabled={false}
         renderSectionHeader={({ section }) => (
           <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>

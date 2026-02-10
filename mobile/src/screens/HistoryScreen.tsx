@@ -290,7 +290,10 @@ export const HistoryScreen: React.FC = () => {
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
-            <Pressable onPress={() => setSearchQuery('')}>
+            <Pressable
+              onPress={() => setSearchQuery('')}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            >
               <Ionicons name="close-circle" size={20} color={colors.textMuted} />
             </Pressable>
           )}
@@ -454,6 +457,7 @@ export const HistoryScreen: React.FC = () => {
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
           numColumns={viewMode === 'grid' ? 2 : 1}
+          keyboardDismissMode="on-drag"
           contentContainerStyle={[
             styles.listContent,
             { paddingBottom: insets.bottom + 80 },

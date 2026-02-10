@@ -264,6 +264,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
     gap: Spacing.sm,
+    minHeight: 44,
   },
   questionButtonCompact: {
     paddingVertical: Spacing.xs,

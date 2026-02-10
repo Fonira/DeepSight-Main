@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -128,6 +129,7 @@ export const ExportOptions: React.FC<ExportOptionsProps> = ({
       return;
     }
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setLoadingFormat(option.format);
 
     try {
@@ -209,6 +211,10 @@ export const ExportOptions: React.FC<ExportOptionsProps> = ({
     },
     closeButton: {
       padding: 8,
+      minWidth: 44,
+      minHeight: 44,
+      alignItems: 'center' as const,
+      justifyContent: 'center' as const,
     },
     optionsList: {
       gap: 12,
@@ -221,6 +227,7 @@ export const ExportOptions: React.FC<ExportOptionsProps> = ({
       padding: 16,
       borderWidth: 1,
       borderColor: colors.border,
+      minHeight: 48,
     },
     optionCardDisabled: {
       opacity: 0.6,

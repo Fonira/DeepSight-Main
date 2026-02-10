@@ -137,7 +137,7 @@ export const Header: React.FC<HeaderProps> = ({
                 action.onPress();
               }}
               style={[styles.rightAction, { backgroundColor: colors.glassBg }]}
-              hitSlop={6}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Ionicons name={action.icon} size={20} color={colors.textPrimary} />
             </Pressable>
@@ -199,6 +199,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backButton: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: sp.sm,
     marginLeft: -sp.sm,
   },
@@ -238,8 +242,8 @@ const styles = StyleSheet.create({
     gap: sp.sm,
   },
   rightAction: {
-    width: 36,
-    height: 36,
+    width: 44,
+    height: 44,
     borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
