@@ -436,6 +436,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+
+@app.get("/health")
+async def health_check():
+    """Healthcheck pour Railway."""
+    return {"status": "ok"}
+
+
 # Configuration CORS - CRITIQUE pour éviter les erreurs 502
 app.add_middleware(
     CORSMiddleware,
@@ -574,21 +581,6 @@ async def root():
             "api_v1": "/api/v1" if API_PUBLIC_ROUTER_AVAILABLE else "not available (Expert plan)",
             "words": "/api/words" if WORDS_ROUTER_AVAILABLE else "not available"
         }
-    }
-
-@app.get("/health")
-async def health_check():
-    """
-    Endpoint de healthcheck pour Railway.
-    ⚡ Retourne 200 IMMÉDIATEMENT (même si DB pas encore prête).
-    Railway vérifie juste que l'app répond.
-    """
-    return {
-        "status": "healthy",
-        "version": VERSION,
-        "ready": _app_state.get("ready", False),
-        "db_initialized": _app_state.get("db_initialized", False),
-        "migrations_completed": _app_state.get("migrations_completed", False),
     }
 
 
