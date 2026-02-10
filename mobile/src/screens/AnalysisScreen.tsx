@@ -560,7 +560,7 @@ export const AnalysisScreen: React.FC = () => {
       const questions: QuizQuestion[] = (result.quiz || []).map((q: any) => ({
         question: q.question,
         options: q.options,
-        correct: q.correct,
+        correct: q.correct_index ?? q.correct ?? 0,
         explanation: q.explanation || '',
       }));
       setQuizQuestions(questions);
@@ -591,42 +591,44 @@ export const AnalysisScreen: React.FC = () => {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       const result = await studyApi.generateMindmap(summary.id);
 
-      // Parse the mindmap response (assuming it returns structured data or text)
-      // If it's just text, we'll create a simple mind map from concepts
-      let mapData: MindMapData;
+      // Build mind map from API response concepts (matches web frontend approach)
+      const apiConcepts: Array<{ name: string; children?: string[] }> = result.concepts || [];
+      const nodes: MindMapNode[] = [
+        { id: 'main', label: summary.title || t.analysis.concepts, type: 'main' },
+      ];
 
-      if (typeof result.mermaid_code === 'string') {
-        // Create mind map from concepts if mindmap is just text
-        const nodes: MindMapNode[] = [
-          { id: 'main', label: summary.title || t.analysis.concepts, type: 'main' },
-        ];
-
-        // Add concepts as secondary nodes
-        concepts.slice(0, 6).forEach((concept, index) => {
+      if (apiConcepts.length > 0) {
+        // Use the API-provided concept hierarchy
+        apiConcepts.forEach((concept, index) => {
           nodes.push({
-            id: `secondary-${index}`,
+            id: `primary-${index}`,
             label: concept.name,
             type: 'secondary',
           });
-        });
-
-        // Add more concepts as tertiary nodes
-        concepts.slice(6, 12).forEach((concept, index) => {
-          nodes.push({
-            id: `tertiary-${index}`,
-            label: concept.name,
-            type: 'tertiary',
+          // Add children as tertiary nodes
+          (concept.children || []).forEach((child, ci) => {
+            nodes.push({
+              id: `child-${index}-${ci}`,
+              label: child,
+              type: 'tertiary',
+            });
           });
         });
-
-        mapData = {
-          title: summary.title || t.analysis.conceptMap,
-          nodes,
-        };
       } else {
-        // Use structured response
-        mapData = (result as any).mindmap as MindMapData;
+        // Fallback: use pre-loaded concepts from analysis
+        concepts.slice(0, 8).forEach((concept, index) => {
+          nodes.push({
+            id: `secondary-${index}`,
+            label: concept.name,
+            type: index < 4 ? 'secondary' : 'tertiary',
+          });
+        });
       }
+
+      const mapData: MindMapData = {
+        title: result.title || summary.title || t.analysis.conceptMap,
+        nodes,
+      };
 
       setMindMapData(mapData);
       setShowMindMap(true);
