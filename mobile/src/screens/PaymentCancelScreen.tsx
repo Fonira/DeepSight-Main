@@ -46,7 +46,7 @@ export const PaymentCancelScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgPrimary, paddingTop: insets.top }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent', paddingTop: insets.top }]}>
       {/* Icon */}
       <View style={styles.iconContainer}>
         <View style={[styles.iconCircle, { backgroundColor: `${colors.textTertiary}20` }]}>

@@ -40,6 +40,7 @@ const MainTabs: React.FC = () => {
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
+      sceneContainerStyle={{ backgroundColor: 'transparent' }}
       screenOptions={{ headerShown: false }}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
@@ -53,13 +54,11 @@ const MainTabs: React.FC = () => {
 
 // Auth Stack Navigator
 const AuthStack: React.FC = () => {
-  const { colors } = useTheme();
-
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: colors.bgPrimary },
+        contentStyle: { backgroundColor: 'transparent' },
         animation: 'slide_from_right',
       }}
     >
@@ -78,13 +77,11 @@ const AuthStack: React.FC = () => {
 
 // Main Stack Navigator
 const MainStack: React.FC = () => {
-  const { colors } = useTheme();
-
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: colors.bgPrimary },
+        contentStyle: { backgroundColor: 'transparent' },
         animation: 'slide_from_right',
       }}
     >
@@ -168,7 +165,7 @@ export const AppNavigator: React.FC = () => {
     dark: isDark,
     colors: {
       primary: colors.accentPrimary,
-      background: colors.bgPrimary,
+      background: 'transparent',
       card: colors.bgSecondary,
       text: colors.textPrimary,
       border: colors.border,

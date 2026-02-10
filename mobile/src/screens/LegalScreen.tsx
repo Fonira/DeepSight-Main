@@ -278,7 +278,7 @@ export const LegalScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <Header
         title={language === 'fr' ? 'Informations légales' : 'Legal Information'}
         showBack

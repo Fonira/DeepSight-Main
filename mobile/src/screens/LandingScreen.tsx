@@ -139,7 +139,7 @@ export const LandingScreen: React.FC = () => {
   ];
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,

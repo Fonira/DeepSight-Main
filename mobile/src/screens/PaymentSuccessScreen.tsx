@@ -88,7 +88,7 @@ export const PaymentSuccessScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgPrimary, paddingTop: insets.top }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent', paddingTop: insets.top }]}>
       {/* Success Icon */}
       <Animated.View
         style={[
