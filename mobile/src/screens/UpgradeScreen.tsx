@@ -415,7 +415,7 @@ export const UpgradeScreen: React.FC = () => {
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <Header title={t.upgrade.title} showBack />
+      <Header title={t.upgrade.title} />
 
       <ScrollView
         style={styles.scrollView}
@@ -607,7 +607,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    borderTopColor: 'rgba(128,128,128,0.2)',
   },
 });
 

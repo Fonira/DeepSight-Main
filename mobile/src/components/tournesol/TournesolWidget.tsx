@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     paddingTop: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+    borderTopColor: 'rgba(128,128,128,0.2)',
   },
   footerText: {
     fontSize: Typography.fontSize.xs,

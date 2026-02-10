@@ -30,6 +30,7 @@ const TAB_CONFIG: Record<string, TabConfig> = {
   Dashboard: { icon: 'home-outline', iconFocused: 'home', label: 'Accueil' },
   History: { icon: 'time-outline', iconFocused: 'time', label: 'Historique' },
   Playlists: { icon: 'list-outline', iconFocused: 'list', label: 'Playlists' },
+  Upgrade: { icon: 'diamond-outline', iconFocused: 'diamond', label: 'Plans' },
   Profile: { icon: 'person-outline', iconFocused: 'person', label: 'Profil' },
 };
 
@@ -51,7 +52,7 @@ const AnimatedIcon: React.FC<{
 
   return (
     <Animated.View style={animStyle}>
-      <Ionicons name={focused ? iconFocused : icon} size={22} color={color} />
+      <Ionicons name={focused ? iconFocused : icon} size={20} color={color} />
     </Animated.View>
   );
 };

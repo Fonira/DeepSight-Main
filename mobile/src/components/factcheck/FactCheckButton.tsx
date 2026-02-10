@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     paddingTop: Spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    borderTopColor: 'rgba(128,128,128,0.2)',
   },
   sourcesTitle: {
     fontSize: Typography.fontSize.xs,

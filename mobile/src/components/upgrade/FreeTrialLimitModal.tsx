@@ -325,7 +325,7 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
             {testimonial && (
               <View style={[styles.testimonialCard, { backgroundColor: colors.bgSecondary }]}>
                 <View style={styles.testimonialHeader}>
-                  <View style={styles.testimonialAvatar}>
+                  <View style={[styles.testimonialAvatar, { backgroundColor: colors.accentSecondary }]}>
                     <Text style={styles.testimonialAvatarText}>
                       {testimonial.name.charAt(0)}
                     </Text>

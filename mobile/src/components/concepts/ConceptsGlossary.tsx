@@ -472,7 +472,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     paddingTop: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.05)',
+    borderTopColor: 'rgba(128,128,128,0.15)',
   },
   actionButtonsRow: {
     flexDirection: 'row',

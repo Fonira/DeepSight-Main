@@ -208,12 +208,12 @@ export const LandingScreen: React.FC = () => {
                 <Text style={[styles.statNumber, { color: colors.accentPrimary }]}>100K+</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Vidéos analysées</Text>
               </View>
-              <View style={styles.statDivider} />
+              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
               <View style={styles.statItem}>
                 <Text style={[styles.statNumber, { color: colors.accentPrimary }]}>50K+</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Utilisateurs</Text>
               </View>
-              <View style={styles.statDivider} />
+              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
               <View style={styles.statItem}>
                 <Text style={[styles.statNumber, { color: colors.accentPrimary }]}>4.9</Text>
                 <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Note App</Text>

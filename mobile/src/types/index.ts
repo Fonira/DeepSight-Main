@@ -229,6 +229,7 @@ export type MainTabParamList = {
   Dashboard: undefined;
   History: undefined;
   Playlists: undefined;
+  Upgrade: undefined;
   Profile: undefined;
 };
 

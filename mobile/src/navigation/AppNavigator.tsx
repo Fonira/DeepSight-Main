@@ -45,6 +45,7 @@ const MainTabs: React.FC = () => {
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="History" component={HistoryScreen} />
       <Tab.Screen name="Playlists" component={PlaylistsScreen} />
+      <Tab.Screen name="Upgrade" component={UpgradeScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -141,6 +142,7 @@ const linking: LinkingOptions<RootStackParamList> = {
           Dashboard: 'home',
           History: 'history',
           Playlists: 'playlists',
+          Upgrade: 'plans',
           Profile: 'profile',
         },
       },

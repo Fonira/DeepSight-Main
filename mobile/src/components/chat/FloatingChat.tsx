@@ -213,7 +213,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
           <Animated.View
             style={[
               styles.unreadBadge,
-              { transform: [{ scale: pulseAnim }] },
+              { backgroundColor: colors.accentError, transform: [{ scale: pulseAnim }] },
             ]}
           >
             <Text style={styles.unreadText}>{unreadCount}</Text>
@@ -602,7 +602,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
+    borderTopColor: 'rgba(128,128,128,0.15)',
   },
   sourcesHeader: {
     flexDirection: 'row',
