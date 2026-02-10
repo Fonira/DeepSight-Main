@@ -1128,8 +1128,8 @@ export const AnalysisScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
         >
           {concepts.length > 0 ? (
-            concepts.map((concept) => (
-              <Card key={concept.name} variant="elevated" style={styles.conceptCard}>
+            concepts.map((concept, index) => (
+              <Card key={`concept-${index}-${concept.name}`} variant="elevated" style={styles.conceptCard}>
                 <View style={styles.conceptHeader}>
                   <Text style={[styles.conceptName, { color: colors.accentPrimary, flex: 1 }]}>
                     {concept.name}
@@ -1168,7 +1168,7 @@ export const AnalysisScreen: React.FC = () => {
           <FlatList
             ref={chatScrollRef}
             data={chatMessages}
-            keyExtractor={(item, index) => item.id || `chat-msg-${index}`}
+            keyExtractor={(item, index) => `chat-${index}-${item.id || 'msg'}`}
             keyboardDismissMode="none"
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 16 }}
