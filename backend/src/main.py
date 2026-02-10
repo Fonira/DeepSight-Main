@@ -184,6 +184,23 @@ except ImportError as e:
     ACADEMIC_ROUTER_AVAILABLE = False
     print(f"⚠️ Academic router not available: {e}", flush=True)
 
+# 🩺 Monitoring router (health checks, status page)
+try:
+    from monitoring.router import router as monitoring_router, set_startup_time
+    from monitoring.scheduler import monitoring_job
+    MONITORING_AVAILABLE = True
+except ImportError as e:
+    MONITORING_AVAILABLE = False
+    print(f"⚠️ Monitoring module not available: {e}", flush=True)
+
+# 📬 Contact router (contact form)
+try:
+    from contact.router import router as contact_router
+    CONTACT_AVAILABLE = True
+except ImportError as e:
+    CONTACT_AVAILABLE = False
+    print(f"⚠️ Contact router not available: {e}", flush=True)
+
 VERSION = "3.8.0"  # Phase 4: CSV/Excel export, Batch API, Health detailed
 APP_NAME = "Deep Sight API"
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
@@ -340,6 +357,11 @@ async def lifespan(app: FastAPI):
     pour que le healthcheck réponde immédiatement.
     """
     # Startup
+    import time as _time
+    _startup_ts = _time.time()
+    if MONITORING_AVAILABLE:
+        set_startup_time(_startup_ts)
+
     logger.info("Application starting", app_name=APP_NAME, version=VERSION)
     logger.info("CORS configuration", origins=ALLOWED_ORIGINS)
     logger.info("Sentry status", enabled=SENTRY_ENABLED)
@@ -349,9 +371,60 @@ async def lifespan(app: FastAPI):
     asyncio.create_task(initialize_database_background())
     logger.info("Database initialization started in background")
 
+    # 💾 APScheduler — daily backup cron
+    scheduler = None
+    try:
+        from apscheduler.schedulers.asyncio import AsyncIOScheduler
+        from apscheduler.triggers.cron import CronTrigger
+        from core.config import BACKUP_CONFIG
+
+        async def _scheduled_backup():
+            try:
+                from scripts.backup_db import run_backup
+                logger.info("Scheduled backup starting")
+                result = await run_backup(upload=True)
+                logger.info("Scheduled backup completed", status=result.get("status"))
+            except Exception as e:
+                logger.error(f"Scheduled backup failed: {e}")
+
+        scheduler = AsyncIOScheduler()
+        scheduler.add_job(
+            _scheduled_backup,
+            CronTrigger(
+                hour=BACKUP_CONFIG["CRON_HOUR"],
+                minute=BACKUP_CONFIG["CRON_MINUTE"],
+            ),
+            id="daily_backup",
+            name="Daily database backup",
+            replace_existing=True,
+        )
+        # 🩺 Health monitoring job (every 5 minutes)
+        if MONITORING_AVAILABLE:
+            from apscheduler.triggers.interval import IntervalTrigger
+            scheduler.add_job(
+                monitoring_job,
+                IntervalTrigger(minutes=5),
+                id="health_monitoring",
+                name="Health monitoring checks",
+                replace_existing=True,
+            )
+            logger.info("Health monitoring scheduler registered (every 5 min)")
+
+        scheduler.start()
+        logger.info(
+            f"Backup scheduler started (daily at {BACKUP_CONFIG['CRON_HOUR']:02d}:{BACKUP_CONFIG['CRON_MINUTE']:02d} UTC)"
+        )
+    except ImportError:
+        logger.warning("APScheduler not installed — automatic backups disabled")
+    except Exception as e:
+        logger.warning(f"Backup scheduler failed to start: {e}")
+
     yield
 
     # Shutdown
+    if scheduler is not None:
+        scheduler.shutdown(wait=False)
+        logger.info("Backup scheduler stopped")
     await close_db()
     logger.info("Application shutdown")
 
@@ -388,6 +461,8 @@ if RATE_LIMITER_AVAILABLE:
             "/health",
             "/health/ready",
             "/api/health",
+            "/api/health/ping",
+            "/api/health/status",
             "/docs",
             "/openapi.json",
             "/redoc",
@@ -404,7 +479,8 @@ app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(videos_router, prefix="/api/videos", tags=["Videos"])
 app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])
 app.include_router(billing_router, prefix="/api/billing", tags=["Billing"])
-print("💳 Billing router loaded with create-checkout endpoint", flush=True)
+app.include_router(billing_router, prefix="/api/stripe", tags=["Stripe"], include_in_schema=False)
+print("Billing router loaded (available at /api/billing and /api/stripe)", flush=True)
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(exports_router, prefix="/api/exports", tags=["Exports"])
 app.include_router(playlists_router, prefix="/api/playlists", tags=["Playlists"])
@@ -459,6 +535,16 @@ if BATCH_ROUTER_AVAILABLE:
 if ACADEMIC_ROUTER_AVAILABLE:
     app.include_router(academic_router, tags=["Academic"])
     print("📚 Academic router loaded (Semantic Scholar, OpenAlex, arXiv)", flush=True)
+
+# 🩺 Monitoring router (health checks, status)
+if MONITORING_AVAILABLE:
+    app.include_router(monitoring_router, prefix="/api/health", tags=["Monitoring"])
+    print("🩺 Monitoring router loaded (/api/health/ping, /api/health/status)", flush=True)
+
+# 📬 Contact router
+if CONTACT_AVAILABLE:
+    app.include_router(contact_router, prefix="/api", tags=["Contact"])
+    print("📬 Contact router loaded (POST /api/contact)", flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE
@@ -532,9 +618,11 @@ async def health_ready():
     }
 
 
-@app.get("/api/health")
+# Note: /api/health is now handled by monitoring_router (prefix="/api/health")
+# Legacy endpoint kept at /api/health/legacy for backward compat
+@app.get("/api/health/legacy")
 async def api_health():
-    """Healthcheck alternatif sous /api"""
+    """Healthcheck alternatif (legacy)"""
     return {
         "status": "ok",
         "service": "deepsight-api",

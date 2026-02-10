@@ -23,6 +23,7 @@ import { SkipLink } from "./components/SkipLink";
 import { InstallPrompt, UpdatePrompt } from "./components/InstallPrompt";
 import { LoadingWordGlobal } from "./components/LoadingWord";
 import { ErrorBoundary as RouteErrorBoundary } from "./components/ErrorBoundary";
+import { CrispChat } from "./components/CrispChat";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 QUERY CLIENT CONFIGURATION
@@ -213,6 +214,8 @@ const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const PaymentCancel = lazy(() => import("./pages/PaymentCancel"));
+const StatusPage = lazy(() => import("./pages/StatusPage"));
+const ContactPage = lazy(() => import("./pages/ContactPage"));
 
 // Pages protégées
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
@@ -374,6 +377,22 @@ const AppRoutes = () => {
                   </RouteErrorBoundary>
                 } />
 
+                <Route path="/status" element={
+                  <RouteErrorBoundary variant="full" componentName="StatusPage">
+                    <Suspense fallback={<PageSkeleton variant="simple" />}>
+                      <StatusPage />
+                    </Suspense>
+                  </RouteErrorBoundary>
+                } />
+
+                <Route path="/contact" element={
+                  <RouteErrorBoundary variant="full" componentName="ContactPage">
+                    <Suspense fallback={<PageSkeleton variant="full" />}>
+                      <ContactPage />
+                    </Suspense>
+                  </RouteErrorBoundary>
+                } />
+
                 <Route path="/payment/success" element={
                   <RouteErrorBoundary variant="full" componentName="PaymentSuccess">
                     <Suspense fallback={<PageSkeleton variant="simple" />}>
@@ -487,6 +506,7 @@ const AppRoutes = () => {
             </ErrorBoundary>
             
             {/* 📱 PWA: Prompt d'installation */}
+            <CrispChat />
             <InstallPrompt position="bottom" />
             
             {/* 🔄 PWA: Notification de mise à jour */}

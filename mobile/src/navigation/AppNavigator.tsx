@@ -29,6 +29,7 @@ import {
   PaymentCancelScreen,
   LegalScreen,
   StudyScreen,
+  ContactScreen,
 } from '../screens';
 import type { RootStackParamList, MainTabParamList } from '../types';
 
@@ -109,6 +110,7 @@ const MainStack: React.FC = () => {
         options={{ animation: 'fade' }}
       />
       <Stack.Screen name="Legal" component={LegalScreen} />
+      <Stack.Screen name="Contact" component={ContactScreen} />
       <Stack.Screen name="PlaylistDetail" component={PlaylistDetailScreen} />
       <Stack.Screen
         name="StudyTools"
@@ -151,6 +153,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentSuccess: 'payment/success',
       PaymentCancel: 'payment/cancel',
       Legal: 'legal/:type',
+      Contact: 'contact',
       PlaylistDetail: 'playlists/:playlistId',
     },
   },

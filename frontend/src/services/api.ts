@@ -1516,6 +1516,42 @@ export const studyApi = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🩺 STATUS API — Public monitoring endpoints
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface ServiceStatus {
+  name: string;
+  status: 'operational' | 'degraded' | 'down';
+  latency_ms: number | null;
+  message: string | null;
+  last_checked: string;
+}
+
+export interface SystemStatus {
+  status: 'operational' | 'degraded' | 'down';
+  version: string;
+  uptime_seconds: number | null;
+  services: ServiceStatus[];
+  checked_at: string;
+}
+
+export const contactApi = {
+  async submit(data: { name: string; email: string; subject: string; message: string }): Promise<{ status: string; message: string }> {
+    return request('/api/contact', { method: 'POST', body: data, skipAuth: true });
+  },
+};
+
+export const statusApi = {
+  async getStatus(): Promise<SystemStatus> {
+    return request('/api/health/status', { skipAuth: true });
+  },
+
+  async ping(): Promise<{ status: string }> {
+    return request('/api/health/ping', { skipAuth: true });
+  },
+};
+
 // Export par défaut
 export default {
   auth: authApi,
@@ -1530,4 +1566,6 @@ export default {
   admin: adminApi,
   academic: academicApi,
   study: studyApi,
+  contact: contactApi,
+  status: statusApi,
 };

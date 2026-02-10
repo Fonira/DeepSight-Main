@@ -10,14 +10,36 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Set
 from datetime import datetime
+from collections import OrderedDict
 
 from db.database import get_session, User, CreditTransaction
 from auth.dependencies import get_current_user
 from core.config import STRIPE_CONFIG, PLAN_LIMITS, FRONTEND_URL, get_stripe_key
 
 router = APIRouter()
+
+# ---------------------------------------------------------------------------
+# Idempotency — track processed webhook event IDs to prevent double-processing
+# ---------------------------------------------------------------------------
+_MAX_PROCESSED_EVENTS = 10_000
+
+class _EventIdCache:
+    """Bounded LRU set of processed Stripe event IDs."""
+    def __init__(self, maxsize: int = _MAX_PROCESSED_EVENTS) -> None:
+        self._store: OrderedDict[str, None] = OrderedDict()
+        self._maxsize = maxsize
+
+    def seen(self, event_id: str) -> bool:
+        return event_id in self._store
+
+    def mark(self, event_id: str) -> None:
+        self._store[event_id] = None
+        if len(self._store) > self._maxsize:
+            self._store.popitem(last=False)
+
+_processed_events = _EventIdCache()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -986,40 +1008,40 @@ async def stripe_webhook(
         print(f"❌ Webhook error: {e}", flush=True)
         raise HTTPException(status_code=400, detail=str(e))
     
+    event_id = event.get("id", "")
     event_type = event["type"]
     data = event["data"]["object"]
-    
-    print(f"🔔 Stripe webhook received: {event_type}", flush=True)
-    print(f"📊 Event data keys: {data.keys()}", flush=True)
-    
-    # Traiter les événements
+
+    # Idempotency: skip already-processed events
+    if _processed_events.seen(event_id):
+        print(f"Webhook {event_id} already processed — skipping", flush=True)
+        return {"received": True, "duplicate": True}
+
+    print(f"Stripe webhook: {event_type} (id={event_id})", flush=True)
+
+    # Dispatch by event type
     if event_type == "checkout.session.completed":
-        print(f"💳 Processing checkout.session.completed...", flush=True)
         await handle_checkout_completed(session, data)
-    
+
     elif event_type == "customer.subscription.created":
-        print(f"📝 Processing customer.subscription.created...", flush=True)
         await handle_subscription_created(session, data)
-    
+
     elif event_type == "customer.subscription.updated":
-        print(f"🔄 Processing customer.subscription.updated...", flush=True)
         await handle_subscription_updated(session, data)
-    
+
     elif event_type == "customer.subscription.deleted":
-        print(f"🗑️ Processing customer.subscription.deleted...", flush=True)
         await handle_subscription_deleted(session, data)
-    
-    elif event_type == "invoice.paid":
-        print(f"💰 Processing invoice.paid...", flush=True)
+
+    elif event_type in ("invoice.paid", "invoice.payment_succeeded"):
         await handle_invoice_paid(session, data)
-    
+
     elif event_type == "invoice.payment_failed":
-        print(f"⚠️ Processing invoice.payment_failed...", flush=True)
         await handle_payment_failed(session, data)
-    
+
     else:
-        print(f"ℹ️ Unhandled event type: {event_type}", flush=True)
-    
+        print(f"Unhandled webhook event type: {event_type}", flush=True)
+
+    _processed_events.mark(event_id)
     return {"received": True}
 
 
@@ -1033,6 +1055,27 @@ async def webhook_test():
         "webhook_secret_configured": bool(webhook_secret),
         "stripe_configured": bool(get_stripe_key())
     }
+
+
+@router.get("/health")
+async def stripe_health():
+    """Verify Stripe API connection is working."""
+    if not init_stripe():
+        return {"status": "error", "detail": "Stripe not configured", "connected": False}
+    try:
+        account = stripe.Account.retrieve()
+        return {
+            "status": "ok",
+            "connected": True,
+            "account_id": account.get("id", ""),
+            "livemode": account.get("charges_enabled", False),
+            "test_mode": STRIPE_CONFIG.get("TEST_MODE", False),
+            "webhook_configured": bool(STRIPE_CONFIG.get("WEBHOOK_SECRET")),
+        }
+    except stripe.error.AuthenticationError:
+        return {"status": "error", "detail": "Invalid Stripe API key", "connected": False}
+    except stripe.error.StripeError as e:
+        return {"status": "error", "detail": str(e), "connected": False}
 
 
 async def handle_checkout_completed(session: AsyncSession, data: dict):
@@ -1057,29 +1100,49 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
         print(f"⚠️ User {user_id} not found", flush=True)
         return
     
-    # Mettre à jour l'utilisateur
+    # DB-level idempotency: check if this payment was already processed
+    payment_id = data.get("payment_intent") or data.get("id")
+    if payment_id:
+        existing = await session.execute(
+            select(CreditTransaction).where(CreditTransaction.stripe_payment_id == payment_id)
+        )
+        if existing.scalar_one_or_none():
+            print(f"Checkout {payment_id} already processed — skipping", flush=True)
+            return
+
     plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
     credits_to_add = plan_limits.get("monthly_credits", 0)
-    
+
     user.plan = plan
     user.credits = (user.credits or 0) + credits_to_add
     user.stripe_customer_id = customer_id
     user.stripe_subscription_id = subscription_id
-    
-    # Enregistrer la transaction
+
     transaction = CreditTransaction(
         user_id=user.id,
         amount=credits_to_add,
         balance_after=user.credits,
         transaction_type="purchase",
         type="purchase",
-        stripe_payment_id=data.get("payment_intent"),
+        stripe_payment_id=payment_id,
         description=f"Subscription: {plan}"
     )
     session.add(transaction)
-    
+
     await session.commit()
-    print(f"✅ User {user_id} upgraded to {plan}, +{credits_to_add} credits", flush=True)
+    print(f"User {user_id} upgraded to {plan}, +{credits_to_add} credits", flush=True)
+
+    # 📧 Send payment success email
+    try:
+        from services.email_service import email_service
+        await email_service.send_payment_success(
+            to=user.email,
+            username=user.username,
+            plan=plan,
+            credits=credits_to_add,
+        )
+    except Exception as e:
+        print(f"📧 Payment success email error: {e}", flush=True)
 
 
 async def handle_subscription_created(session: AsyncSession, data: dict):
@@ -1166,10 +1229,21 @@ async def handle_subscription_deleted(session: AsyncSession, data: dict):
     user = result.scalar_one_or_none()
     
     if user:
+        old_plan = user.plan
         user.plan = "free"
         user.stripe_subscription_id = None
         await session.commit()
-        print(f"✅ User {user.id} downgraded to free", flush=True)
+        print(f"User {user.id} subscription deleted, reverted to free (was {old_plan})", flush=True)
+
+        try:
+            from services.email_service import email_service
+            await email_service.send_payment_failed(
+                to=user.email,
+                username=user.username,
+                plan=old_plan or "free",
+            )
+        except Exception as e:
+            print(f"Subscription deleted email error: {e}", flush=True)
 
 
 async def handle_invoice_paid(session: AsyncSession, data: dict):
@@ -1186,25 +1260,46 @@ async def handle_invoice_paid(session: AsyncSession, data: dict):
     user = result.scalar_one_or_none()
     
     if user and user.plan != "free":
-        # Ajouter les crédits mensuels
+        # DB-level idempotency
+        payment_id = data.get("payment_intent") or data.get("id")
+        if payment_id:
+            existing = await session.execute(
+                select(CreditTransaction).where(CreditTransaction.stripe_payment_id == payment_id)
+            )
+            if existing.scalar_one_or_none():
+                print(f"Invoice {payment_id} already processed — skipping", flush=True)
+                return
+
         plan_limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
         credits_to_add = plan_limits.get("monthly_credits", 0)
-        
+
         user.credits = (user.credits or 0) + credits_to_add
-        
+
         transaction = CreditTransaction(
             user_id=user.id,
             amount=credits_to_add,
             balance_after=user.credits,
             transaction_type="renewal",
             type="renewal",
-            stripe_payment_id=data.get("payment_intent"),
+            stripe_payment_id=payment_id,
             description=f"Monthly renewal: {user.plan}"
         )
         session.add(transaction)
-        
+
         await session.commit()
-        print(f"✅ User {user.id} renewed, +{credits_to_add} credits", flush=True)
+        print(f"User {user.id} renewed, +{credits_to_add} credits", flush=True)
+
+        # 📧 Send renewal success email
+        try:
+            from services.email_service import email_service
+            await email_service.send_payment_success(
+                to=user.email,
+                username=user.username,
+                plan=user.plan,
+                credits=credits_to_add,
+            )
+        except Exception as e:
+            print(f"📧 Renewal email error: {e}", flush=True)
 
 
 async def handle_payment_failed(session: AsyncSession, data: dict):
@@ -1218,7 +1313,17 @@ async def handle_payment_failed(session: AsyncSession, data: dict):
     
     if user:
         print(f"⚠️ Payment failed for user {user.id}", flush=True)
-        # TODO: Envoyer un email de notification
+
+        # 📧 Send payment failure email
+        try:
+            from services.email_service import email_service
+            await email_service.send_payment_failed(
+                to=user.email,
+                username=user.username,
+                plan=user.plan or "free",
+            )
+        except Exception as e:
+            print(f"📧 Payment failed email error: {e}", flush=True)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

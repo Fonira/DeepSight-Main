@@ -28,7 +28,7 @@ from .service import (
     validate_session_token
 )
 from .dependencies import get_current_user, get_current_user_optional
-from .email import send_verification_email, send_password_reset_email
+from .email import send_verification_email, send_password_reset_email, send_welcome_email
 
 router = APIRouter()
 
@@ -212,23 +212,30 @@ async def verify_email_endpoint(
     🆕 Crée une session unique.
     """
     success, message = await verify_email(session, data.email, data.code)
-    
+
     if not success:
         raise HTTPException(status_code=400, detail=message)
-    
+
     # Récupérer l'utilisateur et générer les tokens
     from .service import get_user_by_email
     user = await get_user_by_email(session, data.email)
-    
+
     if not user:
         raise HTTPException(status_code=404, detail="Utilisateur non trouvé")
-    
+
+    # 📧 Send welcome email after successful verification
+    if EMAIL_CONFIG.get("ENABLED"):
+        try:
+            await send_welcome_email(user.email, user.username)
+        except Exception:
+            pass  # Non-blocking — don't fail verification if email fails
+
     # 🆕 Créer une session unique
     session_token = await create_user_session(session, user.id)
-    
+
     access_token = create_access_token(user.id, user.is_admin, session_token)
     refresh_token = create_refresh_token(user.id, session_token)
-    
+
     return TokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,

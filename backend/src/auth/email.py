@@ -86,38 +86,13 @@ async def send_verification_email(email: str, code: str, username: str) -> bool:
 
 
 async def send_password_reset_email(email: str, code: str) -> bool:
-    subject = f"Réinitialisation du mot de passe — {APP_NAME}"
+    """Delegates to EmailService with Jinja2 template."""
+    from services.email_service import email_service
     reset_url = f"{FRONTEND_URL}/reset-password?code={code}&email={email}"
-    html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">{EMAIL_BASE_STYLE}</head><body>
-    <div class="container">
-        <div class="header"><div class="logo-icon">🔑</div><div class="logo">{APP_NAME}</div></div>
-        <div class="content">
-            <p class="greeting">Réinitialisation du mot de passe</p>
-            <p class="text">Vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous.</p>
-            <p style="text-align: center; margin: 32px 0;"><a href="{reset_url}" class="btn">Réinitialiser mon mot de passe</a></p>
-            <div class="warning-box"><p>⚠️ Ce lien expire dans <strong>1 heure</strong>.</p></div>
-        </div>
-        <div class="footer"><p><strong>{APP_NAME}</strong> — Analyse vidéo intelligente</p></div>
-    </div></body></html>"""
-    return await send_email(email, subject, html)
+    return await email_service.send_reset_password(to=email, reset_url=reset_url)
 
 
 async def send_welcome_email(email: str, username: str, plan: str = "free") -> bool:
-    subject = f"Bienvenue sur {APP_NAME}, {username} !"
-    html = f"""<!DOCTYPE html><html><head><meta charset="utf-8">{EMAIL_BASE_STYLE}</head><body>
-    <div class="container">
-        <div class="header"><div class="logo-icon">✨</div><div class="logo">{APP_NAME}</div></div>
-        <div class="content">
-            <p class="greeting">Bienvenue {username} !</p>
-            <p class="text">Votre compte est maintenant actif. Commencez à analyser des vidéos YouTube avec l'IA.</p>
-            <div class="feature-list">
-                <div class="feature-item">📊 Synthèses intelligentes de vidéos</div>
-                <div class="feature-item">💬 Chat IA pour approfondir le contenu</div>
-                <div class="feature-item">🔍 Fact-checking automatique</div>
-                <div class="feature-item">📄 Export PDF, Word, Markdown</div>
-            </div>
-            <p style="text-align: center; margin: 32px 0;"><a href="{FRONTEND_URL}/dashboard" class="btn">Accéder à mon espace</a></p>
-        </div>
-        <div class="footer"><p><strong>{APP_NAME}</strong> — Analyse vidéo intelligente</p></div>
-    </div></body></html>"""
-    return await send_email(email, subject, html)
+    """Delegates to EmailService with Jinja2 template."""
+    from services.email_service import email_service
+    return await email_service.send_welcome(to=email, username=username)

@@ -34,10 +34,7 @@ from sqlalchemy.pool import NullPool, QueuePool
 # 🔧 DATABASE ENGINE CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL",
-    "postgresql+asyncpg://deepsight:password@localhost:5432/deepsight"
-)
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
 
 def create_optimized_engine(
     url: str = DATABASE_URL,

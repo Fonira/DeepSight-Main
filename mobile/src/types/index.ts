@@ -221,6 +221,9 @@ export type RootStackParamList = {
   // Legal screen
   Legal: { type?: 'privacy' | 'terms' | 'legal' | 'about' } | undefined;
 
+  // Contact
+  Contact: undefined;
+
   // Playlist detail
   PlaylistDetail: { playlistId: string };
 };

@@ -435,6 +435,38 @@ async def get_admin_logs(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 💾 BACKUP
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/backup/trigger")
+async def trigger_backup(
+    admin: User = Depends(get_current_admin),
+):
+    """Trigger a manual database backup."""
+    try:
+        from scripts.backup_db import run_backup
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Backup module not available")
+
+    result = await run_backup(upload=True)
+    return result
+
+
+@router.get("/backup/list")
+async def list_backups(
+    admin: User = Depends(get_current_admin),
+):
+    """List all available backups (local + S3)."""
+    try:
+        from scripts.restore_db import list_all_backups
+    except ImportError:
+        raise HTTPException(status_code=500, detail="Restore module not available")
+
+    backups = await list_all_backups()
+    return {"backups": backups, "total": len(backups)}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 OUTILS
 # ═══════════════════════════════════════════════════════════════════════════════
 
