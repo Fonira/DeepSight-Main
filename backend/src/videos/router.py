@@ -2702,6 +2702,80 @@ async def discover_best_video(
         raise HTTPException(status_code=500, detail=f"Erreur: {str(e)}")
 
 
+@router.post("/discover/search")
+async def discover_search_videos(
+    query: str = Query(..., description="Requête de recherche"),
+    languages: str = Query("fr,en", description="Langues séparées par virgule"),
+    limit: int = Query(15, ge=1, le=50, description="Nombre max de résultats"),
+    sort_by: str = Query("quality", description="Tri: quality, views, date, academic"),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    🔍 Recherche de vidéos pour le mobile — retourne une liste triée.
+
+    GRATUIT - Ne consomme pas de crédits.
+    Retourne toujours { videos: [...], total: N, query: str }, jamais de 404.
+    """
+    print(f"🔍 [DISCOVER/SEARCH] User {current_user.email} query='{query}' sort={sort_by} limit={limit}", flush=True)
+
+    lang_list = [l.strip() for l in languages.split(",")]
+
+    try:
+        result = await IntelligentDiscoveryService.discover(
+            query=query,
+            languages=lang_list,
+            max_results=limit,
+            min_quality=15.0,
+        )
+
+        # Convert candidates to dicts
+        videos = []
+        for c in result.candidates:
+            d = c.to_dict()
+            videos.append({
+                "video_id": d.get("video_id", ""),
+                "title": d.get("title", ""),
+                "channel": d.get("channel", ""),
+                "thumbnail_url": d.get("thumbnail_url", ""),
+                "duration": d.get("duration", 0),
+                "view_count": d.get("view_count", 0),
+                "quality_score": d.get("quality_score", 0),
+                "tournesol_score": d.get("tournesol_score", 0),
+                "published_at": d.get("published_at"),
+                "is_tournesol_pick": d.get("is_tournesol_pick", False),
+            })
+
+        # Sort according to sort_by
+        if sort_by == "views":
+            videos.sort(key=lambda v: v["view_count"], reverse=True)
+        elif sort_by == "date":
+            videos.sort(key=lambda v: v["published_at"] or "", reverse=True)
+        elif sort_by == "academic":
+            videos.sort(key=lambda v: v["tournesol_score"], reverse=True)
+        else:  # quality (default)
+            videos.sort(key=lambda v: v["quality_score"], reverse=True)
+
+        # Limit results
+        videos = videos[:limit]
+
+        print(f"✅ [DISCOVER/SEARCH] Returning {len(videos)} videos", flush=True)
+
+        return {
+            "videos": videos,
+            "total": len(videos),
+            "query": query,
+        }
+
+    except Exception as e:
+        print(f"❌ [DISCOVER/SEARCH] Error: {e}", flush=True)
+        # Always return valid JSON, never 404
+        return {
+            "videos": [],
+            "total": 0,
+            "query": query,
+        }
+
+
 @router.post("/analyze/hybrid", response_model=HybridAnalysisResponse)
 async def analyze_hybrid(
     request: HybridAnalyzeRequest,

@@ -662,30 +662,30 @@ export const videoApi = {
     });
   },
 
-  // Video discovery - returns list of scored candidates
-  async discover(query: string, options?: {
+  // Video discovery - returns sorted list of videos
+  async discoverSearch(query: string, options?: {
     limit?: number;
     language?: string;
     sort_by?: 'quality' | 'views' | 'date' | 'academic';
   }): Promise<{
-    candidates: Array<VideoInfo & { quality_score: number; tournesol_score: number; is_tournesol_pick: boolean }>;
+    videos: Array<{
+      video_id: string; title: string; channel: string; thumbnail_url: string;
+      duration: number; view_count: number; quality_score: number;
+      tournesol_score: number; published_at: string | null; is_tournesol_pick: boolean;
+    }>;
+    total: number;
     query: string;
-    total_searched: number;
   }> {
-    const languages = options?.language
-      ? [options.language, ...(options.language !== 'en' ? ['en'] : []), ...(options.language !== 'fr' ? ['fr'] : [])]
-      : ['fr', 'en'];
-    // Remove duplicates
-    const uniqueLangs = [...new Set(languages)];
-
-    return request('/api/videos/discover', {
+    const langs = options?.language || 'fr,en';
+    const params = new URLSearchParams({
+      query,
+      languages: langs,
+      limit: String(options?.limit || 20),
+      sort_by: options?.sort_by || 'quality',
+    });
+    return request(`/api/videos/discover/search?${params.toString()}`, {
       method: 'POST',
-      body: {
-        query,
-        languages: uniqueLangs,
-        max_results: options?.limit || 20,
-        min_quality: 15.0,
-      },
+      timeout: 120000,
     });
   },
 
@@ -1544,6 +1544,15 @@ export const tournesolApi = {
 };
 
 
+export const contactApi = {
+  async submit(data: { name: string; email: string; subject: string; message: string }): Promise<{ status: string; message: string }> {
+    return request('/api/contact', {
+      method: 'POST',
+      body: data,
+    });
+  },
+};
+
 export default {
   authApi,
   userApi,
@@ -1556,5 +1565,6 @@ export default {
   exportApi,
   usageApi,
   tournesolApi,
+  contactApi,
   ApiError,
 };

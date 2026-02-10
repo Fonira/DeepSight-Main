@@ -68,43 +68,32 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
     { id: 'academic', label: 'Académique', labelEn: 'Academic' },
   ];
 
-  const sortVideos = (list: DiscoveredVideo[], sort: SortOption): DiscoveredVideo[] => {
-    return [...list].sort((a, b) => {
-      switch (sort) {
-        case 'views': return b.views - a.views;
-        case 'date': return (b.published_at || '').localeCompare(a.published_at || '');
-        case 'academic': return (b.tournesol_score || 0) - (a.tournesol_score || 0);
-        case 'quality':
-        default: return (b.quality_score || 0) - (a.quality_score || 0);
-      }
-    });
-  };
-
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
 
     setIsLoading(true);
     setSearchError(null);
     try {
-      const response = await videoApi.discover(searchQuery, {
+      const response = await videoApi.discoverSearch(searchQuery, {
         limit: 20,
         language,
+        sort_by: sortBy,
       });
 
-      // Map backend VideoCandidateResponse to DiscoveredVideo
-      const mappedVideos: DiscoveredVideo[] = (response.candidates || []).map(v => ({
-        video_id: (v as any).video_id || '',
-        title: (v as any).title || '',
-        channel: (v as any).channel || '',
-        thumbnail: (v as any).thumbnail_url || '',
-        duration: (v as any).duration || 0,
-        views: (v as any).view_count || 0,
-        published_at: (v as any).published_at || '',
-        quality_score: (v as any).quality_score || 0,
-        tournesol_score: (v as any).tournesol_score || 0,
+      // Map backend response to DiscoveredVideo
+      const mappedVideos: DiscoveredVideo[] = (response.videos || []).map(v => ({
+        video_id: v.video_id || '',
+        title: v.title || '',
+        channel: v.channel || '',
+        thumbnail: v.thumbnail_url || '',
+        duration: v.duration || 0,
+        views: v.view_count || 0,
+        published_at: v.published_at || '',
+        quality_score: v.quality_score || 0,
+        tournesol_score: v.tournesol_score || 0,
       }));
 
-      setVideos(sortVideos(mappedVideos, sortBy));
+      setVideos(mappedVideos);
     } catch (error) {
       console.error('Video discovery failed:', error);
       setSearchError(isEn ? 'Failed to search videos. Please try again.' : 'Échec de la recherche. Veuillez réessayer.');
@@ -119,14 +108,7 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
       const debounce = setTimeout(handleSearch, 500);
       return () => clearTimeout(debounce);
     }
-  }, [searchQuery, visible]);
-
-  // Re-sort locally when sortBy changes (no re-fetch needed)
-  useEffect(() => {
-    if (videos.length > 0) {
-      setVideos(prev => sortVideos(prev, sortBy));
-    }
-  }, [sortBy]);
+  }, [searchQuery, sortBy, visible]);
 
   // Auto-populate search query when modal opens with initialQuery
   useEffect(() => {
