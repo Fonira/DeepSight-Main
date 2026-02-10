@@ -596,13 +596,6 @@ export const videoApi = {
     return request(`/api/videos/concepts/${summaryId}/enriched`);
   },
 
-  async discover(query: string, limit: number = 10): Promise<{ videos: VideoInfo[] }> {
-    return request('/api/videos/discover', {
-      method: 'POST',
-      body: { query, limit },
-    });
-  },
-
   async factCheck(summaryId: string): Promise<{ result: string }> {
     return request(`/api/videos/summary/${summaryId}/fact-check`, {
       method: 'POST',
@@ -669,20 +662,30 @@ export const videoApi = {
     });
   },
 
-  // Video discovery - best results
-  async discoverBest(query: string, options?: {
+  // Video discovery - returns list of scored candidates
+  async discover(query: string, options?: {
     limit?: number;
     language?: string;
     sort_by?: 'quality' | 'views' | 'date' | 'academic';
   }): Promise<{
-    videos: Array<VideoInfo & { quality_score: number; academic_relevance: number }>;
+    candidates: Array<VideoInfo & { quality_score: number; tournesol_score: number; is_tournesol_pick: boolean }>;
+    query: string;
+    total_searched: number;
   }> {
-    const params = new URLSearchParams({
-      query,
-      languages: options?.language || 'fr,en',
-    });
-    return request(`/api/videos/discover/best?${params.toString()}`, {
+    const languages = options?.language
+      ? [options.language, ...(options.language !== 'en' ? ['en'] : []), ...(options.language !== 'fr' ? ['fr'] : [])]
+      : ['fr', 'en'];
+    // Remove duplicates
+    const uniqueLangs = [...new Set(languages)];
+
+    return request('/api/videos/discover', {
       method: 'POST',
+      body: {
+        query,
+        languages: uniqueLangs,
+        max_results: options?.limit || 20,
+        min_quality: 15.0,
+      },
     });
   },
 

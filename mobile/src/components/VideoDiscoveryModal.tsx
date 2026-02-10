@@ -68,32 +68,45 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
     { id: 'academic', label: 'Académique', labelEn: 'Academic' },
   ];
 
+  const sortVideos = (list: DiscoveredVideo[], sort: SortOption): DiscoveredVideo[] => {
+    return [...list].sort((a, b) => {
+      switch (sort) {
+        case 'views': return b.views - a.views;
+        case 'date': return (b.published_at || '').localeCompare(a.published_at || '');
+        case 'academic': return (b.tournesol_score || 0) - (a.tournesol_score || 0);
+        case 'quality':
+        default: return (b.quality_score || 0) - (a.quality_score || 0);
+      }
+    });
+  };
+
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
 
     setIsLoading(true);
     setSearchError(null);
     try {
-      const response = await videoApi.discoverBest(searchQuery, {
+      const response = await videoApi.discover(searchQuery, {
         limit: 20,
         language,
-        sort_by: sortBy,
       });
-      // Map API response to DiscoveredVideo format
-      const mappedVideos: DiscoveredVideo[] = (response.videos || []).map(v => ({
-        video_id: (v as any).video_id || (v as any).id || '',
-        title: v.title || '',
-        channel: (v as any).channel || (v as any).channel_name || '',
-        thumbnail: (v as any).thumbnail || (v as any).thumbnail_url || '',
+
+      // Map backend VideoCandidateResponse to DiscoveredVideo
+      const mappedVideos: DiscoveredVideo[] = (response.candidates || []).map(v => ({
+        video_id: (v as any).video_id || '',
+        title: (v as any).title || '',
+        channel: (v as any).channel || '',
+        thumbnail: (v as any).thumbnail_url || '',
         duration: (v as any).duration || 0,
-        views: (v as any).views || (v as any).view_count || 0,
-        published_at: (v as any).published_at || (v as any).publish_date || '',
-        quality_score: v.quality_score,
-        tournesol_score: (v as any).tournesol_score,
+        views: (v as any).view_count || 0,
+        published_at: (v as any).published_at || '',
+        quality_score: (v as any).quality_score || 0,
+        tournesol_score: (v as any).tournesol_score || 0,
       }));
-      setVideos(mappedVideos);
+
+      setVideos(sortVideos(mappedVideos, sortBy));
     } catch (error) {
-      console.error('Failed to search videos:', error);
+      console.error('Video discovery failed:', error);
       setSearchError(isEn ? 'Failed to search videos. Please try again.' : 'Échec de la recherche. Veuillez réessayer.');
       setVideos([]);
     } finally {
@@ -106,7 +119,14 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
       const debounce = setTimeout(handleSearch, 500);
       return () => clearTimeout(debounce);
     }
-  }, [searchQuery, sortBy, visible]);
+  }, [searchQuery, visible]);
+
+  // Re-sort locally when sortBy changes (no re-fetch needed)
+  useEffect(() => {
+    if (videos.length > 0) {
+      setVideos(prev => sortVideos(prev, sortBy));
+    }
+  }, [sortBy]);
 
   // Auto-populate search query when modal opens with initialQuery
   useEffect(() => {
