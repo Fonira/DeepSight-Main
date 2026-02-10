@@ -75,7 +75,7 @@ export const AnalysisScreen: React.FC = () => {
 
   const { summaryId, videoUrl } = route.params || {};
 
-  const [activeTab, setActiveTab] = useState<TabType>('summary');
+  const [activeTab, setActiveTab] = useState<TabType>('chat');
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState<AnalysisSummary | null>(null);
   const [concepts, setConcepts] = useState<Array<{ name: string; definition: string }>>([]);
@@ -758,9 +758,9 @@ export const AnalysisScreen: React.FC = () => {
 
   // Tabs
   const tabs: { id: TabType; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { id: 'chat', label: t.analysis.chat, icon: 'chatbubble-outline' },
     { id: 'summary', label: t.analysis.summary, icon: 'document-text-outline' },
     { id: 'concepts', label: t.analysis.concepts, icon: 'bulb-outline' },
-    { id: 'chat', label: t.analysis.chat, icon: 'chatbubble-outline' },
     { id: 'tools', label: t.analysis.studyTools, icon: 'school-outline' },
   ];
 
@@ -1110,7 +1110,7 @@ export const AnalysisScreen: React.FC = () => {
             ref={chatScrollRef}
             data={chatMessages}
             keyExtractor={(item, index) => item.id || `chat-msg-${index}`}
-            keyboardDismissMode="interactive"
+            keyboardDismissMode="none"
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 16 }}
             onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: true })}
