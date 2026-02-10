@@ -132,10 +132,6 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
     ordered_list: {
       marginBottom: 12,
     },
-    list_item: {
-      flexDirection: 'row',
-      marginBottom: 8,
-    },
     bullet_list_icon: {
       color: colors.accentPrimary,
       fontSize: 16,
@@ -148,14 +144,42 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
       fontFamily: Typography.fontFamily.bodySemiBold,
       marginRight: 8,
     },
+    textgroup: {
+      color: pureWhite,
+    },
+    text: {
+      color: pureWhite,
+    },
     bullet_list_content: {
       flex: 1,
+      color: pureWhite,
     },
     ordered_list_content: {
       flex: 1,
+      color: pureWhite,
+    },
+    list_item: {
+      flexDirection: 'row',
+      marginBottom: 8,
+      color: pureWhite,
+    },
+    softbreak: {
+      color: pureWhite,
+    },
+    hardbreak: {
+      color: pureWhite,
+    },
+    s: {
+      color: emphasisColor,
+      textDecorationLine: 'line-through',
+    },
+    image: {
+      width: '100%' as any,
+      borderRadius: BorderRadius.md,
+      marginVertical: 8,
     },
     blockquote: {
-      backgroundColor: colors.bgTertiary,
+      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : colors.bgTertiary,
       borderLeftColor: colors.accentPrimary,
       borderLeftWidth: 4,
       paddingLeft: 16,
@@ -261,7 +285,7 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
       if (match.index > lastIndex) {
         const beforeText = text.slice(lastIndex, match.index);
         parts.push(
-          <Text key={`text-${key++}`} style={{ color: pureWhite }}>
+          <Text key={`text-${key++}`} style={{ color: pureWhite, fontSize: 16 }}>
             {beforeText}
           </Text>
         );
@@ -288,7 +312,7 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
     // Add remaining text
     if (lastIndex < text.length) {
       parts.push(
-        <Text key={`text-${key++}`} style={{ color: pureWhite }}>
+        <Text key={`text-${key++}`} style={{ color: pureWhite, fontSize: 16 }}>
           {text.slice(lastIndex)}
         </Text>
       );
@@ -301,11 +325,12 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
   const rules = {
     text: (node: any, children: any, parent: any, styles: any) => {
       const text = node.content;
+      const baseStyle = { color: pureWhite };
 
       // Check for timecodes
       if (TIMECODE_REGEX.test(text)) {
         return (
-          <Text key={node.key} style={styles.text}>
+          <Text key={node.key} style={[styles.text, baseStyle]}>
             {renderTextWithTimecodes(text)}
           </Text>
         );
@@ -318,19 +343,19 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
           const parts = text.split(markerRegex);
 
           return (
-            <Text key={node.key} style={styles.text}>
+            <Text key={node.key} style={[styles.text, baseStyle]}>
               {parts.map((part: string, idx: number) => {
                 if (EPISTEMIC_MARKERS[part.toUpperCase()]) {
                   return renderEpistemicBadge(part);
                 }
-                return <Text key={idx}>{part}</Text>;
+                return <Text key={idx} style={baseStyle}>{part}</Text>;
               })}
             </Text>
           );
         }
       }
 
-      return <Text key={node.key} style={styles.text}>{text}</Text>;
+      return <Text key={node.key} style={[styles.text, baseStyle]}>{text}</Text>;
     },
   };
 
