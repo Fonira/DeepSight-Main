@@ -49,7 +49,19 @@ const fetchTournesolScore = async (videoId: string): Promise<TournesolScore | nu
       return null;
     }
 
-    const data = await response.json();
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.warn('[Tournesol] Non-JSON response:', response.status);
+      return null;
+    }
+
+    let data: any;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      console.warn('[Tournesol] JSON parse error:', parseError);
+      return null;
+    }
 
     // Extract scores from Tournesol API response
     // The API returns criteria_scores array with different criteria

@@ -346,9 +346,9 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
             <Text key={node.key} style={[styles.text, baseStyle]}>
               {parts.map((part: string, idx: number) => {
                 if (EPISTEMIC_MARKERS[part.toUpperCase()]) {
-                  return renderEpistemicBadge(part);
+                  return <React.Fragment key={`ep-${idx}`}>{renderEpistemicBadge(part)}</React.Fragment>;
                 }
-                return <Text key={idx} style={baseStyle}>{part}</Text>;
+                return <Text key={`txt-${idx}`} style={baseStyle}>{part}</Text>;
               })}
             </Text>
           );

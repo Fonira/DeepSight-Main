@@ -132,6 +132,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } finally {
         if (!cancelled) {
+          clearTimeout(timeoutId);
           console.log('[Auth] Init finished');
           setIsLoading(false);
         }
