@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.deepsight.app",
-      "buildNumber": "1",
+      "buildNumber": "5",
       "appleTeamId": "XGPXQ9KQ2G",
       "associatedDomains": [
         "applinks:deepsightsynthesis.com",
@@ -29,12 +29,14 @@
         "NSMicrophoneUsageDescription": "Deep Sight needs microphone access for voice input.",
         "ITSAppUsesNonExemptEncryption": false,
         "NSFaceIDUsageDescription": "Deep Sight uses Face ID for secure authentication.",
-        "UIBackgroundModes": ["fetch", "remote-notification"]
+        "UIBackgroundModes": [
+          "fetch",
+          "remote-notification"
+        ]
       },
       "config": {
         "usesNonExemptEncryption": false
-      },
-      "buildNumber": "5"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -68,7 +70,10 @@
               "scheme": "deepsight"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -102,6 +107,9 @@
       },
       "privacyPolicyUrl": "https://www.deepsightsynthesis.com/privacy",
       "termsOfServiceUrl": "https://www.deepsightsynthesis.com/terms"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/baeb5f9c-579a-4385-b913-554aa4591a7d"
     }
   }
 }
