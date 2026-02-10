@@ -1253,19 +1253,7 @@ export const DashboardPage: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Chat toggle */}
-                      <button
-                        onClick={() => { setChatOpen(!chatOpen); setChatMinimized(false); }}
-                        className={`btn ${chatOpen ? 'btn-primary' : 'btn-secondary'} text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]`}
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        <span className="hidden sm:inline">Chat</span>
-                        {chatQuota && (
-                          <span className="ml-1 text-xs opacity-70">
-                            {chatQuota.used}/{chatQuota.limit}
-                          </span>
-                        )}
-                      </button>
+                      {/* Chat toggle — moved to FAB (see below) */}
                     </div>
                   </div>
                   <div className="p-4 sm:p-5 prose max-w-none">
@@ -1330,6 +1318,18 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {/* 💬 FAB Chat IA — Floating Action Button (bottom-right) */}
+      {selectedSummary && !loading && (
+        <button
+          className={`fab-chat-ia ${chatOpen ? 'fab-hidden' : ''} ${playlistDetected ? 'fab-violet' : 'fab-teal'}`}
+          onClick={() => { setChatOpen(true); setChatMinimized(false); }}
+          aria-label={language === 'fr' ? 'Ouvrir le chat IA' : 'Open AI chat'}
+        >
+          <MessageCircle size={20} />
+          <span>Chat IA</span>
+        </button>
+      )}
 
       {/* 🆕 Chat Panel - FloatingChatWindow (Draggable & Resizable) */}
       <FloatingChatWindow
@@ -1424,11 +1424,76 @@ export const DashboardPage: React.FC = () => {
         videoDurationSeconds={lastAnalysisTimeSaved}
       />
 
-      {/* 🆕 CSS pour l'animation shimmer */}
+      {/* 🆕 CSS pour animations (shimmer + FAB pulse) */}
       <style>{`
         @keyframes shimmer {
           0% { transform: translateX(-100%); }
           100% { transform: translateX(100%); }
+        }
+
+        /* ═══ FAB Chat IA ═══ */
+        @keyframes fab-pulse-glow-teal {
+          0%, 100% { box-shadow: 0 4px 20px rgba(0, 188, 212, 0.4); }
+          50%      { box-shadow: 0 4px 30px rgba(0, 188, 212, 0.7), 0 0 60px rgba(0, 188, 212, 0.15); }
+        }
+        @keyframes fab-pulse-glow-violet {
+          0%, 100% { box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4); }
+          50%      { box-shadow: 0 4px 30px rgba(139, 92, 246, 0.7), 0 0 60px rgba(139, 92, 246, 0.15); }
+        }
+
+        .fab-chat-ia {
+          position: fixed;
+          bottom: 24px;
+          right: 24px;
+          z-index: 9999;
+          height: 52px;
+          padding: 0 20px;
+          border-radius: 26px;
+          border: none;
+          outline: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #fff;
+          font-weight: 700;
+          font-size: 14px;
+          font-family: inherit;
+          letter-spacing: 0.01em;
+          transition: transform 0.2s cubic-bezier(0.4,0,0.2,1),
+                      box-shadow 0.2s cubic-bezier(0.4,0,0.2,1),
+                      opacity 0.3s ease;
+        }
+
+        /* Teal variant (default — video) */
+        .fab-chat-ia.fab-teal {
+          background: linear-gradient(135deg, #00BCD4, #00ACC1);
+          box-shadow: 0 4px 20px rgba(0, 188, 212, 0.4);
+          animation: fab-pulse-glow-teal 2.5s ease-in-out infinite;
+        }
+        .fab-chat-ia.fab-teal:hover {
+          transform: scale(1.05);
+          animation: none;
+          box-shadow: 0 6px 28px rgba(0, 188, 212, 0.6);
+        }
+
+        /* Violet variant (playlist) */
+        .fab-chat-ia.fab-violet {
+          background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+          box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
+          animation: fab-pulse-glow-violet 2.5s ease-in-out infinite;
+        }
+        .fab-chat-ia.fab-violet:hover {
+          transform: scale(1.05);
+          animation: none;
+          box-shadow: 0 6px 28px rgba(139, 92, 246, 0.6);
+        }
+
+        /* Hidden state (chat open) */
+        .fab-chat-ia.fab-hidden {
+          opacity: 0;
+          pointer-events: none;
+          transform: scale(0.8);
         }
       `}</style>
     </div>
