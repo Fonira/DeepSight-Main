@@ -92,30 +92,18 @@ const Logo: React.FC<{ className?: string }> = ({ className = "" }) => {
 
   return (
     <div className={`flex items-center gap-2.5 ${className}`}>
-      <div className="relative w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center">
+      <div className="relative w-10 h-10 rounded-full overflow-hidden flex items-center justify-center">
         {!imageError ? (
           <img
-            src="/deep-sight-logo.png"
+            src="/logo-deep-sight.png"
             alt="Deep Sight"
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover"
             onError={() => setImageError(true)}
           />
         ) : (
-          <svg viewBox="0 0 32 32" className="w-full h-full">
-            <defs>
-              <linearGradient id="landingLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#6366f1" />
-                <stop offset="50%" stopColor="#8b5cf6" />
-                <stop offset="100%" stopColor="#06b6d4" />
-              </linearGradient>
-            </defs>
-            <rect width="32" height="32" rx="8" fill="var(--bg-tertiary)" />
-            <path
-              d="M16 6 L18 13 L25 14 L19 17 L25 20 L18 21 L16 28 L14 21 L7 20 L13 17 L7 14 L14 13 Z"
-              fill="url(#landingLogoGrad)"
-              opacity="0.9"
-            />
-          </svg>
+          <div className="w-full h-full rounded-full bg-gradient-to-br from-accent-primary via-violet-500 to-cyan-500 flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-white" />
+          </div>
         )}
       </div>
       <span className="font-semibold text-sm tracking-tight text-text-primary">
@@ -129,7 +117,7 @@ const Logo: React.FC<{ className?: string }> = ({ className = "" }) => {
 // PLANS CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type PlanId = 'free' | 'starter' | 'pro' | 'expert';
+type PlanId = 'free' | 'student' | 'starter' | 'pro' | 'team';
 
 interface PlanConfig {
   id: PlanId;
@@ -138,8 +126,11 @@ interface PlanConfig {
   price: number;
   icon: React.ElementType;
   color: string;
+  gradient: string;
   popular?: boolean;
   recommended?: boolean;
+  badge?: { fr: string; en: string };
+  badgeColor?: string;
   features: Array<{
     text: { fr: string; en: string };
     included: boolean;
@@ -150,67 +141,95 @@ interface PlanConfig {
 const PLANS: PlanConfig[] = [
   {
     id: 'free',
-    name: { fr: 'Découverte', en: 'Discovery' },
-    description: { fr: 'Pour explorer', en: 'To explore' },
+    name: { fr: 'Gratuit', en: 'Free' },
+    description: { fr: 'Pour découvrir', en: 'To discover' },
     price: 0,
     icon: Zap,
-    color: 'text-text-tertiary',
+    color: 'text-gray-400',
+    gradient: 'from-gray-500 to-gray-600',
     features: [
-      { text: { fr: '5 analyses/mois', en: '5 analyses/month' }, included: true },
-      { text: { fr: 'Synthèse express', en: 'Express summary' }, included: true },
-      { text: { fr: 'Chat basique (5 questions)', en: 'Basic chat (5 questions)' }, included: true },
-      { text: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, included: false },
+      { text: { fr: '3 analyses/mois', en: '3 analyses/month' }, included: true },
+      { text: { fr: 'Chat (3 q/vidéo)', en: 'Chat (3 q/video)' }, included: true },
+      { text: { fr: 'Historique 3 jours', en: '3 days history' }, included: true },
+      { text: { fr: 'Outils d\'étude', en: 'Study tools' }, included: false },
       { text: { fr: 'Recherche web', en: 'Web search' }, included: false },
       { text: { fr: 'Export PDF', en: 'PDF export' }, included: false },
+    ],
+  },
+  {
+    id: 'student',
+    name: { fr: 'Étudiant', en: 'Student' },
+    description: { fr: 'Pour réviser efficacement', en: 'For effective studying' },
+    price: 2.99,
+    icon: GraduationCap,
+    color: 'text-emerald-400',
+    gradient: 'from-emerald-500 to-green-600',
+    badge: { fr: 'Étudiants', en: 'Students' },
+    badgeColor: 'bg-emerald-500',
+    features: [
+      { text: { fr: '40 analyses/mois', en: '40 analyses/month' }, included: true },
+      { text: { fr: 'Chat (15 q/vidéo)', en: 'Chat (15 q/video)' }, included: true },
+      { text: { fr: 'Flashcards & Cartes mentales', en: 'Flashcards & Mind maps' }, included: true, highlight: true },
+      { text: { fr: 'Recherche web (10/mois)', en: 'Web search (10/mo)' }, included: true },
+      { text: { fr: 'Export PDF', en: 'PDF export' }, included: true },
+      { text: { fr: 'Lecture audio TTS', en: 'TTS audio' }, included: true },
     ],
   },
   {
     id: 'starter',
     name: { fr: 'Starter', en: 'Starter' },
     description: { fr: 'Pour les réguliers', en: 'For regular users' },
-    price: 4.99,
+    price: 5.99,
     icon: Star,
     color: 'text-blue-400',
+    gradient: 'from-blue-500 to-blue-600',
     features: [
-      { text: { fr: '50 analyses/mois', en: '50 analyses/month' }, included: true },
-      { text: { fr: 'Analyse détaillée', en: 'Detailed analysis' }, included: true },
-      { text: { fr: 'Chat (20 questions/vidéo)', en: 'Chat (20 questions/video)' }, included: true },
-      { text: { fr: 'Export PDF', en: 'PDF export' }, included: true },
+      { text: { fr: '60 analyses/mois', en: '60 analyses/month' }, included: true },
+      { text: { fr: 'Chat (20 q/vidéo)', en: 'Chat (20 q/video)' }, included: true },
+      { text: { fr: 'Flashcards & Cartes mentales', en: 'Flashcards & Mind maps' }, included: true },
       { text: { fr: 'Recherche web (20/mois)', en: 'Web search (20/mo)' }, included: true, highlight: true },
-      { text: { fr: 'Playlists & corpus', en: 'Playlists & corpus' }, included: false },
+      { text: { fr: 'Export PDF', en: 'PDF export' }, included: true },
+      { text: { fr: 'Playlists', en: 'Playlists' }, included: false },
     ],
   },
   {
     id: 'pro',
     name: { fr: 'Pro', en: 'Pro' },
     description: { fr: 'Pour les power users', en: 'For power users' },
-    price: 9.99,
+    price: 12.99,
     icon: Crown,
     color: 'text-violet-400',
+    gradient: 'from-violet-500 to-purple-600',
     popular: true,
+    badge: { fr: 'Populaire', en: 'Popular' },
+    badgeColor: 'bg-red-500',
     features: [
-      { text: { fr: '200 analyses/mois', en: '200 analyses/month' }, included: true },
+      { text: { fr: '300 analyses/mois', en: '300 analyses/month' }, included: true },
       { text: { fr: 'Chat illimité', en: 'Unlimited chat' }, included: true, highlight: true },
-      { text: { fr: 'Recherche web (100/mois)', en: 'Web search (100/mo)' }, included: true, highlight: true },
-      { text: { fr: 'Playlists (10 vidéos)', en: 'Playlists (10 videos)' }, included: true },
-      { text: { fr: 'Export PDF + Markdown', en: 'PDF + Markdown export' }, included: true },
-      { text: { fr: 'Lecture audio TTS', en: 'TTS audio' }, included: true },
+      { text: { fr: 'Flashcards & Cartes mentales', en: 'Flashcards & Mind maps' }, included: true },
+      { text: { fr: 'Playlists (20 vidéos)', en: 'Playlists (20 videos)' }, included: true, highlight: true },
+      { text: { fr: 'Recherche web (100/mois)', en: 'Web search (100/mo)' }, included: true },
+      { text: { fr: 'Export PDF', en: 'PDF export' }, included: true },
     ],
   },
   {
-    id: 'expert',
-    name: { fr: 'Expert', en: 'Expert' },
-    description: { fr: 'Pour les professionnels', en: 'For professionals' },
-    price: 14.99,
-    icon: Rocket,
+    id: 'team',
+    name: { fr: 'Équipe', en: 'Team' },
+    description: { fr: 'Pour les entreprises', en: 'For businesses' },
+    price: 29.99,
+    icon: Users,
     color: 'text-amber-400',
+    gradient: 'from-amber-500 to-orange-500',
     recommended: true,
+    badge: { fr: 'Entreprises', en: 'Business' },
+    badgeColor: 'bg-orange-500',
     features: [
-      { text: { fr: 'Analyses illimitées', en: 'Unlimited analyses' }, included: true, highlight: true },
-      { text: { fr: 'Tout Pro inclus', en: 'All Pro features' }, included: true },
-      { text: { fr: 'Playlists (50 vidéos)', en: 'Playlists (50 videos)' }, included: true, highlight: true },
-      { text: { fr: 'Recherche web (500/mois)', en: 'Web search (500/mo)' }, included: true, highlight: true },
-      { text: { fr: '+ Accès API REST', en: '+ REST API Access' }, included: true, highlight: true },
+      { text: { fr: '1000 analyses/mois', en: '1000 analyses/month' }, included: true, highlight: true },
+      { text: { fr: 'Chat illimité', en: 'Unlimited chat' }, included: true },
+      { text: { fr: 'Flashcards & Cartes mentales', en: 'Flashcards & Mind maps' }, included: true },
+      { text: { fr: 'Playlists (100 vidéos)', en: 'Playlists (100 videos)' }, included: true, highlight: true },
+      { text: { fr: 'Recherche web illimitée', en: 'Unlimited web search' }, included: true, highlight: true },
+      { text: { fr: 'Export PDF', en: 'PDF export' }, included: true },
     ],
   },
 ];
@@ -346,6 +365,20 @@ const LandingPage: React.FC = () => {
       {/* ─── HERO ─── */}
       <section className="relative py-20 sm:py-32 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto text-center">
+          {/* Hero Logo */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, ease }}
+            className="mb-6"
+          >
+            <img
+              src="/logo-deep-sight.png"
+              alt="Deep Sight"
+              className="w-24 h-24 rounded-full mx-auto object-cover shadow-lg shadow-accent-primary/20"
+            />
+          </motion.div>
+
           {/* Badge */}
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -557,53 +590,48 @@ const LandingPage: React.FC = () => {
             </p>
           </ScrollReveal>
 
-          <StaggerReveal className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+          <StaggerReveal className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5">
             {PLANS.map((plan) => {
               const Icon = plan.icon;
               const isPopular = plan.popular;
               const isRecommended = plan.recommended;
-
+              const hasBadge = !!plan.badge;
 
               return (
                 <StaggerItem key={plan.id}>
                   <div
-                    className={`relative p-5 rounded-xl border transition-all h-full flex flex-col ${
+                    className={`relative p-5 rounded-xl border transition-all h-full flex flex-col overflow-hidden ${
                       isPopular
-                        ? 'border-violet-500/40 bg-violet-500/[0.04] shadow-lg shadow-violet-500/10'
+                        ? 'border-violet-500/40 bg-violet-500/[0.06] shadow-lg shadow-violet-500/10'
                         : isRecommended
-                        ? 'border-amber-500/40 bg-amber-500/[0.04] shadow-lg shadow-amber-500/10'
+                        ? 'border-amber-500/40 bg-amber-500/[0.06] shadow-lg shadow-amber-500/10'
+                        : hasBadge
+                        ? 'border-emerald-500/30 bg-emerald-500/[0.04]'
                         : 'border-border-subtle bg-bg-secondary/40 hover:border-border-default'
                     }`}
                   >
                     {/* Badge */}
-                    {isPopular && (
-                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-violet-500 text-white text-[0.6875rem] font-medium">
-                        {language === 'fr' ? 'Populaire' : 'Popular'}
-                      </div>
-                    )}
-                    {isRecommended && (
-                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-amber-500 text-white text-[0.6875rem] font-medium">
-                        {language === 'fr' ? 'Recommandé' : 'Recommended'}
+                    {plan.badge && (
+                      <div className="absolute -top-0 -right-0">
+                        <div className={`${plan.badgeColor || 'bg-gray-500'} text-white text-[0.625rem] font-bold px-2 py-1 rounded-bl-xl`}>
+                          {plan.badge[lang]}
+                        </div>
                       </div>
                     )}
 
+                    {/* Icon */}
+                    <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-4 shadow-lg`}>
+                      <Icon className="w-5 h-5 text-white" />
+                    </div>
+
                     {/* Header */}
-                    <div className="flex items-center gap-2.5 mb-4">
-                      <div className={`w-8 h-8 rounded-lg ${
-                        isPopular ? 'bg-violet-500/15' :
-                        isRecommended ? 'bg-amber-500/15' :
-                        'bg-bg-tertiary'
-                      } flex items-center justify-center`}>
-                        <Icon className={`w-4 h-4 ${plan.color}`} />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-text-primary text-sm">
-                          {plan.name[lang]}
-                        </h3>
-                        <p className="text-[0.6875rem] text-text-tertiary">
-                          {plan.description[lang]}
-                        </p>
-                      </div>
+                    <div className="mb-3">
+                      <h3 className="font-semibold text-text-primary text-sm">
+                        {plan.name[lang]}
+                      </h3>
+                      <p className="text-[0.6875rem] text-text-tertiary">
+                        {plan.description[lang]}
+                      </p>
                     </div>
 
                     {/* Price */}
@@ -617,7 +645,7 @@ const LandingPage: React.FC = () => {
                     </div>
 
                     {/* Features */}
-                    <div className="space-y-2.5 mb-6 flex-1">
+                    <div className="space-y-2 mb-6 flex-1">
                       {plan.features.map((feature, i) => (
                         <div
                           key={i}
@@ -630,13 +658,19 @@ const LandingPage: React.FC = () => {
                           }`}
                         >
                           {feature.included ? (
-                            <Check className={`w-3.5 h-3.5 mt-0.5 flex-shrink-0 ${
-                              feature.highlight ? 'text-accent-primary' : 'text-emerald-400'
-                            }`} />
+                            <div className={`w-4 h-4 rounded-full ${
+                              feature.highlight ? 'bg-amber-500/20' : 'bg-green-500/20'
+                            } flex items-center justify-center flex-shrink-0 mt-0.5`}>
+                              <Check className={`w-2.5 h-2.5 ${
+                                feature.highlight ? 'text-amber-400' : 'text-green-400'
+                              }`} />
+                            </div>
                           ) : (
-                            <X className="w-3.5 h-3.5 text-text-muted mt-0.5 flex-shrink-0" />
+                            <div className="w-4 h-4 rounded-full bg-gray-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <X className="w-2.5 h-2.5 text-gray-500" />
+                            </div>
                           )}
-                          <span>{feature.text[lang]}</span>
+                          <span className={feature.highlight ? 'font-medium' : ''}>{feature.text[lang]}</span>
                         </div>
                       ))}
                     </div>
@@ -646,9 +680,13 @@ const LandingPage: React.FC = () => {
                       onClick={() => navigate('/login')}
                       className={`w-full py-2.5 rounded-lg font-medium text-sm transition-all ${
                         isPopular
-                          ? 'bg-violet-500 text-white hover:bg-violet-600'
+                          ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:opacity-90 shadow-lg'
                           : isRecommended
-                          ? 'bg-amber-500 text-white hover:bg-amber-600'
+                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 shadow-lg'
+                          : plan.id === 'student'
+                          ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-90 shadow-lg'
+                          : plan.id === 'starter'
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:opacity-90 shadow-lg'
                           : 'bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-border-subtle'
                       }`}
                       whileHover={{ scale: 1.01 }}
