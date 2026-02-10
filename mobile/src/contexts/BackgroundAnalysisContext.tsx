@@ -126,7 +126,7 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
 
             const videoTask = t as VideoAnalysisTask;
 
-            if (status.status === 'completed' && status.result) {
+            if (status.status === 'completed') {
               clearInterval(interval);
               pollingIntervals.current.delete(localId);
               setHasNewCompletedTask(true);
@@ -137,8 +137,8 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
                 progress: 100,
                 message: 'Analyse terminée !',
                 result: status.result,
-                videoTitle: status.result.title,
-                thumbnail: status.result.thumbnail,
+                videoTitle: status.result?.title || videoTask.videoTitle,
+                thumbnail: status.result?.thumbnail || videoTask.thumbnail,
                 completedAt: new Date(),
               };
             } else if (status.status === 'failed') {

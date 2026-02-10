@@ -219,10 +219,25 @@ export const AnalysisScreen: React.FC = () => {
           setAnalysisStatus(videoTask.message);
           setAnalysisStep(calculateStepFromProgress(videoTask.progress));
 
-          if (videoTask.status === 'completed' && videoTask.result) {
+          if (videoTask.status === 'completed') {
             // Task completed - load full summary data
             setIsStreaming(false);
-            loadCompletedAnalysis(videoTask.result.id || summaryId);
+            const loadId = videoTask.result?.id;
+            if (loadId) {
+              loadCompletedAnalysis(loadId);
+            } else {
+              // Result not available inline, fetch summary_id via status API
+              setIsLoading(true);
+              videoApi.getStatus(videoTask.taskId).then(s => {
+                if (!isMountedRef.current) return;
+                loadCompletedAnalysis(s.summary_id || videoTask.taskId);
+              }).catch(() => {
+                if (isMountedRef.current) {
+                  setError(t.analysis.failed);
+                  setIsLoading(false);
+                }
+              });
+            }
           } else if (videoTask.status === 'failed') {
             setIsStreaming(false);
             setError(videoTask.error || t.analysis.failed);
@@ -238,9 +253,23 @@ export const AnalysisScreen: React.FC = () => {
         setAnalysisStatus(videoTask.message);
         setAnalysisStep(calculateStepFromProgress(videoTask.progress));
 
-        if (videoTask.status === 'completed' && videoTask.result) {
+        if (videoTask.status === 'completed') {
           setIsStreaming(false);
-          loadCompletedAnalysis(videoTask.result.id || summaryId);
+          const loadId = videoTask.result?.id;
+          if (loadId) {
+            loadCompletedAnalysis(loadId);
+          } else {
+            setIsLoading(true);
+            videoApi.getStatus(videoTask.taskId).then(s => {
+              if (!isMountedRef.current) return;
+              loadCompletedAnalysis(s.summary_id || videoTask.taskId);
+            }).catch(() => {
+              if (isMountedRef.current) {
+                setError(t.analysis.failed);
+                setIsLoading(false);
+              }
+            });
+          }
         } else if (videoTask.status === 'failed') {
           setIsStreaming(false);
           setError(videoTask.error || t.analysis.failed);
@@ -349,6 +378,36 @@ export const AnalysisScreen: React.FC = () => {
       }
     };
   }, [summaryId, getTask, subscribeToTask, calculateStepFromProgress, loadCompletedAnalysis, t.analysis.inProgress, t.analysis.failed, t.errors.generic]);
+
+  // Auto-redirect safety net: when progress reaches 100% but streaming hasn't stopped,
+  // resolve the actual summary ID and replace the screen after a 500ms delay
+  useEffect(() => {
+    if (!isStreaming || analysisProgress < 100 || !summaryId) return;
+
+    const timer = setTimeout(async () => {
+      if (!isMountedRef.current) return;
+
+      try {
+        // Resolve the API task ID from the background task if available
+        const backgroundTask = getTask(summaryId);
+        const apiTaskId = backgroundTask?.taskId || summaryId;
+
+        // Fetch latest status to get the actual summary_id
+        const status = await videoApi.getStatus(apiTaskId);
+        if (!isMountedRef.current) return;
+
+        const actualSummaryId = status.summary_id || status.result?.id;
+        if (actualSummaryId) {
+          // Use replace to prevent going back to the loading screen
+          navigation.replace('Analysis', { summaryId: actualSummaryId });
+        }
+      } catch {
+        // Silent fail - normal completion path or next poll cycle will handle it
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [analysisProgress, isStreaming, summaryId, getTask, navigation]);
 
   // Reload function for retry button
   const loadAnalysis = useCallback(async () => {
