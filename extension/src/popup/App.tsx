@@ -4,6 +4,7 @@ import { LoginView } from './components/LoginView';
 import { MainView } from './components/MainView';
 import { HistoryView } from './components/HistoryView';
 import { SettingsView } from './components/SettingsView';
+import { DeepSightSpinner } from './components/DeepSightSpinner';
 
 type ViewName = 'loading' | 'login' | 'main' | 'history' | 'settings';
 
@@ -12,10 +13,18 @@ export const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [recentAnalyses, setRecentAnalyses] = useState<RecentAnalysis[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // Auto-dismiss toast after 3s
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   async function checkAuth(): Promise<void> {
     try {
@@ -60,12 +69,22 @@ export const App: React.FC = () => {
     setView('login');
   }, []);
 
+  const showError = useCallback((msg: string) => {
+    setToast(msg);
+  }, []);
+
   return (
     <div className="popup-container">
+      {/* Toast notification */}
+      {toast && (
+        <div className="ds-toast" onClick={() => setToast(null)}>
+          {toast}
+        </div>
+      )}
+
       {view === 'loading' && (
         <div className="view loading-view">
-          <div className="spinner" />
-          <p>Loading...</p>
+          <DeepSightSpinner size="md" text="Loading..." />
         </div>
       )}
 
@@ -80,6 +99,7 @@ export const App: React.FC = () => {
           onLogout={handleLogout}
           onShowHistory={() => setView('history')}
           onShowSettings={() => setView('settings')}
+          onError={showError}
         />
       )}
 

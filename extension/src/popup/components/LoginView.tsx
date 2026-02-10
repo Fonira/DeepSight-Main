@@ -1,5 +1,6 @@
 import React, { useState, FormEvent } from 'react';
 import { WEBAPP_URL } from '../../utils/config';
+import { DeepSightLogo } from './DeepSightLogo';
 
 interface LoginViewProps {
   onLogin: (email: string, password: string) => Promise<void>;
@@ -28,13 +29,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, error: externalEr
 
   return (
     <div className="view login-view">
-      <div className="logo">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <circle cx="12" cy="12" r="10" />
-          <path d="M12 6v6l4 2" />
-        </svg>
+      <div className="login-logo">
+        <div className="logo-icon">
+          <DeepSightLogo size="lg" />
+        </div>
         <h1>DeepSight</h1>
       </div>
+      <p className="login-tagline">AI-Powered Video Analysis</p>
 
       <form onSubmit={handleSubmit}>
         <input
@@ -55,9 +56,24 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, error: externalEr
         {error && <div className="error">{error}</div>}
 
         <button type="submit" className="btn-primary" disabled={isLoading}>
-          {isLoading ? 'Signing in...' : 'Sign In'}
+          {isLoading ? (
+            <>
+              <svg className="ds-spinner-sm" viewBox="0 0 48 48" fill="none" style={{ width: 18, height: 18 }}>
+                <defs>
+                  <linearGradient id="login-sp" x1="0" y1="0" x2="1" y2="1">
+                    <stop offset="0%" stopColor="#fff" />
+                    <stop offset="100%" stopColor="rgba(255,255,255,0.4)" />
+                  </linearGradient>
+                </defs>
+                <circle cx="24" cy="24" r="18" fill="none" stroke="url(#login-sp)" strokeWidth="3" strokeLinecap="round" strokeDasharray="80 40" />
+              </svg>
+              Signing in...
+            </>
+          ) : 'Sign In'}
         </button>
       </form>
+
+      <div className="login-divider">or</div>
 
       <button
         className="btn-google"
@@ -79,6 +95,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, error: externalEr
         <span>&bull;</span>
         <a href={`${WEBAPP_URL}/forgot-password`} target="_blank" rel="noreferrer">
           Forgot password?
+        </a>
+      </div>
+
+      <div className="login-site-link">
+        <a href={WEBAPP_URL} target="_blank" rel="noreferrer">
+          deepsightsynthesis.com
         </a>
       </div>
     </div>

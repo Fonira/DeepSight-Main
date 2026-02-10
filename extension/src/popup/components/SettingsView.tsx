@@ -28,7 +28,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
     <div className="view settings-view">
       <header>
         <button onClick={onBack} className="back-btn">
-          &larr; Back
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
         </button>
         <h2>Settings</h2>
       </header>
@@ -42,9 +44,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
               updateSetting('defaultMode', e.target.value as ExtensionSettings['defaultMode'])
             }
           >
-            <option value="accessible">{'\u{1F4D6}'} Accessible</option>
-            <option value="standard">{'\u{1F4CB}'} Standard</option>
-            <option value="expert">{'\u{1F393}'} Expert</option>
+            <option value="accessible">Standard</option>
+            <option value="standard">Advanced</option>
+            <option value="expert">Expert</option>
           </select>
         </div>
 
@@ -56,22 +58,25 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onBack }) => {
               updateSetting('defaultLang', e.target.value as ExtensionSettings['defaultLang'])
             }
           >
-            <option value="fr">{'\u{1F1EB}\u{1F1F7}'} French</option>
-            <option value="en">{'\u{1F1EC}\u{1F1E7}'} English</option>
-            <option value="es">{'\u{1F1EA}\u{1F1F8}'} Spanish</option>
-            <option value="de">{'\u{1F1E9}\u{1F1EA}'} German</option>
+            <option value="fr">Fran{'\u00e7'}ais</option>
+            <option value="en">English</option>
+            <option value="es">Espa{'\u00f1'}ol</option>
+            <option value="de">Deutsch</option>
           </select>
         </div>
 
         <div className="setting-item">
           <label>Notifications</label>
-          <input
-            type="checkbox"
-            checked={settings.showNotifications}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              updateSetting('showNotifications', e.target.checked)
-            }
-          />
+          <label className="toggle-switch">
+            <input
+              type="checkbox"
+              checked={settings.showNotifications}
+              onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                updateSetting('showNotifications', e.target.checked)
+              }
+            />
+            <span className="toggle-slider"></span>
+          </label>
         </div>
       </div>
 
