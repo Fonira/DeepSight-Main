@@ -1,29 +1,33 @@
 /**
- * 🗨️ CHAT POPUP v4.0 — Fenêtre Flottante, Draggable & Resizable
- * ═══════════════════════════════════════════════════════════════════════════════
- * 🆕 v4.0:
- * • Fenêtre déplaçable (drag & drop sur le header)
- * • Redimensionnable (resize sur tous les bords)
- * • Fond ultra-opaque pour lisibilité maximale
- * • Position et taille mémorisées en localStorage
- * • Double-clic sur header pour maximiser/restaurer
- * ═══════════════════════════════════════════════════════════════════════════════
+ * CHAT POPUP v5.0 — Modern Messaging UI (iMessage/WhatsApp style)
+ * ==============================================================================
+ * v5.0:
+ * - Bubble-based messages with avatar icons
+ * - User bubbles (teal/cyan) right-aligned, AI bubbles (dark grey) left-aligned
+ * - Typing indicator with pulsing dots
+ * - Smooth auto-scroll & streaming word-by-word
+ * - Suggestion chips/pills below last AI message
+ * - Slide-in panel animation from the right
+ * - Mobile fullscreen overlay
+ * - Web toggle in input bar
+ * - Simplified markdown in AI bubbles (links in teal)
+ * ==============================================================================
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   X, Send, Globe, Trash2,
-  Minimize2, Maximize2, Sparkles, Bot, ExternalLink,
-  Copy, Check, Shield, BookOpen, Lightbulb, Target, Info,
+  Minimize2, Maximize2, Bot, ExternalLink,
+  Copy, Check, Shield, BookOpen, Sparkles, User, MessageCircle,
   Move
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from './ui';
 import { parseAskQuestions, ClickableQuestionsBlock } from './ClickableQuestions';
 import { EnrichedMarkdown } from './EnrichedMarkdown';
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// 🎯 TYPES
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
+// TYPES
+// =============================================================================
 
 interface ChatSource {
   title: string;
@@ -70,147 +74,340 @@ interface ChatPopupProps {
   onToggleWebSearch?: (enabled: boolean) => void;
   onTimecodeClick?: (seconds: number) => void;
   language?: 'fr' | 'en';
-  storageKey?: string; // Clé pour sauvegarder position/taille
+  storageKey?: string;
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// 🎨 COMPOSANT DE MESSAGE ASSISTANT
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
+// CONSTANTS
+// =============================================================================
 
-const AssistantMessage: React.FC<{
+const TEAL = '#00BCD4';
+const TEAL_DIM = 'rgba(0, 188, 212, 0.15)';
+const TEAL_BORDER = 'rgba(0, 188, 212, 0.3)';
+const TEAL_GLOW = 'rgba(0, 188, 212, 0.25)';
+const AI_BG = '#1E293B';
+const AI_BORDER = 'rgba(255, 255, 255, 0.08)';
+const PANEL_BG = '#0B1120';
+const HEADER_BG = '#0F172A';
+const INPUT_BG = '#111827';
+const MOBILE_BREAKPOINT = 768;
+
+// =============================================================================
+// RELATIVE TIME FORMATTER
+// =============================================================================
+
+function formatRelativeTime(date: Date | undefined, lang: 'fr' | 'en'): string {
+  if (!date) return '';
+  const now = new Date();
+  const diffMs = now.getTime() - new Date(date).getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHr = Math.floor(diffMin / 60);
+
+  if (diffMin < 1) return lang === 'fr' ? "a l'instant" : 'just now';
+  if (diffMin < 60) return lang === 'fr' ? `il y a ${diffMin} min` : `${diffMin}m ago`;
+  if (diffHr < 24) {
+    const h = new Date(date).getHours().toString().padStart(2, '0');
+    const m = new Date(date).getMinutes().toString().padStart(2, '0');
+    return `${h}:${m}`;
+  }
+  const h = new Date(date).getHours().toString().padStart(2, '0');
+  const m = new Date(date).getMinutes().toString().padStart(2, '0');
+  const d = new Date(date).getDate();
+  const mo = new Date(date).getMonth() + 1;
+  return `${d}/${mo} ${h}:${m}`;
+}
+
+// =============================================================================
+// TYPING INDICATOR (3 pulsing dots)
+// =============================================================================
+
+const TypingIndicator: React.FC = () => (
+  <div className="flex items-end gap-2">
+    <div
+      className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+      style={{ background: TEAL_DIM, border: `1px solid ${TEAL_BORDER}` }}
+    >
+      <Bot className="w-3.5 h-3.5" style={{ color: TEAL }} />
+    </div>
+    <div
+      className="px-4 py-3 rounded-2xl rounded-bl-sm"
+      style={{
+        background: AI_BG,
+        border: `1px solid ${AI_BORDER}`,
+      }}
+    >
+      <div className="flex items-center gap-1">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className="inline-block w-2 h-2 rounded-full"
+            style={{
+              backgroundColor: TEAL,
+              opacity: 0.6,
+              animation: `chatTypingPulse 1.4s ease-in-out ${i * 0.2}s infinite`,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+// =============================================================================
+// SUGGESTION CHIPS
+// =============================================================================
+
+const SuggestionChips: React.FC<{
+  questions: string[];
+  onQuestionClick: (q: string) => void;
+  disabled?: boolean;
+  language: 'fr' | 'en';
+}> = ({ questions, onQuestionClick, disabled, language }) => {
+  if (questions.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2 mt-2 ml-9">
+      {questions.map((q, i) => (
+        <button
+          key={i}
+          onClick={() => !disabled && onQuestionClick(q)}
+          disabled={disabled}
+          className="px-3 py-1.5 text-xs rounded-full transition-all duration-200 disabled:opacity-40"
+          style={{
+            background: TEAL_DIM,
+            border: `1px solid ${TEAL_BORDER}`,
+            color: TEAL,
+            cursor: disabled ? 'not-allowed' : 'pointer',
+          }}
+          onMouseEnter={(e) => {
+            if (!disabled) {
+              e.currentTarget.style.background = 'rgba(0, 188, 212, 0.25)';
+              e.currentTarget.style.borderColor = TEAL;
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = TEAL_DIM;
+            e.currentTarget.style.borderColor = TEAL_BORDER;
+          }}
+        >
+          {q}
+        </button>
+      ))}
+    </div>
+  );
+};
+
+// =============================================================================
+// CHAT BUBBLE (unified for user + assistant)
+// =============================================================================
+
+const ChatBubble: React.FC<{
   message: ChatMessage;
+  language: 'fr' | 'en';
   onCopy: (text: string, id: string) => void;
   copiedId: string | null;
-  language: 'fr' | 'en';
   onQuestionClick?: (question: string) => void;
   onTimecodeClick?: (seconds: number) => void;
   isLoading?: boolean;
-}> = ({ message, onCopy, copiedId, language, onQuestionClick, onTimecodeClick, isLoading }) => {
-  const t = language === 'fr' ? {
-    sources: 'Sources vérifiées',
-    copy: 'Copier',
-    copied: 'Copié !',
-    factChecked: 'Vérifié',
-    webEnriched: 'Web',
-  } : {
-    sources: 'Verified sources',
-    copy: 'Copy',
-    copied: 'Copied!',
-    factChecked: 'Verified',
-    webEnriched: 'Web',
-  };
+  isLastAssistant?: boolean;
+  suggestedQuestions?: string[];
+}> = ({
+  message, language, onCopy, copiedId,
+  onQuestionClick, onTimecodeClick, isLoading,
+  isLastAssistant, suggestedQuestions,
+}) => {
+  const isUser = message.role === 'user';
+  const t = language === 'fr'
+    ? { copy: 'Copier', copied: 'Copie !', sources: 'Sources' }
+    : { copy: 'Copy', copied: 'Copied!', sources: 'Sources' };
 
-  const isFactChecked = message.fact_checked || message.web_search_used || message.sources?.length;
-  
-  // 🔮 Parser les questions cliquables
-  const { beforeQuestions, questions } = parseAskQuestions(message.content);
+  // Parse clickable questions from AI content
+  const { beforeQuestions, questions } = useMemo(
+    () => (isUser ? { beforeQuestions: message.content, questions: [] } : parseAskQuestions(message.content)),
+    [message.content, isUser],
+  );
+
+  // Merge parsed [ask:] questions with suggestedQuestions prop for last AI message
+  const allChips = useMemo(() => {
+    if (!isLastAssistant) return questions;
+    const merged = [...questions];
+    if (suggestedQuestions) {
+      for (const sq of suggestedQuestions) {
+        if (!merged.includes(sq)) merged.push(sq);
+      }
+    }
+    return merged.slice(0, 4);
+  }, [isLastAssistant, questions, suggestedQuestions]);
 
   return (
-    <div className="w-full max-w-[98%]">
+    <div
+      className={`flex items-end gap-2 max-w-full ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+      style={{ animation: 'chatBubbleIn 0.3s ease-out' }}
+    >
+      {/* Avatar */}
       <div
-        className="relative rounded-xl overflow-hidden"
+        className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
         style={{
-          background: 'linear-gradient(135deg, rgba(8, 25, 35, 1) 0%, rgba(12, 38, 48, 1) 100%)',
-          border: '1px solid rgba(0, 160, 160, 0.4)',
-          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5)',
+          background: isUser ? 'rgba(0, 188, 212, 0.2)' : TEAL_DIM,
+          border: `1px solid ${isUser ? 'rgba(0, 188, 212, 0.4)' : TEAL_BORDER}`,
         }}
       >
-        {/* Header */}
+        {isUser
+          ? <User className="w-3.5 h-3.5" style={{ color: TEAL }} />
+          : <Bot className="w-3.5 h-3.5" style={{ color: TEAL }} />
+        }
+      </div>
+
+      {/* Bubble + meta */}
+      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`} style={{ maxWidth: '80%' }}>
+        {/* Main bubble */}
         <div
-          className="flex items-center justify-between px-3 py-2"
+          className="relative px-3.5 py-2.5 text-sm leading-relaxed"
           style={{
-            background: 'linear-gradient(90deg, rgba(0, 140, 140, 0.25) 0%, rgba(0, 110, 110, 0.2) 100%)',
-            borderBottom: '1px solid rgba(0, 160, 160, 0.3)',
+            background: isUser
+              ? 'linear-gradient(135deg, rgba(0, 188, 212, 0.22) 0%, rgba(0, 150, 170, 0.18) 100%)'
+              : AI_BG,
+            border: `1px solid ${isUser ? 'rgba(0, 188, 212, 0.35)' : AI_BORDER}`,
+            borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+            color: isUser ? '#e0f7fa' : '#e2e8f0',
+            wordBreak: 'break-word',
           }}
         >
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-cyan-500/30 flex items-center justify-center">
-              <Bot className="w-3.5 h-3.5 text-cyan-300" />
-            </div>
-            <span className="text-xs font-semibold text-cyan-200">Deep Sight AI</span>
-          </div>
-          
-          <div className="flex items-center gap-1.5">
-            {isFactChecked && (
-              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/30 text-emerald-300 border border-emerald-500/40">
-                <Shield className="w-2.5 h-2.5" />
-                {t.factChecked}
-              </span>
-            )}
-            {message.web_search_used && (
-              <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/30 text-amber-300 border border-amber-500/40">
-                <Globe className="w-2.5 h-2.5" />
-                {t.webEnriched}
-              </span>
-            )}
-          </div>
-        </div>
+          {isUser ? (
+            <span>{message.content}</span>
+          ) : (
+            <>
+              {/* Badges row */}
+              {(message.fact_checked || message.web_search_used) && (
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  {message.fact_checked && (
+                    <span
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+                      style={{ background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.3)' }}
+                    >
+                      <Shield className="w-2.5 h-2.5" />
+                      {language === 'fr' ? 'Verifie' : 'Verified'}
+                    </span>
+                  )}
+                  {message.web_search_used && (
+                    <span
+                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium"
+                      style={{ background: 'rgba(245,158,11,0.2)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.3)' }}
+                    >
+                      <Globe className="w-2.5 h-2.5" />
+                      Web
+                    </span>
+                  )}
+                </div>
+              )}
 
-        {/* Content avec EnrichedMarkdown */}
-        <div className="p-3">
-          <EnrichedMarkdown
-            language={language}
-            onTimecodeClick={onTimecodeClick}
-          >
-            {beforeQuestions}
-          </EnrichedMarkdown>
-          
-          {/* 🔮 Questions cliquables */}
-          {questions.length > 0 && onQuestionClick && (
-            <ClickableQuestionsBlock
-              questions={questions}
-              onQuestionClick={onQuestionClick}
-              variant="video"
-              disabled={isLoading}
-            />
+              {/* Markdown content */}
+              <div className="chat-bubble-markdown">
+                <EnrichedMarkdown language={language} onTimecodeClick={onTimecodeClick}>
+                  {beforeQuestions}
+                </EnrichedMarkdown>
+              </div>
+
+              {/* Sources */}
+              {message.sources && message.sources.length > 0 && (
+                <div className="mt-2 pt-2" style={{ borderTop: `1px solid ${AI_BORDER}` }}>
+                  <div className="flex items-center gap-1 mb-1">
+                    <BookOpen className="w-3 h-3" style={{ color: TEAL }} />
+                    <span className="text-[10px] font-medium" style={{ color: TEAL }}>{t.sources}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {message.sources.slice(0, 3).map((src, i) => (
+                      <a
+                        key={i}
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] transition-colors duration-150"
+                        style={{
+                          background: TEAL_DIM,
+                          border: `1px solid ${TEAL_BORDER}`,
+                          color: TEAL,
+                        }}
+                      >
+                        <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
+                        <span className="truncate max-w-[140px]">{src.title || src.domain || 'Source'}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Copy button */}
+              <div className="flex justify-end mt-1">
+                <button
+                  onClick={() => onCopy(message.content, message.id)}
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150"
+                  style={{ color: copiedId === message.id ? '#6ee7b7' : '#6b7280' }}
+                  onMouseEnter={(e) => { if (copiedId !== message.id) e.currentTarget.style.color = TEAL; }}
+                  onMouseLeave={(e) => { if (copiedId !== message.id) e.currentTarget.style.color = '#6b7280'; }}
+                >
+                  {copiedId === message.id
+                    ? <><Check className="w-3 h-3" />{t.copied}</>
+                    : <><Copy className="w-3 h-3" />{t.copy}</>
+                  }
+                </button>
+              </div>
+            </>
           )}
         </div>
 
-        {/* Sources */}
-        {message.sources && message.sources.length > 0 && (
-          <div className="px-3 py-2 border-t border-cyan-500/25" style={{ background: 'rgba(0, 70, 70, 0.3)' }}>
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <BookOpen className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="text-xs font-medium text-cyan-300">{t.sources}</span>
+        {/* Timestamp */}
+        <span
+          className="text-[10px] mt-0.5 px-1"
+          style={{ color: '#64748b' }}
+        >
+          {formatRelativeTime(message.timestamp || new Date(), language)}
+        </span>
+
+        {/* Suggestion chips (only on last AI message) */}
+        {isLastAssistant && allChips.length > 0 && onQuestionClick && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            <div className="flex items-center gap-1 w-full mb-1">
+              <Sparkles className="w-3 h-3" style={{ color: TEAL }} />
+              <span className="text-[10px] font-medium" style={{ color: TEAL }}>
+                {language === 'fr' ? 'Pour aller plus loin' : 'Go deeper'}
+              </span>
             </div>
-            <div className="space-y-1">
-              {message.sources.slice(0, 3).map((source, i) => (
-                <a
-                  key={i}
-                  href={source.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/25 hover:bg-cyan-500/25 transition-all text-xs"
-                >
-                  <ExternalLink className="w-3 h-3 text-cyan-400 flex-shrink-0" />
-                  <span className="text-cyan-200 truncate">{source.title || 'Source'}</span>
-                </a>
-              ))}
-            </div>
+            {allChips.map((q, i) => (
+              <button
+                key={i}
+                onClick={() => !isLoading && onQuestionClick(q)}
+                disabled={isLoading}
+                className="px-3 py-1.5 text-xs rounded-full transition-all duration-200 disabled:opacity-40"
+                style={{
+                  background: TEAL_DIM,
+                  border: `1px solid ${TEAL_BORDER}`,
+                  color: '#b2ebf2',
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isLoading) {
+                    e.currentTarget.style.background = 'rgba(0, 188, 212, 0.28)';
+                    e.currentTarget.style.borderColor = TEAL;
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = TEAL_DIM;
+                  e.currentTarget.style.borderColor = TEAL_BORDER;
+                }}
+              >
+                {q}
+              </button>
+            ))}
           </div>
         )}
-
-        {/* Footer */}
-        <div className="flex items-center justify-end px-3 py-1.5 border-t border-cyan-500/15">
-          <button
-            onClick={() => onCopy(message.content, message.id)}
-            className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-gray-400 hover:text-cyan-300 hover:bg-cyan-500/15 transition-all"
-          >
-            {copiedId === message.id ? (
-              <><Check className="w-3 h-3 text-emerald-400" /><span className="text-emerald-400">{t.copied}</span></>
-            ) : (
-              <><Copy className="w-3 h-3" /><span>{t.copy}</span></>
-            )}
-          </button>
-        </div>
       </div>
     </div>
   );
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// 🎯 HOOK POUR DRAG & DROP
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
+// HOOKS: DRAG & DROP
+// =============================================================================
 
 const useDraggable = (
   initialPosition: Position,
@@ -223,30 +420,23 @@ const useDraggable = (
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('button, input, a')) return;
     setIsDragging(true);
-    setDragOffset({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y,
-    });
+    setDragOffset({ x: e.clientX - position.x, y: e.clientY - position.y });
     e.preventDefault();
   }, [position]);
 
   useEffect(() => {
     if (!isDragging) return;
-
     const handleMouseMove = (e: MouseEvent) => {
       const newX = Math.max(0, Math.min(window.innerWidth - 100, e.clientX - dragOffset.x));
       const newY = Math.max(0, Math.min(window.innerHeight - 100, e.clientY - dragOffset.y));
       setPosition({ x: newX, y: newY });
     };
-
     const handleMouseUp = () => {
       setIsDragging(false);
       onPositionChange(position);
     };
-
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
@@ -256,14 +446,12 @@ const useDraggable = (
   return { position, setPosition, isDragging, handleMouseDown };
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// 🎯 HOOK POUR RESIZE
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
+// HOOKS: RESIZE
+// =============================================================================
 
 const useResizable = (
-  initialSize: Size,
-  minSize: Size,
-  maxSize: Size,
+  initialSize: Size, minSize: Size, maxSize: Size,
   onSizeChange: (size: Size) => void
 ) => {
   const [size, setSize] = useState(initialSize);
@@ -281,33 +469,25 @@ const useResizable = (
 
   useEffect(() => {
     if (!isResizing) return;
-
     const handleMouseMove = (e: MouseEvent) => {
       const deltaX = e.clientX - startPos.current.x;
       const deltaY = e.clientY - startPos.current.y;
-      
       let newWidth = startSize.current.width;
       let newHeight = startSize.current.height;
-
       if (isResizing.includes('e')) newWidth += deltaX;
       if (isResizing.includes('w')) newWidth -= deltaX;
       if (isResizing.includes('s')) newHeight += deltaY;
       if (isResizing.includes('n')) newHeight -= deltaY;
-
       newWidth = Math.max(minSize.width, Math.min(maxSize.width, newWidth));
       newHeight = Math.max(minSize.height, Math.min(maxSize.height, newHeight));
-
       setSize({ width: newWidth, height: newHeight });
     };
-
     const handleMouseUp = () => {
       setIsResizing(null);
       onSizeChange(size);
     };
-
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
@@ -317,9 +497,108 @@ const useResizable = (
   return { size, setSize, isResizing, handleResizeStart };
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// 🎨 COMPOSANT PRINCIPAL
-// ═══════════════════════════════════════════════════════════════════════════════
+// =============================================================================
+// HOOKS: IS MOBILE
+// =============================================================================
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BREAKPOINT);
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+  return isMobile;
+}
+
+// =============================================================================
+// CSS INJECTION (animations for typing dots + bubbles + slide-in)
+// =============================================================================
+
+const CHAT_STYLES_ID = 'deepsight-chat-styles';
+
+function injectChatStyles() {
+  if (document.getElementById(CHAT_STYLES_ID)) return;
+  const style = document.createElement('style');
+  style.id = CHAT_STYLES_ID;
+  style.textContent = `
+    @keyframes chatTypingPulse {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+      30% { transform: translateY(-4px); opacity: 1; }
+    }
+    @keyframes chatBubbleIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes chatSlideIn {
+      from { opacity: 0; transform: translateX(40px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes chatSlideInMobile {
+      from { opacity: 0; transform: translateY(100%); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Simplified markdown inside chat bubbles */
+    .chat-bubble-markdown .enriched-markdown {
+      font-size: 14px !important;
+      line-height: 1.6 !important;
+    }
+    .chat-bubble-markdown .enriched-markdown h1,
+    .chat-bubble-markdown .enriched-markdown h2,
+    .chat-bubble-markdown .enriched-markdown h3,
+    .chat-bubble-markdown .enriched-markdown h4 {
+      font-size: 0.95em !important;
+      font-weight: 600 !important;
+      margin: 0.5em 0 0.3em !important;
+      border: none !important;
+      padding: 0 !important;
+    }
+    .chat-bubble-markdown .enriched-markdown p {
+      margin: 0.4em 0 !important;
+    }
+    .chat-bubble-markdown .enriched-markdown a {
+      color: ${TEAL} !important;
+      border-bottom-color: rgba(0, 188, 212, 0.3) !important;
+    }
+    .chat-bubble-markdown .enriched-markdown ul,
+    .chat-bubble-markdown .enriched-markdown ol {
+      margin: 0.3em 0 !important;
+      padding-left: 1.2em !important;
+    }
+    .chat-bubble-markdown .enriched-markdown li {
+      margin: 0.15em 0 !important;
+    }
+    .chat-bubble-markdown .enriched-markdown blockquote {
+      border-left-color: ${TEAL} !important;
+      background: rgba(0, 188, 212, 0.08) !important;
+    }
+    .chat-bubble-markdown .enriched-markdown code {
+      background: rgba(255, 255, 255, 0.08) !important;
+      font-size: 0.85em !important;
+    }
+
+    /* Custom scrollbar for chat */
+    .chat-messages-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .chat-messages-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .chat-messages-scroll::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+    .chat-messages-scroll::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+// =============================================================================
+// MAIN COMPONENT
+// =============================================================================
 
 export const ChatPopup: React.FC<ChatPopupProps> = ({
   isOpen, onToggle, videoTitle, summaryId, messages, quota,
@@ -331,10 +610,26 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [hasAnimated, setHasAnimated] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
-  // Charger position/taille depuis localStorage
+  // Inject CSS animations once
+  useEffect(() => { injectChatStyles(); }, []);
+
+  // Slide-in entry animation
+  useEffect(() => {
+    if (isOpen && !hasAnimated) setHasAnimated(true);
+  }, [isOpen, hasAnimated]);
+
+  // Reset animation when closed
+  useEffect(() => {
+    if (!isOpen) setHasAnimated(false);
+  }, [isOpen]);
+
+  // Layout persistence
   const getStoredLayout = () => {
     try {
       const stored = localStorage.getItem(`${storageKey}-layout`);
@@ -343,33 +638,35 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
     return null;
   };
 
-  const defaultPosition = { x: window.innerWidth - 520, y: window.innerHeight - 720 };
-  const defaultSize = { width: 480, height: 680 };
+  const defaultPosition = { x: window.innerWidth - 460, y: window.innerHeight - 720 };
+  const defaultSize = { width: 420, height: 680 };
   const storedLayout = getStoredLayout();
 
-  // Hooks pour drag & resize
   const { position, setPosition, isDragging, handleMouseDown } = useDraggable(
     storedLayout?.position || defaultPosition,
-    (pos) => {
-      localStorage.setItem(`${storageKey}-layout`, JSON.stringify({ position: pos, size }));
-    }
+    (pos) => { localStorage.setItem(`${storageKey}-layout`, JSON.stringify({ position: pos, size })); }
   );
 
   const { size, setSize, isResizing, handleResizeStart } = useResizable(
     storedLayout?.size || defaultSize,
     { width: 320, height: 400 },
     { width: 800, height: 900 },
-    (newSize) => {
-      localStorage.setItem(`${storageKey}-layout`, JSON.stringify({ position, size: newSize }));
-    }
+    (newSize) => { localStorage.setItem(`${storageKey}-layout`, JSON.stringify({ position, size: newSize })); }
   );
 
+  // Auto-scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
+    }
+  }, [messages, isLoading]);
 
+  // Focus input when opened
   useEffect(() => {
-    if (isOpen && !isMinimized) setTimeout(() => inputRef.current?.focus(), 100);
+    if (isOpen && !isMinimized) setTimeout(() => inputRef.current?.focus(), 200);
   }, [isOpen, isMinimized]);
 
   const handleSubmit = (e?: React.FormEvent) => {
@@ -386,6 +683,7 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
   };
 
   const handleDoubleClick = () => {
+    if (isMobile) return;
     if (isMaximized) {
       setIsMaximized(false);
       setSize(storedLayout?.size || defaultSize);
@@ -398,60 +696,76 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
   };
 
   const t = language === 'fr' ? {
-    title: 'Chat IA', subtitle: 'Fact-checking intégré',
-    placeholder: 'Posez une question...', noVideo: 'Analysez une vidéo pour commencer',
-    suggested: 'Questions suggérées', clear: 'Effacer', thinking: 'Analyse...',
-    factCheck: 'Fact-check', drag: 'Déplacer',
+    title: 'DeepSight AI',
+    placeholder: 'Message...',
+    noVideo: 'Analysez une video pour commencer',
+    askQuestion: 'Posez votre question...',
+    clear: 'Effacer',
+    thinking: 'Reflexion...',
+    quota: 'questions',
   } : {
-    title: 'AI Chat', subtitle: 'Built-in fact-checking',
-    placeholder: 'Ask a question...', noVideo: 'Analyze a video to start',
-    suggested: 'Suggested questions', clear: 'Clear', thinking: 'Analyzing...',
-    factCheck: 'Fact-check', drag: 'Drag',
+    title: 'DeepSight AI',
+    placeholder: 'Message...',
+    noVideo: 'Analyze a video to start',
+    askQuestion: 'Ask your question...',
+    clear: 'Clear',
+    thinking: 'Thinking...',
+    quota: 'questions',
   };
 
   if (!isOpen) return null;
 
-  // Style selon l'état
-  const windowStyle: React.CSSProperties = isMaximized ? {
+  // Find last assistant message index
+  const lastAssistantIndex = (() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'assistant') return i;
+    }
+    return -1;
+  })();
+
+  // Mobile: fullscreen overlay
+  const windowStyle: React.CSSProperties = isMobile ? {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 9999,
+    animation: 'chatSlideInMobile 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
+  } : isMaximized ? {
     position: 'fixed',
     top: '20px',
     left: '20px',
     width: 'calc(100vw - 40px)',
     height: 'calc(100vh - 40px)',
     zIndex: 9999,
+    animation: hasAnimated ? undefined : 'chatSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
   } : {
     position: 'fixed',
     left: `${position.x}px`,
     top: `${position.y}px`,
     width: isMinimized ? '280px' : `${size.width}px`,
-    height: isMinimized ? '52px' : `${size.height}px`,
+    height: isMinimized ? '48px' : `${size.height}px`,
     zIndex: 9999,
+    animation: hasAnimated ? undefined : 'chatSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
   };
 
   return (
-    <div
-      className="transition-shadow duration-200"
-      style={windowStyle}
-    >
+    <div style={windowStyle}>
       <div
-        className="w-full h-full rounded-xl overflow-hidden flex flex-col relative"
+        className="w-full h-full overflow-hidden flex flex-col relative"
         style={{
-          background: 'linear-gradient(180deg, rgba(4, 12, 18, 1) 0%, rgba(6, 18, 26, 1) 100%)',
-          border: `2px solid ${isDragging || isResizing ? 'rgba(0, 200, 200, 0.8)' : 'rgba(212, 168, 83, 0.7)'}`,
-          boxShadow: isDragging || isResizing 
-            ? '0 20px 60px rgba(0, 200, 200, 0.3), 0 0 100px rgba(0, 150, 150, 0.2)'
-            : '0 16px 48px rgba(0, 0, 0, 0.8), 0 0 80px rgba(0, 120, 120, 0.15)',
+          borderRadius: isMobile ? 0 : isMinimized ? '12px' : '16px',
+          background: PANEL_BG,
+          border: isMobile ? 'none' : `1px solid ${isDragging || isResizing ? TEAL : 'rgba(255, 255, 255, 0.08)'}`,
+          boxShadow: isMobile ? 'none' : `0 24px 80px rgba(0, 0, 0, 0.8), 0 0 60px ${TEAL_GLOW}`,
+          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
         }}
       >
-        {/* ═══ RESIZE HANDLES ═══ */}
-        {!isMinimized && !isMaximized && (
+        {/* RESIZE HANDLES (desktop only, not minimized/maximized) */}
+        {!isMobile && !isMinimized && !isMaximized && (
           <>
-            {/* Coins */}
             <div onMouseDown={(e) => handleResizeStart('nw', e)} className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize z-50" />
             <div onMouseDown={(e) => handleResizeStart('ne', e)} className="absolute top-0 right-0 w-4 h-4 cursor-ne-resize z-50" />
             <div onMouseDown={(e) => handleResizeStart('sw', e)} className="absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize z-50" />
             <div onMouseDown={(e) => handleResizeStart('se', e)} className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-50" />
-            {/* Bords */}
             <div onMouseDown={(e) => handleResizeStart('n', e)} className="absolute top-0 left-4 right-4 h-2 cursor-n-resize z-50" />
             <div onMouseDown={(e) => handleResizeStart('s', e)} className="absolute bottom-0 left-4 right-4 h-2 cursor-s-resize z-50" />
             <div onMouseDown={(e) => handleResizeStart('w', e)} className="absolute left-0 top-4 bottom-4 w-2 cursor-w-resize z-50" />
@@ -459,150 +773,244 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
           </>
         )}
 
-        {/* ═══ HEADER (Draggable) ═══ */}
+        {/* ============ HEADER ============ */}
         <div
-          onMouseDown={handleMouseDown}
+          onMouseDown={!isMobile ? handleMouseDown : undefined}
           onDoubleClick={handleDoubleClick}
-          className="flex items-center justify-between px-3 py-2.5 flex-shrink-0 select-none"
+          className="flex items-center justify-between px-4 py-2.5 flex-shrink-0 select-none"
           style={{
-            background: 'linear-gradient(90deg, rgba(10, 45, 55, 1) 0%, rgba(15, 60, 70, 1) 50%, rgba(10, 45, 55, 1) 100%)',
-            borderBottom: '2px solid rgba(212, 168, 83, 0.5)',
-            cursor: isDragging ? 'grabbing' : 'grab',
+            background: HEADER_BG,
+            borderBottom: `1px solid rgba(255, 255, 255, 0.06)`,
+            cursor: isMobile ? 'default' : isDragging ? 'grabbing' : 'grab',
           }}
         >
-          <div className="flex items-center gap-2">
-            <Move className="w-4 h-4 text-gray-500" />
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-cyan-500/30 border border-cyan-500/40">
-              <Bot className="w-4 h-4 text-cyan-300" />
+          <div className="flex items-center gap-2.5">
+            {!isMobile && <Move className="w-3.5 h-3.5 text-gray-600" />}
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center"
+              style={{ background: TEAL_DIM, border: `1px solid ${TEAL_BORDER}` }}
+            >
+              <MessageCircle className="w-4 h-4" style={{ color: TEAL }} />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-amber-400">{t.title}</h3>
-              {!isMinimized && <p className="text-[10px] text-cyan-400/80">{t.subtitle}</p>}
+              <h3 className="text-sm font-semibold" style={{ color: '#f1f5f9' }}>{t.title}</h3>
+              {!isMinimized && quota && (
+                <p className="text-[10px]" style={{ color: '#64748b' }}>
+                  {quota.daily_used}/{quota.daily_limit} {t.quota}
+                </p>
+              )}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-1">
-            {quota && !isMinimized && (
-              <span className="px-2 py-0.5 rounded bg-black/50 text-[10px] font-medium text-gray-300 mr-1">
-                {quota.daily_used}/{quota.daily_limit}
-              </span>
-            )}
             {messages.length > 0 && !isMinimized && onClearHistory && (
-              <button onClick={onClearHistory} className="p-1.5 rounded-lg text-red-400/70 hover:text-red-400 hover:bg-red-500/20 transition-all" title={t.clear}>
+              <button
+                onClick={onClearHistory}
+                className="p-1.5 rounded-lg transition-colors duration-150"
+                style={{ color: '#6b7280' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+                title={t.clear}
+              >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             )}
-            <button onClick={() => setIsMinimized(!isMinimized)} className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all">
-              {isMinimized ? <Maximize2 className="w-3.5 h-3.5" /> : <Minimize2 className="w-3.5 h-3.5" />}
-            </button>
-            <button onClick={onToggle} className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all">
-              <X className="w-3.5 h-3.5" />
+            {!isMobile && (
+              <button
+                onClick={() => setIsMinimized(!isMinimized)}
+                className="p-1.5 rounded-lg transition-colors duration-150"
+                style={{ color: '#6b7280' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#f1f5f9'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+              >
+                {isMinimized ? <Maximize2 className="w-3.5 h-3.5" /> : <Minimize2 className="w-3.5 h-3.5" />}
+              </button>
+            )}
+            <button
+              onClick={onToggle}
+              className="p-1.5 rounded-lg transition-colors duration-150"
+              style={{ color: '#6b7280' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#f1f5f9'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+            >
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* ═══ CONTENT ═══ */}
+        {/* ============ BODY ============ */}
         {!isMinimized && (
           <>
+            {/* Video context bar */}
             {videoTitle && (
-              <div className="px-3 py-1.5 border-b border-cyan-500/25 bg-cyan-500/10">
-                <p className="text-[10px] text-cyan-300/90 truncate flex items-center gap-1.5">
-                  <Target className="w-3 h-3 flex-shrink-0" />{videoTitle}
-                </p>
+              <div
+                className="px-4 py-1.5 text-[11px] truncate"
+                style={{
+                  background: 'rgba(0, 188, 212, 0.06)',
+                  borderBottom: `1px solid rgba(0, 188, 212, 0.1)`,
+                  color: TEAL,
+                }}
+              >
+                {videoTitle}
               </div>
             )}
 
-            {/* MESSAGES */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3" style={{ background: 'rgba(2, 8, 12, 0.8)' }}>
+            {/* MESSAGES AREA */}
+            <div
+              ref={messagesContainerRef}
+              className="flex-1 overflow-y-auto p-4 space-y-4 chat-messages-scroll"
+              style={{ background: PANEL_BG }}
+            >
               {!summaryId ? (
+                /* No video state */
                 <div className="h-full flex items-center justify-center">
-                  <div className="text-center p-4">
-                    <div className="w-14 h-14 mx-auto mb-3 rounded-xl flex items-center justify-center bg-amber-500/15 border border-amber-500/30">
-                      <Sparkles className="w-7 h-7 text-amber-500/70" />
+                  <div className="text-center p-6">
+                    <div
+                      className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"
+                      style={{ background: TEAL_DIM, border: `1px solid ${TEAL_BORDER}` }}
+                    >
+                      <MessageCircle className="w-8 h-8" style={{ color: TEAL, opacity: 0.6 }} />
                     </div>
-                    <p className="text-gray-400 text-sm">{t.noVideo}</p>
+                    <p className="text-sm" style={{ color: '#64748b' }}>{t.noVideo}</p>
                   </div>
                 </div>
               ) : messages.length === 0 ? (
-                <div className="space-y-4 py-3">
-                  <div className="text-center">
-                    <div className="w-12 h-12 mx-auto mb-3 rounded-xl flex items-center justify-center bg-cyan-500/20 border border-cyan-500/40">
-                      <Lightbulb className="w-6 h-6 text-cyan-400 animate-pulse" />
-                    </div>
-                    <p className="text-gray-300 text-sm">{language === 'fr' ? 'Posez une question' : 'Ask a question'}</p>
+                /* Empty state with suggested questions */
+                <div className="h-full flex flex-col items-center justify-center py-6">
+                  <div
+                    className="w-14 h-14 mb-4 rounded-2xl flex items-center justify-center"
+                    style={{ background: TEAL_DIM, border: `1px solid ${TEAL_BORDER}` }}
+                  >
+                    <Bot className="w-7 h-7" style={{ color: TEAL, opacity: 0.7 }} />
                   </div>
+                  <p className="text-sm mb-1" style={{ color: '#e2e8f0' }}>
+                    {t.askQuestion}
+                  </p>
+                  <p className="text-xs mb-6" style={{ color: '#64748b' }}>
+                    {language === 'fr' ? 'Je suis la pour vous aider' : "I'm here to help"}
+                  </p>
                   {suggestedQuestions.length > 0 && (
-                    <div className="space-y-1.5">
-                      <p className="text-[10px] font-semibold text-amber-400/80 uppercase tracking-wider flex items-center gap-1.5 px-1">
-                        <Info className="w-3 h-3" />{t.suggested}
-                      </p>
+                    <div className="w-full max-w-[90%] space-y-2">
                       {suggestedQuestions.slice(0, 3).map((q, i) => (
-                        <button key={i} onClick={() => { if (!isLoading && summaryId) onSendMessage(q); }} disabled={isLoading}
-                          className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-200 bg-cyan-500/10 border border-cyan-500/25 hover:bg-cyan-500/20 hover:border-cyan-500/40 transition-all disabled:opacity-50">
-                          <span className="text-cyan-400 mr-1.5">→</span>{q}
+                        <button
+                          key={i}
+                          onClick={() => { if (!isLoading && summaryId) onSendMessage(q); }}
+                          disabled={isLoading}
+                          className="w-full text-left px-4 py-2.5 rounded-xl text-sm transition-all duration-200 disabled:opacity-50"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid rgba(255, 255, 255, 0.06)',
+                            color: '#cbd5e1',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = TEAL_DIM;
+                            e.currentTarget.style.borderColor = TEAL_BORDER;
+                            e.currentTarget.style.color = '#e0f7fa';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)';
+                            e.currentTarget.style.color = '#cbd5e1';
+                          }}
+                        >
+                          <span style={{ color: TEAL, marginRight: '8px' }}>&#8594;</span>
+                          {q}
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
               ) : (
+                /* Messages list */
                 <>
-                  {messages.map((msg) => (
-                    <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      {msg.role === 'user' ? (
-                        <div className="max-w-[85%] rounded-xl rounded-tr-sm px-3 py-2"
-                          style={{ background: 'linear-gradient(135deg, rgba(212, 168, 83, 0.95) 0%, rgba(170, 130, 50, 0.95) 100%)' }}>
-                          <p className="text-sm font-medium text-gray-900">{msg.content}</p>
-                        </div>
-                      ) : (
-                        <AssistantMessage 
-                          message={msg} 
-                          onCopy={copyToClipboard} 
-                          copiedId={copiedId} 
-                          language={language}
-                          onQuestionClick={onSendMessage}
-                          onTimecodeClick={onTimecodeClick}
-                          isLoading={isLoading}
-                        />
-                      )}
-                    </div>
+                  {messages.map((msg, idx) => (
+                    <ChatBubble
+                      key={msg.id}
+                      message={msg}
+                      language={language}
+                      onCopy={copyToClipboard}
+                      copiedId={copiedId}
+                      onQuestionClick={onSendMessage}
+                      onTimecodeClick={onTimecodeClick}
+                      isLoading={isLoading}
+                      isLastAssistant={idx === lastAssistantIndex && !isLoading}
+                      suggestedQuestions={suggestedQuestions}
+                    />
                   ))}
-                  {isLoading && (
-                    <div className="flex justify-start">
-                      <div className="rounded-xl px-4 py-3 bg-cyan-900/40 border border-cyan-500/30">
-                        <div className="flex items-center gap-2">
-                          <DeepSightSpinnerMicro />
-                          <span className="text-sm text-gray-300">{t.thinking}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  {isLoading && <TypingIndicator />}
                   <div ref={messagesEndRef} />
                 </>
               )}
             </div>
 
-            {/* INPUT */}
-            <div className="flex-shrink-0 p-3 border-t border-cyan-500/30" style={{ background: 'rgba(5, 15, 22, 1)' }}>
-              {isProUser && onToggleWebSearch && (
-                <div className="flex items-center mb-2">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <div className={`relative w-8 h-4 rounded-full transition-all ${webSearchEnabled ? 'bg-emerald-500/50' : 'bg-gray-700/70'}`}
-                      onClick={() => onToggleWebSearch(!webSearchEnabled)}>
-                      <div className={`absolute top-0.5 w-3 h-3 rounded-full transition-all ${webSearchEnabled ? 'left-4 bg-emerald-400' : 'left-0.5 bg-gray-500'}`} />
-                    </div>
-                    <span className="text-[10px] text-gray-400 flex items-center gap-1"><Shield className="w-3 h-3" />{t.factCheck}</span>
-                  </label>
-                </div>
-              )}
-              <form onSubmit={handleSubmit} className="flex gap-2">
-                <input ref={inputRef} type="text" value={input} onChange={(e) => setInput(e.target.value)}
-                  placeholder={t.placeholder} disabled={!!(isLoading || !summaryId || (quota && !quota.can_ask))}
-                  className="flex-1 px-3 py-2 rounded-lg text-sm text-gray-100 placeholder-gray-500 bg-cyan-900/40 border border-cyan-500/30 focus:border-cyan-400/60 focus:outline-none focus:ring-1 focus:ring-cyan-500/30 disabled:opacity-50 transition-all" />
-                <button type="submit" disabled={!input.trim() || isLoading || !summaryId}
-                  className="px-3 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-40 flex items-center"
-                  style={{ background: input.trim() ? 'linear-gradient(135deg, rgba(212, 168, 83, 0.95) 0%, rgba(170, 130, 50, 0.95) 100%)' : 'rgba(70, 70, 70, 0.5)', color: input.trim() ? '#0a1a1f' : '#555' }}>
-                  <Send className="w-4 h-4" />
+            {/* ============ INPUT BAR ============ */}
+            <div
+              className="flex-shrink-0 px-3 py-3"
+              style={{
+                background: INPUT_BG,
+                borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+              }}
+            >
+              <form onSubmit={handleSubmit} className="flex items-center gap-2">
+                {/* Web search toggle (compact, in input bar) */}
+                {isProUser && onToggleWebSearch && (
+                  <button
+                    type="button"
+                    onClick={() => onToggleWebSearch(!webSearchEnabled)}
+                    className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all duration-200 flex-shrink-0"
+                    style={{
+                      background: webSearchEnabled ? 'rgba(0, 188, 212, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                      border: `1px solid ${webSearchEnabled ? 'rgba(0, 188, 212, 0.4)' : 'rgba(255, 255, 255, 0.06)'}`,
+                      color: webSearchEnabled ? TEAL : '#6b7280',
+                    }}
+                    title={webSearchEnabled ? 'Web search ON' : 'Web search OFF'}
+                  >
+                    <Globe className="w-3 h-3" />
+                    <span>Web</span>
+                  </button>
+                )}
+
+                {/* Input field */}
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder={t.placeholder}
+                  disabled={!!(isLoading || !summaryId || (quota && !quota.can_ask))}
+                  className="flex-1 px-4 py-2.5 text-sm disabled:opacity-50 transition-all duration-200 outline-none"
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '24px',
+                    color: '#f1f5f9',
+                    caretColor: TEAL,
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(0, 188, 212, 0.4)';
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                  }}
+                />
+
+                {/* Send button */}
+                <button
+                  type="submit"
+                  disabled={!input.trim() || isLoading || !summaryId}
+                  className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 disabled:opacity-30"
+                  style={{
+                    background: input.trim()
+                      ? `linear-gradient(135deg, ${TEAL}, #0097A7)`
+                      : 'rgba(255, 255, 255, 0.04)',
+                    border: `1px solid ${input.trim() ? 'rgba(0, 188, 212, 0.5)' : 'rgba(255, 255, 255, 0.06)'}`,
+                    color: input.trim() ? '#fff' : '#4b5563',
+                    boxShadow: input.trim() ? `0 4px 16px ${TEAL_GLOW}` : 'none',
+                  }}
+                >
+                  <Send className="w-4 h-4" style={{ transform: 'rotate(-45deg)' }} />
                 </button>
               </form>
             </div>

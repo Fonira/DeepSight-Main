@@ -26,7 +26,7 @@ export { FactCheckDisplay } from './factcheck/FactCheckDisplay';
 export { WebEnrichment } from './enrichment';
 
 // Chat
-export { FloatingChat } from './chat';
+export { FloatingChat, ChatBubble, TypingIndicator, ChatInput, VideoMiniCard } from './chat';
 
 // Tournesol
 export { TournesolWidget } from './tournesol';

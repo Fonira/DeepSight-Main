@@ -38,6 +38,10 @@ import { AnalysisValueDisplay } from '../components/analysis/AnalysisValueDispla
 import { AnalysisContentDisplay } from '../components/analysis/AnalysisContentDisplay';
 import { TTSPlayer } from '../components/audio/TTSPlayer';
 import { SuggestedQuestions } from '../components/chat/SuggestedQuestions';
+import { ChatBubble } from '../components/chat/ChatBubble';
+import { TypingIndicator } from '../components/chat/TypingIndicator';
+import { ChatInput } from '../components/chat/ChatInput';
+import { FloatingChat } from '../components/chat';
 import { UpgradePromptModal } from '../components/upgrade';
 import { useAuth } from '../contexts/AuthContext';
 import { useBackgroundAnalysis, type VideoAnalysisTask } from '../contexts/BackgroundAnalysisContext';
@@ -1073,65 +1077,32 @@ export const AnalysisScreen: React.FC = () => {
                 <Text style={[styles.chatEmptyText, { color: colors.textSecondary }]}>
                   {t.chat.askQuestion}
                 </Text>
-                {/* Suggested Questions */}
                 <View style={{ marginTop: Spacing.lg, width: '100%' }}>
                   <SuggestedQuestions
-                    onQuestionSelect={(question) => {
-                      setChatInput(question);
-                      // Optionally auto-send
-                      // handleSendMessage();
-                    }}
+                    onQuestionSelect={(question) => setChatInput(question)}
                     variant="chat"
                     category={summary?.category}
                   />
                 </View>
               </View>
             }
-            renderItem={({ item }) => (
-              <View
-                style={[
-                  styles.chatMessage,
-                  item.role === 'user' ? styles.userMessage : styles.assistantMessage,
-                  {
-                    backgroundColor:
-                      item.role === 'user' ? colors.accentPrimary : colors.bgElevated,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.chatMessageText,
-                    { color: item.role === 'user' ? '#FFFFFF' : colors.textPrimary },
-                  ]}
-                >
-                  {item.content}
-                </Text>
-              </View>
+            renderItem={({ item, index }) => (
+              <ChatBubble
+                role={item.role}
+                content={item.content}
+                timestamp={item.timestamp}
+                index={index}
+              />
             )}
+            ListFooterComponent={isSendingMessage ? <TypingIndicator /> : null}
           />
 
-          <View style={[styles.chatInputContainer, { backgroundColor: colors.bgSecondary, borderTopColor: colors.border }]}>
-            <TextInput
-              style={[styles.chatInput, { backgroundColor: colors.bgElevated, color: colors.textPrimary }]}
-              placeholder={t.chat.placeholder}
-              placeholderTextColor={colors.textMuted}
-              value={chatInput}
-              onChangeText={setChatInput}
-              multiline
-              maxLength={1000}
-            />
-            <TouchableOpacity
-              style={[styles.sendButton, { backgroundColor: colors.accentPrimary }]}
-              onPress={handleSendMessage}
-              disabled={!chatInput.trim() || isSendingMessage}
-            >
-              {isSendingMessage ? (
-                <DeepSightSpinner size="sm" speed="fast" color="#FFFFFF" />
-              ) : (
-                <Ionicons name="send" size={20} color="#FFFFFF" />
-              )}
-            </TouchableOpacity>
-          </View>
+          <ChatInput
+            value={chatInput}
+            onChangeText={setChatInput}
+            onSend={handleSendMessage}
+            isLoading={isSendingMessage}
+          />
         </KeyboardAvoidingView>
       )}
 
@@ -1429,6 +1400,17 @@ export const AnalysisScreen: React.FC = () => {
         onClose={() => setShowUpgradeModal(false)}
         limitType={upgradeLimitType}
       />
+
+      {/* Floating Chat FAB - visible on all tabs except chat */}
+      {summary && activeTab !== 'chat' && (
+        <FloatingChat
+          summaryId={summary.id}
+          videoTitle={summary.title}
+          category={summary.category}
+          initialMessages={chatMessages}
+          onMessagesUpdate={setChatMessages}
+        />
+      )}
     </View>
   );
 };
@@ -1636,48 +1618,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
     marginTop: Spacing.md,
-  },
-  chatMessage: {
-    maxWidth: '80%',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.sm,
-  },
-  userMessage: {
-    alignSelf: 'flex-end',
-    borderBottomRightRadius: 4,
-  },
-  assistantMessage: {
-    alignSelf: 'flex-start',
-    borderBottomLeftRadius: 4,
-  },
-  chatMessageText: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.body,
-    lineHeight: Typography.fontSize.sm * 1.5,
-  },
-  chatInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: Spacing.md,
-    borderTopWidth: 1,
-    gap: Spacing.sm,
-  },
-  chatInput: {
-    flex: 1,
-    borderRadius: BorderRadius.lg,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    maxHeight: 100,
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.body,
-  },
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   toolsContainer: {
     flex: 1,

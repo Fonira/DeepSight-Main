@@ -3,18 +3,20 @@ import {
   View,
   Text,
   StyleSheet,
+  Pressable,
   TouchableOpacity,
   Modal,
-  TextInput,
   FlatList,
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Animated,
   Dimensions,
+  Easing,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -23,9 +25,19 @@ import { chatApi } from '../../services/api';
 import { Spacing, Typography, BorderRadius } from '../../constants/theme';
 import { hasFeature, getLimit, isUnlimited } from '../../config/planPrivileges';
 import { SuggestedQuestions } from './SuggestedQuestions';
+import { ChatBubble } from './ChatBubble';
+import { TypingIndicator } from './TypingIndicator';
+import { ChatInput } from './ChatInput';
 import type { ChatMessage } from '../../types';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const CHAT_FAB_SEEN_KEY = 'deepsight_chat_fab_seen';
+
+// FAB Design constants
+const FAB_HEIGHT = 56;
+const FAB_BORDER_RADIUS = FAB_HEIGHT / 2;
+const FAB_GLOW_COLOR = '#00BCD4';
+const FAB_GRADIENT: readonly [string, string] = ['#00BCD4', '#8b5cf6'];
 
 interface FloatingChatProps {
   summaryId: string;
@@ -47,7 +59,17 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   const { user } = useAuth();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<FlatList>(null);
+
+  // Modal animation
   const scaleAnim = useRef(new Animated.Value(0)).current;
+
+  // Pulse glow animation (sonar ring)
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
+  // FAB entry animation
+  const fabEntryAnim = useRef(new Animated.Value(0)).current;
+
+  // Unread badge pulse
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const [isOpen, setIsOpen] = useState(false);
@@ -58,8 +80,48 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   const [unreadCount, setUnreadCount] = useState(0);
   const [useWebSearch, setUseWebSearch] = useState(false);
   const [lastSources, setLastSources] = useState<Array<{ url: string; title: string }>>([]);
+  const [showNewBadge, setShowNewBadge] = useState(false);
 
-  // Pulse animation for unread badge
+  // Check if first time seeing the FAB
+  useEffect(() => {
+    AsyncStorage.getItem(CHAT_FAB_SEEN_KEY).then(val => {
+      if (!val) setShowNewBadge(true);
+    });
+  }, []);
+
+  // FAB entry animation - bouncy spring on mount
+  useEffect(() => {
+    Animated.spring(fabEntryAnim, {
+      toValue: 1,
+      friction: 6,
+      tension: 80,
+      useNativeDriver: true,
+    }).start();
+  }, [fabEntryAnim]);
+
+  // Pulse glow animation - sonar ring every 3 seconds
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0,
+          duration: 0,
+          useNativeDriver: true,
+        }),
+        Animated.delay(1500),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [glowAnim]);
+
+  // Unread badge pulse
   useEffect(() => {
     let animation: Animated.CompositeAnimation | null = null;
 
@@ -83,16 +145,13 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
       pulseAnim.setValue(1);
     }
 
-    // Cleanup: stop animation on unmount or when unreadCount changes
     return () => {
-      if (animation) {
-        animation.stop();
-      }
+      if (animation) animation.stop();
       pulseAnim.setValue(1);
     };
   }, [unreadCount, pulseAnim]);
 
-  // Open/close animation
+  // Modal open/close animation
   useEffect(() => {
     Animated.spring(scaleAnim, {
       toValue: isOpen ? 1 : 0,
@@ -100,10 +159,17 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
       tension: 40,
       useNativeDriver: true,
     }).start();
-  }, [isOpen]);
+  }, [isOpen, scaleAnim]);
 
   const handleOpen = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Dismiss "Nouveau" badge on first tap
+    if (showNewBadge) {
+      setShowNewBadge(false);
+      AsyncStorage.setItem(CHAT_FAB_SEEN_KEY, 'true');
+    }
+
     setIsOpen(true);
     setUnreadCount(0);
   };
@@ -146,7 +212,6 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
         timestamp: new Date().toISOString(),
       };
 
-      // Store sources if web search was used
       if (response.sources && response.sources.length > 0) {
         setLastSources(response.sources);
       }
@@ -161,7 +226,6 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
         setUnreadCount(prev => prev + 1);
       }
     } catch (err) {
-      // Remove failed message
       setMessages(prev => prev.filter(m => m.id !== userMessage.id));
       setInput(userMessage.content);
     } finally {
@@ -169,13 +233,12 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
     }
   };
 
-  // Check if user can use web search based on plan privileges
+  // Plan privileges
   const userPlan = user?.plan || 'free';
   const canUseWebSearch = hasFeature(userPlan, 'chatWebSearch');
 
   const handleToggleWebSearch = () => {
     if (!canUseWebSearch) {
-      // Show upgrade prompt
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       return;
     }
@@ -183,45 +246,105 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
     setUseWebSearch(!useWebSearch);
   };
 
-  // Get user's chat quota based on plan privileges
   const chatQuotaPerVideo = getLimit(userPlan, 'chatQuestionsPerVideo');
   const isUnlimitedChat = isUnlimited(userPlan, 'chatQuestionsPerVideo');
   const questionsUsed = messages.filter(m => m.role === 'user').length;
   const questionsRemaining = isUnlimitedChat ? -1 : chatQuotaPerVideo - questionsUsed;
 
-  // Handle suggested question selection
   const handleSuggestedQuestion = (question: string) => {
     setInput(question);
   };
 
+  // Animated glow ring values
+  const glowOpacity = glowAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.6, 0.3, 0],
+  });
+  const glowScale = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 1.5],
+  });
+
+  // FAB entry interpolations
+  const fabScale = fabEntryAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+  const fabTranslateY = fabEntryAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [60, 0],
+  });
+
   return (
     <>
-      {/* Floating Button */}
-      <TouchableOpacity
-        style={[
-          styles.floatingButton,
-          {
-            backgroundColor: colors.accentPrimary,
-            bottom: insets.bottom + 100,
-          },
-        ]}
-        onPress={handleOpen}
-      >
-        <Ionicons name="chatbubble-ellipses" size={28} color="#FFFFFF" />
-
-        {unreadCount > 0 && (
+      {/* === FAB (Hidden when chat modal is open) === */}
+      {!isOpen && (
+        <Animated.View
+          style={[
+            styles.fabWrapper,
+            {
+              bottom: insets.bottom + 24,
+              transform: [
+                { scale: fabScale },
+                { translateY: fabTranslateY },
+              ],
+            },
+          ]}
+          pointerEvents="box-none"
+        >
+          {/* Sonar glow ring */}
           <Animated.View
             style={[
-              styles.unreadBadge,
-              { backgroundColor: colors.accentError, transform: [{ scale: pulseAnim }] },
+              styles.glowRing,
+              {
+                opacity: glowOpacity,
+                transform: [{ scale: glowScale }],
+              },
+            ]}
+            pointerEvents="none"
+          />
+
+          {/* Main FAB button */}
+          <Pressable
+            onPress={handleOpen}
+            style={({ pressed }) => [
+              styles.fabPressable,
+              { transform: [{ scale: pressed ? 0.93 : 1 }] },
             ]}
           >
-            <Text style={styles.unreadText}>{unreadCount}</Text>
-          </Animated.View>
-        )}
-      </TouchableOpacity>
+            <LinearGradient
+              colors={[FAB_GRADIENT[0], FAB_GRADIENT[1]]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.fab}
+            >
+              <Ionicons name="chatbubble-ellipses" size={22} color="#FFFFFF" />
+              <Text style={styles.fabText}>Chat IA</Text>
+            </LinearGradient>
+          </Pressable>
 
-      {/* Chat Modal */}
+          {/* "Nouveau" badge */}
+          {showNewBadge && (
+            <View style={styles.newBadge}>
+              <Text style={styles.newBadgeText}>Nouveau</Text>
+            </View>
+          )}
+
+          {/* Unread count badge */}
+          {unreadCount > 0 && !showNewBadge && (
+            <Animated.View
+              style={[
+                styles.unreadBadge,
+                { transform: [{ scale: pulseAnim }] },
+              ]}
+            >
+              <Text style={styles.unreadText}>{unreadCount}</Text>
+            </Animated.View>
+          )}
+        </Animated.View>
+      )}
+
+      {/* === Chat Modal === */}
       <Modal
         visible={isOpen}
         animationType="none"
@@ -242,7 +365,12 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
             ]}
           >
             {/* Header */}
-            <View style={[styles.header, { backgroundColor: colors.accentPrimary }]}>
+            <LinearGradient
+              colors={[FAB_GRADIENT[0], FAB_GRADIENT[1]]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.header}
+            >
               <TouchableOpacity onPress={handleMinimize} style={styles.headerButton}>
                 <Ionicons
                   name={isMinimized ? 'chevron-up' : 'chevron-down'}
@@ -261,7 +389,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
               <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
                 <Ionicons name="close" size={20} color="#FFFFFF" />
               </TouchableOpacity>
-            </View>
+            </LinearGradient>
 
             {!isMinimized && (
               <KeyboardAvoidingView
@@ -295,7 +423,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                         </Text>
                       </View>
 
-                      {/* Suggested questions - using new component */}
+                      {/* Suggested questions */}
                       <SuggestedQuestions
                         onQuestionSelect={handleSuggestedQuestion}
                         category={category}
@@ -304,31 +432,18 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                       />
                     </View>
                   }
-                  renderItem={({ item }) => (
-                    <View
-                      style={[
-                        styles.messageBubble,
-                        item.role === 'user' ? styles.userBubble : styles.assistantBubble,
-                        {
-                          backgroundColor:
-                            item.role === 'user' ? colors.accentPrimary : colors.bgSecondary,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.messageText,
-                          { color: item.role === 'user' ? '#FFFFFF' : colors.textPrimary },
-                        ]}
-                      >
-                        {item.content}
-                      </Text>
-                    </View>
+                  renderItem={({ item, index }) => (
+                    <ChatBubble
+                      role={item.role}
+                      content={item.content}
+                      timestamp={item.timestamp}
+                      index={index}
+                    />
                   )}
+                  ListFooterComponent={isLoading ? <TypingIndicator /> : null}
                 />
 
-                {/* Input */}
-                {/* Question quota indicator at bottom */}
+                {/* Quota warning */}
                 {questionsRemaining !== -1 && questionsRemaining <= 2 && questionsRemaining > 0 && (
                   <View style={[styles.quotaWarning, { backgroundColor: `${colors.accentWarning}20` }]}>
                     <Ionicons name="warning-outline" size={14} color={colors.accentWarning} />
@@ -338,7 +453,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                   </View>
                 )}
 
-                {/* Sources from last web search */}
+                {/* Web search sources */}
                 {lastSources.length > 0 && (
                   <View style={[styles.sourcesContainer, { backgroundColor: colors.bgSecondary }]}>
                     <View style={styles.sourcesHeader}>
@@ -353,63 +468,25 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                         style={[styles.sourceLink, { color: colors.accentPrimary }]}
                         numberOfLines={1}
                       >
-                        • {source.title || source.url}
+                        {source.title || source.url}
                       </Text>
                     ))}
                   </View>
                 )}
 
-                <View style={[styles.inputContainer, { borderTopColor: colors.border }]}>
-                  {/* Web Search Toggle */}
-                  <TouchableOpacity
-                    style={[
-                      styles.webSearchToggle,
-                      {
-                        backgroundColor: useWebSearch ? colors.accentPrimary + '20' : colors.bgSecondary,
-                        borderColor: useWebSearch ? colors.accentPrimary : colors.border,
-                      },
-                    ]}
-                    onPress={handleToggleWebSearch}
-                    disabled={!canUseWebSearch}
-                  >
-                    <Ionicons
-                      name="globe-outline"
-                      size={16}
-                      color={useWebSearch ? colors.accentPrimary : canUseWebSearch ? colors.textSecondary : colors.textMuted}
-                    />
-                    {!canUseWebSearch && (
-                      <Ionicons name="lock-closed" size={10} color={colors.textMuted} style={styles.lockIcon} />
-                    )}
-                  </TouchableOpacity>
-
-                  <TextInput
-                    style={[
-                      styles.input,
-                      { backgroundColor: colors.bgSecondary, color: colors.textPrimary },
-                    ]}
-                    placeholder={useWebSearch ? t.chat.webSearchPlaceholder : t.chat.placeholder}
-                    placeholderTextColor={colors.textMuted}
-                    value={input}
-                    onChangeText={setInput}
-                    multiline
-                    maxLength={500}
-                    editable={questionsRemaining === -1 || questionsRemaining > 0}
-                  />
-                  <TouchableOpacity
-                    style={[
-                      styles.sendButton,
-                      { backgroundColor: input.trim() ? colors.accentPrimary : colors.bgTertiary },
-                    ]}
-                    onPress={handleSend}
-                    disabled={!input.trim() || isLoading}
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Ionicons name="send" size={18} color="#FFFFFF" />
-                    )}
-                  </TouchableOpacity>
-                </View>
+                <ChatInput
+                  value={input}
+                  onChangeText={setInput}
+                  onSend={handleSend}
+                  isLoading={isLoading}
+                  placeholder={useWebSearch ? t.chat.webSearchPlaceholder : t.chat.placeholder}
+                  maxLength={500}
+                  disabled={questionsRemaining !== -1 && questionsRemaining <= 0}
+                  showWebSearch
+                  webSearchEnabled={useWebSearch}
+                  onToggleWebSearch={handleToggleWebSearch}
+                  canUseWebSearch={canUseWebSearch}
+                />
               </KeyboardAvoidingView>
             )}
           </Animated.View>
@@ -420,24 +497,72 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
 };
 
 const styles = StyleSheet.create({
-  floatingButton: {
+  // === FAB Styles ===
+  fabWrapper: {
     position: 'absolute',
-    right: Spacing.md,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    right: 16,
+    zIndex: 999,
+    elevation: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+  },
+  glowRing: {
+    position: 'absolute',
+    width: 160,
+    height: FAB_HEIGHT,
+    borderRadius: FAB_BORDER_RADIUS,
+    backgroundColor: FAB_GLOW_COLOR,
+  },
+  fabPressable: {
+    // Shadow for iOS
+    shadowColor: FAB_GLOW_COLOR,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    // Elevation for Android
+    elevation: 12,
+  },
+  fab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: FAB_HEIGHT,
+    paddingHorizontal: 24,
+    borderRadius: FAB_BORDER_RADIUS,
+    gap: 10,
+  },
+  fabText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  newBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -4,
+    backgroundColor: '#FF453A',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+    shadowColor: '#FF453A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  newBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   unreadBadge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
+    top: -6,
+    right: -6,
     backgroundColor: '#FF453A',
     minWidth: 22,
     height: 22,
@@ -445,12 +570,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
+    borderWidth: 2,
+    borderColor: '#0a0a0f',
   },
   unreadText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
   },
+
+  // === Modal Styles ===
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -527,76 +656,6 @@ const styles = StyleSheet.create({
   quotaWarningText: {
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.bodyMedium,
-  },
-  suggestedContainer: {
-    marginTop: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  suggestedButton: {
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-  },
-  suggestedText: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.body,
-  },
-  messageBubble: {
-    maxWidth: '80%',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.sm,
-  },
-  userBubble: {
-    alignSelf: 'flex-end',
-    borderBottomRightRadius: 4,
-  },
-  assistantBubble: {
-    alignSelf: 'flex-start',
-    borderBottomLeftRadius: 4,
-  },
-  messageText: {
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.body,
-    lineHeight: Typography.fontSize.sm * 1.5,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: Spacing.md,
-    borderTopWidth: 1,
-    gap: Spacing.sm,
-  },
-  input: {
-    flex: 1,
-    borderRadius: BorderRadius.lg,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    maxHeight: 80,
-    fontSize: Typography.fontSize.sm,
-    fontFamily: Typography.fontFamily.body,
-  },
-  sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  webSearchToggle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    position: 'relative',
-  },
-  lockIcon: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
   },
   sourcesContainer: {
     paddingHorizontal: Spacing.md,

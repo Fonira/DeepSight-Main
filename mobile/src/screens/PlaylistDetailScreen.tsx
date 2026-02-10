@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,8 @@ import {
   Pressable,
   RefreshControl,
   Alert,
-  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,10 +23,15 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { playlistApi } from '../services/api';
 import { Header, Card, Badge, Button, VideoCard, UpgradePromptModal, DeepSightSpinner } from '../components';
+import { ChatBubble } from '../components/chat/ChatBubble';
+import { TypingIndicator } from '../components/chat/TypingIndicator';
+import { ChatInput } from '../components/chat/ChatInput';
+import { VideoMiniCard } from '../components/chat/VideoMiniCard';
+import { SuggestedQuestions } from '../components/chat/SuggestedQuestions';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { formatDate } from '../utils/formatters';
 import { normalizePlanId, hasFeature, getMinPlanForFeature, getPlanInfo } from '../config/planPrivileges';
-import type { RootStackParamList, Playlist, AnalysisSummary } from '../types';
+import type { RootStackParamList, Playlist, AnalysisSummary, ChatMessage } from '../types';
 
 type PlaylistDetailNavigationProp = NativeStackNavigationProp<RootStackParamList, 'PlaylistDetail'>;
 type PlaylistDetailRouteProp = RouteProp<RootStackParamList, 'PlaylistDetail'>;
@@ -39,6 +45,7 @@ export const PlaylistDetailScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   useScreenDoodleVariant('video');
   const isEn = language === 'en';
+  const chatScrollRef = useRef<FlatList>(null);
 
   // Plan access checks
   const userPlan = normalizePlanId(user?.plan);
@@ -54,9 +61,13 @@ export const PlaylistDetailScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isGeneratingSynthesis, setIsGeneratingSynthesis] = useState(false);
-  const [activeTab, setActiveTab] = useState<'videos' | 'synthesis'>('videos');
+  const [activeTab, setActiveTab] = useState<'videos' | 'chat'>('videos');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // Chat state
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   // Load playlist details
   const loadPlaylistDetails = useCallback(async () => {
@@ -66,6 +77,16 @@ export const PlaylistDetailScreen: React.FC = () => {
       setPlaylist(response.playlist);
       setVideos(response.videos || []);
       setCorpusSummary(response.corpusSummary || null);
+
+      // If there's a corpus summary, seed the chat with it as the first assistant message
+      if (response.corpusSummary) {
+        setChatMessages([{
+          id: 'corpus-summary',
+          role: 'assistant',
+          content: response.corpusSummary,
+          timestamp: new Date().toISOString(),
+        }]);
+      }
     } catch (err) {
       console.error('Error loading playlist details:', err);
       setError(t.errors.generic);
@@ -84,29 +105,109 @@ export const PlaylistDetailScreen: React.FC = () => {
     setRefreshing(false);
   }, [loadPlaylistDetails]);
 
-  // Generate corpus synthesis
+  // Generate corpus synthesis (initial chat message)
   const handleGenerateSynthesis = async () => {
     if (!playlistId) return;
 
-    // Check plan access
     if (!hasCorpusAccess) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       setShowUpgradeModal(true);
       return;
     }
 
-    setIsGeneratingSynthesis(true);
+    setIsSendingMessage(true);
+
+    // Add a user message for the synthesis request
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: isEn
+        ? 'Generate a comprehensive synthesis of all videos in this playlist.'
+        : 'Génère une synthèse complète de toutes les vidéos de cette playlist.',
+      timestamp: new Date().toISOString(),
+    };
+    setChatMessages(prev => [...prev, userMsg]);
+
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       const response = await playlistApi.generateCorpusSummary(playlistId);
       setCorpusSummary(response.summary);
-      setActiveTab('synthesis');
+
+      const assistantMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: response.summary,
+        timestamp: new Date().toISOString(),
+      };
+      setChatMessages(prev => [...prev, assistantMsg]);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err) {
       Alert.alert(t.common.error, t.errors.generic);
+      // Remove the user message on error
+      setChatMessages(prev => prev.filter(m => m.id !== userMsg.id));
     } finally {
-      setIsGeneratingSynthesis(false);
+      setIsSendingMessage(false);
     }
+  };
+
+  // Send chat message (uses corpus summary context)
+  const handleSendChatMessage = async () => {
+    if (!chatInput.trim() || isSendingMessage) return;
+
+    // If no corpus access, prompt upgrade
+    if (!hasCorpusAccess) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    // If no synthesis yet, generate it first
+    if (!corpusSummary) {
+      handleGenerateSynthesis();
+      return;
+    }
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: chatInput.trim(),
+      timestamp: new Date().toISOString(),
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+    setIsSendingMessage(true);
+
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      // Use the first video's summaryId for the chat API with playlist context
+      const firstVideo = videos[0];
+      if (firstVideo) {
+        const { chatApi } = await import('../services/api');
+        const response = await chatApi.sendMessage(firstVideo.id, userMessage.content, {
+          mode: 'playlist',
+        });
+
+        const assistantMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: response.response,
+          timestamp: new Date().toISOString(),
+        };
+        setChatMessages(prev => [...prev, assistantMsg]);
+      }
+    } catch (err) {
+      Alert.alert(t.common.error, t.errors.generic);
+      setChatMessages(prev => prev.filter(m => m.id !== userMessage.id));
+      setChatInput(userMessage.content);
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
+  // Handle suggested question
+  const handleSuggestedQuestion = (question: string) => {
+    setChatInput(question);
   };
 
   // Navigate to video analysis
@@ -150,6 +251,22 @@ export const PlaylistDetailScreen: React.FC = () => {
     ),
     []
   );
+
+  /**
+   * Detect video references in assistant messages.
+   * Matches patterns like "Video: Title" or quoted video titles
+   * and renders VideoMiniCards for matching playlist videos.
+   */
+  const findVideoReferences = (content: string): AnalysisSummary[] => {
+    if (!videos.length) return [];
+    const refs: AnalysisSummary[] = [];
+    for (const video of videos) {
+      if (video.title && content.toLowerCase().includes(video.title.toLowerCase().substring(0, 30))) {
+        refs.push(video);
+      }
+    }
+    return refs.slice(0, 3); // max 3 inline cards
+  };
 
   if (isLoading) {
     return (
@@ -257,12 +374,12 @@ export const PlaylistDetailScreen: React.FC = () => {
           </Text>
         </View>
         <View style={[styles.statItem, { backgroundColor: colors.bgElevated }]}>
-          <Ionicons name="document-text" size={18} color={colors.accentSecondary} />
+          <Ionicons name="chatbubble-ellipses" size={18} color={colors.accentTertiary} />
           <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-            {corpusSummary ? '1' : '0'}
+            {chatMessages.filter(m => m.role === 'user').length}
           </Text>
           <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-            {t.playlists.synthesis}
+            {isEn ? 'Questions' : 'Questions'}
           </Text>
         </View>
       </View>
@@ -293,22 +410,22 @@ export const PlaylistDetailScreen: React.FC = () => {
         <Pressable
           style={[
             styles.tab,
-            activeTab === 'synthesis' && { borderBottomColor: colors.accentPrimary },
+            activeTab === 'chat' && { borderBottomColor: colors.accentTertiary },
           ]}
-          onPress={() => setActiveTab('synthesis')}
+          onPress={() => setActiveTab('chat')}
         >
           <Ionicons
-            name="layers-outline"
+            name="chatbubble-ellipses-outline"
             size={18}
-            color={activeTab === 'synthesis' ? colors.accentPrimary : colors.textSecondary}
+            color={activeTab === 'chat' ? colors.accentTertiary : colors.textSecondary}
           />
           <Text
             style={[
               styles.tabText,
-              { color: activeTab === 'synthesis' ? colors.accentPrimary : colors.textSecondary },
+              { color: activeTab === 'chat' ? colors.accentTertiary : colors.textSecondary },
             ]}
           >
-            {t.playlists.synthesis}
+            {isEn ? 'Chat' : 'Chat'}
           </Text>
         </Pressable>
       </View>
@@ -341,62 +458,122 @@ export const PlaylistDetailScreen: React.FC = () => {
           }
         />
       ) : (
-        <ScrollView
-          style={styles.synthesisContainer}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+        <KeyboardAvoidingView
+          style={styles.chatContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={100}
         >
-          {corpusSummary ? (
-            <Card variant="elevated" style={styles.synthesisCard}>
-              <View style={styles.synthesisHeader}>
-                <Ionicons name="layers" size={20} color={colors.accentPrimary} />
-                <Text style={[styles.synthesisTitle, { color: colors.textPrimary }]}>
-                  {t.playlists.corpusAnalysis}
-                </Text>
-              </View>
-              <Text style={[styles.synthesisContent, { color: colors.textSecondary }]}>
-                {corpusSummary}
+          {/* Playlist Context Badge */}
+          <View style={[styles.playlistBadge, { backgroundColor: `${colors.accentTertiary}12`, borderColor: `${colors.accentTertiary}30` }]}>
+            <Ionicons name="folder" size={14} color={colors.accentTertiary} />
+            <Text style={[styles.playlistBadgeText, { color: colors.accentTertiary }]} numberOfLines={1}>
+              Playlist: {playlist.name}
+            </Text>
+            <View style={[styles.playlistBadgeCount, { backgroundColor: `${colors.accentTertiary}20` }]}>
+              <Text style={[styles.playlistBadgeCountText, { color: colors.accentTertiary }]}>
+                {videos.length} {isEn ? 'videos' : 'vidéos'}
               </Text>
-            </Card>
-          ) : (
-            <View style={styles.noSynthesis}>
-              <Ionicons name="sparkles-outline" size={48} color={colors.textTertiary} />
-              <Text style={[styles.noSynthesisText, { color: colors.textSecondary }]}>
-                {t.playlists.noSynthesisYet}
-              </Text>
-              <Text style={[styles.noSynthesisSubtext, { color: colors.textTertiary }]}>
-                {t.playlists.generateFirst}
-              </Text>
-
-              {/* Show Team badge if user doesn't have access */}
-              {!hasCorpusAccess && (
-                <View style={[styles.teamBadge, { backgroundColor: `${colors.accentWarning}15` }]}>
-                  <View style={[styles.teamBadgeIcon, { backgroundColor: colors.accentWarning }]}>
-                    <Ionicons name="people" size={14} color="#FFFFFF" />
-                  </View>
-                  <Text style={[styles.teamBadgeText, { color: colors.textSecondary }]}>
-                    {isEn
-                      ? `Requires ${minPlanInfo?.name.en || 'Team'} plan`
-                      : `Nécessite le plan ${minPlanInfo?.name.fr || 'Team'}`}
-                  </Text>
-                </View>
-              )}
-
-              <Button
-                title={hasCorpusAccess
-                  ? t.playlists.generateSynthesis
-                  : (isEn ? 'Unlock Corpus Analysis' : 'Débloquer l\'analyse de corpus')}
-                onPress={handleGenerateSynthesis}
-                loading={isGeneratingSynthesis}
-                style={styles.generateButton}
-                icon={
-                  hasCorpusAccess
-                    ? <Ionicons name="sparkles" size={18} color="#FFFFFF" />
-                    : <Ionicons name="lock-closed" size={18} color="#FFFFFF" />
-                }
-              />
             </View>
-          )}
-        </ScrollView>
+          </View>
+
+          {/* Chat Messages */}
+          <FlatList
+            ref={chatScrollRef}
+            data={chatMessages}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.chatMessages}
+            onContentSizeChange={() => chatScrollRef.current?.scrollToEnd()}
+            ListEmptyComponent={
+              <View style={styles.chatEmptyState}>
+                <Ionicons name="sparkles-outline" size={48} color={colors.textTertiary} />
+                <Text style={[styles.chatEmptyTitle, { color: colors.textPrimary }]}>
+                  {isEn ? 'Playlist Q&A' : 'Q&R Playlist'}
+                </Text>
+                <Text style={[styles.chatEmptyText, { color: colors.textSecondary }]}>
+                  {isEn
+                    ? 'Ask questions about all videos in this playlist. Start by generating a corpus synthesis.'
+                    : 'Posez des questions sur toutes les vidéos de cette playlist. Commencez par générer une synthèse du corpus.'}
+                </Text>
+
+                {/* Show Team badge if user doesn't have access */}
+                {!hasCorpusAccess && (
+                  <View style={[styles.teamBadge, { backgroundColor: `${colors.accentWarning}15` }]}>
+                    <View style={[styles.teamBadgeIcon, { backgroundColor: colors.accentWarning }]}>
+                      <Ionicons name="people" size={14} color="#FFFFFF" />
+                    </View>
+                    <Text style={[styles.teamBadgeText, { color: colors.textSecondary }]}>
+                      {isEn
+                        ? `Requires ${minPlanInfo?.name.en || 'Team'} plan`
+                        : `Nécessite le plan ${minPlanInfo?.name.fr || 'Team'}`}
+                    </Text>
+                  </View>
+                )}
+
+                {/* Generate synthesis button */}
+                <Button
+                  title={hasCorpusAccess
+                    ? (isEn ? 'Generate Corpus Synthesis' : 'Générer la synthèse du corpus')
+                    : (isEn ? 'Unlock Corpus Analysis' : 'Débloquer l\'analyse de corpus')}
+                  onPress={handleGenerateSynthesis}
+                  loading={isSendingMessage}
+                  style={styles.generateButton}
+                  icon={
+                    hasCorpusAccess
+                      ? <Ionicons name="sparkles" size={18} color="#FFFFFF" />
+                      : <Ionicons name="lock-closed" size={18} color="#FFFFFF" />
+                  }
+                />
+
+                {/* Suggested Questions */}
+                <View style={{ marginTop: Spacing.lg, width: '100%' }}>
+                  <SuggestedQuestions
+                    onQuestionSelect={handleSuggestedQuestion}
+                    variant="playlist"
+                    disabled={!hasCorpusAccess}
+                  />
+                </View>
+              </View>
+            }
+            renderItem={({ item, index }) => {
+              const videoRefs = item.role === 'assistant' ? findVideoReferences(item.content) : [];
+              return (
+                <ChatBubble
+                  role={item.role}
+                  content={item.content}
+                  timestamp={item.timestamp}
+                  index={index}
+                >
+                  {/* Inline video reference mini-cards */}
+                  {videoRefs.length > 0 && (
+                    <View style={styles.videoRefsContainer}>
+                      {videoRefs.map((video) => (
+                        <VideoMiniCard
+                          key={video.id}
+                          summaryId={video.id}
+                          title={video.title}
+                          thumbnail={video.videoInfo?.thumbnail || video.thumbnail}
+                          channel={video.videoInfo?.channel || video.channel}
+                          onPress={() => handleVideoPress(video)}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </ChatBubble>
+              );
+            }}
+            ListFooterComponent={isSendingMessage ? <TypingIndicator /> : null}
+          />
+
+          {/* Chat Input */}
+          <ChatInput
+            value={chatInput}
+            onChangeText={setChatInput}
+            onSend={handleSendChatMessage}
+            isLoading={isSendingMessage}
+            placeholder={isEn ? 'Ask about this playlist...' : 'Posez une question sur cette playlist...'}
+            disabled={!hasCorpusAccess}
+          />
+        </KeyboardAvoidingView>
       )}
 
       {/* Upgrade Modal */}
@@ -520,53 +697,68 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     alignItems: 'center',
-    paddingVertical: Spacing.xxl,
+    paddingVertical: Spacing.xl * 2,
   },
   emptyText: {
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
     marginTop: Spacing.md,
   },
-  synthesisContainer: {
+
+  // Chat styles
+  chatContainer: {
     flex: 1,
-    padding: Spacing.lg,
   },
-  synthesisCard: {
-    padding: Spacing.lg,
-  },
-  synthesisHeader: {
+  playlistBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
     gap: Spacing.sm,
-    marginBottom: Spacing.md,
   },
-  synthesisTitle: {
-    fontSize: Typography.fontSize.lg,
+  playlistBadgeText: {
+    flex: 1,
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.bodyMedium,
+  },
+  playlistBadgeCount: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  playlistBadgeCountText: {
+    fontSize: Typography.fontSize.xs - 2,
     fontFamily: Typography.fontFamily.bodySemiBold,
   },
-  synthesisContent: {
-    fontSize: Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.body,
-    lineHeight: Typography.fontSize.base * 1.6,
+  chatMessages: {
+    padding: Spacing.md,
+    paddingBottom: 20,
   },
-  noSynthesis: {
+  chatEmptyState: {
     alignItems: 'center',
-    paddingVertical: Spacing.xxl,
+    paddingVertical: Spacing.xl,
+    paddingHorizontal: Spacing.md,
   },
-  noSynthesisText: {
-    fontSize: Typography.fontSize.base,
-    fontFamily: Typography.fontFamily.bodyMedium,
+  chatEmptyTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontFamily: Typography.fontFamily.bodySemiBold,
     marginTop: Spacing.md,
+    marginBottom: Spacing.sm,
   },
-  noSynthesisSubtext: {
+  chatEmptyText: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.body,
-    marginTop: Spacing.xs,
     textAlign: 'center',
-    paddingHorizontal: Spacing.xl,
+    lineHeight: Typography.fontSize.sm * 1.5,
+    marginBottom: Spacing.md,
   },
   generateButton: {
-    marginTop: Spacing.xl,
+    marginTop: Spacing.md,
   },
   teamBadge: {
     flexDirection: 'row',
@@ -587,6 +779,9 @@ const styles = StyleSheet.create({
   teamBadgeText: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodyMedium,
+  },
+  videoRefsContainer: {
+    marginTop: Spacing.xs,
   },
 });
 

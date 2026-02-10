@@ -60,3 +60,6 @@ credentials.json
 play-store-credentials.json
 extension/node_modules/  
 extension/node_modules/ 
+
+deepsight-video/
+mobile/nul
