@@ -810,16 +810,14 @@ export const videoApi = {
     });
   },
 
-  async factCheck(summaryId: number): Promise<FactCheckResult[]> {
-    return request(`/api/videos/summary/${summaryId}/fact-check`, {
-      method: 'POST',
+  async factCheck(summaryId: number): Promise<ReliabilityResult> {
+    return request(`/api/videos/reliability/${summaryId}`, {
       timeout: 120000,
     });
   },
 
-  async webEnrich(summaryId: number): Promise<{ enriched: boolean; data?: unknown }> {
-    return request(`/api/videos/summary/${summaryId}/web-enrich`, {
-      method: 'POST',
+  async webEnrich(summaryId: number): Promise<EnrichedConceptsResponse> {
+    return request(`/api/videos/concepts/${summaryId}/enriched`, {
       timeout: 60000,
     });
   },
