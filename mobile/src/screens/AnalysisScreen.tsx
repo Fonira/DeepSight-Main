@@ -699,8 +699,7 @@ export const AnalysisScreen: React.FC = () => {
   // Defensive listener: if keyboard opens on a non-chat tab, force close it
   useEffect(() => {
     const sub = Keyboard.addListener('keyboardDidShow', () => {
-      if (activeTab !== 'chat' && activeTab !== 'summary') {
-        // On concepts and tools tabs, there's no TextInput, so force dismiss
+      if (activeTab !== 'chat') {
         Keyboard.dismiss();
       }
     });
