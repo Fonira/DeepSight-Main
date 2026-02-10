@@ -88,23 +88,14 @@ const StaggerItem: React.FC<{
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const Logo: React.FC<{ className?: string }> = ({ className = "" }) => {
-  const [imageError, setImageError] = React.useState(false);
-
   return (
     <div className={`flex items-center gap-2.5 ${className}`}>
       <div className="relative w-10 h-10 rounded-full overflow-hidden flex items-center justify-center">
-        {!imageError ? (
-          <img
-            src="/logo-deep-sight.png"
-            alt="Deep Sight"
-            className="w-full h-full object-cover"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <div className="w-full h-full rounded-full bg-gradient-to-br from-accent-primary via-violet-500 to-cyan-500 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-white" />
-          </div>
-        )}
+        <img
+          src="/deepsight-logo-cosmic.png"
+          alt="Deep Sight"
+          className="w-full h-full object-cover"
+        />
       </div>
       <span className="font-semibold text-sm tracking-tight text-text-primary">
         Deep Sight
@@ -373,9 +364,10 @@ const LandingPage: React.FC = () => {
             className="mb-6"
           >
             <img
-              src="/logo-deep-sight.png"
+              src="/deepsight-logo-cosmic.png"
               alt="Deep Sight"
-              className="w-24 h-24 rounded-full mx-auto object-cover shadow-lg shadow-accent-primary/20"
+              className="h-32 w-32 rounded-full mx-auto object-cover"
+              style={{ filter: 'drop-shadow(0 0 20px rgba(139, 92, 246, 0.4))' }}
             />
           </motion.div>
 

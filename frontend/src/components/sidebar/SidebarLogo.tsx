@@ -75,7 +75,7 @@ export const SidebarLogo: React.FC = () => {
             />
           ) : (
             <img
-              src="/deep-sight-logo.png"
+              src="/deepsight-logo-cosmic.png"
               alt="Deep Sight"
               className="w-28 h-28 object-contain relative z-10"
               style={{

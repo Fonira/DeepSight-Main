@@ -80,7 +80,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     try {
       const browserNotif = new Notification(notification.title, {
         body: notification.message,
-        icon: '/logo-deep-sight.png',
+        icon: '/deepsight-logo-cosmic.png',
         tag: `deepsight-${notification.data?.summary_id || Date.now()}`,
         requireInteraction: notification.type === 'analysis_complete',
       });

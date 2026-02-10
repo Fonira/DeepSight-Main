@@ -65,7 +65,7 @@ export const VideoLogo: React.FC<VideoLogoProps> = ({
         style={{ width: sizeStyle, height: sizeStyle }}
       >
         <img
-          src="/deep-sight-logo.png"
+          src="/deepsight-logo-cosmic.png"
           alt="Deep Sight"
           className="w-full h-full object-contain"
           style={withGlow ? {
@@ -112,7 +112,7 @@ export const VideoLogo: React.FC<VideoLogoProps> = ({
       {!isLoaded && (
         <div className="absolute inset-0 flex items-center justify-center">
           <img
-            src="/deep-sight-logo.png"
+            src="/deepsight-logo-cosmic.png"
             alt="Deep Sight"
             className="w-3/4 h-3/4 object-contain animate-pulse"
           />

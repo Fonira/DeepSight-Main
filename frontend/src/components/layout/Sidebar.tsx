@@ -27,26 +27,7 @@ import { useTranslation } from "../../hooks/useTranslation";
 
 // === Logo ===
 const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({ collapsed, onClick }) => {
-  const [imageError, setImageError] = React.useState(false);
   const { t } = useTranslation();
-
-  const LogoSVG = () => (
-    <svg viewBox="0 0 32 32" className="w-full h-full">
-      <defs>
-        <linearGradient id="sidebarLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#6366f1" />
-          <stop offset="50%" stopColor="#8b5cf6" />
-          <stop offset="100%" stopColor="#06b6d4" />
-        </linearGradient>
-      </defs>
-      <rect width="32" height="32" rx="8" fill="var(--bg-tertiary)" />
-      <path
-        d="M16 6 L18 13 L25 14 L19 17 L25 20 L18 21 L16 28 L14 21 L7 20 L13 17 L7 14 L14 13 Z"
-        fill="url(#sidebarLogoGrad)"
-        opacity="0.9"
-      />
-    </svg>
-  );
 
   return (
     <button
@@ -55,16 +36,11 @@ const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({ collaps
       title={t.nav.dashboard}
     >
       <div className="relative w-8 h-8 flex-shrink-0 rounded-lg overflow-hidden flex items-center justify-center">
-        {!imageError ? (
-          <img
-            src="/deep-sight-logo.png"
-            alt="Deep Sight"
-            className="w-full h-full object-contain"
-            onError={() => setImageError(true)}
-          />
-        ) : (
-          <LogoSVG />
-        )}
+        <img
+          src="/deepsight-logo-cosmic.png"
+          alt="Deep Sight"
+          className="w-full h-full object-contain"
+        />
       </div>
       <AnimatePresence>
         {!collapsed && (
