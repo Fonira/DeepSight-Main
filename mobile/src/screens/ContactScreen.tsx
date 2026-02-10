@@ -19,7 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
-import { Header } from '../components/ui/Header';
+import { Header } from '../components/Header';
 import { sp, borderRadius } from '../theme/spacing';
 import { fontFamily, fontSize } from '../theme/typography';
 import { contactApi } from '../services/api';
@@ -70,7 +70,7 @@ export const ContactScreen: React.FC<{ navigation: any }> = ({ navigation }) => 
     <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
       <Header
         title="Contact"
-        onBack={() => navigation.goBack()}
+        showBack
       />
 
       <KeyboardAvoidingView
