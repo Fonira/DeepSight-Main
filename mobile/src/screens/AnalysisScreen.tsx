@@ -13,7 +13,6 @@ import {
   Platform,
   FlatList,
   Keyboard,
-  Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -137,6 +136,9 @@ export const AnalysisScreen: React.FC = () => {
 
   // Video player state
   const [showExpandedPlayer, setShowExpandedPlayer] = useState(false);
+
+  // Dynamic keyboard offset measurement
+  const [tabContentOffset, setTabContentOffset] = useState(200);
 
   // Upgrade modal state
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -806,7 +808,13 @@ export const AnalysisScreen: React.FC = () => {
       )}
 
       {/* Tabs */}
-      <View style={[styles.tabsContainer, { borderBottomColor: colors.border }]}>
+      <View
+        style={[styles.tabsContainer, { borderBottomColor: colors.border }]}
+        onLayout={(e) => {
+          const { y, height } = e.nativeEvent.layout;
+          setTabContentOffset(y + height);
+        }}
+      >
         {tabs.map((tab) => (
           <TouchableOpacity
             key={tab.id}
@@ -837,15 +845,14 @@ export const AnalysisScreen: React.FC = () => {
         ))}
       </View>
 
-      {/* Tab Content — Pressable wrapper to dismiss keyboard on tap */}
-      <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
+      {/* Tab Content */}
       {activeTab === 'summary' && (
+        <View style={{ flex: 1 }} onStartShouldSetResponder={() => { Keyboard.dismiss(); return false; }}>
         <ScrollView
           style={styles.content}
           contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
-          onScrollBeginDrag={Keyboard.dismiss}
         >
           {/* Summary badges */}
           <View style={styles.badgesRow}>
@@ -1035,15 +1042,16 @@ export const AnalysisScreen: React.FC = () => {
             </View>
           )}
         </ScrollView>
+        </View>
       )}
 
       {activeTab === 'concepts' && (
+        <View style={{ flex: 1 }} onStartShouldSetResponder={() => { Keyboard.dismiss(); return false; }}>
         <ScrollView
           style={styles.content}
           contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
-          onScrollBeginDrag={Keyboard.dismiss}
         >
           {concepts.length > 0 ? (
             concepts.map((concept) => (
@@ -1074,22 +1082,23 @@ export const AnalysisScreen: React.FC = () => {
             </View>
           )}
         </ScrollView>
+        </View>
       )}
 
       {activeTab === 'chat' && (
         <KeyboardAvoidingView
-          style={styles.chatContainer}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 180 : 80}
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? tabContentOffset : 0}
         >
           <FlatList
             ref={chatScrollRef}
             data={chatMessages}
-            keyExtractor={(item, index) => item.id || `msg-${index}`}
+            keyExtractor={(item, index) => item.id || `chat-msg-${index}`}
             keyboardDismissMode="interactive"
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={[styles.chatMessages, { paddingBottom: 20 }]}
-            onContentSizeChange={() => chatScrollRef.current?.scrollToEnd()}
+            contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 16 }}
+            onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: true })}
             ListEmptyComponent={
               <View style={styles.chatEmptyState}>
                 <Ionicons name="chatbubble-outline" size={48} color={colors.textTertiary} />
@@ -1126,7 +1135,7 @@ export const AnalysisScreen: React.FC = () => {
       )}
 
       {activeTab === 'tools' && (
-        <View style={styles.toolsContainer}>
+        <View style={styles.toolsContainer} onStartShouldSetResponder={() => { Keyboard.dismiss(); return false; }}>
           {/* Back button when a tool is active */}
           {activeStudyTool && (
             <TouchableOpacity
@@ -1147,7 +1156,7 @@ export const AnalysisScreen: React.FC = () => {
               contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
               keyboardDismissMode="on-drag"
               keyboardShouldPersistTaps="handled"
-              onScrollBeginDrag={Keyboard.dismiss}
+
             >
               <Text style={[styles.toolsTitle, { color: colors.textPrimary }]}>
                 {t.analysis.studyTools}
@@ -1324,7 +1333,7 @@ export const AnalysisScreen: React.FC = () => {
               contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
               keyboardDismissMode="on-drag"
               keyboardShouldPersistTaps="handled"
-              onScrollBeginDrag={Keyboard.dismiss}
+
             >
               <View style={styles.flashcardsContainer}>
                 <TouchableOpacity
@@ -1394,7 +1403,6 @@ export const AnalysisScreen: React.FC = () => {
           )}
         </View>
       )}
-      </Pressable>
 
       {/* Export Modal */}
       {summary && (
