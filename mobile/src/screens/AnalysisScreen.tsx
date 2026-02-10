@@ -696,6 +696,17 @@ export const AnalysisScreen: React.FC = () => {
     }
   }, [activeTab]);
 
+  // Defensive listener: if keyboard opens on a non-chat tab, force close it
+  useEffect(() => {
+    const sub = Keyboard.addListener('keyboardDidShow', () => {
+      if (activeTab !== 'chat' && activeTab !== 'summary') {
+        // On concepts and tools tabs, there's no TextInput, so force dismiss
+        Keyboard.dismiss();
+      }
+    });
+    return () => sub.remove();
+  }, [activeTab]);
+
   // Render streaming state (new analysis in progress)
   if (isStreaming) {
     return (
@@ -823,9 +834,14 @@ export const AnalysisScreen: React.FC = () => {
               activeTab === tab.id && { borderBottomColor: colors.accentPrimary },
             ]}
             onPress={() => {
-              Keyboard.dismiss();
               Haptics.selectionAsync();
-              setActiveTab(tab.id);
+              // Dismiss keyboard FIRST, then switch tab after a tick
+              // This gives iOS time to resign first responder before unmounting the TextInput
+              Keyboard.dismiss();
+              // Use requestAnimationFrame to let the dismiss propagate before unmount
+              requestAnimationFrame(() => {
+                setActiveTab(tab.id);
+              });
             }}
           >
             <Ionicons

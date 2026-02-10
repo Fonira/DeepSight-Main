@@ -8,13 +8,14 @@
  * - Loading state with spinner
  */
 
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   TextInput,
   Pressable,
   ActivityIndicator,
   StyleSheet,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -52,6 +53,15 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 }) => {
   const { colors } = useTheme();
   const { t } = useLanguage();
+  const inputRef = useRef<TextInput>(null);
+
+  // Force blur + dismiss on unmount to prevent orphaned keyboard on iOS
+  useEffect(() => {
+    return () => {
+      inputRef.current?.blur();
+      Keyboard.dismiss();
+    };
+  }, []);
 
   const canSend = value.trim().length > 0 && !isLoading && !disabled;
 
@@ -98,6 +108,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       )}
 
       <TextInput
+        ref={inputRef}
         style={[
           styles.input,
           {

@@ -83,6 +83,13 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   const [lastSources, setLastSources] = useState<Array<{ url: string; title: string }>>([]);
   const [showNewBadge, setShowNewBadge] = useState(false);
 
+  // Force blur + dismiss on unmount to prevent orphaned keyboard on iOS
+  useEffect(() => {
+    return () => {
+      Keyboard.dismiss();
+    };
+  }, []);
+
   // Check if first time seeing the FAB
   useEffect(() => {
     AsyncStorage.getItem(CHAT_FAB_SEEN_KEY).then(val => {
