@@ -107,54 +107,48 @@ export const FactCheckDisplay: React.FC<FactCheckDisplayProps> = ({
 
     try {
       const result = await videoApi.factCheck(summaryId);
+      const factCheck = result.fact_check_lite;
+      if (!factCheck) {
+        setData({ claims: [], overall_score: 0 });
+        onRequestCheck?.();
+        return;
+      }
 
-      // Parse the result (assuming it returns structured data or markdown)
-      // For now, we'll create mock data from the result
-      const parsedData = parseFactCheckResult(result.result);
-      setData(parsedData);
+      const riskToVerdict = (risk: string): VerdictType => {
+        switch (risk) {
+          case 'high': return 'disputed';
+          case 'medium': return 'mixed';
+          case 'low': return 'verified';
+          default: return 'unverified';
+        }
+      };
+
+      const claims: Claim[] = [
+        ...factCheck.high_risk_claims.map(c => ({
+          text: c.claim,
+          verdict: riskToVerdict(c.risk_level),
+          confidence: c.confidence / 100,
+          explanation: c.verification_hint,
+          sources: c.suggested_search ? [{ url: '', title: c.suggested_search }] : undefined,
+        })),
+        ...factCheck.medium_risk_claims.map(c => ({
+          text: c.claim,
+          verdict: riskToVerdict(c.risk_level),
+          confidence: c.confidence / 100,
+          explanation: c.verification_hint,
+        })),
+      ];
+
+      setData({
+        claims,
+        overall_score: factCheck.overall_confidence,
+      });
       onRequestCheck?.();
     } catch (err: any) {
       setError(err.message || (language === 'fr' ? 'Erreur lors de la vérification' : 'Error during verification'));
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Parse fact check result (simplified - would need real parsing logic)
-  const parseFactCheckResult = (result: string): { claims: Claim[]; overall_score: number } => {
-    // This is a simplified parser - in production, the API should return structured data
-    const claims: Claim[] = [];
-    const lines = result.split('\n');
-    let currentClaim: Partial<Claim> = {};
-
-    for (const line of lines) {
-      if (line.includes('✓') || line.includes('verified')) {
-        currentClaim.verdict = 'verified';
-      } else if (line.includes('✗') || line.includes('disputed')) {
-        currentClaim.verdict = 'disputed';
-      } else if (line.includes('?') || line.includes('unverified')) {
-        currentClaim.verdict = 'unverified';
-      }
-
-      if (line.trim() && !line.startsWith('-')) {
-        if (currentClaim.text) {
-          claims.push({
-            text: currentClaim.text,
-            verdict: currentClaim.verdict || 'unverified',
-            confidence: 0.7 + Math.random() * 0.3,
-            explanation: currentClaim.explanation,
-          });
-          currentClaim = {};
-        }
-        currentClaim.text = line.replace(/[✓✗?]/g, '').trim();
-      }
-    }
-
-    // Calculate overall score
-    const verifiedCount = claims.filter(c => c.verdict === 'verified').length;
-    const overallScore = claims.length > 0 ? (verifiedCount / claims.length) * 100 : 0;
-
-    return { claims, overall_score: overallScore };
   };
 
   const toggleClaimExpanded = (index: number) => {

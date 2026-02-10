@@ -31,31 +31,28 @@ interface WebEnrichmentProps {
   compact?: boolean;
 }
 
-const parseEnrichmentResult = (result: string, conceptName?: string): EnrichmentResult => {
-  // Parse the enrichment result into structured data
-  const lines = result.split('\n').filter(line => line.trim());
-
-  let title = conceptName || 'Enrichissement web';
-  let content = '';
+const formatEnrichmentFromConcepts = (
+  concepts: Array<{ term: string; definition: string; sources: string[]; category_icon: string }>,
+  conceptName?: string,
+): EnrichmentResult => {
+  const title = conceptName || 'Enrichissement web';
+  const parts: string[] = [];
   const sources: Array<{ title: string; url: string }> = [];
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    // Detect URLs
-    const urlMatch = trimmed.match(/https?:\/\/[^\s]+/);
-    if (urlMatch) {
-      const urlTitle = trimmed.replace(urlMatch[0], '').replace(/^[-•*]\s*/, '').trim();
-      sources.push({
-        title: urlTitle || urlMatch[0],
-        url: urlMatch[0],
-      });
-    } else if (!trimmed.startsWith('#')) {
-      content += (content ? '\n' : '') + trimmed;
+  for (const concept of concepts) {
+    parts.push(`${concept.category_icon} ${concept.term}\n${concept.definition}`);
+    for (const src of concept.sources || []) {
+      if (src.startsWith('http')) {
+        sources.push({ title: src, url: src });
+      }
     }
   }
 
-  return { title, content: content || result, sources };
+  return {
+    title,
+    content: parts.join('\n\n') || 'Aucun concept enrichi disponible.',
+    sources,
+  };
 };
 
 export const WebEnrichment: React.FC<WebEnrichmentProps> = ({
@@ -79,7 +76,7 @@ export const WebEnrichment: React.FC<WebEnrichmentProps> = ({
 
     try {
       const response = await videoApi.webEnrich(summaryId);
-      const parsed = parseEnrichmentResult(response.result, conceptName);
+      const parsed = formatEnrichmentFromConcepts(response.concepts || [], conceptName);
       setResult(parsed);
       setShowModal(true);
     } catch (err: any) {

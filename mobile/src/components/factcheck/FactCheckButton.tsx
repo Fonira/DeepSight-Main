@@ -26,62 +26,13 @@ interface FactCheckButtonProps {
   disabled?: boolean;
 }
 
-const parseFactCheckResult = (result: string): FactCheckResult[] => {
-  // Parse the fact-check result into structured data
-  // The API returns a string, we'll parse it into claims
-  const lines = result.split('\n').filter(line => line.trim());
-  const claims: FactCheckResult[] = [];
-
-  let currentClaim: Partial<FactCheckResult> | null = null;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    // Detect claim markers
-    if (trimmed.startsWith('✓') || trimmed.startsWith('✔')) {
-      if (currentClaim) claims.push(currentClaim as FactCheckResult);
-      currentClaim = {
-        claim: trimmed.replace(/^[✓✔]\s*/, ''),
-        status: 'verified',
-        explanation: '',
-      };
-    } else if (trimmed.startsWith('✗') || trimmed.startsWith('✘') || trimmed.startsWith('❌')) {
-      if (currentClaim) claims.push(currentClaim as FactCheckResult);
-      currentClaim = {
-        claim: trimmed.replace(/^[✗✘❌]\s*/, ''),
-        status: 'disputed',
-        explanation: '',
-      };
-    } else if (trimmed.startsWith('⚠') || trimmed.startsWith('?')) {
-      if (currentClaim) claims.push(currentClaim as FactCheckResult);
-      currentClaim = {
-        claim: trimmed.replace(/^[⚠?]\s*/, ''),
-        status: 'partially_true',
-        explanation: '',
-      };
-    } else if (trimmed.startsWith('-') || trimmed.startsWith('•')) {
-      // This is likely an explanation or source
-      if (currentClaim) {
-        currentClaim.explanation += (currentClaim.explanation ? '\n' : '') + trimmed.replace(/^[-•]\s*/, '');
-      }
-    } else if (currentClaim && !trimmed.startsWith('#')) {
-      // Add to explanation
-      currentClaim.explanation += (currentClaim.explanation ? ' ' : '') + trimmed;
-    }
+const mapRiskToStatus = (riskLevel: string): FactCheckResult['status'] => {
+  switch (riskLevel) {
+    case 'high': return 'disputed';
+    case 'medium': return 'partially_true';
+    case 'low': return 'verified';
+    default: return 'unverified';
   }
-
-  if (currentClaim) claims.push(currentClaim as FactCheckResult);
-
-  // If no structured claims found, create a single result
-  if (claims.length === 0) {
-    return [{
-      claim: 'Analyse de fiabilité',
-      status: 'unverified',
-      explanation: result,
-    }];
-  }
-
-  return claims;
 };
 
 export const FactCheckButton: React.FC<FactCheckButtonProps> = ({
@@ -103,8 +54,37 @@ export const FactCheckButton: React.FC<FactCheckButtonProps> = ({
 
     try {
       const response = await videoApi.factCheck(summaryId);
-      const parsed = parseFactCheckResult(response.result);
-      setResults(parsed);
+      const factCheck = response.fact_check_lite;
+      if (!factCheck) {
+        setResults([{
+          claim: 'Analyse de fiabilité',
+          status: 'unverified',
+          explanation: response.freshness?.description || 'Données non disponibles',
+        }]);
+        setShowModal(true);
+        return;
+      }
+      const claims: FactCheckResult[] = [
+        ...factCheck.high_risk_claims.map(c => ({
+          claim: c.claim,
+          status: mapRiskToStatus(c.risk_level),
+          explanation: c.verification_hint || '',
+          sources: c.suggested_search ? [c.suggested_search] : undefined,
+        })),
+        ...factCheck.medium_risk_claims.map(c => ({
+          claim: c.claim,
+          status: mapRiskToStatus(c.risk_level),
+          explanation: c.verification_hint || '',
+        })),
+      ];
+      if (claims.length === 0) {
+        claims.push({
+          claim: factCheck.risk_summary || 'Analyse de fiabilité',
+          status: factCheck.overall_confidence > 70 ? 'verified' : 'unverified',
+          explanation: `Confiance globale: ${factCheck.overall_confidence}%`,
+        });
+      }
+      setResults(claims);
       setShowModal(true);
     } catch (err: any) {
       setError(err.message || 'Impossible de vérifier les faits');

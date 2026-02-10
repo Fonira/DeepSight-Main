@@ -596,16 +596,58 @@ export const videoApi = {
     return request(`/api/videos/concepts/${summaryId}/enriched`);
   },
 
-  async factCheck(summaryId: string): Promise<{ result: string }> {
-    return request(`/api/videos/summary/${summaryId}/fact-check`, {
-      method: 'POST',
+  async factCheck(summaryId: string): Promise<{
+    freshness?: any;
+    fact_check_lite?: {
+      overall_confidence: number;
+      risk_summary: string;
+      claims_analyzed: number;
+      high_risk_claims: Array<{
+        claim: string;
+        claim_type: string;
+        confidence: number;
+        risk_level: string;
+        verification_hint?: string;
+        suggested_search?: string;
+      }>;
+      medium_risk_claims: Array<{
+        claim: string;
+        claim_type: string;
+        confidence: number;
+        risk_level: string;
+        verification_hint?: string;
+      }>;
+      verification_suggestions: string[];
+      disclaimers: string[];
+    };
+    summary_id: number;
+    video_title?: string;
+    user_plan?: string;
+    full_factcheck_available?: boolean;
+  }> {
+    return request(`/api/videos/reliability/${summaryId}`, {
       timeout: TIMEOUTS.FACT_CHECK,
     });
   },
 
-  async webEnrich(summaryId: string): Promise<{ result: string }> {
-    return request(`/api/videos/summary/${summaryId}/web-enrich`, {
-      method: 'POST',
+  async webEnrich(summaryId: string): Promise<{
+    summary_id: number;
+    video_title?: string;
+    concepts: Array<{
+      term: string;
+      definition: string;
+      category: string;
+      category_label: string;
+      category_icon: string;
+      context_relevance?: string;
+      sources: string[];
+      confidence: number;
+      provider: string;
+    }>;
+    count: number;
+    provider: string;
+  }> {
+    return request(`/api/videos/concepts/${summaryId}/enriched`, {
       timeout: TIMEOUTS.FACT_CHECK,
     });
   },

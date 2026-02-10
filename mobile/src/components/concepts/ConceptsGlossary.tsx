@@ -93,12 +93,15 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = ({
 
     try {
       const result = await videoApi.webEnrich(summaryId);
-      // Parse the enrichment result
+      // Find the matching concept from enriched data
+      const enriched = result.concepts?.find(
+        c => c.term.toLowerCase() === concept.name.toLowerCase()
+      );
       setEnrichedData(prev => ({
         ...prev,
         [concept.name]: {
-          extendedDefinition: result.result,
-          sources: [], // Would come from API
+          extendedDefinition: enriched?.definition || 'Définition non disponible',
+          sources: (enriched?.sources || []).filter(s => s.startsWith('http')),
           relatedConcepts: [],
         },
       }));
