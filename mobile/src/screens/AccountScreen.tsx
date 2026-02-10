@@ -215,6 +215,8 @@ export const AccountScreen: React.FC = () => {
         style={styles.scrollView}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
         showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
       >
         {/* Avatar Section */}
         <View style={styles.avatarSection}>

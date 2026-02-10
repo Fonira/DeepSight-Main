@@ -56,6 +56,31 @@ function seekVideo(seconds: number): void {
 
 // ── Create Card Shell ──
 
+// ── Asset URLs (resolved at runtime via chrome.runtime.getURL) ──
+
+function assetUrl(path: string): string {
+  return chrome.runtime.getURL(`assets/${path}`);
+}
+
+function logoImgHtml(size = 24): string {
+  return `<img src="${assetUrl('deepsight-logo-cosmic.png')}" alt="DeepSight" width="${size}" height="${size}" style="object-fit:contain;border-radius:50%;" />`;
+}
+
+function spinnerHtml(size = 48): string {
+  return `
+    <div class="ds-deepsight-spinner" style="width:${size}px;height:${size}px;">
+      <img src="${assetUrl('spinner-cosmic.jpg')}" alt="" class="ds-spinner-cosmic" />
+      <img src="${assetUrl('spinner-wheel.jpg')}" alt="" class="ds-spinner-wheel" />
+    </div>`;
+}
+
+function spinnerSmallHtml(): string {
+  return `
+    <div class="ds-deepsight-spinner ds-deepsight-spinner-sm">
+      <img src="${assetUrl('spinner-wheel.jpg')}" alt="" class="ds-spinner-wheel" />
+    </div>`;
+}
+
 function createCard(): HTMLDivElement {
   const el = document.createElement('div');
   el.id = 'deepsight-card';
@@ -63,17 +88,15 @@ function createCard(): HTMLDivElement {
   el.innerHTML = `
     <div class="ds-card-header">
       <div class="ds-card-logo">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 6v6l4 2"/>
-        </svg>
-        <span>DeepSight</span>
+        ${logoImgHtml(22)}
+        <span>Deep Sight</span>
       </div>
       <span class="ds-card-badge">AI Analysis</span>
     </div>
     <div class="ds-card-body" id="deepsight-card-body">
       <div class="ds-loading">
-        <div class="ds-spinner"></div>
+        ${spinnerHtml(48)}
+        <p class="ds-loading-text">Loading...</p>
       </div>
     </div>
   `;
@@ -116,7 +139,7 @@ function renderLogin(container: HTMLElement): void {
   document.getElementById('ds-google-login')?.addEventListener('click', async () => {
     const btn = document.getElementById('ds-google-login') as HTMLButtonElement;
     btn.disabled = true;
-    btn.innerHTML = '<div class="ds-spinner-small"></div> Connecting...';
+    btn.innerHTML = `${spinnerSmallHtml()} Connecting...`;
 
     try {
       const response = await chrome.runtime.sendMessage({ action: 'GOOGLE_LOGIN' });
@@ -248,7 +271,7 @@ async function startAnalysis(url: string, options: { mode: string; lang: string 
   if (!analyzeBtn) return;
 
   analyzeBtn.disabled = true;
-  analyzeBtn.innerHTML = '<div class="ds-spinner-small"></div> Analyzing...';
+  analyzeBtn.innerHTML = `${spinnerSmallHtml()} Analyzing...`;
   renderProgress('Starting analysis...', 0);
 
   try {
@@ -492,7 +515,7 @@ async function sendChatMessage(summaryId: number, question: string): Promise<voi
   if (!messages) return;
 
   messages.innerHTML += `<div class="ds-msg ds-msg-user">${escapeHtml(question)}</div>`;
-  messages.innerHTML += `<div class="ds-msg ds-msg-bot ds-loading" id="ds-chat-loading"><div class="ds-spinner-small"></div></div>`;
+  messages.innerHTML += `<div class="ds-msg ds-msg-bot ds-loading" id="ds-chat-loading">${spinnerSmallHtml()}</div>`;
   messages.scrollTop = messages.scrollHeight;
 
   try {
@@ -526,7 +549,7 @@ async function initCard(): Promise<void> {
   const body = document.getElementById('deepsight-card-body');
   if (!body) return;
 
-  body.innerHTML = '<div class="ds-loading"><div class="ds-spinner"></div></div>';
+  body.innerHTML = `<div class="ds-loading">${spinnerHtml(48)}<p class="ds-loading-text">Loading...</p></div>`;
 
   try {
     const response = await chrome.runtime.sendMessage({ action: 'CHECK_AUTH' });

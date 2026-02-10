@@ -332,6 +332,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
         contentContainerStyle={styles.styleScrollContent}
       >
         {Object.entries(WRITING_STYLE_CONFIG).map(([key, config]) => {

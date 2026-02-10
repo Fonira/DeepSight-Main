@@ -13,6 +13,7 @@ import {
   TextInput,
   ActivityIndicator,
   Linking,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -185,6 +186,8 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = ({
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
+            returnKeyType="search"
+            onSubmitEditing={Keyboard.dismiss}
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity onPress={() => setSearchQuery('')}>

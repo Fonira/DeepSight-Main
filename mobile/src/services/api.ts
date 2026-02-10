@@ -83,6 +83,8 @@ const refreshAccessToken = async (): Promise<string | null> => {
     });
 
     if (!response.ok) {
+      // Server explicitly rejected the refresh token - clear tokens
+      console.log('[Auth] Refresh token rejected by server, clearing tokens');
       await tokenStorage.clearTokens();
       return null;
     }
@@ -90,8 +92,10 @@ const refreshAccessToken = async (): Promise<string | null> => {
     const data = await response.json();
     await tokenStorage.setTokens(data.access_token, data.refresh_token);
     return data.access_token;
-  } catch {
-    await tokenStorage.clearTokens();
+  } catch (error) {
+    // Network error during refresh - do NOT clear tokens
+    // The tokens may still be valid, just a temporary connectivity issue
+    console.warn('[Auth] Network error during token refresh:', error);
     return null;
   }
 };
@@ -1041,8 +1045,8 @@ export const chatApi = {
       `/api/chat/history/${summaryId}`
     );
     // Transform backend response (created_at, numeric id) to mobile ChatMessage format
-    const messages: ChatMessage[] = (response.messages || []).map(m => ({
-      id: String(m.id),
+    const messages: ChatMessage[] = (response.messages || []).map((m, index) => ({
+      id: m.id != null ? String(m.id) : `history-${index}-${Date.now()}`,
       role: m.role,
       content: m.content,
       timestamp: m.created_at,

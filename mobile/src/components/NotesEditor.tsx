@@ -6,6 +6,7 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -47,6 +48,7 @@ export const NotesEditor: React.FC<NotesEditorProps> = ({
   const handleSave = async () => {
     if (!hasChanges) return;
 
+    Keyboard.dismiss();
     setIsSaving(true);
     try {
       await videoApi.updateNotes(summaryId, notes);
@@ -62,6 +64,7 @@ export const NotesEditor: React.FC<NotesEditorProps> = ({
   };
 
   const handleCancel = () => {
+    Keyboard.dismiss();
     setNotes(initialNotes);
     setIsEditing(false);
   };

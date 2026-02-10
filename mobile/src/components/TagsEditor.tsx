@@ -246,7 +246,7 @@ export const TagsEditor: React.FC<TagsEditorProps> = ({
             <Text style={[styles.presetLabel, { color: colors.textSecondary }]}>
               {isEn ? 'Quick tags:' : 'Tags rapides:'}
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardDismissMode="on-drag">
               <View style={styles.presetTags}>
                 {PRESET_TAGS.map((preset, index) => {
                   const label = isEn ? preset.labelEn : preset.label;

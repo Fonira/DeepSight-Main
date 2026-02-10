@@ -13,6 +13,7 @@ import {
   Platform,
   FlatList,
   Keyboard,
+  Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -686,6 +687,13 @@ export const AnalysisScreen: React.FC = () => {
     }
   }, [summary]);
 
+  // Force dismiss keyboard when leaving chat tab
+  useEffect(() => {
+    if (activeTab !== 'chat') {
+      Keyboard.dismiss();
+    }
+  }, [activeTab]);
+
   // Render streaming state (new analysis in progress)
   if (isStreaming) {
     return (
@@ -829,11 +837,15 @@ export const AnalysisScreen: React.FC = () => {
         ))}
       </View>
 
-      {/* Tab Content */}
+      {/* Tab Content — Pressable wrapper to dismiss keyboard on tap */}
+      <Pressable style={{ flex: 1 }} onPress={Keyboard.dismiss}>
       {activeTab === 'summary' && (
         <ScrollView
           style={styles.content}
           contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={Keyboard.dismiss}
         >
           {/* Summary badges */}
           <View style={styles.badgesRow}>
@@ -1029,6 +1041,9 @@ export const AnalysisScreen: React.FC = () => {
         <ScrollView
           style={styles.content}
           contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          onScrollBeginDrag={Keyboard.dismiss}
         >
           {concepts.length > 0 ? (
             concepts.map((concept) => (
@@ -1070,7 +1085,7 @@ export const AnalysisScreen: React.FC = () => {
           <FlatList
             ref={chatScrollRef}
             data={chatMessages}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item, index) => item.id || `msg-${index}`}
             keyboardDismissMode="interactive"
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={[styles.chatMessages, { paddingBottom: 20 }]}
@@ -1130,6 +1145,9 @@ export const AnalysisScreen: React.FC = () => {
             <ScrollView
               style={styles.content}
               contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+              keyboardDismissMode="on-drag"
+              keyboardShouldPersistTaps="handled"
+              onScrollBeginDrag={Keyboard.dismiss}
             >
               <Text style={[styles.toolsTitle, { color: colors.textPrimary }]}>
                 {t.analysis.studyTools}
@@ -1304,6 +1322,9 @@ export const AnalysisScreen: React.FC = () => {
             <ScrollView
               style={styles.content}
               contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+              keyboardDismissMode="on-drag"
+              keyboardShouldPersistTaps="handled"
+              onScrollBeginDrag={Keyboard.dismiss}
             >
               <View style={styles.flashcardsContainer}>
                 <TouchableOpacity
@@ -1373,6 +1394,7 @@ export const AnalysisScreen: React.FC = () => {
           )}
         </View>
       )}
+      </Pressable>
 
       {/* Export Modal */}
       {summary && (

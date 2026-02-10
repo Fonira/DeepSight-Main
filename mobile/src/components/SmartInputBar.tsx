@@ -450,7 +450,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
         <Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>
           {isEn ? 'Category' : 'Catégorie'}
         </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardDismissMode="on-drag" style={styles.chipScroll}>
           {CATEGORIES.map((category) => (
             <TouchableOpacity
               key={category.id}
@@ -486,7 +486,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
         <Text style={[styles.selectorLabel, { color: colors.textSecondary }]}>
           {isEn ? 'Analysis Mode' : "Mode d'analyse"}
         </Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardDismissMode="on-drag" style={styles.chipScroll}>
           {ANALYSIS_MODES.map((mode) => (
             <TouchableOpacity
               key={mode.id}

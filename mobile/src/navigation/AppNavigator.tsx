@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Keyboard } from 'react-native';
 import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { DeepSightSpinner } from '../components/loading';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -182,7 +182,7 @@ export const AppNavigator: React.FC = () => {
   }
 
   return (
-    <NavigationContainer linking={linking} theme={navigationTheme}>
+    <NavigationContainer linking={linking} theme={navigationTheme} onStateChange={() => Keyboard.dismiss()}>
       {isAuthenticated ? <MainStack /> : <AuthStack />}
     </NavigationContainer>
   );

@@ -11,6 +11,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -131,6 +132,7 @@ export const PlaylistsScreen: React.FC = () => {
       return;
     }
 
+    Keyboard.dismiss();
     setIsCreating(true);
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -152,6 +154,7 @@ export const PlaylistsScreen: React.FC = () => {
 
   // Analyze a YouTube playlist
   const handleAnalyzePlaylist = async () => {
+    Keyboard.dismiss();
     if (!playlistUrl.trim()) {
       Alert.alert(t.common.error, t.playlists.enterPlaylistUrl);
       return;
@@ -432,6 +435,8 @@ export const PlaylistsScreen: React.FC = () => {
           data={playlists}
           renderItem={renderPlaylistItem}
           keyExtractor={(item) => item.id}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={[
             styles.listContent,
             { paddingBottom: insets.bottom + 80 },
@@ -463,8 +468,7 @@ export const PlaylistsScreen: React.FC = () => {
         >
           <Pressable
             style={styles.modalOverlay}
-
-            onPress={() => setShowCreateModal(false)}
+            onPress={() => { Keyboard.dismiss(); setShowCreateModal(false); }}
           />
           <View style={[styles.modalContent, { backgroundColor: colors.bgSecondary }]}>
             <View style={styles.modalHandle} />
@@ -522,8 +526,7 @@ export const PlaylistsScreen: React.FC = () => {
         >
           <Pressable
             style={styles.modalOverlay}
-
-            onPress={() => setShowAnalyzeModal(false)}
+            onPress={() => { Keyboard.dismiss(); setShowAnalyzeModal(false); }}
           />
           <View style={[styles.modalContent, { backgroundColor: colors.bgSecondary }]}>
             <View style={styles.modalHandle} />

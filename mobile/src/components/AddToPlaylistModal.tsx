@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -144,7 +145,7 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={onClose}
+          onPress={() => { Keyboard.dismiss(); onClose(); }}
         />
         <View style={[styles.modalContent, { backgroundColor: colors.bgSecondary }]}>
           <View style={styles.modalHandle} />
@@ -171,6 +172,8 @@ export const AddToPlaylistModal: React.FC<AddToPlaylistModalProps> = ({
                 data={playlists}
                 renderItem={renderPlaylistItem}
                 keyExtractor={(item) => item.id}
+                keyboardDismissMode="on-drag"
+                keyboardShouldPersistTaps="handled"
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
                 ListEmptyComponent={

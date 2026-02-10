@@ -261,6 +261,7 @@ export const SettingsScreen: React.FC = () => {
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + sp.xl }]}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
         stickySectionHeadersEnabled={false}
         renderSectionHeader={({ section }) => (
           <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>

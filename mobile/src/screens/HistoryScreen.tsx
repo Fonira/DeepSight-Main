@@ -8,6 +8,7 @@ import {
   Pressable,
   RefreshControl,
   Alert,
+  Keyboard,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { DeepSightSpinner } from '../components/loading';
@@ -288,6 +289,8 @@ export const HistoryScreen: React.FC = () => {
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
+            returnKeyType="search"
+            onSubmitEditing={Keyboard.dismiss}
           />
           {searchQuery.length > 0 && (
             <Pressable
@@ -458,6 +461,7 @@ export const HistoryScreen: React.FC = () => {
           keyExtractor={(item) => item.id}
           numColumns={viewMode === 'grid' ? 2 : 1}
           keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
           contentContainerStyle={[
             styles.listContent,
             { paddingBottom: insets.bottom + 80 },

@@ -402,7 +402,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                 <FlatList
                   ref={scrollRef}
                   data={messages}
-                  keyExtractor={(item) => item.id}
+                  keyExtractor={(item, index) => item.id || `msg-${index}`}
                   keyboardDismissMode="interactive"
                   keyboardShouldPersistTaps="handled"
                   contentContainerStyle={styles.messagesList}

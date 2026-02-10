@@ -27,8 +27,12 @@ async function isAuthenticated(): Promise<boolean> {
   return !!accessToken;
 }
 
-async function pollAnalysis(taskId: string, maxPolls = 60): Promise<unknown> {
-  for (let i = 0; i < maxPolls; i++) {
+async function pollAnalysis(taskId: string): Promise<unknown> {
+  const MAX_DURATION_MS = 30 * 60 * 1000; // 30 minutes max
+  const startTime = Date.now();
+  let pollInterval = 2000; // Start at 2s
+
+  while (Date.now() - startTime < MAX_DURATION_MS) {
     const status = await getTaskStatus(taskId);
 
     if (status.status === 'completed' || status.status === 'failed') {
@@ -45,10 +49,17 @@ async function pollAnalysis(taskId: string, maxPolls = 60): Promise<unknown> {
       }
     });
 
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Adaptive polling: ramp up interval as analysis takes longer
+    // 0-30s: poll every 2s | 30s-2min: 3s | 2min-5min: 5s | 5min+: 8s
+    const elapsed = Date.now() - startTime;
+    if (elapsed > 5 * 60 * 1000) pollInterval = 8000;
+    else if (elapsed > 2 * 60 * 1000) pollInterval = 5000;
+    else if (elapsed > 30 * 1000) pollInterval = 3000;
+
+    await new Promise((resolve) => setTimeout(resolve, pollInterval));
   }
 
-  throw new Error('Analysis timeout');
+  throw new Error('Analysis timeout — video may be too long. Check results on deepsightsynthesis.com');
 }
 
 // ── Message Handler ──

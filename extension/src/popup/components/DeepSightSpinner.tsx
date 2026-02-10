@@ -5,55 +5,77 @@ interface DeepSightSpinnerProps {
   text?: string;
 }
 
-const SPINNER_CLASSES = { sm: 'ds-spinner-sm', md: 'ds-spinner-md', lg: 'ds-spinner-lg' };
+const SIZE_PX = { sm: 24, md: 48, lg: 80 };
+const WHEEL_PX = { sm: 20, md: 42, lg: 72 };
 
 export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
   size = 'md',
   text,
 }) => {
+  const containerPx = SIZE_PX[size];
+  const wheelPx = WHEEL_PX[size];
+  const speed = size === 'sm' ? 2 : 5;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-      <svg
-        className={SPINNER_CLASSES[size]}
-        viewBox="0 0 48 48"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
+      <div
+        style={{
+          position: 'relative',
+          width: containerPx,
+          height: containerPx,
+        }}
       >
-        <defs>
-          <linearGradient id="ds-spin-g1" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#4a9eff" />
-            <stop offset="50%" stopColor="#8b5cf6" />
-            <stop offset="100%" stopColor="#f59e0b" />
-          </linearGradient>
-          <linearGradient id="ds-spin-g2" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#4a9eff" stopOpacity="0.45" />
-            <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.45" />
-          </linearGradient>
-          <radialGradient id="ds-spin-glow">
-            <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-          </radialGradient>
-        </defs>
-        <circle cx="24" cy="24" r="20" fill="url(#ds-spin-glow)" />
-        <g transform="translate(24,24)">
-          <polygon points="0,-20 3.5,-5 0,-8 -3.5,-5" fill="url(#ds-spin-g1)" />
-          <polygon points="20,0 5,3.5 8,0 5,-3.5" fill="url(#ds-spin-g1)" />
-          <polygon points="0,20 -3.5,5 0,8 3.5,5" fill="url(#ds-spin-g1)" />
-          <polygon points="-20,0 -5,-3.5 -8,0 -5,3.5" fill="url(#ds-spin-g1)" />
-          <polygon points="13,-13 3,0 0,-3" fill="url(#ds-spin-g2)" />
-          <polygon points="13,13 0,3 3,0" fill="url(#ds-spin-g2)" />
-          <polygon points="-13,13 -3,0 0,3" fill="url(#ds-spin-g2)" />
-          <polygon points="-13,-13 0,-3 -3,0" fill="url(#ds-spin-g2)" />
-          <circle cx="0" cy="0" r="5" fill="url(#ds-spin-g1)" />
-          <circle cx="0" cy="0" r="2.5" fill="#0a0a0f" />
-          <circle cx="0" cy="0" r="1" fill="url(#ds-spin-g1)" opacity="0.8" />
-        </g>
-      </svg>
+        {/* Cosmic flames background (fixed) */}
+        {size !== 'sm' && (
+          <img
+            src="assets/spinner-cosmic.jpg"
+            alt=""
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              borderRadius: '50%',
+              maskImage: 'radial-gradient(circle at center, transparent 0%, transparent 38%, rgba(0,0,0,0.4) 45%, black 52%, black 100%)',
+              WebkitMaskImage: 'radial-gradient(circle at center, transparent 0%, transparent 38%, rgba(0,0,0,0.4) 45%, black 52%, black 100%)',
+              zIndex: 1,
+            }}
+          />
+        )}
+
+        {/* Wheel that spins */}
+        <img
+          src="assets/spinner-wheel.jpg"
+          alt=""
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            width: wheelPx,
+            height: wheelPx,
+            transform: 'translate(-50%, -50%)',
+            zIndex: 10,
+            mixBlendMode: 'screen',
+            opacity: 0.85,
+            filter: 'brightness(1.2) contrast(1.25) saturate(1.1)',
+            animation: `ds-popup-spin ${speed}s linear infinite`,
+            borderRadius: '50%',
+          }}
+        />
+      </div>
       {text && (
         <span style={{ fontSize: 13, color: '#8888a0', textAlign: 'center' }}>
           {text}
         </span>
       )}
+
+      <style>{`
+        @keyframes ds-popup-spin {
+          from { transform: translate(-50%, -50%) rotate(0deg); }
+          to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };

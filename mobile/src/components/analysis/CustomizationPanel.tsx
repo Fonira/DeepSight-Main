@@ -249,7 +249,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
       <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
         {t("Style d'écriture", 'Writing Style')}
       </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.styleScroll}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardDismissMode="on-drag" contentContainerStyle={styles.styleScroll}>
         {Object.entries(WRITING_STYLE_CONFIG).map(([key, config]) => {
           const isSelected = customization.writingStyle === key;
           return (

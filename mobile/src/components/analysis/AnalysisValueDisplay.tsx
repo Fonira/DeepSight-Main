@@ -96,18 +96,8 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
     );
   }
 
-  const Container = animated ? Animated.View : View;
-  const containerProps = animated ? { entering: FadeInDown.delay(300).springify() } : {};
-
-  return (
-    <Container
-      style={[
-        styles.container,
-        { backgroundColor: colors.bgSecondary, borderColor: colors.border },
-        animated && animatedStyle,
-      ]}
-      {...containerProps}
-    >
+  const renderContent = () => (
+    <>
       {/* Header */}
       <View style={styles.header}>
         <View style={[styles.iconContainer, { backgroundColor: colors.accentSuccess + '20' }]}>
@@ -187,7 +177,37 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
           }
         </Text>
       </View>
-    </Container>
+    </>
+  );
+
+  if (!animated) {
+    return (
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: colors.bgSecondary, borderColor: colors.border },
+        ]}
+      >
+        {renderContent()}
+      </View>
+    );
+  }
+
+  // Outer Animated.View: entering animation only (no transform in style)
+  // Inner Animated.View: scale transform only (no layout animation)
+  // This avoids Reanimated "transform overwritten by layout animation" warning
+  return (
+    <Animated.View entering={FadeInDown.delay(300).springify()}>
+      <Animated.View
+        style={[
+          styles.container,
+          { backgroundColor: colors.bgSecondary, borderColor: colors.border },
+          animatedStyle,
+        ]}
+      >
+        {renderContent()}
+      </Animated.View>
+    </Animated.View>
   );
 };
 

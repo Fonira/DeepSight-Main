@@ -86,38 +86,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Initialize auth state with aggressive timeout protection
+  // Initialize auth state - restore session from stored tokens
   useEffect(() => {
+    let cancelled = false;
     let timeoutId: ReturnType<typeof setTimeout>;
-    let isCompleted = false;
-
-    const completeInit = (reason: string) => {
-      if (!isCompleted) {
-        isCompleted = true;
-        clearTimeout(timeoutId);
-        console.log('[Auth] Init complete:', reason);
-        setIsLoading(false);
-      }
-    };
 
     const init = async () => {
       console.log('[Auth] Starting initialization...');
       try {
         const hasTokens = await tokenStorage.hasTokens();
         console.log('[Auth] Has tokens:', hasTokens);
-        
+
+        if (cancelled) return;
+
         if (!hasTokens) {
-          // No tokens - complete immediately
-          completeInit('no tokens found');
+          console.log('[Auth] Init complete: no tokens found');
+          setIsLoading(false);
           return;
         }
 
-        // Try to get user data with a shorter timeout
         console.log('[Auth] Fetching user data...');
         const userData = await authApi.getMe();
         console.log('[Auth] User data received:', userData?.id, userData?.email);
-        
-        if (!isCompleted) {
+
+        if (!cancelled) {
           setUser(userData);
           console.log('[Auth] User set in state');
           await userStorage.setUser(userData).catch(e => {
@@ -126,31 +118,44 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
       } catch (error) {
         console.warn('[Auth] Init error:', error);
-        if (!isCompleted) {
-          console.log('[Auth] Clearing invalid tokens...');
-          await tokenStorage.clearTokens().catch(() => {});
-          await userStorage.clearUser().catch(() => {});
+        if (!cancelled) {
+          // Only clear tokens on explicit 401 (server confirmed tokens are invalid)
+          // Network errors, timeouts, etc. should NOT log the user out
+          const isAuthError = error instanceof ApiError && error.status === 401;
+          if (isAuthError) {
+            console.log('[Auth] Auth error (401), clearing tokens...');
+            await tokenStorage.clearTokens().catch(() => {});
+            await userStorage.clearUser().catch(() => {});
+          } else {
+            console.log('[Auth] Non-auth error during init, keeping tokens');
+          }
         }
       } finally {
-        completeInit('init finished');
+        if (!cancelled) {
+          console.log('[Auth] Init finished');
+          setIsLoading(false);
+        }
       }
     };
 
     // Safety timeout: ensure loading ends after 5 seconds max
     timeoutId = setTimeout(() => {
-      if (!isCompleted) {
+      if (!cancelled) {
         console.warn('[Auth] Init timeout (5s) - forcing loading complete');
-        completeInit('timeout');
+        cancelled = true;
+        setIsLoading(false);
       }
     }, 5000);
 
-    // Start init but don't let it block indefinitely
     init().catch((error) => {
       console.error('[Auth] Init fatal error:', error);
-      completeInit('fatal error');
+      if (!cancelled) {
+        setIsLoading(false);
+      }
     });
 
     return () => {
+      cancelled = true; // Prevent stale async ops from clearing tokens (StrictMode safe)
       clearTimeout(timeoutId);
     };
   }, []);

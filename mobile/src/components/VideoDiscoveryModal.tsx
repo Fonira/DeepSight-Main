@@ -8,6 +8,7 @@ import {
   FlatList,
   TextInput,
   ActivityIndicator,
+  Keyboard,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -237,7 +238,7 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
             <Text style={[styles.title, { color: colors.textPrimary }]}>
               {isEn ? 'Discover Videos' : 'Découvrir des vidéos'}
             </Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={() => { Keyboard.dismiss(); onClose(); }}>
               <Ionicons name="close" size={24} color={colors.textPrimary} />
             </TouchableOpacity>
           </View>
@@ -316,6 +317,8 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
               data={videos}
               renderItem={renderVideoItem}
               keyExtractor={item => item.video_id}
+              keyboardDismissMode="on-drag"
+              keyboardShouldPersistTaps="handled"
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
               ListEmptyComponent={
