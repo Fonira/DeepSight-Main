@@ -27,7 +27,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { videoApi, chatApi, studyApi, exportApi } from '../services/api';
 import { Header, Card, Badge, Button, YouTubePlayer, useToast, StreamingProgress, FreshnessIndicator, ReliabilityScore, DeepSightSpinner } from '../components';
-import { QuizComponent, MindMapComponent } from '../components/study';
+import { FlashcardsComponent, QuizComponent, MindMapComponent } from '../components/study';
 import type { QuizQuestion, MindMapData, MindMapNode } from '../components/study';
 import { ExportOptions } from '../components/export';
 import { FactCheckButton } from '../components/factcheck';
@@ -1403,56 +1403,14 @@ export const AnalysisScreen: React.FC = () => {
           )}
 
           {/* Flashcards Display */}
-          {activeStudyTool === 'flashcards' && flashcards.length > 0 && (
-            <ScrollView
-              style={styles.content}
-              contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
-              keyboardDismissMode="on-drag"
-              keyboardShouldPersistTaps="handled"
-
-            >
-              <View style={styles.flashcardsContainer}>
-                <TouchableOpacity
-                  style={[styles.flashcard, { backgroundColor: colors.bgElevated }]}
-                  onPress={() => setShowFlashcardAnswer(!showFlashcardAnswer)}
-                >
-                  <Text style={[styles.flashcardLabel, { color: colors.textTertiary }]}>
-                    {showFlashcardAnswer ? t.chat.suggestions.summary : t.chat.suggestions.keyPoints} ({currentFlashcardIndex + 1}/{flashcards.length})
-                  </Text>
-                  <Text style={[styles.flashcardContent, { color: colors.textPrimary }]}>
-                    {showFlashcardAnswer
-                      ? flashcards[currentFlashcardIndex]?.back
-                      : flashcards[currentFlashcardIndex]?.front}
-                  </Text>
-                  <Text style={[styles.flashcardHint, { color: colors.textMuted }]}>
-                    {t.common.seeMore}
-                  </Text>
-                </TouchableOpacity>
-
-                <View style={styles.flashcardNav}>
-                  <TouchableOpacity
-                    style={[styles.flashcardNavButton, { backgroundColor: colors.bgElevated }]}
-                    onPress={() => {
-                      setCurrentFlashcardIndex(Math.max(0, currentFlashcardIndex - 1));
-                      setShowFlashcardAnswer(false);
-                    }}
-                    disabled={currentFlashcardIndex === 0}
-                  >
-                    <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.flashcardNavButton, { backgroundColor: colors.bgElevated }]}
-                    onPress={() => {
-                      setCurrentFlashcardIndex(Math.min(flashcards.length - 1, currentFlashcardIndex + 1));
-                      setShowFlashcardAnswer(false);
-                    }}
-                    disabled={currentFlashcardIndex === flashcards.length - 1}
-                  >
-                    <Ionicons name="chevron-forward" size={24} color={colors.textPrimary} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </ScrollView>
+          {activeStudyTool === 'flashcards' && (
+            <FlashcardsComponent
+              flashcards={flashcards}
+              isLoading={isLoadingTools}
+              onComplete={() => {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }}
+            />
           )}
 
           {/* Quiz Display */}
