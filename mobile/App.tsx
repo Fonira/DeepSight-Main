@@ -1,4 +1,4 @@
-import React, { useEffect, useState, Suspense, lazy } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 import { StyleSheet, View } from 'react-native';
-import Constants from 'expo-constants';
 
 import { AuthProvider } from './src/contexts/AuthContext';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
@@ -24,14 +23,9 @@ import { Colors } from './src/constants/theme';
 import { initCrashReporting, setUser, captureException } from './src/services/CrashReporting';
 import { tokenManager } from './src/services/TokenManager';
 
-// Check if running in Expo Go (has version mismatch issues with Reanimated/Worklets)
-const isExpoGo = Constants.appOwnership === 'expo';
-
-// Lazy load DoodleBackground only in development builds (not Expo Go)
-// This prevents the Worklets version mismatch crash in Expo Go
-const DoodleBackground = !isExpoGo
-  ? lazy(() => import('./src/components/backgrounds').then(mod => ({ default: mod.DoodleBackground })))
-  : null;
+// DoodleBackground uses only react-native-svg + expo-linear-gradient (no Reanimated)
+// Safe to load in Expo Go
+import { DoodleBackground } from './src/components/backgrounds';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -68,11 +62,7 @@ const AppContent: React.FC = () => {
     <View style={[styles.appContainer, { backgroundColor: colors.bgPrimary }]}>
       <OfflineBanner />
       {/* DoodleBackground variant changes per screen via DoodleVariantContext */}
-      {DoodleBackground && (
-        <Suspense fallback={null}>
-          <DoodleBackground variant={variant} />
-        </Suspense>
-      )}
+      <DoodleBackground variant={variant} />
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <AppNavigator />
     </View>

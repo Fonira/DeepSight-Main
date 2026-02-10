@@ -113,6 +113,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         multiline
         maxLength={maxLength}
         editable={!disabled}
+        onSubmitEditing={handleSend}
+        blurOnSubmit={false}
+        returnKeyType="default"
       />
 
       <Pressable

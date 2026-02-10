@@ -12,6 +12,7 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -175,6 +176,7 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
   };
 
   const handleClose = () => {
+    Keyboard.dismiss();
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setIsOpen(false);
   };
@@ -401,6 +403,8 @@ export const FloatingChat: React.FC<FloatingChatProps> = ({
                   ref={scrollRef}
                   data={messages}
                   keyExtractor={(item) => item.id}
+                  keyboardDismissMode="interactive"
+                  keyboardShouldPersistTaps="handled"
                   contentContainerStyle={styles.messagesList}
                   onContentSizeChange={() => scrollRef.current?.scrollToEnd()}
                   ListEmptyComponent={

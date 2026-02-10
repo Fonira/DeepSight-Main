@@ -12,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   FlatList,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -806,6 +807,7 @@ export const AnalysisScreen: React.FC = () => {
               activeTab === tab.id && { borderBottomColor: colors.accentPrimary },
             ]}
             onPress={() => {
+              Keyboard.dismiss();
               Haptics.selectionAsync();
               setActiveTab(tab.id);
             }}
@@ -1063,12 +1065,14 @@ export const AnalysisScreen: React.FC = () => {
         <KeyboardAvoidingView
           style={styles.chatContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={100}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 180 : 80}
         >
           <FlatList
             ref={chatScrollRef}
             data={chatMessages}
             keyExtractor={(item) => item.id}
+            keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={[styles.chatMessages, { paddingBottom: 20 }]}
             onContentSizeChange={() => chatScrollRef.current?.scrollToEnd()}
             ListEmptyComponent={
