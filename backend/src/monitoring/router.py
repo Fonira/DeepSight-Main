@@ -196,8 +196,8 @@ async def db_health():
 
 async def _verify_cron_secret(x_cron_secret: str = Header(None)) -> None:
     """Vérifie le secret CRON pour protéger les endpoints internes."""
-    from core.config import settings
-    expected = getattr(settings, 'CRON_SECRET', None) or "deepsight-cron-secret"
+    from core.config import CRON_SECRET
+    expected = CRON_SECRET
     if not x_cron_secret or x_cron_secret != expected:
         raise HTTPException(status_code=403, detail="Invalid CRON secret")
 

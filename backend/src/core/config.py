@@ -81,6 +81,9 @@ class _DeepSightSettings(BaseSettings):
     GOOGLE_CLIENT_SECRET: str = ""
     GOOGLE_REDIRECT_URI: str = ""
 
+    # -- CRON --
+    CRON_SECRET: str = ""
+
     # -- Monitoring --
     SENTRY_DSN: str = ""
     LOG_LEVEL: str = "INFO"
@@ -210,6 +213,12 @@ SUPADATA_API_KEY = _settings.SUPADATA_API_KEY
 PERPLEXITY_API_KEY = _settings.PERPLEXITY_API_KEY
 BRAVE_SEARCH_API_KEY = _settings.BRAVE_SEARCH_API_KEY
 OPENAI_API_KEY = _settings.OPENAI_API_KEY
+
+# =============================================================================
+# CRON
+# =============================================================================
+
+CRON_SECRET = _settings.CRON_SECRET or "deepsight-cron-secret"
 
 # =============================================================================
 # EMAIL (Resend)
