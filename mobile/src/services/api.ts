@@ -1,6 +1,8 @@
 import { API_BASE_URL, TIMEOUTS } from '../constants/config';
 import { tokenStorage } from '../utils/storage';
 import NetInfo from '@react-native-community/netinfo';
+import { withRetryPreset } from './RetryService';
+import { tokenManager } from './TokenManager';
 import type {
   User,
   AnalysisSummary,
@@ -99,8 +101,8 @@ const refreshAccessToken = async (): Promise<string | null> => {
   }
 };
 
-// Base request function with retry, offline detection, and token refresh
-const request = async <T>(
+// Base request function with offline detection and token refresh (no retry — see requestWithRetry)
+const _requestRaw = async <T>(
   endpoint: string,
   config: RequestConfig = {}
 ): Promise<T> => {
@@ -125,9 +127,10 @@ const request = async <T>(
     ...headers,
   };
 
-  // Add auth token if required
+  // Add auth token if required (proactive refresh via TokenManager)
   if (requiresAuth) {
-    const accessToken = await tokenStorage.getAccessToken();
+    const accessToken = await tokenManager.getValidToken()
+      || await tokenStorage.getAccessToken();
     if (accessToken) {
       requestHeaders['Authorization'] = `Bearer ${accessToken}`;
     }
@@ -233,33 +236,32 @@ const request = async <T>(
     clearTimeout(timeoutId);
 
     if (error instanceof ApiError) {
-      // Retry on server errors (5xx) or timeout, but not on client errors (4xx)
-      const isRetryable = error.status >= 500 || error.code === 'TIMEOUT';
-      if (isRetryable && retries > 0) {
-        await wait(1000 * (3 - retries)); // Exponential backoff: 1s, 2s
-        return request<T>(endpoint, { ...config, retries: retries - 1 });
-      }
       throw error;
     }
 
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
-        if (retries > 0) {
-          await wait(1000 * (3 - retries));
-          return request<T>(endpoint, { ...config, retries: retries - 1 });
-        }
         throw new ApiError('Request timeout', 408, 'TIMEOUT');
-      }
-      // Network error - retry
-      if (retries > 0) {
-        await wait(1000 * (3 - retries));
-        return request<T>(endpoint, { ...config, retries: retries - 1 });
       }
       throw new ApiError(error.message, 0, 'NETWORK_ERROR');
     }
 
     throw new ApiError('Unknown error', 0, 'UNKNOWN');
   }
+};
+
+// Public request with RetryService (exponential backoff + jitter + circuit breaker)
+const request = async <T>(
+  endpoint: string,
+  config: RequestConfig = {}
+): Promise<T> => {
+  // Strip legacy retries param — RetryService handles retry logic now
+  const { retries: _ignored, ...cleanConfig } = config;
+  return withRetryPreset(
+    () => _requestRaw<T>(endpoint, cleanConfig),
+    'standard',
+    endpoint
+  );
 };
 
 // ============================================
@@ -403,42 +405,42 @@ export const userApi = {
   },
 
   async uploadAvatar(imageUri: string): Promise<{ avatar_url: string }> {
-    const token = await tokenStorage.getAccessToken();
+    // Unified: uses withRetryPreset + tokenManager
+    return withRetryPreset(async () => {
+      const token = await tokenManager.getValidToken()
+        || await tokenStorage.getAccessToken();
 
-    // Create form data with the image
-    const formData = new FormData();
+      // Create form data with the image
+      const formData = new FormData();
+      const filename = imageUri.split('/').pop() || 'avatar.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : 'image/jpeg';
 
-    // Get filename and type from URI
-    const filename = imageUri.split('/').pop() || 'avatar.jpg';
-    const match = /\.(\w+)$/.exec(filename);
-    const type = match ? `image/${match[1]}` : 'image/jpeg';
+      formData.append('file', {
+        uri: imageUri,
+        name: filename,
+        type,
+      } as unknown as Blob);
 
-    // Append the file - React Native FormData accepts this format
-    formData.append('file', {
-      uri: imageUri,
-      name: filename,
-      type,
-    } as unknown as Blob);
+      const response = await fetch(`${API_BASE_URL}/api/profile/avatar`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
 
-    const response = await fetch(`${API_BASE_URL}/api/profile/avatar`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        // Don't set Content-Type - let fetch set it with boundary for multipart
-      },
-      body: formData,
-    });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new ApiError(
+          errorData.message || 'Failed to upload avatar',
+          response.status,
+          errorData.code
+        );
+      }
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new ApiError(
-        errorData.message || 'Failed to upload avatar',
-        response.status,
-        errorData.code
-      );
-    }
-
-    return response.json();
+      return response.json();
+    }, 'quick', 'upload-avatar');
   },
 };
 
@@ -1473,32 +1475,35 @@ export const studyApi = {
 // ============================================
 export const exportApi = {
   async exportSummary(summaryId: string, format: 'pdf' | 'markdown' | 'text'): Promise<Blob> {
-    const makeRequest = async (token: string | null): Promise<Response> => {
-      return fetch(`${API_BASE_URL}/api/exports/${format}/${summaryId}`, {
+    // Unified: uses withRetryPreset + tokenManager (same as request())
+    return withRetryPreset(async () => {
+      const token = await tokenManager.getValidToken()
+        || await tokenStorage.getAccessToken();
+
+      const response = await fetch(`${API_BASE_URL}/api/exports/${format}/${summaryId}`, {
         headers: {
           ...(token && { Authorization: `Bearer ${token}` }),
         },
       });
-    };
 
-    let accessToken = await tokenStorage.getAccessToken();
-    let response = await makeRequest(accessToken);
-
-    // Handle 401 - try to refresh token and retry
-    if (response.status === 401) {
-      const newToken = await refreshAccessToken();
-      if (newToken) {
-        response = await makeRequest(newToken);
-      } else {
+      if (response.status === 401) {
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          const retryResp = await fetch(`${API_BASE_URL}/api/exports/${format}/${summaryId}`, {
+            headers: { Authorization: `Bearer ${newToken}` },
+          });
+          if (!retryResp.ok) throw new ApiError('Export failed', retryResp.status);
+          return retryResp.blob();
+        }
         throw new ApiError('Session expired', 401, 'SESSION_EXPIRED');
       }
-    }
 
-    if (!response.ok) {
-      throw new ApiError('Export failed', response.status);
-    }
+      if (!response.ok) {
+        throw new ApiError('Export failed', response.status);
+      }
 
-    return await response.blob();
+      return response.blob();
+    }, 'standard', 'export');
   },
 };
 

@@ -405,8 +405,24 @@ export function useRetryState() {
 // Need to import React for the hook
 import React from 'react';
 
+/**
+ * Wrapper simplifié pour utiliser RetryService avec un preset dans api.ts.
+ * Usage: const data = await withRetryPreset(() => fetch(...), 'standard');
+ */
+export async function withRetryPreset<T>(
+  fn: () => Promise<T>,
+  preset: keyof typeof RETRY_PRESETS = 'standard',
+  context?: string
+): Promise<T> {
+  return withRetry(fn, {
+    ...RETRY_PRESETS[preset],
+    circuitBreakerKey: context || 'api-call',
+  });
+}
+
 export const RetryService = {
   withRetry,
+  withRetryPreset,
   createRetryableFetch,
   useRetryState,
   RETRY_PRESETS,

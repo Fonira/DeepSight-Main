@@ -320,6 +320,27 @@ class TokenManager {
   }
 
   /**
+   * Retourne un access token valide. Refresh proactivement si expiry < 2min.
+   * Utilisé par api.ts request() pour éviter les 401 réactifs.
+   */
+  async getValidToken(): Promise<string | null> {
+    const token = this.state.accessToken;
+    if (!token) return null;
+
+    const now = Date.now();
+    if (this.state.accessTokenExpiry && (this.state.accessTokenExpiry - now) < REFRESH_BUFFER_MS) {
+      try {
+        const newToken = await this.refresh();
+        return newToken;
+      } catch {
+        return token;
+      }
+    }
+
+    return token;
+  }
+
+  /**
    * Get current session state (for debugging)
    */
   getState(): Readonly<TokenState> {
