@@ -38,20 +38,23 @@
     <!-- 📱 iOS Splash Screens -->
     <link rel="apple-touch-startup-image" href="/icons/icon-512x512.png" />
     
+    <!-- 🔗 Canonical URL -->
+    <link rel="canonical" href="https://www.deepsightsynthesis.com/" />
+
     <!-- 🔗 Open Graph (Facebook, LinkedIn) -->
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://deepsightsynthesis.com/" />
+    <meta property="og:url" content="https://www.deepsightsynthesis.com/" />
     <meta property="og:title" content="Deep Sight - Analyse YouTube IA" />
     <meta property="og:description" content="Analysez et synthétisez vos vidéos YouTube avec l'IA. Résumés intelligents, points clés, et chat interactif." />
-    <meta property="og:image" content="https://deepsightsynthesis.com/og-image.png" />
+    <meta property="og:image" content="https://www.deepsightsynthesis.com/og-image.png" />
     <meta property="og:locale" content="fr_FR" />
     <meta property="og:site_name" content="Deep Sight" />
-    
+
     <!-- 🐦 Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Deep Sight - Analyse YouTube IA" />
     <meta name="twitter:description" content="Analysez et synthétisez vos vidéos YouTube avec l'IA." />
-    <meta name="twitter:image" content="https://deepsightsynthesis.com/og-image.png" />
+    <meta name="twitter:image" content="https://www.deepsightsynthesis.com/og-image.png" />
     
     <!-- 🔒 Sécurité -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -60,10 +63,56 @@
     <!-- 📊 Preload des ressources critiques -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="dns-prefetch" href="https://api.deepsightsynthesis.com" />
-    
-    <!-- 🎯 Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="dns-prefetch" href="https://deep-sight-backend-v3-production.up.railway.app" />
+
+    <!-- 🎯 Fonts — Inter (body) + JetBrains Mono (code) with display=swap -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" media="print" onload="this.media='all'" />
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" /></noscript>
+
+    <!-- 🧠 JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Deep Sight",
+      "url": "https://www.deepsightsynthesis.com",
+      "description": "Analysez et synthétisez vos vidéos YouTube avec l'IA. Résumés intelligents, points clés, timestamps, et chat interactif.",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Web",
+      "offers": [
+        {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "EUR",
+          "name": "Free"
+        },
+        {
+          "@type": "Offer",
+          "price": "2.99",
+          "priceCurrency": "EUR",
+          "name": "Student"
+        },
+        {
+          "@type": "Offer",
+          "price": "5.99",
+          "priceCurrency": "EUR",
+          "name": "Starter"
+        },
+        {
+          "@type": "Offer",
+          "price": "12.99",
+          "priceCurrency": "EUR",
+          "name": "Pro"
+        }
+      ],
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "150"
+      }
+    }
+    </script>
 
     <!-- 📱 iOS Safe Areas -->
     <style>

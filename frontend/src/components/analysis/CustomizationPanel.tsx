@@ -78,8 +78,8 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
       if (saved) {
         return { ...DEFAULT_CUSTOMIZATION, ...JSON.parse(saved), ...initialCustomization };
       }
-    } catch (e) {
-      console.warn('Failed to load saved customization:', e);
+    } catch {
+      /* localStorage read failed */
     }
     return { ...DEFAULT_CUSTOMIZATION, ...initialCustomization };
   };
@@ -103,8 +103,8 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
       localStorage.setItem(CUSTOMIZATION_STORAGE_KEY, JSON.stringify(data));
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2000);
-    } catch (e) {
-      console.warn('Failed to save customization:', e);
+    } catch {
+      /* localStorage write failed */
     }
   }, []);
 

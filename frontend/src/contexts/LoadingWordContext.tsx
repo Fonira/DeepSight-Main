@@ -203,7 +203,6 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
       const token = localStorage.getItem('access_token');
 
       if (!token) {
-        console.info('[LoadingWord] No token - using local fallback');
         return { keywords: [], hasHistory: false };
       }
 
@@ -221,7 +220,6 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        console.warn('[LoadingWord] API error:', response.status);
         // Sur erreur API, retourner le cache existant si disponible
         if (historyKeywordsCache.length > 0) {
           return { keywords: historyKeywordsCache, hasHistory: true };
@@ -230,8 +228,6 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
 
       const data = await response.json();
-      console.info('[LoadingWord] Fetched keywords:', data.keywords?.length || 0, 'hasHistory:', data.has_history);
-
       historyKeywordsCache = data.keywords || [];
       lastFetchTime = now;
 
@@ -241,7 +237,6 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
 
       return { keywords: historyKeywordsCache, hasHistory: data.has_history || false };
     } catch (err) {
-      console.warn('[LoadingWord] Fetch error:', err);
       // Sur erreur réseau, utiliser le cache si disponible
       if (historyKeywordsCache.length > 0) {
         return { keywords: historyKeywordsCache, hasHistory: true };
@@ -269,11 +264,9 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
           useHistoryWord();
         } else if (!userHasHistory) {
           // L'utilisateur n'a PAS d'historique → fallback local OK
-          console.info('[LoadingWord] No history - using local fallback');
           useLocalFallback();
         } else {
           // L'utilisateur A un historique mais keywords vide (erreur?) → ne rien afficher plutôt que local
-          console.warn('[LoadingWord] User has history but keywords empty - retrying...');
           // Réessayer après 2 secondes
           setTimeout(() => {
             if (isMountedRef.current) fetchWord();

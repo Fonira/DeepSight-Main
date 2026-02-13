@@ -52,7 +52,6 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   // Demander la permission pour les notifications navigateur
   const requestBrowserPermission = useCallback(async () => {
     if (!('Notification' in window)) {
-      console.log('🔔 Browser notifications not supported');
       return 'denied';
     }
 
@@ -106,8 +105,6 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     // Ignorer les heartbeats
     if (notification.type === 'heartbeat') return;
 
-    console.log('🔔 Notification received:', notification);
-
     // Ajouter à la liste
     setNotifications(prev => [notification, ...prev].slice(0, 50));
 
@@ -128,7 +125,6 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   // Connexion SSE
   const connect = useCallback(() => {
     if (!token || !isAuthenticated) {
-      console.log('🔔 Not authenticated, skipping SSE connection');
       return;
     }
 
@@ -136,8 +132,6 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
     }
-
-    console.log('🔔 Connecting to notification stream...');
 
     // Note: EventSource ne supporte pas les headers custom
     // On utilise un URL avec le token en query param (moins sécurisé mais nécessaire pour SSE)

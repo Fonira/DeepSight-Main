@@ -24,6 +24,8 @@ import { InstallPrompt, UpdatePrompt } from "./components/InstallPrompt";
 import { LoadingWordGlobal } from "./components/LoadingWord";
 import { ErrorBoundary as RouteErrorBoundary } from "./components/ErrorBoundary";
 import { CrispChat } from "./components/CrispChat";
+import { CookieBanner } from "./components/CookieBanner";
+import { analytics } from "./services/analytics";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 QUERY CLIENT CONFIGURATION
@@ -266,6 +268,11 @@ const PAGE_LOADERS: Record<string, () => Promise<any>> = {
 const RoutePrefetcher = () => {
   const location = useLocation();
   const prefetchedRef = useRef<Set<string>>(new Set());
+
+  // 📊 PostHog pageview tracking (SPA)
+  useEffect(() => {
+    analytics.pageview(window.location.href);
+  }, [location.pathname]);
 
   useEffect(() => {
     const currentPath = location.pathname;
@@ -514,6 +521,9 @@ const AppRoutes = () => {
 
             {/* 🧠 Widget "Le Saviez-Vous" global - visible sur toutes les pages */}
             <LoadingWordGlobal />
+
+            {/* 🍪 RGPD: Cookie consent banner */}
+            <CookieBanner />
             </Router>
           </AuthProvider>
         </LoadingWordProvider>
@@ -527,6 +537,11 @@ const AppRoutes = () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const App = () => {
+  // 📊 Initialiser PostHog analytics (RGPD-compliant, attend le consentement)
+  useEffect(() => {
+    analytics.init();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <AppRoutes />

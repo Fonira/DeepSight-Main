@@ -284,7 +284,6 @@ const useHistoryApi = () => {
         headers: getAuthHeaders(),
       });
       if (!response.ok) {
-        console.warn(`⚠️ [History] Chat history not found for video ${summaryId}`);
         return [];
       }
       const data = await response.json();
@@ -321,7 +320,6 @@ const useHistoryApi = () => {
         headers: getAuthHeaders(),
       });
       if (!response.ok) {
-        console.warn(`⚠️ [History] Chat history not found for playlist ${playlistId}`);
         return [];
       }
       const data = await response.json();
@@ -458,8 +456,7 @@ export const History: React.FC = () => {
         });
         setPlaylists(playlistsRes.items || playlistsRes);
         setPlaylistsTotal(playlistsRes.total || playlistsRes.length);
-      } catch (playlistErr) {
-        console.warn("Playlists not available:", playlistErr);
+      } catch {
         setPlaylists([]);
         setPlaylistsTotal(0);
       }

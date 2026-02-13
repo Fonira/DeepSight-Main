@@ -20,10 +20,5 @@ export const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
     );
   }
 
-  // TODO: remove this dev bypass after preview
-  if (import.meta.env.DEV && !user) {
-    return <>{children}</>;
-  }
-
   return user ? <>{children}</> : <Navigate to="/login" replace />;
 };

@@ -29,7 +29,6 @@ export function NotificationBell({ onAnalysisComplete }: NotificationBellProps) 
   } = useNotifications({
     enableBrowserNotifications: true,
     onAnalysisComplete: (summaryId, videoTitle) => {
-      console.log(`✅ Analysis complete: ${videoTitle} (ID: ${summaryId})`);
       onAnalysisComplete?.(summaryId);
     },
   });

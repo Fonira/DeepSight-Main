@@ -8,6 +8,7 @@ import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
+import { SEO } from '../components/SEO';
 
 import { Mail, Lock, AlertCircle, Eye, EyeOff, ArrowLeft, Loader2 } from 'lucide-react';
 
@@ -163,6 +164,11 @@ export const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary flex">
+      <SEO
+        title="Connexion"
+        description="Connectez-vous à Deep Sight pour analyser vos vidéos YouTube avec l'IA."
+        path="/login"
+      />
       {/* Left Panel — Branding (desktop) */}
       <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden">
         {/* Gradient mesh background */}

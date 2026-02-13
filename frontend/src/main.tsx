@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { HelmetProvider } from 'react-helmet-async';
 import App from './App.tsx';
 import './index.css';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -35,15 +36,19 @@ const ErrorFallback = () => (
 
 // Render avec ou sans Sentry Error Boundary
 const AppWithErrorBoundary = isSentryEnabled ? (
-  <SentryErrorBoundary fallback={<ErrorFallback />} showDialog>
+  <HelmetProvider>
+    <SentryErrorBoundary fallback={<ErrorFallback />} showDialog>
+      <ThemeProvider>
+        <App />
+      </ThemeProvider>
+    </SentryErrorBoundary>
+  </HelmetProvider>
+) : (
+  <HelmetProvider>
     <ThemeProvider>
       <App />
     </ThemeProvider>
-  </SentryErrorBoundary>
-) : (
-  <ThemeProvider>
-    <App />
-  </ThemeProvider>
+  </HelmetProvider>
 );
 
 createRoot(document.getElementById('root')!).render(

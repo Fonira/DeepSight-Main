@@ -127,7 +127,7 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
         localStorage.removeItem(STORAGE_KEY);
       }
     } catch (e) {
-      console.warn('[BackgroundAnalysis] Failed to save to localStorage:', e);
+      /* localStorage save failed — non-critical */
     }
   }, [tasks, isRestoring]);
 
@@ -144,8 +144,6 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
         }
 
         const storedTasks = JSON.parse(stored);
-        console.log('[BackgroundAnalysis] Restoring', storedTasks.length, 'pending tasks');
-
         // Restaurer les tâches et reprendre le polling
         for (const task of storedTasks) {
           if (task.taskId && task.status === 'processing') {
@@ -172,7 +170,7 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
         // Nettoyer le localStorage après restauration
         localStorage.removeItem(STORAGE_KEY);
       } catch (e) {
-        console.warn('[BackgroundAnalysis] Failed to restore tasks:', e);
+        /* localStorage restore failed — non-critical */
         localStorage.removeItem(STORAGE_KEY);
       } finally {
         setIsRestoring(false);

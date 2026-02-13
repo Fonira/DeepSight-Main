@@ -87,7 +87,6 @@ export function usePWA(): PWAState & PWAActions {
       navigator.serviceWorker
         .register('/sw.js')
         .then((registration) => {
-          console.log('[PWA] Service Worker registered:', registration.scope);
           setSwRegistered(true);
           setSwRegistration(registration);
 
@@ -97,7 +96,6 @@ export function usePWA(): PWAState & PWAActions {
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  console.log('[PWA] New version available');
                   setUpdateAvailable(true);
                 }
               });
@@ -126,7 +124,6 @@ export function usePWA(): PWAState & PWAActions {
   useEffect(() => {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
-      console.log('[PWA] beforeinstallprompt captured');
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setCanInstall(true);
     };
@@ -135,7 +132,6 @@ export function usePWA(): PWAState & PWAActions {
 
     // Écouter l'installation réussie
     window.addEventListener('appinstalled', () => {
-      console.log('[PWA] App installed successfully');
       setDeferredPrompt(null);
       setCanInstall(false);
       setIsInstalling(false);
@@ -149,7 +145,6 @@ export function usePWA(): PWAState & PWAActions {
   // Déclencher le prompt d'installation
   const promptInstall = useCallback(async (): Promise<boolean> => {
     if (!deferredPrompt) {
-      console.log('[PWA] No deferred prompt available');
       return false;
     }
 
@@ -158,8 +153,6 @@ export function usePWA(): PWAState & PWAActions {
     try {
       await deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      
-      console.log('[PWA] User choice:', outcome);
       
       if (outcome === 'accepted') {
         setDeferredPrompt(null);

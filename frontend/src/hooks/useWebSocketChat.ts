@@ -137,18 +137,25 @@ export function useWebSocketChat(
     if (wsRef.current) {
       wsRef.current.close();
     }
-    
+
     setStatus('connecting');
     setError(null);
-    
-    const wsUrl = `${WS_BASE_URL}/ws/chat/${summaryId}`;
-    console.log(`🔌 [WS] Connecting to ${wsUrl}`);
-    
+
+    // Récupérer le JWT pour l'authentification WebSocket
+    const accessToken = localStorage.getItem('access_token');
+    if (!accessToken) {
+      setStatus('error');
+      setError('Non authentifié. Veuillez vous reconnecter.');
+      onError?.('Non authentifié. Veuillez vous reconnecter.');
+      return;
+    }
+
+    const wsUrl = `${WS_BASE_URL}/ws/chat/${summaryId}?token=${encodeURIComponent(accessToken)}`;
+
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     
     ws.onopen = () => {
-      console.log('🔌 [WS] Connected');
       setStatus('connected');
       reconnectAttemptsRef.current = 0;
       
@@ -161,22 +168,29 @@ export function useWebSocketChat(
     };
     
     ws.onclose = (event) => {
-      console.log(`🔌 [WS] Disconnected: ${event.code}`);
       setStatus('disconnected');
       setSessionId(null);
-      
+
       // Nettoyer les intervals
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
       }
-      
+
       onDisconnect?.();
-      
+
+      // Ne PAS reconnecter si erreur d'authentification (4001, 4003)
+      const isAuthError = event.code === 4001 || event.code === 4003;
+      if (isAuthError) {
+        setStatus('error');
+        setError(event.reason || 'Erreur d\'authentification WebSocket');
+        onError?.(event.reason || 'Erreur d\'authentification WebSocket');
+        return;
+      }
+
       // Reconnexion automatique si pas fermé volontairement
       if (event.code !== 1000 && reconnectAttemptsRef.current < maxReconnectAttempts) {
         reconnectAttemptsRef.current++;
-        console.log(`🔄 [WS] Reconnecting... (attempt ${reconnectAttemptsRef.current})`);
-        
+
         reconnectTimeoutRef.current = setTimeout(() => {
           connect();
         }, reconnectInterval * reconnectAttemptsRef.current);
@@ -346,7 +360,7 @@ export function useWebSocketChat(
         break;
       
       default:
-        console.log(`⚠️ [WS] Unknown message type: ${data.type}`);
+        break;
     }
   }, [onConnect, onMessage, onError]);
   

@@ -226,14 +226,16 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
                 rel="noopener noreferrer"
                 className="p-2 rounded-lg bg-black/30 hover:bg-black/50 text-white/70 hover:text-white transition-all"
                 title="Ouvrir sur YouTube"
+                aria-label="Ouvrir sur YouTube"
               >
                 <ExternalLink className="w-4 h-4" />
               </a>
-              
+
               <button
                 onClick={onClose}
                 className="p-2 rounded-lg bg-black/30 hover:bg-red-500/50 text-white/70 hover:text-white transition-all"
                 title="Fermer le player"
+                aria-label="Fermer le player"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -273,6 +275,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
                 <button
                   onClick={() => isPlaying ? pause() : play()}
                   className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all"
+                  aria-label={isPlaying ? 'Mettre en pause' : 'Lire la vidéo'}
                 >
                   {isPlaying ? (
                     <Pause className="w-5 h-5" />
@@ -286,6 +289,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
                   onClick={restart}
                   className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all"
                   title="Recommencer"
+                  aria-label="Recommencer la vidéo"
                 >
                   <RotateCcw className="w-4 h-4" />
                 </button>
@@ -294,6 +298,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
                 <button
                   onClick={toggleMute}
                   className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all"
+                  aria-label={isMuted ? 'Activer le son' : 'Couper le son'}
                 >
                   {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </button>

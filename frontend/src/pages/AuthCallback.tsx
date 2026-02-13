@@ -201,7 +201,6 @@ export function AuthCallback() {
         // ═══════════════════════════════════════════════════════════════════
         
         if (accessToken) {
-          console.log('[AuthCallback] Processing direct tokens');
           setStatus('processing_tokens');
 
           // Nettoyer l'URL immédiatement (supprimer les tokens de l'historique)
@@ -220,27 +219,26 @@ export function AuthCallback() {
           try {
             await loadProfileWithRetry();
           } catch (profileError) {
-            console.warn('[AuthCallback] Profile load failed, proceeding anyway:', profileError);
+            // Profile load failed, proceeding anyway
           }
-          
+
           // Succès!
           setStatus('success');
           window.dispatchEvent(new CustomEvent('auth:success'));
-          
+
           setTimeout(() => {
             navigate('/', { replace: true });
           }, 800);
-          
+
           return;
         }
-        
+
         // ═══════════════════════════════════════════════════════════════════
         // 🔄 FLUX 2: CODE À ÉCHANGER
         // Le frontend doit échanger le code contre des tokens
         // ═══════════════════════════════════════════════════════════════════
-        
+
         if (code) {
-          console.log('[AuthCallback] Exchanging code for tokens');
           setStatus('exchanging_code');
           
           const tokens = await authApi.googleCallback(code, state || undefined);
@@ -257,20 +255,20 @@ export function AuthCallback() {
           try {
             await loadProfileWithRetry();
           } catch (profileError) {
-            console.warn('[AuthCallback] Profile load failed, proceeding anyway:', profileError);
+            // Profile load failed, proceeding anyway
           }
-          
+
           // Succès!
           setStatus('success');
           window.dispatchEvent(new CustomEvent('auth:success'));
-          
+
           setTimeout(() => {
             navigate('/', { replace: true });
           }, 800);
-          
+
           return;
         }
-        
+
         // ═══════════════════════════════════════════════════════════════════
         // ❓ AUCUN PARAMÈTRE VALIDE
         // ═══════════════════════════════════════════════════════════════════

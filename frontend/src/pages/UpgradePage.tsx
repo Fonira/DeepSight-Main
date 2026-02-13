@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from '../components/ui';
 import { billingApi } from '../services/api';
+import { SEO } from '../components/SEO';
 import {
   PLANS_INFO,
   PLAN_LIMITS,
@@ -229,8 +230,8 @@ export const UpgradePage: React.FC = () => {
         try {
           const eligibility = await billingApi.checkTrialEligibility();
           setTrialEligible(eligibility.eligible);
-        } catch (e) {
-          console.log('Trial eligibility check failed:', e);
+        } catch {
+          // Trial eligibility check not available
         }
       } catch (err) {
         console.error('Error loading data:', err);
@@ -412,6 +413,11 @@ export const UpgradePage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
+      <SEO
+        title="Tarifs"
+        description="Découvrez les plans Deep Sight : Gratuit, Étudiant, Starter, Pro et Équipe. Analysez vos vidéos YouTube avec l'IA."
+        path="/upgrade"
+      />
       <DoodleBackground variant="creative" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 

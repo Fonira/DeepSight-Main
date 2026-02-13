@@ -34,7 +34,6 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
       if (value && typeof value === 'object' && k in value) {
         value = value[k];
       } else {
-        console.warn(`Translation missing: ${key}`);
         return key;
       }
     }

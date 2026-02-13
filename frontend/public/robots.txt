@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /auth/callback
+Disallow: /payment/success
+Disallow: /payment/cancel
+Disallow: /api/
+
+Sitemap: https://www.deepsightsynthesis.com/sitemap.xml

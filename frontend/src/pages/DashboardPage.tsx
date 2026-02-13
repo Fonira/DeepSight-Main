@@ -233,9 +233,7 @@ export const DashboardPage: React.FC = () => {
       try {
         const data = await reliabilityApi.getReliability(selectedSummary.id);
         setReliabilityData(data);
-      } catch (err) {
-        console.warn('Failed to load reliability data:', err);
-        // Silencieux - ne pas afficher d'erreur à l'utilisateur
+      } catch {
         setReliabilityData(null);
       } finally {
         setReliabilityLoading(false);
@@ -255,8 +253,7 @@ export const DashboardPage: React.FC = () => {
       setConcepts(data.concepts || []);
       setConceptsProvider(data.provider || 'none');
       setConceptsCategories(data.categories || {});
-    } catch (err) {
-      console.warn('Failed to load enriched concepts:', err);
+    } catch {
       setConcepts([]);
       setConceptsProvider('none');
       setConceptsCategories({});
@@ -646,8 +643,8 @@ export const DashboardPage: React.FC = () => {
       try {
         const newQuota = await chatApi.getQuota(selectedSummary.id);
         setChatQuota(newQuota);
-      } catch (quotaErr) {
-        console.warn('Failed to refresh quota:', quotaErr);
+      } catch {
+        // Quota refresh failed silently
       }
     } catch (err) {
       console.error('❌ Chat error:', err);

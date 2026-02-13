@@ -845,7 +845,7 @@ export const videoApi = {
     try {
       return await request(`/api/history/playlists${query ? `?${query}` : ''}`);
     } catch (error) {
-      console.warn('Playlist history not available');
+      // Playlist history endpoint not available
       return { items: [], total: 0 };
     }
   },
@@ -1009,7 +1009,7 @@ export const playlistApi = {
     try {
       return await request(`/api/history/playlists${query ? `?${query}` : ''}`);
     } catch (error) {
-      console.warn('Playlist history not available');
+      // Playlist history endpoint not available
       return { items: [], total: 0 };
     }
   },

@@ -35,8 +35,8 @@ export const VideoLogo: React.FC<VideoLogoProps> = ({
     const playVideo = async () => {
       try {
         await video.play();
-      } catch (err) {
-        console.log('Autoplay prevented, will play on interaction');
+      } catch {
+        /* autoplay prevented by browser */
       }
     };
 

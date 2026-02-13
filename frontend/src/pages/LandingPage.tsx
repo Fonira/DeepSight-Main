@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
+import { SEO } from "../components/SEO";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ANIMATION HELPERS
@@ -320,6 +321,11 @@ const LandingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative overflow-hidden">
+      <SEO
+        title="Analyse YouTube IA"
+        description="Analysez et synthétisez vos vidéos YouTube avec l'IA. Résumés intelligents, fact-checking bayésien, points clés, timestamps, et chat interactif."
+        path="/"
+      />
       {/* Gradient mesh background */}
       <div className="fixed inset-0 pointer-events-none" aria-hidden="true">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-accent-primary/[0.07] rounded-full blur-[120px]" />

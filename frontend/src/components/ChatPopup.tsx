@@ -634,7 +634,7 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
     try {
       const stored = localStorage.getItem(`${storageKey}-layout`);
       if (stored) return JSON.parse(stored);
-    } catch {}
+    } catch { /* invalid stored layout JSON */ }
     return null;
   };
 

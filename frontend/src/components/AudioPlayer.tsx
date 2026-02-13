@@ -134,7 +134,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       setDuration(audio.duration);
       setIsLoading(false);
       if (autoPlay) {
-        audio.play().catch(() => {});
+        audio.play().catch(() => { /* autoplay prevented */ });
       }
     };
 

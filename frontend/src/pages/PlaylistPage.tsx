@@ -245,8 +245,8 @@ export const PlaylistPage: React.FC = () => {
           ...progress,
           savedAt: Date.now()
         }));
-      } catch (e) {
-        console.warn('Failed to save playlist result');
+      } catch {
+        // Failed to save playlist result to localStorage
       }
     }
   }, [progress]);
@@ -262,8 +262,8 @@ export const PlaylistPage: React.FC = () => {
             setProgress(parsed);
           }
         }
-      } catch (e) {
-        console.warn('Failed to restore playlist result');
+      } catch {
+        // Failed to restore playlist result from localStorage
       }
     }
   }, []);

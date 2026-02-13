@@ -164,7 +164,6 @@ export function useAuth(): UseAuthReturn {
       const response = await authApi.refresh(refreshToken);
       if (response.access_token) {
         setTokens(response.access_token, response.refresh_token);
-        console.log('🔄 Tokens refreshed successfully');
         return true;
       }
     } catch (error) {
@@ -173,7 +172,6 @@ export function useAuth(): UseAuthReturn {
       if (error instanceof ApiError) {
         const detail = error.message;
         if (detail.includes('SESSION_EXPIRED') || detail.includes('session_expired')) {
-          console.log('🚪 Session expired on another device');
           clearTokens();
           setCachedUser(null);
           if (mountedRef.current) {
@@ -231,7 +229,6 @@ export function useAuth(): UseAuthReturn {
     
     // 🆕 Vérifier si le token expire bientôt et le rafraîchir
     if (isTokenExpiringSoon(token)) {
-      console.log('⏰ Token expiring soon, refreshing...');
       const refreshed = await refreshTokens();
       if (refreshed) {
         token = getAccessToken();
@@ -240,7 +237,6 @@ export function useAuth(): UseAuthReturn {
     
     // Vérifier si le token est expiré
     if (!token || isTokenExpired(token)) {
-      console.log('⏰ Token expired, attempting refresh...');
       const refreshed = await refreshTokens();
       if (!refreshed) {
         if (mountedRef.current) {
@@ -265,8 +261,6 @@ export function useAuth(): UseAuthReturn {
     
     try {
       const user = await authApi.me(force ? { skipCache: true } : undefined);
-      
-      console.log('✅ User refreshed, plan:', user.plan);
       
       if (mountedRef.current) {
         setState({
@@ -498,15 +492,12 @@ export function useAuth(): UseAuthReturn {
   
   useEffect(() => {
     if (state.isAuthenticated && !sessionCheckIntervalRef.current) {
-      console.log('💓 Starting session heartbeat');
-      
       sessionCheckIntervalRef.current = setInterval(async () => {
         const token = getAccessToken();
         if (!token) return;
         
         // Vérifier si le token expire bientôt
         if (isTokenExpiringSoon(token)) {
-          console.log('💓 Token expiring soon, refreshing...');
           await refreshTokens();
         }
       }, SESSION_CHECK_INTERVAL_MS);
@@ -580,7 +571,6 @@ export function useAuth(): UseAuthReturn {
     };
     
     const handleSessionExpired = () => {
-      console.log('🚪 Session expired event received');
       handleLogout();
     };
     

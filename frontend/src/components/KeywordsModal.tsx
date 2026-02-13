@@ -139,7 +139,7 @@ const DefinitionItem: React.FC<DefinitionItemProps> = memo(({ concept, language,
         <div className="flex flex-wrap gap-1.5 mt-2 pl-7">
           {concept.sources.slice(0, 2).map((source, idx) => {
             let hostname = source;
-            try { hostname = new URL(source).hostname; } catch {}
+            try { hostname = new URL(source).hostname; } catch { /* invalid URL */ }
             return (
               <a
                 key={idx}

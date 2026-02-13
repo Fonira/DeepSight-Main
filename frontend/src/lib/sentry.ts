@@ -26,7 +26,6 @@ export const isSentryEnabled = !!SENTRY_DSN;
  */
 export function initSentry(): void {
   if (!SENTRY_DSN) {
-    console.log('ℹ️ Sentry DSN not configured, monitoring disabled');
     return;
   }
 
@@ -92,7 +91,6 @@ export function initSentry(): void {
       ],
     });
 
-    console.log(`🔍 Sentry initialized (env: ${ENVIRONMENT})`);
   } catch (error) {
     console.error('❌ Failed to initialize Sentry:', error);
   }

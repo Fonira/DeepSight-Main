@@ -14,6 +14,7 @@ export const LanguageToggle: React.FC = () => {
         border: '1px solid rgba(212, 175, 55, 0.3)',
       }}
       title={language === 'fr' ? 'Switch to English' : 'Passer en Français'}
+      aria-label={language === 'fr' ? 'Switch to English' : 'Passer en Français'}
     >
       <Globe className="w-4 h-4 text-gold-primary" />
       <span className="text-sm font-medium text-cream uppercase tracking-wider">
