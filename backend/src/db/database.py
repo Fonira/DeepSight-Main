@@ -62,13 +62,15 @@ _engine_kwargs = {
     "pool_pre_ping": True,
 }
 
-# PostgreSQL-specific pool settings for production reliability
+# PostgreSQL-specific pool settings — optimisé pour Railway 512MB
+# Chaque connexion asyncpg consomme ~5-10MB RAM
+# pool_size=5 + max_overflow=3 = 8 max = ~60MB (vs 30 × 7MB = 210MB avant)
 if DATABASE_URL.startswith("postgresql"):
     _engine_kwargs.update({
-        "pool_size": int(os.environ.get("DB_POOL_SIZE", "20")),
-        "max_overflow": int(os.environ.get("DB_MAX_OVERFLOW", "10")),
+        "pool_size": int(os.environ.get("DB_POOL_SIZE", "5")),
+        "max_overflow": int(os.environ.get("DB_MAX_OVERFLOW", "3")),
         "pool_timeout": 30,
-        "pool_recycle": 3600,
+        "pool_recycle": 1800,  # Recycler toutes les 30min (vs 1h) pour libérer les connexions idle
     })
 
     # Configurer SSL pour asyncpg via connect_args

@@ -19,50 +19,119 @@ from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 📦 IMPORTS — PDF Generator (WeasyPrint)
+# 📦 IMPORTS LAZY — Chargés uniquement quand nécessaire (économie ~80MB RAM)
+# Railway 512MB : chaque MB compte, ces libs ne sont utilisées que pour l'export
 # ═══════════════════════════════════════════════════════════════════════════════
 
-from .pdf_generator import (
-    generate_pdf as generate_pdf_weasyprint,
-    is_pdf_available as weasyprint_available,
-    PDF_EXPORT_OPTIONS,
-    PDFExportType
-)
+# Flags d'état — initialisés à None (pas encore testé)
+_PDF_CHECKED = False
+_DOCX_CHECKED = False
+_REPORTLAB_CHECKED = False
+_EXCEL_CHECKED = False
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 📦 IMPORTS — DOCX (python-docx)
-# ═══════════════════════════════════════════════════════════════════════════════
+# Modules lazy (None = pas encore chargé)
+_pdf_module = None
+_docx_module = None
+_reportlab_modules = None
+_excel_module = None
 
-try:
-    from docx import Document
-    from docx.shared import Inches, Pt, RGBColor
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.enum.style import WD_STYLE_TYPE
-    DOCX_AVAILABLE = True
-except ImportError:
-    DOCX_AVAILABLE = False
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 📦 IMPORTS — PDF Fallback (ReportLab)
-# ═══════════════════════════════════════════════════════════════════════════════
+def _ensure_pdf():
+    """Lazy load du PDF generator (WeasyPrint)"""
+    global _PDF_CHECKED, _pdf_module
+    if _PDF_CHECKED:
+        return _pdf_module is not None
+    _PDF_CHECKED = True
+    try:
+        from . import pdf_generator
+        _pdf_module = pdf_generator
+        return True
+    except (ImportError, OSError):
+        return False
 
-try:
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.colors import HexColor
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
-    from reportlab.lib.units import cm
-    REPORTLAB_AVAILABLE = True
-except ImportError:
-    REPORTLAB_AVAILABLE = False
 
-try:
-    from openpyxl import Workbook
-    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-    from openpyxl.utils import get_column_letter
-    EXCEL_AVAILABLE = True
-except ImportError:
-    EXCEL_AVAILABLE = False
+def _ensure_docx():
+    """Lazy load de python-docx"""
+    global _DOCX_CHECKED, _docx_module
+    if _DOCX_CHECKED:
+        return _docx_module is not None
+    _DOCX_CHECKED = True
+    try:
+        import docx as _d
+        _docx_module = _d
+        return True
+    except ImportError:
+        return False
+
+
+def _ensure_reportlab():
+    """Lazy load de ReportLab"""
+    global _REPORTLAB_CHECKED, _reportlab_modules
+    if _REPORTLAB_CHECKED:
+        return _reportlab_modules is not None
+    _REPORTLAB_CHECKED = True
+    try:
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.colors import HexColor
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+        from reportlab.lib.units import cm
+        _reportlab_modules = {
+            "A4": A4, "getSampleStyleSheet": getSampleStyleSheet,
+            "ParagraphStyle": ParagraphStyle, "HexColor": HexColor,
+            "SimpleDocTemplate": SimpleDocTemplate, "Paragraph": Paragraph,
+            "Spacer": Spacer, "PageBreak": PageBreak, "cm": cm,
+        }
+        return True
+    except ImportError:
+        return False
+
+
+def _ensure_excel():
+    """Lazy load de openpyxl"""
+    global _EXCEL_CHECKED, _excel_module
+    if _EXCEL_CHECKED:
+        return _excel_module is not None
+    _EXCEL_CHECKED = True
+    try:
+        import openpyxl as _xl
+        _excel_module = _xl
+        return True
+    except ImportError:
+        return False
+
+
+# ── Fonctions de compatibilité (remplacent les anciens flags booléens) ──
+
+def weasyprint_available() -> bool:
+    """Check si WeasyPrint est disponible (lazy load)"""
+    return _ensure_pdf() and _pdf_module.is_pdf_available()
+
+def generate_pdf_weasyprint(*args, **kwargs):
+    """Proxy vers pdf_generator.generate_pdf (lazy)"""
+    if not _ensure_pdf():
+        raise ImportError("WeasyPrint non disponible")
+    return _pdf_module.generate_pdf(*args, **kwargs)
+
+def get_pdf_export_type():
+    """Accès lazy à PDFExportType enum"""
+    if _ensure_pdf():
+        return _pdf_module.PDFExportType
+    return None
+
+
+class _LazyFlag:
+    """Descriptor pour simuler un booléen avec lazy loading"""
+    def __init__(self, checker):
+        self._checker = checker
+    def __bool__(self):
+        return self._checker()
+    def __repr__(self):
+        return str(bool(self))
+
+DOCX_AVAILABLE = _LazyFlag(_ensure_docx)
+REPORTLAB_AVAILABLE = _LazyFlag(_ensure_reportlab)
+EXCEL_AVAILABLE = _LazyFlag(_ensure_excel)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -263,10 +332,16 @@ def export_to_docx(
     flashcards: List[Dict] = None
 ) -> Optional[bytes]:
     """Exporte l'analyse en format DOCX"""
-    
+
     if not DOCX_AVAILABLE:
         return None
-    
+
+    # Imports lazy — chargés uniquement quand DOCX_AVAILABLE=True
+    from docx import Document
+    from docx.shared import Inches, Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.enum.style import WD_STYLE_TYPE
+
     doc = Document()
     
     # Titre principal
@@ -392,10 +467,17 @@ def export_to_pdf_reportlab(
     created_at: datetime = None
 ) -> Optional[bytes]:
     """Export PDF de fallback avec ReportLab (moins stylé)"""
-    
+
     if not REPORTLAB_AVAILABLE:
         return None
-    
+
+    # Imports lazy — chargés uniquement quand REPORTLAB_AVAILABLE=True
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.colors import HexColor
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak
+    from reportlab.lib.units import cm
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -678,6 +760,11 @@ def export_to_excel(
     if not EXCEL_AVAILABLE:
         return None
 
+    # Imports lazy — chargés uniquement quand EXCEL_AVAILABLE=True
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Analyse Deep Sight"
@@ -944,5 +1031,7 @@ def get_available_formats() -> List[str]:
 
 
 def get_pdf_export_options() -> List[Dict]:
-    """Retourne les options d'export PDF disponibles"""
-    return PDF_EXPORT_OPTIONS
+    """Retourne les options d'export PDF disponibles (lazy)"""
+    if _ensure_pdf():
+        return _pdf_module.PDF_EXPORT_OPTIONS
+    return []

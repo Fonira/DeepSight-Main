@@ -689,24 +689,22 @@ async def health_detailed():
         "metrics": {}
     }
 
-    # Check database
+    # Check database — une seule requête combinée (vs 4 avant)
     try:
         from db.database import async_session_maker
-        from sqlalchemy import text, func, select
-        from db.database import User, Summary, TaskStatus
+        from sqlalchemy import text
         async with async_session_maker() as session:
             db_start = time.time()
-            await session.execute(text("SELECT 1"))
+            # Une seule requête pour tout : ping + stats approximatives
+            # pg_class.reltuples est une estimation rapide (pas de COUNT(*) coûteux)
+            result = await session.execute(text("""
+                SELECT
+                    (SELECT reltuples::bigint FROM pg_class WHERE relname = 'users') as user_count,
+                    (SELECT reltuples::bigint FROM pg_class WHERE relname = 'summaries') as summary_count,
+                    (SELECT count(*) FROM task_status WHERE status IN ('pending', 'processing')) as active_tasks
+            """))
+            row = result.one()
             db_latency = (time.time() - db_start) * 1000
-
-            # Stats de base
-            user_count = await session.execute(select(func.count()).select_from(User))
-            summary_count = await session.execute(select(func.count()).select_from(Summary))
-            active_tasks = await session.execute(
-                select(func.count()).select_from(TaskStatus).where(
-                    TaskStatus.status.in_(["pending", "processing"])
-                )
-            )
 
             health_data["checks"]["database"] = {
                 "status": "healthy",
@@ -714,9 +712,9 @@ async def health_detailed():
                 "connection_pool": "active"
             }
             health_data["metrics"]["database"] = {
-                "total_users": user_count.scalar() or 0,
-                "total_summaries": summary_count.scalar() or 0,
-                "active_tasks": active_tasks.scalar() or 0
+                "total_users": max(row.user_count or 0, 0),
+                "total_summaries": max(row.summary_count or 0, 0),
+                "active_tasks": row.active_tasks or 0
             }
     except Exception as e:
         health_data["checks"]["database"] = {
@@ -756,15 +754,15 @@ async def health_detailed():
             "error": str(e)[:50]
         }
 
-    # System metrics
+    # System metrics — sans interval blocking (cpu_percent(interval=0) = non-bloquant)
     try:
         process = psutil.Process()
+        mem_info = process.memory_info()
         health_data["metrics"]["system"] = {
-            "cpu_percent": psutil.cpu_percent(interval=0.1),
+            "cpu_percent": psutil.cpu_percent(interval=0),  # Non-bloquant (estimation)
             "memory_percent": psutil.virtual_memory().percent,
-            "process_memory_mb": round(process.memory_info().rss / 1024 / 1024, 2),
+            "process_memory_mb": round(mem_info.rss / 1024 / 1024, 2),
             "process_threads": process.num_threads(),
-            "open_files": len(process.open_files()) if hasattr(process, 'open_files') else 0
         }
     except Exception as e:
         health_data["metrics"]["system"] = {
@@ -785,10 +783,11 @@ async def health_detailed():
         "batch_router": BATCH_ROUTER_AVAILABLE
     }
 
-    # External API status
+    # External API status — requête légère (pas de JOIN, table petite)
     try:
-        from db.database import ApiStatus
-        async with async_session_maker() as session:
+        from db.database import ApiStatus, async_session_maker as _sm
+        from sqlalchemy import select
+        async with _sm() as session:
             api_statuses = await session.execute(select(ApiStatus))
             apis = api_statuses.scalars().all()
             health_data["checks"]["external_apis"] = {
