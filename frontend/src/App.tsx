@@ -214,6 +214,8 @@ const LandingPage = lazy(() => import("./pages/LandingPage"));
 const Login = lazy(() => import("./pages/Login"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const LegalPage = lazy(() => import("./pages/LegalPage"));
+const LegalCGU = lazy(() => import("./pages/LegalCGU"));
+const LegalCGV = lazy(() => import("./pages/LegalCGV"));
 const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const PaymentCancel = lazy(() => import("./pages/PaymentCancel"));
 const StatusPage = lazy(() => import("./pages/StatusPage"));
@@ -372,6 +374,22 @@ const AppRoutes = () => {
                   <RouteErrorBoundary variant="full" componentName="AuthCallback">
                     <Suspense fallback={<PageSkeleton variant="simple" />}>
                       <AuthCallback />
+                    </Suspense>
+                  </RouteErrorBoundary>
+                } />
+
+                <Route path="/legal/cgu" element={
+                  <RouteErrorBoundary variant="full" componentName="LegalCGU">
+                    <Suspense fallback={<PageSkeleton variant="full" />}>
+                      <LegalCGU />
+                    </Suspense>
+                  </RouteErrorBoundary>
+                } />
+
+                <Route path="/legal/cgv" element={
+                  <RouteErrorBoundary variant="full" componentName="LegalCGV">
+                    <Suspense fallback={<PageSkeleton variant="full" />}>
+                      <LegalCGV />
                     </Suspense>
                   </RouteErrorBoundary>
                 } />

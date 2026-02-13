@@ -21,13 +21,29 @@ export const Footer: React.FC = () => {
             {t.footer.madeWith} <Heart className="w-2.5 h-2.5 text-red-400 fill-red-400" /> {t.footer.inFrance}
           </span>
         </div>
-        <Link
-          to="/legal"
-          className="flex items-center gap-1.5 text-text-tertiary hover:text-text-secondary transition-colors text-xs"
-        >
-          <Scale className="w-3 h-3" />
-          {t.footer.legal}
-        </Link>
+        <div className="flex items-center gap-3 text-xs">
+          <Link
+            to="/legal"
+            className="flex items-center gap-1.5 text-text-tertiary hover:text-text-secondary transition-colors"
+          >
+            <Scale className="w-3 h-3" />
+            {t.footer.legal}
+          </Link>
+          <span className="text-border-default">·</span>
+          <Link
+            to="/legal/cgu"
+            className="text-text-tertiary hover:text-text-secondary transition-colors"
+          >
+            CGU
+          </Link>
+          <span className="text-border-default">·</span>
+          <Link
+            to="/legal/cgv"
+            className="text-text-tertiary hover:text-text-secondary transition-colors"
+          >
+            CGV
+          </Link>
+        </div>
       </div>
     </footer>
   );
