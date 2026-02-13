@@ -226,6 +226,12 @@ export type RootStackParamList = {
 
   // Playlist detail
   PlaylistDetail: { playlistId: string };
+
+  // Export
+  Export: { summaryId: string; title: string };
+
+  // Analytics
+  Analytics: undefined;
 };
 
 export type MainTabParamList = {

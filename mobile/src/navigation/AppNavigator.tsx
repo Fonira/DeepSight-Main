@@ -44,6 +44,8 @@ import {
   LegalScreen,
   StudyScreen,
   ContactScreen,
+  ExportScreen,
+  AnalyticsScreen,
 } from '../screens';
 import type { RootStackParamList, MainTabParamList } from '../types';
 
@@ -131,6 +133,8 @@ const MainStack: React.FC = () => {
         component={StudyScreen}
         options={{ animation: 'slide_from_right' }}
       />
+      <Stack.Screen name="Export" component={ExportScreen} />
+      <Stack.Screen name="Analytics" component={AnalyticsScreen} />
     </Stack.Navigator>
   );
 };
@@ -171,6 +175,8 @@ const linking: LinkingOptions<RootStackParamList> = {
       Contact: 'contact',
       PlaylistDetail: 'playlists/:playlistId',
       StudyTools: 'study/:summaryId',
+      Export: 'export/:summaryId',
+      Analytics: 'analytics',
     },
   },
 };

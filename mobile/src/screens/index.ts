@@ -18,3 +18,5 @@ export { PaymentCancelScreen } from './PaymentCancelScreen';
 export { LegalScreen } from './LegalScreen';
 export { StudyScreen } from './StudyScreen';
 export { ContactScreen } from './ContactScreen';
+export { ExportScreen } from './ExportScreen';
+export { AnalyticsScreen } from './AnalyticsScreen';
