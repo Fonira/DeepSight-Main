@@ -1,16 +1,17 @@
 /**
- * DEEP SIGHT v8.0 — Premium Landing Page
+ * DEEP SIGHT v9.0 — Premium Landing Page
  * Inspired by Linear/Vercel — gradient mesh hero, scroll animations, glassmorphism
  */
 
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, AnimatePresence } from "framer-motion";
 import {
   ArrowRight, Check, X, Sparkles,
   Brain, Shield, MessageSquare, FileText,
   Zap, ChevronRight, Users, GraduationCap, Newspaper,
-  Star, Crown, Rocket
+  Star, Crown, ListVideo, Briefcase,
+  AlertTriangle, Lightbulb
 } from "lucide-react";
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
@@ -83,6 +84,40 @@ const StaggerItem: React.FC<{
     {children}
   </motion.div>
 );
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FAQ COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const FAQItem: React.FC<{ question: string; answer: string }> = ({ question, answer }) => {
+  const [isOpen, setIsOpen] = React.useState(false);
+  return (
+    <motion.div className="border-b border-border-subtle">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full text-left py-4 flex items-center justify-between"
+      >
+        <span className="text-text-primary font-medium text-sm sm:text-base">{question}</span>
+        <ChevronRight
+          className={`w-4 h-4 text-text-tertiary transition-transform duration-200 flex-shrink-0 ml-4 ${isOpen ? 'rotate-90' : ''}`}
+        />
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease }}
+            className="overflow-hidden"
+          >
+            <p className="text-text-secondary text-sm pb-4 leading-relaxed">{answer}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LOGO COMPONENT
@@ -233,31 +268,38 @@ const PLANS: PlanConfig[] = [
 const getFeatures = (language: string) => [
   {
     icon: Brain,
-    title: language === 'fr' ? 'Analyse intelligente' : 'Smart Analysis',
+    title: language === 'fr' ? 'Synthèse bayésienne' : 'Bayesian Synthesis',
     description: language === 'fr'
-      ? 'IA avancée qui comprend le contexte, identifie les arguments clés et structure l\'information.'
-      : 'Advanced AI that understands context, identifies key arguments and structures information.',
+      ? 'Chaque affirmation est évaluée selon son degré de certitude : SOLIDE, PLAUSIBLE, INCERTAIN ou A VERIFIER. Vous savez exactement ce qui est fiable.'
+      : 'Every claim is rated by certainty level: SOLID, PLAUSIBLE, UNCERTAIN or NEEDS VERIFICATION. You know exactly what is reliable.',
   },
   {
     icon: Shield,
-    title: language === 'fr' ? 'Fact-checking intégré' : 'Built-in Fact-checking',
+    title: language === 'fr' ? 'Fact-checking automatique' : 'Automated Fact-checking',
     description: language === 'fr'
-      ? 'Vérification automatique des affirmations avec recherche web et sources citées.'
-      : 'Automatic claim verification with web search and cited sources.',
+      ? 'Les affirmations sont croisées avec des sources web en temps réel. Chaque vérification cite ses références.'
+      : 'Claims are cross-referenced with real-time web sources. Each verification cites its references.',
   },
   {
     icon: MessageSquare,
     title: language === 'fr' ? 'Chat contextuel' : 'Contextual Chat',
     description: language === 'fr'
-      ? 'Posez des questions sur le contenu analysé et obtenez des réponses précises avec timecodes.'
-      : 'Ask questions about analyzed content and get precise answers with timestamps.',
+      ? 'Interrogez n\'importe quel passage de la vidéo. L\'IA répond avec des timecodes précis et le contexte de la transcription.'
+      : 'Query any part of the video. The AI responds with precise timestamps and transcript context.',
   },
   {
     icon: FileText,
     title: language === 'fr' ? 'Export professionnel' : 'Professional Export',
     description: language === 'fr'
-      ? 'Exportez vos analyses en PDF, Markdown ou texte pour vos recherches et publications.'
-      : 'Export your analyses as PDF, Markdown or text for your research and publications.',
+      ? 'PDF structuré, Markdown pour vos notes, texte brut pour vos publications. Partagez vos analyses avec vos collaborateurs.'
+      : 'Structured PDF, Markdown for your notes, plain text for publications. Share analyses with your collaborators.',
+  },
+  {
+    icon: ListVideo,
+    title: language === 'fr' ? 'Analyse de playlists' : 'Playlist Analysis',
+    description: language === 'fr'
+      ? 'Analysez des playlists entières en une seule opération. Comparez les thèses entre vidéos et construisez une vision de corpus.'
+      : 'Analyze entire playlists in a single operation. Compare theses across videos and build a corpus-level view.',
   },
 ];
 
@@ -268,24 +310,86 @@ const getFeatures = (language: string) => [
 const getAudiences = (language: string) => [
   {
     icon: GraduationCap,
-    title: language === 'fr' ? 'Chercheurs & Étudiants' : 'Researchers & Students',
+    title: language === 'fr' ? 'Chercheurs & Académiques' : 'Researchers & Academics',
     description: language === 'fr'
-      ? 'Analysez des conférences, cours et documentaires pour vos travaux académiques.'
-      : 'Analyze lectures, courses and documentaries for your academic work.',
+      ? 'Analysez conférences, séminaires doctoraux et cours magistraux. Extrayez les thèses, les références et les arguments en quelques minutes.'
+      : 'Analyze lectures, doctoral seminars and academic courses. Extract theses, references and arguments in minutes.',
   },
   {
     icon: Newspaper,
-    title: language === 'fr' ? 'Journalistes' : 'Journalists',
+    title: language === 'fr' ? 'Journalistes & Fact-checkers' : 'Journalists & Fact-checkers',
     description: language === 'fr'
-      ? 'Vérifiez les faits, extrayez les citations clés et gagnez du temps sur vos enquêtes.'
-      : 'Verify facts, extract key quotes and save time on your investigations.',
+      ? 'Vérifiez les affirmations, extrayez les citations avec timecodes, croisez les sources. Un assistant d\'investigation rigoureux.'
+      : 'Verify claims, extract timestamped quotes, cross-reference sources. A rigorous investigative assistant.',
   },
   {
-    icon: Users,
-    title: language === 'fr' ? 'Professionnels' : 'Professionals',
+    icon: GraduationCap,
+    title: language === 'fr' ? 'Étudiants' : 'Students',
     description: language === 'fr'
-      ? 'Synthétisez webinaires, présentations et contenus de formation efficacement.'
-      : 'Synthesize webinars, presentations and training content efficiently.',
+      ? 'Flashcards générées automatiquement, cartes mentales, synthèses structurées. Révisez vos cours vidéo deux fois plus vite.'
+      : 'Auto-generated flashcards, mind maps, structured summaries. Review your video courses twice as fast.',
+  },
+  {
+    icon: Briefcase,
+    title: language === 'fr' ? 'Créateurs & Professionnels' : 'Creators & Professionals',
+    description: language === 'fr'
+      ? 'Veille concurrentielle, recherche de contenu, synthèse de webinaires. Transformez des heures de vidéo en insights exploitables.'
+      : 'Competitive intelligence, content research, webinar summaries. Turn hours of video into actionable insights.',
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FAQ DATA
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const getFAQs = (language: string) => [
+  {
+    question: language === 'fr'
+      ? 'Comment fonctionne Deep Sight ?'
+      : 'How does Deep Sight work?',
+    answer: language === 'fr'
+      ? 'Deep Sight extrait la transcription de votre vidéo YouTube, puis l\'analyse avec un modèle d\'IA avancé. Le contenu est structuré en synthèse, points clés, arguments et contre-arguments, avec des marqueurs de certitude basés sur l\'épistémologie bayésienne.'
+      : 'Deep Sight extracts the transcript from your YouTube video, then analyzes it with an advanced AI model. The content is structured into summaries, key points, arguments and counter-arguments, with certainty markers based on Bayesian epistemology.',
+  },
+  {
+    question: language === 'fr'
+      ? 'Quels types de vidéos sont supportés ?'
+      : 'What types of videos are supported?',
+    answer: language === 'fr'
+      ? 'Toute vidéo YouTube disposant de sous-titres (automatiques ou manuels) dans la plupart des langues. Les vidéos de conférences, cours, documentaires, interviews et podcasts donnent les meilleurs résultats. La durée maximale dépend de votre plan (10 min en gratuit, jusqu\'à 2h en Pro).'
+      : 'Any YouTube video with subtitles (automatic or manual) in most languages. Lectures, courses, documentaries, interviews and podcasts yield the best results. Maximum duration depends on your plan (10 min free, up to 2h on Pro).',
+  },
+  {
+    question: language === 'fr'
+      ? 'Les analyses sont-elles fiables ?'
+      : 'Are the analyses reliable?',
+    answer: language === 'fr'
+      ? 'Deep Sight utilise des marqueurs épistémiques explicites (SOLIDE, PLAUSIBLE, INCERTAIN, A VERIFIER) pour que vous sachiez toujours le degré de certitude de chaque affirmation. Le fact-checking croise les informations avec des sources web. L\'IA reste un outil d\'aide : nous encourageons toujours la vérification critique par l\'utilisateur.'
+      : 'Deep Sight uses explicit epistemic markers (SOLID, PLAUSIBLE, UNCERTAIN, NEEDS VERIFICATION) so you always know the certainty level of each claim. Fact-checking cross-references information with web sources. AI remains an assistive tool: we always encourage critical verification by the user.',
+  },
+  {
+    question: language === 'fr'
+      ? 'Mes données sont-elles sécurisées ?'
+      : 'Is my data secure?',
+    answer: language === 'fr'
+      ? 'Vos données sont chiffrées en transit et au repos. Les analyses sont associées à votre compte et ne sont jamais partagées avec des tiers. Les paiements sont traités par Stripe, certifié PCI DSS. Vous pouvez supprimer vos données à tout moment depuis votre profil.'
+      : 'Your data is encrypted in transit and at rest. Analyses are linked to your account and never shared with third parties. Payments are processed by Stripe, PCI DSS certified. You can delete your data at any time from your profile.',
+  },
+  {
+    question: language === 'fr'
+      ? 'Puis-je annuler mon abonnement ?'
+      : 'Can I cancel my subscription?',
+    answer: language === 'fr'
+      ? 'Oui, à tout moment depuis votre espace de facturation. L\'annulation est immédiate et sans frais. Vous conservez l\'accès à votre plan jusqu\'à la fin de la période en cours.'
+      : 'Yes, at any time from your billing dashboard. Cancellation is immediate and free of charge. You retain access to your plan until the end of the current billing period.',
+  },
+  {
+    question: language === 'fr'
+      ? 'Deep Sight fonctionne-t-il sur mobile ?'
+      : 'Does Deep Sight work on mobile?',
+    answer: language === 'fr'
+      ? 'Oui. Deep Sight est disponible en application native sur iOS et Android, ainsi qu\'en extension Chrome pour le navigateur. Votre compte et vos analyses sont synchronisés sur tous vos appareils.'
+      : 'Yes. Deep Sight is available as a native app on iOS and Android, as well as a Chrome extension for your browser. Your account and analyses are synchronized across all your devices.',
   },
 ];
 
@@ -311,6 +415,7 @@ const LandingPage: React.FC = () => {
 
   const features = getFeatures(language);
   const audiences = getAudiences(language);
+  const faqs = getFAQs(language);
 
   // Redirect if logged in
   useEffect(() => {
@@ -386,7 +491,7 @@ const LandingPage: React.FC = () => {
           >
             <Sparkles className="w-3.5 h-3.5 text-accent-primary" />
             <span className="text-xs text-accent-primary font-medium">
-              {language === 'fr' ? 'Analyse vidéo par IA' : 'AI Video Analysis'}
+              {language === 'fr' ? 'Epistémologie bayésienne & IA' : 'Bayesian Epistemology & AI'}
             </span>
           </motion.div>
 
@@ -398,11 +503,11 @@ const LandingPage: React.FC = () => {
             className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight leading-[1.1] mb-6"
           >
             <span className="text-text-primary">
-              {language === 'fr' ? 'Transformez vos vidéos' : 'Transform your videos'}
+              {language === 'fr' ? 'Ne regardez plus vos vidéos.' : 'Stop watching your videos.'}
             </span>
             <br />
             <span className="bg-gradient-to-r from-accent-primary via-violet-400 to-cyan-400 bg-clip-text text-transparent">
-              {language === 'fr' ? 'en connaissances' : 'into knowledge'}
+              {language === 'fr' ? 'Analysez-les.' : 'Analyze them.'}
             </span>
           </motion.h1>
 
@@ -414,8 +519,8 @@ const LandingPage: React.FC = () => {
             className="text-base sm:text-lg text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed"
           >
             {language === 'fr'
-              ? 'Deep Sight analyse, synthétise et vérifie le contenu de vos vidéos YouTube. Conçu pour les chercheurs, journalistes et professionnels exigeants.'
-              : 'Deep Sight analyzes, synthesizes and verifies your YouTube video content. Built for demanding researchers, journalists and professionals.'}
+              ? 'Deep Sight extrait, structure et vérifie le contenu de vos vidéos YouTube. Synthèses pondérées, fact-checking sourcé, chat contextuel. L\'outil conçu pour ceux qui pensent avant de partager.'
+              : 'Deep Sight extracts, structures and verifies your YouTube video content. Weighted summaries, sourced fact-checking, contextual chat. The tool built for those who think before they share.'}
           </motion.p>
 
           {/* CTAs */}
@@ -431,14 +536,14 @@ const LandingPage: React.FC = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              {language === 'fr' ? 'Essayer gratuitement' : 'Try for free'}
+              {language === 'fr' ? 'Analyser une vidéo gratuitement' : 'Analyze a video for free'}
               <ArrowRight className="w-4 h-4" />
             </motion.button>
             <a
               href="#features"
               className="text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1.5 text-sm"
             >
-              {language === 'fr' ? 'En savoir plus' : 'Learn more'}
+              {language === 'fr' ? 'Découvrir les fonctionnalités' : 'Discover features'}
               <ChevronRight className="w-3.5 h-3.5" />
             </a>
           </motion.div>
@@ -461,6 +566,63 @@ const LandingPage: React.FC = () => {
               </div>
             ))}
           </motion.div>
+        </div>
+      </section>
+
+      {/* ─── PROBLEM / SOLUTION ─── */}
+      <section className="py-12 sm:py-20 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto">
+          <ScrollReveal>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Problem */}
+              <div className="p-6 sm:p-8 rounded-2xl border border-red-500/20 bg-red-500/[0.04]">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
+                    <AlertTriangle className="w-5 h-5 text-red-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-text-primary">
+                    {language === 'fr' ? 'Le problème' : 'The Problem'}
+                  </h3>
+                </div>
+                <div className="space-y-3">
+                  <p className="text-text-secondary text-sm leading-relaxed">
+                    {language === 'fr'
+                      ? 'Des heures de contenu vidéo, pas le temps de tout regarder. Des affirmations impossibles à vérifier en temps réel. Des connaissances qui se perdent faute de prise de notes structurée.'
+                      : 'Hours of video content, no time to watch everything. Claims impossible to verify in real time. Knowledge lost due to lack of structured note-taking.'}
+                  </p>
+                  <p className="text-text-secondary text-sm leading-relaxed">
+                    {language === 'fr'
+                      ? 'YouTube est la plus grande bibliothèque du monde, mais sans index, sans vérification et sans synthèse.'
+                      : 'YouTube is the world\'s largest library, but with no index, no verification and no synthesis.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Solution */}
+              <div className="p-6 sm:p-8 rounded-2xl border border-accent-primary/20 bg-accent-primary/[0.04]">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 rounded-lg bg-accent-primary/10 flex items-center justify-center">
+                    <Lightbulb className="w-5 h-5 text-accent-primary" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-text-primary">
+                    {language === 'fr' ? 'La solution' : 'The Solution'}
+                  </h3>
+                </div>
+                <div className="space-y-3">
+                  <p className="text-text-secondary text-sm leading-relaxed">
+                    {language === 'fr'
+                      ? 'Deep Sight lit, analyse et structure le contenu pour vous. Chaque affirmation est évaluée, chaque source est vérifiable, chaque synthèse est exportable.'
+                      : 'Deep Sight reads, analyzes and structures the content for you. Every claim is evaluated, every source is verifiable, every summary is exportable.'}
+                  </p>
+                  <p className="text-text-secondary text-sm leading-relaxed">
+                    {language === 'fr'
+                      ? 'Concentrez-vous sur la compréhension. L\'extraction, c\'est notre travail.'
+                      : 'Focus on understanding. Extraction is our job.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 
@@ -498,7 +660,7 @@ const LandingPage: React.FC = () => {
               </div>
 
               <p className="text-sm text-text-secondary font-medium relative z-10">
-                {language === 'fr' ? 'L\'IA qui analyse vos vidéos' : 'AI that analyzes your videos'}
+                {language === 'fr' ? 'L\'IA qui pense vos vidéos avec vous' : 'AI that thinks through your videos with you'}
               </p>
             </div>
 
@@ -513,19 +675,19 @@ const LandingPage: React.FC = () => {
         <div className="max-w-6xl mx-auto">
           <ScrollReveal className="text-center mb-12 sm:mb-16">
             <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-text-primary mb-3">
-              {language === 'fr' ? 'Fonctionnalités clés' : 'Key Features'}
+              {language === 'fr' ? 'Une analyse qui va au fond des choses' : 'Analysis that goes beyond the surface'}
             </h2>
-            <p className="text-text-secondary text-sm sm:text-base max-w-lg mx-auto">
+            <p className="text-text-secondary text-sm sm:text-base max-w-xl mx-auto">
               {language === 'fr'
-                ? 'Des outils puissants pour extraire le maximum de valeur de chaque vidéo.'
-                : 'Powerful tools to extract maximum value from every video.'}
+                ? 'Pas de résumé superficiel. Deep Sight évalue la fiabilité, identifie les biais et structure l\'argumentation de chaque vidéo.'
+                : 'No superficial summaries. Deep Sight evaluates reliability, identifies biases and structures the argumentation of each video.'}
             </p>
           </ScrollReveal>
 
-          <StaggerReveal className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StaggerReveal className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {features.map((feature) => (
               <StaggerItem key={feature.title}>
-                <div className="group p-5 rounded-xl border border-border-subtle bg-bg-secondary/40 backdrop-blur-sm hover:border-accent-primary/30 hover:bg-bg-secondary/70 transition-all duration-200">
+                <div className="group p-5 rounded-xl border border-border-subtle bg-bg-secondary/40 backdrop-blur-sm hover:border-accent-primary/30 hover:bg-bg-secondary/70 transition-all duration-200 h-full">
                   <div className="w-10 h-10 rounded-lg bg-accent-primary/10 flex items-center justify-center mb-4 group-hover:bg-accent-primary/15 transition-colors">
                     <feature.icon className="w-5 h-5 text-accent-primary" />
                   </div>
@@ -547,16 +709,16 @@ const LandingPage: React.FC = () => {
         <div className="max-w-5xl mx-auto">
           <ScrollReveal className="text-center mb-12 sm:mb-16">
             <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-text-primary mb-3">
-              {language === 'fr' ? 'Conçu pour vous' : 'Built for you'}
+              {language === 'fr' ? 'Pour ceux qui exigent la rigueur' : 'For those who demand rigor'}
             </h2>
             <p className="text-text-secondary text-sm sm:text-base max-w-lg mx-auto">
               {language === 'fr'
-                ? 'Que vous soyez chercheur, journaliste ou professionnel, Deep Sight s\'adapte à vos besoins.'
-                : 'Whether you\'re a researcher, journalist or professional, Deep Sight adapts to your needs.'}
+                ? 'Chercheurs, journalistes, étudiants ou professionnels : Deep Sight s\'adapte à votre niveau d\'exigence.'
+                : 'Researchers, journalists, students or professionals: Deep Sight adapts to your level of demand.'}
             </p>
           </ScrollReveal>
 
-          <StaggerReveal className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <StaggerReveal className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {audiences.map((audience) => (
               <StaggerItem key={audience.title} className="text-center">
                 <div className="w-14 h-14 rounded-xl bg-bg-tertiary border border-border-subtle flex items-center justify-center mx-auto mb-5">
@@ -579,12 +741,17 @@ const LandingPage: React.FC = () => {
         <div className="max-w-6xl mx-auto">
           <ScrollReveal className="text-center mb-12 sm:mb-16">
             <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-text-primary mb-3">
-              {language === 'fr' ? 'Tarification simple' : 'Simple Pricing'}
+              {language === 'fr' ? 'Investissez dans votre compréhension' : 'Invest in your understanding'}
             </h2>
-            <p className="text-text-secondary text-sm sm:text-base max-w-lg mx-auto">
+            <p className="text-text-secondary text-sm sm:text-base max-w-xl mx-auto mb-4">
               {language === 'fr'
-                ? 'Commencez gratuitement, évoluez selon vos besoins. Sans engagement.'
-                : 'Start for free, scale as you need. No commitment.'}
+                ? 'Commencez gratuitement. Évoluez quand vos besoins grandissent. Sans engagement.'
+                : 'Start for free. Scale when your needs grow. No commitment.'}
+            </p>
+            <p className="text-text-tertiary text-xs sm:text-sm max-w-lg mx-auto">
+              {language === 'fr'
+                ? 'Pourquoi payer ? Parce qu\'une heure de vidéo analysée en 5 minutes, des affirmations vérifiées par des sources, et des synthèses exportables transforment votre productivité intellectuelle.'
+                : 'Why pay? Because an hour of video analyzed in 5 minutes, claims verified against sources, and exportable summaries transform your intellectual productivity.'}
             </p>
           </ScrollReveal>
 
@@ -711,6 +878,30 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
+      {/* ─── FAQ ─── */}
+      <section className="py-16 sm:py-24 px-4 sm:px-6">
+        <div className="max-w-3xl mx-auto">
+          <ScrollReveal className="text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-text-primary mb-3">
+              {language === 'fr' ? 'Questions fréquentes' : 'Frequently Asked Questions'}
+            </h2>
+            <p className="text-text-secondary text-sm sm:text-base max-w-lg mx-auto">
+              {language === 'fr'
+                ? 'Tout ce que vous devez savoir avant de commencer.'
+                : 'Everything you need to know before getting started.'}
+            </p>
+          </ScrollReveal>
+
+          <ScrollReveal>
+            <div className="rounded-xl border border-border-subtle bg-bg-secondary/40 backdrop-blur-sm p-4 sm:p-6">
+              {faqs.map((faq, index) => (
+                <FAQItem key={index} question={faq.question} answer={faq.answer} />
+              ))}
+            </div>
+          </ScrollReveal>
+        </div>
+      </section>
+
       {/* ─── CTA FINAL ─── */}
       <section className="py-16 sm:py-24 px-4 sm:px-6">
         <ScrollReveal className="max-w-3xl mx-auto">
@@ -720,12 +911,14 @@ const LandingPage: React.FC = () => {
 
             <div className="relative z-10">
               <h2 className="text-xl sm:text-2xl font-semibold tracking-tight text-text-primary mb-3">
-                {language === 'fr' ? 'Prêt à commencer ?' : 'Ready to start?'}
+                {language === 'fr'
+                  ? 'Votre prochaine vidéo mérite mieux qu\'un simple visionnage'
+                  : 'Your next video deserves more than just watching'}
               </h2>
               <p className="text-text-secondary text-sm sm:text-base mb-8 max-w-md mx-auto">
                 {language === 'fr'
-                  ? 'Rejoignez les chercheurs et professionnels qui utilisent Deep Sight pour analyser leurs vidéos.'
-                  : 'Join the researchers and professionals who use Deep Sight to analyze their videos.'}
+                  ? 'Rejoignez les chercheurs, journalistes et professionnels qui extraient le savoir de chaque vidéo avec Deep Sight. 3 analyses gratuites pour commencer.'
+                  : 'Join the researchers, journalists and professionals who extract knowledge from every video with Deep Sight. 3 free analyses to get started.'}
               </p>
               <motion.button
                 onClick={() => navigate('/login')}
@@ -755,6 +948,18 @@ const LandingPage: React.FC = () => {
                 {language === 'fr' ? 'Mentions légales' : 'Legal'}
               </a>
               <a
+                href="/legal/cgu"
+                className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"
+              >
+                {language === 'fr' ? 'CGU' : 'Terms of Use'}
+              </a>
+              <a
+                href="/legal/cgv"
+                className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"
+              >
+                {language === 'fr' ? 'CGV' : 'Terms of Sale'}
+              </a>
+              <a
                 href="mailto:contact@deepsightsynthesis.com"
                 className="text-xs text-text-tertiary hover:text-text-secondary transition-colors"
               >
@@ -763,7 +968,7 @@ const LandingPage: React.FC = () => {
             </div>
 
             <p className="text-xs text-text-muted">
-              © 2024 Deep Sight — RCS Lyon 994 558 898
+              © 2025-2026 Deep Sight — RCS Lyon 994 558 898
             </p>
           </div>
         </div>
