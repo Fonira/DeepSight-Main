@@ -85,7 +85,7 @@ export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children })
         setQueuedRequests(validQueue);
       }
     } catch (error) {
-      console.error('[OfflineContext] Failed to load queue:', error);
+      if (__DEV__) { console.error('[OfflineContext] Failed to load queue:', error); }
     }
   };
 
@@ -94,7 +94,7 @@ export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children })
     try {
       await AsyncStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
     } catch (error) {
-      console.error('[OfflineContext] Failed to save queue:', error);
+      if (__DEV__) { console.error('[OfflineContext] Failed to save queue:', error); }
     }
   };
 
@@ -136,7 +136,7 @@ export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       return entry.data;
     } catch (error) {
-      console.error('[OfflineContext] Cache read error:', error);
+      if (__DEV__) { console.error('[OfflineContext] Cache read error:', error); }
       return null;
     }
   }, []);
@@ -153,7 +153,7 @@ export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children })
       };
       await AsyncStorage.setItem(cacheKey, JSON.stringify(entry));
     } catch (error) {
-      console.error('[OfflineContext] Cache write error:', error);
+      if (__DEV__) { console.error('[OfflineContext] Cache write error:', error); }
     }
   }, []);
 
@@ -164,7 +164,7 @@ export const OfflineProvider: React.FC<{ children: ReactNode }> = ({ children })
       const cacheKeys = keys.filter(k => k.startsWith(OFFLINE_CACHE_KEY));
       await AsyncStorage.multiRemove(cacheKeys);
     } catch (error) {
-      console.error('[OfflineContext] Cache clear error:', error);
+      if (__DEV__) { console.error('[OfflineContext] Cache clear error:', error); }
     }
   }, []);
 

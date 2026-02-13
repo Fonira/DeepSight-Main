@@ -62,7 +62,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         await Linking.openURL(youtubeUrl);
       }
     } catch (error) {
-      console.error('Failed to open YouTube:', error);
+      if (__DEV__) { console.error('Failed to open YouTube:', error); }
       // Fallback to web URL
       const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
       await Linking.openURL(youtubeUrl);

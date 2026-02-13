@@ -215,7 +215,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         resetDate: stats.reset_date,
       });
     } catch (error) {
-      console.error('[PlanContext] Failed to fetch usage:', error);
+      if (__DEV__) { console.error('[PlanContext] Failed to fetch usage:', error); }
     } finally {
       setIsLoading(false);
     }

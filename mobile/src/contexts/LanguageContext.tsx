@@ -40,7 +40,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
           setLanguageState(saved);
         }
       } catch (error) {
-        console.warn('Language load failed/timeout, using default:', error);
+        if (__DEV__) { console.warn('Language load failed/timeout, using default:', error); }
       } finally {
         setIsLoading(false);
       }
@@ -53,7 +53,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
       setLanguageState(lang);
       await AsyncStorage.setItem(STORAGE_KEYS.LANGUAGE, lang);
     } catch (error) {
-      console.error('Failed to save language preference:', error);
+      if (__DEV__) { console.error('Failed to save language preference:', error); }
     }
   };
 

@@ -68,7 +68,7 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
       setTierLimit(response.tier_limit || null);
       setSearched(true);
     } catch (err: any) {
-      console.error('Academic search error:', err);
+      if (__DEV__) { console.error('Academic search error:', err); }
       setError(err.message || tr('Erreur lors de la recherche', 'Search failed'));
     } finally {
       setLoading(false);

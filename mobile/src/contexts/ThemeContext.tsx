@@ -44,7 +44,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
           setThemeState(savedTheme as ThemeMode);
         }
       } catch (e) {
-        console.warn('Theme load failed/timeout, using default');
+        if (__DEV__) { console.warn('Theme load failed/timeout, using default'); }
       }
     };
     loadTheme();

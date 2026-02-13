@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import { authApi, ApiError } from '../services/api';
+import { authApi, notificationsApi, ApiError } from '../services/api';
 import { tokenStorage, userStorage } from '../utils/storage';
+import { initializeNotifications, getPushToken } from '../services/notifications';
 import {
   GOOGLE_CLIENT_ID,
   GOOGLE_IOS_CLIENT_ID,
@@ -33,7 +34,7 @@ if (!isExpoGo) {
       scopes: ['profile', 'email'],
     });
   } catch (e) {
-    console.log('Google Sign-In not available (running in Expo Go)');
+    // Google Sign-In not available (running in Expo Go)
   }
 }
 
@@ -62,8 +63,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
+  const pushTokenRef = useRef<string | null>(null);
 
   const isAuthenticated = user !== null;
+
+  // Register push token with backend (non-blocking)
+  const registerPushToken = useCallback(async () => {
+    try {
+      const { permissionGranted, pushToken } = await initializeNotifications();
+      if (permissionGranted && pushToken) {
+        pushTokenRef.current = pushToken;
+        await notificationsApi.registerPushToken(pushToken, Platform.OS);
+        if (__DEV__) { console.log('[Auth] Push token registered:', pushToken.slice(0, 30) + '...'); }
+      }
+    } catch (err) {
+      if (__DEV__) { console.warn('[Auth] Push token registration failed:', err); }
+    }
+  }, []);
 
   // Exchange Google token with backend
   const handleGoogleToken = async (googleAccessToken: string) => {
@@ -74,8 +90,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const response = await authApi.googleTokenLogin(googleAccessToken);
       setUser(response.user);
       await userStorage.setUser(response.user);
+      // Register push token (non-blocking)
+      registerPushToken();
     } catch (err) {
-      console.error('Google token exchange failed:', err);
+      if (__DEV__) { console.error('Google token exchange failed:', err); }
       if (err instanceof ApiError && err.status === 404) {
         setError('Connexion Google non disponible. Utilisez email/mot de passe.');
       } else {
@@ -92,48 +110,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let timeoutId: ReturnType<typeof setTimeout>;
 
     const init = async () => {
-      console.log('[Auth] Starting initialization...');
       try {
         const hasTokens = await tokenStorage.hasTokens();
-        console.log('[Auth] Has tokens:', hasTokens);
 
         if (cancelled) return;
 
         if (!hasTokens) {
-          console.log('[Auth] Init complete: no tokens found');
           setIsLoading(false);
           return;
         }
 
-        console.log('[Auth] Fetching user data...');
         const userData = await authApi.getMe();
-        console.log('[Auth] User data received:', userData?.id, userData?.email);
 
         if (!cancelled) {
           setUser(userData);
-          console.log('[Auth] User set in state');
-          await userStorage.setUser(userData).catch(e => {
-            console.warn('[Auth] Failed to cache user:', e);
-          });
+          await userStorage.setUser(userData).catch(() => {});
+          // Register push token on session restore (non-blocking)
+          registerPushToken();
         }
       } catch (error) {
-        console.warn('[Auth] Init error:', error);
+        if (__DEV__) { console.warn('[Auth] Init error:', error); }
         if (!cancelled) {
           // Only clear tokens on explicit 401 (server confirmed tokens are invalid)
           // Network errors, timeouts, etc. should NOT log the user out
           const isAuthError = error instanceof ApiError && error.status === 401;
           if (isAuthError) {
-            console.log('[Auth] Auth error (401), clearing tokens...');
             await tokenStorage.clearTokens().catch(() => {});
             await userStorage.clearUser().catch(() => {});
-          } else {
-            console.log('[Auth] Non-auth error during init, keeping tokens');
           }
         }
       } finally {
         if (!cancelled) {
           clearTimeout(timeoutId);
-          console.log('[Auth] Init finished');
           setIsLoading(false);
         }
       }
@@ -142,14 +150,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Safety timeout: ensure loading ends after 5 seconds max
     timeoutId = setTimeout(() => {
       if (!cancelled) {
-        console.warn('[Auth] Init timeout (5s) - forcing loading complete');
+        if (__DEV__) { console.warn('[Auth] Init timeout (5s) - forcing loading complete'); }
         cancelled = true;
         setIsLoading(false);
       }
     }, 5000);
 
     init().catch((error) => {
-      console.error('[Auth] Init fatal error:', error);
+      if (__DEV__) { console.error('[Auth] Init fatal error:', error); }
       if (!cancelled) {
         setIsLoading(false);
       }
@@ -162,39 +170,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    console.log('[Auth] Login attempt for:', email);
     setIsLoading(true);
     setError(null);
     setPendingVerificationEmail(null);
     try {
       const response = await authApi.login(email, password);
-      console.log('[Auth] Login API response received:', {
-        hasAccessToken: !!response.access_token,
-        hasRefreshToken: !!response.refresh_token,
-        hasUser: !!response.user,
-        userId: response.user?.id,
-        userEmail: response.user?.email,
-      });
-      
+
       // Validate response before setting user
       if (!response.user) {
-        console.error('[Auth] Login response missing user object');
+        if (__DEV__) { console.error('[Auth] Login response missing user object'); }
         throw new Error('Réponse serveur invalide: utilisateur manquant');
       }
-      
+
       setUser(response.user);
-      console.log('[Auth] User set in state, isAuthenticated will become true');
-      
+
       // Save user to storage (non-blocking, errors logged but not thrown)
       try {
         await userStorage.setUser(response.user);
-        console.log('[Auth] User saved to storage');
       } catch (storageError) {
-        console.warn('[Auth] Failed to save user to storage:', storageError);
+        if (__DEV__) { console.warn('[Auth] Failed to save user to storage:', storageError); }
         // Continue anyway - user is already in state
       }
+
+      // Register push token (non-blocking)
+      registerPushToken();
     } catch (err) {
-      console.error('[Auth] Login failed:', err);
+      if (__DEV__) { console.error('[Auth] Login failed:', err); }
       // Check for email verification required error
       if (err instanceof ApiError && err.isEmailNotVerified) {
         setPendingVerificationEmail(email);
@@ -206,7 +207,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       throw err;
     } finally {
       setIsLoading(false);
-      console.log('[Auth] Login flow complete, isLoading set to false');
     }
   }, []);
 
@@ -243,7 +243,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsLoading(false);
       }
     } catch (err: any) {
-      console.error('Google login error:', err);
+      if (__DEV__) { console.error('Google login error:', err); }
 
       if (err.code === statusCodes.SIGN_IN_CANCELLED) {
         // User cancelled - don't show error
@@ -294,6 +294,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = useCallback(async () => {
     setIsLoading(true);
+    // Unregister push token before logging out
+    if (pushTokenRef.current) {
+      try {
+        await notificationsApi.unregisterPushToken(pushTokenRef.current, Platform.OS);
+      } catch {
+        // Ignore — best effort cleanup
+      }
+      pushTokenRef.current = null;
+    }
     try {
       await authApi.logout();
     } catch {
@@ -304,7 +313,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await tokenStorage.clearTokens();
       await userStorage.clearUser();
     } catch (cleanupError) {
-      console.warn('[Auth] Logout cleanup error:', cleanupError);
+      if (__DEV__) { console.warn('[Auth] Logout cleanup error:', cleanupError); }
       // Ensure user is still cleared even if storage fails
       setUser(null);
     } finally {

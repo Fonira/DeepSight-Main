@@ -71,7 +71,7 @@ export const StudyScreen: React.FC = () => {
         const summary = await videoApi.getSummary(summaryId);
         setTitle(summary.title || 'Étude');
       } catch (err) {
-        console.error('Failed to load summary:', err);
+        if (__DEV__) { console.error('Failed to load summary:', err); }
       }
     };
 
@@ -110,7 +110,7 @@ export const StudyScreen: React.FC = () => {
       refreshUser(); // Refresh credits
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err: any) {
-      console.error('Failed to generate content:', err);
+      if (__DEV__) { console.error('Failed to generate content:', err); }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
 
       if (err.status === 402) {

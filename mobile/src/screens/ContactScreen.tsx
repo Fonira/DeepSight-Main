@@ -248,12 +248,12 @@ const styles = StyleSheet.create({
     marginBottom: sp.md,
   },
   heroTitle: {
-    fontFamily: fontFamily.bold,
+    fontFamily: fontFamily.bodyBold,
     fontSize: fontSize['2xl'],
     marginBottom: sp.xs,
   },
   heroSubtitle: {
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
     textAlign: 'center',
     maxWidth: 280,
@@ -266,14 +266,14 @@ const styles = StyleSheet.create({
     marginBottom: sp.lg,
   },
   formTitle: {
-    fontFamily: fontFamily.semiBold,
+    fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.lg,
     marginBottom: sp.lg,
   },
 
   fieldGroup: { marginBottom: sp.md },
   label: {
-    fontFamily: fontFamily.medium,
+    fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.sm,
     marginBottom: sp.xs,
   },
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   inputIcon: { marginRight: sp.xs },
   input: {
     flex: 1,
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
     paddingVertical: Platform.OS === 'ios' ? sp.sm : sp.xs,
   },
@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     padding: sp.sm,
   },
   textArea: {
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
     minHeight: 120,
   },
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
   },
   submitText: {
     color: '#fff',
-    fontFamily: fontFamily.semiBold,
+    fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.sm,
   },
 
@@ -333,12 +333,12 @@ const styles = StyleSheet.create({
     marginBottom: sp.md,
   },
   successTitle: {
-    fontFamily: fontFamily.bold,
+    fontFamily: fontFamily.bodyBold,
     fontSize: fontSize.lg,
     marginBottom: sp.xs,
   },
   successText: {
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
     textAlign: 'center',
     marginBottom: sp.lg,
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   againButtonText: {
-    fontFamily: fontFamily.medium,
+    fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.sm,
   },
 
@@ -365,11 +365,11 @@ const styles = StyleSheet.create({
   },
   emailButtonTextGroup: { flex: 1 },
   emailButtonTitle: {
-    fontFamily: fontFamily.medium,
+    fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.sm,
   },
   emailButtonSub: {
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.body,
     fontSize: fontSize.xs,
   },
 });

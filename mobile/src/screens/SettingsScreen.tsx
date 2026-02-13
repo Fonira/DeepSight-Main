@@ -6,6 +6,8 @@ import {
   SectionList,
   Pressable,
   Alert,
+  Linking,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +24,7 @@ import { sp, borderRadius } from '../theme/spacing';
 import { fontFamily, fontSize } from '../theme/typography';
 import { ANALYSIS_MODES, AI_MODELS, LANGUAGES } from '../constants/config';
 import { userApi } from '../services/api';
+import { requestNotificationPermissions } from '../services/notifications';
 
 interface SettingItemData {
   key: string;
@@ -119,6 +122,10 @@ export const SettingsScreen: React.FC = () => {
   const [autoPlayVideos, setAutoPlayVideos] = useState(true);
   const [showTournesol, setShowTournesol] = useState(true);
   const [reduceMotion, setReduceMotion] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(true);
+  const [notifyAnalysis, setNotifyAnalysis] = useState(true);
+  const [notifyFactCheck, setNotifyFactCheck] = useState(true);
+  const [notifyCredits, setNotifyCredits] = useState(true);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -134,8 +141,17 @@ export const SettingsScreen: React.FC = () => {
         if (savedAutoPlay !== null) setAutoPlayVideos(savedAutoPlay === 'true');
         if (savedTournesol !== null) setShowTournesol(savedTournesol === 'true');
         if (savedReduceMotion !== null) setReduceMotion(savedReduceMotion === 'true');
+
+        const savedPush = await AsyncStorage.getItem('deepsight_push_enabled');
+        const savedNotifyAnalysis = await AsyncStorage.getItem('deepsight_notify_analysis');
+        const savedNotifyFactCheck = await AsyncStorage.getItem('deepsight_notify_factcheck');
+        const savedNotifyCredits = await AsyncStorage.getItem('deepsight_notify_credits');
+        if (savedPush !== null) setPushEnabled(savedPush === 'true');
+        if (savedNotifyAnalysis !== null) setNotifyAnalysis(savedNotifyAnalysis === 'true');
+        if (savedNotifyFactCheck !== null) setNotifyFactCheck(savedNotifyFactCheck === 'true');
+        if (savedNotifyCredits !== null) setNotifyCredits(savedNotifyCredits === 'true');
       } catch (error) {
-        console.error('Failed to load settings:', error);
+        if (__DEV__) { console.error('Failed to load settings:', error); }
       }
     };
     loadSettings();
@@ -154,7 +170,7 @@ export const SettingsScreen: React.FC = () => {
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
-      console.error('Failed to save preference:', error);
+      if (__DEV__) { console.error('Failed to save preference:', error); }
     }
   };
 
@@ -197,6 +213,28 @@ export const SettingsScreen: React.FC = () => {
     ]);
   };
 
+  const handleTogglePush = async (value: boolean) => {
+    if (value) {
+      const granted = await requestNotificationPermissions();
+      if (!granted) {
+        Alert.alert(
+          t.settings.notifications,
+          Platform.OS === 'ios'
+            ? 'Enable notifications in Settings > DeepSight > Notifications'
+            : 'Enable notifications in device settings',
+          [
+            { text: t.common.cancel, style: 'cancel' },
+            { text: t.settings.title, onPress: () => Linking.openSettings() },
+          ],
+        );
+        return;
+      }
+    }
+    setPushEnabled(value);
+    await AsyncStorage.setItem('deepsight_push_enabled', value.toString());
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
   const handleClearCache = () => {
     Alert.alert(t.settings.clearCache, t.settings.clearCacheConfirm || 'Clear app cache?', [
       { text: t.common.cancel, style: 'cancel' },
@@ -235,6 +273,15 @@ export const SettingsScreen: React.FC = () => {
       data: [
         { key: 'autoplay', icon: 'play-circle-outline', label: t.settings.autoPlayVideos, type: 'toggle', toggleValue: autoPlayVideos, onToggle: async (v: boolean) => { setAutoPlayVideos(v); await savePreference('deepsight_autoplay_videos', v.toString()); } },
         { key: 'tournesol', icon: 'flower-outline', label: t.settings.showTournesol, type: 'toggle', toggleValue: showTournesol, onToggle: async (v: boolean) => { setShowTournesol(v); await savePreference('deepsight_show_tournesol', v.toString()); } },
+      ],
+    },
+    {
+      title: t.settings.notifications,
+      data: [
+        { key: 'push', icon: 'notifications-outline', label: t.settings.pushNotifications, type: 'toggle', toggleValue: pushEnabled, onToggle: handleTogglePush },
+        { key: 'notify_analysis', icon: 'checkmark-circle-outline', label: t.settings.analysisComplete, type: 'toggle', toggleValue: notifyAnalysis && pushEnabled, onToggle: async (v: boolean) => { setNotifyAnalysis(v); await AsyncStorage.setItem('deepsight_notify_analysis', v.toString()); } },
+        { key: 'notify_factcheck', icon: 'shield-checkmark-outline', label: (t.settings as any).factCheckComplete || 'Fact-check complete', type: 'toggle', toggleValue: notifyFactCheck && pushEnabled, onToggle: async (v: boolean) => { setNotifyFactCheck(v); await AsyncStorage.setItem('deepsight_notify_factcheck', v.toString()); } },
+        { key: 'notify_credits', icon: 'wallet-outline', label: (t.settings as any).creditsLow || 'Credits low', type: 'toggle', toggleValue: notifyCredits && pushEnabled, onToggle: async (v: boolean) => { setNotifyCredits(v); await AsyncStorage.setItem('deepsight_notify_credits', v.toString()); } },
       ],
     },
     {

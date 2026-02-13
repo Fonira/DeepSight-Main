@@ -109,7 +109,7 @@ export function useNotifications(): NotificationHookResult {
         );
       }
     } catch (error) {
-      console.error('Failed to initialize notifications:', error);
+      if (__DEV__) { console.error('Failed to initialize notifications:', error); }
       if (isMountedRef.current) {
         setState((prev) => ({
           ...prev,
@@ -221,7 +221,7 @@ export function useAnalysisNotifications() {
             await notifyAnalysisFailed(videoTitle, status.error);
           }
         } catch (error) {
-          console.error('Error checking analysis status:', error);
+          if (__DEV__) { console.error('Error checking analysis status:', error); }
         }
       };
 

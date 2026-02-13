@@ -1,6 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useRef, useCallback } from 'react';
 import { View, StyleSheet, Keyboard } from 'react-native';
-import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
+import { NavigationContainer, LinkingOptions, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { DeepSightSpinner } from '../components/loading';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -8,6 +9,19 @@ import * as Linking from 'expo-linking';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
+import {
+  getInitialUrl,
+  subscribeToDeepLinks,
+  parseDeepLink,
+  LinkType,
+} from '../services/DeepLinking';
+import type { ParsedLink } from '../services/DeepLinking';
+import {
+  addNotificationReceivedListener,
+  addNotificationResponseListener,
+  getLastNotificationResponse,
+  clearBadge,
+} from '../services/notifications';
 import { CustomTabBar } from '../components/navigation';
 import {
   LandingScreen,
@@ -128,6 +142,7 @@ const linking: LinkingOptions<RootStackParamList> = {
     'deepsight://',
     'https://deepsightsynthesis.com',
     'https://www.deepsightsynthesis.com',
+    'https://deepsight.app',
   ],
   config: {
     screens: {
@@ -155,8 +170,119 @@ const linking: LinkingOptions<RootStackParamList> = {
       Legal: 'legal/:type',
       Contact: 'contact',
       PlaylistDetail: 'playlists/:playlistId',
+      StudyTools: 'study/:summaryId',
     },
   },
+};
+
+// Auth-aware deep link routes
+const AUTH_REQUIRED_ROUTES = new Set([
+  'Analysis', 'Settings', 'Account', 'Usage', 'StudyTools', 'PlaylistDetail',
+]);
+
+// Handles incoming deep links with auth redirect
+const DeepLinkHandler: React.FC = () => {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { isAuthenticated } = useAuth();
+  const pendingLink = useRef<ParsedLink | null>(null);
+
+  const navigateToLink = useCallback(
+    (parsed: ParsedLink) => {
+      if (parsed.type === LinkType.UNKNOWN || !parsed.route) return;
+
+      if (AUTH_REQUIRED_ROUTES.has(parsed.route) && !isAuthenticated) {
+        pendingLink.current = parsed;
+        navigation.navigate('Login' as any);
+        return;
+      }
+
+      navigation.navigate(parsed.route as any, parsed.params as any);
+    },
+    [isAuthenticated, navigation],
+  );
+
+  // Cold-start URL
+  useEffect(() => {
+    let cancelled = false;
+    getInitialUrl().then((url) => {
+      if (cancelled || !url) return;
+      navigateToLink(parseDeepLink(url));
+    });
+    return () => { cancelled = true; };
+  }, [navigateToLink]);
+
+  // Foreground links
+  useEffect(() => {
+    return subscribeToDeepLinks((parsed) => navigateToLink(parsed));
+  }, [navigateToLink]);
+
+  // After auth, consume pending link
+  useEffect(() => {
+    if (isAuthenticated && pendingLink.current) {
+      const link = pendingLink.current;
+      pendingLink.current = null;
+      const timer = setTimeout(() => {
+        navigation.navigate(link.route as any, link.params as any);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, navigation]);
+
+  // Push notification handlers
+  useEffect(() => {
+    // Clear badge on app launch
+    clearBadge();
+
+    // Foreground notification received — no-op (OS shows banner via handler config)
+    const receivedSub = addNotificationReceivedListener(() => {
+      // Badge will be managed by the OS
+    });
+
+    // User tapped notification — navigate to appropriate screen
+    const responseSub = addNotificationResponseListener((response) => {
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      if (!isAuthenticated || !data) return;
+
+      const screen = data.screen as string | undefined;
+      const summaryId = data.summaryId as string | undefined;
+      const videoId = data.videoId as string | undefined;
+      const playlistId = data.playlistId as string | undefined;
+
+      if (screen === 'Analysis' && (summaryId || videoId)) {
+        navigation.navigate('Analysis', { videoId: videoId || summaryId } as any);
+      } else if (screen === 'Playlists' && playlistId) {
+        navigation.navigate('PlaylistDetail', { playlistId } as any);
+      } else if (screen === 'Dashboard') {
+        navigation.navigate('MainTabs' as any);
+      } else if (screen === 'Upgrade') {
+        navigation.navigate('Upgrade' as any);
+      }
+
+      clearBadge();
+    });
+
+    // Handle cold-start notification tap
+    getLastNotificationResponse().then((response) => {
+      if (!response || !isAuthenticated) return;
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      const screen = data?.screen as string | undefined;
+      const summaryId = data?.summaryId as string | undefined;
+      const videoId = data?.videoId as string | undefined;
+
+      if (screen === 'Analysis' && (summaryId || videoId)) {
+        setTimeout(() => {
+          navigation.navigate('Analysis', { videoId: videoId || summaryId } as any);
+        }, 500);
+      }
+    });
+
+    return () => {
+      receivedSub.remove();
+      responseSub.remove();
+    };
+  }, [isAuthenticated, navigation]);
+
+  return null;
 };
 
 // Root Navigator
@@ -186,6 +312,7 @@ export const AppNavigator: React.FC = () => {
 
   return (
     <NavigationContainer linking={linking} theme={navigationTheme} onStateChange={() => Keyboard.dismiss()}>
+      <DeepLinkHandler />
       {isAuthenticated ? <MainStack /> : <AuthStack />}
     </NavigationContainer>
   );

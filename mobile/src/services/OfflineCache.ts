@@ -80,7 +80,7 @@ async function getCacheIndex(): Promise<CacheIndex> {
       await clearAllCache();
     }
   } catch (error) {
-    console.warn('[OfflineCache] Failed to load cache index:', error);
+    if (__DEV__) { console.warn('[OfflineCache] Failed to load cache index:', error); }
   }
 
   return {
@@ -97,7 +97,7 @@ async function saveCacheIndex(index: CacheIndex): Promise<void> {
   try {
     await AsyncStorage.setItem(CACHE_INDEX_KEY, JSON.stringify(index));
   } catch (error) {
-    console.error('[OfflineCache] Failed to save cache index:', error);
+    if (__DEV__) { console.error('[OfflineCache] Failed to save cache index:', error); }
   }
 }
 
@@ -259,7 +259,7 @@ export async function set<T>(
     ]);
 
   } catch (error) {
-    console.error('[OfflineCache] Failed to set cache:', error);
+    if (__DEV__) { console.error('[OfflineCache] Failed to set cache:', error); }
   }
 }
 
@@ -296,7 +296,7 @@ export async function get<T>(key: string): Promise<T | null> {
     return entry.data;
 
   } catch (error) {
-    console.error('[OfflineCache] Failed to get cache:', error);
+    if (__DEV__) { console.error('[OfflineCache] Failed to get cache:', error); }
     cacheMisses++;
     return null;
   }
@@ -337,7 +337,7 @@ export async function remove(key: string): Promise<void> {
     ]);
 
   } catch (error) {
-    console.error('[OfflineCache] Failed to remove cache:', error);
+    if (__DEV__) { console.error('[OfflineCache] Failed to remove cache:', error); }
   }
 }
 
@@ -367,7 +367,7 @@ export async function removeByTag(tag: string): Promise<number> {
     return keysToRemove.length;
 
   } catch (error) {
-    console.error('[OfflineCache] Failed to remove by tag:', error);
+    if (__DEV__) { console.error('[OfflineCache] Failed to remove by tag:', error); }
     return 0;
   }
 }
@@ -390,7 +390,7 @@ export async function clearAllCache(): Promise<void> {
     }
 
   } catch (error) {
-    console.error('[OfflineCache] Failed to clear cache:', error);
+    if (__DEV__) { console.error('[OfflineCache] Failed to clear cache:', error); }
   }
 }
 
@@ -448,7 +448,7 @@ export async function preloadForOffline<T>(
     await set(key, data, { priority, ttlMinutes, tags });
     return data;
   } catch (error) {
-    console.error('[OfflineCache] Preload failed:', error);
+    if (__DEV__) { console.error('[OfflineCache] Preload failed:', error); }
     return null;
   }
 }

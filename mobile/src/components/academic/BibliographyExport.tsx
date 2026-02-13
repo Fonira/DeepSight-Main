@@ -98,7 +98,7 @@ export const BibliographyExportModal: React.FC<BibliographyExportModalProps> = (
 
       setExportedContent(response.content);
     } catch (err: any) {
-      console.error('Export error:', err);
+      if (__DEV__) { console.error('Export error:', err); }
       Alert.alert(
         tr('Erreur', 'Error'),
         err.message || tr('Échec de l\'export', 'Export failed')
@@ -128,7 +128,7 @@ export const BibliographyExportModal: React.FC<BibliographyExportModalProps> = (
         title: tr('Bibliographie DeepSight', 'DeepSight Bibliography'),
       });
     } catch (err) {
-      console.error('Share error:', err);
+      if (__DEV__) { console.error('Share error:', err); }
     }
   };
 

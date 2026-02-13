@@ -95,7 +95,7 @@ export const TTSPlayer: React.FC<TTSPlayerProps> = ({
           setSelectedVoice(defaultVoice.identifier);
         }
       } catch (error) {
-        console.warn('Failed to load TTS voices:', error);
+        if (__DEV__) { console.warn('Failed to load TTS voices:', error); }
       }
     };
 

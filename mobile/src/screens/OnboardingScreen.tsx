@@ -108,7 +108,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({ onComplete }
     try {
       await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
     } catch (error) {
-      console.error('Failed to save onboarding state:', error);
+      if (__DEV__) { console.error('Failed to save onboarding state:', error); }
     }
     onComplete();
   };
@@ -320,7 +320,7 @@ export const useOnboardingStatus = () => {
         const value = await AsyncStorage.getItem(ONBOARDING_KEY);
         setHasSeenOnboarding(value === 'true');
       } catch (error) {
-        console.error('Failed to check onboarding status:', error);
+        if (__DEV__) { console.error('Failed to check onboarding status:', error); }
         setHasSeenOnboarding(true); // Default to true on error
       } finally {
         setIsLoading(false);
@@ -334,7 +334,7 @@ export const useOnboardingStatus = () => {
       await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
       setHasSeenOnboarding(true);
     } catch (error) {
-      console.error('Failed to mark onboarding as seen:', error);
+      if (__DEV__) { console.error('Failed to mark onboarding as seen:', error); }
     }
   };
 
@@ -343,7 +343,7 @@ export const useOnboardingStatus = () => {
       await AsyncStorage.removeItem(ONBOARDING_KEY);
       setHasSeenOnboarding(false);
     } catch (error) {
-      console.error('Failed to reset onboarding:', error);
+      if (__DEV__) { console.error('Failed to reset onboarding:', error); }
     }
   };
 

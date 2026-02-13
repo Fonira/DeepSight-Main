@@ -316,6 +316,8 @@ export class FeatureValidator {
    * Afficher un rapport dans la console
    */
   printReport(): void {
+    if (!__DEV__) return;
+
     console.log('\n========================================');
     console.log('     RAPPORT DE VALIDATION FEATURES     ');
     console.log('========================================\n');

@@ -283,7 +283,7 @@ class TokenManager {
 
       return data.access_token;
     } catch (error) {
-      console.error('[TokenManager] Refresh failed:', error);
+      if (__DEV__) { console.error('[TokenManager] Refresh failed:', error); }
       return null;
     }
   }
@@ -299,7 +299,7 @@ class TokenManager {
       try {
         callback();
       } catch (error) {
-        console.error('[TokenManager] Session expired callback error:', error);
+        if (__DEV__) { console.error('[TokenManager] Session expired callback error:', error); }
       }
     });
   }

@@ -334,6 +334,8 @@
     "emailNotifications": "Notifications par email",
     "pushNotifications": "Notifications push",
     "analysisComplete": "Analyse terminée",
+    "factCheckComplete": "Fact-check terminé",
+    "creditsLow": "Crédits faibles",
     "security": "Sécurité",
     "changePassword": "Changer le mot de passe",
     "currentPassword": "Mot de passe actuel",
@@ -755,7 +757,10 @@
     "unlimited_analyses": "Analyses illimitées",
     "dailyUsage": "Utilisation quotidienne",
     "byCategory": "Par catégorie",
-    "byModel": "Par modèle IA"
+    "byModel": "Par modèle IA",
+    "insights": "Insights",
+    "timeSaved": "Temps estimé gagné",
+    "favoriteCategory": "Catégorie favorite"
   },
   "videoDiscovery": {
     "title": "Découverte de vidéos",

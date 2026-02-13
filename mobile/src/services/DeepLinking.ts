@@ -49,17 +49,21 @@ const YOUTUBE_PATTERNS = [
 const PLAYLIST_PATTERN = /(?:https?:\/\/)?(?:www\.)?youtube\.com\/playlist\?list=([a-zA-Z0-9_-]+)/;
 
 // DeepSight URL patterns
+// Matches deepsight://, deepsightsynthesis.com, and deepsight.app
+const DS = String.raw`(?:deepsight:\/\/|https?:\/\/(?:www\.)?deepsightsynthesis\.com\/|https?:\/\/deepsight\.app\/)`;
+
 const DEEPSIGHT_PATTERNS = {
-  analysis: /^(?:deepsight:\/\/|https?:\/\/(?:www\.)?deepsightsynthesis\.com\/)analysis\/([^/?]+)/,
-  playlist: /^(?:deepsight:\/\/|https?:\/\/(?:www\.)?deepsightsynthesis\.com\/)playlists\/([^/?]+)/,
-  history: /^(?:deepsight:\/\/|https?:\/\/(?:www\.)?deepsightsynthesis\.com\/)history/,
-  settings: /^(?:deepsight:\/\/|https?:\/\/(?:www\.)?deepsightsynthesis\.com\/)settings/,
-  upgrade: /^(?:deepsight:\/\/|https?:\/\/(?:www\.)?deepsightsynthesis\.com\/)upgrade/,
-  paymentSuccess: /^(?:deepsight:\/\/|https?:\/\/(?:www\.)?deepsightsynthesis\.com\/)payment\/success/,
-  paymentCancel: /^(?:deepsight:\/\/|https?:\/\/(?:www\.)?deepsightsynthesis\.com\/)payment\/cancel/,
-  login: /^(?:deepsight:\/\/|https?:\/\/(?:www\.)?deepsightsynthesis\.com\/)login/,
-  register: /^(?:deepsight:\/\/|https?:\/\/(?:www\.)?deepsightsynthesis\.com\/)register/,
-  verifyEmail: /^(?:deepsight:\/\/|https?:\/\/(?:www\.)?deepsightsynthesis\.com\/)verify-email/,
+  analysis: new RegExp(`^${DS}analysis\/([^/?]+)`),
+  playlist: new RegExp(`^${DS}playlists\/([^/?]+)`),
+  study: new RegExp(`^${DS}study\/([^/?]+)`),
+  history: new RegExp(`^${DS}history`),
+  settings: new RegExp(`^${DS}settings`),
+  upgrade: new RegExp(`^${DS}upgrade`),
+  paymentSuccess: new RegExp(`^${DS}payment\/success`),
+  paymentCancel: new RegExp(`^${DS}payment\/cancel`),
+  login: new RegExp(`^${DS}login`),
+  register: new RegExp(`^${DS}register`),
+  verifyEmail: new RegExp(`^${DS}verify-email`),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -182,6 +186,13 @@ export function parseDeepLink(url: string): ParsedLink {
             params: { playlistId: match[1], ...params },
             originalUrl,
           };
+        case 'study':
+          return {
+            type: LinkType.ANALYSIS,
+            route: 'StudyTools',
+            params: { summaryId: match[1], ...params },
+            originalUrl,
+          };
         case 'history':
           return {
             type: LinkType.HISTORY,
@@ -259,7 +270,7 @@ export async function getInitialUrl(): Promise<string | null> {
     const url = await Linking.getInitialURL();
     return url;
   } catch (error) {
-    console.error('[DeepLinking] Error getting initial URL:', error);
+    if (__DEV__) { console.error('[DeepLinking] Error getting initial URL:', error); }
     return null;
   }
 }
@@ -281,17 +292,25 @@ export function subscribeToDeepLinks(
 }
 
 /**
- * Create a shareable deep link for an analysis
+ * Create a shareable deep link for an analysis.
+ * Uses deepsight.app for shorter, cleaner URLs that resolve via universal links.
  */
 export function createAnalysisLink(summaryId: string): string {
-  return `https://www.deepsightsynthesis.com/analysis/${summaryId}`;
+  return `https://deepsight.app/analysis/${summaryId}`;
 }
 
 /**
- * Create a shareable deep link for a playlist
+ * Create a shareable deep link for a playlist.
  */
 export function createPlaylistLink(playlistId: string): string {
-  return `https://www.deepsightsynthesis.com/playlists/${playlistId}`;
+  return `https://deepsight.app/playlists/${playlistId}`;
+}
+
+/**
+ * Create a shareable deep link for study tools.
+ */
+export function createStudyLink(summaryId: string): string {
+  return `https://deepsight.app/study/${summaryId}`;
 }
 
 /**
@@ -315,7 +334,7 @@ export async function shareAnalysis(
 
     return result.action === Share.sharedAction;
   } catch (error) {
-    console.error('[DeepLinking] Share failed:', error);
+    if (__DEV__) { console.error('[DeepLinking] Share failed:', error); }
     return false;
   }
 }
@@ -332,7 +351,7 @@ export async function openUrl(url: string): Promise<boolean> {
     }
     return false;
   } catch (error) {
-    console.error('[DeepLinking] Failed to open URL:', error);
+    if (__DEV__) { console.error('[DeepLinking] Failed to open URL:', error); }
     return false;
   }
 }
@@ -354,6 +373,7 @@ export const DeepLinking = {
   buildYouTubeUrl,
   createAnalysisLink,
   createPlaylistLink,
+  createStudyLink,
   shareAnalysis,
   openUrl,
   openAppSettings,

@@ -72,7 +72,7 @@ export const PlaylistsScreen: React.FC = () => {
       const response = await playlistApi.getPlaylists();
       setPlaylists(response.playlists || []);
     } catch (err) {
-      console.error('Error loading playlists:', err);
+      if (__DEV__) { console.error('Error loading playlists:', err); }
       setError(t.errors.generic);
     } finally {
       setIsLoading(false);

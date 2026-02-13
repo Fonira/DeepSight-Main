@@ -88,7 +88,7 @@ export const PlaylistDetailScreen: React.FC = () => {
         }]);
       }
     } catch (err) {
-      console.error('Error loading playlist details:', err);
+      if (__DEV__) { console.error('Error loading playlist details:', err); }
       setError(t.errors.generic);
     } finally {
       setIsLoading(false);

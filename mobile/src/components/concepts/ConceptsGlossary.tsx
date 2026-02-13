@@ -101,12 +101,12 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = ({
         ...prev,
         [concept.name]: {
           extendedDefinition: enriched?.definition || 'Définition non disponible',
-          sources: (enriched?.sources || []).filter(s => s.startsWith('http')),
+          sources: (enriched?.sources || []).filter(s => s.startsWith('http')).map(s => ({ url: s, title: s })),
           relatedConcepts: [],
         },
       }));
     } catch (err) {
-      console.error('Failed to enrich concept:', err);
+      if (__DEV__) { console.error('Failed to enrich concept:', err); }
     } finally {
       setEnrichingConcept(null);
     }

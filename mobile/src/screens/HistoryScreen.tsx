@@ -92,7 +92,7 @@ export const HistoryScreen: React.FC = () => {
           setHasMore(false);
         }
       } catch (e) {
-        console.error('Failed to load cached history:', e);
+        if (__DEV__) { console.error('Failed to load cached history:', e); }
       } finally {
         setIsLoading(false);
         setIsLoadingMore(false);
@@ -116,7 +116,7 @@ export const HistoryScreen: React.FC = () => {
         try {
           await AsyncStorage.setItem(HISTORY_CACHE_KEY, JSON.stringify(response.items));
         } catch (e) {
-          console.warn('Failed to cache history:', e);
+          if (__DEV__) { console.warn('Failed to cache history:', e); }
         }
       } else {
         setAnalyses((prev) => [...prev, ...response.items]);
@@ -125,7 +125,7 @@ export const HistoryScreen: React.FC = () => {
       setHasMore(response.hasMore);
       setPage(pageNum);
     } catch (error) {
-      console.error('Failed to load history:', error);
+      if (__DEV__) { console.error('Failed to load history:', error); }
       try {
         const cached = await AsyncStorage.getItem(HISTORY_CACHE_KEY);
         if (cached) {
@@ -135,7 +135,7 @@ export const HistoryScreen: React.FC = () => {
           setHasMore(false);
         }
       } catch (e) {
-        console.error('Failed to load cached history:', e);
+        if (__DEV__) { console.error('Failed to load cached history:', e); }
       }
     } finally {
       setIsLoading(false);
@@ -181,7 +181,7 @@ export const HistoryScreen: React.FC = () => {
         )
       );
     } catch (error) {
-      console.error('Failed to toggle favorite:', error);
+      if (__DEV__) { console.error('Failed to toggle favorite:', error); }
     }
   };
 
@@ -201,7 +201,7 @@ export const HistoryScreen: React.FC = () => {
               setAnalyses((prev) => prev.filter((item) => item.id !== summary.id));
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch (error) {
-              console.error('Failed to delete summary:', error);
+              if (__DEV__) { console.error('Failed to delete summary:', error); }
               Alert.alert(t.common.error, t.errors.generic);
             }
           },

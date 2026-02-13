@@ -94,7 +94,7 @@ export const DashboardScreen: React.FC = () => {
       const response = await historyApi.getHistory(1, 5);
       setRecentAnalyses(response.items ?? []);
     } catch (error) {
-      console.error('Failed to load recent analyses:', error);
+      if (__DEV__) { console.error('Failed to load recent analyses:', error); }
     }
   }, []);
 
@@ -103,7 +103,7 @@ export const DashboardScreen: React.FC = () => {
       const favs = await historyApi.getFavorites(3);
       setFavorites(favs ?? []);
     } catch (error) {
-      console.error('Failed to load favorites:', error);
+      if (__DEV__) { console.error('Failed to load favorites:', error); }
     }
   }, []);
 
@@ -246,7 +246,7 @@ export const DashboardScreen: React.FC = () => {
         summaryId: task_id,
       });
     } catch (error) {
-      console.error('Analysis error:', error);
+      if (__DEV__) { console.error('Analysis error:', error); }
       Alert.alert(t.common.error, t.errors.generic);
     } finally {
       setIsAnalyzing(false);
@@ -272,7 +272,7 @@ export const DashboardScreen: React.FC = () => {
         loadFavorites();
       }
     } catch (error) {
-      console.error('Failed to toggle favorite:', error);
+      if (__DEV__) { console.error('Failed to toggle favorite:', error); }
     }
   };
 
@@ -336,7 +336,7 @@ export const DashboardScreen: React.FC = () => {
         summaryId: task_id,
       });
     } catch (error) {
-      console.error('Analysis error:', error);
+      if (__DEV__) { console.error('Analysis error:', error); }
       Alert.alert(t.common.error, t.errors.generic);
     } finally {
       setIsAnalyzing(false);

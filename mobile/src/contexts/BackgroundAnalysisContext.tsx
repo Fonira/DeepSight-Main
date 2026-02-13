@@ -201,7 +201,7 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
           }));
         }
       } catch (error) {
-        console.error('Polling error:', error);
+        if (__DEV__) { console.error('Polling error:', error); }
       }
     }, POLLING_INTERVAL_MS);
 
@@ -236,7 +236,7 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
           await AsyncStorage.removeItem(STORAGE_KEY);
         }
       } catch (e) {
-        console.warn('[BackgroundAnalysis] Failed to save:', e);
+        if (__DEV__) { console.warn('[BackgroundAnalysis] Failed to save:', e); }
       }
     };
 
@@ -256,7 +256,7 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
         }
 
         const storedTasks = JSON.parse(stored);
-        console.log('[BackgroundAnalysis] Restoring', storedTasks.length, 'tasks');
+        if (__DEV__) { console.log('[BackgroundAnalysis] Restoring', storedTasks.length, 'tasks'); }
 
         for (const task of storedTasks) {
           if (task.taskId && task.status === 'processing') {
@@ -274,7 +274,7 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
 
         await AsyncStorage.removeItem(STORAGE_KEY);
       } catch (e) {
-        console.warn('[BackgroundAnalysis] Failed to restore:', e);
+        if (__DEV__) { console.warn('[BackgroundAnalysis] Failed to restore:', e); }
         await AsyncStorage.removeItem(STORAGE_KEY);
       } finally {
         setIsRestoring(false);

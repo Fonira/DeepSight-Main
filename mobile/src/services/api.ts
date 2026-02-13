@@ -84,7 +84,6 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
     if (!response.ok) {
       // Server explicitly rejected the refresh token - clear tokens
-      console.log('[Auth] Refresh token rejected by server, clearing tokens');
       await tokenStorage.clearTokens();
       return null;
     }
@@ -95,7 +94,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
   } catch (error) {
     // Network error during refresh - do NOT clear tokens
     // The tokens may still be valid, just a temporary connectivity issue
-    console.warn('[Auth] Network error during token refresh:', error);
+    if (__DEV__) { console.warn('[Auth] Network error during token refresh:', error); }
     return null;
   }
 };
@@ -276,7 +275,6 @@ export const authApi = {
   },
 
   async login(email: string, password: string): Promise<{ access_token: string; refresh_token: string; user: User }> {
-    console.log('[API] Login request starting');
     const response = await request<{ access_token: string; refresh_token: string; user: User }>(
       '/api/auth/login',
       {
@@ -285,14 +283,11 @@ export const authApi = {
         requiresAuth: false,
       }
     );
-    console.log('[API] Login response received, storing tokens...');
-    
     // Store tokens with explicit error handling
     try {
       await tokenStorage.setTokens(response.access_token, response.refresh_token);
-      console.log('[API] Tokens stored successfully');
     } catch (tokenError) {
-      console.error('[API] Failed to store tokens:', tokenError);
+      if (__DEV__) { console.error('[API] Failed to store tokens:', tokenError); }
       // Still return response - the user state will be set even if tokens fail to store
       // This prevents the login from appearing to fail when it actually succeeded
     }
@@ -542,16 +537,6 @@ export const videoApi = {
       created_at?: string;
       transcript_context?: string;
     }>(`/api/videos/summary/${summaryId}`);
-
-    // Debug logging - check what we receive from backend
-    console.log('[API] getSummary response:', {
-      id: response.id,
-      hasContent: !!response.summary_content,
-      contentLength: response.summary_content?.length || 0,
-      contentPreview: response.summary_content?.substring(0, 200) || 'EMPTY',
-      tags: response.tags,
-      created_at: response.created_at,
-    });
 
     // Transform backend response to mobile format
     return {
@@ -1595,6 +1580,25 @@ export const contactApi = {
   },
 };
 
+// ============================================
+// Push Notifications API
+// ============================================
+export const notificationsApi = {
+  async registerPushToken(pushToken: string, platform: string): Promise<{ status: string }> {
+    return request('/api/notifications/push-token', {
+      method: 'POST',
+      body: { push_token: pushToken, platform },
+    });
+  },
+
+  async unregisterPushToken(pushToken: string, platform: string): Promise<{ status: string }> {
+    return request('/api/notifications/push-token', {
+      method: 'DELETE',
+      body: { push_token: pushToken, platform },
+    });
+  },
+};
+
 export default {
   authApi,
   userApi,
@@ -1608,5 +1612,6 @@ export default {
   usageApi,
   tournesolApi,
   contactApi,
+  notificationsApi,
   ApiError,
 };

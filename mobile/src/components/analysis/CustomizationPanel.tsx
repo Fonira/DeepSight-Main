@@ -83,7 +83,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
           onCustomizationChange(merged);
         }
       } catch (error) {
-        console.error('Failed to load customization:', error);
+        if (__DEV__) { console.error('Failed to load customization:', error); }
       } finally {
         setIsLoaded(true);
       }
@@ -97,7 +97,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
       const { userPrompt, ...prefsToSave } = prefs;
       await storage.setObject(CUSTOMIZATION_STORAGE_KEY, prefsToSave);
     } catch (error) {
-      console.error('Failed to save customization:', error);
+      if (__DEV__) { console.error('Failed to save customization:', error); }
     }
   }, []);
 

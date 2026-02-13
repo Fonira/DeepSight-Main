@@ -71,7 +71,7 @@ export const TagsEditor: React.FC<TagsEditorProps> = ({
       onSave?.(tags);
       setIsEditing(false);
     } catch (error) {
-      console.error('Failed to save tags:', error);
+      if (__DEV__) { console.error('Failed to save tags:', error); }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setIsSaving(false);

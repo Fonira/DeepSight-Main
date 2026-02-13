@@ -45,7 +45,7 @@ const webStorage = {
         localStorage.setItem(key, value);
       }
     } catch (error) {
-      console.error('localStorage setItem error:', error);
+      if (__DEV__) { console.error('localStorage setItem error:', error); }
     }
   },
 
@@ -56,7 +56,7 @@ const webStorage = {
       }
       return null;
     } catch (error) {
-      console.error('localStorage getItem error:', error);
+      if (__DEV__) { console.error('localStorage getItem error:', error); }
       return null;
     }
   },
@@ -67,7 +67,7 @@ const webStorage = {
         localStorage.removeItem(key);
       }
     } catch (error) {
-      console.error('localStorage removeItem error:', error);
+      if (__DEV__) { console.error('localStorage removeItem error:', error); }
     }
   },
 };
@@ -100,7 +100,7 @@ export const secureStorage = {
       await SecureStore.setItemAsync(key, value);
       log(`setItem success (SecureStore): ${key}`);
     } catch (error) {
-      console.error('SecureStore setItem error:', error);
+      if (__DEV__) { console.error('SecureStore setItem error:', error); }
       // Fallback to AsyncStorage if SecureStore fails
       log(`setItem fallback to AsyncStorage: ${key}`);
       await AsyncStorage.setItem(key, value);
@@ -152,7 +152,7 @@ export const secureStorage = {
       log(`getItem: ${key} = null (not found)`);
       return null;
     } catch (error) {
-      console.error('SecureStore getItem error:', error);
+      if (__DEV__) { console.error('SecureStore getItem error:', error); }
       // Fallback to AsyncStorage
       const value = await AsyncStorage.getItem(key);
       log(`getItem fallback to AsyncStorage: ${key} = ${value ? 'exists' : 'null'}`);
@@ -192,7 +192,7 @@ export const storage = {
     try {
       await AsyncStorage.setItem(key, value);
     } catch (error) {
-      console.error('AsyncStorage setItem error:', error);
+      if (__DEV__) { console.error('AsyncStorage setItem error:', error); }
     }
   },
 
@@ -200,7 +200,7 @@ export const storage = {
     try {
       return await AsyncStorage.getItem(key);
     } catch (error) {
-      console.error('AsyncStorage getItem error:', error);
+      if (__DEV__) { console.error('AsyncStorage getItem error:', error); }
       return null;
     }
   },
@@ -209,7 +209,7 @@ export const storage = {
     try {
       await AsyncStorage.removeItem(key);
     } catch (error) {
-      console.error('AsyncStorage removeItem error:', error);
+      if (__DEV__) { console.error('AsyncStorage removeItem error:', error); }
     }
   },
 
@@ -218,7 +218,7 @@ export const storage = {
       const jsonValue = JSON.stringify(value);
       await AsyncStorage.setItem(key, jsonValue);
     } catch (error) {
-      console.error('AsyncStorage setObject error:', error);
+      if (__DEV__) { console.error('AsyncStorage setObject error:', error); }
     }
   },
 
@@ -227,7 +227,7 @@ export const storage = {
       const jsonValue = await AsyncStorage.getItem(key);
       return jsonValue != null ? JSON.parse(jsonValue) : null;
     } catch (error) {
-      console.error('AsyncStorage getObject error:', error);
+      if (__DEV__) { console.error('AsyncStorage getObject error:', error); }
       return null;
     }
   },
@@ -236,7 +236,7 @@ export const storage = {
     try {
       await AsyncStorage.clear();
     } catch (error) {
-      console.error('AsyncStorage clear error:', error);
+      if (__DEV__) { console.error('AsyncStorage clear error:', error); }
     }
   },
 
@@ -244,7 +244,7 @@ export const storage = {
     try {
       return await AsyncStorage.getAllKeys();
     } catch (error) {
-      console.error('AsyncStorage getAllKeys error:', error);
+      if (__DEV__) { console.error('AsyncStorage getAllKeys error:', error); }
       return [];
     }
   },

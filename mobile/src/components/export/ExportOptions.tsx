@@ -174,7 +174,7 @@ export const ExportOptions: React.FC<ExportOptionsProps> = ({
 
       onClose();
     } catch (error) {
-      console.error('Export error:', error);
+      if (__DEV__) { console.error('Export error:', error); }
       Alert.alert(
         t.export.failed,
         error instanceof Error ? error.message : t.export.exportFailed,

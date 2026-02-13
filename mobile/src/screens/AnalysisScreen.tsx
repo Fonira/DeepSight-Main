@@ -180,7 +180,7 @@ export const AnalysisScreen: React.FC = () => {
         // Chat history might not exist
       }
     } catch (err) {
-      console.error('Error loading completed analysis:', err);
+      if (__DEV__) { console.error('Error loading completed analysis:', err); }
       if (isMountedRef.current) setError(t.errors.generic);
     } finally {
       if (isMountedRef.current) setIsLoading(false);
@@ -342,7 +342,7 @@ export const AnalysisScreen: React.FC = () => {
                     setAnalysisStep(calculateStepFromProgress(pollStatus.progress || 0));
                   }
                 } catch (pollError) {
-                  console.error('Local polling error:', pollError);
+                  if (__DEV__) { console.error('Local polling error:', pollError); }
                 }
               }, 2500); // Poll every 2.5 seconds (same as BackgroundAnalysisContext)
             }
@@ -441,7 +441,6 @@ export const AnalysisScreen: React.FC = () => {
       });
     } catch (err) {
       // Reliability data might not be available
-      console.log('Reliability data not available:', err);
     } finally {
       setIsLoadingReliability(false);
     }
@@ -656,7 +655,7 @@ export const AnalysisScreen: React.FC = () => {
         message: `${summary.title}\n\n${summary.content?.substring(0, 500)}...\n\nAnalysé avec DeepSight`,
         title: summary.title,
       });
-    } catch {}
+    } catch { /* share cancelled or failed */ }
   };
 
   // Copy to clipboard

@@ -28,6 +28,16 @@ interface DetailedUsage {
   by_date: DailyUsage[];
 }
 
+interface UsageStats {
+  credits_used: number;
+  credits_remaining: number;
+  credits_total: number;
+  analyses_count: number;
+  chat_messages_count: number;
+  exports_count: number;
+  reset_date: string;
+}
+
 export const UsageScreen: React.FC = () => {
   const { colors } = useTheme();
   const { t, language } = useLanguage();
@@ -41,6 +51,7 @@ export const UsageScreen: React.FC = () => {
   const planInfo = getPlanInfo(userPlan);
 
   const [detailedUsage, setDetailedUsage] = useState<DetailedUsage | null>(null);
+  const [usageStats, setUsageStats] = useState<UsageStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,10 +63,14 @@ export const UsageScreen: React.FC = () => {
   const loadDetailedUsage = useCallback(async () => {
     setError(null);
     try {
-      const data = await usageApi.getDetailedUsage('month');
-      setDetailedUsage(data);
+      const [detailedData, statsData] = await Promise.all([
+        usageApi.getDetailedUsage('month'),
+        usageApi.getStats().catch(() => null),
+      ]);
+      setDetailedUsage(detailedData);
+      if (statsData) setUsageStats(statsData);
     } catch (err) {
-      console.error('Failed to load detailed usage:', err);
+      if (__DEV__) { console.error('Failed to load detailed usage:', err); }
       setError(t.errors.generic);
     } finally {
       setIsLoading(false);
@@ -204,15 +219,107 @@ export const UsageScreen: React.FC = () => {
             </Text>
           </Card>
           <Card variant="elevated" style={styles.statCard}>
-            <Ionicons name="time" size={28} color={colors.accentSuccess} />
+            <Ionicons name="chatbubbles" size={28} color={colors.accentSuccess} />
             <Text style={[styles.statValue, { color: colors.textPrimary }]}>
-              -
+              {usageStats?.chat_messages_count ?? 0}
             </Text>
             <Text style={[styles.statLabel, { color: colors.textTertiary }]}>
-              {t.admin.wordsGenerated}
+              {t.usage.chatQuestions}
             </Text>
           </Card>
         </View>
+
+        {/* Insights Section */}
+        {detailedUsage && (user?.total_videos ?? 0) > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+              {t.usage.insights}
+            </Text>
+            <Card variant="elevated" style={styles.insightsCard}>
+              {/* Daily Average */}
+              <View style={styles.insightRow}>
+                <View style={[styles.insightIconBg, { backgroundColor: colors.accentPrimary + '15' }]}>
+                  <Ionicons name="trending-up" size={18} color={colors.accentPrimary} />
+                </View>
+                <View style={styles.insightTextContainer}>
+                  <Text style={[styles.insightLabel, { color: colors.textSecondary }]}>
+                    {t.usage.dailyAverage}
+                  </Text>
+                  <Text style={[styles.insightValue, { color: colors.textPrimary }]}>
+                    {detailedUsage.by_date.length > 0
+                      ? (detailedUsage.by_date.reduce((sum, d) => sum + d.credits, 0) / detailedUsage.by_date.length).toFixed(1)
+                      : '0'
+                    } {isEn ? 'credits/day' : 'crédits/jour'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.insightDivider, { backgroundColor: colors.border }]} />
+
+              {/* Time Saved Estimate (~80% of video duration = ~2min per analysis saved) */}
+              <View style={styles.insightRow}>
+                <View style={[styles.insightIconBg, { backgroundColor: colors.accentSuccess + '15' }]}>
+                  <Ionicons name="time" size={18} color={colors.accentSuccess} />
+                </View>
+                <View style={styles.insightTextContainer}>
+                  <Text style={[styles.insightLabel, { color: colors.textSecondary }]}>
+                    {t.usage.timeSaved}
+                  </Text>
+                  <Text style={[styles.insightValue, { color: colors.textPrimary }]}>
+                    {(() => {
+                      const totalVideos = user?.total_videos || 0;
+                      const minutesSaved = totalVideos * 8; // ~8min saved per video analysis
+                      if (minutesSaved >= 60) {
+                        const hours = Math.floor(minutesSaved / 60);
+                        const mins = minutesSaved % 60;
+                        return `${hours}h ${mins}min`;
+                      }
+                      return `${minutesSaved}min`;
+                    })()}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.insightDivider, { backgroundColor: colors.border }]} />
+
+              {/* Exports Count */}
+              <View style={styles.insightRow}>
+                <View style={[styles.insightIconBg, { backgroundColor: colors.accentSecondary + '15' }]}>
+                  <Ionicons name="download" size={18} color={colors.accentSecondary} />
+                </View>
+                <View style={styles.insightTextContainer}>
+                  <Text style={[styles.insightLabel, { color: colors.textSecondary }]}>
+                    {t.usage.exportsUsed}
+                  </Text>
+                  <Text style={[styles.insightValue, { color: colors.textPrimary }]}>
+                    {usageStats?.exports_count ?? 0}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Favorite Category */}
+              {detailedUsage.by_category && Object.keys(detailedUsage.by_category).length > 0 && (
+                <>
+                  <View style={[styles.insightDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.insightRow}>
+                    <View style={[styles.insightIconBg, { backgroundColor: colors.accentWarning + '15' }]}>
+                      <Ionicons name="star" size={18} color={colors.accentWarning} />
+                    </View>
+                    <View style={styles.insightTextContainer}>
+                      <Text style={[styles.insightLabel, { color: colors.textSecondary }]}>
+                        {t.usage.favoriteCategory}
+                      </Text>
+                      <Text style={[styles.insightValue, { color: colors.textPrimary }]}>
+                        {Object.entries(detailedUsage.by_category)
+                          .sort(([, a], [, b]) => b - a)[0]?.[0] ?? '-'}
+                      </Text>
+                    </View>
+                  </View>
+                </>
+              )}
+            </Card>
+          </>
+        )}
 
         {/* Daily Usage Chart */}
         {detailedUsage && detailedUsage.by_date && detailedUsage.by_date.length > 0 && (
@@ -513,6 +620,40 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.bodySemiBold,
     minWidth: 30,
     textAlign: 'right',
+  },
+  // Insights styles
+  insightsCard: {
+    marginBottom: Spacing.lg,
+    padding: 0,
+  },
+  insightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    gap: Spacing.md,
+  },
+  insightIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  insightTextContainer: {
+    flex: 1,
+  },
+  insightLabel: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.body,
+    marginBottom: 2,
+  },
+  insightValue: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+  },
+  insightDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: Spacing.md,
   },
   fullLoadingContainer: {
     flex: 1,

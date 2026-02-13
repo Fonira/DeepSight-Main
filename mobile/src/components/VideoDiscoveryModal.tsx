@@ -95,7 +95,7 @@ export const VideoDiscoveryModal: React.FC<VideoDiscoveryModalProps> = ({
 
       setVideos(mappedVideos);
     } catch (error) {
-      console.error('Video discovery failed:', error);
+      if (__DEV__) { console.error('Video discovery failed:', error); }
       setSearchError(isEn ? 'Failed to search videos. Please try again.' : 'Échec de la recherche. Veuillez réessayer.');
       setVideos([]);
     } finally {

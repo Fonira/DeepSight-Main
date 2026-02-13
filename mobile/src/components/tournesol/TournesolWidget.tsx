@@ -51,7 +51,7 @@ const fetchTournesolScore = async (videoId: string): Promise<TournesolScore | nu
 
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
-      console.warn('[Tournesol] Non-JSON response:', response.status);
+      if (__DEV__) { console.warn('[Tournesol] Non-JSON response:', response.status); }
       return null;
     }
 
@@ -59,7 +59,7 @@ const fetchTournesolScore = async (videoId: string): Promise<TournesolScore | nu
     try {
       data = await response.json();
     } catch (parseError) {
-      console.warn('[Tournesol] JSON parse error:', parseError);
+      if (__DEV__) { console.warn('[Tournesol] JSON parse error:', parseError); }
       return null;
     }
 
@@ -86,7 +86,7 @@ const fetchTournesolScore = async (videoId: string): Promise<TournesolScore | nu
       entertaining_relaxing: getScore('entertaining_relaxing'),
     };
   } catch (error) {
-    console.log('Tournesol API error:', error);
+    if (__DEV__) { console.error('Tournesol API error:', error); }
     return null;
   }
 };

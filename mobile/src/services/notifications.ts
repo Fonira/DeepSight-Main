@@ -42,7 +42,7 @@ Notifications.setNotificationHandler({
  */
 export async function requestNotificationPermissions(): Promise<boolean> {
   if (!Device.isDevice) {
-    console.log('Notifications require a physical device');
+    // Notifications require a physical device
     return false;
   }
 
@@ -55,7 +55,7 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   }
 
   if (finalStatus !== 'granted') {
-    console.log('Notification permissions not granted');
+    // Notification permissions not granted
     return false;
   }
 
@@ -70,7 +70,7 @@ export async function getPushToken(): Promise<string | null> {
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
 
     if (!projectId) {
-      console.log('No project ID found for push notifications');
+      // No project ID found for push notifications
       return null;
     }
 
@@ -80,7 +80,7 @@ export async function getPushToken(): Promise<string | null> {
 
     return tokenData.data;
   } catch (error) {
-    console.error('Failed to get push token:', error);
+    if (__DEV__) { console.error('Failed to get push token:', error); }
     return null;
   }
 }

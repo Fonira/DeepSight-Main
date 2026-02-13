@@ -56,7 +56,7 @@ export const NotesEditor: React.FC<NotesEditorProps> = ({
       onSave?.(notes);
       setIsEditing(false);
     } catch (error) {
-      console.error('Failed to save notes:', error);
+      if (__DEV__) { console.error('Failed to save notes:', error); }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
       setIsSaving(false);

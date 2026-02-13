@@ -334,7 +334,7 @@ export function useAnalysisStream(
           break;
       }
     } catch (e) {
-      console.error('Error parsing SSE event:', e);
+      if (__DEV__) { console.error('Error parsing SSE event:', e); }
     }
   }, [calculateProgress, onComplete, onError, onToken, setStatus, updateStep]);
 
@@ -436,7 +436,7 @@ export function useAnalysisStream(
         return; // Intentional abort
       }
 
-      console.error('SSE connection error:', error);
+      if (__DEV__) { console.error('SSE connection error:', error); }
 
       if (retryCountRef.current < maxRetries && !pausedRef.current) {
         retryCountRef.current++;
