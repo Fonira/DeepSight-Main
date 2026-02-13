@@ -421,6 +421,29 @@ async def lifespan(app: FastAPI):
             )
             logger.info("Health monitoring scheduler registered (every 5 min)")
 
+        # 📧 Onboarding emails job (every hour)
+        from apscheduler.triggers.interval import IntervalTrigger as _IT
+
+        async def _scheduled_onboarding():
+            try:
+                from db.database import get_session as _get_sess
+                async for db in _get_sess():
+                    from services.onboarding_emails import process_onboarding_emails
+                    stats = await process_onboarding_emails(db)
+                    logger.info("Onboarding emails processed", extra=stats)
+                    break
+            except Exception as e:
+                logger.error(f"Onboarding email job failed: {e}")
+
+        scheduler.add_job(
+            _scheduled_onboarding,
+            _IT(hours=1),
+            id="onboarding_emails",
+            name="Onboarding email sequence",
+            replace_existing=True,
+        )
+        logger.info("Onboarding email scheduler registered (every 1 hour)")
+
         scheduler.start()
         logger.info(
             f"Backup scheduler started (daily at {BACKUP_CONFIG['CRON_HOUR']:02d}:{BACKUP_CONFIG['CRON_MINUTE']:02d} UTC)"
