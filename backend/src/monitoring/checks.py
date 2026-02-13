@@ -196,9 +196,9 @@ async def check_perplexity() -> ServiceStatus:
 async def check_resend() -> ServiceStatus:
     """Validate Resend email service connectivity via API key check."""
     try:
-        from core.config import settings
+        from core.config import EMAIL_CONFIG
 
-        api_key = getattr(settings, "RESEND_API_KEY", None)
+        api_key = EMAIL_CONFIG.get("RESEND_API_KEY", "")
         if not api_key:
             return {
                 "name": "resend",
