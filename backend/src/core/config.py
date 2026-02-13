@@ -87,9 +87,15 @@ class _DeepSightSettings(BaseSettings):
     LOG_FORMAT: str = "json"
     VERBOSE_LOGGING: str = "false"
 
+    # -- Rate Limiting --
+    RATE_LIMIT_ENABLED: str = "true"
+
     # -- Cache & Queues --
     REDIS_URL: str = ""
     CACHE_MAX_SIZE: int = 10000
+    CACHE_TTL_TRANSCRIPT: int = 86400   # 24h
+    CACHE_TTL_ANALYSIS: int = 3600      # 1h
+    CACHE_TTL_FACTCHECK: int = 1800     # 30min
 
     # -- TTS --
     TTS_PROVIDER: str = "openai"
@@ -265,8 +271,8 @@ GOOGLE_OAUTH_CONFIG = {
 JWT_CONFIG = {
     "SECRET_KEY": _settings.JWT_SECRET_KEY or _settings.ADMIN_SECRET_KEY,
     "ALGORITHM": "HS256",
-    "ACCESS_TOKEN_EXPIRE_MINUTES": 60,
-    "REFRESH_TOKEN_EXPIRE_DAYS": 30,
+    "ACCESS_TOKEN_EXPIRE_MINUTES": 15,
+    "REFRESH_TOKEN_EXPIRE_DAYS": 7,
 }
 
 # =============================================================================
@@ -591,6 +597,28 @@ def get_assemblyai_key() -> Optional[str]:
 # TRANSCRIPT CONFIG
 # =============================================================================
 
+# =============================================================================
+# CACHE CONFIG
+# =============================================================================
+
+CACHE_CONFIG = {
+    "REDIS_URL": _settings.REDIS_URL,
+    "MAX_SIZE": _settings.CACHE_MAX_SIZE,
+    "TTL_TRANSCRIPT": _settings.CACHE_TTL_TRANSCRIPT,
+    "TTL_ANALYSIS": _settings.CACHE_TTL_ANALYSIS,
+    "TTL_FACTCHECK": _settings.CACHE_TTL_FACTCHECK,
+}
+
+# =============================================================================
+# RATE LIMITING
+# =============================================================================
+
+RATE_LIMIT_ENABLED = _settings.RATE_LIMIT_ENABLED.lower() == "true"
+
+# =============================================================================
+# TRANSCRIPT CONFIG
+# =============================================================================
+
 TRANSCRIPT_CONFIG = {
     "circuit_breaker_failure_threshold": 5,
     "circuit_breaker_recovery_timeout": 300,
@@ -620,6 +648,9 @@ if __name__ != "__main__":
           f" OpenAI={'yes' if get_openai_key() else 'no'}"
           f" Deepgram={'yes' if get_deepgram_key() else 'no'}"
           f" AssemblyAI={'yes' if get_assemblyai_key() else 'no'}", flush=True)
+    print(f"  Rate Limit: {RATE_LIMIT_ENABLED}", flush=True)
+    print(f"  Cache: Redis={'yes' if _settings.REDIS_URL else 'no (memory fallback)'}"
+          f" max_size={_settings.CACHE_MAX_SIZE}", flush=True)
     print(f"  Backup S3: {'yes' if _settings.AWS_ACCESS_KEY_ID else 'local-only'}"
           f" (cron={_settings.BACKUP_CRON_HOUR:02d}:{_settings.BACKUP_CRON_MINUTE:02d} UTC,"
           f" retention={_settings.BACKUP_RETENTION_DAYS}d)", flush=True)

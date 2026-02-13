@@ -193,6 +193,91 @@ async def check_perplexity() -> ServiceStatus:
         }
 
 
+async def check_resend() -> ServiceStatus:
+    """Validate Resend email service connectivity via API key check."""
+    try:
+        from core.config import settings
+
+        api_key = getattr(settings, "RESEND_API_KEY", None)
+        if not api_key:
+            return {
+                "name": "resend",
+                "status": "degraded",
+                "latency_ms": None,
+                "message": "API key not configured",
+                "last_checked": _now_iso(),
+            }
+
+        start = time.perf_counter()
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                "https://api.resend.com/domains",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+        latency = (time.perf_counter() - start) * 1000
+
+        if resp.status_code == 200:
+            return {
+                "name": "resend",
+                "status": "operational",
+                "latency_ms": round(latency, 2),
+                "message": None,
+                "last_checked": _now_iso(),
+            }
+        return {
+            "name": "resend",
+            "status": "degraded",
+            "latency_ms": round(latency, 2),
+            "message": f"HTTP {resp.status_code}",
+            "last_checked": _now_iso(),
+        }
+    except Exception as e:
+        return {
+            "name": "resend",
+            "status": "down",
+            "latency_ms": None,
+            "message": str(e)[:120],
+            "last_checked": _now_iso(),
+        }
+
+
+def get_memory_usage() -> Dict[str, Any]:
+    """Return current process memory usage — critical for Railway 512MB."""
+    import os
+    try:
+        import resource
+        # Linux: getrusage returns max RSS in KB
+        rusage = resource.getrusage(resource.RUSAGE_SELF)
+        rss_mb = round(rusage.ru_maxrss / 1024, 2)  # KB → MB
+    except ImportError:
+        rss_mb = None
+
+    # Fallback via /proc for Linux containers (Railway)
+    try:
+        with open("/proc/self/status") as f:
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    rss_mb = round(int(line.split()[1]) / 1024, 2)  # KB → MB
+                    break
+    except (FileNotFoundError, PermissionError):
+        pass
+
+    # Railway limit
+    limit_mb = int(os.environ.get("RAILWAY_MEMORY_LIMIT_MB", "512"))
+
+    return {
+        "rss_mb": rss_mb,
+        "limit_mb": limit_mb,
+        "usage_percent": round((rss_mb / limit_mb) * 100, 1) if rss_mb else None,
+        "status": (
+            "critical" if rss_mb and rss_mb > limit_mb * 0.85
+            else "warning" if rss_mb and rss_mb > limit_mb * 0.70
+            else "healthy" if rss_mb
+            else "unknown"
+        ),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Aggregate
 # ---------------------------------------------------------------------------
@@ -204,11 +289,12 @@ async def run_all_checks() -> List[ServiceStatus]:
         check_stripe(),
         check_mistral(),
         check_perplexity(),
+        check_resend(),
         return_exceptions=True,
     )
 
     sanitized: List[ServiceStatus] = []
-    names = ["database", "stripe", "mistral", "perplexity"]
+    names = ["database", "stripe", "mistral", "perplexity", "resend"]
     for i, result in enumerate(results):
         if isinstance(result, Exception):
             sanitized.append({

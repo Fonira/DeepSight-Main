@@ -11,18 +11,37 @@
 """
 
 import json
+import time
 import httpx
 from uuid import uuid4
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any, Tuple, AsyncGenerator
-from sqlalchemy import select, func, desc, delete as sql_delete
+from sqlalchemy import select, func, desc, delete as sql_delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.logging import logger
 from db.database import (
     ChatMessage, ChatQuota, Summary, User, WebSearchUsage,
     PlaylistAnalysis, TaskStatus, CreditTransaction
 )
 from core.config import get_mistral_key, get_perplexity_key, PLAN_LIMITS
+
+
+# Colonnes légères pour la liste d'historique (exclut summary_content, transcript_context, etc.)
+_HISTORY_LIST_COLUMNS = [
+    Summary.id,
+    Summary.video_id,
+    Summary.video_title,
+    Summary.video_channel,
+    Summary.video_duration,
+    Summary.thumbnail_url,
+    Summary.category,
+    Summary.mode,
+    Summary.word_count,
+    Summary.reliability_score,
+    Summary.is_favorite,
+    Summary.created_at,
+]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -265,44 +284,60 @@ async def get_user_history(
     category: Optional[str] = None,
     search: Optional[str] = None,
     favorites_only: bool = False
-) -> Tuple[List[Summary], int]:
+) -> Tuple[list, int]:
     """
     Récupère l'historique des résumés d'un utilisateur.
 
     SECURITY: Le paramètre search est échappé pour éviter les injections SQL LIKE.
-    PERFORMANCE: Utilise une seule requête optimisée avec COUNT OVER().
+    PERFORMANCE: Projection légère (pas de summary_content/transcript_context).
     """
-    query = select(Summary).where(Summary.user_id == user_id)
+    start = time.perf_counter()
+
+    filters = [Summary.user_id == user_id]
 
     if category:
-        query = query.where(Summary.category == category)
+        filters.append(Summary.category == category)
 
     if search:
-        # SECURITY: Échapper les caractères spéciaux SQL LIKE (%, _, \)
         safe_search = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         search_pattern = f"%{safe_search}%"
-        query = query.where(
-            Summary.video_title.ilike(search_pattern) |
+        filters.append(or_(
+            Summary.video_title.ilike(search_pattern),
             Summary.video_channel.ilike(search_pattern)
-        )
+        ))
 
     if favorites_only:
-        query = query.where(Summary.is_favorite == True)
+        filters.append(Summary.is_favorite == True)
 
-    # Compter le total
+    # Count query
     count_result = await session.execute(
-        select(func.count()).select_from(query.subquery())
+        select(func.count(Summary.id)).where(*filters)
     )
     total = count_result.scalar() or 0
 
-    # Pagination
-    query = query.order_by(desc(Summary.created_at))
-    query = query.offset((page - 1) * per_page).limit(per_page)
+    # Data query with lightweight projection
+    query = (
+        select(*_HISTORY_LIST_COLUMNS)
+        .where(*filters)
+        .order_by(desc(Summary.created_at))
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
 
     result = await session.execute(query)
-    summaries = result.scalars().all()
+    items = result.all()
 
-    return list(summaries), total
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    logger.info(
+        "videos_history_query",
+        user_id=user_id,
+        total=total,
+        returned=len(items),
+        page=page,
+        elapsed_ms=round(elapsed_ms, 1),
+    )
+
+    return items, total
 
 
 async def update_summary(

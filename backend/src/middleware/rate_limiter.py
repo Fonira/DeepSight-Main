@@ -1,6 +1,6 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
-║  🚦 RATE LIMITER MIDDLEWARE v2.1 — Protection contre les abus                      ║
+║  🚦 RATE LIMITER MIDDLEWARE v3.0 — Protection contre les abus                      ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
 ║  FONCTIONNALITÉS:                                                                  ║
 ║  • 📊 Sliding window rate limiting (précis)                                       ║
@@ -9,15 +9,17 @@
 ║  • 📈 Headers de quota standards (X-RateLimit-*)                                  ║
 ║  • 💾 Backend Redis avec fallback in-memory                                       ║
 ║  • 📝 Logging des violations pour monitoring                                       ║
+║  • 🧹 Auto-cleanup des entrées expirées (toutes les 5 min)                       ║
+║  • 📦 Mémoire bornée: max 10000 IPs, LRU eviction                               ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 
-v2.1: Ajout du logging des violations et limites spécifiques register/login
+v3.0: LRU eviction, auto-cleanup, IP whitelist, configurable limits
 """
 
 import time
 import asyncio
 import logging
-from datetime import datetime
+from collections import OrderedDict
 from typing import Optional, Callable, Dict, Any, Tuple
 from dataclasses import dataclass
 from functools import wraps
@@ -30,22 +32,31 @@ from starlette.middleware.base import BaseHTTPMiddleware
 rate_limit_logger = logging.getLogger("rate_limit")
 rate_limit_logger.setLevel(logging.WARNING)
 
+# Max tracked IPs (LRU eviction beyond this)
+MAX_TRACKED_KEYS = 10_000
+
+# Auto-cleanup interval (seconds)
+CLEANUP_INTERVAL = 300  # 5 minutes
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Limites par défaut (requests/window_seconds)
 DEFAULT_LIMITS = {
-    "global": (1000, 60),      # 1000 req/min global
+    "global": (100, 60),       # 100 req/min par IP (global)
     "auth_login": (5, 60),     # 5 tentatives de login/min par IP
     "auth_register": (3, 60),  # 3 inscriptions/min par IP (anti-spam)
     "analysis": (10, 60),      # 10 analyses/min par user
-    "chat": (30, 60),          # 30 messages chat/min par user
-    "chat_ask": (30, 60),      # 30 questions/min par user
+    "chat": (20, 60),          # 20 messages chat/min par user
+    "chat_ask": (20, 60),      # 20 questions/min par user
     "api": (100, 60),          # 100 appels API/min
     "export": (20, 60),        # 20 exports/min
     "tts": (10, 60),           # 10 TTS/min
 }
+
+# IPs whitelistées (pas de rate limiting)
+WHITELISTED_IPS = {"127.0.0.1", "::1"}
 
 # Limites par plan utilisateur (multiplicateur)
 PLAN_MULTIPLIERS = {
@@ -108,37 +119,83 @@ class RateLimiterBackend:
 
 
 class InMemoryBackend(RateLimiterBackend):
-    """Backend in-memory avec sliding window simplifié"""
-    
-    def __init__(self):
-        self.requests: Dict[str, list] = {}
+    """Backend in-memory avec sliding window, LRU eviction et auto-cleanup."""
+
+    def __init__(self, max_keys: int = MAX_TRACKED_KEYS):
+        self.requests: OrderedDict[str, list] = OrderedDict()
         self._lock = asyncio.Lock()
-    
+        self._max_keys = max_keys
+        self._last_cleanup = time.time()
+        self._cleanup_task: Optional[asyncio.Task] = None
+
+    def start_cleanup_loop(self):
+        """Start the periodic cleanup background task."""
+        if self._cleanup_task is None or self._cleanup_task.done():
+            self._cleanup_task = asyncio.create_task(self._cleanup_loop())
+
+    async def _cleanup_loop(self):
+        """Remove expired entries every CLEANUP_INTERVAL seconds."""
+        while True:
+            await asyncio.sleep(CLEANUP_INTERVAL)
+            await self._cleanup_expired()
+
+    async def _cleanup_expired(self):
+        """Remove all keys with no timestamps in the current window."""
+        async with self._lock:
+            now = time.time()
+            # Max window is 60s for all categories, use 120s to be safe
+            cutoff = now - 120
+            keys_to_delete = []
+            for key, timestamps in self.requests.items():
+                # Remove expired timestamps
+                fresh = [ts for ts in timestamps if ts > cutoff]
+                if not fresh:
+                    keys_to_delete.append(key)
+                else:
+                    self.requests[key] = fresh
+            for key in keys_to_delete:
+                del self.requests[key]
+            if keys_to_delete:
+                rate_limit_logger.info(
+                    f"Cleanup: removed {len(keys_to_delete)} expired keys, "
+                    f"{len(self.requests)} active keys remaining"
+                )
+
+    def _evict_lru(self):
+        """Evict oldest keys when max_keys is exceeded (called under lock)."""
+        while len(self.requests) > self._max_keys:
+            self.requests.popitem(last=False)  # Remove oldest (LRU)
+
     async def check_and_increment(
-        self, 
-        key: str, 
-        limit: int, 
+        self,
+        key: str,
+        limit: int,
         window_seconds: int
     ) -> RateLimitResult:
         async with self._lock:
             now = time.time()
             window_start = now - window_seconds
-            
+
             # Initialize or clean old requests
             if key not in self.requests:
                 self.requests[key] = []
-            
+                # LRU eviction if at capacity
+                self._evict_lru()
+            else:
+                # Move to end (most recently used)
+                self.requests.move_to_end(key)
+
             # Remove expired timestamps
             self.requests[key] = [ts for ts in self.requests[key] if ts > window_start]
-            
+
             current_count = len(self.requests[key])
             reset_at = int(now + window_seconds)
-            
+
             if current_count >= limit:
                 # Rate limited
                 oldest = min(self.requests[key]) if self.requests[key] else now
                 retry_after = int(oldest + window_seconds - now) + 1
-                
+
                 return RateLimitResult(
                     allowed=False,
                     limit=limit,
@@ -146,10 +203,10 @@ class InMemoryBackend(RateLimiterBackend):
                     reset_at=reset_at,
                     retry_after=retry_after,
                 )
-            
+
             # Add current request
             self.requests[key].append(now)
-            
+
             return RateLimitResult(
                 allowed=True,
                 limit=limit,
@@ -343,7 +400,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         if any(path.startswith(excluded) for excluded in self.exclude_paths):
             return await call_next(request)
-        
+
+        # Skip whitelisted IPs
+        client_ip = request.client.host if request.client else "unknown"
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            client_ip = forwarded.split(",")[0].strip()
+        if client_ip in WHITELISTED_IPS:
+            return await call_next(request)
+
         # Check rate limit
         result = await rate_limiter.check_request(request)
         
@@ -453,9 +518,12 @@ def rate_limit(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 async def init_rate_limiter(redis_url: Optional[str] = None):
-    """Initialize rate limiter with Redis if available"""
+    """Initialize rate limiter with Redis if available, start cleanup loop."""
     if redis_url:
         await rate_limiter.init_redis(redis_url)
+    # Start auto-cleanup for in-memory backend
+    if isinstance(rate_limiter.backend, InMemoryBackend):
+        rate_limiter.backend.start_cleanup_loop()
 
 
 def add_rate_limiting(app, exclude_paths: list = None):

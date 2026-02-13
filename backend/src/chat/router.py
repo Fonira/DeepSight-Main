@@ -52,6 +52,13 @@ class ChatRequest(BaseModel):
     use_web_search: bool = Field(default=False)
 
 
+class ChatRequestByPath(BaseModel):
+    """Requête de chat v4.1 — summary_id dans le path"""
+    question: str = Field(..., min_length=1, max_length=2000)
+    mode: str = Field(default="standard", description="accessible, standard, expert")
+    use_web_search: bool = Field(default=False)
+
+
 class WebSource(BaseModel):
     """Source web"""
     title: str = ""
@@ -512,7 +519,7 @@ async def get_enrichment_info(
 @router.post("/{summary_id}", response_model=ChatResponseV4)
 async def ask_question_by_path(
     summary_id: int,
-    request_body: dict,
+    request_body: ChatRequestByPath,
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session)
 ):
@@ -521,14 +528,11 @@ async def ask_question_by_path(
     Compatible avec le frontend qui envoie {question, use_web_search, mode}
     """
     print(f"💬 [CHAT v4.1] POST /{summary_id} from user {current_user.id}", flush=True)
-    
-    question = request_body.get("question", "")
-    use_web_search = request_body.get("use_web_search", False)
-    mode = request_body.get("mode", "standard")
-    
-    if not question:
-        raise HTTPException(status_code=400, detail="Question is required")
-    
+
+    question = request_body.question
+    use_web_search = request_body.use_web_search
+    mode = request_body.mode
+
     # Utiliser la logique v4 si disponible
     if V4_AVAILABLE:
         result = await process_chat_message_v4(
@@ -539,13 +543,13 @@ async def ask_question_by_path(
             web_search=use_web_search,
             mode=mode
         )
-        
+
         if "error" in result:
             raise HTTPException(
                 status_code=429 if "limit" in result["error"] else 404,
                 detail=result["error"]
             )
-        
+
         return ChatResponseV4(
             response=result["response"],
             web_search_used=result["web_search_used"],
@@ -553,7 +557,7 @@ async def ask_question_by_path(
             enrichment_level=result.get("enrichment_level", "none"),
             quota_info=result.get("quota_info", {})
         )
-    
+
     # Fallback legacy
     request = ChatRequest(
         question=question,

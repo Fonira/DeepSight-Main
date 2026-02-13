@@ -35,13 +35,15 @@ from typing import Optional, Any, Callable, TypeVar, Union
 from datetime import datetime
 from dataclasses import dataclass
 
+from core.logging import logger
+
 # TTL Cache pour fallback in-memory
 try:
     from cachetools import TTLCache
     CACHETOOLS_AVAILABLE = True
 except ImportError:
     CACHETOOLS_AVAILABLE = False
-    print("⚠️ [CACHE] cachetools not installed, using basic dict cache", flush=True)
+    logger.warning("cachetools not installed, using basic dict cache")
 
 T = TypeVar('T')
 
@@ -52,6 +54,8 @@ T = TypeVar('T')
 # TTLs par défaut (en secondes)
 DEFAULT_TTLS = {
     "transcript": 86400,      # 24h - Transcripts YouTube (stable)
+    "analysis": 3600,         # 1h - Résultats d'analyse IA
+    "factcheck": 1800,        # 30min - Fact-check results
     "perplexity": 3600,       # 1h - Résultats recherche web (actualités)
     "video_info": 43200,      # 12h - Métadonnées vidéo
     "user_quota": 300,        # 5min - Quotas utilisateur
@@ -217,7 +221,7 @@ class RedisCacheBackend(CacheBackend):
                 return None
             return json.loads(value)
         except Exception as e:
-            print(f"⚠️ [REDIS] Get error for {key}: {e}", flush=True)
+            logger.warning("Redis GET error", key=key, error=str(e))
             return None
     
     async def set(self, key: str, value: Any, ttl: int = 3600) -> bool:
@@ -226,7 +230,7 @@ class RedisCacheBackend(CacheBackend):
             await self.redis.setex(self._full_key(key), ttl, serialized)
             return True
         except Exception as e:
-            print(f"⚠️ [REDIS] Set error for {key}: {e}", flush=True)
+            logger.warning("Redis SET error", key=key, error=str(e))
             return False
     
     async def delete(self, key: str) -> bool:
@@ -234,7 +238,7 @@ class RedisCacheBackend(CacheBackend):
             result = await self.redis.delete(self._full_key(key))
             return result > 0
         except Exception as e:
-            print(f"⚠️ [REDIS] Delete error for {key}: {e}", flush=True)
+            logger.warning("Redis DELETE error", key=key, error=str(e))
             return False
     
     async def exists(self, key: str) -> bool:
@@ -251,7 +255,7 @@ class RedisCacheBackend(CacheBackend):
                 return await self.redis.delete(*keys)
             return 0
         except Exception as e:
-            print(f"⚠️ [REDIS] Clear prefix error: {e}", flush=True)
+            logger.warning("Redis CLEAR PREFIX error", prefix=prefix, error=str(e))
             return 0
 
 
@@ -302,22 +306,22 @@ class CacheService:
         redis_url = redis_url or os.environ.get("REDIS_URL")
         
         if not redis_url:
-            print("ℹ️ [CACHE] No REDIS_URL configured, using in-memory cache", flush=True)
+            logger.info("No REDIS_URL configured, using in-memory cache")
             return False
-        
+
         try:
             import redis.asyncio as redis_lib
             client = redis_lib.from_url(redis_url, decode_responses=True)
             await client.ping()
             self.backend = RedisCacheBackend(client)
             self._redis_available = True
-            print("✅ [CACHE] Redis backend initialized", flush=True)
+            logger.info("Redis backend initialized")
             return True
         except ImportError:
-            print("⚠️ [CACHE] redis package not installed, using in-memory cache", flush=True)
+            logger.warning("redis package not installed, using in-memory cache")
             return False
         except Exception as e:
-            print(f"⚠️ [CACHE] Redis connection failed, using in-memory: {e}", flush=True)
+            logger.warning("Redis connection failed, using in-memory cache", error=str(e))
             return False
     
     @property
@@ -335,7 +339,7 @@ class CacheService:
             return value
         except Exception as e:
             self.stats.errors += 1
-            print(f"⚠️ [CACHE] Get error: {e}", flush=True)
+            logger.warning("Cache GET error", error=str(e))
             return None
     
     async def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
@@ -359,7 +363,7 @@ class CacheService:
             return result
         except Exception as e:
             self.stats.errors += 1
-            print(f"⚠️ [CACHE] Set error: {e}", flush=True)
+            logger.warning("Cache SET error", error=str(e))
             return False
     
     async def delete(self, key: str) -> bool:
@@ -407,7 +411,7 @@ class CacheService:
             
             return value
         except Exception as e:
-            print(f"⚠️ [CACHE] Factory error for {key}: {e}", flush=True)
+            logger.warning("Cache factory error", key=key, error=str(e))
             return None
     
     async def invalidate_prefix(self, prefix: str) -> int:

@@ -5,6 +5,7 @@ Rate-limited to 3 requests per hour per IP.
 Sends the message via EmailService to the admin.
 """
 
+import html
 import time
 import asyncio
 from datetime import datetime, timezone
@@ -56,6 +57,12 @@ class ContactRequest(BaseModel):
 # ───────────────────────────────────────────────────────────────────────────
 
 def _build_contact_html(data: ContactRequest) -> str:
+    # Escape all user inputs to prevent HTML injection
+    safe_name = html.escape(data.name)
+    safe_email = html.escape(data.email)
+    safe_subject = html.escape(data.subject)
+    safe_message = html.escape(data.message)
+
     return f"""\
 <div style="font-family:Inter,system-ui,sans-serif;max-width:600px;margin:0 auto;
             background:#0a0a0f;color:#f5f5f7;padding:32px;border-radius:12px;
@@ -66,21 +73,21 @@ def _build_contact_html(data: ContactRequest) -> str:
   <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
     <tr>
       <td style="padding:10px 0;color:#a1a1b5;width:100px;vertical-align:top;">Nom</td>
-      <td style="padding:10px 0;font-weight:600;">{data.name}</td>
+      <td style="padding:10px 0;font-weight:600;">{safe_name}</td>
     </tr>
     <tr>
       <td style="padding:10px 0;color:#a1a1b5;vertical-align:top;">Email</td>
       <td style="padding:10px 0;">
-        <a href="mailto:{data.email}" style="color:#3b82f6;text-decoration:none;">{data.email}</a>
+        <a href="mailto:{safe_email}" style="color:#3b82f6;text-decoration:none;">{safe_email}</a>
       </td>
     </tr>
     <tr>
       <td style="padding:10px 0;color:#a1a1b5;vertical-align:top;">Sujet</td>
-      <td style="padding:10px 0;font-weight:600;">{data.subject}</td>
+      <td style="padding:10px 0;font-weight:600;">{safe_subject}</td>
     </tr>
     <tr>
       <td style="padding:10px 0;color:#a1a1b5;vertical-align:top;">Message</td>
-      <td style="padding:10px 0;white-space:pre-wrap;">{data.message}</td>
+      <td style="padding:10px 0;white-space:pre-wrap;">{safe_message}</td>
     </tr>
     <tr>
       <td style="padding:10px 0;color:#a1a1b5;vertical-align:top;">Date</td>

@@ -413,6 +413,24 @@ class ApiUsage(Base):
     )
 
 
+class PushToken(Base):
+    """Push notification tokens (Expo Push Service)"""
+    __tablename__ = "push_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token = Column(String(255), nullable=False)
+    platform = Column(String(10), nullable=False)  # ios, android
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        Index('idx_push_tokens_user', 'user_id'),
+        Index('idx_push_tokens_token', 'token', unique=True),
+    )
+
+
 class AcademicPaper(Base):
     """
     📚 Academic papers linked to video analyses
@@ -520,6 +538,9 @@ async def run_cascade_migration():
         # academic_papers
         "ALTER TABLE academic_papers DROP CONSTRAINT IF EXISTS academic_papers_summary_id_fkey",
         "ALTER TABLE academic_papers ADD CONSTRAINT academic_papers_summary_id_fkey FOREIGN KEY (summary_id) REFERENCES summaries(id) ON DELETE CASCADE",
+        # push_tokens
+        "ALTER TABLE push_tokens DROP CONSTRAINT IF EXISTS push_tokens_user_id_fkey",
+        "ALTER TABLE push_tokens ADD CONSTRAINT push_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE",
     ]
 
     async with engine.begin() as conn:

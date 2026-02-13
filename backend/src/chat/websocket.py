@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import uuid
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException, Query
 from fastapi.websockets import WebSocketState
 from pydantic import BaseModel
 
@@ -543,20 +543,69 @@ chat_service = ChatService()
 router = APIRouter(prefix="/ws", tags=["websocket"])
 
 
+async def _authenticate_websocket(websocket: WebSocket, token: Optional[str]) -> Optional[int]:
+    """
+    Authentifie une connexion WebSocket via JWT token (query param).
+
+    Retourne le user_id si valide, None sinon.
+    Ferme le WebSocket avec code 4001/4003 en cas d'échec.
+    """
+    from auth.service import verify_token, get_user_by_id
+    from db.database import async_session_maker
+
+    try:
+        from core.security import is_token_blacklisted
+        security_available = True
+    except ImportError:
+        security_available = False
+
+    if not token:
+        await websocket.close(code=4001, reason="Authentication required. Provide ?token=<jwt>")
+        return None
+
+    # Vérifier si le token est blacklisté
+    if security_available and is_token_blacklisted(token):
+        await websocket.close(code=4001, reason="Token revoked. Please log in again.")
+        return None
+
+    # Valider le JWT
+    payload = verify_token(token, token_type="access")
+    if not payload:
+        await websocket.close(code=4001, reason="Invalid or expired token.")
+        return None
+
+    user_id = int(payload.get("sub", 0))
+    if not user_id:
+        await websocket.close(code=4001, reason="Invalid token payload.")
+        return None
+
+    # Vérifier que l'utilisateur existe
+    async with async_session_maker() as db:
+        user = await get_user_by_id(db, user_id)
+        if not user:
+            await websocket.close(code=4003, reason="User not found.")
+            return None
+
+    return user_id
+
+
 @router.websocket("/chat/{summary_id}")
 async def websocket_chat(
     websocket: WebSocket,
     summary_id: int,
+    token: Optional[str] = Query(default=None),
 ):
     """
     WebSocket endpoint pour le chat en temps réel.
-    
+
+    Connexion: ws://host/ws/chat/{summary_id}?token=<jwt_access_token>
+
     Messages client -> serveur:
     - {"type": "chat_message", "content": "...", "enrichment": "none|light|full|deep"}
     - {"type": "typing_start"}
     - {"type": "typing_stop"}
     - {"type": "ping"}
-    
+
     Messages serveur -> client:
     - {"type": "connected", "session_id": "..."}
     - {"type": "chat_token", "message_id": "...", "token": "..."}
@@ -565,10 +614,16 @@ async def websocket_chat(
     - {"type": "typing_indicator", "is_typing": true|false}
     - {"type": "source_citation", "message_id": "...", "sources": [...]}
     - {"type": "pong"}
+
+    Codes de fermeture:
+    - 4001: Authentication failed (token manquant, invalide, expiré ou blacklisté)
+    - 4003: User not found
     """
-    # TODO: Extraire user_id du token JWT
-    user_id = 1  # Placeholder
-    
+    # Authentification JWT via query param
+    user_id = await _authenticate_websocket(websocket, token)
+    if user_id is None:
+        return  # WebSocket déjà fermé par _authenticate_websocket
+
     session = await manager.connect(websocket, user_id, summary_id)
     
     try:

@@ -648,7 +648,9 @@ async def _analyze_video_background_v2(
                     duration=video_duration,
                     channel=video_info.get("channel", ""),
                     description=video_info.get("description", ""),
-                    web_context=full_context
+                    web_context=full_context,
+                    video_id=video_id,
+                    force_refresh=request.force_refresh,
                 )
 
             if not summary_content:
@@ -1322,7 +1324,9 @@ async def _analyze_video_background_v2_1(
                     duration=video_duration,
                     channel=video_info.get("channel", ""),
                     description=video_info.get("description", ""),
-                    web_context=full_context
+                    web_context=full_context,
+                    video_id=video_id,
+                    force_refresh=request.force_refresh,
                 )
 
             if not summary_content:
@@ -1753,7 +1757,8 @@ async def _analyze_video_background_v6(
                         duration=video_duration,
                         channel=video_info.get("channel", ""),
                         description=video_info.get("description", "") + "\n\n⚠️ NOTE: Cette vidéo est très longue. Seule la première partie a été analysée.",
-                        web_context=web_context
+                        web_context=web_context,
+                        video_id=video_id,
                     )
             else:
                 # ════════════════════════════════════════════════════════════
@@ -1778,9 +1783,10 @@ async def _analyze_video_background_v6(
                     duration=video_duration,
                     channel=video_info.get("channel", ""),
                     description=video_info.get("description", ""),
-                    web_context=web_context
+                    web_context=web_context,
+                    video_id=video_id,
                 )
-            
+
             if not summary_content:
                 raise Exception("Failed to generate summary")
             
@@ -3208,7 +3214,19 @@ async def get_content_reliability(
     
     # Indiquer si l'utilisateur peut avoir un fact-check complet
     result["full_factcheck_available"] = current_user.plan in ["pro", "expert", "unlimited"]
-    
+
+    # Push notification for fact-check complete
+    try:
+        from notifications.router import notify_factcheck_complete
+        await notify_factcheck_complete(
+            user_id=current_user.id,
+            summary_id=summary_id,
+            video_title=summary.video_title or "",
+            reliability_score=result.get("overall_score"),
+        )
+    except Exception as e:
+        print(f"⚠️ [PUSH] Factcheck notification failed: {e}", flush=True)
+
     return result
 
 

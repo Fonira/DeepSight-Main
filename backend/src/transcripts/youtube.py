@@ -1757,6 +1757,22 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
     print(f"{'='*70}", flush=True)
 
     # ═══════════════════════════════════════════════════════════════════════════════
+    # CACHE CHECK: Vérifie si le transcript est déjà en cache
+    # ═══════════════════════════════════════════════════════════════════════════════
+    if CACHE_AVAILABLE:
+        cache_key = make_cache_key("transcript", video_id)
+        try:
+            cached = await cache_service.get(cache_key)
+            if cached and isinstance(cached, dict):
+                print(f"💾 Cache HIT for transcript:{video_id}", flush=True)
+                print(f"{'='*70}", flush=True)
+                return cached.get("simple"), cached.get("timestamped"), cached.get("lang")
+            else:
+                print(f"💾 Cache MISS for transcript:{video_id}", flush=True)
+        except Exception as e:
+            print(f"⚠️ Cache error (continuing without cache): {e}", flush=True)
+
+    # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 1: Méthodes texte EN PARALLÈLE (rapide)
     # ═══════════════════════════════════════════════════════════════════════════════
     print(f"", flush=True)
@@ -1806,6 +1822,14 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
                 print(f"", flush=True)
                 print(f"✅ SUCCESS with {name} (Phase 1 - Parallel)", flush=True)
                 print(f"{'='*70}", flush=True)
+                # Cache the transcript
+                if CACHE_AVAILABLE:
+                    try:
+                        cache_key = make_cache_key("transcript", video_id)
+                        await cache_service.set(cache_key, {"simple": simple, "timestamped": timestamped, "lang": lang})
+                        print(f"💾 Transcript cached: {cache_key}", flush=True)
+                    except Exception:
+                        pass
                 return simple, timestamped, lang
 
     # ═══════════════════════════════════════════════════════════════════════════════
@@ -1835,6 +1859,14 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
                     print(f"", flush=True)
                     print(f"✅ SUCCESS with {name} (Phase 2)", flush=True)
                     print(f"{'='*70}", flush=True)
+                    # Cache the transcript
+                    if CACHE_AVAILABLE:
+                        try:
+                            cache_key = make_cache_key("transcript", video_id)
+                            await cache_service.set(cache_key, {"simple": simple, "timestamped": timestamped, "lang": lang})
+                            print(f"💾 Transcript cached: {cache_key}", flush=True)
+                        except Exception:
+                            pass
                     return simple, timestamped, lang
             except Exception as e:
                 print(f"  ⚠️ [{name}] Attempt {attempt + 1} failed: {str(e)[:50]}", flush=True)
@@ -1877,7 +1909,16 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
                 print(f"", flush=True)
                 print(f"✅ SUCCESS with {name} (Phase 3 - Audio)", flush=True)
                 print(f"{'='*70}", flush=True)
-                return simple, timestamped or simple, lang
+                result_ts = timestamped or simple
+                # Cache the transcript
+                if CACHE_AVAILABLE:
+                    try:
+                        cache_key = make_cache_key("transcript", video_id)
+                        await cache_service.set(cache_key, {"simple": simple, "timestamped": result_ts, "lang": lang})
+                        print(f"💾 Transcript cached: {cache_key}", flush=True)
+                    except Exception:
+                        pass
+                return simple, result_ts, lang
         except Exception as e:
             print(f"  ⚠️ [{name}] Failed: {str(e)[:100]}", flush=True)
         cb.record_failure()

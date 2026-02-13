@@ -86,6 +86,7 @@ class VideoHistoryResponse(BaseModel):
     page: int
     per_page: int
     pages: int
+    next_cursor: Optional[int] = None
 
 
 class PlaylistHistoryResponse(BaseModel):
@@ -155,13 +156,17 @@ async def get_videos_history(
     category: Optional[str] = None,
     search: Optional[str] = None,
     favorites_only: bool = False,
+    cursor: Optional[int] = Query(None, description="Cursor-based pagination: ID of last item seen"),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session)
 ):
     """
     Récupère l'historique des vidéos simples (hors playlists).
+
+    Supports both offset-based (page/per_page) and cursor-based (cursor) pagination.
+    When cursor is provided, it takes priority over page offset.
     """
-    items, total = await get_user_history(
+    result = await get_user_history(
         session=session,
         user_id=current_user.id,
         page=page,
@@ -169,33 +174,38 @@ async def get_videos_history(
         category=category,
         search=search,
         favorites_only=favorites_only,
-        exclude_playlists=True
+        exclude_playlists=True,
+        cursor=cursor
     )
-    
+
+    items = result["items"]
+    total = result["total"]
+
     return VideoHistoryResponse(
         items=[
             VideoSummaryItem(
-                id=item.id,
-                video_id=item.video_id,
-                video_title=item.video_title,
-                video_channel=item.video_channel or "Unknown",
-                video_duration=item.video_duration or 0,
-                thumbnail_url=item.thumbnail_url or f"https://img.youtube.com/vi/{item.video_id}/mqdefault.jpg",
-                category=item.category,
-                mode=item.mode,
-                lang=item.lang,
-                word_count=item.word_count or 0,
-                reliability_score=item.reliability_score,
-                is_favorite=item.is_favorite or False,
-                has_transcript=bool(item.transcript_context),
-                created_at=item.created_at.isoformat() if item.created_at else None
+                id=row.id,
+                video_id=row.video_id,
+                video_title=row.video_title,
+                video_channel=row.video_channel or "Unknown",
+                video_duration=row.video_duration or 0,
+                thumbnail_url=row.thumbnail_url or f"https://img.youtube.com/vi/{row.video_id}/mqdefault.jpg",
+                category=row.category,
+                mode=row.mode,
+                lang=row.lang,
+                word_count=row.word_count or 0,
+                reliability_score=row.reliability_score,
+                is_favorite=row.is_favorite or False,
+                has_transcript=row.has_transcript,
+                created_at=row.created_at.isoformat() if row.created_at else None
             )
-            for item in items
+            for row in items
         ],
         total=total,
         page=page,
         per_page=per_page,
-        pages=math.ceil(total / per_page) if per_page > 0 else 0
+        pages=math.ceil(total / per_page) if per_page > 0 else 0,
+        next_cursor=result["next_cursor"]
     )
 
 

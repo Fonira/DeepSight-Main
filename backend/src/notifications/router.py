@@ -16,9 +16,11 @@ from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, field_validator
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.database import get_session, User
+from db.database import get_session, User, PushToken
 from auth.dependencies import get_current_user
 
 router = APIRouter()
@@ -88,7 +90,8 @@ async def notify_analysis_complete(
     video_id: str,
     cached: bool = False
 ):
-    """Notification spécifique pour une analyse terminée."""
+    """Notification spécifique pour une analyse terminée (SSE + Push)."""
+    # SSE notification (web)
     await send_notification_to_user(
         user_id=user_id,
         notification_type="analysis_complete",
@@ -102,6 +105,17 @@ async def notify_analysis_complete(
             "action_url": f"/dashboard?id={summary_id}"
         }
     )
+    # Push notification (mobile)
+    try:
+        from core.push_notifications import send_analysis_complete_push
+        await send_analysis_complete_push(
+            user_id=user_id,
+            video_title=video_title,
+            summary_id=summary_id,
+            video_id=video_id,
+        )
+    except Exception as e:
+        print(f"⚠️ [PUSH] Failed to send analysis push: {e}", flush=True)
 
 
 async def notify_analysis_failed(
@@ -109,7 +123,7 @@ async def notify_analysis_failed(
     video_title: str,
     error: str
 ):
-    """Notification pour une analyse échouée."""
+    """Notification pour une analyse échouée (SSE + Push)."""
     await send_notification_to_user(
         user_id=user_id,
         notification_type="analysis_error",
@@ -120,6 +134,123 @@ async def notify_analysis_failed(
             "error": error
         }
     )
+    # Push notification (mobile)
+    try:
+        from core.push_notifications import send_push
+        await send_push(
+            user_id=user_id,
+            title="Analysis Failed",
+            body=f'Could not analyze "{video_title[:50]}..."',
+            data={"type": "analysis_failed", "screen": "Dashboard"},
+        )
+    except Exception as e:
+        print(f"⚠️ [PUSH] Failed to send failure push: {e}", flush=True)
+
+
+async def notify_factcheck_complete(
+    user_id: int,
+    summary_id: int,
+    video_title: str,
+    reliability_score: Optional[float] = None,
+):
+    """Notification when fact-check is complete (SSE + Push)."""
+    await send_notification_to_user(
+        user_id=user_id,
+        notification_type="factcheck_complete",
+        title="✅ Fact-check terminé",
+        message=f"Le fact-check de \"{video_title[:50]}...\" est prêt",
+        data={
+            "summary_id": summary_id,
+            "video_title": video_title,
+            "reliability_score": reliability_score,
+        }
+    )
+    try:
+        from core.push_notifications import send_factcheck_complete_push
+        await send_factcheck_complete_push(
+            user_id=user_id,
+            video_title=video_title,
+            summary_id=summary_id,
+            reliability_score=reliability_score,
+        )
+    except Exception as e:
+        print(f"⚠️ [PUSH] Failed to send factcheck push: {e}", flush=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📲 PUSH TOKEN REGISTRATION
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class PushTokenRequest(BaseModel):
+    push_token: str
+    platform: str = "ios"
+
+    @field_validator("push_token")
+    @classmethod
+    def validate_token(cls, v: str) -> str:
+        if not v.startswith("ExponentPushToken["):
+            raise ValueError("Invalid Expo push token format")
+        return v
+
+    @field_validator("platform")
+    @classmethod
+    def validate_platform(cls, v: str) -> str:
+        if v not in ("ios", "android"):
+            raise ValueError("Platform must be 'ios' or 'android'")
+        return v
+
+
+@router.post("/push-token")
+async def register_push_token(
+    payload: PushTokenRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    📲 Register or update an Expo push token for the current user.
+    One active token per device (unique token constraint).
+    """
+    # Check if this token already exists
+    existing = await session.execute(
+        select(PushToken).where(PushToken.token == payload.push_token)
+    )
+    existing_token = existing.scalar_one_or_none()
+
+    if existing_token:
+        # Update ownership if token was reassigned to a different user
+        existing_token.user_id = current_user.id
+        existing_token.platform = payload.platform
+        existing_token.is_active = True
+    else:
+        new_token = PushToken(
+            user_id=current_user.id,
+            token=payload.push_token,
+            platform=payload.platform,
+            is_active=True,
+        )
+        session.add(new_token)
+
+    await session.commit()
+    print(f"📲 [PUSH] Token registered for user {current_user.id} ({payload.platform})", flush=True)
+
+    return {"status": "ok", "message": "Push token registered"}
+
+
+@router.delete("/push-token")
+async def unregister_push_token(
+    payload: PushTokenRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Remove a push token (e.g. on logout)."""
+    await session.execute(
+        delete(PushToken).where(
+            PushToken.token == payload.push_token,
+            PushToken.user_id == current_user.id,
+        )
+    )
+    await session.commit()
+    return {"status": "ok", "message": "Push token removed"}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

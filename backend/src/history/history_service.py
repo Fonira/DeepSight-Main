@@ -12,12 +12,38 @@
 """
 
 import re
+import time
 from collections import Counter
 from typing import Optional, List, Dict, Any, Tuple
-from sqlalchemy import select, func, or_, and_, desc
+from sqlalchemy import select, func, or_, and_, desc, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.logging import logger
 from db.database import Summary, PlaylistAnalysis, User
+
+
+# Colonnes légères pour la liste d'historique (exclut summary_content, transcript_context, etc.)
+HISTORY_LIST_COLUMNS = [
+    Summary.id,
+    Summary.video_id,
+    Summary.video_title,
+    Summary.video_channel,
+    Summary.video_duration,
+    Summary.thumbnail_url,
+    Summary.category,
+    Summary.mode,
+    Summary.lang,
+    Summary.word_count,
+    Summary.reliability_score,
+    Summary.is_favorite,
+    Summary.playlist_id,
+    Summary.created_at,
+    # has_transcript calculé en SQL au lieu de charger tout le transcript_context
+    case(
+        (Summary.transcript_context != None, True),
+        else_=False
+    ).label("has_transcript"),
+]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -32,65 +58,83 @@ async def get_user_history(
     category: Optional[str] = None,
     search: Optional[str] = None,
     favorites_only: bool = False,
-    exclude_playlists: bool = True
-) -> Tuple[List[Summary], int]:
+    exclude_playlists: bool = True,
+    cursor: Optional[int] = None
+) -> Dict[str, Any]:
     """
     Récupère l'historique des vidéos de l'utilisateur.
-    
+
+    Optimisé:
+    - Projection: seulement les colonnes légères (pas summary_content/transcript_context)
+    - Cursor-based pagination (optionnel, en plus de offset)
+    - has_transcript calculé en SQL via CASE
+    - Query timing logué
+
     Args:
-        exclude_playlists: Si True, exclut les vidéos qui font partie d'une playlist
+        cursor: ID du dernier item vu (cursor-based pagination). Si fourni,
+                retourne les items avec id < cursor. Prioritaire sur page/offset.
+
+    Returns:
+        Dict avec keys: items (list of Row), total (int), next_cursor (int|None)
     """
-    # Query de base
-    query = select(Summary).where(Summary.user_id == user_id)
-    count_query = select(func.count(Summary.id)).where(Summary.user_id == user_id)
-    
-    # Exclure les vidéos de playlists si demandé
+    start = time.perf_counter()
+
+    # ── Conditions de filtrage communes ──
+    filters = [Summary.user_id == user_id]
+
     if exclude_playlists:
-        query = query.where(
-            or_(Summary.playlist_id == None, Summary.playlist_id == "")
-        )
-        count_query = count_query.where(
-            or_(Summary.playlist_id == None, Summary.playlist_id == "")
-        )
-    
-    # Filtrer par catégorie
+        filters.append(or_(Summary.playlist_id == None, Summary.playlist_id == ""))
+
     if category and category != "all":
-        query = query.where(Summary.category == category)
-        count_query = count_query.where(Summary.category == category)
-    
-    # Filtrer par favoris
+        filters.append(Summary.category == category)
+
     if favorites_only:
-        query = query.where(Summary.is_favorite == True)
-        count_query = count_query.where(Summary.is_favorite == True)
-    
-    # Recherche simple (titre, chaîne)
+        filters.append(Summary.is_favorite == True)
+
     if search:
-        search_pattern = f"%{search.lower()}%"
-        query = query.where(
-            or_(
-                func.lower(Summary.video_title).like(search_pattern),
-                func.lower(Summary.video_channel).like(search_pattern)
-            )
-        )
-        count_query = count_query.where(
-            or_(
-                func.lower(Summary.video_title).like(search_pattern),
-                func.lower(Summary.video_channel).like(search_pattern)
-            )
-        )
-    
-    # Compter le total
+        # SECURITY: Échapper les caractères spéciaux SQL LIKE
+        safe_search = search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        search_pattern = f"%{safe_search}%"
+        filters.append(or_(
+            Summary.video_title.ilike(search_pattern),
+            Summary.video_channel.ilike(search_pattern)
+        ))
+
+    # ── Count query (séparée pour fiabilité avec cursor) ──
+    count_query = select(func.count(Summary.id)).where(*filters)
     total_result = await session.execute(count_query)
     total = total_result.scalar() or 0
-    
-    # Pagination et tri
-    offset = (page - 1) * per_page
-    query = query.order_by(desc(Summary.created_at)).offset(offset).limit(per_page)
-    
-    result = await session.execute(query)
-    items = result.scalars().all()
-    
-    return list(items), total
+
+    # ── Data query avec projection légère ──
+    data_query = select(*HISTORY_LIST_COLUMNS).where(*filters)
+
+    if cursor is not None:
+        # Cursor-based: items plus anciens que le cursor
+        data_query = data_query.where(Summary.id < cursor)
+        data_query = data_query.order_by(desc(Summary.id)).limit(per_page)
+    else:
+        # Offset-based (rétro-compatible)
+        offset = (page - 1) * per_page
+        data_query = data_query.order_by(desc(Summary.created_at)).offset(offset).limit(per_page)
+
+    result = await session.execute(data_query)
+    items = result.all()
+
+    # ── Next cursor ──
+    next_cursor = items[-1].id if items else None
+
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    logger.info(
+        "history_query",
+        user_id=user_id,
+        total=total,
+        returned=len(items),
+        cursor=cursor,
+        page=page,
+        elapsed_ms=round(elapsed_ms, 1),
+    )
+
+    return {"items": items, "total": total, "next_cursor": next_cursor}
 
 
 async def get_summary_by_id(

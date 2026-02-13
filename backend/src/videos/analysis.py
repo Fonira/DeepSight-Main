@@ -13,6 +13,12 @@ from datetime import datetime
 
 from core.config import get_mistral_key, get_perplexity_key, MISTRAL_MODELS, VERSION
 
+try:
+    from core.cache import cache_service, make_cache_key
+    CACHE_AVAILABLE = True
+except ImportError:
+    CACHE_AVAILABLE = False
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📋 RÈGLES ÉPISTÉMIQUES (Raisonnement Bayésien)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1098,13 +1104,27 @@ async def generate_summary(
     channel: str = "",
     description: str = "",
     api_key: str = None,
-    web_context: str = None  # 🆕 v3.0: Contexte web pré-analyse
+    web_context: str = None,  # 🆕 v3.0: Contexte web pré-analyse
+    video_id: str = None,     # 🆕 v3.1: Pour le cache
+    force_refresh: bool = False,  # 🆕 v3.1: Forcer la ré-génération
 ) -> Optional[str]:
     """
     Génère un résumé avec Mistral AI.
-    
+
     🆕 v3.0: Peut recevoir un web_context (de Perplexity) à intégrer dans l'analyse.
+    🆕 v3.1: Cache des résultats par video_id + mode (TTL 1h).
     """
+    # Check cache if video_id provided and not forcing refresh
+    if CACHE_AVAILABLE and video_id and not force_refresh:
+        cache_key = make_cache_key("analysis", video_id, mode, model)
+        try:
+            cached = await cache_service.get(cache_key)
+            if cached:
+                print(f"💾 Cache HIT for analysis:{video_id}:{mode}", flush=True)
+                return cached
+        except Exception:
+            pass
+
     api_key = api_key or get_mistral_key()
     if not api_key:
         print("❌ Mistral API key not configured", flush=True)
@@ -1200,6 +1220,14 @@ async def generate_summary(
                 summary = data["choices"][0]["message"]["content"].strip()
                 word_count = len(summary.split())
                 print(f"✅ Summary generated: {word_count} words", flush=True)
+                # Cache the result
+                if CACHE_AVAILABLE and video_id:
+                    try:
+                        cache_key = make_cache_key("analysis", video_id, mode, model)
+                        await cache_service.set(cache_key, summary)
+                        print(f"💾 Analysis cached: {cache_key}", flush=True)
+                    except Exception:
+                        pass
                 return summary
             else:
                 print(f"❌ Mistral API error: {response.status_code}", flush=True)

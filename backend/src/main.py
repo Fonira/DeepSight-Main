@@ -89,10 +89,21 @@ from playlists.router import router as playlists_router
 from history.history_router import router as history_router
 from db.database import init_db, close_db
 
+# 🔒 Security Headers
+try:
+    from middleware.security_headers import SecurityHeadersMiddleware
+    SECURITY_HEADERS_AVAILABLE = True
+except ImportError as e:
+    SECURITY_HEADERS_AVAILABLE = False
+    print(f"⚠️ Security headers middleware not available: {e}", flush=True)
+
 # 🚦 Rate Limiting & Cache
 try:
     from middleware.rate_limiter import RateLimitMiddleware, init_rate_limiter
-    RATE_LIMITER_AVAILABLE = True
+    from core.config import RATE_LIMIT_ENABLED
+    RATE_LIMITER_AVAILABLE = RATE_LIMIT_ENABLED
+    if not RATE_LIMIT_ENABLED:
+        print("ℹ️ Rate limiter disabled via RATE_LIMIT_ENABLED=false", flush=True)
 except ImportError as e:
     RATE_LIMITER_AVAILABLE = False
     print(f"⚠️ Rate limiter not available: {e}", flush=True)
@@ -453,6 +464,11 @@ app.add_middleware(
     expose_headers=["*"],
     max_age=3600,
 )
+
+# 🔒 Security Headers Middleware (après CORS, avant logging)
+if SECURITY_HEADERS_AVAILABLE:
+    app.add_middleware(SecurityHeadersMiddleware)
+    logger.info("Security headers middleware enabled")
 
 # 📊 Middlewares de logging (après CORS)
 if LOGGING_AVAILABLE:

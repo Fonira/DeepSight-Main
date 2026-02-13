@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from db.database import get_session, User, Summary, CreditTransaction
 from auth.dependencies import get_current_user
 from core.config import PLAN_LIMITS, MISTRAL_MODELS
+from core.logging import logger
 from core.credits import (
     calculate_analysis_cost,
     calculate_chat_cost,
@@ -82,6 +83,37 @@ class ModelInfo(BaseModel):
     description_en: str
     available: bool
     cost_indicator: str  # €, €€, €€€
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔧 HELPERS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def _get_subscription_renewal(user: User) -> Optional[datetime]:
+    """
+    Récupère la date de renouvellement de l'abonnement Stripe.
+    Retourne None si free, pas de subscription, ou erreur Stripe.
+    """
+    if not user.stripe_subscription_id or (user.plan or "free") == "free":
+        return None
+
+    try:
+        import stripe
+        from billing.router import init_stripe
+
+        if not init_stripe():
+            return None
+
+        subscription = stripe.Subscription.retrieve(user.stripe_subscription_id)
+        if subscription.status in ("active", "trialing"):
+            return datetime.fromtimestamp(subscription.current_period_end)
+        return None
+    except Exception as e:
+        logger.warning(
+            "Failed to fetch Stripe subscription renewal",
+            extra={"user_id": user.id, "sub_id": user.stripe_subscription_id, "error": str(e)}
+        )
+        return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -211,7 +243,7 @@ async def get_usage_stats(
         
         # Dates
         member_since=current_user.created_at,
-        subscription_renewal=None  # TODO: récupérer depuis Stripe
+        subscription_renewal=await _get_subscription_renewal(current_user),
     )
 
 
