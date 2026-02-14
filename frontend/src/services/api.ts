@@ -945,33 +945,135 @@ export const reliabilityApi = {
 // 📂 PLAYLIST API
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// ── Types Corpus/Playlist enrichis ──────────────────────────────────────────
+export interface PlaylistFullResponse {
+  id: number;
+  playlist_id: string;
+  playlist_title: string;
+  playlist_url?: string;
+  num_videos: number;
+  num_processed: number;
+  total_duration?: number;
+  total_words?: number;
+  meta_analysis?: string;
+  status: string;
+  created_at: string;
+  completed_at?: string;
+  videos: PlaylistVideoItem[];
+}
+
+export interface PlaylistVideoItem {
+  id: number;
+  video_id: string;
+  video_title: string;
+  video_channel: string;
+  video_duration?: number;
+  video_url?: string;
+  thumbnail_url?: string;
+  category?: string;
+  category_confidence?: number;
+  summary_content?: string;
+  transcript_context?: string;
+  full_digest?: string;
+  word_count?: number;
+  reliability_score?: number;
+  position?: number;
+  created_at?: string;
+  tags?: string;
+  mode?: string;
+  lang?: string;
+}
+
+export interface PlaylistDetailsResponse {
+  id: number;
+  playlist_id: string;
+  playlist_title: string;
+  playlist_url?: string;
+  status: string;
+  created_at: string;
+  completed_at?: string;
+  statistics: {
+    num_videos: number;
+    num_processed: number;
+    total_duration: number;
+    total_duration_formatted: string;
+    total_words: number;
+    average_duration: number;
+    average_words: number;
+  };
+  categories: Record<string, number>;
+  channels: Record<string, number>;
+  has_meta_analysis: boolean;
+  videos_summary: Array<{
+    id: number;
+    title: string;
+    channel: string;
+    duration: number;
+    category: string;
+    position: number;
+  }>;
+}
+
+export interface CorpusChatResponse {
+  response: string;
+  sources?: Array<{
+    video_title: string;
+    video_id: string;
+    relevance_score: number;
+  }>;
+  citations?: string[];
+  model_used: string;
+  tokens_used: number;
+  relevance_scores?: Record<string, number>;
+}
+
+export interface CorpusChatMessage {
+  id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+  sources?: Array<{
+    video_title: string;
+    video_id: string;
+    relevance_score: number;
+  }>;
+}
+
 export const playlistApi = {
-  async getAll(): Promise<Playlist[]> {
+  // ── CRUD ────────────────────────────────────────────────────────────────────
+  async getAll(): Promise<PlaylistFullResponse[]> {
     return request('/api/playlists');
   },
 
-  async create(data: { name: string; description?: string }): Promise<Playlist> {
+  async create(data: { name: string; description?: string; video_ids?: number[] }): Promise<PlaylistFullResponse> {
     return request('/api/playlists', {
       method: 'POST',
       body: data,
     });
   },
 
-  async get(id: number): Promise<Playlist> {
+  /** Récupère une playlist complète avec toutes les vidéos + meta_analysis */
+  async get(id: string): Promise<PlaylistFullResponse> {
     return request(`/api/playlists/${id}`);
   },
 
-  async update(id: number, data: { name?: string; description?: string }): Promise<Playlist> {
+  /** Récupère les stats détaillées d'une playlist */
+  async getDetails(id: string): Promise<PlaylistDetailsResponse> {
+    return request(`/api/playlists/${id}/details`);
+  },
+
+  async update(id: string, data: { name?: string; description?: string; add_video_ids?: number[]; remove_video_ids?: number[] }): Promise<PlaylistFullResponse> {
     return request(`/api/playlists/${id}`, {
       method: 'PUT',
       body: data,
     });
   },
 
-  async delete(id: number): Promise<{ success: boolean }> {
+  async delete(id: string): Promise<{ success: boolean }> {
     return request(`/api/playlists/${id}`, { method: 'DELETE' });
   },
 
+  // ── ANALYSE ─────────────────────────────────────────────────────────────────
   async analyze(
     url: string,
     options?: { lang?: string; mode?: string; category?: string; maxVideos?: number }
@@ -998,20 +1100,52 @@ export const playlistApi = {
     return request(`/api/playlists/task/${taskId}`);
   },
 
-  async getHistory(params?: { limit?: number; page?: number }): Promise<{
-    items: Summary[];
-    total: number;
+  // ── SYNTHÈSE CORPUS (Méta-analyse) ─────────────────────────────────────────
+  /** Génère/régénère la méta-analyse du corpus */
+  async generateCorpusSummary(id: string, options?: { mode?: string; lang?: string }): Promise<{
+    success: boolean;
+    playlist_id: string;
+    meta_analysis: string;
+    credits_remaining: number;
   }> {
-    const queryParams = new URLSearchParams();
-    if (params?.limit) queryParams.set('limit', String(params.limit));
-    if (params?.page) queryParams.set('page', String(params.page));
-    const query = queryParams.toString();
-    try {
-      return await request(`/api/history/playlists${query ? `?${query}` : ''}`);
-    } catch (error) {
-      // Playlist history endpoint not available
-      return { items: [], total: 0 };
-    }
+    return request(`/api/playlists/${id}/corpus-summary`, {
+      method: 'POST',
+      body: options || {},
+      timeout: 300000, // 5 min max pour méta-analyse
+    });
+  },
+
+  // ── CHAT IA CORPUS ──────────────────────────────────────────────────────────
+  /** Pose une question à l'IA sur l'ensemble du corpus */
+  async chatWithCorpus(id: string, message: string, options?: {
+    web_search?: boolean;
+    mode?: string;
+    lang?: string;
+  }): Promise<CorpusChatResponse> {
+    return request(`/api/playlists/${id}/chat`, {
+      method: 'POST',
+      body: { message, ...options },
+      timeout: 120000, // 2 min
+    });
+  },
+
+  /** Récupère l'historique du chat corpus */
+  async getChatHistory(id: string, limit?: number): Promise<{
+    messages: CorpusChatMessage[];
+  }> {
+    const query = limit ? `?limit=${limit}` : '';
+    return request(`/api/playlists/${id}/chat/history${query}`);
+  },
+
+  /** Supprime l'historique du chat corpus */
+  async clearChatHistory(id: string): Promise<{ success: boolean }> {
+    return request(`/api/playlists/${id}/chat`, { method: 'DELETE' });
+  },
+
+  // ── VIDÉO INDIVIDUELLE DANS CORPUS ──────────────────────────────────────────
+  /** Récupère les détails complets d'une vidéo dans le contexte d'une playlist */
+  async getVideoInPlaylist(playlistId: string, summaryId: number): Promise<PlaylistVideoItem> {
+    return request(`/api/playlists/${playlistId}/video/${summaryId}`);
   },
 };
 
