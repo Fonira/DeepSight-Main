@@ -534,20 +534,10 @@ export const History: React.FC = () => {
     }
   };
 
-  const handleOpenPlaylistChat = async (playlist: PlaylistSummary) => {
-    setChatTarget({ type: 'playlist', id: playlist.playlist_id, title: playlist.playlist_title });
-    setChatExpanded(true);
-    // 🆕 Charger l'historique existant au lieu d'effacer
-    setChatLoading(true);
-    try {
-      const history = await api.getChatHistoryPlaylist(playlist.playlist_id);
-      setChatMessages(history);
-    } catch (err) {
-      console.error('Error loading playlist chat history:', err);
-      setChatMessages([]);
-    } finally {
-      setChatLoading(false);
-    }
+  const handleOpenPlaylistChat = (playlist: PlaylistSummary) => {
+    // Naviguer vers PlaylistDetailPage avec l'onglet Chat actif
+    // → UN SEUL endroit pour le Chat Corpus (pas de doublon)
+    navigate(`/playlist/${playlist.playlist_id}?tab=chat`);
   };
 
   const handleViewPlaylist = (playlist: PlaylistSummary) => {

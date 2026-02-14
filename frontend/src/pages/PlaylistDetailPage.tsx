@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 
 import { useTranslation } from '../hooks/useTranslation';
@@ -594,10 +594,16 @@ export const PlaylistDetailPage: React.FC = () => {
   const { language } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+
+  // Lire le query param ?tab=chat pour pré-sélectionner l'onglet
+  const initialTab = (['videos', 'synthesis', 'chat', 'stats'].includes(searchParams.get('tab') || '')
+    ? searchParams.get('tab') as TabId
+    : 'videos');
 
   // UI State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabId>('videos');
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedVideoId, setSelectedVideoId] = useState<number | null>(null);
