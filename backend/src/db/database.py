@@ -581,10 +581,42 @@ async def run_cascade_migration():
     print("✅ CASCADE delete migration completed", flush=True)
 
 
+async def run_schema_migrations():
+    """Migrations de schéma idempotentes (ALTER TABLE pour colonnes manquantes)"""
+    migrations = [
+        # Hierarchical Digest Pipeline (Feb 2026)
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS full_digest TEXT",
+        # VideoChunks table (créée par create_all si absente, mais on sécurise)
+        """
+        CREATE TABLE IF NOT EXISTS video_chunks (
+            id SERIAL PRIMARY KEY,
+            summary_id INTEGER NOT NULL REFERENCES summaries(id) ON DELETE CASCADE,
+            chunk_index INTEGER NOT NULL,
+            start_seconds INTEGER NOT NULL DEFAULT 0,
+            end_seconds INTEGER NOT NULL DEFAULT 0,
+            chunk_text TEXT NOT NULL,
+            chunk_digest TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_video_chunks_summary_id ON video_chunks(summary_id)",
+    ]
+    async with engine.begin() as conn:
+        for sql in migrations:
+            try:
+                await conn.execute(text(sql.strip()))
+            except Exception as e:
+                print(f"⚠️ Migration skipped (may already exist): {e}", flush=True)
+    print("✅ Schema migrations completed", flush=True)
+
+
 async def init_db():
     """Initialise la base de données et crée les tables"""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Appliquer les migrations de schéma (ALTER TABLE pour colonnes manquantes)
+    await run_schema_migrations()
 
     # Appliquer la migration CASCADE delete
     await run_cascade_migration()
