@@ -32,12 +32,17 @@ import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from '
 // ═══════════════════════════════════════════════════════════════════
 
 interface PlaylistHistoryItem {
+  id: number;
   playlist_id: string;
   playlist_title: string;
-  video_count: number;
-  analyzed_count: number;
+  playlist_url?: string;
+  num_videos: number;
+  num_processed: number;
+  total_duration?: number;
+  total_words?: number;
+  status: string;
   created_at: string;
-  thumbnail_url?: string;
+  completed_at?: string;
 }
 
 // Type étendu pour la progression
@@ -220,8 +225,8 @@ export const PlaylistPage: React.FC = () => {
   const loadHistory = useCallback(async () => {
     try {
       setLoadingHistory(true);
-      const data = await playlistApi.getHistory({ limit: 10 });
-      setHistory((data.items || []) as unknown as PlaylistHistoryItem[]);
+      const data = await playlistApi.getAll();
+      setHistory(data as unknown as PlaylistHistoryItem[]);
     } catch (err) {
       console.error('Error loading playlist history:', err);
       // 🆕 Ne pas afficher d'erreur si l'endpoint n'existe pas encore
@@ -739,24 +744,16 @@ export const PlaylistPage: React.FC = () => {
                         onClick={() => navigate(`/playlist/${item.playlist_id}`)}
                       >
                         <div className="flex items-center gap-4">
-                          {item.thumbnail_url ? (
-                            <img
-                              src={item.thumbnail_url}
-                              alt=""
-                              className="w-16 h-10 object-cover rounded"
-                            />
-                          ) : (
-                            <div className="w-16 h-10 bg-bg-tertiary rounded flex items-center justify-center">
-                              <ListVideo className="w-5 h-5 text-text-muted" />
-                            </div>
-                          )}
+                          <div className="w-16 h-10 bg-bg-tertiary rounded flex items-center justify-center">
+                            <ListVideo className="w-5 h-5 text-text-muted" />
+                          </div>
 
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium text-text-primary truncate">
                               {item.playlist_title}
                             </h3>
                             <p className="text-sm text-text-secondary">
-                              {item.analyzed_count}/{item.video_count} {language === 'fr' ? 'vidéos' : 'videos'}
+                              {item.num_processed}/{item.num_videos} {language === 'fr' ? 'vidéos' : 'videos'}
                             </p>
                           </div>
 
