@@ -402,7 +402,20 @@ const CorpusChat: React.FC<{
       };
       setMessages(prev => [...prev, assistantMsg]);
     } catch (err: any) {
-      setError(err?.message || (language === 'fr' ? 'Erreur lors de la réponse' : 'Error getting response'));
+      const msg = err?.message || '';
+      let errorText: string;
+      if (msg.includes('timeout') || msg.includes('Timeout') || msg === 'Request timeout') {
+        errorText = language === 'fr'
+          ? '⏳ Le serveur met trop de temps à répondre. Réessayez avec une question plus courte.'
+          : '⏳ Server is taking too long. Try a shorter question.';
+      } else if (msg.includes('Failed to fetch') || msg.includes('Network error')) {
+        errorText = language === 'fr'
+          ? '🔌 Erreur réseau — le serveur n\'a pas répondu. Réessayez dans quelques secondes.'
+          : '🔌 Network error — server did not respond. Try again in a few seconds.';
+      } else {
+        errorText = msg || (language === 'fr' ? 'Erreur lors de la réponse' : 'Error getting response');
+      }
+      setError(errorText);
     } finally {
       setIsLoading(false);
       inputRef.current?.focus();

@@ -125,21 +125,21 @@ CHAT_CONFIG = {
     },
     "pro": {
         "model": "mistral-large-latest",
-        "max_corpus": 200000,
-        "max_videos": 40,
+        "max_corpus": 450000,   # ~150K tokens Mistral
+        "max_videos": 50,
         "daily_limit": 100,
         "web_search": True
     },
     "expert": {
         "model": "mistral-large-latest",
-        "max_corpus": 300000,
+        "max_corpus": 450000,   # ~150K tokens Mistral
         "max_videos": 50,
         "daily_limit": -1,
         "web_search": True
     },
     "unlimited": {
         "model": "mistral-large-latest",
-        "max_corpus": 300000,
+        "max_corpus": 450000,   # ~150K tokens Mistral
         "max_videos": 50,
         "daily_limit": -1,
         "web_search": True
@@ -1172,6 +1172,9 @@ async def _execute_corpus_chat(
     session: AsyncSession
 ) -> ChatCorpusResponse:
     """Logique interne du chat corpus, encapsulée pour gestion d'erreur."""
+    import time as _time
+    _t0 = _time.time()
+    print(f"   ⏱️ [STEP 0] Starting corpus chat...", flush=True)
 
     # FIX v4.1: Prendre la plus récente si plusieurs analyses existent
     result = await session.execute(
@@ -1185,6 +1188,7 @@ async def _execute_corpus_chat(
 
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist non trouvée")
+    print(f"   ⏱️ [STEP 1] Playlist loaded ({_time.time()-_t0:.2f}s)", flush=True)
 
     plan = current_user.plan or "free"
     chat_config = CHAT_CONFIG.get(plan, CHAT_CONFIG["free"])
@@ -1202,7 +1206,8 @@ async def _execute_corpus_chat(
     
     if not videos:
         raise HTTPException(status_code=404, detail="Aucune vidéo dans ce corpus")
-    
+    print(f"   ⏱️ [STEP 2] {len(videos)} videos loaded ({_time.time()-_t0:.2f}s)", flush=True)
+
     videos_data = [
         {
             "id": v.id,  # FIX: nécessaire pour _build_hierarchical_context
@@ -1228,7 +1233,8 @@ async def _execute_corpus_chat(
         })
     
     scored_videos.sort(key=lambda x: x["relevance_score"], reverse=True)
-    
+    print(f"   ⏱️ [STEP 3] Scoring done ({_time.time()-_t0:.2f}s)", flush=True)
+
     print(f"   📊 Relevance scores:", flush=True)
     for sv in scored_videos[:5]:
         print(f"      - {sv['video_title'][:40]}: {sv['relevance_score']:.3f}", flush=True)
@@ -1328,6 +1334,7 @@ async def _execute_corpus_chat(
     elif web_search_enabled:
         print(f"   💡 Perplexity available but not needed for this question", flush=True)
     
+    print(f"   ⏱️ [STEP 5] Calling Mistral ({chat_config['model']}) — max_corpus={chat_config['max_corpus']:,} chars ({_time.time()-_t0:.2f}s)", flush=True)
     response_text = await _chat_with_mistral_corpus_v4(
         question=request.message,
         videos=scored_videos,
@@ -1342,7 +1349,8 @@ async def _execute_corpus_chat(
         lang=request.lang,
         session=session
     )
-    
+    print(f"   ⏱️ [STEP 6] Mistral response received ({_time.time()-_t0:.2f}s) — {len(response_text)} chars", flush=True)
+
     model_used = chat_config["model"]
     
     volatile_disclaimer = _detect_volatile_disclaimer(
@@ -1831,9 +1839,10 @@ QUESTION: {question}
                     "max_tokens": adaptive_max_tokens,
                     "temperature": 0.7  # Plus naturel et conversationnel
                 },
-                timeout=120
+                timeout=180  # 3 min pour gros contextes 150K tokens
             )
-            
+            print(f"[CHAT v4.2] 📡 Mistral HTTP {response.status_code} — prompt: {len(full_prompt):,} chars", flush=True)
+
             if response.status_code == 200:
                 data = response.json()
                 answer = data["choices"][0]["message"]["content"].strip()
@@ -1853,7 +1862,12 @@ QUESTION: {question}
                 print(f"[CHAT v4.2] ✅ Response: {len(answer)} chars", flush=True)
                 return answer
             else:
-                print(f"[CHAT v4.2] ❌ API Error {response.status_code}", flush=True)
+                error_body = ""
+                try:
+                    error_body = response.text[:500]
+                except:
+                    pass
+                print(f"[CHAT v4.2] ❌ API Error {response.status_code}: {error_body}", flush=True)
                 if response.status_code == 429:
                     if lang == "fr":
                         return "⏳ Limite de requêtes atteinte. Réessayez dans quelques instants."

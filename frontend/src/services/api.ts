@@ -1125,7 +1125,7 @@ export const playlistApi = {
     return request(`/api/playlists/${id}/chat`, {
       method: 'POST',
       body: { message, ...options },
-      timeout: 120000, // 2 min
+      timeout: 200000, // 3min20 — laisser le backend répondre avant le timeout frontend
     });
   },
 
