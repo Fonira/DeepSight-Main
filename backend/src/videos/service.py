@@ -12,6 +12,7 @@
 
 import json
 import time
+import asyncio
 import httpx
 from uuid import uuid4
 from datetime import datetime, date
@@ -225,16 +226,31 @@ async def save_summary(
         summary.enrichment_data = json.dumps(enrichment_data)
     
     session.add(summary)
-    
+
     # Mettre à jour les stats utilisateur
     user_result = await session.execute(select(User).where(User.id == user_id))
     user = user_result.scalar_one_or_none()
     if user:
         user.total_videos = (user.total_videos or 0) + 1
         user.total_words = (user.total_words or 0) + summary.word_count
-    
+
     await session.commit()
     await session.refresh(summary)
+
+    # 🆕 Lancer le pipeline de chunking en arrière-plan (non-bloquant)
+    # Le résumé est déjà sauvegardé, le chunking est une amélioration optionnelle
+    if transcript_context and summary.id:
+        asyncio.create_task(
+            _run_chunking_background(
+                transcript=transcript_context,
+                video_duration=video_duration,
+                video_title=video_title,
+                summary_id=summary.id,
+                category=category
+            )
+        )
+        logger.info("chunking_task_launched", summary_id=summary.id)
+
     return summary.id
 
 
@@ -385,6 +401,49 @@ async def delete_all_history(
     )
     await session.commit()
     return result.rowcount
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔄 BACKGROUND CHUNKING PIPELINE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def _run_chunking_background(
+    transcript: str,
+    video_duration: int,
+    video_title: str,
+    summary_id: int,
+    category: str = "general"
+) -> None:
+    """
+    Lance le pipeline de chunking en arrière-plan, sans bloquer le flux principal.
+
+    Gestion d'erreur robuste : si le chunking échoue, la vidéo est déjà sauvegardée
+    (ce n'est qu'une amélioration asynchrone).
+    """
+    try:
+        from videos.chunking import process_video_chunks
+        from db.database import async_session_maker
+
+        async with async_session_maker() as db:
+            full_digest = await process_video_chunks(
+                transcript=transcript,
+                video_duration=video_duration,
+                video_title=video_title,
+                summary_id=summary_id,
+                db=db,
+                category=category
+            )
+            logger.info(
+                "background_chunking_success",
+                summary_id=summary_id,
+                digest_chars=len(full_digest) if full_digest else 0
+            )
+    except Exception as e:
+        logger.error(
+            "background_chunking_failed",
+            summary_id=summary_id,
+            error=str(e)
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

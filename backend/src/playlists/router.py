@@ -1316,7 +1316,8 @@ async def chat_with_corpus(
         mode=request.mode,
         dominant_category=dominant_category,
         perplexity_context=perplexity_context,
-        lang=request.lang
+        lang=request.lang,
+        session=session
     )
     
     model_used = chat_config["model"]
@@ -1442,6 +1443,125 @@ async def delete_playlist(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🧠 CONTEXTE HIÉRARCHIQUE v4.3 — Construction intelligente multi-couches
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def _build_hierarchical_context(
+    question: str,
+    videos: List[Dict],
+    playlist_meta_analysis: str,
+    max_context: int = 120000,
+    session: Optional[AsyncSession] = None,
+    lang: str = "fr"
+) -> str:
+    """
+    Construit un contexte hiérarchique pour le chat corpus.
+
+    Couches (dans l'ordre de priorité):
+    1. Méta-analyse (toujours incluse, ~2-5K chars)
+    2. Full digests des vidéos les plus pertinentes (~6-10K chacun)
+    3. Chunk digests pour précision supplémentaire (si budget le permet)
+
+    Args:
+        question: Question de l'utilisateur
+        videos: Liste des vidéos avec scores de pertinence
+        playlist_meta_analysis: Méta-analyse de la playlist
+        max_context: Budget maximum de caractères (défaut: 120K)
+        session: Session DB (pour récupérer les chunks si disponible)
+        lang: Langue (fr/en)
+
+    Returns:
+        Context texte hiérarchique optimisé
+    """
+    from sqlalchemy import select
+    from db.database import Summary, VideoChunk
+
+    context_parts = []
+    remaining = max_context
+
+    # Couche 1: Méta-analyse (toujours incluse, plafonnée à 10K)
+    if playlist_meta_analysis:
+        meta = playlist_meta_analysis[:10000]
+        meta_header = "## 📊 PLAYLIST META-ANALYSIS" if lang == "en" else "## 📊 MÉTA-ANALYSE DE LA PLAYLIST"
+        context_parts.append(f"\n{meta_header}\n{meta}")
+        remaining -= len(meta)
+
+    # Couche 2: Full digests des vidéos les plus pertinentes
+    for video_data in videos:
+        if remaining <= 0:
+            break
+
+        position = video_data.get("position", 0)
+        title = video_data.get("video_title", "")
+        relevance = video_data.get("relevance_score", 0)
+
+        # Récupérer le full_digest depuis la DB si disponible
+        digest = video_data.get("full_digest")
+        if not digest and session:
+            try:
+                summary_id = video_data.get("id")
+                if summary_id:
+                    result = await session.execute(
+                        select(Summary).where(Summary.id == summary_id)
+                    )
+                    summary = result.scalar_one_or_none()
+                    if summary:
+                        digest = summary.full_digest or summary.summary_content
+            except:
+                digest = video_data.get("summary_content")
+        else:
+            digest = digest or video_data.get("summary_content", "")
+
+        if not digest:
+            continue
+
+        # Adapter l'allocation selon la pertinence
+        allocated = int(remaining * 0.4) if relevance > 0.6 else int(remaining * 0.25)
+        if len(digest) > allocated:
+            digest = digest[:allocated]
+
+        video_header = f"### VIDEO {position}: {title}"
+        context_parts.append(f"\n{video_header}\n📊 Relevance: {relevance:.2f}\n{digest}")
+        remaining -= len(digest)
+
+    # Couche 3: Chunk digests pour les 3 vidéos les plus pertinentes (si budget > 5K)
+    if remaining > 5000 and session:
+        for video_data in videos[:3]:
+            try:
+                summary_id = video_data.get("id")
+                if summary_id:
+                    result = await session.execute(
+                        select(VideoChunk)
+                        .where(VideoChunk.summary_id == summary_id)
+                        .order_by(VideoChunk.chunk_index)
+                    )
+                    chunks = result.scalars().all()
+
+                    for chunk in chunks:
+                        if remaining <= 0:
+                            break
+                        if chunk.chunk_digest:
+                            time_label = f"[{chunk.start_seconds // 60}:{chunk.start_seconds % 60:02d}]"
+                            part = f"{time_label} {chunk.chunk_digest}"
+                            if len(part) > remaining:
+                                break
+                            context_parts.append(part)
+                            remaining -= len(part)
+            except:
+                # Si erreur lors de la récupération des chunks, on continue
+                pass
+
+    logger.info(
+        "hierarchical_context_built",
+        total_chars=sum(len(p) for p in context_parts),
+        num_layers=len(context_parts),
+        remaining_budget=remaining
+    )
+
+    return "\n\n".join(context_parts)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 🧠 CHAT MISTRAL v4.0 — Contexte optimisé avec allocation dynamique
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1456,7 +1576,8 @@ async def _chat_with_mistral_corpus_v4(
     mode: str,
     dominant_category: str,
     perplexity_context: str = "",
-    lang: str = "fr"
+    lang: str = "fr",
+    session: Optional[AsyncSession] = None
 ) -> str:
     """Chat Mistral v4.1 avec réponses INTELLIGENTES et ADAPTÉES."""
     api_key = get_mistral_key()
@@ -1599,64 +1720,21 @@ async def _chat_with_mistral_corpus_v4(
             history_text += f"\n{role}: {msg.get('content', '')}"
     
     max_videos = min(len(videos), max_videos_limit)
-    
-    total_relevance = sum(v.get("relevance_score", 0.1) for v in videos[:max_videos])
-    if total_relevance == 0:
-        total_relevance = max_videos * 0.1
-    
-    reserved_chars = 6000
-    available_corpus = max_corpus - reserved_chars
-    
-    corpus_text = ""
-    
-    if meta_analysis:
-        corpus_text += f"\n═══ 📊 MÉTA-ANALYSE DU CORPUS ═══\n{meta_analysis[:4000]}\n"
-    
+
+    # 🆕 v4.3: Contexte hiérarchique (méta-analyse + full digests + chunks)
+    corpus_text = await _build_hierarchical_context(
+        question=question,
+        videos=videos[:max_videos],
+        playlist_meta_analysis=meta_analysis,
+        max_context=max_corpus,
+        session=session,
+        lang=lang
+    )
+
+    # Ajouter le contexte web si disponible (couche optionnelle)
     if perplexity_context:
-        corpus_text += f"\n═══ 🌐 INFORMATIONS WEB RÉCENTES ═══\n{perplexity_context[:2000]}\n"
-    
-    for v in videos[:max_videos]:
-        relevance = v.get("relevance_score", 0.1)
-        position = v.get("position", 0)
-        title = v.get("video_title", f"Vidéo {position}")
-        video_id = v.get("video_id", "")
-        summary = v.get("summary_content", "") or ""
-        transcript = v.get("transcript_context", "") or ""
-        matched_terms = v.get("matched_terms", [])
-        
-        weight = relevance / total_relevance
-        allocated_chars = max(3000, min(15000, int(available_corpus * weight)))
-        
-        video_section = f"\n\n═══ VIDÉO {position}: {title} (ID: {video_id}) ═══\n"
-        video_section += f"📊 Pertinence: {relevance:.2f}"
-        if matched_terms:
-            video_section += f" | Termes: {', '.join(matched_terms[:5])}"
-        video_section += "\n"
-        
-        if summary:
-            max_summary = min(len(summary), int(allocated_chars * 0.4))
-            video_section += f"📋 RÉSUMÉ:\n{summary[:max_summary]}\n"
-        
-        if transcript:
-            remaining_chars = allocated_chars - len(video_section)
-            if remaining_chars > 500:
-                if len(transcript) <= remaining_chars:
-                    video_section += f"📝 TRANSCRIPTION:\n{transcript}\n"
-                else:
-                    seg_size = remaining_chars // num_segments
-                    video_section += f"📝 TRANSCRIPTION ({len(transcript):,} chars, segmentée):\n"
-                    
-                    if relevance > 0.5:
-                        video_section += f"[DÉBUT] {transcript[:seg_size*2]}\n[...]\n"
-                        mid = len(transcript) // 2
-                        video_section += f"[MILIEU] {transcript[mid:mid+seg_size]}\n"
-                    else:
-                        positions = [i / (num_segments - 1) for i in range(num_segments)]
-                        for pos in positions:
-                            start = int(pos * (len(transcript) - seg_size))
-                            video_section += f"{transcript[start:start+seg_size]}\n[...]\n"
-        
-        corpus_text += video_section
+        web_header = "## 🌐 RECENT WEB INFORMATION" if lang == "en" else "## 🌐 INFORMATIONS WEB RÉCENTES"
+        corpus_text = f"{corpus_text}\n\n{web_header}\n{perplexity_context[:2000]}"
     
     total_chars = len(corpus_text)
     print(f"[CHAT v4.2] 📊 Corpus: {max_videos} videos, {total_chars:,} chars | Adaptive tokens: {adaptive_max_tokens} | Lang: {lang}", flush=True)
@@ -2328,19 +2406,42 @@ async def _generate_meta_analysis_v4(
             summaries_text += f"**Chaîne:** {s.get('channel', 'N/A')} | **Catégorie:** {s.get('category', 'N/A')}\n"
         else:
             summaries_text += f"**Channel:** {s.get('channel', 'N/A')} | **Category:** {s.get('category', 'N/A')}\n"
-        summaries_text += f"{s['summary']}\n"
+
+        # 🆕 Préférer full_digest si disponible, sinon utiliser summary_content
+        digest = s.get('full_digest') or s.get('summary')
+        summaries_text += f"{digest}\n"
 
         if s.get('category'):
             categories.add(s['category'])
         total_duration += s.get('duration', 0)
 
-        concepts = SemanticScorer.extract_key_concepts(s['summary'], top_n=5)
+        concepts = SemanticScorer.extract_key_concepts(digest, top_n=5)
         all_concepts.extend(concepts)
 
     concept_counts = Counter(all_concepts)
     top_concepts = [c for c, _ in concept_counts.most_common(10)]
 
     duration_str = f"{total_duration // 3600}h {(total_duration % 3600) // 60}min" if total_duration > 3600 else f"{total_duration // 60} min"
+
+    # 🆕 v4.3: Compression proportionnelle si contexte > 120K chars
+    total_context_chars = len(summaries_text)
+    if total_context_chars > 120000:
+        logger.info(
+            "meta_analysis_context_compression",
+            original_chars=total_context_chars,
+            target_max=120000
+        )
+        max_per_video = 120000 // len(summaries)
+        compressed_text = ""
+        for s in summaries:
+            compressed_text += f"\n### {s['position']}. {s['title']}\n"
+            if lang == "fr":
+                compressed_text += f"**Chaîne:** {s.get('channel', 'N/A')} | **Catégorie:** {s.get('category', 'N/A')}\n"
+            else:
+                compressed_text += f"**Channel:** {s.get('channel', 'N/A')} | **Category:** {s.get('category', 'N/A')}\n"
+            digest = s.get('full_digest') or s.get('summary')
+            compressed_text += f"{digest[:max_per_video]}\n"
+        summaries_text = compressed_text
 
     # 🆕 v4.2: Prompt bilingue complet
     if lang == "fr":

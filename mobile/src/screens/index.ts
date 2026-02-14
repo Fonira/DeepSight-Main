@@ -5,8 +5,9 @@ export { ForgotPasswordScreen } from './ForgotPasswordScreen';
 export { VerifyEmailScreen } from './VerifyEmailScreen';
 export { DashboardScreen } from './DashboardScreen';
 export { HistoryScreen } from './HistoryScreen';
-export { PlaylistsScreen } from './PlaylistsScreen';
-export { PlaylistDetailScreen } from './PlaylistDetailScreen';
+// DISABLED: Playlist features moved to web-only (Feb 2026)
+// export { PlaylistsScreen } from './PlaylistsScreen';
+// export { PlaylistDetailScreen } from './PlaylistDetailScreen';
 export { ProfileScreen } from './ProfileScreen';
 export { SettingsScreen } from './SettingsScreen';
 export { AccountScreen } from './AccountScreen';

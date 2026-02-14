@@ -12,7 +12,8 @@ import Constants from 'expo-constants';
 export type NotificationType =
   | 'analysis_complete'
   | 'analysis_failed'
-  | 'playlist_complete'
+  // DISABLED: Playlist feature moved to web-only (Feb 2026)
+  // | 'playlist_complete'
   | 'credits_low'
   | 'credits_empty'
   | 'subscription_expiring'
@@ -124,7 +125,8 @@ function getChannelForType(type: NotificationType): string {
   switch (type) {
     case 'analysis_complete':
     case 'analysis_failed':
-    case 'playlist_complete':
+    // DISABLED: Playlist feature moved to web-only (Feb 2026)
+    // case 'playlist_complete':
       return 'analysis';
     case 'credits_low':
     case 'credits_empty':
@@ -143,8 +145,9 @@ function getIconForType(type: NotificationType): string {
       return 'checkmark-circle';
     case 'analysis_failed':
       return 'close-circle';
-    case 'playlist_complete':
-      return 'albums';
+    // DISABLED: Playlist feature moved to web-only (Feb 2026)
+    // case 'playlist_complete':
+    //   return 'albums';
     case 'credits_low':
       return 'warning';
     case 'credits_empty':
@@ -240,19 +243,21 @@ export async function notifyAnalysisFailed(
 
 /**
  * Schedule notification for playlist complete
+ * DISABLED: Playlist feature moved to web-only (Feb 2026)
  */
-export async function notifyPlaylistComplete(
-  playlistName: string,
-  videoCount: number,
-  playlistId: string
-): Promise<string> {
-  return showNotification(
-    'playlist_complete',
-    'Playlist Analysis Complete! ✓',
-    `${videoCount} videos from "${playlistName}" are ready`,
-    { playlistId, screen: 'Playlists' }
-  );
-}
+// DISABLED: Playlist notifications removed - web-only feature (Feb 2026)
+// export async function notifyPlaylistComplete(
+//   playlistName: string,
+//   videoCount: number,
+//   playlistId: string
+// ): Promise<string> {
+//   return showNotification(
+//     'playlist_complete',
+//     'Playlist Analysis Complete! ✓',
+//     `${videoCount} videos from "${playlistName}" are ready`,
+//     { playlistId, screen: 'Playlists' }
+//   );
+// }
 
 /**
  * Schedule notification for low credits
@@ -389,7 +394,8 @@ export default {
   showNotification,
   notifyAnalysisComplete,
   notifyAnalysisFailed,
-  notifyPlaylistComplete,
+  // DISABLED: notifyPlaylistComplete removed - web-only feature (Feb 2026)
+  // notifyPlaylistComplete,
   notifyCreditsLow,
   notifyCreditsEmpty,
   notifySubscriptionExpiring,

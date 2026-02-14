@@ -64,9 +64,10 @@ export function useNotifications(): NotificationHookResult {
             navigation.navigate('Analysis', { summaryId: data.summaryId as string });
           }
           break;
-        case 'Playlists':
-          navigation.navigate('MainTabs', { screen: 'Playlists' } as any);
-          break;
+        // DISABLED: Playlist notification navigation removed - web-only feature (Feb 2026)
+        // case 'Playlists':
+        //   navigation.navigate('MainTabs', { screen: 'Playlists' } as any);
+        //   break;
         case 'Upgrade':
           navigation.navigate('Upgrade');
           break;

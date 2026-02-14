@@ -209,9 +209,13 @@ class Summary(Base):
     # Timestamp
     created_at = Column(DateTime, default=func.now())
 
+    # Hierarchical Digest Pipeline (Feb 2026)
+    full_digest = Column(Text, nullable=True)  # Assembled full digest from chunk digests (~6-10K chars)
+
     # Relations
     user = relationship("User", back_populates="summaries")
     chat_messages = relationship("ChatMessage", back_populates="summary", cascade="all, delete-orphan")
+    chunks = relationship("VideoChunk", back_populates="summary", cascade="all, delete-orphan", order_by="VideoChunk.chunk_index")
 
     __table_args__ = (
         Index('idx_summaries_user', 'user_id'),
@@ -251,6 +255,27 @@ class CreditTransaction(Base):
     stripe_payment_id = Column(String(100))
     description = Column(Text)
     created_at = Column(DateTime, default=func.now())
+
+
+class VideoChunk(Base):
+    """Table des chunks de transcription pour le Hierarchical Digest Pipeline.
+
+    Chaque vidéo est découpée en chunks temporels, résumés individuellement,
+    puis assemblés en un full_digest complet stocké dans Summary.full_digest.
+    """
+    __tablename__ = "video_chunks"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    summary_id = Column(Integer, ForeignKey("summaries.id", ondelete="CASCADE"), nullable=False, index=True)
+    chunk_index = Column(Integer, nullable=False)  # Ordre du chunk dans la vidéo
+    start_seconds = Column(Integer, nullable=False, default=0)
+    end_seconds = Column(Integer, nullable=False, default=0)
+    chunk_text = Column(Text, nullable=False)  # Transcript brut du chunk (~10-15K chars)
+    chunk_digest = Column(Text, nullable=True)  # Mini-résumé du chunk (~500-800 chars)
+    created_at = Column(DateTime, default=func.now())
+
+    # Relation
+    summary = relationship("Summary", back_populates="chunks")
 
 
 class PlaylistAnalysis(Base):
