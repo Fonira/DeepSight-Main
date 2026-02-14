@@ -1150,7 +1150,29 @@ async def chat_with_corpus(
     print(f"   Playlist: {playlist_id}", flush=True)
     print(f"   Question: {request.message[:80]}...", flush=True)
     print(f"   Mode: {request.mode} | Web: {request.web_search}", flush=True)
-    
+
+    try:
+        return await _execute_corpus_chat(playlist_id, request, current_user, session)
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"   ❌ CORPUS CHAT CRASH: {e}", flush=True)
+        print(traceback.format_exc(), flush=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erreur interne du chat corpus: {type(e).__name__}: {str(e)[:200]}"
+        )
+
+
+async def _execute_corpus_chat(
+    playlist_id: str,
+    request: ChatCorpusRequest,
+    current_user: User,
+    session: AsyncSession
+) -> ChatCorpusResponse:
+    """Logique interne du chat corpus, encapsulée pour gestion d'erreur."""
+
     # FIX v4.1: Prendre la plus récente si plusieurs analyses existent
     result = await session.execute(
         select(PlaylistAnalysis)
@@ -1160,10 +1182,10 @@ async def chat_with_corpus(
         .limit(1)
     )
     playlist = result.scalar_one_or_none()
-    
+
     if not playlist:
         raise HTTPException(status_code=404, detail="Playlist non trouvée")
-    
+
     plan = current_user.plan or "free"
     chat_config = CHAT_CONFIG.get(plan, CHAT_CONFIG["free"])
     mode_config = MODE_CONFIG.get(request.mode, MODE_CONFIG["standard"])
@@ -1183,6 +1205,7 @@ async def chat_with_corpus(
     
     videos_data = [
         {
+            "id": v.id,  # FIX: nécessaire pour _build_hierarchical_context
             "position": v.playlist_position,
             "video_id": v.video_id,
             "video_title": v.video_title,
