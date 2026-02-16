@@ -20,7 +20,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.database import get_session, User
+from db.database import get_session, User, Summary
+from sqlalchemy import select as sa_select
 from auth.dependencies import get_current_user
 from .history_service import (
     get_user_history,
@@ -73,9 +74,10 @@ class PlaylistSummaryItem(BaseModel):
     total_words: int = 0
     status: str = "pending"
     has_meta_analysis: bool = False
+    thumbnail_url: Optional[str] = None
     created_at: Optional[str]
     completed_at: Optional[str]
-    
+
     class Config:
         from_attributes = True
 
@@ -269,7 +271,23 @@ async def get_playlists_history(
         search=search,
         status=status
     )
-    
+
+    # Récupérer les thumbnails des vidéos pour chaque playlist
+    thumbnail_map: dict[str, str] = {}
+    playlist_ids = [item.playlist_id for item in items if item.playlist_id]
+    if playlist_ids:
+        thumb_result = await session.execute(
+            sa_select(Summary.playlist_id, Summary.thumbnail_url, Summary.video_id)
+            .where(Summary.playlist_id.in_(playlist_ids))
+            .order_by(Summary.playlist_id, Summary.id)
+        )
+        for pid, thumb_url, vid_id in thumb_result.all():
+            if pid and pid not in thumbnail_map:
+                if thumb_url and thumb_url.startswith("http"):
+                    thumbnail_map[pid] = thumb_url
+                elif vid_id and len(vid_id) == 11:
+                    thumbnail_map[pid] = f"https://img.youtube.com/vi/{vid_id}/mqdefault.jpg"
+
     return PlaylistHistoryResponse(
         items=[
             PlaylistSummaryItem(
@@ -282,6 +300,7 @@ async def get_playlists_history(
                 total_words=item.total_words or 0,
                 status=item.status or "pending",
                 has_meta_analysis=bool(item.meta_analysis),
+                thumbnail_url=thumbnail_map.get(item.playlist_id),
                 created_at=item.created_at.isoformat() if item.created_at else None,
                 completed_at=item.completed_at.isoformat() if item.completed_at else None
             )
