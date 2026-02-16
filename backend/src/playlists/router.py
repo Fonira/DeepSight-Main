@@ -624,22 +624,23 @@ async def list_playlists(
     thumbnail_map: dict[str, str] = {}
 
     if playlist_ids:
-        # Chercher le premier thumbnail non-null pour chaque playlist_id
+        # Chercher le premier thumbnail et video_id pour chaque playlist_id
         thumb_result = await session.execute(
-            select(Summary.playlist_id, Summary.thumbnail_url)
+            select(Summary.playlist_id, Summary.thumbnail_url, Summary.video_id)
             .where(
                 Summary.playlist_id.in_(playlist_ids),
-                Summary.thumbnail_url.isnot(None),
-                Summary.thumbnail_url != ""
             )
             .order_by(Summary.playlist_id, Summary.id)
         )
         rows = thumb_result.all()
-        for pid, thumb_url in rows:
-            if pid and pid not in thumbnail_map and thumb_url:
-                # Ne garder que les vraies URLs (pas base64 trop lourds)
-                if thumb_url.startswith("http"):
+        for pid, thumb_url, vid_id in rows:
+            if pid and pid not in thumbnail_map:
+                # Priorité 1: URL HTTP existante
+                if thumb_url and thumb_url.startswith("http"):
                     thumbnail_map[pid] = thumb_url
+                # Priorité 2: Générer depuis le video_id YouTube
+                elif vid_id and len(vid_id) == 11:
+                    thumbnail_map[pid] = f"https://img.youtube.com/vi/{vid_id}/mqdefault.jpg"
 
     return [
         {
