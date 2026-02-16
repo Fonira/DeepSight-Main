@@ -611,14 +611,36 @@ async def list_playlists(
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session)
 ):
-    """Liste les playlists de l'utilisateur."""
+    """Liste les playlists de l'utilisateur avec thumbnail et meta-analysis."""
     result = await session.execute(
         select(PlaylistAnalysis)
         .where(PlaylistAnalysis.user_id == current_user.id)
         .order_by(PlaylistAnalysis.created_at.desc())
     )
     playlists = result.scalars().all()
-    
+
+    # Récupérer les thumbnails des vidéos associées à chaque playlist
+    playlist_ids = [p.playlist_id for p in playlists]
+    thumbnail_map: dict[str, str] = {}
+
+    if playlist_ids:
+        # Chercher le premier thumbnail non-null pour chaque playlist_id
+        thumb_result = await session.execute(
+            select(Summary.playlist_id, Summary.thumbnail_url)
+            .where(
+                Summary.playlist_id.in_(playlist_ids),
+                Summary.thumbnail_url.isnot(None),
+                Summary.thumbnail_url != ""
+            )
+            .order_by(Summary.playlist_id, Summary.id)
+        )
+        rows = thumb_result.all()
+        for pid, thumb_url in rows:
+            if pid and pid not in thumbnail_map and thumb_url:
+                # Ne garder que les vraies URLs (pas base64 trop lourds)
+                if thumb_url.startswith("http"):
+                    thumbnail_map[pid] = thumb_url
+
     return [
         {
             "id": p.id,
@@ -630,6 +652,8 @@ async def list_playlists(
             "total_duration": p.total_duration,
             "total_words": p.total_words,
             "status": p.status,
+            "has_meta_analysis": bool(p.meta_analysis),
+            "thumbnail_url": thumbnail_map.get(p.playlist_id),
             "created_at": p.created_at.isoformat() if p.created_at else None,
             "completed_at": p.completed_at.isoformat() if p.completed_at else None
         }

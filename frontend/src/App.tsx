@@ -20,7 +20,7 @@ import { LanguageProvider } from "./contexts/LanguageContext";
 import { LoadingWordProvider } from "./contexts/LoadingWordContext";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { SkipLink } from "./components/SkipLink";
-import { InstallPrompt, UpdatePrompt } from "./components/InstallPrompt";
+
 import { LoadingWordGlobal } from "./components/LoadingWord";
 import { ErrorBoundary as RouteErrorBoundary } from "./components/ErrorBoundary";
 import { CrispChat } from "./components/CrispChat";
@@ -530,12 +530,7 @@ const AppRoutes = () => {
               </Routes>
             </ErrorBoundary>
             
-            {/* 📱 PWA: Prompt d'installation */}
             <CrispChat />
-            <InstallPrompt position="bottom" />
-            
-            {/* 🔄 PWA: Notification de mise à jour */}
-            <UpdatePrompt />
 
             {/* 🧠 Widget "Le Saviez-Vous" global - visible sur toutes les pages */}
             <LoadingWordGlobal />
