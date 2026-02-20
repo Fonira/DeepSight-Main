@@ -221,6 +221,7 @@ const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
 const PaymentCancel = lazy(() => import("./pages/PaymentCancel"));
 const StatusPage = lazy(() => import("./pages/StatusPage"));
 const ContactPage = lazy(() => import("./pages/ContactPage"));
+const SharedAnalysisPage = lazy(() => import("./pages/SharedAnalysisPage"));
 
 // Pages protégées
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
@@ -434,7 +435,15 @@ const AppRoutes = () => {
                     </Suspense>
                   </RouteErrorBoundary>
                 } />
-                
+
+                <Route path="/s/:shareToken" element={
+                  <RouteErrorBoundary variant="full" componentName="SharedAnalysisPage">
+                    <Suspense fallback={<PageSkeleton variant="simple" />}>
+                      <SharedAnalysisPage />
+                    </Suspense>
+                  </RouteErrorBoundary>
+                } />
+
                 {/* Routes protégées */}
                 <Route
                   element={

@@ -11,7 +11,8 @@
     "activeTab",
     "tabs",
     "alarms",
-    "identity"
+    "identity",
+    "clipboardWrite"
   ],
 
   "host_permissions": [

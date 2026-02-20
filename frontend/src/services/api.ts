@@ -1749,6 +1749,42 @@ export const statusApi = {
   },
 };
 
+export interface SharedAnalysisResponse {
+  share_token: string;
+  video_id: string;
+  video_title: string;
+  video_thumbnail: string;
+  verdict: string;
+  view_count: number;
+  created_at: string;
+  analysis: {
+    video_title: string;
+    video_channel: string;
+    video_url: string;
+    thumbnail_url: string;
+    category: string;
+    reliability_score: number;
+    summary_content: string;
+    tags: string;
+    mode: string;
+    lang: string;
+    created_at: string;
+  };
+}
+
+export const shareApi = {
+  async createShareLink(videoId: string): Promise<{ share_url: string; share_token: string }> {
+    return request('/api/share', {
+      method: 'POST',
+      body: JSON.stringify({ video_id: videoId }),
+    });
+  },
+
+  async getSharedAnalysis(shareToken: string): Promise<SharedAnalysisResponse> {
+    return request(`/api/share/${shareToken}`, { skipAuth: true });
+  },
+};
+
 // Export par défaut
 export default {
   auth: authApi,
@@ -1765,4 +1801,5 @@ export default {
   study: studyApi,
   contact: contactApi,
   status: statusApi,
+  share: shareApi,
 };

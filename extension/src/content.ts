@@ -366,6 +366,14 @@ async function displaySummary(summaryId: number): Promise<void> {
         <div class="ds-detail-panel hidden" id="ds-detail-panel">
           <div class="ds-detail-content" id="ds-summary-text">${detailedHtml}</div>
         </div>
+        <div class="ds-share-actions">
+          <button class="ds-btn ds-btn-outline" id="ds-copy-btn">
+            \u{1F4CB} Copy
+          </button>
+          <button class="ds-btn ds-btn-outline" id="ds-share-btn">
+            \u{1F517} Share
+          </button>
+        </div>
         <div class="ds-summary-actions">
           <a href="${WEBAPP_URL}/summary/${summaryId}" target="_blank" rel="noreferrer" class="ds-btn ds-btn-primary">
             \u{1F4D6} Full analysis on DeepSight
@@ -397,6 +405,64 @@ async function displaySummary(summaryId: number): Promise<void> {
     });
 
     document.getElementById('ds-chat-btn')?.addEventListener('click', () => openChat(summaryId, summary.video_title));
+
+    // Copy formatted text
+    document.getElementById('ds-copy-btn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('ds-copy-btn');
+      if (!btn) return;
+      const keyPointsText = parsed.keyPoints.map((kp: KeyPoint) => `- ${kp.text}`).join('\n');
+      const videoId = currentVideoId || '';
+      let shareUrl = `${WEBAPP_URL}/summary/${summaryId}`;
+
+      try {
+        const res = await chrome.runtime.sendMessage({ action: 'SHARE_ANALYSIS', data: { videoId } });
+        if (res.success && res.share_url) shareUrl = res.share_url;
+      } catch { /* use fallback URL */ }
+
+      const text = [
+        `\u{1F3AF} DeepSight \u2014 AI Analysis`,
+        ``,
+        `\u{1F4F9} ${summary.video_title}`,
+        `\u{1F3F7}\uFE0F Category: ${summary.category}`,
+        `\u{1F4CA} Reliability: ${summary.reliability_score}%`,
+        ``,
+        `\u{1F4A1} ${parsed.verdict}`,
+        ``,
+        keyPointsText ? `Key points:\n${keyPointsText}` : '',
+        ``,
+        `\u{1F517} ${shareUrl}`,
+        `\u2014`,
+        `deepsightsynthesis.com`,
+      ].filter(Boolean).join('\n');
+
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = '\u2705 Copied!';
+        setTimeout(() => { btn.textContent = '\u{1F4CB} Copy'; }, 2000);
+      } catch {
+        btn.textContent = '\u274C Failed';
+        setTimeout(() => { btn.textContent = '\u{1F4CB} Copy'; }, 2000);
+      }
+    });
+
+    // Share link
+    document.getElementById('ds-share-btn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('ds-share-btn');
+      if (!btn) return;
+      const videoId = currentVideoId || '';
+
+      btn.textContent = '\u23F3 Loading...';
+      try {
+        const res = await chrome.runtime.sendMessage({ action: 'SHARE_ANALYSIS', data: { videoId } });
+        if (!res.success) throw new Error(res.error);
+        await navigator.clipboard.writeText(res.share_url);
+        btn.textContent = '\u2705 Link copied!';
+        setTimeout(() => { btn.textContent = '\u{1F517} Share'; }, 2000);
+      } catch {
+        btn.textContent = '\u274C Failed';
+        setTimeout(() => { btn.textContent = '\u{1F517} Share'; }, 2000);
+      }
+    });
 
     if (analyzeBtn) {
       analyzeBtn.disabled = false;

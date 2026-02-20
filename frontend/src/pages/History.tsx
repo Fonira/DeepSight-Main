@@ -19,7 +19,7 @@ import {
   ChevronRight, Clock, Video, Layers,
   Grid, List, RefreshCw, BarChart2,
   AlertCircle, X,
-  Maximize2, ExternalLink,
+  Maximize2, ExternalLink, Share2,
   // 🆕 Toolbar icons
   Copy, Check, GraduationCap, Brain, Tags,
   Download, FileText, FileDown, ChevronDown
@@ -37,7 +37,7 @@ import { ThumbnailImage } from "../components/ThumbnailImage";
 import { CitationExport } from "../components/CitationExport";
 import { StudyToolsModal } from "../components/StudyToolsModal";
 import { KeywordsModal } from "../components/KeywordsModal";
-import { videoApi } from "../services/api";
+import { videoApi, shareApi } from "../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🌐 API CONFIGURATION
@@ -564,6 +564,29 @@ export const History: React.FC = () => {
     }
   };
 
+  const handleShareVideo = async (video: VideoSummary) => {
+    try {
+      const { share_url } = await shareApi.createShareLink(video.video_id);
+      if (navigator.share) {
+        await navigator.share({
+          title: `DeepSight — ${video.video_title}`,
+          url: share_url,
+        });
+      } else {
+        await navigator.clipboard.writeText(share_url);
+        // Brief visual feedback handled by the button
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      try {
+        const { share_url } = await shareApi.createShareLink(video.video_id);
+        await navigator.clipboard.writeText(share_url);
+      } catch {
+        console.error("Share error");
+      }
+    }
+  };
+
   const handleDeletePlaylist = async (playlist: PlaylistSummary) => {
     if (!confirm(language === 'fr' ? 'Supprimer cette playlist ?' : 'Delete this playlist?')) return;
     try {
@@ -920,6 +943,7 @@ export const History: React.FC = () => {
                       onView={() => handleViewVideo(video)}
                       onChat={() => handleOpenVideoChat(video)}
                       onDelete={() => handleDeleteVideo(video)}
+                      onShare={() => handleShareVideo(video)}
                     />
                   ))}
                 </div>
@@ -1185,7 +1209,8 @@ const VideoCard: React.FC<{
   onView: () => void;
   onChat: () => void;
   onDelete: () => void;
-}> = ({ video, viewMode, language, onView, onChat, onDelete }) => {
+  onShare: () => void;
+}> = ({ video, viewMode, language, onView, onChat, onDelete, onShare }) => {
   const emoji = categoryEmoji[video.category] || "📺";
 
   if (viewMode === "list") {
@@ -1228,6 +1253,13 @@ const VideoCard: React.FC<{
               title={language === 'fr' ? 'Ouvrir le chat' : 'Open chat'}
             >
               <MessageCircle className="w-4 h-4" />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onShare(); }}
+              className="p-2 rounded-lg text-text-tertiary hover:text-accent-primary hover:bg-accent-primary-muted transition-colors"
+              title={language === 'fr' ? 'Partager' : 'Share'}
+            >
+              <Share2 className="w-4 h-4" />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
@@ -1283,6 +1315,13 @@ const VideoCard: React.FC<{
               title={language === 'fr' ? 'Ouvrir le chat' : 'Open chat'}
             >
               <MessageCircle className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onShare(); }}
+              className="p-1.5 rounded text-text-tertiary hover:text-accent-primary hover:bg-accent-primary-muted transition-colors"
+              title={language === 'fr' ? 'Partager' : 'Share'}
+            >
+              <Share2 className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(); }}

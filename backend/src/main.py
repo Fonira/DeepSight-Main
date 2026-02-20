@@ -212,6 +212,14 @@ except ImportError as e:
     CONTACT_AVAILABLE = False
     print(f"⚠️ Contact router not available: {e}", flush=True)
 
+# 🔗 Share router (public analysis sharing)
+try:
+    from share.router import router as share_router
+    SHARE_ROUTER_AVAILABLE = True
+except ImportError as e:
+    SHARE_ROUTER_AVAILABLE = False
+    print(f"⚠️ Share router not available: {e}", flush=True)
+
 VERSION = "3.8.0"  # Phase 4: CSV/Excel export, Batch API, Health detailed
 APP_NAME = "Deep Sight API"
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
@@ -591,6 +599,11 @@ if MONITORING_AVAILABLE:
 if CONTACT_AVAILABLE:
     app.include_router(contact_router, prefix="/api", tags=["Contact"])
     print("📬 Contact router loaded (POST /api/contact)", flush=True)
+
+# 🔗 Share router (public analysis sharing)
+if SHARE_ROUTER_AVAILABLE:
+    app.include_router(share_router, prefix="/api/share", tags=["Share"])
+    print("🔗 Share router loaded (POST /api/share, GET /api/share/{token})", flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE

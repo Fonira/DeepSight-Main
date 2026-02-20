@@ -25,7 +25,7 @@ import { Image } from 'expo-image';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { videoApi, chatApi, studyApi } from '../services/api';
+import { videoApi, chatApi, studyApi, shareApi } from '../services/api';
 import { Header, Card, Badge, Button, YouTubePlayer, useToast, StreamingProgress, FreshnessIndicator, ReliabilityScore, DeepSightSpinner } from '../components';
 import { FlashcardsComponent, QuizComponent } from '../components/study';
 import type { QuizQuestion } from '../components/study';
@@ -567,14 +567,31 @@ export const AnalysisScreen: React.FC = () => {
     setShowQuiz(false);
   };
 
-  // Share summary
+  // Share summary with public link
   const handleShare = async () => {
     if (!summary) return;
 
     try {
+      const videoId = summary.videoId || summary.videoInfo?.id || '';
+      let shareUrl = '';
+
+      try {
+        const { share_url } = await shareApi.createShareLink(videoId);
+        shareUrl = share_url;
+      } catch {
+        // Fallback without share link
+      }
+
+      const message = [
+        `\u{1F3AF} DeepSight \u2014 ${summary.title}`,
+        summary.content ? `\u{1F4A1} ${summary.content.substring(0, 200)}...` : '',
+        shareUrl ? `\n\u{1F517} ${shareUrl}` : '',
+      ].filter(Boolean).join('\n');
+
       await Share.share({
-        message: `${summary.title}\n\n${summary.content?.substring(0, 500)}...\n\nAnalysé avec DeepSight`,
-        title: summary.title,
+        message,
+        url: shareUrl || undefined, // iOS only
+        title: `DeepSight \u2014 ${summary.title}`,
       });
     } catch { /* share cancelled or failed */ }
   };

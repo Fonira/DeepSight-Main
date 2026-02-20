@@ -199,6 +199,15 @@ async function getSummary(summaryId: number): Promise<Summary> {
   return apiRequest<Summary>(`/videos/summary/${summaryId}`);
 }
 
+// ── Share API ──
+
+async function shareAnalysis(videoId: string): Promise<{ share_url: string; share_token: string }> {
+  return apiRequest<{ share_url: string; share_token: string }>('/share', {
+    method: 'POST',
+    body: JSON.stringify({ video_id: videoId }),
+  });
+}
+
 // ── Chat API ──
 
 async function askQuestion(
@@ -393,6 +402,16 @@ async function handleMessage(message: ExtensionMessage): Promise<MessageResponse
       try {
         const plan = await fetchPlan();
         return { success: true, plan };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case 'SHARE_ANALYSIS': {
+      const { videoId } = message.data as { videoId: string };
+      try {
+        const result = await shareAnalysis(videoId);
+        return { success: true, share_url: result.share_url };
       } catch (e) {
         return { success: false, error: (e as Error).message };
       }

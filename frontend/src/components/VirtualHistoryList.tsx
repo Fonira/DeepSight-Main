@@ -30,6 +30,7 @@ import {
   ExternalLink,
   MessageCircle,
   FileText,
+  Share2,
 } from 'lucide-react';
 import { DeepSightSpinnerSmall } from './ui';
 
@@ -288,6 +289,13 @@ const SummaryCard = memo<SummaryCardProps>(({
                   >
                     <ExternalLink className="w-4 h-4" />
                     YouTube
+                  </button>
+                  <button
+                    onClick={() => { onAction('share'); setMenuOpen(false); }}
+                    className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    {language === 'fr' ? 'Partager' : 'Share'}
                   </button>
                   <hr className="my-1 border-border-default" />
                   <button

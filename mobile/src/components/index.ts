@@ -68,5 +68,8 @@ export { TTSPlayer } from './audio/TTSPlayer';
 // Plan Badge
 export { PlanBadge } from './PlanBadge';
 
+// Share
+export { ShareAnalysisButton } from './ShareAnalysisButton';
+
 // NEW: Academic Sources
 export { PaperCard, AcademicSourcesSection, BibliographyExportModal } from './academic';

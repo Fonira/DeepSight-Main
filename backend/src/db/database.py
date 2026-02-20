@@ -499,6 +499,27 @@ class AcademicPaper(Base):
     )
 
 
+class SharedAnalysis(Base):
+    """Table des analyses partagées (liens publics)"""
+    __tablename__ = "shared_analyses"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    share_token = Column(String(12), unique=True, nullable=False, index=True)
+    video_id = Column(String(20), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    analysis_snapshot = Column(Text, nullable=False)  # JSON snapshot of analysis
+    video_title = Column(Text)
+    video_thumbnail = Column(Text)
+    verdict = Column(Text)
+    view_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=func.now())
+
+    __table_args__ = (
+        Index('idx_shared_analyses_token', 'share_token'),
+        Index('idx_shared_analyses_user_video', 'user_id', 'video_id'),
+    )
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 FONCTIONS DATABASE
 # ═══════════════════════════════════════════════════════════════════════════════

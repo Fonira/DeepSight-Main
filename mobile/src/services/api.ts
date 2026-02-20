@@ -1597,6 +1597,15 @@ export const notificationsApi = {
   },
 };
 
+export const shareApi = {
+  async createShareLink(videoId: string): Promise<{ share_url: string; share_token: string }> {
+    return request('/api/share', {
+      method: 'POST',
+      body: { video_id: videoId },
+    });
+  },
+};
+
 export default {
   authApi,
   userApi,
@@ -1609,5 +1618,6 @@ export default {
   tournesolApi,
   contactApi,
   notificationsApi,
+  shareApi,
   ApiError,
 };

@@ -148,7 +148,8 @@ export type MessageAction =
   | 'SYNC_AUTH_FROM_WEBSITE'
   | 'ANALYSIS_PROGRESS'
   | 'GET_PLAN'
-  | 'START_GUEST_ANALYSIS';
+  | 'START_GUEST_ANALYSIS'
+  | 'SHARE_ANALYSIS';
 
 export interface ExtensionMessage {
   action: MessageAction;
@@ -164,6 +165,7 @@ export interface MessageResponse {
   plan?: PlanInfo;
   result?: unknown;
   error?: string;
+  share_url?: string;
 }
 
 // ── Category Icons ──

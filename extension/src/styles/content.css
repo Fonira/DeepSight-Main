@@ -790,6 +790,33 @@
   text-decoration: underline;
 }
 
+/* ── Share Actions ── */
+
+.ds-share-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.ds-share-actions .ds-btn-outline {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--ds-border);
+  background: transparent;
+  color: var(--ds-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.ds-share-actions .ds-btn-outline:hover {
+  background: var(--ds-surface);
+  color: var(--ds-text-primary);
+  border-color: var(--ds-accent);
+}
+
 /* ── Summary Actions ── */
 
 .ds-summary-actions {
