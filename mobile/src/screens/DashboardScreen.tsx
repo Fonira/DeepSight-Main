@@ -10,6 +10,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  Linking,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,10 +25,11 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { videoApi, historyApi } from '../services/api';
-import { Header, VideoCard, Card, Badge, Avatar, FreeTrialLimitModal } from '../components';
+import { Header, VideoCard, Card, Badge, Avatar, FreeTrialLimitModal, PlanBadge } from '../components';
 import SmartInputBar from '../components/SmartInputBar';
 import { CustomizationPanel } from '../components/customization';
 import { VideoDiscoveryModal } from '../components/VideoDiscoveryModal';
+import { usePlan } from '../hooks/usePlan';
 import { sp, borderRadius } from '../theme/spacing';
 import { fontFamily, fontSize } from '../theme/typography';
 import { gradients } from '../theme/colors';
@@ -61,6 +63,7 @@ export const DashboardScreen: React.FC = () => {
   useScreenDoodleVariant('analysis');
 
   const userPlan = normalizePlanId(user?.plan);
+  const { planName, planIcon, planColor, limits, usage, refetch: refetchPlan } = usePlan();
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -109,9 +112,9 @@ export const DashboardScreen: React.FC = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([refreshUser(), loadRecentAnalyses(), loadFavorites()]);
+    await Promise.all([refreshUser(), loadRecentAnalyses(), loadFavorites(), refetchPlan()]);
     setRefreshing(false);
-  }, [refreshUser, loadRecentAnalyses, loadFavorites]);
+  }, [refreshUser, loadRecentAnalyses, loadFavorites, refetchPlan]);
 
   React.useEffect(() => {
     loadRecentAnalyses();
@@ -137,6 +140,27 @@ export const DashboardScreen: React.FC = () => {
   }) => {
     if (isOffline) {
       Alert.alert(t.common.error, t.errors.offlineError);
+      return;
+    }
+
+    // Check monthly analysis quota
+    if (
+      limits.monthlyAnalyses !== -1 &&
+      usage.analyses_this_month >= limits.monthlyAnalyses
+    ) {
+      Alert.alert(
+        language === 'fr' ? 'Quota atteint' : 'Quota reached',
+        language === 'fr'
+          ? `Vous avez utilisé ${usage.analyses_this_month}/${limits.monthlyAnalyses} analyses ce mois-ci.`
+          : `You have used ${usage.analyses_this_month}/${limits.monthlyAnalyses} analyses this month.`,
+        [
+          { text: t.common.cancel, style: 'cancel' },
+          {
+            text: language === 'fr' ? 'Voir les plans' : 'View plans',
+            onPress: () => Linking.openURL('https://www.deepsightsynthesis.com/upgrade'),
+          },
+        ]
+      );
       return;
     }
 
@@ -371,6 +395,16 @@ export const DashboardScreen: React.FC = () => {
               <Text style={[styles.userName, { color: colors.textPrimary }]}>
                 {user?.username || t.admin.user}
               </Text>
+              <View style={{ marginTop: sp.sm }}>
+                <PlanBadge
+                  planName={planName}
+                  planIcon={planIcon}
+                  planColor={planColor}
+                  analysesUsed={usage.analyses_this_month}
+                  analysesLimit={limits.monthlyAnalyses}
+                  compact
+                />
+              </View>
             </View>
             <Pressable
               onPress={() => navigation.navigate('Account')}

@@ -19,6 +19,7 @@ import * as Haptics from 'expo-haptics';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Linking } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -29,6 +30,7 @@ import { FlashcardsComponent } from '../components/study/FlashcardsComponent';
 import { QuizComponent, QuizQuestion } from '../components/study/QuizComponent';
 import { Header } from '../components/Header';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
+import { usePlan } from '../hooks/usePlan';
 import type { RootStackParamList } from '../types';
 
 type StudyScreenRouteProp = RouteProp<RootStackParamList, 'StudyTools'>;
@@ -51,6 +53,7 @@ export const StudyScreen: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
   useScreenDoodleVariant('academic');
+  const { flashcardsEnabled } = usePlan();
 
   const { summaryId } = route.params;
 
@@ -333,6 +336,38 @@ export const StudyScreen: React.FC = () => {
     }
   };
 
+  // Lock screen if flashcards not enabled for this plan
+  if (!flashcardsEnabled) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <Header
+          title={language === 'fr' ? 'Mode Étude' : 'Study Mode'}
+          showBack
+        />
+        <View style={styles.lockContainer}>
+          <Animated.View entering={FadeIn.duration(400)} style={styles.lockContent}>
+            <Text style={styles.lockIcon}>🔒</Text>
+            <Text style={[styles.lockTitle, { color: colors.textPrimary }]}>
+              {language === 'fr'
+                ? 'Fonctionnalité réservée'
+                : 'Premium feature'}
+            </Text>
+            <Text style={[styles.lockDescription, { color: colors.textSecondary }]}>
+              {language === 'fr'
+                ? 'Les flashcards et quiz sont disponibles dès le plan Étudiant (2,99€/mois).'
+                : 'Flashcards and quizzes are available from the Student plan (€2.99/mo).'}
+            </Text>
+            <Button
+              title={language === 'fr' ? 'Découvrir les plans' : 'View plans'}
+              onPress={() => Linking.openURL('https://www.deepsightsynthesis.com/upgrade')}
+              style={styles.lockButton}
+            />
+          </Animated.View>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
       <Header
@@ -477,6 +512,36 @@ const styles = StyleSheet.create({
   errorActions: {
     flexDirection: 'row',
     gap: Spacing.md,
+  },
+  lockContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.xl,
+  },
+  lockContent: {
+    alignItems: 'center',
+    maxWidth: 320,
+  },
+  lockIcon: {
+    fontSize: 64,
+    marginBottom: Spacing.lg,
+  },
+  lockTitle: {
+    fontSize: Typography.fontSize.xl,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    marginBottom: Spacing.sm,
+    textAlign: 'center',
+  },
+  lockDescription: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.body,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.xxl,
+  },
+  lockButton: {
+    minWidth: 200,
   },
 });
 

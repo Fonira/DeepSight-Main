@@ -44,7 +44,8 @@ import { FloatingChat } from '../components/chat';
 import { UpgradePromptModal } from '../components/upgrade';
 import { useAuth } from '../contexts/AuthContext';
 import { useBackgroundAnalysis, type VideoAnalysisTask } from '../contexts/BackgroundAnalysisContext';
-import { hasFeature, normalizePlanId, type PlanId } from '../config/planPrivileges';
+import { hasFeature, normalizePlanId, PLAN_LIMITS, type PlanId } from '../config/planPrivileges';
+import { usePlan } from '../hooks/usePlan';
 import { videoApi as videoApiService } from '../services/api';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { formatDuration, formatDate } from '../utils/formatters';
@@ -70,6 +71,7 @@ export const AnalysisScreen: React.FC = () => {
 
   // User plan
   const userPlan = normalizePlanId(user?.plan);
+  const { limits: planLimits, usage: planUsage } = usePlan();
 
   const { summaryId, videoUrl } = route.params || {};
 
@@ -1119,6 +1121,17 @@ export const AnalysisScreen: React.FC = () => {
             ListFooterComponent={isSendingMessage ? <TypingIndicator /> : null}
           />
 
+          {/* Chat limit warning */}
+          {planLimits.chatDailyLimit !== -1 &&
+            planUsage.chat_messages_today >= planLimits.chatDailyLimit && (
+            <View style={styles.chatLimitWarning}>
+              <Text style={styles.chatLimitText}>
+                {language === 'fr'
+                  ? 'Limite atteinte. Passez au plan supérieur pour continuer.'
+                  : 'Limit reached. Upgrade to continue chatting.'}
+              </Text>
+            </View>
+          )}
           <ChatInput
             value={chatInput}
             onChangeText={setChatInput}
@@ -1676,6 +1689,16 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.body,
     minWidth: 60,
     paddingVertical: 0,
+  },
+  chatLimitWarning: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+  },
+  chatLimitText: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.bodyMedium,
+    color: '#f59e0b',
+    textAlign: 'center',
   },
 });
 

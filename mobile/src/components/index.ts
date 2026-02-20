@@ -65,5 +65,8 @@ export { UpgradePromptModal, FreeTrialLimitModal } from './upgrade';
 // NEW: Audio Components
 export { TTSPlayer } from './audio/TTSPlayer';
 
+// Plan Badge
+export { PlanBadge } from './PlanBadge';
+
 // NEW: Academic Sources
 export { PaperCard, AcademicSourcesSection, BibliographyExportModal } from './academic';

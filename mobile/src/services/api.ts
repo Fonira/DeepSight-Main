@@ -1387,6 +1387,23 @@ export const billingApi = {
       method: 'DELETE',
     });
   },
+
+  async getMyPlan(): Promise<{
+    plan: string;
+    name: string;
+    limits: {
+      monthly_analyses: number;
+      chat_daily_limit: number;
+      chat_questions_per_video: number;
+      flashcards_enabled: boolean;
+    };
+    usage: {
+      analyses_this_month: number;
+      chat_messages_today: number;
+    };
+  }> {
+    return request('/api/billing/my-plan?platform=mobile');
+  },
 };
 
 // ============================================
