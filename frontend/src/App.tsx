@@ -25,6 +25,7 @@ import { LoadingWordGlobal } from "./components/LoadingWord";
 import { ErrorBoundary as RouteErrorBoundary } from "./components/ErrorBoundary";
 import { CrispChat } from "./components/CrispChat";
 import { CookieBanner } from "./components/CookieBanner";
+import { UpgradeModal } from "./components/UpgradeModal";
 import { analytics } from "./services/analytics";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -531,6 +532,9 @@ const AppRoutes = () => {
             </ErrorBoundary>
             
             <CrispChat />
+
+            {/* 🔒 Modal upgrade global (403/429 interceptor) */}
+            <UpgradeModal />
 
             {/* 🧠 Widget "Le Saviez-Vous" global - visible sur toutes les pages */}
             <LoadingWordGlobal />

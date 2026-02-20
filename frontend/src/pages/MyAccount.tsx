@@ -9,24 +9,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
-import { billingApi, authApi } from '../services/api';
+import { billingApi, authApi, type ApiBillingMyPlan } from '../services/api';
 import { useToast } from '../components/Toast';
 import {
   User, Shield, Key, Trash2, LogOut, Check,
   AlertCircle, Eye, EyeOff, Copy, RefreshCw, Lock,
   ExternalLink, Mail, Calendar, Crown, CreditCard, Sparkles,
   ChevronRight, Hash, AlertTriangle, Zap, Clock,
-  MessageSquare, Search, FileText, Download, Headphones,
-  Users, Code, GraduationCap, Brain, BookOpen
+  MessageSquare, Search, FileText,
+  Users, GraduationCap, Brain, BookOpen
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from '../components/ui';
-import {
-  PLAN_FEATURES,
-  PLAN_LIMITS,
-  PLANS_INFO,
-  normalizePlanId,
-  type PlanId
-} from '../config/planPrivileges';
 import { Link, useNavigate } from 'react-router-dom';
 import DoodleBackground from '../components/DoodleBackground';
 
@@ -79,8 +72,12 @@ export const MyAccount: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const isTeamOrHigher = user?.plan === 'team' || user?.plan === 'expert' || user?.plan === 'unlimited';
-  const userPlanId = normalizePlanId(user?.plan);
-  
+
+  // Plan data from API
+  const [myPlan, setMyPlan] = useState<ApiBillingMyPlan | null>(null);
+  const [planLoading, setPlanLoading] = useState(true);
+  const [portalLoading, setPortalLoading] = useState(false);
+
   // Helper pour les traductions inline
   const tr = useCallback((fr: string, en: string) => language === 'fr' ? fr : en, [language]);
 
@@ -130,6 +127,29 @@ export const MyAccount: React.FC = () => {
     setApiKey(prev => ({ ...prev, loading: true }));
     fetchStatus();
   }, [isTeamOrHigher, tr]);
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // 📋 Fetch My Plan (billing/my-plan)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    billingApi.getMyPlan('web')
+      .then(setMyPlan)
+      .catch(() => {})
+      .finally(() => setPlanLoading(false));
+  }, []);
+
+  const handleManageSubscription = async () => {
+    setPortalLoading(true);
+    try {
+      const { portal_url } = await billingApi.getPortalUrl();
+      window.location.href = portal_url;
+    } catch {
+      showToast(tr('Erreur lors de l\'accès au portail', 'Error accessing portal'), 'error');
+    } finally {
+      setPortalLoading(false);
+    }
+  };
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 🔧 API Key Actions
@@ -237,230 +257,39 @@ export const MyAccount: React.FC = () => {
 
   const currentPlan = planConfig[user?.plan || 'free'];
 
-  // Génère la liste des privilèges pour affichage
-  const getPrivilegesForDisplay = useCallback((planId: PlanId) => {
-    const features = PLAN_FEATURES[planId];
-    const limits = PLAN_LIMITS[planId];
-
-    return [
-      // Analyses
-      {
-        id: 'analyses',
-        label: tr('Analyses mensuelles', 'Monthly analyses'),
-        value: limits.monthlyAnalyses === -1 ? tr('Illimité', 'Unlimited') : `${limits.monthlyAnalyses}`,
-        icon: Zap,
-        included: true,
-        highlight: limits.monthlyAnalyses === -1,
-      },
-      {
-        id: 'credits',
-        label: tr('Crédits mensuels', 'Monthly credits'),
-        value: `${limits.monthlyCredits.toLocaleString()}`,
-        icon: Sparkles,
-        included: true,
-      },
-      {
-        id: 'duration',
-        label: tr('Durée max vidéo', 'Max video duration'),
-        value: limits.maxVideoDuration === -1 ? tr('Illimité', 'Unlimited') : `${Math.floor(limits.maxVideoDuration / 60)} min`,
-        icon: Clock,
-        included: true,
-      },
-      // Chat
-      {
-        id: 'chat',
-        label: tr('Questions chat/vidéo', 'Chat questions/video'),
-        value: limits.chatQuestionsPerVideo === -1 ? tr('Illimité', 'Unlimited') : `${limits.chatQuestionsPerVideo}`,
-        icon: MessageSquare,
-        included: features.chatBasic,
-      },
-      {
-        id: 'websearch',
-        label: tr('Recherche web', 'Web search'),
-        value: limits.webSearchMonthly === 0 ? '—' : limits.webSearchMonthly === -1 ? tr('Illimité', 'Unlimited') : `${limits.webSearchMonthly}/mois`,
-        icon: Search,
-        included: features.chatWebSearch,
-        highlight: features.chatWebSearch,
-      },
-      // Outils d'étude
-      {
-        id: 'flashcards',
-        label: 'Flashcards',
-        value: features.flashcards ? '✓' : '—',
-        icon: GraduationCap,
-        included: features.flashcards,
-        highlight: features.flashcards && planId === 'student',
-      },
-      {
-        id: 'mindmaps',
-        label: tr('Cartes mentales', 'Mind maps'),
-        value: features.conceptMaps ? '✓' : '—',
-        icon: Brain,
-        included: features.conceptMaps,
-        highlight: features.conceptMaps && planId === 'student',
-      },
-      // Playlists
-      {
-        id: 'playlists',
-        label: 'Playlists',
-        value: limits.maxPlaylists === 0 ? '—' : limits.maxPlaylists === -1 ? tr('Illimité', 'Unlimited') : `${limits.maxPlaylists} (${limits.maxPlaylistVideos} vidéos)`,
-        icon: BookOpen,
-        included: features.playlists,
-        highlight: features.playlists,
-      },
-      // Export
-      {
-        id: 'exportPdf',
-        label: 'Export PDF',
-        value: features.exportPdf ? '✓' : '—',
-        icon: FileText,
-        included: features.exportPdf,
-      },
-      {
-        id: 'exportMd',
-        label: 'Export Markdown',
-        value: features.exportMarkdown ? '✓' : '—',
-        icon: Download,
-        included: features.exportMarkdown,
-      },
-      // Audio
-      {
-        id: 'tts',
-        label: tr('Lecture audio TTS', 'TTS Audio'),
-        value: features.ttsAudio ? '✓' : '—',
-        icon: Headphones,
-        included: features.ttsAudio,
-      },
-      // Historique
-      {
-        id: 'history',
-        label: tr('Historique', 'History'),
-        value: limits.historyDays === -1 ? tr('Illimité', 'Unlimited') : `${limits.historyDays} ${tr('jours', 'days')}`,
-        icon: Clock,
-        included: true,
-      },
-      // API & Team
-      {
-        id: 'api',
-        label: tr('Accès API', 'API Access'),
-        value: features.apiAccess ? `${limits.apiRequestsDaily}/jour` : '—',
-        icon: Code,
-        included: features.apiAccess,
-        highlight: features.apiAccess,
-      },
-      {
-        id: 'team',
-        label: tr('Utilisateurs', 'Users'),
-        value: limits.teamMembers === 1 ? '1' : `${limits.teamMembers}`,
-        icon: Users,
-        included: limits.teamMembers > 1,
-        highlight: limits.teamMembers > 1,
-      },
-    ];
-  }, [tr]);
-
-  // Obtient les fonctionnalités manquantes (plans supérieurs)
-  const getMissingFeatures = useCallback((currentPlanId: PlanId) => {
-    const planOrder: PlanId[] = ['free', 'student', 'starter', 'pro', 'team'];
-    const currentIndex = planOrder.indexOf(currentPlanId);
-
-    const missingFeatures: Array<{
-      feature: string;
-      requiredPlan: PlanId;
-      planLabel: string;
-      icon: React.ElementType;
-    }> = [];
-
-    // Parcourir les plans supérieurs
-    for (let i = currentIndex + 1; i < planOrder.length; i++) {
-      const higherPlan = planOrder[i];
-      const higherFeatures = PLAN_FEATURES[higherPlan];
-      const currentFeatures = PLAN_FEATURES[currentPlanId];
-      const planInfo = PLANS_INFO.find(p => p.id === higherPlan);
-
-      // Vérifier chaque fonctionnalité
-      if (!currentFeatures.flashcards && higherFeatures.flashcards) {
-        missingFeatures.push({
-          feature: tr('Flashcards', 'Flashcards'),
-          requiredPlan: higherPlan,
-          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
-          icon: GraduationCap,
-        });
-      }
-      if (!currentFeatures.conceptMaps && higherFeatures.conceptMaps) {
-        missingFeatures.push({
-          feature: tr('Cartes mentales', 'Mind maps'),
-          requiredPlan: higherPlan,
-          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
-          icon: Brain,
-        });
-      }
-      if (!currentFeatures.playlists && higherFeatures.playlists) {
-        missingFeatures.push({
-          feature: tr('Playlists', 'Playlists'),
-          requiredPlan: higherPlan,
-          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
-          icon: BookOpen,
-        });
-      }
-      if (!currentFeatures.chatWebSearch && higherFeatures.chatWebSearch) {
-        missingFeatures.push({
-          feature: tr('Recherche web', 'Web search'),
-          requiredPlan: higherPlan,
-          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
-          icon: Search,
-        });
-      }
-      if (!currentFeatures.exportPdf && higherFeatures.exportPdf) {
-        missingFeatures.push({
-          feature: 'Export PDF',
-          requiredPlan: higherPlan,
-          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
-          icon: FileText,
-        });
-      }
-      if (!currentFeatures.exportMarkdown && higherFeatures.exportMarkdown) {
-        missingFeatures.push({
-          feature: 'Export Markdown',
-          requiredPlan: higherPlan,
-          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
-          icon: Download,
-        });
-      }
-      if (!currentFeatures.ttsAudio && higherFeatures.ttsAudio) {
-        missingFeatures.push({
-          feature: tr('Lecture audio TTS', 'TTS Audio'),
-          requiredPlan: higherPlan,
-          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
-          icon: Headphones,
-        });
-      }
-      if (!currentFeatures.apiAccess && higherFeatures.apiAccess) {
-        missingFeatures.push({
-          feature: tr('Accès API', 'API Access'),
-          requiredPlan: higherPlan,
-          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
-          icon: Code,
-        });
-      }
-      if (!currentFeatures.prioritySupport && higherFeatures.prioritySupport) {
-        missingFeatures.push({
-          feature: tr('Support prioritaire', 'Priority support'),
-          requiredPlan: higherPlan,
-          planLabel: planInfo?.name[language as 'fr' | 'en'] || higherPlan,
-          icon: Shield,
-        });
-      }
+  // Helpers pour lire les limites/features du plan depuis l'API
+  const getLimitVal = (...keys: string[]): number => {
+    if (!myPlan?.limits) return 0;
+    const limits = myPlan.limits as Record<string, unknown>;
+    for (const key of keys) {
+      const val = limits[key];
+      if (typeof val === 'number') return val;
     }
+    return 0;
+  };
 
-    // Dédupliquer (garder le premier plan qui offre la fonctionnalité)
-    const seen = new Set<string>();
-    return missingFeatures.filter(f => {
-      if (seen.has(f.feature)) return false;
-      seen.add(f.feature);
-      return true;
-    });
-  }, [tr, language]);
+  const hasPlanFeature = (...keys: string[]): boolean => {
+    if (!myPlan?.platform_features) return false;
+    for (const key of keys) {
+      if (myPlan.platform_features[key] === true) return true;
+    }
+    return false;
+  };
+
+  // Plan price mapping (centimes)
+  const planPrices: Record<string, number> = {
+    free: 0, student: 299, etudiant: 299, starter: 599,
+    pro: 1299, team: 2999, equipe: 2999, expert: 2999, unlimited: 0,
+  };
+
+  // Min plan for locked features
+  const minPlanForFeature: Record<string, string> = {
+    flashcards: language === 'fr' ? 'Étudiant (2.99€/mois)' : 'Student (€2.99/mo)',
+    mindmap: language === 'fr' ? 'Étudiant (2.99€/mois)' : 'Student (€2.99/mo)',
+    web_search: 'Starter (5.99€/' + (language === 'fr' ? 'mois' : 'mo') + ')',
+    playlists: 'Pro (12.99€/' + (language === 'fr' ? 'mois' : 'mo') + ')',
+    export_pdf: 'Pro (12.99€/' + (language === 'fr' ? 'mois' : 'mo') + ')',
+  };
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 🎨 Info Row Component
@@ -552,136 +381,272 @@ export const MyAccount: React.FC = () => {
             </section>
 
             {/* ═══════════════════════════════════════════════════════════════════════════
-                🎯 PRIVILÈGES DU PLAN - Nouvelle section v4.0
+                🎯 PRIVILÈGES DU PLAN — Dynamic v5.0 (API-driven)
             ═══════════════════════════════════════════════════════════════════════════ */}
             <section className="card">
               <div className="panel-header">
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
                   <Crown className="w-5 h-5 text-accent-primary" />
                   {tr('Privilèges de votre plan', 'Your Plan Privileges')}
-                  <span className={`ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${currentPlan.bgColor} ${currentPlan.color}`}>
-                    {currentPlan.icon} {currentPlan.label}
-                  </span>
+                  {myPlan && (
+                    <span
+                      className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                      style={{ backgroundColor: `${myPlan.plan_color}20`, color: myPlan.plan_color }}
+                    >
+                      {myPlan.plan_icon} {myPlan.plan_name}
+                    </span>
+                  )}
                 </h2>
               </div>
               <div className="panel-body">
-                {/* Grille des privilèges inclus */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {getPrivilegesForDisplay(userPlanId).map((privilege) => (
-                    <div
-                      key={privilege.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg transition-colors ${
-                        privilege.included
-                          ? privilege.highlight
-                            ? 'bg-accent-primary/10 border border-accent-primary/30'
-                            : 'bg-bg-tertiary border border-border-subtle'
-                          : 'bg-bg-secondary/50 opacity-50'
-                      }`}
-                    >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                        privilege.included
-                          ? privilege.highlight
-                            ? 'bg-accent-primary/20 text-accent-primary'
-                            : 'bg-bg-hover text-text-secondary'
-                          : 'bg-bg-tertiary text-text-tertiary'
-                      }`}>
-                        <privilege.icon className="w-4 h-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium truncate ${privilege.included ? 'text-text-primary' : 'text-text-tertiary'}`}>
-                          {privilege.label}
-                        </p>
-                        <p className={`text-xs ${privilege.highlight ? 'text-accent-primary font-medium' : 'text-text-tertiary'}`}>
-                          {privilege.included ? privilege.value : '—'}
-                        </p>
-                      </div>
-                      {privilege.included && (
-                        <Check className={`w-4 h-4 flex-shrink-0 ${privilege.highlight ? 'text-accent-primary' : 'text-success'}`} />
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Fonctionnalités des plans supérieurs */}
-                {getMissingFeatures(userPlanId).length > 0 && (
-                  <div className="mt-6 pt-6 border-t border-border-subtle">
-                    <h3 className="text-sm font-semibold text-text-secondary mb-4 flex items-center gap-2">
-                      <Lock className="w-4 h-4" />
-                      {tr('Débloquez avec un plan supérieur', 'Unlock with a higher plan')}
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {getMissingFeatures(userPlanId).map((missing, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-3 p-3 rounded-lg bg-bg-secondary/30 border border-dashed border-border-subtle hover:border-accent-primary/30 transition-colors group"
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-bg-tertiary flex items-center justify-center text-text-tertiary group-hover:text-accent-primary transition-colors">
-                            <missing.icon className="w-4 h-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-text-secondary truncate">{missing.feature}</p>
-                            <p className="text-xs text-text-tertiary">
-                              {tr('Disponible dès', 'Available from')} <span className="text-accent-primary font-medium">{missing.planLabel}</span>
-                            </p>
-                          </div>
-                          <Lock className="w-3 h-3 text-text-tertiary flex-shrink-0" />
-                        </div>
-                      ))}
-                    </div>
-                    <Link
-                      to="/upgrade"
-                      className="mt-4 w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-accent-primary to-purple-600 text-white font-medium hover:opacity-90 transition-opacity"
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      {tr('Voir tous les plans', 'See all plans')}
-                      <ChevronRight className="w-4 h-4" />
-                    </Link>
+                {planLoading ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[...Array(8)].map((_, i) => (
+                      <div key={i} className="h-20 rounded-lg bg-bg-tertiary animate-pulse" />
+                    ))}
                   </div>
+                ) : myPlan ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Card: Analyses */}
+                    {(() => {
+                      const limit = getLimitVal('monthly_analyses', 'monthlyAnalyses');
+                      const used = myPlan.usage.analyses_this_month;
+                      const unlimited = limit === -1;
+                      const pct = !unlimited && limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
+                      return (
+                        <div className="p-3 rounded-lg bg-bg-tertiary border border-border-subtle">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-accent-primary/20 text-accent-primary flex items-center justify-center"><Zap className="w-4 h-4" /></div>
+                            <p className="text-sm font-medium text-text-primary">{tr('Analyses', 'Analyses')}</p>
+                          </div>
+                          <p className="text-xs text-text-secondary mb-1.5">
+                            {unlimited ? `${used} — ${tr('Illimité', 'Unlimited')}` : `${used} / ${limit} ${tr('utilisées', 'used')}`}
+                          </p>
+                          {!unlimited && limit > 0 && (
+                            <div className="h-1.5 rounded-full bg-bg-hover overflow-hidden">
+                              <div className={`h-full rounded-full transition-all ${pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-accent-primary'}`} style={{ width: `${pct}%` }} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Card: Chat */}
+                    {(() => {
+                      const limit = getLimitVal('chat_daily_limit', 'chatDailyLimit');
+                      const used = myPlan.usage.chat_today;
+                      const unlimited = limit === -1;
+                      return (
+                        <div className="p-3 rounded-lg bg-bg-tertiary border border-border-subtle">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center"><MessageSquare className="w-4 h-4" /></div>
+                            <p className="text-sm font-medium text-text-primary">Chat IA</p>
+                          </div>
+                          <p className="text-xs text-text-secondary">
+                            {unlimited
+                              ? `${used} — \u221e ${tr('illimité', 'unlimited')}`
+                              : `${used} / ${limit} ${tr("aujourd'hui", 'today')}`
+                            }
+                          </p>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Card: Flashcards */}
+                    {(() => {
+                      const enabled = hasPlanFeature('flashcards', 'flashcardsEnabled');
+                      return (
+                        <div className={`p-3 rounded-lg border ${enabled ? 'bg-bg-tertiary border-border-subtle' : 'bg-bg-secondary/50 border-dashed border-border-subtle'}`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${enabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-bg-tertiary text-text-tertiary'}`}>
+                              <GraduationCap className="w-4 h-4" />
+                            </div>
+                            <p className={`text-sm font-medium ${enabled ? 'text-text-primary' : 'text-text-tertiary'}`}>Flashcards</p>
+                          </div>
+                          {enabled
+                            ? <p className="text-xs text-emerald-400 font-medium flex items-center gap-1"><Check className="w-3 h-3" /> {tr('Inclus', 'Included')}</p>
+                            : <Link to="/upgrade" className="text-xs text-text-tertiary hover:text-accent-primary transition-colors flex items-center gap-1"><Lock className="w-3 h-3" /> {minPlanForFeature.flashcards}</Link>
+                          }
+                        </div>
+                      );
+                    })()}
+
+                    {/* Card: Mind Maps */}
+                    {(() => {
+                      const enabled = hasPlanFeature('mindmap', 'mindmapEnabled', 'concept_maps', 'conceptMaps');
+                      return (
+                        <div className={`p-3 rounded-lg border ${enabled ? 'bg-bg-tertiary border-border-subtle' : 'bg-bg-secondary/50 border-dashed border-border-subtle'}`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${enabled ? 'bg-violet-500/20 text-violet-400' : 'bg-bg-tertiary text-text-tertiary'}`}>
+                              <Brain className="w-4 h-4" />
+                            </div>
+                            <p className={`text-sm font-medium ${enabled ? 'text-text-primary' : 'text-text-tertiary'}`}>{tr('Cartes mentales', 'Mind maps')}</p>
+                          </div>
+                          {enabled
+                            ? <p className="text-xs text-violet-400 font-medium flex items-center gap-1"><Check className="w-3 h-3" /> {tr('Inclus', 'Included')}</p>
+                            : <Link to="/upgrade" className="text-xs text-text-tertiary hover:text-accent-primary transition-colors flex items-center gap-1"><Lock className="w-3 h-3" /> {minPlanForFeature.mindmap}</Link>
+                          }
+                        </div>
+                      );
+                    })()}
+
+                    {/* Card: Web Search */}
+                    {(() => {
+                      const enabled = hasPlanFeature('web_search', 'webSearchEnabled', 'chatWebSearch');
+                      const limit = getLimitVal('web_search_monthly', 'webSearchMonthly');
+                      const used = myPlan.usage.web_searches_this_month;
+                      const unlimited = limit === -1;
+                      return (
+                        <div className={`p-3 rounded-lg border ${enabled ? 'bg-bg-tertiary border-border-subtle' : 'bg-bg-secondary/50 border-dashed border-border-subtle'}`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${enabled ? 'bg-cyan-500/20 text-cyan-400' : 'bg-bg-tertiary text-text-tertiary'}`}>
+                              <Search className="w-4 h-4" />
+                            </div>
+                            <p className={`text-sm font-medium ${enabled ? 'text-text-primary' : 'text-text-tertiary'}`}>{tr('Recherche web', 'Web search')}</p>
+                          </div>
+                          {enabled
+                            ? <p className="text-xs text-text-secondary">{unlimited ? `${used} — \u221e` : `${used} / ${limit} ${tr('ce mois', 'this month')}`}</p>
+                            : <Link to="/upgrade" className="text-xs text-text-tertiary hover:text-accent-primary transition-colors flex items-center gap-1"><Lock className="w-3 h-3" /> {minPlanForFeature.web_search}</Link>
+                          }
+                        </div>
+                      );
+                    })()}
+
+                    {/* Card: Playlists */}
+                    {(() => {
+                      const enabled = hasPlanFeature('playlists', 'playlistsEnabled');
+                      const limit = getLimitVal('max_playlists', 'maxPlaylists');
+                      const unlimited = limit === -1;
+                      return (
+                        <div className={`p-3 rounded-lg border ${enabled ? 'bg-bg-tertiary border-border-subtle' : 'bg-bg-secondary/50 border-dashed border-border-subtle'}`}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${enabled ? 'bg-amber-500/20 text-amber-400' : 'bg-bg-tertiary text-text-tertiary'}`}>
+                              <BookOpen className="w-4 h-4" />
+                            </div>
+                            <p className={`text-sm font-medium ${enabled ? 'text-text-primary' : 'text-text-tertiary'}`}>Playlists</p>
+                          </div>
+                          {enabled
+                            ? <p className="text-xs text-text-secondary">{unlimited ? `\u221e ${tr('illimité', 'unlimited')}` : `${limit} max`}</p>
+                            : <Link to="/upgrade" className="text-xs text-text-tertiary hover:text-accent-primary transition-colors flex items-center gap-1"><Lock className="w-3 h-3" /> {minPlanForFeature.playlists}</Link>
+                          }
+                        </div>
+                      );
+                    })()}
+
+                    {/* Card: Export */}
+                    {(() => {
+                      const hasPdf = hasPlanFeature('export_pdf', 'exportPdf');
+                      const hasMd = hasPlanFeature('export_markdown', 'exportMarkdown');
+                      const formats: string[] = ['TXT'];
+                      if (hasMd) formats.push('MD');
+                      if (hasPdf) formats.push('PDF');
+                      return (
+                        <div className="p-3 rounded-lg bg-bg-tertiary border border-border-subtle">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center"><FileText className="w-4 h-4" /></div>
+                            <p className="text-sm font-medium text-text-primary">Export</p>
+                          </div>
+                          <p className="text-xs text-text-secondary">{formats.join(', ')}</p>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Card: History */}
+                    {(() => {
+                      const days = getLimitVal('history_retention_days', 'historyRetentionDays');
+                      const unlimited = days === -1;
+                      return (
+                        <div className="p-3 rounded-lg bg-bg-tertiary border border-border-subtle">
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className="w-8 h-8 rounded-lg bg-indigo-500/20 text-indigo-400 flex items-center justify-center"><Clock className="w-4 h-4" /></div>
+                            <p className="text-sm font-medium text-text-primary">{tr('Historique', 'History')}</p>
+                          </div>
+                          <p className="text-xs text-text-secondary">
+                            {unlimited ? `\u221e ${tr('Permanent', 'Permanent')}` : `${days} ${tr('jours', 'days')}`}
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                ) : (
+                  <p className="text-text-tertiary text-sm text-center py-4">{tr('Impossible de charger les données du plan.', 'Unable to load plan data.')}</p>
                 )}
               </div>
             </section>
 
-            {/* Abonnement */}
+            {/* ═══════════════════════════════════════════════════════════════════════════
+                💳 MON ABONNEMENT — Dynamic v5.0 (API-driven)
+            ═══════════════════════════════════════════════════════════════════════════ */}
             <section className="card">
               <div className="panel-header">
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
                   <CreditCard className="w-5 h-5 text-accent-primary" />
-                  {tr('Abonnement & Facturation', 'Subscription & Billing')}
+                  {tr('Mon abonnement', 'My Subscription')}
                 </h2>
               </div>
               <div className="panel-body space-y-4">
-                <div className={`p-4 rounded-xl ${currentPlan.bgColor}`}>
+                {/* Plan badge + price */}
+                <div className="p-4 rounded-xl" style={myPlan ? { backgroundColor: `${myPlan.plan_color}15` } : undefined}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className={`font-semibold ${currentPlan.color} flex items-center gap-2`}>
-                        {currentPlan.icon} Plan {currentPlan.label}
+                      <p className="font-semibold flex items-center gap-2" style={myPlan ? { color: myPlan.plan_color } : undefined}>
+                        {myPlan ? `${myPlan.plan_icon} Plan ${myPlan.plan_name}` : `${currentPlan.icon} Plan ${currentPlan.label}`}
                       </p>
                       <p className="text-sm text-text-tertiary mt-1">
-                        {user?.plan === 'free' 
-                          ? tr('Fonctionnalités de base', 'Basic features')
-                          : tr('Toutes les fonctionnalités incluses', 'All features included')
-                        }
+                        {(() => {
+                          const price = planPrices[myPlan?.plan || user?.plan || 'free'] || 0;
+                          return price > 0
+                            ? `${(price / 100).toFixed(2)}€/${tr('mois', 'mo')}`
+                            : tr('Gratuit', 'Free');
+                        })()}
                       </p>
                     </div>
-                    {user?.plan !== 'team' && user?.plan !== 'expert' && user?.plan !== 'unlimited' && (
-                      <Link to="/upgrade" className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors">
-                        <Sparkles className="w-4 h-4" />
-                        {tr('Améliorer', 'Upgrade')}
-                      </Link>
+                    {/* Status badge */}
+                    {myPlan?.subscription && (
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                        myPlan.subscription.status === 'active'
+                          ? 'bg-success/10 text-success'
+                          : 'bg-red-500/10 text-red-400'
+                      }`}>
+                        {myPlan.subscription.status === 'active'
+                          ? tr('Actif', 'Active')
+                          : tr('Annulé', 'Cancelled')
+                        }
+                      </span>
                     )}
                   </div>
+
+                  {/* Renewal date */}
+                  {myPlan?.subscription?.current_period_end && (
+                    <p className="text-xs text-text-tertiary mt-3 flex items-center gap-1.5">
+                      <Calendar className="w-3 h-3" />
+                      {tr('Prochain renouvellement :', 'Next renewal:')} {formatDate(myPlan.subscription.current_period_end)}
+                    </p>
+                  )}
                 </div>
 
-                <Link to="/upgrade" className="flex items-center justify-between p-4 rounded-lg bg-bg-tertiary border border-border-subtle hover:bg-bg-hover transition-colors">
-                  <div className="flex items-center gap-3">
-                    <CreditCard className="w-5 h-5 text-text-tertiary" />
-                    <div>
-                      <p className="font-medium text-text-primary">{tr('Gérer l\'abonnement', 'Manage subscription')}</p>
-                      <p className="text-sm text-text-tertiary">{tr('Voir les plans et options', 'View plans and options')}</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-text-tertiary" />
-                </Link>
+                {/* Action buttons */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  {user?.plan !== 'free' && (
+                    <button
+                      onClick={handleManageSubscription}
+                      disabled={portalLoading}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-bg-tertiary border border-border-subtle hover:bg-bg-hover transition-colors text-sm font-medium disabled:opacity-50"
+                    >
+                      {portalLoading ? <DeepSightSpinnerMicro /> : <CreditCard className="w-4 h-4 text-text-tertiary" />}
+                      {tr('Gérer mon abonnement', 'Manage subscription')}
+                      <ExternalLink className="w-3 h-3 text-text-muted" />
+                    </button>
+                  )}
+                  <Link
+                    to="/upgrade"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-gradient-to-r from-accent-primary to-purple-600 text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {tr('Changer de plan', 'Change plan')}
+                    <ChevronRight className="w-4 h-4" />
+                  </Link>
+                </div>
               </div>
             </section>
 

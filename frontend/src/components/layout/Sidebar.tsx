@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
+import { PlanBadge } from "../PlanBadge";
 
 // === Logo ===
 const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({ collapsed, onClick }) => {
@@ -366,6 +367,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="h-px bg-border-subtle my-3 mx-1" />
           <NavItem to="/legal" icon={Scale} label={t.nav.legal} collapsed={collapsed} />
         </nav>
+
+        {/* Plan Badge */}
+        <div className="border-t border-border-subtle">
+          <PlanBadge collapsed={collapsed} />
+        </div>
 
         {/* User */}
         <div className="border-t border-border-subtle">
