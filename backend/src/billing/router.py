@@ -4,19 +4,33 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import logging
 import stripe
-from fastapi import APIRouter, Depends, HTTPException, Request, Header
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Header
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import select, func as sa_func
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
-from typing import Optional, Set
-from datetime import datetime
+from typing import Any, Optional, Set
+from datetime import datetime, timezone
 from collections import OrderedDict
 
-from db.database import get_session, User, CreditTransaction
-from auth.dependencies import get_current_user
+from db.database import get_session, User, CreditTransaction, Summary, ChatMessage
+from auth.dependencies import get_current_user, get_current_user_optional
 from core.config import STRIPE_CONFIG, PLAN_LIMITS, FRONTEND_URL, get_stripe_key
+from .plan_config import (
+    PLANS,
+    PLAN_HIERARCHY,
+    PlanId,
+    get_plan as get_plan_config,
+    get_limits,
+    get_platform_features,
+    get_plan_index,
+    is_upgrade as plan_is_upgrade,
+    get_plan_by_price_id as plan_by_price_id,
+)
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -307,28 +321,124 @@ async def start_pro_trial(
 
 
 @router.get("/plans")
-async def get_plans():
-    """Retourne la liste des plans disponibles"""
-    plans = {}
-    for plan_id, limits in PLAN_LIMITS.items():
-        if plan_id in ["free", "unlimited"]:
-            continue
-        
-        plans[plan_id] = {
-            "name": limits.get("name", {}).get("fr", plan_id),
-            "price": limits.get("price", 0),
-            "price_display": limits.get("price_display", {}).get("fr", ""),
-            "credits": limits.get("monthly_credits", 0),
-            "features": {
-                "can_use_playlists": limits.get("can_use_playlists", False),
-                "max_playlist_videos": limits.get("max_playlist_videos", 0),
-                "chat_daily_limit": limits.get("chat_daily_limit", 0),
-                "web_search_enabled": limits.get("web_search_enabled", False),
-                "models": limits.get("models", [])
-            }
-        }
-    
-    return {"plans": plans}
+async def get_plans(
+    platform: str = Query("web", regex="^(web|mobile|extension)$"),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """Retourne la liste des 5 plans avec limites filtrées par plateforme.
+
+    Public (enrichi avec is_current / is_upgrade / is_downgrade si user connecté).
+    """
+    user_plan = (current_user.plan if current_user else "free") or "free"
+    user_index = get_plan_index(user_plan)
+
+    result: list[dict[str, Any]] = []
+    for plan_id in PLAN_HIERARCHY:
+        plan = PLANS[plan_id]
+        plan_index = get_plan_index(plan_id.value)
+        plan_limits = plan["limits"]
+
+        # Filtrage des limites par plateforme
+        platform_features = get_platform_features(plan_id.value, platform)
+
+        result.append({
+            "id": plan_id.value,
+            "name": plan["name"],
+            "name_en": plan["name_en"],
+            "description": plan["description"],
+            "description_en": plan["description_en"],
+            "price_monthly_cents": plan["price_monthly_cents"],
+            "color": plan["color"],
+            "icon": plan["icon"],
+            "badge": plan["badge"],
+            "popular": plan["popular"],
+            "limits": plan_limits,
+            "platform_features": platform_features,
+            "features_display": plan["features_display"],
+            "features_locked": plan["features_locked"],
+            "is_current": plan_id.value == user_plan,
+            "is_upgrade": plan_index > user_index,
+            "is_downgrade": plan_index < user_index and plan_index >= 0,
+        })
+
+    return {"plans": result}
+
+
+@router.get("/my-plan")
+async def get_my_plan(
+    platform: str = Query("web", regex="^(web|mobile|extension)$"),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Retourne le plan courant, ses limites, et l'usage du mois/jour.
+
+    Requiert auth.
+    """
+    user_plan = current_user.plan or "free"
+    plan = get_plan_config(user_plan)
+    plan_limits = plan["limits"]
+    platform_features = get_platform_features(user_plan, platform)
+
+    # ── Calcul de l'usage ──
+    now = datetime.now(timezone.utc)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Analyses ce mois
+    analyses_q = await session.execute(
+        select(sa_func.count(Summary.id))
+        .where(Summary.user_id == current_user.id)
+        .where(Summary.created_at >= month_start)
+    )
+    analyses_this_month: int = analyses_q.scalar() or 0
+
+    # Chat messages aujourd'hui (role = 'user' seulement)
+    chat_q = await session.execute(
+        select(sa_func.count(ChatMessage.id))
+        .where(ChatMessage.user_id == current_user.id)
+        .where(ChatMessage.role == "user")
+        .where(ChatMessage.created_at >= day_start)
+    )
+    chat_today: int = chat_q.scalar() or 0
+
+    # Web searches ce mois (chat messages avec web_search_used = True)
+    ws_q = await session.execute(
+        select(sa_func.count(ChatMessage.id))
+        .where(ChatMessage.user_id == current_user.id)
+        .where(ChatMessage.web_search_used == True)
+        .where(ChatMessage.created_at >= month_start)
+    )
+    web_searches_this_month: int = ws_q.scalar() or 0
+
+    # ── Subscription status ──
+    subscription_info: dict[str, Any] = {
+        "status": "none",
+        "current_period_end": None,
+    }
+    if current_user.stripe_subscription_id and init_stripe():
+        try:
+            sub = stripe.Subscription.retrieve(current_user.stripe_subscription_id)
+            subscription_info["status"] = sub.status
+            subscription_info["current_period_end"] = datetime.fromtimestamp(
+                sub.current_period_end, tz=timezone.utc
+            ).isoformat()
+        except Exception as e:
+            logger.warning("Failed to fetch subscription: %s", e)
+
+    return {
+        "plan": user_plan,
+        "plan_name": plan["name"],
+        "plan_icon": plan["icon"],
+        "plan_color": plan["color"],
+        "limits": plan_limits,
+        "platform_features": platform_features,
+        "usage": {
+            "analyses_this_month": analyses_this_month,
+            "chat_today": chat_today,
+            "web_searches_this_month": web_searches_this_month,
+        },
+        "subscription": subscription_info,
+    }
 
 
 @router.get("/info", response_model=BillingInfoResponse)
@@ -1084,11 +1194,23 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
     plan = data.get("metadata", {}).get("plan")
     customer_id = data.get("customer")
     subscription_id = data.get("subscription")
-    
-    print(f"📋 Checkout data: user_id={user_id}, plan={plan}, customer={customer_id}", flush=True)
+
+    # Fallback: résoudre le plan via price_id si absent des metadata
+    if not plan and subscription_id:
+        try:
+            sub = stripe.Subscription.retrieve(subscription_id)
+            items = sub.get("items", {}).get("data", [])
+            if items:
+                price_id = items[0].get("price", {}).get("id")
+                plan = plan_by_price_id(price_id)
+                logger.info("Resolved plan from price_id: %s -> %s", price_id, plan)
+        except Exception as e:
+            logger.warning("Could not resolve plan from subscription: %s", e)
+
+    logger.info("Checkout data: user_id=%s plan=%s customer=%s", user_id, plan, customer_id)
     
     if not user_id or not plan:
-        print(f"⚠️ Checkout without user_id or plan", flush=True)
+        logger.warning("Checkout without user_id or plan")
         return
     
     result = await session.execute(
@@ -1097,9 +1219,9 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
     user = result.scalar_one_or_none()
     
     if not user:
-        print(f"⚠️ User {user_id} not found", flush=True)
+        logger.warning("User %s not found", user_id)
         return
-    
+
     # DB-level idempotency: check if this payment was already processed
     payment_id = data.get("payment_intent") or data.get("id")
     if payment_id:
@@ -1107,7 +1229,7 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
             select(CreditTransaction).where(CreditTransaction.stripe_payment_id == payment_id)
         )
         if existing.scalar_one_or_none():
-            print(f"Checkout {payment_id} already processed — skipping", flush=True)
+            logger.info("Checkout %s already processed — skipping", payment_id)
             return
 
     plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
@@ -1130,7 +1252,7 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
     session.add(transaction)
 
     await session.commit()
-    print(f"User {user_id} upgraded to {plan}, +{credits_to_add} credits", flush=True)
+    logger.info("User %s upgraded to %s, +%d credits", user_id, plan, credits_to_add)
 
     # 📧 Send payment success email
     try:
@@ -1179,13 +1301,14 @@ async def handle_subscription_updated(session: AsyncSession, data: dict):
     items = data.get("items", {}).get("data", [])
     if items:
         new_price_id = items[0].get("price", {}).get("id")
-        
-        # Trouver le plan correspondant
-        new_plan = None
-        for plan_name, plan_config in STRIPE_CONFIG.get("PRICES", {}).items():
-            if plan_config.get("live") == new_price_id or plan_config.get("test") == new_price_id:
-                new_plan = plan_name
-                break
+
+        # Trouver le plan correspondant — SSOT plan_config d'abord, ancien fallback ensuite
+        new_plan = plan_by_price_id(new_price_id) if new_price_id else None
+        if not new_plan:
+            for plan_name, plan_config in STRIPE_CONFIG.get("PRICES", {}).items():
+                if plan_config.get("live") == new_price_id or plan_config.get("test") == new_price_id:
+                    new_plan = plan_name
+                    break
         
         if new_plan and new_plan != user.plan:
             old_plan = user.plan

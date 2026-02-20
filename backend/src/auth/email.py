@@ -45,7 +45,7 @@ async def send_email(to: str, subject: str, html: str, text: Optional[str] = Non
         print("📧 Resend API key not configured", flush=True)
         return False
     
-    from_email = EMAIL_CONFIG.get("FROM_EMAIL", "noreply@deepsight.fr")
+    from_email = EMAIL_CONFIG.get("FROM_EMAIL", "noreply@deepsightsynthesis.com")
     from_name = EMAIL_CONFIG.get("FROM_NAME", APP_NAME)
     
     try:
