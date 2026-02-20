@@ -1178,6 +1178,56 @@ export interface TrialEligibility {
   trial_plan: string;
 }
 
+// Types pour GET /api/billing/plans?platform=web
+export interface ApiBillingPlanFeatureDisplay {
+  text: string;
+  icon: string;
+  highlight?: boolean;
+}
+
+export interface ApiBillingPlanFeatureLocked {
+  text: string;
+  unlock_plan: string;
+}
+
+export interface ApiBillingPlan {
+  id: string;
+  name: string;
+  name_en: string;
+  description: string;
+  description_en: string;
+  price_monthly_cents: number;
+  color: string;
+  icon: string;
+  badge: { text: string; color: string } | null;
+  popular: boolean;
+  limits: Record<string, unknown>;
+  platform_features: Record<string, boolean>;
+  features_display: ApiBillingPlanFeatureDisplay[];
+  features_locked: ApiBillingPlanFeatureLocked[];
+  is_current: boolean;
+  is_upgrade: boolean;
+  is_downgrade: boolean;
+}
+
+export interface ApiBillingMyPlan {
+  plan: string;
+  plan_name: string;
+  plan_icon: string;
+  plan_color: string;
+  limits: Record<string, unknown>;
+  platform_features: Record<string, boolean>;
+  usage: {
+    analyses_this_month: number;
+    chat_today: number;
+    web_searches_this_month: number;
+  };
+  subscription: {
+    status: string;
+    current_period_end: string | null;
+  };
+}
+
 export const billingApi = {
   async createCheckout(plan: string, trialDays?: number): Promise<{ checkout_url: string; session_id: string }> {
     return request('/api/billing/create-checkout', {
