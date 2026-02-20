@@ -10,17 +10,18 @@
   --ds-border: #2a2a3e;
   --ds-text-primary: #e8e8f0;
   --ds-text-secondary: #8888a0;
-  --ds-accent-blue: #4a9eff;
+  --ds-accent-blue: #3b82f6;
   --ds-accent-purple: #8b5cf6;
+  --ds-accent-cyan: #06b6d4;
   --ds-accent-orange: #f59e0b;
   --ds-success: #22c55e;
   --ds-error: #ef4444;
   --ds-warning: #f59e0b;
-  --ds-gradient-main: linear-gradient(135deg, #4a9eff, #8b5cf6, #f59e0b);
-  --ds-gradient-blue-purple: linear-gradient(135deg, #4a9eff, #8b5cf6);
+  --ds-gradient-main: linear-gradient(135deg, #3b82f6, #8b5cf6, #f59e0b);
+  --ds-gradient-blue-purple: linear-gradient(135deg, #3b82f6, #8b5cf6);
   --ds-radius: 12px;
   --ds-radius-sm: 8px;
-  --ds-transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --ds-transition: 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ── Card Container ── */

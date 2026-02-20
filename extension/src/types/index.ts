@@ -8,6 +8,8 @@ export interface User {
   plan: 'free' | 'student' | 'starter' | 'pro' | 'team';
   credits: number;
   credits_monthly: number;
+  default_lang?: string;
+  default_mode?: string;
 }
 
 export interface AuthTokens {
@@ -55,7 +57,15 @@ export interface Summary {
   category: string;
   reliability_score: number;
   summary_content: string;
+  concepts?: Concept[];
+  key_points?: string[];
+  facts_to_verify?: string[];
   created_at: string;
+}
+
+export interface Concept {
+  name: string;
+  definition: string;
 }
 
 export interface RecentAnalysis {
@@ -66,6 +76,12 @@ export interface RecentAnalysis {
 }
 
 // ── Chat ──
+
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  web_search_used?: boolean;
+}
 
 export interface ChatOptions {
   mode?: string;
@@ -99,10 +115,12 @@ export type MessageAction =
   | 'LOGIN'
   | 'GOOGLE_LOGIN'
   | 'LOGOUT'
+  | 'START_ANALYSIS'
   | 'ANALYZE_VIDEO'
   | 'GET_TASK_STATUS'
   | 'GET_SUMMARY'
   | 'ASK_QUESTION'
+  | 'GET_CHAT_HISTORY'
   | 'OPEN_POPUP'
   | 'SYNC_AUTH_FROM_WEBSITE'
   | 'ANALYSIS_PROGRESS';
@@ -125,15 +143,15 @@ export interface MessageResponse {
 // ── Category Icons ──
 
 export const CATEGORY_ICONS: Record<string, string> = {
-  tech: '💻',
-  science: '🔬',
-  education: '📚',
-  news: '📰',
-  entertainment: '🎬',
-  gaming: '🎮',
-  music: '🎵',
-  sports: '⚽',
-  business: '💼',
-  lifestyle: '🌟',
-  other: '📋',
+  tech: '\u{1F4BB}',
+  science: '\u{1F52C}',
+  education: '\u{1F4DA}',
+  news: '\u{1F4F0}',
+  entertainment: '\u{1F3AC}',
+  gaming: '\u{1F3AE}',
+  music: '\u{1F3B5}',
+  sports: '\u26BD',
+  business: '\u{1F4BC}',
+  lifestyle: '\u{1F31F}',
+  other: '\u{1F4CB}',
 };

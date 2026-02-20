@@ -7,18 +7,16 @@ module.exports = (env, argv) => {
 
   return {
     entry: {
-      background: './src/background/index.ts',
-      content: './src/content/index.ts',
+      background: './src/background.ts',
+      content: './src/content.ts',
       authSync: './src/authSync/index.ts',
       authSyncMain: './src/authSyncMain/index.ts',
-      popup: './src/popup/index.tsx',
+      popup: './src/popup.tsx',
     },
     output: {
       path: path.resolve(__dirname, 'dist'),
       filename: '[name].js',
-      clean: {
-        keep: /^(icons|content\.css|popup\.css|popup\.html)\//,
-      },
+      clean: true,
     },
     module: {
       rules: [
@@ -42,15 +40,15 @@ module.exports = (env, argv) => {
       }),
       new CopyPlugin({
         patterns: [
-          { from: 'manifest.json', to: 'manifest.json' },
-          { from: 'src/popup/popup.html', to: 'popup.html' },
+          { from: 'public/manifest.json', to: 'manifest.json' },
+          { from: 'public/popup.html', to: 'popup.html' },
           { from: 'src/styles/popup.css', to: 'popup.css' },
           { from: 'src/styles/content.css', to: 'content.css' },
           { from: 'icons', to: 'icons' },
-          { from: '../frontend/public/logo.png', to: 'assets/deep-sight-logo.png' },
-          { from: '../frontend/public/deepsight-logo-cosmic.png', to: 'assets/deepsight-logo-cosmic.png' },
-          { from: '../frontend/public/spinner-cosmic.jpg', to: 'assets/spinner-cosmic.jpg' },
-          { from: '../frontend/public/spinner-wheel.jpg', to: 'assets/spinner-wheel.jpg' },
+          { from: '../frontend/public/logo.png', to: 'assets/deep-sight-logo.png', noErrorOnMissing: true },
+          { from: '../frontend/public/deepsight-logo-cosmic.png', to: 'assets/deepsight-logo-cosmic.png', noErrorOnMissing: true },
+          { from: '../frontend/public/spinner-cosmic.jpg', to: 'assets/spinner-cosmic.jpg', noErrorOnMissing: true },
+          { from: '../frontend/public/spinner-wheel.jpg', to: 'assets/spinner-wheel.jpg', noErrorOnMissing: true },
         ],
       }),
     ],

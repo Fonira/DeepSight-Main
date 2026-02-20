@@ -269,10 +269,10 @@ const PLANS: PlanConfig[] = [
 const getFeatures = (language: string) => [
   {
     icon: Brain,
-    title: language === 'fr' ? 'Synthèse bayésienne' : 'Bayesian Synthesis',
+    title: language === 'fr' ? 'Synthèse méthodique' : 'Methodical Synthesis',
     description: language === 'fr'
-      ? 'Chaque affirmation est évaluée selon son degré de certitude : SOLIDE, PLAUSIBLE, INCERTAIN ou A VERIFIER. Vous savez exactement ce qui est fiable.'
-      : 'Every claim is rated by certainty level: SOLID, PLAUSIBLE, UNCERTAIN or NEEDS VERIFICATION. You know exactly what is reliable.',
+      ? 'Chaque affirmation est évaluée selon son degré de certitude : SOLIDE, PLAUSIBLE, INCERTAIN ou À VÉRIFIER. Un raisonnement structuré pour savoir exactement ce qui est fiable.'
+      : 'Every claim is rated by certainty level: SOLID, PLAUSIBLE, UNCERTAIN or NEEDS VERIFICATION. Structured reasoning to know exactly what is reliable.',
   },
   {
     icon: Shield,
@@ -349,8 +349,8 @@ const getFAQs = (language: string) => [
       ? 'Comment fonctionne Deep Sight ?'
       : 'How does Deep Sight work?',
     answer: language === 'fr'
-      ? 'Deep Sight extrait la transcription de votre vidéo YouTube, puis l\'analyse avec un modèle d\'IA avancé. Le contenu est structuré en synthèse, points clés, arguments et contre-arguments, avec des marqueurs de certitude basés sur l\'épistémologie bayésienne.'
-      : 'Deep Sight extracts the transcript from your YouTube video, then analyzes it with an advanced AI model. The content is structured into summaries, key points, arguments and counter-arguments, with certainty markers based on Bayesian epistemology.',
+      ? 'Deep Sight extrait la transcription de votre vidéo YouTube, puis l\'analyse avec une IA française avancée. Le contenu est structuré en synthèse, points clés, arguments et contre-arguments, avec des marqueurs de certitude et une vérification méthodique des faits.'
+      : 'Deep Sight extracts the transcript from your YouTube video, then analyzes it with an advanced French AI. The content is structured into summaries, key points, arguments and counter-arguments, with certainty markers and methodical fact-checking.',
   },
   {
     question: language === 'fr'
@@ -429,7 +429,7 @@ const LandingPage: React.FC = () => {
     <div className="min-h-screen bg-bg-primary relative overflow-hidden">
       <SEO
         title="Analyse YouTube IA"
-        description="Analysez et synthétisez vos vidéos YouTube avec l'IA. Résumés intelligents, fact-checking bayésien, points clés, timestamps, et chat interactif."
+        description="Analysez et synthétisez vos vidéos YouTube avec l'IA française. Résumés intelligents, fact-checking méthodique, points clés, timestamps, et chat interactif."
         path="/"
       />
       {/* Gradient mesh background */}
@@ -492,7 +492,7 @@ const LandingPage: React.FC = () => {
           >
             <Sparkles className="w-3.5 h-3.5 text-accent-primary" />
             <span className="text-xs text-accent-primary font-medium">
-              {language === 'fr' ? 'Epistémologie bayésienne & IA' : 'Bayesian Epistemology & AI'}
+              {language === 'fr' ? 'IA française & raisonnement méthodique' : 'French AI & methodical reasoning'}
             </span>
           </motion.div>
 
@@ -597,7 +597,7 @@ const LandingPage: React.FC = () => {
           </p>
           <div className="flex items-center justify-center mb-4">
             <img
-              src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Mistral_AI_logo.svg/2560px-Mistral_AI_logo.svg.png"
+              src="/mistral-logo.svg"
               alt="Mistral AI"
               className="h-16 sm:h-24 md:h-28 w-auto object-contain"
               style={{ filter: 'drop-shadow(0 0 30px rgba(139, 92, 246, 0.3))' }}

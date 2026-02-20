@@ -1,171 +1,258 @@
-import React, { useState } from 'react';
-import { WEBAPP_URL } from '../../utils/config';
-import { getThumbnailUrl } from '../../utils/youtube';
-import type { User, RecentAnalysis } from '../../types';
-import { DeepSightLogo } from './DeepSightLogo';
-import { DeepSightSpinner } from './DeepSightSpinner';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import type { User, Summary, RecentAnalysis } from '../../types';
+import { extractVideoId, getThumbnailUrl } from '../../utils/youtube';
+import { addRecentAnalysis, getRecentAnalyses } from '../../utils/storage';
+import { LogoutIcon, PlayIcon } from './Icons';
+import { SynthesisView } from './SynthesisView';
+import { ChatDrawer } from './ChatDrawer';
+import { PromoBanner } from './PromoBanner';
 
 interface MainViewProps {
   user: User;
-  recentAnalyses: RecentAnalysis[];
   onLogout: () => void;
-  onShowHistory: () => void;
-  onShowSettings: () => void;
   onError: (msg: string) => void;
 }
 
-const TABS = ['All', 'Source', 'Podcast', 'News', 'Science'] as const;
+interface VideoInfo {
+  url: string;
+  videoId: string;
+  title: string;
+}
 
-const PLAN_CLASSES: Record<string, string> = {
-  free: 'plan-free',
-  student: 'plan-student',
-  starter: 'plan-starter',
-  pro: 'plan-pro',
-  team: 'plan-team',
-};
+type AnalysisPhase =
+  | { phase: 'idle' }
+  | { phase: 'analyzing'; progress: number; message: string }
+  | { phase: 'complete'; summaryId: number; summary: Summary }
+  | { phase: 'error'; message: string };
 
-export const MainView: React.FC<MainViewProps> = ({
-  user,
-  recentAnalyses,
-  onLogout,
-  onShowHistory,
-  onShowSettings,
-  onError,
-}) => {
-  const [activeTab, setActiveTab] = useState<string>('All');
-  const [tier, setTier] = useState<string>('standard');
-  const [lang, setLang] = useState<string>('fr');
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+export const MainView: React.FC<MainViewProps> = ({ user, onLogout, onError }) => {
+  const [video, setVideo] = useState<VideoInfo | null>(null);
+  const [mode, setMode] = useState<string>(user.default_mode || 'standard');
+  const [lang, setLang] = useState<string>(user.default_lang || 'fr');
+  const [analysis, setAnalysis] = useState<AnalysisPhase>({ phase: 'idle' });
+  const [recentAnalyses, setRecentAnalyses] = useState<RecentAnalysis[]>([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  async function handleAnalyze(): Promise<void> {
-    setIsAnalyzing(true);
+  // Detect current YouTube video
+  useEffect(() => {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      const url = tabs[0]?.url || '';
+      const videoId = extractVideoId(url);
+      if (videoId) {
+        setVideo({ url, videoId, title: tabs[0]?.title || 'YouTube Video' });
+      }
+    });
+    loadRecentAnalyses();
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, []);
+
+  async function loadRecentAnalyses(): Promise<void> {
+    const items = await getRecentAnalyses();
+    setRecentAnalyses(items);
+  }
+
+  const startAnalysis = useCallback(async () => {
+    if (!video) return;
+
+    setAnalysis({ phase: 'analyzing', progress: 0, message: 'Starting analysis...' });
+
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (!tab?.url?.includes('youtube.com/watch')) {
-        onError('Please navigate to a YouTube video first');
-        setIsAnalyzing(false);
+      const startRes = await chrome.runtime.sendMessage({
+        action: 'START_ANALYSIS',
+        data: { url: video.url, options: { mode, lang } },
+      });
+
+      if (!startRes.success) {
+        setAnalysis({ phase: 'error', message: startRes.error || 'Failed to start analysis' });
         return;
       }
-      await chrome.runtime.sendMessage({
-        action: 'ANALYZE_VIDEO',
-        data: { url: tab.url, mode: tier, lang },
-      });
-      window.close();
-    } catch (err) {
-      onError((err as Error).message || 'Analysis failed');
-      setIsAnalyzing(false);
+
+      const taskId = (startRes.result as { task_id: string }).task_id;
+
+      pollRef.current = setInterval(async () => {
+        try {
+          const statusRes = await chrome.runtime.sendMessage({
+            action: 'GET_TASK_STATUS',
+            data: { taskId },
+          });
+
+          if (!statusRes.success || !statusRes.status) return;
+          const status = statusRes.status;
+
+          if (status.status === 'completed' && status.result?.summary_id) {
+            if (pollRef.current) clearInterval(pollRef.current);
+
+            await addRecentAnalysis({
+              videoId: video.videoId,
+              summaryId: status.result.summary_id,
+              title: status.result.video_title || video.title,
+            });
+
+            const summaryRes = await chrome.runtime.sendMessage({
+              action: 'GET_SUMMARY',
+              data: { summaryId: status.result.summary_id },
+            });
+
+            if (summaryRes.success && summaryRes.summary) {
+              setAnalysis({
+                phase: 'complete',
+                summaryId: status.result.summary_id,
+                summary: summaryRes.summary,
+              });
+              loadRecentAnalyses();
+            }
+          } else if (status.status === 'failed') {
+            if (pollRef.current) clearInterval(pollRef.current);
+            setAnalysis({ phase: 'error', message: status.error || 'Analysis failed' });
+          } else {
+            setAnalysis({
+              phase: 'analyzing',
+              progress: status.progress || 0,
+              message: status.message || 'Processing...',
+            });
+          }
+        } catch {
+          // Polling error — will retry
+        }
+      }, 2500);
+    } catch (e) {
+      setAnalysis({ phase: 'error', message: (e as Error).message });
     }
+  }, [video, mode, lang]);
+
+  // Chat view
+  if (chatOpen && analysis.phase === 'complete') {
+    return (
+      <ChatDrawer
+        summaryId={analysis.summaryId}
+        videoTitle={analysis.summary.video_title}
+        onClose={() => setChatOpen(false)}
+      />
+    );
   }
 
   return (
-    <div className="view main-view">
+    <div className="main-view">
       {/* Header */}
       <div className="main-header">
         <div className="main-header-left">
-          <DeepSightLogo size="sm" />
+          <img
+            src={chrome.runtime.getURL('assets/deepsight-logo-cosmic.png')}
+            alt=""
+            className="main-header-logo"
+            width={24}
+            height={24}
+          />
           <h1>DeepSight</h1>
-          <span className="ds-badge">AI Analysis</span>
         </div>
-        <button
-          className="back-btn"
-          onClick={onShowSettings}
-          title="Settings"
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#8888a0', fontSize: 16 }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-          </svg>
-        </button>
+        <div className="main-header-actions">
+          <button className="icon-btn icon-btn-danger" onClick={onLogout} title="Sign out">
+            <LogoutIcon size={16} />
+          </button>
+        </div>
       </div>
 
-      {/* User Bar */}
+      {/* User bar */}
       <div className="user-bar">
-        <span className={`plan-badge ${PLAN_CLASSES[user.plan] || 'plan-free'}`}>
-          {user.plan}
-        </span>
-        <span className="user-credits">
-          {user.credits} credits
-        </span>
-        <button className="user-signout" onClick={onLogout}>
-          Sign out
-        </button>
+        <span className={`plan-badge plan-${user.plan}`}>{user.plan}</span>
+        <span className="user-credits">{user.credits} credits</span>
       </div>
 
-      {/* Main Content */}
+      {/* Content */}
       <div className="main-content">
-        {/* Analyze Button */}
-        <button
-          className={`analyze-btn${isAnalyzing ? ' loading' : ''}`}
-          onClick={handleAnalyze}
-          disabled={isAnalyzing}
-        >
-          {isAnalyzing ? (
-            <>
-              <DeepSightSpinner size="sm" />
-              Analyzing...
-            </>
-          ) : (
-            <>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
-              Analyze Current Video
-            </>
-          )}
-        </button>
-
-        {/* Tier & Language Selectors */}
-        <div className="selectors-row">
-          <div className="ds-select-wrapper">
-            <label>Tier</label>
-            <select className="ds-select" value={tier} onChange={(e) => setTier(e.target.value)}>
-              <option value="accessible">Standard</option>
-              <option value="standard">Advanced</option>
-              <option value="expert">Expert</option>
-            </select>
+        {/* Video status */}
+        <div className="video-status">
+          <div className="video-status-icon">
+            <PlayIcon size={16} />
           </div>
-          <div className="ds-select-wrapper">
-            <label>Language</label>
-            <select className="ds-select" value={lang} onChange={(e) => setLang(e.target.value)}>
-              <option value="fr">Fran\u00e7ais</option>
-              <option value="en">English</option>
-              <option value="es">Espa\u00f1ol</option>
-              <option value="de">Deutsch</option>
-            </select>
-          </div>
+          <span className={`video-status-text ${video ? 'video-status-detected' : 'video-status-none'}`}>
+            {video
+              ? video.title.length > 45 ? video.title.substring(0, 45) + '...' : video.title
+              : 'Open a YouTube video to analyze'}
+          </span>
         </div>
 
-        {/* Category Tabs */}
-        <div className="tabs-container">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              className={`tab-btn${activeTab === tab ? ' active' : ''}`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
+        {/* Analysis controls */}
+        {video && analysis.phase === 'idle' && (
+          <>
+            <div className="selectors-row">
+              <div className="ds-select-wrapper">
+                <label>Mode</label>
+                <select className="ds-select" value={mode} onChange={(e) => setMode(e.target.value)}>
+                  <option value="standard">Standard</option>
+                  <option value="accessible">Accessible</option>
+                  <option value="expert">Expert</option>
+                </select>
+              </div>
+              <div className="ds-select-wrapper">
+                <label>Language</label>
+                <select className="ds-select" value={lang} onChange={(e) => setLang(e.target.value)}>
+                  <option value="fr">Fran&ccedil;ais</option>
+                  <option value="en">English</option>
+                  <option value="es">Espa&ntilde;ol</option>
+                  <option value="de">Deutsch</option>
+                </select>
+              </div>
+            </div>
+            <button className="analyze-btn" onClick={startAnalysis}>
+              {'\u2728'} Analyze this video
             </button>
-          ))}
-        </div>
+          </>
+        )}
 
-        {/* Recent Analyses */}
-        {recentAnalyses.length > 0 && (
+        {/* Progress */}
+        {analysis.phase === 'analyzing' && (
+          <div className="progress-container">
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${analysis.progress}%` }} />
+            </div>
+            <p className="progress-text">{analysis.message}</p>
+          </div>
+        )}
+
+        {/* Error */}
+        {analysis.phase === 'error' && (
+          <div style={{ textAlign: 'center', padding: '12px' }}>
+            <p style={{ color: 'var(--ds-error)', fontSize: '13px', marginBottom: '8px' }}>
+              {'\u274C'} {analysis.message}
+            </p>
+            <button
+              className="analyze-btn"
+              onClick={() => setAnalysis({ phase: 'idle' })}
+              style={{ height: '40px', fontSize: '13px' }}
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Synthesis */}
+        {analysis.phase === 'complete' && (
+          <SynthesisView
+            summary={analysis.summary}
+            summaryId={analysis.summaryId}
+            onOpenChat={() => setChatOpen(true)}
+          />
+        )}
+
+        {/* Recent */}
+        {analysis.phase === 'idle' && recentAnalyses.length > 0 && (
           <div className="recent-section">
-            <h3>Recent Analyses</h3>
+            <h3>Recent analyses</h3>
             <div className="recent-list">
-              {recentAnalyses.slice(0, 3).map((item) => (
+              {recentAnalyses.slice(0, 5).map((item) => (
                 <a
-                  key={item.summaryId}
-                  href={`${WEBAPP_URL}/summary/${item.summaryId}`}
+                  key={item.videoId}
+                  href={`https://www.deepsightsynthesis.com/summary/${item.summaryId}`}
                   target="_blank"
                   rel="noreferrer"
                   className="recent-item"
                 >
-                  <img
-                    src={getThumbnailUrl(item.videoId)}
-                    alt=""
-                  />
+                  <img src={getThumbnailUrl(item.videoId)} alt="" loading="lazy" />
                   <span className="recent-title">{item.title}</span>
                 </a>
               ))}
@@ -173,38 +260,8 @@ export const MainView: React.FC<MainViewProps> = ({
           </div>
         )}
 
-        {/* Quick Actions */}
-        <div className="quick-actions">
-          <a
-            href={`${WEBAPP_URL}/analyze`}
-            target="_blank"
-            rel="noreferrer"
-            className="action-card"
-          >
-            <span className="action-icon action-icon-analyze">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4a9eff" strokeWidth="2" strokeLinecap="round">
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
-            </span>
-            <span>Web App</span>
-          </a>
-          <button onClick={onShowHistory} className="action-card">
-            <span className="action-icon action-icon-history">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
-            </span>
-            <span>History</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="popup-footer">
-        <a href={WEBAPP_URL} target="_blank" rel="noreferrer">
-          Open DeepSight
-        </a>
+        {/* Promo */}
+        {analysis.phase === 'idle' && <PromoBanner />}
       </div>
     </div>
   );

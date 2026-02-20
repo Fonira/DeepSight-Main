@@ -116,7 +116,7 @@ const LegalCGU: React.FC = () => {
           <div className="text-white/80 space-y-3">
             <p>
               {LEGAL_INFO.website.name} est une plateforme SaaS (Software as a Service) d'analyse de videos YouTube
-              utilisant l'intelligence artificielle et l'epistemologie bayesienne. Le Service propose notamment :
+              utilisant l'intelligence artificielle française avec un raisonnement méthodique et une vérification rigoureuse des faits. Le Service propose notamment :
             </p>
             <ul className="list-disc list-inside space-y-2 ml-4">
               <li>L'analyse automatisee de videos YouTube (transcription, synthese structuree, categorisation epistemique)</li>
