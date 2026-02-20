@@ -1,0 +1,11 @@
+Nouveautés de la version 1.0.0 :
+
+• Lancement officiel de DeepSight !
+• Analyse IA de vidéos YouTube avec résumés bayésiens
+• Fact-checking avec marqueurs de certitude et sources
+• Flashcards, quiz et glossaire des concepts
+• Chat contextuel avec l'IA sur chaque vidéo
+• Export en PDF, Markdown et DOCX
+• Synthèse vocale (TTS) des résumés
+• Mode sombre et mode clair
+• Support français et anglais

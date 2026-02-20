@@ -31,9 +31,6 @@ import {
   VerifyEmailScreen,
   DashboardScreen,
   HistoryScreen,
-  // DISABLED: Playlist features moved to web-only (Feb 2026)
-  // PlaylistsScreen,
-  // PlaylistDetailScreen,
   ProfileScreen,
   SettingsScreen,
   AccountScreen,
@@ -45,8 +42,8 @@ import {
   LegalScreen,
   StudyScreen,
   ContactScreen,
-  ExportScreen,
   AnalyticsScreen,
+  PlaylistDetailScreen,
 } from '../screens';
 import type { RootStackParamList, MainTabParamList } from '../types';
 
@@ -63,8 +60,6 @@ const MainTabs: React.FC = () => {
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="History" component={HistoryScreen} />
-      {/* DISABLED: Playlist tab removed - web-only feature (Feb 2026) */}
-      {/* <Tab.Screen name="Playlists" component={PlaylistsScreen} /> */}
       <Tab.Screen name="Upgrade" component={UpgradeScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
@@ -129,15 +124,17 @@ const MainStack: React.FC = () => {
       />
       <Stack.Screen name="Legal" component={LegalScreen} />
       <Stack.Screen name="Contact" component={ContactScreen} />
-      {/* DISABLED: PlaylistDetail screen removed - web-only feature (Feb 2026) */}
-      {/* <Stack.Screen name="PlaylistDetail" component={PlaylistDetailScreen} /> */}
       <Stack.Screen
         name="StudyTools"
         component={StudyScreen}
         options={{ animation: 'slide_from_right' }}
       />
-      <Stack.Screen name="Export" component={ExportScreen} />
       <Stack.Screen name="Analytics" component={AnalyticsScreen} />
+      <Stack.Screen
+        name="PlaylistDetail"
+        component={PlaylistDetailScreen}
+        options={{ animation: 'slide_from_right' }}
+      />
     </Stack.Navigator>
   );
 };
@@ -162,8 +159,6 @@ const linking: LinkingOptions<RootStackParamList> = {
         screens: {
           Dashboard: 'home',
           History: 'history',
-          // DISABLED: Playlist route removed - web-only feature (Feb 2026)
-          // Playlists: 'playlists',
           Upgrade: 'plans',
           Profile: 'profile',
         },
@@ -177,10 +172,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       PaymentCancel: 'payment/cancel',
       Legal: 'legal/:type',
       Contact: 'contact',
-      // DISABLED: PlaylistDetail route removed - web-only feature (Feb 2026)
-      // PlaylistDetail: 'playlists/:playlistId',
       StudyTools: 'study/:summaryId',
-      Export: 'export/:summaryId',
       Analytics: 'analytics',
     },
   },
@@ -188,7 +180,7 @@ const linking: LinkingOptions<RootStackParamList> = {
 
 // Auth-aware deep link routes
 const AUTH_REQUIRED_ROUTES = new Set([
-  'Analysis', 'Settings', 'Account', 'Usage', 'StudyTools', // 'PlaylistDetail' removed
+  'Analysis', 'Settings', 'Account', 'Usage', 'StudyTools', 'PlaylistDetail',
 ]);
 
 // Handles incoming deep links with auth redirect
@@ -257,14 +249,8 @@ const DeepLinkHandler: React.FC = () => {
       const screen = data.screen as string | undefined;
       const summaryId = data.summaryId as string | undefined;
       const videoId = data.videoId as string | undefined;
-      // DISABLED: Playlist notification handling removed (Feb 2026)
-      // const playlistId = data.playlistId as string | undefined;
-
       if (screen === 'Analysis' && (summaryId || videoId)) {
         navigation.navigate('Analysis', { videoId: videoId || summaryId } as any);
-      // DISABLED: Playlist notification navigation removed (Feb 2026)
-      // } else if (screen === 'Playlists' && playlistId) {
-      //   navigation.navigate('PlaylistDetail', { playlistId } as any);
       } else if (screen === 'Dashboard') {
         navigation.navigate('MainTabs' as any);
       } else if (screen === 'Upgrade') {

@@ -560,6 +560,7 @@ async function initCard(): Promise<void> {
       renderLogin(body);
     }
   } catch {
+    /* auth expired */
     renderLogin(body);
   }
 }

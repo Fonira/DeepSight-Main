@@ -77,7 +77,9 @@ export const Input = forwardRef<TextInput, InputProps>(
           { translateY: interpolate(labelAnim.value, [0, 1], [0, -22]) },
           { scale: interpolate(labelAnim.value, [0, 1], [1, 0.85]) },
         ],
-        opacity: interpolate(labelAnim.value, [0, 1], [0.5, 1]),
+        // At rest (0): fully hidden to avoid overlap with placeholder
+        // When focused/has value (1): fully visible floating above input
+        opacity: interpolate(labelAnim.value, [0, 0.3, 1], [0, 0, 1]),
       };
     });
 
@@ -165,7 +167,7 @@ export const Input = forwardRef<TextInput, InputProps>(
             onBlur={handleBlur}
             secureTextEntry={isPassword && !showPassword}
             value={value}
-            placeholder={label && !props.multiline ? (isFocused || value ? placeholder : label) : placeholder}
+            placeholder={placeholder || label}
             {...props}
           />
 

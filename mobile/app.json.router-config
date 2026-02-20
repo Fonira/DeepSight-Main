@@ -1,0 +1,30 @@
+// Configuration Expo Router pour deep linking
+// À ajouter dans app.json expo.plugins si nécessaire
+
+{
+  "plugins": [
+    [
+      "expo-router",
+      {
+        "origin": "https://deepsightsynthesis.com",
+        "scheme": "deepsight"
+      }
+    ]
+  ]
+}
+
+// Deep linking routes supportées:
+//
+// deepsight://home              → /(tabs)/index
+// deepsight://library           → /(tabs)/library
+// deepsight://study             → /(tabs)/study
+// deepsight://profile           → /(tabs)/profile
+// deepsight://analysis/123      → /(tabs)/analysis/123
+// deepsight://login             → /(auth)/login
+// deepsight://register          → /(auth)/register
+// deepsight://verify            → /(auth)/verify
+// deepsight://forgot-password   → /(auth)/forgot-password
+//
+// https://deepsightsynthesis.com/analysis/456  → /(tabs)/analysis/456
+// https://www.deepsightsynthesis.com/analysis/456
+// https://deepsight.app/analysis/456

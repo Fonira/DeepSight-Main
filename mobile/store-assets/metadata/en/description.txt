@@ -1,0 +1,38 @@
+DeepSight transforms how you watch YouTube. Powered by artificial intelligence and Bayesian epistemology, every video becomes a reliable, structured source of knowledge.
+
+INTELLIGENT ANALYSIS
+Paste a YouTube link and instantly get a detailed summary. Our AI identifies key ideas, arguments, and the logical structure of each video. Three analysis modes — accessible, standard, and expert — adapt to your level.
+
+FACT-CHECKING WITH SOURCES
+Every claim is evaluated with Bayesian certainty markers:
+• SOLID — Established fact, scientific consensus
+• PLAUSIBLE — Probable but needs confirmation
+• UNCERTAIN — Hypothesis, ongoing debate
+• VERIFY — Doubtful claim, check independently
+External sources are provided so you can verify for yourself.
+
+STUDY TOOLS
+• Auto-generated flashcards to memorize key concepts
+• Interactive quizzes to test your understanding
+• Concept glossary with contextual definitions
+• Visual mind maps to connect ideas
+
+CONTEXTUAL CHAT
+Ask questions about the analyzed video and get precise answers based on its content. The AI understands the full context of the video for relevant responses.
+
+EXPORT AND SHARE
+Export your analyses as PDF, Markdown, or DOCX. Keep your notes and access your analysis history anytime.
+
+AUDIO SYNTHESIS (TTS)
+Listen to summaries with built-in text-to-speech. Perfect for reviewing on the go.
+
+AVAILABLE PLANS
+• Free: 3 analyses/month, videos up to 10 min
+• Student: 40 analyses/month, flashcards, concept maps
+• Starter: 60 analyses/month, exports, 60-day history
+• Pro: 300 analyses/month, playlists, unlimited chat, TTS
+
+PRIVACY
+Your data is protected. No videos are stored — only metadata and analyses are kept. GDPR compliant.
+
+DeepSight is the perfect tool for students, researchers, journalists, and curious minds who want to go beyond passive watching.

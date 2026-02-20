@@ -11,7 +11,8 @@ import {
   Brain, Shield, MessageSquare, FileText,
   Zap, ChevronRight, Users, GraduationCap, Newspaper,
   Star, Crown, ListVideo, Briefcase,
-  AlertTriangle, Lightbulb
+  AlertTriangle, Lightbulb,
+  Globe, Smartphone, Puzzle
 } from "lucide-react";
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
@@ -397,10 +398,10 @@ const getFAQs = (language: string) => [
 // STATS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const stats = [
-  { value: '5min', label: { fr: 'par vidéo', en: 'per video' } },
-  { value: '98%', label: { fr: 'précision', en: 'accuracy' } },
-  { value: '24/7', label: { fr: 'disponible', en: 'available' } },
+const platforms = [
+  { icon: Globe, label: { fr: 'Deep Sight Web', en: 'Deep Sight Web' } },
+  { icon: Smartphone, label: { fr: 'App Mobile', en: 'Mobile App' } },
+  { icon: Puzzle, label: { fr: 'Extension navigateur intégrée dans YouTube', en: 'Browser extension integrated in YouTube' } },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -548,25 +549,69 @@ const LandingPage: React.FC = () => {
             </a>
           </motion.div>
 
-          {/* Stats */}
+          {/* Platforms */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, ease, delay: 0.6 }}
-            className="flex items-center justify-center gap-10 sm:gap-16"
+            className="flex items-center justify-center gap-8 sm:gap-14"
           >
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="text-xl sm:text-2xl font-semibold text-text-primary tabular-nums">
-                  {stat.value}
+            {platforms.map((platform, index) => {
+              const Icon = platform.icon;
+              return (
+                <div key={index} className="text-center flex flex-col items-center gap-2 max-w-[140px]">
+                  <div className="w-10 h-10 rounded-xl bg-accent-primary/10 border border-accent-primary/20 flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-accent-primary" />
+                  </div>
+                  <div className="text-xs sm:text-sm font-medium text-text-secondary leading-tight">
+                    {platform.label[lang]}
+                  </div>
                 </div>
-                <div className="text-xs text-text-tertiary mt-0.5">
-                  {stat.label[lang]}
-                </div>
-              </div>
-            ))}
+              );
+            })}
+          </motion.div>
+
+          {/* Badge IA Française & Européenne */}
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease, delay: 0.8 }}
+            className="mt-8 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-600/15 via-white/5 to-red-500/15 border border-blue-500/25"
+          >
+            <span className="text-base">🇫🇷</span>
+            <span className="text-xs sm:text-sm font-medium text-text-secondary">
+              {language === 'fr'
+                ? 'IA 100% Française & Européenne — Vos données restent en Europe'
+                : '100% French & European AI — Your data stays in Europe'}
+            </span>
+            <span className="text-base">🇪🇺</span>
           </motion.div>
         </div>
+      </section>
+
+      {/* ─── PROPULSÉ PAR MISTRAL AI ─── */}
+      <section className="py-10 sm:py-16 px-4 sm:px-6">
+        <ScrollReveal className="max-w-3xl mx-auto text-center">
+          <p className="text-xs sm:text-sm text-text-tertiary uppercase tracking-widest mb-6">
+            {language === 'fr' ? 'Propulsé par' : 'Powered by'}
+          </p>
+          <div className="flex items-center justify-center mb-4">
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Mistral_AI_logo.svg/2560px-Mistral_AI_logo.svg.png"
+              alt="Mistral AI"
+              className="h-16 sm:h-24 md:h-28 w-auto object-contain"
+              style={{ filter: 'drop-shadow(0 0 30px rgba(139, 92, 246, 0.3))' }}
+            />
+          </div>
+          <p className="text-base sm:text-lg font-semibold bg-gradient-to-r from-accent-primary via-violet-400 to-cyan-400 bg-clip-text text-transparent">
+            {language === 'fr' ? 'Propulsé par Mistral AI' : 'Powered by Mistral AI'}
+          </p>
+          <p className="text-xs text-text-tertiary mt-2 max-w-md mx-auto">
+            {language === 'fr'
+              ? 'Modèles d\'IA de pointe, développés en France, pour des analyses précises et souveraines.'
+              : 'State-of-the-art AI models, developed in France, for precise and sovereign analyses.'}
+          </p>
+        </ScrollReveal>
       </section>
 
       {/* ─── PROBLEM / SOLUTION ─── */}

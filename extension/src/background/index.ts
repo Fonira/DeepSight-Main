@@ -45,7 +45,7 @@ async function pollAnalysis(taskId: string): Promise<unknown> {
         chrome.tabs.sendMessage(tabs[0].id, {
           action: 'ANALYSIS_PROGRESS',
           data: { taskId, progress: status.progress, message: status.message },
-        }).catch(() => {});
+        }).catch(() => { /* tab may not exist */ });
       }
     });
 

@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { Move, ExternalLink, RefreshCw, ChevronUp, ChevronDown, X, Minus, Maximize2 } from 'lucide-react';
 import { useLoadingWord, LoadingWord as LoadingWordType } from '../contexts/LoadingWordContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../hooks/useAuth';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🪝 DRAGGABLE HOOK (comme FloatingChatWindow)
@@ -424,6 +425,7 @@ export const LoadingWordGlobal: React.FC = () => {
   const navigate = useNavigate();
   const { currentWord, refreshWord, isLoading } = useLoadingWord();
   const { language } = useLanguage();
+  const { isAuthenticated } = useAuth();
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
@@ -433,6 +435,11 @@ export const LoadingWordGlobal: React.FC = () => {
     { x: window.innerWidth - 340, y: window.innerHeight - 300 },
     'loading-word-widget'
   );
+
+  // 🔒 Ne pas afficher si l'utilisateur n'est pas connecté
+  if (!isAuthenticated) {
+    return null;
+  }
 
   if (!currentWord) {
     return null;

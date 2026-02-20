@@ -5,7 +5,7 @@
  */
 
 export const fontFamily = {
-  display: 'Cormorant-Bold',
+  display: 'CormorantGaramond-Bold',
   body: 'DMSans-Regular',
   bodyMedium: 'DMSans-Medium',
   bodySemiBold: 'DMSans-SemiBold',

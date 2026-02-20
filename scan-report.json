@@ -1,0 +1,429 @@
+{
+  "scan_date": "2026-02-10",
+  "apps": {
+    "backend": {
+      "health_score": 72,
+      "lines_of_code": 56078,
+      "todos": [
+        {"file": "batch/router.py:340", "text": "TODO: Intégrer avec le système d'analyse réel"},
+        {"file": "chat/websocket.py:569", "text": "TODO: Extraire user_id du token JWT"},
+        {"file": "usage/router.py:214", "text": "TODO: récupérer subscription_renewal depuis Stripe"},
+        {"file": "videos/streaming.py:410", "text": "TODO: Get actual duration"},
+        {"file": "videos/streaming.py:500", "text": "TODO: detect category from metadata"}
+      ],
+      "security_issues": [
+        {
+          "severity": "medium",
+          "file": "chat/websocket.py:569",
+          "description": "WebSocket user_id extraction from JWT not implemented - potential auth bypass on WebSocket connections"
+        },
+        {
+          "severity": "low",
+          "file": "batch/router.py:340",
+          "description": "Batch analysis not integrated with real analysis system - stub code in production"
+        }
+      ],
+      "outdated_deps": [
+        "fastapi>=0.109.0 (latest 0.115+)",
+        "sqlalchemy>=2.0.25 (latest 2.0.36+)",
+        "pydantic>=2.5.0 (latest 2.10+)"
+      ],
+      "missing_tests": [
+        "academic/router.py - No tests for academic search endpoints",
+        "admin/router.py - No tests for admin CRUD operations",
+        "batch/router.py - No tests for batch analysis",
+        "chat/router.py - No tests for chat endpoints",
+        "chat/websocket.py - No tests for WebSocket connections",
+        "contact/router.py - No tests for contact form",
+        "exports/router.py - No tests for PDF/MD/text export",
+        "history/history_router.py - No tests for history endpoints",
+        "monitoring/router.py - No tests for monitoring",
+        "notifications/router.py - No tests for notifications",
+        "playlists/router.py - No tests for playlist CRUD",
+        "profile/router.py - No tests for profile management",
+        "study/router.py - No tests for study tools (quiz, flashcards, mindmap)",
+        "tournesol/router.py - No tests for Tournesol integration",
+        "tts/router.py - No tests for text-to-speech",
+        "usage/router.py - No tests for usage tracking",
+        "words/router.py - No tests for word definitions"
+      ],
+      "endpoints_count": 190,
+      "endpoint_modules": {
+        "videos": 26,
+        "billing": 20,
+        "auth": 20,
+        "playlists": 15,
+        "history": 14,
+        "chat": 11,
+        "admin": 10,
+        "api_public": 9,
+        "usage": 8,
+        "profile": 7,
+        "tts": 5,
+        "academic": 5,
+        "tournesol": 4,
+        "study": 4,
+        "notifications": 4,
+        "exports": 4,
+        "batch": 4,
+        "words": 3,
+        "monitoring": 2,
+        "streaming": 3,
+        "contact": 1
+      }
+    },
+    "frontend": {
+      "health_score": 68,
+      "lines_of_code": 48645,
+      "todos": [
+        {"file": "components/PrivateRoute.tsx:23", "text": "TODO: remove this dev bypass after preview - SECURITY: bypasses auth in DEV mode"},
+        {"file": "pages/DashboardPage.tsx:101", "text": "Playlist regex comment (minor)"}
+      ],
+      "security_issues": [
+        {
+          "severity": "high",
+          "file": "components/PrivateRoute.tsx:24",
+          "description": "DEV mode bypasses authentication entirely - any unauthenticated user can access all private routes in development. Risk of accidental deployment with this bypass active."
+        },
+        {
+          "severity": "medium",
+          "file": ".env.local",
+          "description": "Vercel OIDC token stored in .env.local (gitignored but present on disk). Token contains project/owner info."
+        }
+      ],
+      "outdated_deps": [
+        "react ^18.3.1 (React 19 released)",
+        "react-router-dom ^6.20.1 (v7 available)",
+        "@tanstack/react-query ^5.17.0 (latest 5.62+)"
+      ],
+      "ts_errors": 0,
+      "missing_tests": [
+        "0 test files exist - ZERO frontend test coverage",
+        "pages/ - No tests for any page component (20 pages)",
+        "components/ - No tests for any UI component",
+        "services/api.ts - No tests for API client",
+        "store/ - No tests for Zustand stores",
+        "hooks/ - No tests for custom hooks"
+      ],
+      "pages": [
+        "AdminPage", "AnalyticsPage", "AuthCallback", "ContactPage", "DashboardPage",
+        "History", "LandingPage", "LegalPage", "Login", "MyAccount",
+        "PaymentCancel", "PaymentSuccess", "PlaylistDetailPage", "PlaylistPage",
+        "Settings", "StatusPage", "StudyPage", "UpgradePage", "UsageDashboard"
+      ]
+    },
+    "mobile": {
+      "health_score": 65,
+      "lines_of_code": 43660,
+      "todos": [],
+      "security_issues": [],
+      "outdated_deps": [
+        "@react-navigation/bottom-tabs ^6.6.1 (v7 available)",
+        "@react-navigation/native ^6.1.18 (v7 available)",
+        "@react-navigation/native-stack ^6.11.0 (v7 available)"
+      ],
+      "ts_errors": 12,
+      "ts_error_details": "All 12 errors in ContactScreen.tsx - fontFamily uses old property names (bold, regular, semiBold, medium) instead of new theme names (bodyBold, body, bodySemiBold, bodyMedium)",
+      "missing_tests": [
+        "0 test files exist - ZERO mobile test coverage",
+        "screens/ - No tests for any screen (20+ screens)",
+        "components/ - No tests for UI components",
+        "services/api.ts - No tests for API client",
+        "contexts/ - No tests for Auth/Theme/Offline contexts",
+        "hooks/ - No tests for custom hooks",
+        "navigation/ - No tests for navigation logic"
+      ],
+      "screens": [
+        "AccountScreen", "AnalysisScreen", "ContactScreen", "DashboardScreen",
+        "ForgotPasswordScreen", "HistoryScreen", "LandingScreen", "LegalScreen",
+        "LoginScreen", "OnboardingScreen", "PaymentCancelScreen", "PaymentSuccessScreen",
+        "PlaylistDetailScreen", "PlaylistsScreen", "ProfileScreen", "RegisterScreen",
+        "SettingsScreen", "StudyScreen", "UpgradeScreen", "UsageScreen", "VerifyEmailScreen"
+      ],
+      "backup_files": [
+        "DashboardScreen.tsx.bak", "HistoryScreen.tsx.bak", "LandingScreen.tsx.bak",
+        "LoginScreen.tsx.bak", "ProfileScreen.tsx.bak", "SettingsScreen.tsx.bak"
+      ]
+    }
+  },
+  "feature_parity": {
+    "web_only": [
+      "Analytics page (usage charts, trend analysis)",
+      "Admin panel (user management, stats, backup)",
+      "Status page (system health monitoring)",
+      "Reliability analysis (separate reliability API)"
+    ],
+    "mobile_only": [
+      "Onboarding screen (first-launch experience)",
+      "Offline mode (OfflineContext + queue)",
+      "Network status monitoring (useNetworkStatus hook)",
+      "Retry service (automatic API retry with backoff)"
+    ],
+    "both": [
+      "Dashboard (video analysis)",
+      "History (analysis history)",
+      "Playlists (list + detail)",
+      "Profile / Account management",
+      "Settings",
+      "Upgrade / Billing",
+      "Usage tracking",
+      "Study tools (quiz, flashcards, mindmap)",
+      "Contact form",
+      "Legal page",
+      "Payment success/cancel",
+      "Login / Register / Auth",
+      "Forgot password / Verify email",
+      "Chat (contextual AI chat)",
+      "TTS (text-to-speech)",
+      "Academic search",
+      "Export (PDF/MD/text)"
+    ],
+    "api_unused_by_mobile": [
+      "POST /api/videos/reliability - Reliability analysis not in mobile",
+      "GET /api/admin/* - Admin endpoints (10 endpoints) not in mobile",
+      "GET /api/monitoring/* - Monitoring endpoints not in mobile",
+      "GET /api/analytics/* - Analytics data not in mobile",
+      "POST /api/batch/analyze - Batch analysis not in mobile",
+      "GET /api/words/* - Word definitions API not directly used in mobile"
+    ]
+  },
+  "git_health": {
+    "last_commits": "15 recent fix commits on main",
+    "total_branches_local": 18,
+    "total_branches_remote": 27,
+    "stale_branches": [
+      "claude/deep-sight-mobile-app-cDwC3",
+      "claude/fix-scholar-access-Lkjo4",
+      "feature/chrome-extension",
+      "feature/documentation",
+      "feature/fix-mobile-auth",
+      "feature/marketing-content",
+      "feature/mobile-offline-mode",
+      "feature/mobile-push-notifications",
+      "feature/web-analysis-templates",
+      "feature/web-dark-mode",
+      "feature/web-dashboard-analytics",
+      "integration/changes-into-main"
+    ],
+    "uncommitted_changes": "none (clean working directory)"
+  },
+  "critical_issues": [
+    {
+      "severity": "high",
+      "area": "Security",
+      "description": "PrivateRoute.tsx bypasses authentication in DEV mode. If accidentally deployed to production with DEV flag, all routes are accessible without login."
+    },
+    {
+      "severity": "high",
+      "area": "Security",
+      "description": "WebSocket chat (websocket.py:569) has TODO to extract user_id from JWT - currently may not properly authenticate WebSocket connections."
+    },
+    {
+      "severity": "high",
+      "area": "Quality",
+      "description": "ZERO test coverage on frontend (0 test files for 48K LOC) and mobile (0 test files for 43K LOC). Only 12 test files for backend (56K LOC). Total project: 148K LOC with minimal testing."
+    },
+    {
+      "severity": "medium",
+      "area": "TypeScript",
+      "description": "12 TS errors in mobile ContactScreen.tsx - fontFamily property names mismatch with theme system after refonte."
+    },
+    {
+      "severity": "medium",
+      "area": "DevOps",
+      "description": "12+ stale branches (feature/*, claude/*) not merged or cleaned up. Branch hygiene needed."
+    },
+    {
+      "severity": "medium",
+      "area": "Backend",
+      "description": "Batch analysis (batch/router.py) has stub code not integrated with real analysis system."
+    },
+    {
+      "severity": "low",
+      "area": "Maintenance",
+      "description": "6 .bak files in mobile/src/screens/ from refonte work - should be cleaned up."
+    }
+  ],
+  "suggested_tasks": [
+    {
+      "title": "Fix WebSocket JWT authentication",
+      "type": "Bug",
+      "project": "Backend",
+      "priority": "Urgente",
+      "effort": "S",
+      "description": "chat/websocket.py:569 has a TODO to extract user_id from JWT token. WebSocket connections may not properly authenticate users, allowing unauthorized access to chat functionality.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\backend. Exécute tout sans demander confirmation.\n\nFix the WebSocket authentication in src/chat/websocket.py. At line 569 there's a TODO: 'Extraire user_id du token JWT'.\n\n1. Read src/chat/websocket.py to understand the current WebSocket handler\n2. Read src/auth/dependencies.py to see how JWT extraction works in REST endpoints\n3. Read src/core/config.py for JWT settings\n4. Implement proper JWT token extraction from WebSocket connection (typically from query params or first message)\n5. Use the same JWT verification as REST endpoints (jose.jwt.decode with same secret)\n6. Reject connections with invalid/missing tokens\n7. Run: cd src && python -c \"import chat.websocket\" to verify no import errors\n\nSuccess criteria: WebSocket connections require valid JWT token, user_id is properly extracted, invalid tokens are rejected with appropriate error."
+    },
+    {
+      "title": "Remove PrivateRoute dev bypass",
+      "type": "Bug",
+      "project": "Frontend Web",
+      "priority": "Urgente",
+      "effort": "XS",
+      "description": "PrivateRoute.tsx lines 23-26 bypass authentication entirely in DEV mode. This is a security risk if accidentally deployed with DEV environment variable set.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\frontend. Exécute tout sans demander confirmation.\n\n1. Read src/components/PrivateRoute.tsx\n2. Remove lines 23-26 (the DEV bypass block: `if (import.meta.env.DEV && !user) { return <>{children}</>; }`)\n3. Verify the component still works: unauthenticated users get redirected to /login, authenticated users see children\n4. Run: npx tsc --noEmit to verify no TS errors introduced\n\nSuccess criteria: PrivateRoute no longer bypasses auth in any environment. Only authenticated users can access protected routes."
+    },
+    {
+      "title": "Fix mobile ContactScreen TypeScript errors",
+      "type": "Bug",
+      "project": "Mobile",
+      "priority": "Urgente",
+      "effort": "XS",
+      "description": "12 TypeScript errors in ContactScreen.tsx. All errors are fontFamily property mismatches: uses old names (bold, regular, semiBold, medium) instead of new theme names (bodyBold, body, bodySemiBold, bodyMedium).",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\mobile. Exécute tout sans demander confirmation.\n\n1. Read src/theme/typography.ts to see the correct fontFamily property names\n2. Read src/screens/ContactScreen.tsx\n3. Replace all fontFamily references:\n   - fontFamily.bold → fontFamily.bodyBold\n   - fontFamily.regular → fontFamily.body\n   - fontFamily.semiBold → fontFamily.bodySemiBold\n   - fontFamily.medium → fontFamily.bodyMedium\n4. Run: npx tsc --noEmit to verify all 12 errors are fixed and no new errors introduced\n\nSuccess criteria: npx tsc --noEmit reports 0 errors (or same count as before minus the 12 ContactScreen errors)."
+    },
+    {
+      "title": "Integrate batch analysis with real system",
+      "type": "Bug",
+      "project": "Backend",
+      "priority": "Haute",
+      "effort": "M",
+      "description": "batch/router.py:340 has TODO indicating batch analysis is not integrated with the real analysis pipeline. This means the batch endpoint may return stub/fake data.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\backend. Exécute tout sans demander confirmation.\n\n1. Read src/batch/router.py fully to understand the batch analysis flow\n2. Read src/videos/analysis.py to understand the real analysis system\n3. Read src/videos/router.py for how single video analysis works (the analyze endpoint)\n4. Identify the gap at line 340 where batch needs to call real analysis\n5. Wire batch processing to use the same analysis pipeline as single video analysis\n6. Ensure proper error handling per-video (one failure shouldn't kill the batch)\n7. Ensure credits are properly deducted per video in batch\n8. Run: cd src && python -c \"import batch.router\" to verify no import errors\n\nSuccess criteria: Batch analysis endpoint calls the real analysis pipeline for each video, handles errors per-video, and deducts credits properly."
+    },
+    {
+      "title": "Retrieve subscription renewal from Stripe",
+      "type": "Bug",
+      "project": "Backend",
+      "priority": "Haute",
+      "effort": "S",
+      "description": "usage/router.py:214 has subscription_renewal=None with TODO to retrieve from Stripe. Users cannot see when their subscription renews.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\backend. Exécute tout sans demander confirmation.\n\n1. Read src/usage/router.py around line 214 to understand the context\n2. Read src/billing/router.py to see how Stripe is used elsewhere\n3. Read src/core/config.py for Stripe configuration\n4. Implement Stripe subscription retrieval to get current_period_end date\n5. Use stripe.Subscription.retrieve() with the user's stripe_subscription_id\n6. Set subscription_renewal to the current_period_end datetime\n7. Handle edge cases: no subscription, expired subscription, cancelled\n8. Run: cd src && python -c \"import usage.router\" to verify no import errors\n\nSuccess criteria: The usage endpoint returns the actual subscription renewal date from Stripe instead of None."
+    },
+    {
+      "title": "Add backend tests for auth endpoints",
+      "type": "Feature",
+      "project": "Backend",
+      "priority": "Haute",
+      "effort": "L",
+      "description": "Auth module has 20 endpoints (register, login, refresh, logout, delete account, verify email, reset password, Google OAuth etc.) but limited test coverage. Critical for security.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\backend. Exécute tout sans demander confirmation.\n\n1. Read src/auth/router.py to understand all auth endpoints\n2. Read src/auth/service.py for business logic\n3. Read src/auth/dependencies.py for auth middleware\n4. Read tests/conftest.py for existing test fixtures\n5. Read existing test files for patterns (tests/test_api.py, tests/test_billing.py)\n6. Create tests/test_auth.py with comprehensive tests:\n   - POST /register: valid data, duplicate email, invalid email, weak password\n   - POST /login: valid creds, wrong password, unverified email, non-existent user\n   - POST /refresh: valid token, expired token, revoked token\n   - POST /logout: valid, already logged out\n   - POST /verify-email: valid code, expired code, wrong code\n   - POST /forgot-password: valid email, non-existent email\n   - POST /reset-password: valid token, expired token\n   - POST /change-password: correct old password, wrong old password\n   - GET /me: authenticated, unauthenticated\n   - GET /quota: verify quota response\n7. Run: pytest tests/test_auth.py -v\n\nSuccess criteria: All auth endpoint tests pass. Minimum 15 test cases covering happy paths and error cases."
+    },
+    {
+      "title": "Add backend tests for billing/Stripe endpoints",
+      "type": "Feature",
+      "project": "Backend",
+      "priority": "Haute",
+      "effort": "M",
+      "description": "Billing has 20 endpoints handling Stripe checkout, webhooks, and subscription management. Payment-related code needs rigorous testing.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\backend. Exécute tout sans demander confirmation.\n\n1. Read src/billing/router.py to understand all billing endpoints\n2. Read tests/test_billing.py for existing tests\n3. Read tests/conftest.py for test fixtures\n4. Expand tests/test_billing.py with:\n   - Checkout session creation for each plan\n   - Webhook handling: subscription created, updated, deleted, payment failed\n   - Portal session creation\n   - Plan change (upgrade/downgrade)\n   - Credit purchase\n   - Mock Stripe API calls using unittest.mock\n5. Run: pytest tests/test_billing.py -v\n\nSuccess criteria: Billing tests cover checkout, webhooks, portal, plan changes. All tests pass with mocked Stripe."
+    },
+    {
+      "title": "Add frontend test infrastructure + critical tests",
+      "type": "Feature",
+      "project": "Frontend Web",
+      "priority": "Haute",
+      "effort": "L",
+      "description": "Frontend has 48K LOC and ZERO test files. Need to set up Vitest + React Testing Library and add tests for critical components.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\frontend. Exécute tout sans demander confirmation.\n\n1. Read package.json to check current deps\n2. Read vite.config.ts for build config\n3. Install test deps: npm install -D vitest @testing-library/react @testing-library/jest-dom @testing-library/user-event jsdom\n4. Add vitest config to vite.config.ts (test block with jsdom environment)\n5. Create src/test/setup.ts with @testing-library/jest-dom import\n6. Add 'test' script to package.json: 'vitest run'\n7. Create first tests:\n   - src/components/__tests__/PrivateRoute.test.tsx (auth redirect logic)\n   - src/services/__tests__/api.test.ts (API client basics, token management)\n8. Run: npm test\n\nSuccess criteria: Vitest configured, 2+ test files pass, npm test works."
+    },
+    {
+      "title": "Add mobile test infrastructure + critical tests",
+      "type": "Feature",
+      "project": "Mobile",
+      "priority": "Haute",
+      "effort": "L",
+      "description": "Mobile has 43K LOC and ZERO test files. Need to set up Jest + React Native Testing Library and add tests for critical flows.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\mobile. Exécute tout sans demander confirmation.\n\n1. Read package.json for current config and deps\n2. Check if jest config exists in package.json or jest.config.js\n3. Install: npm install -D @testing-library/react-native @testing-library/jest-native jest-expo\n4. Add jest config to package.json: { \"preset\": \"jest-expo\", \"setupFilesAfterSetup\": [\"@testing-library/jest-native/extend-expect\"] }\n5. Add 'test' script: 'jest'\n6. Create first tests:\n   - src/services/__tests__/api.test.ts (API client, token refresh, error handling)\n   - src/screens/__tests__/LoginScreen.test.tsx (form validation, submit)\n7. Run: npm test\n\nSuccess criteria: Jest configured with jest-expo, 2+ test files pass, npm test works."
+    },
+    {
+      "title": "Implement video duration detection in streaming",
+      "type": "Feature",
+      "project": "Backend",
+      "priority": "Moyenne",
+      "effort": "S",
+      "description": "videos/streaming.py:410 hardcodes duration to 0. Actual video duration should be extracted from YouTube metadata.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\backend. Exécute tout sans demander confirmation.\n\n1. Read src/videos/streaming.py around line 410 to understand the context\n2. Read src/transcripts/youtube.py to see how YouTube metadata is fetched\n3. Implement duration extraction using yt-dlp or YouTube API metadata\n4. Update the streaming response to include actual duration\n5. Handle edge cases: live streams (duration=0), unavailable videos\n6. Run: cd src && python -c \"import videos.streaming\" to verify\n\nSuccess criteria: Video streaming endpoint returns actual video duration instead of 0."
+    },
+    {
+      "title": "Add Analytics page to mobile app",
+      "type": "Feature",
+      "project": "Mobile",
+      "priority": "Moyenne",
+      "effort": "L",
+      "description": "Web has an AnalyticsPage showing usage charts and trends. Mobile has no equivalent. This is a feature parity gap.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\mobile. Exécute tout sans demander confirmation.\n\n1. Read the web version: C:\\Users\\33667\\DeepSight-Main\\frontend\\src\\pages\\AnalyticsPage.tsx\n2. Read the mobile API service: src/services/api.ts (usageApi section)\n3. Read the mobile theme: src/theme/colors.ts, src/theme/spacing.ts\n4. Read existing mobile screens for patterns (e.g., UsageScreen.tsx, DashboardScreen.tsx)\n5. Create src/screens/AnalyticsScreen.tsx with:\n   - Usage statistics charts (use react-native-svg or simple bar charts)\n   - Analysis history trends\n   - Credit consumption over time\n   - Follow existing mobile design patterns (glass styling, Reanimated animations)\n6. Add AnalyticsScreen to navigation in src/navigation/AppNavigator.tsx\n7. Add to types in src/types/index.ts (RootStackParamList)\n8. Run: npx tsc --noEmit to verify no TS errors\n\nSuccess criteria: AnalyticsScreen renders usage data, is accessible from navigation, no TS errors."
+    },
+    {
+      "title": "Clean up stale git branches",
+      "type": "DevOps",
+      "project": "Backend",
+      "priority": "Moyenne",
+      "effort": "XS",
+      "description": "12+ stale local branches and 27 remote branches including many claude/* and feature/* branches that are likely merged or abandoned.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main. Exécute tout sans demander confirmation.\n\n1. Run: git branch --merged main to list branches already merged into main\n2. For each merged branch (except main itself): git branch -d <branch>\n3. Run: git remote prune origin to clean stale remote tracking refs\n4. List remaining branches: git branch -a\n5. Report which unmerged branches remain for manual review\n\nIMPORTANT: Only delete branches that are FULLY MERGED into main. Never force-delete unmerged branches.\n\nSuccess criteria: Merged branches cleaned up, stale remote refs pruned, remaining branches listed."
+    },
+    {
+      "title": "Remove .bak files from mobile codebase",
+      "type": "Refactor",
+      "project": "Mobile",
+      "priority": "Moyenne",
+      "effort": "XS",
+      "description": "6 .bak backup files in mobile/src/screens/ and frontend/src/pages/ from refonte work. These add confusion and should be removed.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main. Exécute tout sans demander confirmation.\n\n1. List all .bak files: find . -name '*.bak' -not -path '*/node_modules/*'\n2. Verify each .bak file has a corresponding current file (without .bak)\n3. Delete all .bak files: rm mobile/src/screens/*.bak frontend/src/pages/*.bak\n4. Also check for .bak in mobile/src/components/: find mobile/src/components -name '*.bak'\n5. Delete those too if found\n6. Run git status to show what was removed\n\nSuccess criteria: All .bak files removed from the project."
+    },
+    {
+      "title": "Implement admin panel for mobile (Pro/Team users)",
+      "type": "Feature",
+      "project": "Mobile",
+      "priority": "Basse",
+      "effort": "XL",
+      "description": "Web has a full AdminPage with user management, stats, backup, and logs. Mobile has no admin access. Team plan users need mobile admin.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\mobile. Exécute tout sans demander confirmation.\n\n1. Read the web admin: C:\\Users\\33667\\DeepSight-Main\\frontend\\src\\pages\\AdminPage.tsx\n2. Read backend admin endpoints: C:\\Users\\33667\\DeepSight-Main\\backend\\src\\admin\\router.py\n3. Read mobile services/api.ts - add admin API functions if missing\n4. Create src/screens/AdminScreen.tsx with:\n   - Stats overview (users count, analyses count, revenue)\n   - User list with search\n   - User detail (credits, plan, actions)\n   - Only accessible to admin users\n5. Add AdminScreen to navigation (gated by user.is_admin)\n6. Add admin API functions to src/services/api.ts\n7. Run: npx tsc --noEmit\n\nSuccess criteria: AdminScreen renders stats and user list, gated to admin users, no TS errors."
+    },
+    {
+      "title": "Add Sentry error monitoring to mobile",
+      "type": "DevOps",
+      "project": "Mobile",
+      "priority": "Moyenne",
+      "effort": "S",
+      "description": "Frontend uses @sentry/react for error monitoring. Mobile has no error monitoring, making production debugging difficult.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\mobile. Exécute tout sans demander confirmation.\n\n1. Read package.json for current deps\n2. Install: npx expo install @sentry/react-native\n3. Read the Expo Sentry docs pattern\n4. Create src/services/sentry.ts with init function\n5. Read App.tsx and wrap with Sentry.wrap()\n6. Configure DSN from environment/config (read src/constants/config.ts)\n7. Add error boundary integration\n8. Run: npx tsc --noEmit to verify\n\nSuccess criteria: Sentry SDK installed, initialized in App.tsx, error reporting configured."
+    },
+    {
+      "title": "Add rate limiting documentation and IP-based limits",
+      "type": "Feature",
+      "project": "Backend",
+      "priority": "Moyenne",
+      "effort": "M",
+      "description": "CLAUDE.md mentions 'Add rate limiting by IP for unauthenticated requests' as a known TODO. Current rate limiting exists in middleware but may not cover all unauthenticated endpoints.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\backend. Exécute tout sans demander confirmation.\n\n1. Read src/middleware/rate_limiter.py to understand current rate limiting\n2. Read src/main.py to see which middleware is applied\n3. Read src/auth/router.py for unauthenticated endpoints (register, login, forgot-password)\n4. Identify unauthenticated endpoints that lack rate limiting\n5. Add IP-based rate limiting for:\n   - POST /auth/register (e.g., 5/hour per IP)\n   - POST /auth/login (e.g., 10/hour per IP)\n   - POST /auth/forgot-password (e.g., 3/hour per IP)\n   - POST /contact (e.g., 3/hour per IP)\n6. Use the existing rate_limiter middleware pattern\n7. Run: cd src && python -c \"import main\" to verify\n\nSuccess criteria: Unauthenticated endpoints have IP-based rate limits. No import errors."
+    },
+    {
+      "title": "Implement Redis cache for transcripts",
+      "type": "Feature",
+      "project": "Backend",
+      "priority": "Basse",
+      "effort": "L",
+      "description": "CLAUDE.md lists 'Implement Redis cache for transcripts' as a known TODO. Transcript extraction is the slowest part of analysis and repeated requests for the same video waste time and API calls.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\backend. Exécute tout sans demander confirmation.\n\n1. Read src/transcripts/youtube.py to understand transcript extraction\n2. Read src/core/config.py for any existing Redis config\n3. Read requirements.txt for redis dependency\n4. Add redis[hiredis] to requirements.txt if not present\n5. Create src/core/cache.py with:\n   - Redis connection manager (with fallback to in-memory if Redis unavailable)\n   - Cache key generation for video transcripts\n   - TTL of 24 hours for cached transcripts\n6. Update src/transcripts/youtube.py to check cache before extraction\n7. Cache successful extractions after retrieval\n8. Run: cd src && python -c \"import core.cache; import transcripts.youtube\" to verify\n\nSuccess criteria: Transcript extraction checks Redis cache first. Cache miss triggers normal extraction and caches result. Graceful fallback if Redis unavailable."
+    },
+    {
+      "title": "Add push notifications infrastructure to mobile",
+      "type": "Feature",
+      "project": "Mobile",
+      "priority": "Basse",
+      "effort": "L",
+      "description": "A feature/mobile-push-notifications branch exists but is not merged. Mobile needs push notifications for analysis completion, new features, etc.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\mobile. Exécute tout sans demander confirmation.\n\n1. Check branch: git log feature/mobile-push-notifications --oneline -10 (if it exists) to see prior work\n2. Read package.json for existing notification deps\n3. Install: npx expo install expo-notifications expo-device\n4. Create src/services/PushNotificationService.ts with:\n   - Permission request\n   - Token registration with backend\n   - Notification handlers (foreground, background, response)\n   - Channel configuration (analysis_complete, promotional)\n5. Read src/contexts/AuthContext.tsx to integrate token registration on login\n6. Add notification initialization in App.tsx\n7. Run: npx tsc --noEmit\n\nSuccess criteria: Push notification service created, token registration integrated, no TS errors."
+    },
+    {
+      "title": "Optimize N+1 queries in history endpoint",
+      "type": "Refactor",
+      "project": "Backend",
+      "priority": "Moyenne",
+      "effort": "M",
+      "description": "CLAUDE.md mentions 'Optimize N+1 queries in /history endpoint'. The history endpoint likely makes separate DB queries per item instead of batch loading.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\backend. Exécute tout sans demander confirmation.\n\n1. Read src/history/history_router.py fully\n2. Read src/db/database.py for model relationships\n3. Identify N+1 patterns: look for loops that make individual DB queries\n4. Apply SQLAlchemy eager loading:\n   - Use selectinload() or joinedload() for relationships\n   - Use subquery loading for collections\n5. Test with: cd src && python -c \"import history.history_router\" to verify no import errors\n\nSuccess criteria: History endpoint uses eager loading instead of N+1 queries. No import errors."
+    },
+    {
+      "title": "Add status page to mobile",
+      "type": "Feature",
+      "project": "Mobile",
+      "priority": "Basse",
+      "effort": "S",
+      "description": "Web has StatusPage for system health monitoring. Mobile users have no way to check if the service is down.",
+      "claude_code_prompt": "Working directory : C:\\Users\\33667\\DeepSight-Main\\mobile. Exécute tout sans demander confirmation.\n\n1. Read web version: C:\\Users\\33667\\DeepSight-Main\\frontend\\src\\pages\\StatusPage.tsx\n2. Read backend monitoring: C:\\Users\\33667\\DeepSight-Main\\backend\\src\\monitoring\\router.py\n3. Read mobile theme for styling patterns\n4. Create src/screens/StatusScreen.tsx with:\n   - API health check (GET /health)\n   - Service status indicators (API, Database, AI services)\n   - Response time display\n   - Follow glass styling pattern from other screens\n5. Add to navigation in AppNavigator.tsx\n6. Run: npx tsc --noEmit\n\nSuccess criteria: StatusScreen shows service health, accessible from Settings/Profile, no TS errors."
+    }
+  ]
+}

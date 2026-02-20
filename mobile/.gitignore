@@ -51,6 +51,9 @@ android/app/build/
 # EAS
 .easignore
 
+# Google Play Store credentials (NEVER commit)
+play-store-credentials.json
+
 # Temporary files
 *.log
 tmp/

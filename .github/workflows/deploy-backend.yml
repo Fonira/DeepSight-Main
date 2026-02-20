@@ -1,0 +1,63 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Railway
+    runs-on: ubuntu-latest
+    # Only deploy if CI passes (backend-ci runs on same trigger)
+    needs: []
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via Railway webhook
+        id: deploy
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.RAILWAY_DEPLOY_WEBHOOK }}")
+          echo "status=$RESPONSE" >> $GITHUB_OUTPUT
+          if [ "$RESPONSE" != "200" ] && [ "$RESPONSE" != "201" ]; then
+            echo "::error::Railway deploy webhook returned $RESPONSE"
+            exit 1
+          fi
+          echo "Deploy triggered successfully"
+
+      - name: Wait for deployment
+        run: sleep 60
+
+      - name: Health check
+        id: health
+        run: |
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "https://deep-sight-backend-v3-production.up.railway.app/health" \
+              --max-time 10)
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i: status $STATUS, retrying in 15s..."
+            sleep 15
+          done
+          echo "::error::Health check failed after 5 attempts"
+          exit 1
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
+            curl -s -X POST \
+              "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+              -d parse_mode="HTML" \
+              -d text="<b>DeepSight Backend Deploy Failed</b>%0A%0ACommit: <code>${{ github.sha }}</code>%0ABy: ${{ github.actor }}%0A<a href='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
+          fi

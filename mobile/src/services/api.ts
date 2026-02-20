@@ -10,13 +10,16 @@ import type {
   AnalysisStatus,
   VideoInfo,
   ChatMessage,
-  Playlist,
   QuotaInfo,
   BillingPlan,
   Subscription,
   ApiResponse,
   PaginatedResponse,
   HistoryFilters,
+  PlaylistFullResponse,
+  PlaylistDetailsResponse,
+  CorpusChatMessage,
+  CorpusChatResponse,
 } from '../types';
 
 // Request configuration
@@ -260,6 +263,20 @@ const request = async <T>(
   return withRetryPreset(
     () => _requestRaw<T>(endpoint, cleanConfig),
     'standard',
+    endpoint
+  );
+};
+
+// Patient request for long-running operations (discover, playlists)
+// Uses 120s timeout instead of 30s standard
+const requestPatient = async <T>(
+  endpoint: string,
+  config: RequestConfig = {}
+): Promise<T> => {
+  const { retries: _ignored, ...cleanConfig } = config;
+  return withRetryPreset(
+    () => _requestRaw<T>(endpoint, cleanConfig),
+    'patient',
     endpoint
   );
 };
@@ -712,7 +729,7 @@ export const videoApi = {
       limit: String(options?.limit || 20),
       sort_by: options?.sort_by || 'quality',
     });
-    return request(`/api/videos/discover/search?${params.toString()}`, {
+    return requestPatient(`/api/videos/discover/search?${params.toString()}`, {
       method: 'POST',
       timeout: 120000,
     });
@@ -1196,87 +1213,83 @@ export const chatApi = {
 };
 
 // ============================================
-// Playlist API
+// Playlist API (detail, chat, stats)
 // ============================================
 export const playlistApi = {
-  async getPlaylists(): Promise<{ playlists: Playlist[] }> {
-    return request('/api/playlists');
+  /** Get full playlist with videos */
+  async getPlaylist(playlistId: string): Promise<PlaylistFullResponse> {
+    return request<PlaylistFullResponse>(`/api/playlists/${playlistId}`);
   },
 
-  async createPlaylist(name: string, description?: string): Promise<Playlist> {
-    return request('/api/playlists', {
-      method: 'POST',
-      body: { name, description },
-    });
+  /** Get detailed stats */
+  async getDetails(playlistId: string): Promise<PlaylistDetailsResponse> {
+    return request<PlaylistDetailsResponse>(`/api/playlists/${playlistId}/details`);
   },
 
-  async getPlaylist(id: string): Promise<Playlist & { videos: Array<{ video_id: string; title: string; thumbnail_url: string }> }> {
-    return request(`/api/playlists/${id}`);
-  },
-
-  async updatePlaylist(id: string, name: string, description?: string): Promise<Playlist> {
-    return request(`/api/playlists/${id}`, {
-      method: 'PUT',
-      body: { name, description },
-    });
-  },
-
-  async deletePlaylist(id: string): Promise<void> {
-    return request(`/api/playlists/${id}`, {
-      method: 'DELETE',
-    });
-  },
-
-  async analyzePlaylist(playlistUrl: string, options: AnalysisRequest): Promise<{ task_id: string }> {
-    return request('/api/playlists/analyze', {
-      method: 'POST',
-      body: { playlist_url: playlistUrl, ...options },
-      timeout: TIMEOUTS.PLAYLIST,
-    });
-  },
-
-  async analyzeCorpus(urls: string[], options: AnalysisRequest): Promise<{ task_id: string }> {
-    return request('/api/playlists/analyze-corpus', {
-      method: 'POST',
-      body: { urls, ...options },
-      timeout: TIMEOUTS.PLAYLIST,
-    });
-  },
-
-  async getTaskStatus(taskId: string): Promise<{ status: string; progress: number; videos_completed: number; total_videos: number }> {
-    return request(`/api/playlists/task/${taskId}`);
-  },
-
-  async getPlaylistDetails(id: string): Promise<{
-    playlist: Playlist;
-    videos: AnalysisSummary[];
-    corpusSummary?: string;
-  }> {
-    const data = await request<{
-      playlist?: Playlist;
-      videos?: AnalysisSummary[];
-      corpus_summary?: string;
-      corpusSummary?: string;
-    }>(`/api/playlists/${id}/details`);
-    return {
-      playlist: data.playlist || (data as unknown as Playlist),
-      videos: data.videos || [],
-      corpusSummary: data.corpus_summary || data.corpusSummary,
-    };
-  },
-
-  async addVideoToPlaylist(playlistId: string, summaryId: string): Promise<void> {
-    return request(`/api/playlists/${playlistId}/videos`, {
-      method: 'POST',
-      body: { summary_id: summaryId },
-    });
-  },
-
-  async generateCorpusSummary(playlistId: string): Promise<{ summary: string }> {
+  /** Generate or regenerate corpus summary (meta-analysis) */
+  async generateCorpusSummary(
+    playlistId: string,
+    options?: { mode?: string; lang?: string }
+  ): Promise<{ meta_analysis: string }> {
     return request(`/api/playlists/${playlistId}/corpus-summary`, {
       method: 'POST',
-      timeout: TIMEOUTS.PLAYLIST,
+      body: {
+        mode: options?.mode || 'standard',
+        lang: options?.lang || 'fr',
+      },
+      timeout: 120000,
     });
+  },
+
+  /** Chat with corpus */
+  async chatWithCorpus(
+    playlistId: string,
+    message: string,
+    options?: { web_search?: boolean; mode?: string; lang?: string }
+  ): Promise<CorpusChatResponse> {
+    return request(`/api/playlists/${playlistId}/chat`, {
+      method: 'POST',
+      body: {
+        message,
+        web_search: options?.web_search ?? false,
+        mode: options?.mode || 'standard',
+        lang: options?.lang || 'fr',
+      },
+      timeout: 120000,
+    });
+  },
+
+  /** Get chat history */
+  async getChatHistory(
+    playlistId: string,
+    limit: number = 50
+  ): Promise<CorpusChatMessage[]> {
+    const response = await request<{
+      messages: Array<{
+        id: number;
+        role: 'user' | 'assistant';
+        content: string;
+        created_at: string;
+        sources?: Array<{
+          video_title: string;
+          video_id: string;
+          relevance_score: number;
+        }>;
+      }>;
+    }>(`/api/playlists/${playlistId}/chat/history?limit=${limit}`);
+
+    return (response.messages || []).map((m) => ({
+      id: String(m.id),
+      role: m.role,
+      content: m.content,
+      created_at: m.created_at,
+      sources: m.sources,
+    }));
+  },
+
+  /** Clear chat history */
+  async clearChatHistory(playlistId: string): Promise<{ success: boolean }> {
+    return request(`/api/playlists/${playlistId}/chat`, { method: 'DELETE' });
   },
 };
 
@@ -1471,43 +1484,6 @@ export const studyApi = {
 };
 
 // ============================================
-// Export API
-// ============================================
-export const exportApi = {
-  async exportSummary(summaryId: string, format: 'pdf' | 'markdown' | 'text'): Promise<Blob> {
-    // Unified: uses withRetryPreset + tokenManager (same as request())
-    return withRetryPreset(async () => {
-      const token = await tokenManager.getValidToken()
-        || await tokenStorage.getAccessToken();
-
-      const response = await fetch(`${API_BASE_URL}/api/exports/${format}/${summaryId}`, {
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-      });
-
-      if (response.status === 401) {
-        const newToken = await refreshAccessToken();
-        if (newToken) {
-          const retryResp = await fetch(`${API_BASE_URL}/api/exports/${format}/${summaryId}`, {
-            headers: { Authorization: `Bearer ${newToken}` },
-          });
-          if (!retryResp.ok) throw new ApiError('Export failed', retryResp.status);
-          return retryResp.blob();
-        }
-        throw new ApiError('Session expired', 401, 'SESSION_EXPIRED');
-      }
-
-      if (!response.ok) {
-        throw new ApiError('Export failed', response.status);
-      }
-
-      return response.blob();
-    }, 'standard', 'export');
-  },
-};
-
-// ============================================
 // Usage API
 // ============================================
 export const usageApi = {
@@ -1610,10 +1586,8 @@ export default {
   videoApi,
   historyApi,
   chatApi,
-  playlistApi,
   billingApi,
   studyApi,
-  exportApi,
   usageApi,
   tournesolApi,
   contactApi,

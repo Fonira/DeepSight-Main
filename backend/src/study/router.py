@@ -239,41 +239,39 @@ async def generate_flashcards(
         flashcards = []
 
         if study_card:
-            # Extraire les définitions comme flashcards
-            definitions = study_card.get("definitions", study_card.get("terms", []))
-            for defn in definitions:
-                if isinstance(defn, dict):
+            # Priorité 1: Flashcards directes (nouveau format Q&A)
+            raw_flashcards = study_card.get("flashcards", [])
+            for fc in raw_flashcards:
+                if isinstance(fc, dict) and fc.get("front"):
                     flashcards.append(FlashcardItem(
-                        front=defn.get("term", defn.get("front", "")),
-                        back=defn.get("definition", defn.get("back", "")),
-                        category="Définitions"
+                        front=fc.get("front", ""),
+                        back=fc.get("back", ""),
+                        category=fc.get("category", "Général")
                     ))
 
-            # Extraire les Q&A comme flashcards
-            qa_pairs = study_card.get("qa", study_card.get("questions_answers", []))
-            for qa in qa_pairs:
-                if isinstance(qa, dict):
-                    flashcards.append(FlashcardItem(
-                        front=qa.get("question", qa.get("q", "")),
-                        back=qa.get("answer", qa.get("a", "")),
-                        category="Questions"
-                    ))
+            # Fallback: Q&A pairs
+            if not flashcards:
+                qa_pairs = study_card.get("questions_answers", study_card.get("qa", []))
+                for qa in qa_pairs:
+                    if isinstance(qa, dict):
+                        flashcards.append(FlashcardItem(
+                            front=qa.get("question", qa.get("q", "")),
+                            back=qa.get("answer", qa.get("a", "")),
+                            category="Questions"
+                        ))
 
-            # Extraire les points clés comme flashcards
-            key_points = study_card.get("key_points", study_card.get("points", []))
-            for i, point in enumerate(key_points[:5]):  # Max 5 points clés
-                if isinstance(point, str):
-                    flashcards.append(FlashcardItem(
-                        front=f"Point clé #{i+1}",
-                        back=point,
-                        category="Points clés"
-                    ))
-                elif isinstance(point, dict):
-                    flashcards.append(FlashcardItem(
-                        front=point.get("title", f"Point clé #{i+1}"),
-                        back=point.get("content", point.get("description", "")),
-                        category="Points clés"
-                    ))
+            # Fallback: Definitions (transformées en questions)
+            if not flashcards:
+                definitions = study_card.get("definitions", study_card.get("terms", []))
+                for defn in definitions:
+                    if isinstance(defn, dict):
+                        term = defn.get("term", defn.get("front", ""))
+                        definition = defn.get("definition", defn.get("back", ""))
+                        flashcards.append(FlashcardItem(
+                            front=f"Qu'est-ce que {term} ?",
+                            back=definition,
+                            category="Définitions"
+                        ))
 
         return FlashcardsResponse(
             success=True,

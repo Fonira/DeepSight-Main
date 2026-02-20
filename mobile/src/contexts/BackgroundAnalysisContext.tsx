@@ -5,7 +5,6 @@
  *
  * Features:
  * - Analyses vidéo en arrière-plan
- * - Analyses playlist en arrière-plan
  * - Notifications de progression
  * - Persistance avec AsyncStorage
  * ═══════════════════════════════════════════════════════════════════════════════
@@ -13,7 +12,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { videoApi, playlistApi } from '../services/api';
+import { videoApi } from '../services/api';
 import type { AnalysisSummary } from '../types';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -36,23 +35,7 @@ export interface VideoAnalysisTask {
   completedAt?: Date;
 }
 
-export interface PlaylistAnalysisTask {
-  id: string;
-  type: 'playlist';
-  taskId: string;
-  playlistUrl: string;
-  playlistTitle?: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
-  progress: number;
-  message: string;
-  totalVideos?: number;
-  completedVideos?: number;
-  error?: string;
-  startedAt: Date;
-  completedAt?: Date;
-}
-
-export type AnalysisTask = VideoAnalysisTask | PlaylistAnalysisTask;
+export type AnalysisTask = VideoAnalysisTask;
 
 /** Callback for task subscription updates */
 export type TaskSubscriptionCallback = (task: AnalysisTask) => void;
@@ -68,14 +51,6 @@ interface BackgroundAnalysisContextType {
   // Actions vidéo
   startVideoAnalysis: (params: {
     videoUrl: string;
-    mode: string;
-    category: string;
-  }) => Promise<string>;
-
-  // Actions playlist
-  startPlaylistAnalysis: (params: {
-    playlistUrl?: string;
-    urls?: string[];
     mode: string;
     category: string;
   }) => Promise<string>;
@@ -115,91 +90,48 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
   // 🔄 POLLING (defined first for hoisting)
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  const startPolling = useCallback((localId: string, apiTaskId: string, type: 'video' | 'playlist') => {
+  const startPolling = useCallback((localId: string, apiTaskId: string) => {
     const interval = setInterval(async () => {
       try {
-        if (type === 'video') {
-          const status = await videoApi.getStatus(apiTaskId);
+        const status = await videoApi.getStatus(apiTaskId);
 
-          setTasks(prev => prev.map(t => {
-            if (t.id !== localId) return t;
+        setTasks(prev => prev.map(t => {
+          if (t.id !== localId) return t;
 
-            const videoTask = t as VideoAnalysisTask;
+          const videoTask = t as VideoAnalysisTask;
 
-            if (status.status === 'completed') {
-              clearInterval(interval);
-              pollingIntervals.current.delete(localId);
-              setHasNewCompletedTask(true);
+          if (status.status === 'completed') {
+            clearInterval(interval);
+            pollingIntervals.current.delete(localId);
+            setHasNewCompletedTask(true);
 
-              return {
-                ...videoTask,
-                status: 'completed' as const,
-                progress: 100,
-                message: 'Analyse terminée !',
-                result: status.result,
-                videoTitle: status.result?.title || videoTask.videoTitle,
-                thumbnail: status.result?.thumbnail || videoTask.thumbnail,
-                completedAt: new Date(),
-              };
-            } else if (status.status === 'failed') {
-              clearInterval(interval);
-              pollingIntervals.current.delete(localId);
+            return {
+              ...videoTask,
+              status: 'completed' as const,
+              progress: 100,
+              message: 'Analyse terminée !',
+              result: status.result,
+              videoTitle: status.result?.title || videoTask.videoTitle,
+              thumbnail: status.result?.thumbnail || videoTask.thumbnail,
+              completedAt: new Date(),
+            };
+          } else if (status.status === 'failed') {
+            clearInterval(interval);
+            pollingIntervals.current.delete(localId);
 
-              return {
-                ...videoTask,
-                status: 'failed' as const,
-                error: status.error || 'Échec de l\'analyse',
-              };
-            } else {
-              return {
-                ...videoTask,
-                progress: status.progress || videoTask.progress,
-                message: status.message || videoTask.message,
-              };
-            }
-          }));
-        } else {
-          const status = await playlistApi.getTaskStatus(apiTaskId);
-
-          setTasks(prev => prev.map(t => {
-            if (t.id !== localId) return t;
-
-            const playlistTask = t as PlaylistAnalysisTask;
-
-            if (status.status === 'completed') {
-              clearInterval(interval);
-              pollingIntervals.current.delete(localId);
-              setHasNewCompletedTask(true);
-
-              return {
-                ...playlistTask,
-                status: 'completed' as const,
-                progress: 100,
-                message: 'Analyse terminée !',
-                totalVideos: status.total_videos,
-                completedVideos: status.videos_completed,
-                completedAt: new Date(),
-              };
-            } else if (status.status === 'failed') {
-              clearInterval(interval);
-              pollingIntervals.current.delete(localId);
-
-              return {
-                ...playlistTask,
-                status: 'failed' as const,
-                error: 'Échec de l\'analyse playlist',
-              };
-            } else {
-              return {
-                ...playlistTask,
-                progress: status.progress || playlistTask.progress,
-                message: `${status.videos_completed}/${status.total_videos} vidéos analysées`,
-                totalVideos: status.total_videos,
-                completedVideos: status.videos_completed,
-              };
-            }
-          }));
-        }
+            return {
+              ...videoTask,
+              status: 'failed' as const,
+              error: status.error || 'Échec de l\'analyse',
+            };
+          } else {
+            return {
+              ...videoTask,
+              progress: status.progress || videoTask.progress,
+              message: status.message || videoTask.message,
+            };
+          }
+        }));
       } catch (error) {
         if (__DEV__) { console.error('Polling error:', error); }
       }
@@ -221,8 +153,7 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
         id: t.id,
         type: t.type,
         taskId: t.taskId,
-        videoUrl: t.type === 'video' ? (t as VideoAnalysisTask).videoUrl : undefined,
-        playlistUrl: t.type === 'playlist' ? (t as PlaylistAnalysisTask).playlistUrl : undefined,
+        videoUrl: (t as VideoAnalysisTask).videoUrl,
         status: t.status,
         progress: t.progress,
         message: t.message,
@@ -260,14 +191,15 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
 
         for (const task of storedTasks) {
           if (task.taskId && task.status === 'processing') {
-            const restoredTask: AnalysisTask = task.type === 'video'
-              ? { ...task, startedAt: new Date(task.startedAt) } as VideoAnalysisTask
-              : { ...task, startedAt: new Date(task.startedAt) } as PlaylistAnalysisTask;
+            const restoredTask: VideoAnalysisTask = {
+              ...task,
+              startedAt: new Date(task.startedAt),
+            } as VideoAnalysisTask;
 
             setTasks(prev => [...prev, restoredTask]);
 
             setTimeout(() => {
-              startPolling(task.id, task.taskId, task.type);
+              startPolling(task.id, task.taskId);
             }, 500);
           }
         }
@@ -332,69 +264,7 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
           : t
       ));
 
-      startPolling(taskId, response.task_id, 'video');
-      return taskId;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
-      setTasks(prev => prev.map(t =>
-        t.id === taskId
-          ? { ...t, status: 'failed' as const, error: errorMessage }
-          : t
-      ));
-      throw error;
-    }
-  }, [startPolling]);
-
-  // ═══════════════════════════════════════════════════════════════════════════════
-  // 📚 PLAYLIST ANALYSIS
-  // ═══════════════════════════════════════════════════════════════════════════════
-
-  const startPlaylistAnalysis = useCallback(async (params: {
-    playlistUrl?: string;
-    urls?: string[];
-    mode: string;
-    category: string;
-  }): Promise<string> => {
-    const taskId = `playlist-${Date.now()}`;
-
-    const newTask: PlaylistAnalysisTask = {
-      id: taskId,
-      type: 'playlist',
-      taskId: '',
-      playlistUrl: params.playlistUrl || 'Corpus personnalisé',
-      status: 'pending',
-      progress: 0,
-      message: 'Démarrage de l\'analyse...',
-      startedAt: new Date(),
-    };
-
-    setTasks(prev => [...prev, newTask]);
-
-    try {
-      let response: { task_id: string };
-
-      const analysisOptions = {
-        mode: params.mode,
-        category: params.category === 'auto' ? 'general' : params.category,
-        model: 'mistral-small-latest',
-        language: 'fr',
-      };
-
-      if (params.playlistUrl) {
-        response = await playlistApi.analyzePlaylist(params.playlistUrl, analysisOptions);
-      } else if (params.urls) {
-        response = await playlistApi.analyzeCorpus(params.urls, analysisOptions);
-      } else {
-        throw new Error('URL de playlist ou corpus requis');
-      }
-
-      setTasks(prev => prev.map(t =>
-        t.id === taskId
-          ? { ...t, taskId: response.task_id, status: 'processing' as const, message: 'Analyse en cours...' }
-          : t
-      ));
-
-      startPolling(taskId, response.task_id, 'playlist');
+      startPolling(taskId, response.task_id);
       return taskId;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue';
@@ -470,7 +340,6 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
       tasks,
       activeTasksCount,
       startVideoAnalysis,
-      startPlaylistAnalysis,
       getTask,
       removeTask,
       clearCompleted,

@@ -16,10 +16,6 @@ export { YouTubePlayer, TimestampLink } from './video';
 // Study Tools
 export * from './study';
 
-// Export & Citation
-export { ExportOptions } from './export';
-export { CitationExport } from './citation';
-
 // Fact-checking & Enrichment
 export { FactCheckButton } from './factcheck';
 export { FactCheckDisplay } from './factcheck/FactCheckDisplay';

@@ -29,8 +29,6 @@ interface TabConfig {
 const TAB_CONFIG: Record<string, TabConfig> = {
   Dashboard: { icon: 'home-outline', iconFocused: 'home', label: 'Accueil' },
   History: { icon: 'time-outline', iconFocused: 'time', label: 'Historique' },
-  // DISABLED: Playlist tab removed - web-only feature (Feb 2026)
-  // Playlists: { icon: 'list-outline', iconFocused: 'list', label: 'Playlists' },
   Upgrade: { icon: 'diamond-outline', iconFocused: 'diamond', label: 'Plans' },
   Profile: { icon: 'person-outline', iconFocused: 'person', label: 'Profil' },
 };

@@ -1,0 +1,43 @@
+name: Deploy Frontend (Vercel)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+
+jobs:
+  verify:
+    name: Post-deploy Verification
+    runs-on: ubuntu-latest
+    # Vercel auto-deploys via Git integration — we just verify after
+    steps:
+      - name: Wait for Vercel deploy
+        run: sleep 90
+
+      - name: Verify production
+        run: |
+          for i in 1 2 3 4 5; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+              "https://www.deepsightsynthesis.com" \
+              --max-time 15)
+            if [ "$STATUS" = "200" ]; then
+              echo "Frontend is live"
+              exit 0
+            fi
+            echo "Attempt $i: status $STATUS, retrying in 20s..."
+            sleep 20
+          done
+          echo "::warning::Frontend verification failed — check Vercel dashboard"
+          exit 1
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ]; then
+            curl -s -X POST \
+              "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+              -d parse_mode="HTML" \
+              -d text="<b>DeepSight Frontend Deploy Issue</b>%0A%0AVercel deploy may have failed.%0ACommit: <code>${{ github.sha }}</code>%0A<a href='${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
+          fi

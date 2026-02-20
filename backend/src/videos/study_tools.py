@@ -133,6 +133,17 @@ VIDÉO: {title}
 CHAÎNE: {channel}
 RÉSUMÉ: {summary}
 
+RÈGLES IMPORTANTES POUR LES FLASHCARDS:
+- Chaque flashcard DOIT avoir une QUESTION complète en "front" (pas un mot seul ou un concept)
+- La question doit commencer par "Qu'est-ce que", "Comment", "Pourquoi", "Quel", "Quelle", etc.
+- Le "back" contient la réponse détaillée
+- Génère au moins 8 flashcards variées
+
+RÈGLES POUR LE QUIZ:
+- Génère au moins 5 questions QCM
+- 4 options par question, une seule correcte
+- Chaque question doit tester la compréhension, pas la mémorisation
+
 Retourne EXACTEMENT ce format JSON:
 {{
   "title": "Titre de la fiche",
@@ -142,11 +153,10 @@ Retourne EXACTEMENT ce format JSON:
     {{"point": "Point clé 1", "explanation": "Explication détaillée", "importance": "essentiel"}},
     {{"point": "Point clé 2", "explanation": "Explication détaillée", "importance": "important"}}
   ],
-  "definitions": [
-    {{"term": "Terme technique", "definition": "Définition claire", "example": "Exemple concret"}}
-  ],
-  "questions_answers": [
-    {{"question": "Question de compréhension?", "answer": "Réponse complète", "type": "comprehension"}}
+  "flashcards": [
+    {{"front": "Qu'est-ce que [concept] et pourquoi est-il important ?", "back": "Réponse détaillée avec explication", "category": "Compréhension"}},
+    {{"front": "Comment fonctionne [mécanisme] expliqué dans la vidéo ?", "back": "Explication du fonctionnement", "category": "Mécanismes"}},
+    {{"front": "Quelle est la différence entre [A] et [B] ?", "back": "A se distingue de B par...", "category": "Comparaison"}}
   ],
   "quiz": [
     {{"question": "Question QCM?", "options": ["Option A", "Option B", "Option C", "Option D"], "correct_index": 0, "explanation": "Explication de la réponse"}}

@@ -11,6 +11,7 @@ import {
   Keyboard,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Image } from 'expo-image';
 import { DeepSightSpinner } from '../components/loading';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,7 +29,10 @@ import { VideoCardSkeleton } from '../components/ui/Skeleton';
 import { sp, borderRadius } from '../theme/spacing';
 import { fontFamily, fontSize } from '../theme/typography';
 import { useIsOffline } from '../hooks/useNetworkStatus';
-import type { RootStackParamList, MainTabParamList, AnalysisSummary, HistoryFilters } from '../types';
+import { formatRelativeTime } from '../utils/formatters';
+import type { RootStackParamList, MainTabParamList, AnalysisSummary, HistoryFilters, PlaylistHistoryItem } from '../types';
+
+type HistoryTab = 'videos' | 'playlists';
 
 const HISTORY_CACHE_KEY = 'deepsight_history_cache';
 
@@ -45,6 +49,10 @@ export const HistoryScreen: React.FC = () => {
   const isOffline = useIsOffline();
   useScreenDoodleVariant('video');
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<HistoryTab>('videos');
+
+  // Video history state
   const [analyses, setAnalyses] = useState<AnalysisSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -58,6 +66,15 @@ export const HistoryScreen: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [isUsingCache, setIsUsingCache] = useState(false);
+
+  // Playlist history state
+  const [playlists, setPlaylists] = useState<PlaylistHistoryItem[]>([]);
+  const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
+  const [isLoadingMorePlaylists, setIsLoadingMorePlaylists] = useState(false);
+  const [refreshingPlaylists, setRefreshingPlaylists] = useState(false);
+  const [playlistPage, setPlaylistPage] = useState(1);
+  const [hasMorePlaylists, setHasMorePlaylists] = useState(true);
+  const [playlistsLoaded, setPlaylistsLoaded] = useState(false);
 
   const wasOfflineRef = useRef(isOffline);
 
@@ -210,6 +227,59 @@ export const HistoryScreen: React.FC = () => {
     );
   };
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // 📚 PLAYLIST HISTORY
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const loadPlaylists = useCallback(async (pageNum: number = 1, reset: boolean = false) => {
+    if (isOffline) return;
+
+    if (pageNum === 1) {
+      setIsLoadingPlaylists(true);
+    } else {
+      setIsLoadingMorePlaylists(true);
+    }
+
+    try {
+      const response = await historyApi.getPlaylistHistory(pageNum, 20);
+
+      if (reset || pageNum === 1) {
+        setPlaylists(response.items as unknown as PlaylistHistoryItem[]);
+      } else {
+        setPlaylists(prev => [...prev, ...response.items as unknown as PlaylistHistoryItem[]]);
+      }
+
+      setHasMorePlaylists(response.hasMore);
+      setPlaylistPage(pageNum);
+      setPlaylistsLoaded(true);
+    } catch (error) {
+      if (__DEV__) { console.error('Failed to load playlist history:', error); }
+    } finally {
+      setIsLoadingPlaylists(false);
+      setIsLoadingMorePlaylists(false);
+    }
+  }, [isOffline]);
+
+  const handleTabChange = useCallback((tab: HistoryTab) => {
+    Haptics.selectionAsync();
+    setActiveTab(tab);
+    if (tab === 'playlists' && !playlistsLoaded) {
+      loadPlaylists(1, true);
+    }
+  }, [playlistsLoaded, loadPlaylists]);
+
+  const onRefreshPlaylists = useCallback(async () => {
+    setRefreshingPlaylists(true);
+    await loadPlaylists(1, true);
+    setRefreshingPlaylists(false);
+  }, [loadPlaylists]);
+
+  const loadMorePlaylists = useCallback(() => {
+    if (!isLoadingMorePlaylists && hasMorePlaylists) {
+      loadPlaylists(playlistPage + 1);
+    }
+  }, [isLoadingMorePlaylists, hasMorePlaylists, playlistPage, loadPlaylists]);
+
   const toggleFavoritesFilter = () => {
     Haptics.selectionAsync();
     setShowFavoritesOnly(!showFavoritesOnly);
@@ -270,10 +340,118 @@ export const HistoryScreen: React.FC = () => {
     );
   };
 
+  const renderPlaylistItem = useCallback(
+    ({ item }: { item: PlaylistHistoryItem }) => (
+      <Pressable
+        style={[styles.playlistCard, { backgroundColor: colors.glassBg, borderColor: colors.glassBorder }]}
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          navigation.navigate('PlaylistDetail', { playlistId: item.id });
+        }}
+      >
+        {/* Thumbnail mosaic */}
+        <View style={styles.playlistThumbnails}>
+          {(item.thumbnail_urls || []).slice(0, 4).map((url, idx) => (
+            <Image
+              key={idx}
+              source={{ uri: url }}
+              style={[
+                styles.playlistThumb,
+                (item.thumbnail_urls || []).length === 1 && styles.playlistThumbFull,
+              ]}
+              contentFit="cover"
+            />
+          ))}
+          {(!item.thumbnail_urls || item.thumbnail_urls.length === 0) && (
+            <View style={[styles.playlistThumbPlaceholder, { backgroundColor: colors.glassBg }]}>
+              <Ionicons name="musical-notes-outline" size={32} color={colors.textMuted} />
+            </View>
+          )}
+        </View>
+
+        {/* Info */}
+        <View style={styles.playlistInfo}>
+          <Text style={[styles.playlistName, { color: colors.textPrimary }]} numberOfLines={2}>
+            {item.name}
+          </Text>
+          <View style={styles.playlistMeta}>
+            <Ionicons name="videocam-outline" size={14} color={colors.textMuted} />
+            <Text style={[styles.playlistMetaText, { color: colors.textSecondary }]}>
+              {item.video_count} vidéo{item.video_count > 1 ? 's' : ''}
+            </Text>
+            <Text style={[styles.playlistMetaDot, { color: colors.textMuted }]}>•</Text>
+            <Text style={[styles.playlistMetaText, { color: colors.textMuted }]}>
+              {formatRelativeTime(item.created_at)}
+            </Text>
+          </View>
+        </View>
+      </Pressable>
+    ),
+    [colors]
+  );
+
+  const renderPlaylistEmpty = () => {
+    if (isLoadingPlaylists) return null;
+    return (
+      <EmptyState
+        icon="albums-outline"
+        title="Aucune playlist"
+        description="Les analyses de playlists faites depuis le web apparaîtront ici."
+      />
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <Header title={t.history.title} />
 
+      {/* Tab Switcher */}
+      <View style={styles.tabContainer}>
+        <Pressable
+          style={[
+            styles.tab,
+            activeTab === 'videos' && { backgroundColor: colors.accentPrimary },
+            activeTab !== 'videos' && { backgroundColor: colors.glassBg },
+          ]}
+          onPress={() => handleTabChange('videos')}
+        >
+          <Ionicons
+            name="videocam"
+            size={16}
+            color={activeTab === 'videos' ? '#FFFFFF' : colors.textSecondary}
+          />
+          <Text style={[
+            styles.tabText,
+            { color: activeTab === 'videos' ? '#FFFFFF' : colors.textSecondary },
+          ]}>
+            Vidéos
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[
+            styles.tab,
+            activeTab === 'playlists' && { backgroundColor: colors.accentSecondary },
+            activeTab !== 'playlists' && { backgroundColor: colors.glassBg },
+          ]}
+          onPress={() => handleTabChange('playlists')}
+        >
+          <Ionicons
+            name="albums"
+            size={16}
+            color={activeTab === 'playlists' ? '#FFFFFF' : colors.textSecondary}
+          />
+          <Text style={[
+            styles.tabText,
+            { color: activeTab === 'playlists' ? '#FFFFFF' : colors.textSecondary },
+          ]}>
+            Playlists
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* ═══════════ VIDEOS TAB ═══════════ */}
+      {activeTab === 'videos' && (
+      <>
       {/* Search Bar */}
       <Animated.View entering={FadeInDown.duration(300)} style={styles.searchSection}>
         <View
@@ -487,6 +665,51 @@ export const HistoryScreen: React.FC = () => {
           updateCellsBatchingPeriod={50}
         />
       )}
+      </>
+      )}
+
+      {/* ═══════════ PLAYLISTS TAB ═══════════ */}
+      {activeTab === 'playlists' && (
+        <>
+          {isLoadingPlaylists ? (
+            <View style={styles.skeletonContainer}>
+              {[1, 2, 3].map((i) => (
+                <VideoCardSkeleton key={i} style={styles.skeletonCard} />
+              ))}
+            </View>
+          ) : (
+            <FlatList
+              data={playlists}
+              renderItem={renderPlaylistItem}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={[
+                styles.listContent,
+                { paddingBottom: insets.bottom + 80 },
+                playlists.length === 0 && styles.emptyListContent,
+              ]}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshingPlaylists}
+                  onRefresh={onRefreshPlaylists}
+                  tintColor={colors.accentSecondary}
+                />
+              }
+              onEndReached={loadMorePlaylists}
+              onEndReachedThreshold={0.3}
+              ListFooterComponent={isLoadingMorePlaylists ? (
+                <View style={styles.loadingFooter}>
+                  <DeepSightSpinner size="sm" />
+                </View>
+              ) : null}
+              ListEmptyComponent={renderPlaylistEmpty}
+              removeClippedSubviews={true}
+              maxToRenderPerBatch={10}
+              windowSize={5}
+            />
+          )}
+        </>
+      )}
     </View>
   );
 };
@@ -605,6 +828,77 @@ const styles = StyleSheet.create({
   },
   offlineText: {
     fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
+  },
+  // Tab switcher
+  tabContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: sp.lg,
+    paddingBottom: sp.sm,
+    gap: sp.sm,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: sp.sm,
+    borderRadius: borderRadius.lg,
+    gap: sp.xs,
+  },
+  tabText: {
+    fontSize: fontSize.sm,
+    fontFamily: fontFamily.bodyMedium,
+  },
+  // Playlist card
+  playlistCard: {
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    marginBottom: sp.md,
+    overflow: 'hidden',
+  },
+  playlistThumbnails: {
+    width: 100,
+    height: 80,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  playlistThumb: {
+    width: 50,
+    height: 40,
+  },
+  playlistThumbFull: {
+    width: 100,
+    height: 80,
+  },
+  playlistThumbPlaceholder: {
+    width: 100,
+    height: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playlistInfo: {
+    flex: 1,
+    paddingHorizontal: sp.md,
+    paddingVertical: sp.sm,
+    justifyContent: 'center',
+  },
+  playlistName: {
+    fontSize: fontSize.base,
+    fontFamily: fontFamily.bodyMedium,
+    marginBottom: sp.xs,
+  },
+  playlistMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  playlistMetaText: {
+    fontSize: fontSize.xs,
+    fontFamily: fontFamily.body,
+  },
+  playlistMetaDot: {
     fontSize: fontSize.xs,
   },
 });

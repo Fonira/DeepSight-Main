@@ -1,0 +1,106 @@
+DeepSight-Main/mobile/
+├── app/                                    [Expo Router files - new V2 structure]
+│   ├── (auth)/                            [Auth group - Stack navigator]
+│   │   ├── _layout.tsx                    [Stack layout for auth screens]
+│   │   ├── index.tsx                      [Welcome/Landing screen]
+│   │   ├── login.tsx                      [Login form]
+│   │   ├── register.tsx                   [Registration form]
+│   │   ├── verify.tsx                     [Email verification]
+│   │   └── forgot-password.tsx            [Password reset]
+│   │
+│   ├── (tabs)/                            [Tabs group - Custom tab bar]
+│   │   ├── _layout.tsx                    [Tabs navigator with CustomTabBar]
+│   │   ├── CustomTabBar.tsx               [Custom tab bar - glassmorphic + animated]
+│   │   ├── index.tsx                      [Home tab]
+│   │   ├── library.tsx                    [Library/History tab]
+│   │   ├── study.tsx                      [Study tools tab]
+│   │   ├── profile.tsx                    [Profile tab]
+│   │   └── analysis/
+│   │       └── [id].tsx                   [Dynamic analysis detail route]
+│   │
+│   ├── config/
+│   │   └── router.config.ts               [Deep linking configuration]
+│   │
+│   ├── types/
+│   │   ├── navigation.ts                  [Navigation types]
+│   │   └── index.ts                       [Type re-exports]
+│   │
+│   ├── _layout.tsx                        [Root layout - providers, auth check]
+│   ├── splash.tsx                         [Splash/loading screen]
+│   └── _404.tsx                           [Not found fallback]
+│
+├── src/
+│   ├── navigation/
+│   │   └── routerHelpers.ts               [Navigation helper functions]
+│   │
+│   ├── utils/
+│   │   └── queryClient.ts                 [React Query configuration]
+│   │
+│   ├── contexts/
+│   │   ├── AuthContext.tsx                [Existing - auth state]
+│   │   ├── ThemeContext.tsx               [Existing - theme switching]
+│   │   └── [... other contexts ...]
+│   │
+│   ├── theme/
+│   │   ├── colors.ts                      [Color system - darkColors, palette]
+│   │   ├── typography.ts                  [Font families, sizes, text styles]
+│   │   ├── spacing.ts                     [Spacing, border radius]
+│   │   └── animations.ts                  [Reanimated springs, transitions]
+│   │
+│   ├── components/
+│   │   ├── ui/
+│   │   │   ├── Button.tsx                 [Used in welcome screen]
+│   │   │   └── [... other UI components ...]
+│   │   └── [... feature components ...]
+│   │
+│   └── [... other directories ...]
+│
+├── ROUTER.md                              [Complete architecture guide]
+├── ROUTER_EXAMPLES.md                     [Practical usage examples]
+├── ROUTER_SETUP.md                        [Setup checklist & next steps]
+├── QUICK_START.md                         [Quick start guide]
+├── FILES_CREATED.md                       [Complete file list]
+├── TREE.txt                               [This file]
+├── app.json.router-config                 [Deep linking config example]
+│
+├── app.json                               [Expo config - scheme: "deepsight"]
+├── tsconfig.json                          [TypeScript - paths aliases updated]
+├── babel.config.js                        [Babel - module resolver updated]
+├── package.json                           [Dependencies - includes expo-router]
+│
+├── .expo/
+├── .git/
+├── __tests__/
+├── node_modules/
+└── [... other files ...]
+
+═══════════════════════════════════════════════════════════════════════════════
+
+NEW STRUCTURE SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Total new files:           16 navigation + utility files
+Total updated files:       2 configuration files
+Total documentation:       6 guide files
+Total size:                ~55 KB code + docs
+
+Key features:
+  ✅ File-based routing with Expo Router
+  ✅ Group-based organization ((auth), (tabs))
+  ✅ Conditional authentication flow
+  ✅ Custom animated tab bar
+  ✅ Dynamic routes with parameters
+  ✅ TypeScript strict mode
+  ✅ Dark theme system
+  ✅ React Query integration
+  ✅ Safe area handling
+  ✅ Accessibility-first design
+
+Ready for:
+  ✅ npm start                 (Start dev server)
+  ✅ npm run typecheck         (Verify TypeScript)
+  ✅ npm run lint              (Check code)
+  ✅ npm test                  (Run tests)
+  ✅ Implementation work       (Complete auth/tab screens)
+
+═══════════════════════════════════════════════════════════════════════════════

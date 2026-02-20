@@ -37,6 +37,7 @@ export const App: React.FC = () => {
         setView('login');
       }
     } catch {
+      /* auth check failed */
       setView('login');
     }
   }

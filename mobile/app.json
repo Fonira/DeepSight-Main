@@ -89,7 +89,13 @@
       "favicon": "./src/assets/images/icon.png"
     },
     "plugins": [
-      "expo-linking",
+      [
+        "expo-router",
+        {
+          "root": "./app",
+          "origin": "https://deepsightsynthesis.com"
+        }
+      ],
       "expo-font",
       "expo-secure-store",
       "expo-audio",

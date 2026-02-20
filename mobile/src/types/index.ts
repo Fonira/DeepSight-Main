@@ -112,31 +112,106 @@ export interface ChatHistory {
   messages: ChatMessage[];
 }
 
-// Playlist Types
-export interface Playlist {
-  id: string;
-  name: string;
-  description?: string;
-  videoCount: number;
-  thumbnails: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface PlaylistAnalysis {
-  playlistId: string;
-  name: string;
-  videos: AnalysisSummary[];
-  corpusSummary?: string;
-  createdAt: string;
-}
-
 // History Types
 export interface HistoryItem {
   id: string;
   videoInfo: VideoInfo;
   summary: AnalysisSummary;
   createdAt: string;
+}
+
+export interface PlaylistHistoryItem {
+  id: string;
+  name: string;
+  video_count: number;
+  created_at: string;
+  thumbnail_urls?: string[] | null;
+}
+
+// Playlist Detail Types
+export interface PlaylistVideoItem {
+  id: number;
+  video_id: string;
+  video_title: string;
+  video_channel: string;
+  video_duration?: number;
+  video_url?: string;
+  thumbnail_url?: string;
+  category?: string;
+  category_confidence?: number;
+  summary_content?: string;
+  transcript_context?: string;
+  full_digest?: string;
+  word_count?: number;
+  reliability_score?: number;
+  position?: number;
+}
+
+export interface PlaylistFullResponse {
+  id: number;
+  playlist_id: string;
+  playlist_title: string;
+  playlist_url?: string;
+  num_videos: number;
+  num_processed: number;
+  total_duration?: number;
+  total_words?: number;
+  meta_analysis?: string;
+  status: string;
+  created_at: string;
+  completed_at?: string;
+  videos: PlaylistVideoItem[];
+}
+
+export interface PlaylistDetailsResponse {
+  id: number;
+  playlist_id: string;
+  playlist_title: string;
+  status: string;
+  statistics: {
+    num_videos: number;
+    num_processed: number;
+    total_duration: number;
+    total_duration_formatted: string;
+    total_words: number;
+    average_duration: number;
+    average_words: number;
+  };
+  categories: Record<string, number>;
+  channels: Record<string, number>;
+  has_meta_analysis: boolean;
+  videos_summary: Array<{
+    id: number;
+    title: string;
+    channel: string;
+    duration: number;
+    category: string;
+    position: number;
+  }>;
+}
+
+export interface CorpusChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+  sources?: Array<{
+    video_title: string;
+    video_id: string;
+    relevance_score: number;
+  }>;
+}
+
+export interface CorpusChatResponse {
+  response: string;
+  sources?: Array<{
+    video_title: string;
+    video_id: string;
+    relevance_score: number;
+  }>;
+  citations?: string[];
+  model_used: string;
+  tokens_used: number;
 }
 
 export interface HistoryFilters {
@@ -224,20 +299,16 @@ export type RootStackParamList = {
   // Contact
   Contact: undefined;
 
-  // Playlist detail
-  PlaylistDetail: { playlistId: string };
-
-  // Export
-  Export: { summaryId: string; title: string };
-
   // Analytics
   Analytics: undefined;
+
+  // Playlist detail
+  PlaylistDetail: { playlistId: string };
 };
 
 export type MainTabParamList = {
   Dashboard: undefined;
   History: undefined;
-  Playlists: undefined;
   Upgrade: undefined;
   Profile: undefined;
 };
@@ -283,13 +354,6 @@ export interface QuizResult {
     selectedAnswer: number;
     isCorrect: boolean;
   }[];
-}
-
-// Export/Citation Types
-export interface ExportOptions {
-  format: 'pdf' | 'markdown' | 'text';
-  includeCitations: boolean;
-  includeTimecodes: boolean;
 }
 
 // Notification Types

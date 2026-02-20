@@ -81,6 +81,7 @@ export async function refreshToken(): Promise<boolean> {
     await setStoredUser(data.user);
     return true;
   } catch {
+    /* refresh failed - re-auth needed */
     return false;
   }
 }

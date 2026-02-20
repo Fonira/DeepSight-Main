@@ -1,1 +1,1 @@
-export { ExportOptions } from './ExportOptions';
+// REMOVED: Export feature moved to web-only (Feb 2026)

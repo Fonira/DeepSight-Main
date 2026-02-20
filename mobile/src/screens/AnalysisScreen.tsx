@@ -25,15 +25,13 @@ import { Image } from 'expo-image';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
-import { videoApi, chatApi, studyApi, exportApi } from '../services/api';
+import { videoApi, chatApi, studyApi } from '../services/api';
 import { Header, Card, Badge, Button, YouTubePlayer, useToast, StreamingProgress, FreshnessIndicator, ReliabilityScore, DeepSightSpinner } from '../components';
-import { FlashcardsComponent, QuizComponent, MindMapComponent } from '../components/study';
-import type { QuizQuestion, MindMapData, MindMapNode } from '../components/study';
-import { ExportOptions } from '../components/export';
+import { FlashcardsComponent, QuizComponent } from '../components/study';
+import type { QuizQuestion } from '../components/study';
 import { FactCheckButton } from '../components/factcheck';
 import { WebEnrichment } from '../components/enrichment';
 import { AcademicSourcesSection } from '../components/academic';
-import { CitationExport } from '../components/citation';
 import { TournesolWidget } from '../components/tournesol';
 import { AnalysisValueDisplay } from '../components/analysis/AnalysisValueDisplay';
 import { AnalysisContentDisplay } from '../components/analysis/AnalysisContentDisplay';
@@ -112,20 +110,9 @@ export const AnalysisScreen: React.FC = () => {
   const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
 
-  // Mind Map state
-  const [mindMapData, setMindMapData] = useState<MindMapData | null>(null);
-  const [isLoadingMindMap, setIsLoadingMindMap] = useState(false);
-  const [showMindMap, setShowMindMap] = useState(false);
-
   // Active study tool
-  type StudyToolType = 'flashcards' | 'quiz' | 'mindmap' | null;
+  type StudyToolType = 'flashcards' | 'quiz' | null;
   const [activeStudyTool, setActiveStudyTool] = useState<StudyToolType>(null);
-
-  // Export modal state
-  const [showExportModal, setShowExportModal] = useState(false);
-
-  // Citation modal state
-  const [showCitationModal, setShowCitationModal] = useState(false);
 
   // Notes and tags state
   const [personalNotes, setPersonalNotes] = useState('');
@@ -572,78 +559,10 @@ export const AnalysisScreen: React.FC = () => {
     }
   };
 
-  // Generate Mind Map
-  const handleGenerateMindMap = async () => {
-    if (!summary?.id || isLoadingMindMap) return;
-
-    // Check plan access
-    if (!hasFeature(userPlan, 'conceptMaps')) {
-      setUpgradeLimitType('analysis');
-      setShowUpgradeModal(true);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      return;
-    }
-
-    setIsLoadingMindMap(true);
-    setActiveStudyTool('mindmap');
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      const result = await studyApi.generateMindmap(summary.id);
-
-      // Build mind map from API response concepts (matches web frontend approach)
-      const apiConcepts: Array<{ name: string; children?: string[] }> = result.concepts || [];
-      const nodes: MindMapNode[] = [
-        { id: 'main', label: summary.title || t.analysis.concepts, type: 'main' },
-      ];
-
-      if (apiConcepts.length > 0) {
-        // Use the API-provided concept hierarchy
-        apiConcepts.forEach((concept, index) => {
-          nodes.push({
-            id: `primary-${index}`,
-            label: concept.name,
-            type: 'secondary',
-          });
-          // Add children as tertiary nodes
-          (concept.children || []).forEach((child, ci) => {
-            nodes.push({
-              id: `child-${index}-${ci}`,
-              label: child,
-              type: 'tertiary',
-            });
-          });
-        });
-      } else {
-        // Fallback: use pre-loaded concepts from analysis
-        concepts.slice(0, 8).forEach((concept, index) => {
-          nodes.push({
-            id: `secondary-${index}`,
-            label: concept.name,
-            type: index < 4 ? 'secondary' : 'tertiary',
-          });
-        });
-      }
-
-      const mapData: MindMapData = {
-        title: result.title || summary.title || t.analysis.conceptMap,
-        nodes,
-      };
-
-      setMindMapData(mapData);
-      setShowMindMap(true);
-    } catch (err) {
-      Alert.alert(t.common.error, t.errors.generic);
-      setActiveStudyTool(null);
-    } finally {
-      setIsLoadingMindMap(false);
-    }
-  };
-
   // Reset study tool
   const handleResetStudyTool = () => {
     setActiveStudyTool(null);
     setShowQuiz(false);
-    setShowMindMap(false);
   };
 
   // Share summary
@@ -1281,28 +1200,6 @@ export const AnalysisScreen: React.FC = () => {
                 <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
               </TouchableOpacity>
 
-              {/* Mind Map Button */}
-              <TouchableOpacity
-                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
-                onPress={handleGenerateMindMap}
-                disabled={isLoadingMindMap}
-              >
-                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.accentSuccess}20` }]}>
-                  <Ionicons name="git-network-outline" size={28} color={colors.accentSuccess} />
-                </View>
-                <View style={styles.toolInfo}>
-                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>{t.analysis.conceptMap}</Text>
-                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
-                    {t.concepts.relatedConcepts}
-                  </Text>
-                </View>
-                {isLoadingMindMap && <DeepSightSpinner size="sm" speed="fast" color={colors.accentSuccess} />}
-                {!isLoadingMindMap && mindMapData && (
-                  <Badge label={t.analysis.complete} variant="success" />
-                )}
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-              </TouchableOpacity>
-
               {/* Verification Section */}
               <Text style={[styles.toolsSectionTitle, { color: colors.textPrimary }]}>
                 {t.analysis.factCheck}
@@ -1328,26 +1225,10 @@ export const AnalysisScreen: React.FC = () => {
                 />
               )}
 
-              {/* Export Section */}
+              {/* Share & Copy Section */}
               <Text style={[styles.toolsSectionTitle, { color: colors.textPrimary }]}>
-                {t.analysis.export}
+                {t.common.share}
               </Text>
-
-              <TouchableOpacity
-                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
-                onPress={() => setShowExportModal(true)}
-              >
-                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.accentSecondary}20` }]}>
-                  <Ionicons name="download-outline" size={28} color={colors.accentSecondary} />
-                </View>
-                <View style={styles.toolInfo}>
-                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>{t.analysis.export}</Text>
-                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
-                    {t.export.formats.pdf}, {t.export.formats.md}, {t.export.formats.txt}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-              </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
@@ -1376,23 +1257,6 @@ export const AnalysisScreen: React.FC = () => {
                   <Text style={[styles.toolName, { color: colors.textPrimary }]}>{t.common.copy}</Text>
                   <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
                     {t.success.analysisCopied}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
-              </TouchableOpacity>
-
-              {/* Citation Button */}
-              <TouchableOpacity
-                style={[styles.toolCard, { backgroundColor: colors.bgElevated }]}
-                onPress={() => setShowCitationModal(true)}
-              >
-                <View style={[styles.toolIconContainer, { backgroundColor: `${colors.accentPrimary}20` }]}>
-                  <Ionicons name="document-text-outline" size={28} color={colors.accentPrimary} />
-                </View>
-                <View style={styles.toolInfo}>
-                  <Text style={[styles.toolName, { color: colors.textPrimary }]}>{t.citations.title}</Text>
-                  <Text style={[styles.toolDescription, { color: colors.textSecondary }]}>
-                    {t.citations.apa}, {t.citations.mla}, {t.citations.chicago}, {t.citations.harvard}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.textTertiary} />
@@ -1427,38 +1291,7 @@ export const AnalysisScreen: React.FC = () => {
             />
           )}
 
-          {/* Mind Map Display */}
-          {activeStudyTool === 'mindmap' && (
-            <MindMapComponent
-              data={mindMapData}
-              isLoading={isLoadingMindMap}
-            />
-          )}
         </View>
-      )}
-
-      {/* Export Modal */}
-      {summary && (
-        <ExportOptions
-          visible={showExportModal}
-          onClose={() => setShowExportModal(false)}
-          summaryId={summary.id}
-          title={summary.title}
-        />
-      )}
-
-      {/* Citation Modal */}
-      {summary && summary.videoInfo && (
-        <CitationExport
-          visible={showCitationModal}
-          onClose={() => setShowCitationModal(false)}
-          videoInfo={{
-            title: summary.title,
-            channel: summary.videoInfo.channel || 'Unknown',
-            publishedAt: summary.videoInfo.publishedAt,
-            videoId: summary.videoId || '',
-          }}
-        />
       )}
 
       {/* Upgrade Modal */}

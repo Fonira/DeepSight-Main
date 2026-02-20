@@ -1,0 +1,71 @@
+APPLE APP REVIEW — NOTES FOR REVIEWERS
+========================================
+
+APP OVERVIEW
+DeepSight is an AI-powered YouTube video analysis application. Users paste a YouTube URL, and the app generates detailed summaries using Bayesian epistemology, fact-checks claims with external sources, and provides study tools (flashcards, quizzes, concept glossary).
+
+HOW TO TEST
+1. Launch the app and sign up with email/password, or use the demo account below
+2. On the Dashboard, paste any YouTube URL (e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ)
+3. Tap "Analyze" and wait for the AI analysis to complete (30-90 seconds)
+4. Browse the results: Summary, Key Concepts, Fact-Check, Study Tools
+5. Try the Chat feature to ask questions about the video
+6. Check History to see past analyses
+
+DEMO ACCOUNT
+Email: review@deepsightsynthesis.com
+Password: AppReview2026!
+
+Note: This account has a Pro plan activated for full feature access during review.
+
+IN-APP PURCHASES
+DeepSight uses Stripe for subscription management via the web platform. The mobile app does NOT process payments directly — users are redirected to the web app (https://www.deepsightsynthesis.com/upgrade) for subscription purchases. The app functions as a client to our existing web service.
+
+Plan tiers: Free, Student ($2.99/mo), Starter ($5.99/mo), Pro ($12.99/mo), Team ($29.99/mo)
+
+AI USAGE DISCLOSURE
+This app uses artificial intelligence in the following ways:
+• Mistral AI — For generating video summaries, analysis, flashcards, quizzes, and contextual chat responses
+• Perplexity AI — For fact-checking claims and retrieving external sources
+• Text-to-Speech — For audio synthesis of summaries
+
+All AI-generated content is clearly labeled with Bayesian certainty markers (Solid, Plausible, Uncertain, Verify) to indicate confidence levels. Users are encouraged to verify claims independently.
+
+No AI is used for user profiling, biometric analysis, or automated decision-making that affects users.
+
+CONTENT MODERATION
+The app analyzes publicly available YouTube videos. We do not host or redistribute any video content. Only text transcripts are processed, and analysis results are stored on our servers.
+
+NETWORK REQUIREMENTS
+The app requires an internet connection to:
+• Fetch YouTube video transcripts
+• Send transcripts to our API for AI analysis
+• Retrieve fact-checking results
+• Sync user history and preferences
+
+BACKEND API
+All requests go to: https://deep-sight-backend-v3-production.up.railway.app
+Authentication: JWT bearer tokens (access + refresh tokens)
+
+THIRD-PARTY SERVICES
+• YouTube Data API — Video metadata retrieval
+• Mistral AI — Text analysis and generation
+• Perplexity AI — Fact-checking
+• Sentry — Crash reporting and error monitoring
+• Stripe — Payment processing (web only)
+
+PRIVACY
+• We collect: email, analysis history, app preferences
+• We do NOT collect: location, contacts, health data, financial info
+• Data stored on Railway (EU servers)
+• Users can delete their account and all data at any time
+• Full privacy policy: https://www.deepsightsynthesis.com/privacy
+
+MINIMUM OS VERSION
+• iOS 15.0+
+• Tested on iPhone 12, 13, 14, 15 series and iPad Air/Pro
+
+CONTACT
+Developer: DeepSight SAS
+Email: support@deepsightsynthesis.com
+Website: https://www.deepsightsynthesis.com

@@ -46,6 +46,7 @@ interface AuthContextType {
   pendingVerificationEmail: string | null;  // Email awaiting verification
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  loginWithGoogleToken: (accessToken: string) => Promise<void>;
   register: (username: string, email: string, password: string) => Promise<{ requiresVerification: boolean }>;
   verifyEmail: (email: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -81,8 +82,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, []);
 
-  // Exchange Google token with backend
-  const handleGoogleToken = async (googleAccessToken: string) => {
+  // Exchange Google token with backend (also exposed as loginWithGoogleToken)
+  const loginWithGoogleToken = useCallback(async (googleAccessToken: string) => {
     setIsLoading(true);
     setError(null);
 
@@ -102,7 +103,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [registerPushToken]);
 
   // Initialize auth state - restore session from stored tokens
   useEffect(() => {
@@ -234,7 +235,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         if (tokens.accessToken) {
           // Exchange with backend
-          await handleGoogleToken(tokens.accessToken);
+          await loginWithGoogleToken(tokens.accessToken);
         } else {
           throw new Error('No access token received from Google');
         }
@@ -373,7 +374,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return (
     <AuthContext.Provider value={{
       user, isAuthenticated, isLoading, error, pendingVerificationEmail,
-      login, loginWithGoogle, register, verifyEmail,
+      login, loginWithGoogle, loginWithGoogleToken, register, verifyEmail,
       logout, forgotPassword, refreshUser, clearError,
       clearPendingVerification, resendVerificationCode,
     }}>

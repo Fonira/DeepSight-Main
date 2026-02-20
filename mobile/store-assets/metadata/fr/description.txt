@@ -1,0 +1,38 @@
+DeepSight transforme votre façon de regarder YouTube. Grâce à l'intelligence artificielle et à l'épistémologie bayésienne, chaque vidéo devient une source de connaissance fiable et structurée.
+
+ANALYSE INTELLIGENTE
+Collez un lien YouTube et obtenez instantanément un résumé détaillé. Notre IA identifie les idées clés, les arguments et la structure logique de chaque vidéo. Trois modes d'analyse — accessible, standard et expert — s'adaptent à votre niveau.
+
+FACT-CHECKING AVEC SOURCES
+Chaque affirmation est évaluée avec des marqueurs de certitude bayésiens :
+• SOLIDE — Fait établi, consensus scientifique
+• PLAUSIBLE — Probable mais à confirmer
+• INCERTAIN — Hypothèse, débat en cours
+• À VÉRIFIER — Affirmation douteuse
+Des sources externes sont fournies pour vérifier par vous-même.
+
+OUTILS D'APPRENTISSAGE
+• Flashcards générées automatiquement pour mémoriser les concepts clés
+• Quiz interactifs pour tester votre compréhension
+• Glossaire des concepts avec définitions contextuelles
+• Mind maps visuelles pour connecter les idées
+
+CHAT CONTEXTUEL
+Posez des questions sur la vidéo analysée et obtenez des réponses précises basées sur le contenu. L'IA comprend le contexte complet de la vidéo pour des réponses pertinentes.
+
+EXPORT ET PARTAGE
+Exportez vos analyses en PDF, Markdown ou DOCX. Conservez vos notes et retrouvez votre historique d'analyses à tout moment.
+
+AUDIO SYNTHÈSE (TTS)
+Écoutez les résumés en audio grâce à la synthèse vocale intégrée. Idéal pour réviser en déplacement.
+
+PLANS DISPONIBLES
+• Gratuit : 3 analyses/mois, vidéos jusqu'à 10 min
+• Student : 40 analyses/mois, flashcards, concept maps
+• Starter : 60 analyses/mois, exports, historique 60 jours
+• Pro : 300 analyses/mois, playlists, chat illimité, TTS
+
+CONFIDENTIALITÉ
+Vos données sont protégées. Aucune vidéo n'est stockée — seules les métadonnées et les analyses sont conservées. Conforme au RGPD.
+
+DeepSight est l'outil idéal pour les étudiants, chercheurs, journalistes et curieux qui veulent aller au-delà du visionnage passif.
