@@ -1,197 +1,650 @@
 /**
- * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  💎 UPGRADE PAGE v4.0 — NOUVELLE STRATÉGIE DE MONÉTISATION                         ║
- * ╚════════════════════════════════════════════════════════════════════════════════════╝
+ * UpgradePage v5.0 — Dynamique depuis l'API
  *
- * 🎯 Plans:
- * - Gratuit (0€): Maximum friction
- * - Étudiant (2.99€): Focus outils d'étude
- * - Starter (5.99€): Particuliers
- * - Pro (12.99€): Créateurs & Professionnels (POPULAIRE)
- * - Équipe (29.99€): Entreprises & Laboratoires
+ * Fetch GET /api/billing/plans?platform=web au mount.
+ * Fallback sur planPrivileges.ts en cas d'erreur.
+ * Rien n'est hardcodé : tout vient de l'API.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  Check, X, Sparkles, Zap, Crown,
+  ArrowUp, ArrowDown, AlertCircle, RefreshCw,
+  BookOpen, ChevronDown, ChevronUp, Lock,
+  Infinity as InfinityIcon, GraduationCap, Users, Star,
+  Gift, Clock,
+} from 'lucide-react';
 
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
-import {
-  Check, X, Sparkles, Zap, Crown,
-  ArrowUp, ArrowDown, AlertCircle, RefreshCw,
-  BookOpen, ChevronDown, ChevronUp, Key,
-  Infinity, ListVideo, Headphones, GraduationCap,
-  Gift, Clock, Shield, Users, Brain, FileText,
-  Star, Lightbulb, TrendingUp
-} from 'lucide-react';
 import { DeepSightSpinnerMicro } from '../components/ui';
-import { billingApi } from '../services/api';
+import { billingApi, type ApiBillingPlan } from '../services/api';
 import { SEO } from '../components/SEO';
 import {
-  PLANS_INFO,
-  PLAN_LIMITS,
-  PLAN_FEATURES,
-  TESTIMONIALS,
-  normalizePlanId,
+  PLANS_INFO as FALLBACK_PLANS_INFO,
+  PLAN_LIMITS as FALLBACK_PLAN_LIMITS,
+  PLAN_HIERARCHY,
   type PlanId,
 } from '../config/planPrivileges';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🎯 ICÔNES PAR PLAN
+// HELPERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const getPlanIcon = (planId: PlanId) => {
-  switch (planId) {
-    case 'free': return Zap;
-    case 'student': return GraduationCap;
-    case 'starter': return Star;
-    case 'pro': return Crown;
-    case 'team': return Users;
-    default: return Zap;
-  }
+const PLAN_ICON_MAP: Record<string, React.ElementType> = {
+  free: Zap,
+  etudiant: GraduationCap,
+  student: GraduationCap,
+  starter: Star,
+  pro: Crown,
+  equipe: Users,
+  team: Users,
+};
+
+const PLAN_GRADIENT_MAP: Record<string, string> = {
+  free: 'from-gray-500 to-gray-600',
+  etudiant: 'from-emerald-500 to-green-600',
+  student: 'from-emerald-500 to-green-600',
+  starter: 'from-blue-500 to-blue-600',
+  pro: 'from-violet-500 to-purple-600',
+  equipe: 'from-amber-500 to-orange-500',
+  team: 'from-amber-500 to-orange-500',
+};
+
+function formatPriceFr(cents: number): string {
+  if (cents === 0) return '0';
+  const euros = cents / 100;
+  return euros.toFixed(2).replace('.', ',');
+}
+
+function getPlanIcon(planId: string): React.ElementType {
+  return PLAN_ICON_MAP[planId] || Zap;
+}
+
+function getPlanGradient(planId: string): string {
+  return PLAN_GRADIENT_MAP[planId] || 'from-gray-500 to-gray-600';
+}
+
+/** Build fallback plans from planPrivileges.ts when API is unavailable */
+function buildFallbackPlans(currentUserPlan: string): ApiBillingPlan[] {
+  return PLAN_HIERARCHY.map((pid) => {
+    const info = FALLBACK_PLANS_INFO[pid];
+    const limits = FALLBACK_PLAN_LIMITS[pid];
+    const currentIdx = PLAN_HIERARCHY.indexOf(currentUserPlan as PlanId);
+    const thisIdx = PLAN_HIERARCHY.indexOf(pid);
+
+    const featuresDisplay: { text: string; icon: string; highlight?: boolean }[] = [];
+    featuresDisplay.push({ text: `${limits.monthlyAnalyses === -1 ? '∞' : limits.monthlyAnalyses} analyses/mois`, icon: '📊' });
+    featuresDisplay.push({ text: `Vidéos ${limits.maxVideoLengthMin === -1 ? 'illimitées' : `≤ ${limits.maxVideoLengthMin} min`}`, icon: '⏱️' });
+    featuresDisplay.push({
+      text: limits.chatQuestionsPerVideo === -1 ? 'Chat illimité' : `Chat (${limits.chatQuestionsPerVideo} q/vidéo)`,
+      icon: '💬',
+    });
+    if (limits.flashcardsEnabled) featuresDisplay.push({ text: 'Flashcards & Cartes mentales', icon: '🧠', highlight: pid === 'etudiant' });
+    if (limits.playlistsEnabled) featuresDisplay.push({ text: `Playlists (${limits.maxPlaylistVideos} vidéos)`, icon: '📚', highlight: true });
+    if (limits.webSearchMonthly > 0 || limits.webSearchMonthly === -1) {
+      featuresDisplay.push({
+        text: limits.webSearchMonthly === -1 ? 'Recherche web ∞' : `Recherche web (${limits.webSearchMonthly}/mois)`,
+        icon: '🔍',
+        highlight: limits.webSearchMonthly >= 100,
+      });
+    }
+    if (limits.exportPdf) featuresDisplay.push({ text: 'Export PDF', icon: '📄' });
+
+    return {
+      id: pid,
+      name: info.name,
+      name_en: info.nameEn,
+      description: info.description,
+      description_en: info.descriptionEn,
+      price_monthly_cents: info.priceMonthly,
+      color: info.color,
+      icon: info.icon,
+      badge: info.badge ? { text: info.badge.text, color: info.badge.color } : null,
+      popular: info.popular,
+      limits: limits as unknown as Record<string, unknown>,
+      platform_features: {},
+      features_display: featuresDisplay,
+      features_locked: [],
+      is_current: currentIdx >= 0 && thisIdx === currentIdx,
+      is_upgrade: currentIdx >= 0 && thisIdx > currentIdx,
+      is_downgrade: currentIdx >= 0 && thisIdx < currentIdx,
+    };
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SKELETON
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const SkeletonCard: React.FC = () => (
+  <div className="card p-4 animate-pulse">
+    <div className="w-12 h-12 rounded-xl bg-white/5 mb-4" />
+    <div className="h-5 w-24 bg-white/5 rounded mb-2" />
+    <div className="h-3 w-36 bg-white/5 rounded mb-4" />
+    <div className="h-8 w-20 bg-white/5 rounded mb-4" />
+    <div className="space-y-2 mb-4">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full bg-white/5" />
+          <div className="h-3 flex-1 bg-white/5 rounded" />
+        </div>
+      ))}
+    </div>
+    <div className="h-11 w-full bg-white/5 rounded-xl" />
+  </div>
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// PLAN CARD
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface PlanCardProps {
+  plan: ApiBillingPlan;
+  lang: 'fr' | 'en';
+  loading: string | null;
+  onSelect: (plan: ApiBillingPlan) => void;
+  trialEligible: boolean;
+  trialLoading: boolean;
+  onStartTrial: () => void;
+  allPlans: ApiBillingPlan[];
+}
+
+const PlanCard: React.FC<PlanCardProps> = ({
+  plan, lang, loading, onSelect, trialEligible, trialLoading, onStartTrial, allPlans,
+}) => {
+  const Icon = getPlanIcon(plan.id);
+  const gradient = getPlanGradient(plan.id);
+  const isCurrent = plan.is_current;
+  const isUpgrade = plan.is_upgrade;
+  const isDowngrade = plan.is_downgrade;
+  const isFree = plan.price_monthly_cents === 0;
+  const nameDisplay = lang === 'fr' ? plan.name : plan.name_en;
+  const priceDisplay = formatPriceFr(plan.price_monthly_cents);
+
+  // Find unlock plan names for features_locked
+  const getUnlockPlanName = (unlockPlanId: string) => {
+    const p = allPlans.find((pl) => pl.id === unlockPlanId);
+    if (!p) return unlockPlanId;
+    return lang === 'fr' ? p.name : p.name_en;
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className={`card relative overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex flex-col ${
+        isCurrent ? 'ring-2 ring-green-500/50' : ''
+      } ${plan.popular ? 'ring-2 ring-violet-500/50 shadow-xl shadow-violet-500/10' : ''}`}
+      style={plan.popular ? { animation: 'glow-pulse 3s ease-in-out infinite' } : undefined}
+    >
+      {/* Badge */}
+      {plan.badge && !isCurrent && (
+        <div className="absolute -top-0 -right-0 z-10">
+          <div
+            className="text-white text-[10px] font-bold px-2.5 py-1 rounded-bl-xl"
+            style={{ backgroundColor: plan.badge.color }}
+          >
+            {plan.badge.text}
+          </div>
+        </div>
+      )}
+      {plan.popular && !isCurrent && (
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
+      )}
+      {isCurrent && (
+        <div className="absolute top-2 left-2 z-10">
+          <div className="bg-green-500/20 text-green-400 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+            <Check className="w-2.5 h-2.5" />
+            {lang === 'fr' ? 'Actuel' : 'Current'}
+          </div>
+        </div>
+      )}
+
+      <div className="p-3 sm:p-4 pt-7 sm:pt-8 flex flex-col flex-1">
+        {/* Icon & Name */}
+        <div
+          className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-3 sm:mb-4 shadow-lg`}
+        >
+          <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+        </div>
+
+        <h3 className="text-lg sm:text-xl font-bold text-text-primary mb-0.5">{nameDisplay}</h3>
+        <p className="text-xs text-text-tertiary mb-2 sm:mb-3">
+          {lang === 'fr' ? plan.description : plan.description_en}
+        </p>
+
+        {/* Price */}
+        <div className="mb-3 sm:mb-4">
+          <span className="text-2xl sm:text-3xl font-bold text-text-primary">{priceDisplay}</span>
+          <span className="text-text-tertiary text-xs sm:text-sm ml-1">
+            €/{lang === 'fr' ? 'mois' : 'mo'}
+          </span>
+        </div>
+
+        {/* Features Display */}
+        <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4 flex-1">
+          {plan.features_display.map((feat, idx) => (
+            <div key={idx} className="flex items-center gap-2 text-[11px] sm:text-xs">
+              <div
+                className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  feat.highlight ? 'bg-amber-500/20' : 'bg-green-500/20'
+                }`}
+              >
+                <Check className={`w-2.5 h-2.5 ${feat.highlight ? 'text-amber-400' : 'text-green-400'}`} />
+              </div>
+              <span className={`${feat.highlight ? 'font-medium text-amber-300' : 'text-text-secondary'}`}>
+                {feat.text}
+              </span>
+            </div>
+          ))}
+
+          {/* Features Locked */}
+          {plan.features_locked.map((feat, idx) => (
+            <div key={`locked-${idx}`} className="flex items-center gap-2 text-[11px] sm:text-xs">
+              <div className="w-4 h-4 rounded-full bg-gray-500/20 flex items-center justify-center flex-shrink-0">
+                <Lock className="w-2.5 h-2.5 text-gray-500" />
+              </div>
+              <span className="text-text-muted">
+                {feat.text}
+                <span className="text-text-tertiary ml-1 text-[10px]">
+                  — {lang === 'fr' ? 'Dès' : 'From'} {getUnlockPlanName(feat.unlock_plan)}
+                </span>
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <div className="mt-auto">
+          {trialEligible && plan.id === 'pro' && plan.is_upgrade ? (
+            <button
+              onClick={onStartTrial}
+              disabled={trialLoading}
+              className="w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:opacity-90 shadow-lg min-h-[44px] active:scale-95"
+            >
+              {trialLoading ? (
+                <DeepSightSpinnerMicro />
+              ) : (
+                <>
+                  <Gift className="w-4 h-4" />
+                  {lang === 'fr' ? '7 jours gratuits' : '7-day free trial'}
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              onClick={() => onSelect(plan)}
+              disabled={isCurrent || loading === plan.id || (isFree && isCurrent)}
+              className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-95 ${
+                isCurrent
+                  ? 'bg-green-500/20 text-green-400 cursor-default'
+                  : isUpgrade
+                    ? `bg-gradient-to-r ${gradient} text-white hover:opacity-90 shadow-lg`
+                    : isDowngrade
+                      ? 'bg-transparent text-gray-400 hover:text-gray-300 border border-white/10'
+                      : 'bg-bg-tertiary text-text-muted cursor-not-allowed'
+              }`}
+            >
+              {loading === plan.id ? (
+                <DeepSightSpinnerMicro />
+              ) : isCurrent ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  {lang === 'fr' ? 'Plan actuel ✓' : 'Current plan ✓'}
+                </>
+              ) : isUpgrade ? (
+                <>
+                  <ArrowUp className="w-4 h-4" />
+                  {lang === 'fr' ? `Choisir ${nameDisplay}` : `Choose ${nameDisplay}`}
+                </>
+              ) : isDowngrade ? (
+                <>
+                  <ArrowDown className="w-4 h-4" />
+                  Downgrade
+                </>
+              ) : (
+                lang === 'fr' ? 'Gratuit' : 'Free'
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📋 MATRICE DE COMPARAISON
+// COMPARISON TABLE
 // ═══════════════════════════════════════════════════════════════════════════════
 
-interface ComparisonRow {
-  category: string;
-  feature: { fr: string; en: string };
-  free: string | boolean;
-  student: string | boolean;
-  starter: string | boolean;
-  pro: string | boolean;
-  team: string | boolean;
-  highlight?: PlanId;
+interface ComparisonTableProps {
+  plans: ApiBillingPlan[];
+  lang: 'fr' | 'en';
+  loading: string | null;
+  onSelect: (plan: ApiBillingPlan) => void;
 }
 
-const COMPARISON_MATRIX: ComparisonRow[] = [
-  // Limites
-  { category: '📊 Limites', feature: { fr: 'Analyses/mois', en: 'Analyses/month' }, free: '3', student: '40', starter: '60', pro: '300', team: '1000', highlight: 'team' },
-  { category: '📊 Limites', feature: { fr: 'Durée max vidéo', en: 'Max video length' }, free: '10 min', student: '2h', starter: '2h', pro: '4h', team: '∞', highlight: 'team' },
-  { category: '📊 Limites', feature: { fr: 'Questions chat/vidéo', en: 'Chat questions/video' }, free: '3', student: '15', starter: '20', pro: '∞', team: '∞' },
-  { category: '📊 Limites', feature: { fr: 'Historique', en: 'History' }, free: '3 jours', student: '90 jours', starter: '60 jours', pro: '180 jours', team: '∞', highlight: 'team' },
-
-  // Outils d'étude
-  { category: '🎓 Outils d\'étude', feature: { fr: 'Flashcards automatiques', en: 'Auto flashcards' }, free: false, student: true, starter: true, pro: true, team: true, highlight: 'student' },
-  { category: '🎓 Outils d\'étude', feature: { fr: 'Cartes mentales', en: 'Mind maps' }, free: false, student: true, starter: true, pro: true, team: true, highlight: 'student' },
-  { category: '🎓 Outils d\'étude', feature: { fr: 'Citations académiques', en: 'Academic citations' }, free: false, student: true, starter: true, pro: true, team: true, highlight: 'student' },
-  { category: '🎓 Outils d\'étude', feature: { fr: 'Export BibTeX', en: 'BibTeX export' }, free: false, student: true, starter: false, pro: true, team: true, highlight: 'student' },
-
-  // Chat & Recherche
-  { category: '💬 Chat & Recherche', feature: { fr: 'Chat IA', en: 'AI Chat' }, free: true, student: true, starter: true, pro: true, team: true },
-  { category: '💬 Chat & Recherche', feature: { fr: 'Questions suggérées', en: 'Suggested questions' }, free: false, student: true, starter: true, pro: true, team: true },
-  { category: '💬 Chat & Recherche', feature: { fr: 'Recherche web (Perplexity)', en: 'Web search (Perplexity)' }, free: false, student: '10/mois', starter: '20/mois', pro: '100/mois', team: '∞', highlight: 'pro' },
-
-  // Playlists
-  { category: '📚 Playlists', feature: { fr: 'Analyse de playlists', en: 'Playlist analysis' }, free: false, student: false, starter: false, pro: '20 vidéos', team: '100 vidéos', highlight: 'pro' },
-  { category: '📚 Playlists', feature: { fr: 'Nombre de playlists', en: 'Number of playlists' }, free: false, student: false, starter: false, pro: '10', team: '∞', highlight: 'pro' },
-
-  // Export
-  { category: '📄 Export', feature: { fr: 'Export PDF', en: 'PDF export' }, free: false, student: true, starter: true, pro: true, team: true },
-  { category: '📄 Export', feature: { fr: 'Export Markdown', en: 'Markdown export' }, free: false, student: true, starter: false, pro: true, team: true, highlight: 'student' },
-  { category: '📄 Export', feature: { fr: 'Watermark', en: 'Watermark' }, free: true, student: false, starter: false, pro: false, team: false },
-
-  // Audio
-  { category: '🎧 Audio', feature: { fr: 'Lecture audio TTS', en: 'TTS audio' }, free: false, student: true, starter: false, pro: true, team: true, highlight: 'student' },
-
-  // API & Équipe
-  { category: '🔌 API & Équipe', feature: { fr: 'Accès API REST', en: 'REST API access' }, free: false, student: false, starter: false, pro: false, team: '1000 req/jour', highlight: 'team' },
-  { category: '🔌 API & Équipe', feature: { fr: 'Multi-utilisateurs', en: 'Multi-users' }, free: false, student: false, starter: false, pro: false, team: '5 utilisateurs', highlight: 'team' },
-  { category: '🔌 API & Équipe', feature: { fr: 'Workspace partagé', en: 'Shared workspace' }, free: false, student: false, starter: false, pro: false, team: true, highlight: 'team' },
-
-  // Support
-  { category: '🛟 Support', feature: { fr: 'Support email', en: 'Email support' }, free: true, student: true, starter: true, pro: true, team: true },
-  { category: '🛟 Support', feature: { fr: 'Support prioritaire', en: 'Priority support' }, free: false, student: false, starter: false, pro: true, team: true, highlight: 'pro' },
-];
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 🌟 AVANTAGES EXCLUSIFS PAR PLAN
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface ExclusiveFeature {
-  icon: React.ElementType;
-  title: { fr: string; en: string };
-  description: { fr: string; en: string };
-  badge?: { fr: string; en: string };
+/** Build comparison rows from API plan limits */
+interface ComparisonCategory {
+  name: string;
+  rows: { label: string; values: (string | boolean)[] }[];
 }
 
-const STUDENT_EXCLUSIVES: ExclusiveFeature[] = [
-  {
-    icon: Brain,
-    title: { fr: 'Flashcards automatiques', en: 'Auto Flashcards' },
-    description: { fr: 'Générez des fiches de révision en un clic', en: 'Generate study cards in one click' },
-    badge: { fr: 'KILLER FEATURE', en: 'KILLER FEATURE' },
-  },
-  {
-    icon: Lightbulb,
-    title: { fr: 'Cartes mentales', en: 'Mind Maps' },
-    description: { fr: 'Visualisez les concepts et leurs liens', en: 'Visualize concepts and their connections' },
-  },
-  {
-    icon: FileText,
-    title: { fr: 'Citations académiques', en: 'Academic Citations' },
-    description: { fr: 'Export BibTeX pour vos dissertations', en: 'BibTeX export for your papers' },
-  },
-  {
-    icon: Headphones,
-    title: { fr: 'Lecture audio TTS', en: 'TTS Audio' },
-    description: { fr: 'Révisez en écoutant vos résumés', en: 'Review by listening to your summaries' },
-  },
-];
+function buildComparisonData(plans: ApiBillingPlan[], lang: 'fr' | 'en'): ComparisonCategory[] {
+  const fmt = (v: unknown): string | boolean => {
+    if (v === true) return true;
+    if (v === false) return false;
+    if (v === -1) return '∞';
+    if (typeof v === 'number') return String(v);
+    if (Array.isArray(v)) return v.join(', ');
+    return String(v ?? '-');
+  };
 
-const PRO_EXCLUSIVES: ExclusiveFeature[] = [
-  {
-    icon: ListVideo,
-    title: { fr: 'Playlists (20 vidéos)', en: 'Playlists (20 videos)' },
-    description: { fr: 'Analysez des séries de vidéos d\'un coup', en: 'Analyze video series at once' },
-    badge: { fr: 'EXCLUSIF', en: 'EXCLUSIVE' },
-  },
-  {
-    icon: Infinity,
-    title: { fr: 'Chat illimité', en: 'Unlimited Chat' },
-    description: { fr: 'Posez autant de questions que vous voulez', en: 'Ask as many questions as you want' },
-  },
-  {
-    icon: TrendingUp,
-    title: { fr: '100 recherches web/mois', en: '100 Web searches/mo' },
-    description: { fr: 'Recherche Perplexity intégrée', en: 'Integrated Perplexity search' },
-  },
-  {
-    icon: Shield,
-    title: { fr: 'Support prioritaire', en: 'Priority Support' },
-    description: { fr: 'Réponse rapide par email', en: 'Fast email response' },
-  },
-];
+  const fmtMin = (v: unknown): string | boolean => {
+    if (v === -1) return '∞';
+    if (typeof v === 'number') {
+      if (v >= 60) return `${Math.floor(v / 60)}h`;
+      return `${v} min`;
+    }
+    return '-';
+  };
 
-const TEAM_EXCLUSIVES: ExclusiveFeature[] = [
-  {
-    icon: Key,
-    title: { fr: 'Accès API REST', en: 'REST API Access' },
-    description: { fr: '1000 requêtes/jour pour vos intégrations', en: '1000 requests/day for your integrations' },
-    badge: { fr: 'NOUVEAU', en: 'NEW' },
-  },
-  {
-    icon: Users,
-    title: { fr: '5 utilisateurs', en: '5 Users' },
-    description: { fr: 'Collaborez en équipe', en: 'Collaborate as a team' },
-  },
-  {
-    icon: ListVideo,
-    title: { fr: 'Playlists (100 vidéos)', en: 'Playlists (100 videos)' },
-    description: { fr: '5x plus que Pro', en: '5x more than Pro' },
-  },
-  {
-    icon: Infinity,
-    title: { fr: 'Recherche web illimitée', en: 'Unlimited Web Search' },
-    description: { fr: 'Aucune limite mensuelle', en: 'No monthly limit' },
-  },
-];
+  const categories: ComparisonCategory[] = [
+    {
+      name: lang === 'fr' ? '📊 Analyses' : '📊 Analyses',
+      rows: [
+        { label: lang === 'fr' ? 'Analyses/mois' : 'Analyses/month', values: plans.map(p => fmt(p.limits.monthly_analyses)) },
+        { label: lang === 'fr' ? 'Durée max vidéo' : 'Max video length', values: plans.map(p => fmtMin(p.limits.max_video_length_min)) },
+        { label: lang === 'fr' ? 'Analyses simultanées' : 'Concurrent analyses', values: plans.map(p => fmt(p.limits.concurrent_analyses)) },
+        { label: lang === 'fr' ? 'File prioritaire' : 'Priority queue', values: plans.map(p => fmt(p.limits.priority_queue)) },
+      ],
+    },
+    {
+      name: lang === 'fr' ? '💬 Chat IA' : '💬 AI Chat',
+      rows: [
+        { label: lang === 'fr' ? 'Questions/vidéo' : 'Questions/video', values: plans.map(p => fmt(p.limits.chat_questions_per_video)) },
+        { label: lang === 'fr' ? 'Messages/jour' : 'Messages/day', values: plans.map(p => fmt(p.limits.chat_daily_limit)) },
+      ],
+    },
+    {
+      name: lang === 'fr' ? '🎓 Outils d\'étude' : '🎓 Study tools',
+      rows: [
+        { label: 'Flashcards', values: plans.map(p => fmt(p.limits.flashcards_enabled)) },
+        { label: lang === 'fr' ? 'Cartes mentales' : 'Mind maps', values: plans.map(p => fmt(p.limits.mindmap_enabled)) },
+      ],
+    },
+    {
+      name: lang === 'fr' ? '🔍 Recherche web' : '🔍 Web search',
+      rows: [
+        { label: lang === 'fr' ? 'Recherches/mois' : 'Searches/month', values: plans.map(p => fmt(p.limits.web_search_monthly)) },
+      ],
+    },
+    {
+      name: lang === 'fr' ? '📚 Playlists' : '📚 Playlists',
+      rows: [
+        { label: lang === 'fr' ? 'Playlists' : 'Playlists', values: plans.map(p => fmt(p.limits.playlists_enabled)) },
+        { label: lang === 'fr' ? 'Vidéos/playlist' : 'Videos/playlist', values: plans.map(p => p.limits.playlists_enabled ? fmt(p.limits.max_playlist_videos) : false) },
+      ],
+    },
+    {
+      name: lang === 'fr' ? '📄 Export' : '📄 Export',
+      rows: [
+        { label: 'Markdown', values: plans.map(p => fmt(p.limits.export_markdown)) },
+        { label: 'PDF', values: plans.map(p => fmt(p.limits.export_pdf)) },
+      ],
+    },
+    {
+      name: lang === 'fr' ? '🗂️ Historique' : '🗂️ History',
+      rows: [
+        {
+          label: lang === 'fr' ? 'Rétention' : 'Retention',
+          values: plans.map(p => {
+            const d = p.limits.history_retention_days;
+            if (d === -1) return '∞';
+            return `${d} ${lang === 'fr' ? 'jours' : 'days'}`;
+          }),
+        },
+      ],
+    },
+  ];
+
+  return categories;
+}
+
+const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading, onSelect }) => {
+  const [expanded, setExpanded] = useState<string[]>([]);
+  const categories = useMemo(() => buildComparisonData(plans, lang), [plans, lang]);
+
+  // Expand all categories by default
+  useEffect(() => {
+    setExpanded(categories.map((c) => c.name));
+  }, [categories]);
+
+  const toggleCategory = (name: string) => {
+    setExpanded((prev) => (prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]));
+  };
+
+  const renderCellValue = (value: string | boolean) => {
+    if (value === true) return <Check className="w-5 h-5 text-green-400" />;
+    if (value === false) return <X className="w-5 h-5 text-gray-500" />;
+    if (value === '∞') return <InfinityIcon className="w-5 h-5 text-violet-400" />;
+    if (value === '0') return <X className="w-5 h-5 text-gray-500" />;
+    return <span className="text-sm text-text-secondary">{value}</span>;
+  };
+
+  const colCount = plans.length + 1;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="card overflow-hidden mb-12 overflow-x-auto"
+    >
+      {/* Header */}
+      <div
+        className="grid gap-2 p-4 bg-bg-secondary border-b border-border-primary min-w-[900px]"
+        style={{ gridTemplateColumns: `1.5fr repeat(${plans.length}, 1fr)` }}
+      >
+        <div className="font-semibold text-text-secondary text-sm">
+          {lang === 'fr' ? 'Fonctionnalités' : 'Features'}
+        </div>
+        {plans.map((plan) => {
+          const Icon = getPlanIcon(plan.id);
+          const gradient = getPlanGradient(plan.id);
+          return (
+            <div
+              key={plan.id}
+              className={`text-center ${plan.is_current ? 'bg-green-500/5 -mx-1 px-1 py-2 rounded-lg' : ''} ${plan.popular ? 'bg-violet-500/5 -mx-1 px-1 py-2 rounded-lg' : ''}`}
+            >
+              <div className={`inline-flex w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} items-center justify-center mb-1 shadow-lg`}>
+                <Icon className="w-4 h-4 text-white" />
+              </div>
+              <div className="font-bold text-text-primary text-xs">{lang === 'fr' ? plan.name : plan.name_en}</div>
+              <div className="text-[10px] text-text-tertiary">
+                {plan.price_monthly_cents === 0 ? '0€' : `${formatPriceFr(plan.price_monthly_cents)}€`}
+              </div>
+              {plan.is_current && (
+                <div className="text-[10px] text-green-400 mt-1 flex items-center justify-center gap-1">
+                  <Check className="w-2.5 h-2.5" /> {lang === 'fr' ? 'Actuel' : 'Current'}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Categories */}
+      {categories.map((cat) => (
+        <div key={cat.name} className="border-b border-border-primary last:border-b-0 min-w-[900px]">
+          <button
+            onClick={() => toggleCategory(cat.name)}
+            className="w-full p-3 bg-bg-tertiary/50 hover:bg-bg-tertiary transition-colors flex items-center gap-2"
+          >
+            <span className="font-semibold text-text-primary text-sm">{cat.name}</span>
+            {expanded.includes(cat.name) ? (
+              <ChevronUp className="w-4 h-4 text-text-tertiary" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-text-tertiary" />
+            )}
+          </button>
+
+          <AnimatePresence>
+            {expanded.includes(cat.name) && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="divide-y divide-border-primary/30">
+                  {cat.rows.map((row, idx) => (
+                    <div
+                      key={idx}
+                      className="grid gap-2 p-3 hover:bg-bg-tertiary/30 transition-colors"
+                      style={{ gridTemplateColumns: `1.5fr repeat(${plans.length}, 1fr)` }}
+                    >
+                      <div className="text-xs text-text-secondary flex items-center">{row.label}</div>
+                      {row.values.map((val, vi) => (
+                        <div
+                          key={vi}
+                          className={`flex justify-center items-center ${plans[vi]?.is_current ? 'bg-green-500/5 -mx-1 px-1 rounded' : ''}`}
+                        >
+                          {renderCellValue(val)}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      ))}
+
+      {/* CTA Row */}
+      <div
+        className="grid gap-2 p-4 bg-bg-secondary min-w-[900px]"
+        style={{ gridTemplateColumns: `1.5fr repeat(${plans.length}, 1fr)` }}
+      >
+        <div />
+        {plans.map((plan) => {
+          const gradient = getPlanGradient(plan.id);
+          return (
+            <div key={plan.id} className="flex justify-center">
+              <button
+                onClick={() => onSelect(plan)}
+                disabled={plan.is_current || loading === plan.id || (plan.price_monthly_cents === 0 && plan.is_current)}
+                className={`px-3 py-1.5 rounded-lg font-medium text-[10px] transition-all ${
+                  plan.is_current
+                    ? 'bg-green-500/20 text-green-400'
+                    : plan.is_upgrade
+                      ? `bg-gradient-to-r ${gradient} text-white hover:opacity-90 shadow-lg`
+                      : plan.is_downgrade
+                        ? 'bg-bg-tertiary text-text-muted'
+                        : 'bg-bg-tertiary text-text-muted'
+                }`}
+              >
+                {loading === plan.id ? (
+                  <DeepSightSpinnerMicro />
+                ) : plan.is_current ? (
+                  lang === 'fr' ? 'Actuel' : 'Current'
+                ) : plan.is_upgrade ? (
+                  lang === 'fr' ? 'Choisir' : 'Select'
+                ) : plan.is_downgrade ? (
+                  'Downgrade'
+                ) : (
+                  '-'
+                )}
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+};
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🎨 COMPOSANT PRINCIPAL
+// DOWNGRADE MODAL
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface DowngradeModalProps {
+  plan: ApiBillingPlan;
+  currentPlan: ApiBillingPlan | undefined;
+  lang: 'fr' | 'en';
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+const DowngradeModal: React.FC<DowngradeModalProps> = ({ plan, currentPlan, lang, onConfirm, onCancel }) => {
+  // Show features lost: features in current plan's display that are NOT in the target plan
+  const currentFeatures = currentPlan?.features_display.map((f) => f.text) ?? [];
+  const targetFeatures = new Set(plan.features_display.map((f) => f.text));
+  const lostFeatures = currentFeatures.filter((f) => !targetFeatures.has(f));
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
+    >
+      <motion.div
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 50, opacity: 0 }}
+        className="card p-4 sm:p-6 w-full sm:max-w-md shadow-2xl rounded-t-2xl sm:rounded-2xl"
+      >
+        <h3 className="text-base sm:text-lg font-bold text-text-primary mb-2 sm:mb-3 flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 text-amber-400" />
+          {lang === 'fr' ? 'Confirmer le downgrade' : 'Confirm downgrade'}
+        </h3>
+        <p className="text-text-secondary text-xs sm:text-sm mb-3">
+          {lang === 'fr'
+            ? `Passer au plan ${plan.name} ? Vos avantages actuels restent actifs jusqu'à la fin de la période.`
+            : `Switch to ${plan.name_en}? Current benefits stay active until period end.`}
+        </p>
+
+        {lostFeatures.length > 0 && (
+          <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+            <p className="text-xs font-semibold text-red-400 mb-2">
+              {lang === 'fr' ? 'Vous perdrez :' : 'You will lose:'}
+            </p>
+            <ul className="space-y-1">
+              {lostFeatures.map((f, idx) => (
+                <li key={idx} className="flex items-center gap-2 text-xs text-red-300">
+                  <X className="w-3 h-3 flex-shrink-0" /> {f}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 sm:justify-end">
+          <button onClick={onCancel} className="btn-secondary min-h-[44px] active:scale-95">
+            {lang === 'fr' ? 'Annuler' : 'Cancel'}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-medium transition-colors min-h-[44px] active:scale-95"
+          >
+            {lang === 'fr' ? 'Confirmer le downgrade' : 'Confirm downgrade'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface SubscriptionStatus {
@@ -205,28 +658,48 @@ interface SubscriptionStatus {
 export const UpgradePage: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const { language } = useTranslation();
+  const lang = (language as 'fr' | 'en') || 'fr';
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [plans, setPlans] = useState<ApiBillingPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
-  const [showConfirmModal, setShowConfirmModal] = useState<{ plan: PlanId; action: 'upgrade' | 'downgrade' } | null>(null);
+  const [downgradeTarget, setDowngradeTarget] = useState<ApiBillingPlan | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['📊 Limites', '🎓 Outils d\'étude', '🔌 API & Équipe']);
   const [trialEligible, setTrialEligible] = useState(false);
   const [trialLoading, setTrialLoading] = useState(false);
 
-  const currentPlan = normalizePlanId(user?.plan);
-  const currentPlanConfig = PLANS_INFO.find(p => p.id === currentPlan) || PLANS_INFO[0];
-  const lang = language as 'fr' | 'en';
+  const currentPlan = useMemo(() => plans.find((p) => p.is_current), [plans]);
 
+  // ── Load data ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    const loadData = async () => {
+    const load = async () => {
+      setPlansLoading(true);
       try {
         await refreshUser(true);
-        const status = await billingApi.getSubscriptionStatus();
-        setSubscriptionStatus(status);
 
+        // Load plans from API
+        const [plansResponse, statusResponse] = await Promise.allSettled([
+          billingApi.getPlans('web'),
+          billingApi.getSubscriptionStatus(),
+        ]);
+
+        if (plansResponse.status === 'fulfilled' && plansResponse.value.plans?.length) {
+          setPlans(plansResponse.value.plans);
+        } else {
+          // Fallback to planPrivileges.ts
+          const userPlan = user?.plan || 'free';
+          setPlans(buildFallbackPlans(userPlan));
+        }
+
+        if (statusResponse.status === 'fulfilled') {
+          setSubscriptionStatus(statusResponse.value);
+        }
+
+        // Check trial eligibility
         try {
           const eligibility = await billingApi.checkTrialEligibility();
           setTrialEligible(eligibility.eligible);
@@ -234,14 +707,17 @@ export const UpgradePage: React.FC = () => {
           // Trial eligibility check not available
         }
       } catch (err) {
-        console.error('Error loading data:', err);
+        console.error('Error loading plans:', err);
+        const userPlan = user?.plan || 'free';
+        setPlans(buildFallbackPlans(userPlan));
+      } finally {
+        setPlansLoading(false);
       }
     };
-    loadData();
+    load();
   }, []);
 
-  const categories = [...new Set(COMPARISON_MATRIX.map(r => r.category))];
-
+  // ── Actions ────────────────────────────────────────────────────────────────
   const handleStartTrial = async () => {
     setTrialLoading(true);
     setError(null);
@@ -251,68 +727,83 @@ export const UpgradePage: React.FC = () => {
         window.location.href = result.checkout_url;
       }
     } catch (err: any) {
-      setError(err?.message || (language === 'fr' ? 'Erreur lors du démarrage de l\'essai' : 'Error starting trial'));
+      setError(err?.message || (lang === 'fr' ? 'Erreur lors du démarrage de l\'essai' : 'Error starting trial'));
     } finally {
       setTrialLoading(false);
     }
   };
 
-  const handleChangePlan = async (newPlanId: PlanId) => {
-    if (newPlanId === currentPlan) return;
+  const handleSelectPlan = (plan: ApiBillingPlan) => {
+    if (plan.is_current || (plan.price_monthly_cents === 0 && plan.is_current)) return;
 
-    const newPlanConfig = PLANS_INFO.find(p => p.id === newPlanId)!;
-    const isUpgrade = newPlanConfig.order > currentPlanConfig.order;
-
-    if (!isUpgrade && currentPlan !== 'free') {
-      setShowConfirmModal({ plan: newPlanId, action: 'downgrade' });
+    if (plan.is_downgrade) {
+      setDowngradeTarget(plan);
       return;
     }
 
-    await executeChangePlan(newPlanId, isUpgrade ? 'upgrade' : 'downgrade');
+    executePlanChange(plan);
   };
 
-  const executeChangePlan = async (newPlanId: PlanId, action: 'upgrade' | 'downgrade') => {
-    setLoading(newPlanId);
+  const executePlanChange = async (plan: ApiBillingPlan) => {
+    setLoading(plan.id);
     setError(null);
     setSuccess(null);
-    setShowConfirmModal(null);
+    setDowngradeTarget(null);
 
     try {
-      if (action === 'upgrade' || (currentPlan === 'free' && newPlanId !== 'free')) {
-        const result = await billingApi.createCheckout(newPlanId);
+      if (plan.is_upgrade || (!currentPlan || currentPlan.price_monthly_cents === 0)) {
+        // Upgrade → Stripe checkout
+        const result = await billingApi.createCheckout(plan.id);
         if (result.checkout_url) {
           window.location.href = result.checkout_url;
           return;
         }
       } else {
-        const result = await billingApi.changePlan(newPlanId);
+        // Downgrade → portal or changePlan
+        const result = await billingApi.changePlan(plan.id);
         if (result.success) {
-          setSuccess(language === 'fr'
-            ? 'Plan modifié ! Changement effectif au prochain renouvellement.'
-            : 'Plan changed! Takes effect at next renewal.');
+          setSuccess(
+            lang === 'fr'
+              ? 'Plan modifié ! Changement effectif au prochain renouvellement.'
+              : 'Plan changed! Takes effect at next renewal.'
+          );
           await refreshUser(true);
+          // Reload plans to get updated is_current flags
+          try {
+            const plansResponse = await billingApi.getPlans('web');
+            if (plansResponse.plans?.length) setPlans(plansResponse.plans);
+          } catch {
+            // ignore
+          }
           const status = await billingApi.getSubscriptionStatus();
           setSubscriptionStatus(status);
         }
       }
     } catch (err: any) {
-      setError(err?.message || (language === 'fr' ? 'Erreur lors du changement' : 'Error changing plan'));
+      setError(err?.message || (lang === 'fr' ? 'Erreur lors du changement' : 'Error changing plan'));
     } finally {
       setLoading(null);
     }
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm(language === 'fr'
-      ? 'Êtes-vous sûr de vouloir annuler ? Vous garderez vos avantages jusqu\'à la fin de la période payée.'
-      : 'Are you sure? You\'ll keep benefits until paid period ends.')) return;
+    if (
+      !confirm(
+        lang === 'fr'
+          ? 'Êtes-vous sûr de vouloir annuler ? Vous garderez vos avantages jusqu\'à la fin de la période payée.'
+          : 'Are you sure? You\'ll keep benefits until paid period ends.'
+      )
+    )
+      return;
 
     setLoading('cancel');
     try {
       await billingApi.cancelSubscription();
-      setSuccess(language === 'fr'
-        ? 'Abonnement annulé. Accès maintenu jusqu\'à la fin de la période.'
-        : 'Subscription cancelled. Access kept until period end.');
+      setSuccess(
+        lang === 'fr'
+          ? 'Abonnement annulé. Accès maintenu jusqu\'à la fin de la période.'
+          : 'Subscription cancelled. Access kept until period end.'
+      );
       const status = await billingApi.getSubscriptionStatus();
       setSubscriptionStatus(status);
     } catch (err: any) {
@@ -322,95 +813,7 @@ export const UpgradePage: React.FC = () => {
     }
   };
 
-  const renderValue = (value: string | boolean, highlight?: PlanId, currentCol?: PlanId) => {
-    const isHighlighted = highlight === currentCol;
-    if (value === true) return <Check className={`w-5 h-5 ${isHighlighted ? 'text-green-400' : 'text-green-400'}`} />;
-    if (value === false) return <X className="w-5 h-5 text-gray-500" />;
-    if (value === '∞') return <Infinity className={`w-5 h-5 ${isHighlighted ? 'text-amber-400' : 'text-violet-400'}`} />;
-    return <span className={`text-sm ${isHighlighted ? 'text-amber-300 font-medium' : 'text-text-secondary'}`}>{value}</span>;
-  };
-
-  // Récupérer les features pour chaque plan
-  const getFeatures = (planId: PlanId) => {
-    const limits = PLAN_LIMITS[planId];
-    const features = PLAN_FEATURES[planId];
-
-    const result = [
-      {
-        text: limits.monthlyAnalyses === -1
-          ? (lang === 'fr' ? 'Analyses illimitées' : 'Unlimited analyses')
-          : (lang === 'fr' ? `${limits.monthlyAnalyses} analyses/mois` : `${limits.monthlyAnalyses} analyses/mo`),
-        included: true,
-        highlight: limits.monthlyAnalyses >= 300
-      },
-      {
-        text: limits.chatQuestionsPerVideo === -1
-          ? (lang === 'fr' ? 'Chat illimité' : 'Unlimited chat')
-          : (lang === 'fr' ? `Chat (${limits.chatQuestionsPerVideo} q/vidéo)` : `Chat (${limits.chatQuestionsPerVideo} q/video)`),
-        included: true
-      },
-    ];
-
-    if (features.flashcards) {
-      result.push({
-        text: lang === 'fr' ? 'Flashcards & Cartes mentales' : 'Flashcards & Mind maps',
-        included: true,
-        highlight: planId === 'student'
-      });
-    }
-
-    if (features.playlists) {
-      result.push({
-        text: lang === 'fr' ? `Playlists (${limits.maxPlaylistVideos} vidéos)` : `Playlists (${limits.maxPlaylistVideos} videos)`,
-        included: true,
-        highlight: true
-      });
-    }
-
-    if (limits.webSearchMonthly > 0 || limits.webSearchMonthly === -1) {
-      result.push({
-        text: limits.webSearchMonthly === -1
-          ? (lang === 'fr' ? 'Recherche web illimitée' : 'Unlimited web search')
-          : (lang === 'fr' ? `Recherche web (${limits.webSearchMonthly}/mois)` : `Web search (${limits.webSearchMonthly}/mo)`),
-        included: true,
-        highlight: limits.webSearchMonthly >= 100
-      });
-    }
-
-    if (features.exportPdf) {
-      result.push({ text: lang === 'fr' ? 'Export PDF' : 'PDF export', included: true });
-    }
-
-    if (features.ttsAudio) {
-      result.push({ text: lang === 'fr' ? 'Lecture audio TTS' : 'TTS audio', included: true });
-    }
-
-    if (features.apiAccess) {
-      result.push({
-        text: lang === 'fr' ? `API (${limits.apiRequestsDaily} req/jour)` : `API (${limits.apiRequestsDaily} req/day)`,
-        included: true,
-        highlight: true
-      });
-    }
-
-    if (limits.teamMembers > 1) {
-      result.push({
-        text: lang === 'fr' ? `${limits.teamMembers} utilisateurs` : `${limits.teamMembers} users`,
-        included: true,
-        highlight: true
-      });
-    }
-
-    // Ajouter les features non incluses pour free
-    if (planId === 'free') {
-      result.push({ text: lang === 'fr' ? 'Historique 3 jours' : '3 days history', included: true });
-      result.push({ text: lang === 'fr' ? 'Outils d\'étude' : 'Study tools', included: false });
-      result.push({ text: 'Export', included: false });
-    }
-
-    return result;
-  };
-
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-bg-primary relative">
       <SEO
@@ -424,17 +827,25 @@ export const UpgradePage: React.FC = () => {
       <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
         <div className="min-h-screen p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
           <div className="max-w-7xl mx-auto">
-
             {/* Header */}
             <header className="text-center mb-8 sm:mb-10">
-              <h1 className="font-semibold text-2xl sm:text-3xl md:text-4xl font-bold text-text-primary mb-2 sm:mb-3 px-2">
-                {language === 'fr' ? 'Choisissez votre plan' : 'Choose your plan'}
-              </h1>
-              <p className="text-text-secondary text-sm sm:text-base max-w-2xl mx-auto px-4">
-                {language === 'fr'
+              <motion.h1
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="font-semibold text-2xl sm:text-3xl md:text-4xl text-text-primary mb-2 sm:mb-3 px-2"
+              >
+                {lang === 'fr' ? 'Choisissez votre plan' : 'Choose your plan'}
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="text-text-secondary text-sm sm:text-base max-w-2xl mx-auto px-4"
+              >
+                {lang === 'fr'
                   ? 'Débloquez des fonctionnalités puissantes pour analyser le contenu vidéo.'
                   : 'Unlock powerful features to analyze video content.'}
-              </p>
+              </motion.p>
             </header>
 
             {/* Alerts */}
@@ -443,7 +854,7 @@ export const UpgradePage: React.FC = () => {
                 <div className="flex items-center gap-2 sm:gap-3">
                   <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 flex-shrink-0" />
                   <span className="text-amber-300 text-xs sm:text-sm">
-                    {language === 'fr'
+                    {lang === 'fr'
                       ? `Abonnement annulé. Accès jusqu'au ${new Date(subscriptionStatus.current_period_end!).toLocaleDateString()}`
                       : `Subscription cancelled. Access until ${new Date(subscriptionStatus.current_period_end!).toLocaleDateString()}`}
                   </span>
@@ -457,56 +868,64 @@ export const UpgradePage: React.FC = () => {
                   className="text-xs sm:text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1 min-h-[44px] px-3 py-2 rounded-lg bg-amber-500/10 active:scale-95 transition-all"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  {language === 'fr' ? 'Réactiver' : 'Reactivate'}
+                  {lang === 'fr' ? 'Réactiver' : 'Reactivate'}
                 </button>
               </div>
             )}
 
             {error && (
-              <div className="card p-3 sm:p-4 mb-4 sm:mb-6 border-red-500/30 bg-red-500/10 text-red-300 text-xs sm:text-sm flex items-center gap-2">
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="card p-3 sm:p-4 mb-4 sm:mb-6 border-red-500/30 bg-red-500/10 text-red-300 text-xs sm:text-sm flex items-center gap-2"
+              >
                 <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
-              </div>
+              </motion.div>
             )}
 
             {success && (
-              <div className="card p-3 sm:p-4 mb-4 sm:mb-6 border-green-500/30 bg-green-500/10 text-green-300 text-xs sm:text-sm flex items-center gap-2">
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="card p-3 sm:p-4 mb-4 sm:mb-6 border-green-500/30 bg-green-500/10 text-green-300 text-xs sm:text-sm flex items-center gap-2"
+              >
                 <Check className="w-4 h-4 flex-shrink-0" /> {success}
-              </div>
+              </motion.div>
             )}
 
-            {/* 🆓 Pro Trial Banner */}
-            {trialEligible && currentPlan === 'free' && (
-              <div className="card p-4 sm:p-6 mb-6 sm:mb-8 bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-fuchsia-500/10 border-violet-500/30 overflow-hidden relative">
+            {/* Pro Trial Banner */}
+            {trialEligible && currentPlan?.price_monthly_cents === 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="card p-4 sm:p-6 mb-6 sm:mb-8 bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-fuchsia-500/10 border-violet-500/30 overflow-hidden relative"
+              >
                 <div className="absolute -top-10 -right-10 w-40 h-40 bg-violet-500/20 rounded-full blur-3xl hidden sm:block" />
                 <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-fuchsia-500/20 rounded-full blur-3xl hidden sm:block" />
-
                 <div className="relative flex flex-col items-center gap-4 sm:gap-6 md:flex-row">
                   <div className="flex-shrink-0">
                     <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-xl shadow-violet-500/30">
                       <Gift className="w-7 h-7 sm:w-10 sm:h-10 text-white" />
                     </div>
                   </div>
-
                   <div className="flex-1 text-center md:text-left">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 text-violet-400 text-xs font-semibold mb-2">
                       <Sparkles className="w-3 h-3" />
-                      {language === 'fr' ? 'Offre limitée' : 'Limited offer'}
+                      {lang === 'fr' ? 'Offre limitée' : 'Limited offer'}
                     </div>
                     <h2 className="text-lg sm:text-2xl font-bold text-text-primary mb-2">
-                      {language === 'fr' ? 'Essayez Pro gratuitement pendant 7 jours' : 'Try Pro free for 7 days'}
+                      {lang === 'fr' ? 'Essayez Pro gratuitement pendant 7 jours' : 'Try Pro free for 7 days'}
                     </h2>
                     <p className="text-text-secondary text-xs sm:text-base mb-4 max-w-xl">
-                      {language === 'fr'
-                        ? 'Accédez à toutes les fonctionnalités Pro : 300 analyses/mois, chat illimité, playlists, et bien plus. Sans engagement.'
-                        : 'Access all Pro features: 300 analyses/month, unlimited chat, playlists, and more. No commitment.'}
+                      {lang === 'fr'
+                        ? 'Accédez à toutes les fonctionnalités Pro. Sans engagement.'
+                        : 'Access all Pro features. No commitment.'}
                     </p>
-
                     <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 justify-center md:justify-start">
                       {[
-                        { icon: Crown, text: language === 'fr' ? '300 analyses' : '300 analyses' },
-                        { icon: Infinity, text: language === 'fr' ? 'Chat illimité' : 'Unlimited chat' },
-                        { icon: ListVideo, text: language === 'fr' ? 'Playlists' : 'Playlists' },
-                        { icon: Clock, text: language === 'fr' ? '7 jours gratuits' : '7 days free' },
+                        { icon: Crown, text: lang === 'fr' ? '200 analyses' : '200 analyses' },
+                        { icon: InfinityIcon, text: lang === 'fr' ? 'Chat illimité' : 'Unlimited chat' },
+                        { icon: Clock, text: lang === 'fr' ? '7 jours gratuits' : '7 days free' },
                       ].map((item, idx) => (
                         <div key={idx} className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-bg-tertiary/50 text-text-secondary text-[10px] sm:text-xs">
                           <item.icon className="w-3 h-3 text-violet-400" />
@@ -515,7 +934,6 @@ export const UpgradePage: React.FC = () => {
                       ))}
                     </div>
                   </div>
-
                   <div className="flex-shrink-0 w-full md:w-auto">
                     <button
                       onClick={handleStartTrial}
@@ -527,16 +945,16 @@ export const UpgradePage: React.FC = () => {
                       ) : (
                         <>
                           <Gift className="w-4 h-4 sm:w-5 sm:h-5" />
-                          {language === 'fr' ? 'Commencer l\'essai' : 'Start free trial'}
+                          {lang === 'fr' ? 'Commencer l\'essai' : 'Start free trial'}
                         </>
                       )}
                     </button>
                     <p className="text-xs text-text-tertiary mt-2 text-center">
-                      {language === 'fr' ? 'Annulez à tout moment' : 'Cancel anytime'}
+                      {lang === 'fr' ? 'Annulez à tout moment' : 'Cancel anytime'}
                     </p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             )}
 
             {/* View Toggle */}
@@ -544,457 +962,90 @@ export const UpgradePage: React.FC = () => {
               <div className="inline-flex bg-bg-tertiary rounded-xl p-1">
                 <button
                   onClick={() => setViewMode('cards')}
-                  className={`px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[44px] active:scale-95 ${viewMode === 'cards'
-                    ? 'bg-accent-primary text-white shadow-lg'
-                    : 'text-text-secondary hover:text-text-primary'
-                    }`}
+                  className={`px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[44px] active:scale-95 ${
+                    viewMode === 'cards'
+                      ? 'bg-accent-primary text-white shadow-lg'
+                      : 'text-text-secondary hover:text-text-primary'
+                  }`}
                 >
-                  {language === 'fr' ? '🃏 Cartes' : '🃏 Cards'}
+                  {lang === 'fr' ? '🃏 Cartes' : '🃏 Cards'}
                 </button>
                 <button
                   onClick={() => setViewMode('table')}
-                  className={`px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[44px] active:scale-95 hidden sm:block ${viewMode === 'table'
-                    ? 'bg-accent-primary text-white shadow-lg'
-                    : 'text-text-secondary hover:text-text-primary'
-                    }`}
+                  className={`px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[44px] active:scale-95 hidden sm:block ${
+                    viewMode === 'table'
+                      ? 'bg-accent-primary text-white shadow-lg'
+                      : 'text-text-secondary hover:text-text-primary'
+                  }`}
                 >
-                  {language === 'fr' ? '📊 Comparaison' : '📊 Comparison'}
+                  {lang === 'fr' ? '📊 Comparaison' : '📊 Comparison'}
                 </button>
               </div>
             </div>
 
-            {/* Cards View */}
-            {viewMode === 'cards' && (
-              <>
-                {/* Plan Cards - 5 colonnes on desktop, 1 on mobile, 2 on tablet */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8 sm:mb-12">
-                  {PLANS_INFO.map((plan) => {
-                    const Icon = getPlanIcon(plan.id);
-                    const isCurrent = plan.id === currentPlan;
-                    const isHigher = plan.order > currentPlanConfig.order;
-                    const isLower = plan.order < currentPlanConfig.order;
-                    const features = getFeatures(plan.id);
-
-                    return (
-                      <div
-                        key={plan.id}
-                        className={`card relative overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isCurrent ? 'ring-2 ring-green-500/50' : ''
-                          } ${plan.popular ? 'ring-2 ring-violet-500/50 shadow-xl shadow-violet-500/10' : ''
-                          } ${plan.recommended ? 'ring-2 ring-amber-500/50 shadow-xl shadow-amber-500/10' : ''}`}
-                      >
-                        {/* Badge */}
-                        {plan.badge && !isCurrent && (
-                          <div className="absolute -top-0 -right-0">
-                            <div className={`${plan.popular ? 'bg-violet-500' : plan.recommended ? 'bg-gradient-to-r from-amber-500 to-orange-500' : 'bg-emerald-500'
-                              } text-white text-[10px] font-bold px-2 py-1 rounded-bl-xl`}>
-                              {plan.badge[lang]}
-                            </div>
-                          </div>
-                        )}
-                        {isCurrent && (
-                          <div className="absolute top-2 left-2">
-                            <div className="bg-green-500/20 text-green-400 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
-                              <Check className="w-2.5 h-2.5" />
-                              {language === 'fr' ? 'Actuel' : 'Current'}
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="p-3 sm:p-4 pt-7 sm:pt-8">
-                          {/* Icon & Name */}
-                          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center mb-3 sm:mb-4 shadow-lg`}>
-                            <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                          </div>
-
-                          <h3 className="text-lg sm:text-xl font-bold text-text-primary mb-0.5">{plan.name[lang]}</h3>
-                          <p className="text-xs text-text-tertiary mb-2 sm:mb-3">{plan.description[lang]}</p>
-
-                          {/* Price */}
-                          <div className="mb-3 sm:mb-4">
-                            <span className="text-2xl sm:text-3xl font-semibold font-bold text-text-primary">
-                              {plan.price === 0 ? '0' : (plan.price / 100).toFixed(2).replace('.', ',')}
-                            </span>
-                            <span className="text-text-tertiary text-xs sm:text-sm ml-1">€/{language === 'fr' ? 'mois' : 'mo'}</span>
-                          </div>
-
-                          {/* Key Features */}
-                          <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4 min-h-[120px] sm:min-h-[140px]">
-                            {features.slice(0, 6).map((feature, idx) => (
-                              <div key={idx} className="flex items-center gap-2 text-[11px] sm:text-xs">
-                                <div className={`w-4 h-4 rounded-full ${feature.included
-                                  ? feature.highlight
-                                    ? 'bg-amber-500/20'
-                                    : 'bg-green-500/20'
-                                  : 'bg-gray-500/20'
-                                  } flex items-center justify-center flex-shrink-0`}>
-                                  {feature.included
-                                    ? <Check className={`w-2.5 h-2.5 ${feature.highlight ? 'text-amber-400' : 'text-green-400'}`} />
-                                    : <X className="w-2.5 h-2.5 text-gray-500" />}
-                                </div>
-                                <span className={`${feature.included ? 'text-text-secondary' : 'text-text-muted line-through'} ${feature.highlight ? 'font-medium text-amber-300' : ''}`}>
-                                  {feature.text}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-
-                          {/* CTA */}
-                          {trialEligible && plan.id === 'pro' && currentPlan === 'free' ? (
-                            <button
-                              onClick={handleStartTrial}
-                              disabled={trialLoading}
-                              className="w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:opacity-90 shadow-lg min-h-[44px] active:scale-95"
-                            >
-                              {trialLoading ? (
-                                <DeepSightSpinnerMicro />
-                              ) : (
-                                <>
-                                  <Gift className="w-4 h-4" />
-                                  {language === 'fr' ? '7 jours gratuits' : '7-day free trial'}
-                                </>
-                              )}
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleChangePlan(plan.id)}
-                              disabled={isCurrent || loading === plan.id || plan.id === 'free'}
-                              className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-95 ${isCurrent
-                                ? 'bg-green-500/20 text-green-400 cursor-default'
-                                : isHigher
-                                  ? `bg-gradient-to-r ${plan.gradient} text-white hover:opacity-90 shadow-lg`
-                                  : isLower
-                                    ? 'bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30'
-                                    : 'bg-bg-tertiary text-text-muted cursor-not-allowed'
-                                }`}
-                            >
-                              {loading === plan.id ? (
-                                <DeepSightSpinnerMicro />
-                              ) : isCurrent ? (
-                                <><Check className="w-4 h-4" /> {language === 'fr' ? 'Actuel' : 'Current'}</>
-                              ) : isHigher ? (
-                                <><ArrowUp className="w-4 h-4" /> {language === 'fr' ? 'Choisir' : 'Select'}</>
-                              ) : isLower ? (
-                                <><ArrowDown className="w-4 h-4" /> {language === 'fr' ? 'Rétrograder' : 'Downgrade'}</>
-                              ) : (
-                                language === 'fr' ? 'Gratuit' : 'Free'
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Section Étudiant */}
-                {currentPlan === 'free' && (
-                  <div className="card p-4 sm:p-8 mb-6 sm:mb-8 bg-gradient-to-br from-emerald-500/10 to-green-500/10 border-emerald-500/30">
-                    <div className="flex flex-col md:flex-row items-center gap-4 sm:gap-8">
-                      <div className="flex-1">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs sm:text-sm font-medium mb-3 sm:mb-4">
-                          <GraduationCap className="w-4 h-4" />
-                          {language === 'fr' ? 'Spécial Étudiants' : 'Student Special'}
-                        </div>
-                        <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2 sm:mb-3">
-                          {language === 'fr' ? 'Révisez 10x plus vite' : 'Study 10x faster'}
-                        </h2>
-                        <p className="text-text-secondary text-sm sm:text-base mb-4">
-                          {language === 'fr'
-                            ? 'Transformez n\'importe quelle vidéo éducative en fiches de révision, cartes mentales et flashcards.'
-                            : 'Transform any educational video into study notes, mind maps and flashcards.'}
-                        </p>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 sm:mb-6">
-                          {STUDENT_EXCLUSIVES.map((feature, idx) => {
-                            const Icon = feature.icon;
-                            return (
-                              <div key={idx} className="flex items-start gap-2">
-                                <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                                  <Icon className="w-4 h-4 text-emerald-400" />
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-xs sm:text-sm font-medium text-text-primary">{feature.title[lang]}</p>
-                                  <p className="text-[10px] sm:text-xs text-text-tertiary">{feature.description[lang]}</p>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        <button
-                          onClick={() => handleChangePlan('student')}
-                          disabled={loading === 'student'}
-                          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-white font-semibold text-sm shadow-lg shadow-emerald-500/25 hover:opacity-90 transition-opacity min-h-[44px] active:scale-95"
+            {/* Content */}
+            <AnimatePresence mode="wait">
+              {viewMode === 'cards' ? (
+                <motion.div
+                  key="cards"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  {/* Plan Cards */}
+                  {plansLoading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8 sm:mb-12">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <SkeletonCard key={i} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8 sm:mb-12">
+                      {plans.map((plan, idx) => (
+                        <motion.div
+                          key={plan.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: idx * 0.08, duration: 0.4 }}
                         >
-                          {loading === 'student' ? (
-                            <DeepSightSpinnerMicro />
-                          ) : (
-                            <>
-                              <GraduationCap className="w-5 h-5" />
-                              {language === 'fr' ? 'Commencer à 2,99€/mois' : 'Start at €2.99/month'}
-                            </>
-                          )}
-                        </button>
-                      </div>
-                      <div className="hidden md:block">
-                        <div className="w-40 h-40 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 flex items-center justify-center shadow-2xl shadow-emerald-500/30">
-                          <GraduationCap className="w-20 h-20 text-white" />
-                        </div>
-                      </div>
+                          <PlanCard
+                            plan={plan}
+                            lang={lang}
+                            loading={loading}
+                            onSelect={handleSelectPlan}
+                            trialEligible={trialEligible}
+                            trialLoading={trialLoading}
+                            onStartTrial={handleStartTrial}
+                            allPlans={plans}
+                          />
+                        </motion.div>
+                      ))}
                     </div>
-                  </div>
-                )}
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="table"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  {!plansLoading && (
+                    <ComparisonTable
+                      plans={plans}
+                      lang={lang}
+                      loading={loading}
+                      onSelect={handleSelectPlan}
+                    />
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                {/* Section Pro */}
-                {(currentPlan === 'free' || currentPlan === 'student' || currentPlan === 'starter') && (
-                  <div className="card p-4 sm:p-8 mb-6 sm:mb-8 bg-gradient-to-br from-violet-500/10 to-purple-500/10 border-violet-500/30">
-                    <div className="text-center mb-6 sm:mb-8">
-                      <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-violet-500/20 text-violet-400 text-xs sm:text-sm font-semibold mb-3 sm:mb-4">
-                        <Crown className="w-4 h-4" />
-                        {language === 'fr' ? 'Le plus populaire' : 'Most Popular'}
-                      </div>
-                      <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">
-                        {language === 'fr' ? 'Pourquoi choisir Pro ?' : 'Why choose Pro?'}
-                      </h2>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-                      {PRO_EXCLUSIVES.map((feature, idx) => {
-                        const Icon = feature.icon;
-                        return (
-                          <div key={idx} className="p-3 sm:p-4 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-violet-500/30 transition-colors active:scale-[0.98]">
-                            <div className="flex items-start justify-between mb-2 sm:mb-3">
-                              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-violet-500/20 flex items-center justify-center">
-                                <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-violet-400" />
-                              </div>
-                              {feature.badge && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400">
-                                  {feature.badge[lang]}
-                                </span>
-                              )}
-                            </div>
-                            <h3 className="font-semibold text-text-primary mb-1 text-xs sm:text-sm">{feature.title[lang]}</h3>
-                            <p className="text-[10px] sm:text-xs text-text-tertiary">{feature.description[lang]}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="text-center">
-                      <button
-                        onClick={() => handleChangePlan('pro')}
-                        disabled={loading === 'pro'}
-                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold text-sm shadow-lg shadow-violet-500/25 hover:opacity-90 transition-opacity min-h-[44px] active:scale-95"
-                      >
-                        {loading === 'pro' ? (
-                          <DeepSightSpinnerMicro />
-                        ) : (
-                          <>
-                            <Crown className="w-5 h-5" />
-                            {language === 'fr' ? 'Passer à Pro — 12,99€/mois' : 'Upgrade to Pro — €12.99/mo'}
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Section Équipe */}
-                {currentPlan !== 'team' && (
-                  <div className="card p-4 sm:p-8 mb-6 sm:mb-8 bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/30">
-                    <div className="text-center mb-6 sm:mb-8">
-                      <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-amber-500/20 text-amber-400 text-xs sm:text-sm font-semibold mb-3 sm:mb-4">
-                        <Users className="w-4 h-4" />
-                        {language === 'fr' ? 'Pour les équipes' : 'For Teams'}
-                      </div>
-                      <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">
-                        {language === 'fr' ? 'Besoin de plus ?' : 'Need more?'}
-                      </h2>
-                      <p className="text-text-secondary text-sm sm:text-base max-w-2xl mx-auto px-2">
-                        {language === 'fr'
-                          ? 'Le plan Équipe offre l\'API, le multi-utilisateurs et des limites étendues.'
-                          : 'The Team plan offers API access, multi-users and extended limits.'}
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-                      {TEAM_EXCLUSIVES.map((feature, idx) => {
-                        const Icon = feature.icon;
-                        return (
-                          <div key={idx} className="p-3 sm:p-4 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-amber-500/30 transition-colors active:scale-[0.98]">
-                            <div className="flex items-start justify-between mb-2 sm:mb-3">
-                              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                                <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-                              </div>
-                              {feature.badge && (
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
-                                  {feature.badge[lang]}
-                                </span>
-                              )}
-                            </div>
-                            <h3 className="font-semibold text-text-primary mb-1 text-xs sm:text-sm">{feature.title[lang]}</h3>
-                            <p className="text-[10px] sm:text-xs text-text-tertiary">{feature.description[lang]}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="text-center">
-                      <button
-                        onClick={() => handleChangePlan('team')}
-                        disabled={loading === 'team'}
-                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold text-sm shadow-lg shadow-amber-500/25 hover:opacity-90 transition-opacity min-h-[44px] active:scale-95"
-                      >
-                        {loading === 'team' ? (
-                          <DeepSightSpinnerMicro />
-                        ) : (
-                          <>
-                            <Users className="w-5 h-5" />
-                            {language === 'fr' ? 'Passer à Équipe — 29,99€/mois' : 'Upgrade to Team — €29.99/mo'}
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Témoignages */}
-                <div className="mb-8 sm:mb-12">
-                  <div className="text-center mb-6 sm:mb-8">
-                    <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">
-                      {language === 'fr' ? 'Ils nous font confiance' : 'They trust us'}
-                    </h2>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                    {TESTIMONIALS.map((testimonial, idx) => {
-                      const planConfig = PLANS_INFO.find(p => p.id === testimonial.plan);
-                      return (
-                        <div
-                          key={idx}
-                          className="card p-4 sm:p-6 hover:scale-[1.02] active:scale-[0.98] transition-transform cursor-pointer"
-                          onClick={() => handleChangePlan(testimonial.plan)}
-                        >
-                          <div className="flex items-start gap-3 sm:gap-4">
-                            <div className="text-3xl sm:text-4xl flex-shrink-0">{testimonial.avatar}</div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-text-secondary italic mb-2 sm:mb-3 text-xs sm:text-sm">
-                                "{testimonial.text[lang]}"
-                              </p>
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                <div>
-                                  <p className="font-semibold text-text-primary text-xs sm:text-sm">{testimonial.author}</p>
-                                  <p className="text-[10px] sm:text-xs text-text-tertiary">{testimonial.role[lang]}</p>
-                                </div>
-                                {planConfig && (
-                                  <div className={`px-2 sm:px-3 py-1 rounded-full bg-gradient-to-r ${planConfig.gradient} text-white text-[10px] sm:text-xs font-medium self-start sm:self-auto`}>
-                                    {planConfig.name[lang]}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Table View */}
-            {viewMode === 'table' && (
-              <div className="card overflow-hidden mb-12 overflow-x-auto">
-                {/* Header */}
-                <div className="grid grid-cols-6 gap-2 p-4 bg-bg-secondary border-b border-border-primary min-w-[900px]">
-                  <div className="font-semibold text-text-secondary text-sm">
-                    {language === 'fr' ? 'Fonctionnalités' : 'Features'}
-                  </div>
-                  {PLANS_INFO.map((plan) => {
-                    const Icon = getPlanIcon(plan.id);
-                    const isCurrent = plan.id === currentPlan;
-                    return (
-                      <div key={plan.id} className={`text-center ${plan.popular ? 'bg-violet-500/5 -mx-1 px-1 py-2 rounded-lg' : ''} ${plan.recommended ? 'bg-amber-500/5 -mx-1 px-1 py-2 rounded-lg' : ''}`}>
-                        <div className={`inline-flex w-8 h-8 rounded-lg bg-gradient-to-br ${plan.gradient} items-center justify-center mb-1 shadow-lg`}>
-                          <Icon className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="font-bold text-text-primary text-xs">{plan.name[lang]}</div>
-                        <div className="text-[10px] text-text-tertiary">{plan.price === 0 ? '0€' : `${(plan.price / 100).toFixed(2).replace('.', ',')}€`}</div>
-                        {isCurrent && (
-                          <div className="text-[10px] text-green-400 mt-1 flex items-center justify-center gap-1">
-                            <Check className="w-2.5 h-2.5" /> {language === 'fr' ? 'Actuel' : 'Current'}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Features by category */}
-                {categories.map((category) => (
-                  <div key={category} className="border-b border-border-primary last:border-b-0 min-w-[900px]">
-                    <button
-                      onClick={() => setExpandedCategories(prev =>
-                        prev.includes(category) ? prev.filter(c => c !== category) : [...prev, category]
-                      )}
-                      className="w-full grid grid-cols-6 gap-2 p-3 bg-bg-tertiary/50 hover:bg-bg-tertiary transition-colors"
-                    >
-                      <div className="flex items-center gap-2 text-text-primary font-semibold text-sm">
-                        {category}
-                        {expandedCategories.includes(category)
-                          ? <ChevronUp className="w-4 h-4 text-text-tertiary" />
-                          : <ChevronDown className="w-4 h-4 text-text-tertiary" />
-                        }
-                      </div>
-                    </button>
-
-                    {expandedCategories.includes(category) && (
-                      <div className="divide-y divide-border-primary/30">
-                        {COMPARISON_MATRIX.filter(f => f.category === category).map((row, idx) => (
-                          <div key={idx} className="grid grid-cols-6 gap-2 p-3 hover:bg-bg-tertiary/30 transition-colors">
-                            <div className="text-xs text-text-secondary">{row.feature[lang]}</div>
-                            {(['free', 'student', 'starter', 'pro', 'team'] as PlanId[]).map((planId) => (
-                              <div key={planId} className={`flex justify-center ${row.highlight === planId ? 'bg-amber-500/10 -mx-1 px-1 rounded' : ''}`}>
-                                {renderValue(row[planId], row.highlight, planId)}
-                              </div>
-                            ))}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-
-                {/* CTA Row */}
-                <div className="grid grid-cols-6 gap-2 p-4 bg-bg-secondary min-w-[900px]">
-                  <div />
-                  {PLANS_INFO.map((plan) => {
-                    const isCurrent = plan.id === currentPlan;
-                    const isHigher = plan.order > currentPlanConfig.order;
-                    return (
-                      <div key={plan.id} className="flex justify-center">
-                        <button
-                          onClick={() => handleChangePlan(plan.id)}
-                          disabled={isCurrent || loading === plan.id || plan.id === 'free'}
-                          className={`px-3 py-1.5 rounded-lg font-medium text-[10px] transition-all ${isCurrent ? 'bg-green-500/20 text-green-400'
-                            : isHigher ? `bg-gradient-to-r ${plan.gradient} text-white hover:opacity-90 shadow-lg`
-                              : 'bg-bg-tertiary text-text-muted'
-                            }`}
-                        >
-                          {loading === plan.id ? <DeepSightSpinnerMicro />
-                            : isCurrent ? (language === 'fr' ? 'Actuel' : 'Current')
-                              : isHigher ? (language === 'fr' ? 'Choisir' : 'Select')
-                                : '-'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Cancel */}
-            {currentPlan !== 'free' && !subscriptionStatus?.cancel_at_period_end && (
+            {/* Cancel subscription */}
+            {currentPlan && currentPlan.price_monthly_cents > 0 && !subscriptionStatus?.cancel_at_period_end && (
               <div className="text-center mb-6 sm:mb-8">
                 <button
                   onClick={handleCancelSubscription}
@@ -1002,40 +1053,45 @@ export const UpgradePage: React.FC = () => {
                   className="text-xs sm:text-sm text-text-tertiary hover:text-red-400 transition-colors flex items-center gap-2 mx-auto min-h-[44px] px-4 py-2 active:scale-95"
                 >
                   {loading === 'cancel' && <DeepSightSpinnerMicro />}
-                  {language === 'fr' ? 'Annuler mon abonnement' : 'Cancel subscription'}
+                  {lang === 'fr' ? 'Annuler mon abonnement' : 'Cancel subscription'}
                 </button>
               </div>
             )}
 
             {/* FAQ */}
-            <div className="card p-4 sm:p-6 mb-6 sm:mb-8">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="card p-4 sm:p-6 mb-6 sm:mb-8"
+            >
               <h3 className="font-bold text-base sm:text-lg text-text-primary mb-4 sm:mb-5 flex items-center gap-2">
                 <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-accent-primary" />
-                {language === 'fr' ? 'Questions fréquentes' : 'FAQ'}
+                {lang === 'fr' ? 'Questions fréquentes' : 'FAQ'}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-xs sm:text-sm">
                 <div className="space-y-1">
-                  <p className="font-semibold text-text-primary">{language === 'fr' ? "Comment fonctionne l'essai gratuit ?" : 'How does the free trial work?'}</p>
-                  <p className="text-text-secondary">{language === 'fr' ? '7 jours Pro gratuits, sans carte bancaire. Annulez à tout moment.' : '7 days Pro free, no credit card. Cancel anytime.'}</p>
+                  <p className="font-semibold text-text-primary">{lang === 'fr' ? "Comment fonctionne l'essai gratuit ?" : 'How does the free trial work?'}</p>
+                  <p className="text-text-secondary">{lang === 'fr' ? '7 jours Pro gratuits. Annulez à tout moment.' : '7 days Pro free. Cancel anytime.'}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="font-semibold text-text-primary">{language === 'fr' ? "Comment fonctionne l'upgrade ?" : 'How does upgrade work?'}</p>
-                  <p className="text-text-secondary">{language === 'fr' ? 'Vous êtes facturé la différence au prorata. Nouveaux avantages instantanés.' : 'You pay the prorated difference. New benefits are instant.'}</p>
+                  <p className="font-semibold text-text-primary">{lang === 'fr' ? "Comment fonctionne l'upgrade ?" : 'How does upgrade work?'}</p>
+                  <p className="text-text-secondary">{lang === 'fr' ? 'Vous êtes facturé la différence au prorata. Nouveaux avantages instantanés.' : 'You pay the prorated difference. New benefits are instant.'}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="font-semibold text-text-primary">{language === 'fr' ? 'Puis-je annuler ?' : 'Can I cancel?'}</p>
-                  <p className="text-text-secondary">{language === 'fr' ? 'Oui, à tout moment. Accès maintenu jusqu\'à fin de période payée.' : 'Yes, anytime. Access kept until paid period ends.'}</p>
+                  <p className="font-semibold text-text-primary">{lang === 'fr' ? 'Puis-je annuler ?' : 'Can I cancel?'}</p>
+                  <p className="text-text-secondary">{lang === 'fr' ? "Oui, à tout moment. Accès maintenu jusqu'à fin de période payée." : 'Yes, anytime. Access kept until paid period ends.'}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="font-semibold text-text-primary">{language === 'fr' ? 'Moyens de paiement ?' : 'Payment methods?'}</p>
-                  <p className="text-text-secondary">{language === 'fr' ? 'Toutes cartes bancaires via Stripe. Paiements sécurisés.' : 'All cards via Stripe. Secure payments.'}</p>
+                  <p className="font-semibold text-text-primary">{lang === 'fr' ? 'Moyens de paiement ?' : 'Payment methods?'}</p>
+                  <p className="text-text-secondary">{lang === 'fr' ? 'Toutes cartes bancaires via Stripe. Paiements sécurisés.' : 'All cards via Stripe. Secure payments.'}</p>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Contact */}
             <div className="text-center text-xs sm:text-sm text-text-tertiary pb-4">
-              {language === 'fr' ? 'Questions ? ' : 'Questions? '}
+              {lang === 'fr' ? 'Questions ? ' : 'Questions? '}
               <a href="mailto:contact@deepsightsynthesis.com" className="text-accent-primary hover:underline">
                 contact@deepsightsynthesis.com
               </a>
@@ -1044,33 +1100,26 @@ export const UpgradePage: React.FC = () => {
         </div>
       </main>
 
-      {/* Confirm Modal */}
-      {showConfirmModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-          <div className="card p-4 sm:p-6 w-full sm:max-w-md shadow-2xl rounded-t-2xl sm:rounded-2xl">
-            <h3 className="text-base sm:text-lg font-bold text-text-primary mb-2 sm:mb-3 flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-amber-400" />
-              {language === 'fr' ? 'Confirmer le changement' : 'Confirm change'}
-            </h3>
-            <p className="text-text-secondary text-xs sm:text-sm mb-4 sm:mb-5">
-              {language === 'fr'
-                ? `Passer au plan ${PLANS_INFO.find(p => p.id === showConfirmModal.plan)?.name[lang]} ? Vos avantages actuels restent actifs jusqu'à la fin de la période.`
-                : `Switch to ${PLANS_INFO.find(p => p.id === showConfirmModal.plan)?.name[lang]}? Current benefits stay active until period end.`}
-            </p>
-            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 sm:justify-end">
-              <button onClick={() => setShowConfirmModal(null)} className="btn-secondary min-h-[44px] active:scale-95">
-                {language === 'fr' ? 'Annuler' : 'Cancel'}
-              </button>
-              <button
-                onClick={() => executeChangePlan(showConfirmModal.plan, showConfirmModal.action)}
-                className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-medium transition-colors min-h-[44px] active:scale-95"
-              >
-                {language === 'fr' ? 'Confirmer' : 'Confirm'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Downgrade Confirmation Modal */}
+      <AnimatePresence>
+        {downgradeTarget && (
+          <DowngradeModal
+            plan={downgradeTarget}
+            currentPlan={currentPlan}
+            lang={lang}
+            onConfirm={() => executePlanChange(downgradeTarget)}
+            onCancel={() => setDowngradeTarget(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Glow pulse animation for popular plan */}
+      <style>{`
+        @keyframes glow-pulse {
+          0%, 100% { box-shadow: 0 0 15px rgba(139, 92, 246, 0.15); }
+          50% { box-shadow: 0 0 30px rgba(139, 92, 246, 0.3); }
+        }
+      `}</style>
     </div>
   );
 };

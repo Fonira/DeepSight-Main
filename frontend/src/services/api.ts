@@ -422,6 +422,22 @@ async function request<T>(
         // Ignore JSON parse errors
       }
 
+      // Interceptor: dispatch upgrade modal for plan-restricted errors
+      const _detail = errorData.detail;
+      const _detailObj = typeof _detail === 'object' && _detail !== null
+        ? _detail as Record<string, unknown>
+        : null;
+      const _errorType = _detailObj?.error as string | undefined;
+
+      if (
+        (response.status === 403 && (_errorType === 'feature_locked' || _errorType === 'video_too_long')) ||
+        (response.status === 429 && _errorType === 'quota_exceeded')
+      ) {
+        window.dispatchEvent(new CustomEvent('show-upgrade-modal', {
+          detail: { type: _errorType, ..._detailObj },
+        }));
+      }
+
       // 401 = token expiré
       if (response.status === 401 && !skipAuth) {
         const refreshed = await tryRefreshToken();
@@ -1321,18 +1337,17 @@ export const billingApi = {
   },
 
   /**
-   * 📋 Récupère les plans disponibles
+   * 📋 Récupère les plans disponibles avec features_display/locked
    */
-  async getPlans(): Promise<{
-    plans: Record<string, {
-      name: string;
-      price: number;
-      price_display: string;
-      credits: number;
-      features: Record<string, unknown>;
-    }>;
-  }> {
-    return request('/api/billing/plans');
+  async getPlans(platform: string = 'web'): Promise<{ plans: ApiBillingPlan[] }> {
+    return request(`/api/billing/plans?platform=${platform}`);
+  },
+
+  /**
+   * 📋 Récupère le plan actuel de l'utilisateur + usage
+   */
+  async getMyPlan(platform: string = 'web'): Promise<ApiBillingMyPlan> {
+    return request(`/api/billing/my-plan?platform=${platform}`);
   },
 
   /**

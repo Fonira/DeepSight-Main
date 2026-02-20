@@ -154,6 +154,30 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// FEATURES PAR PLAN (boolean flags simplifiés)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface PlanFeatures {
+  flashcards: boolean;
+  mindmap: boolean;
+  webSearch: boolean;
+  playlists: boolean;
+  exportPdf: boolean;
+  exportMarkdown: boolean;
+  ttsAudio: boolean;
+  apiAccess: boolean;
+  prioritySupport: boolean;
+}
+
+export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
+  free: { flashcards: false, mindmap: false, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: false, ttsAudio: false, apiAccess: false, prioritySupport: false },
+  etudiant: { flashcards: true, mindmap: true, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: false },
+  starter: { flashcards: true, mindmap: true, webSearch: true, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: false, apiAccess: false, prioritySupport: false },
+  pro: { flashcards: true, mindmap: true, webSearch: true, playlists: true, exportPdf: true, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: true },
+  equipe: { flashcards: true, mindmap: true, webSearch: true, playlists: true, exportPdf: true, exportMarkdown: true, ttsAudio: true, apiAccess: true, prioritySupport: true },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // INFORMATIONS DES PLANS
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -287,6 +311,111 @@ export function formatLimit(value: number, unit?: string): string {
   return String(value);
 }
 
+/** Paramètres de conversion free→paid */
+export const CONVERSION_TRIGGERS = {
+  freeAnalysisLimit: 3,
+  freeAnalysisWarning: 2,
+  trialEnabled: true,
+  trialDays: 7,
+  trialPlan: 'pro' as PlanId,
+};
+
+/** Normalise les alias de plans (student→etudiant, team→equipe, etc.) */
+export function normalizePlanId(raw: string | undefined | null): PlanId {
+  if (!raw) return 'free';
+  const lower = raw.toLowerCase().trim();
+  const aliases: Record<string, PlanId> = {
+    free: 'free',
+    gratuit: 'free',
+    student: 'etudiant',
+    etudiant: 'etudiant',
+    'étudiant': 'etudiant',
+    starter: 'starter',
+    pro: 'pro',
+    team: 'equipe',
+    equipe: 'equipe',
+    'équipe': 'equipe',
+  };
+  return aliases[lower] ?? 'free';
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// TESTIMONIALS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface Testimonial {
+  avatar: string;
+  author: string;
+  role: { fr: string; en: string };
+  text: { fr: string; en: string };
+  plan: PlanId;
+}
+
+export const TESTIMONIALS: Testimonial[] = [
+  {
+    avatar: '🎓',
+    author: 'Marie L.',
+    role: { fr: 'Étudiante en médecine', en: 'Medical student' },
+    text: {
+      fr: 'Les flashcards automatiques ont transformé mes révisions. Je retiens 3x mieux.',
+      en: 'Auto flashcards transformed my study sessions. I retain 3x better.',
+    },
+    plan: 'etudiant',
+  },
+  {
+    avatar: '🎬',
+    author: 'Thomas D.',
+    role: { fr: 'Créateur YouTube', en: 'YouTube Creator' },
+    text: {
+      fr: 'J\'analyse les vidéos de mes concurrents en quelques minutes. Un gain de temps fou.',
+      en: 'I analyze competitor videos in minutes. Incredible time saver.',
+    },
+    plan: 'pro',
+  },
+  {
+    avatar: '🔬',
+    author: 'Dr. Sophie M.',
+    role: { fr: 'Chercheuse en IA', en: 'AI Researcher' },
+    text: {
+      fr: 'Les playlists m\'aident à synthétiser des heures de conférences.',
+      en: 'Playlists help me synthesize hours of conferences.',
+    },
+    plan: 'equipe',
+  },
+  {
+    avatar: '📚',
+    author: 'Lucas R.',
+    role: { fr: 'Professeur d\'histoire', en: 'History Teacher' },
+    text: {
+      fr: 'Je crée des supports de cours à partir de documentaires en un clic.',
+      en: 'I create course materials from documentaries in one click.',
+    },
+    plan: 'starter',
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// FONCTIONS UTILITAIRES SUPPLÉMENTAIRES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Alerte quand les crédits sont bas */
+export function shouldShowLowCreditsAlert(credits: number, plan: PlanId): boolean {
+  const limits = PLAN_LIMITS[plan];
+  const threshold = Math.ceil(limits.monthlyAnalyses * 0.1);
+  return credits > 0 && credits <= Math.max(threshold, 1);
+}
+
+/** Calcule le temps économisé pour marketing */
+export function calculateTimeSaved(analysisCount: number): { hours: number; display: string } {
+  const minutesPerVideo = 15; // temps moyen pour résumer manuellement
+  const totalMinutes = analysisCount * minutesPerVideo;
+  const hours = Math.round(totalMinutes / 60);
+  return {
+    hours,
+    display: hours > 0 ? `${hours}h` : `${totalMinutes} min`,
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXPORT PAR DÉFAUT
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -294,7 +423,10 @@ export function formatLimit(value: number, unit?: string): string {
 export default {
   PLAN_HIERARCHY,
   PLAN_LIMITS,
+  PLAN_FEATURES,
   PLANS_INFO,
+  CONVERSION_TRIGGERS,
+  TESTIMONIALS,
   hasFeature,
   getLimit,
   isUnlimited,
@@ -302,4 +434,7 @@ export default {
   isPlanHigher,
   getMinPlanForFeature,
   formatLimit,
+  normalizePlanId,
+  shouldShowLowCreditsAlert,
+  calculateTimeSaved,
 };
