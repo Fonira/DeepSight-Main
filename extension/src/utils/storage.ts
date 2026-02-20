@@ -54,6 +54,20 @@ export async function addRecentAnalysis(analysis: Omit<RecentAnalysis, 'timestam
   await chrome.storage.local.set({ recentAnalyses: filtered.slice(0, 20) });
 }
 
+// ── Free (Guest) Analysis Counter ──
+
+export async function getFreeAnalysisCount(): Promise<number> {
+  const data = await chrome.storage.local.get(['deepsight_free_analyses']);
+  return data.deepsight_free_analyses || 0;
+}
+
+export async function incrementFreeAnalysisCount(): Promise<number> {
+  const current = await getFreeAnalysisCount();
+  const next = current + 1;
+  await chrome.storage.local.set({ deepsight_free_analyses: next });
+  return next;
+}
+
 // ── Generic Helpers ──
 
 export async function getStorageItem<T>(key: string): Promise<T | null> {

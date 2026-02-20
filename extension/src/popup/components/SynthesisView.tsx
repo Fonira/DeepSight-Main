@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import type { Summary } from '../../types';
+import type { Summary, PlanInfo } from '../../types';
 import { CATEGORY_ICONS } from '../../types';
 import { escapeHtml, markdownToFullHtml, parseAnalysisToSummary } from '../../utils/sanitize';
 import type { KeyPoint } from '../../utils/sanitize';
+import { WEBAPP_URL } from '../../utils/config';
 import { ChatIcon, ExternalLinkIcon, ChevronDownIcon, ChevronUpIcon } from './Icons';
 
 interface SynthesisViewProps {
   summary: Summary;
   summaryId: number;
+  planInfo: PlanInfo | null;
   onOpenChat: () => void;
 }
 
@@ -27,7 +29,25 @@ function keyPointClass(type: KeyPoint['type']): string {
   }
 }
 
-export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId, onOpenChat }) => {
+// Feature CTA config: features not available in extension but potentially in plan
+interface FeatureCTA {
+  key: keyof NonNullable<PlanInfo['features']>;
+  icon: string;
+  label: string;
+  hash: string; // URL hash for web app
+  minPlan: string; // minimum plan required, for locked display
+  price: string; // display price for locked CTA
+}
+
+const FEATURE_CTAS: FeatureCTA[] = [
+  { key: 'flashcards', icon: '\uD83D\uDDC2\uFE0F', label: 'Flashcards', hash: '#flashcards', minPlan: 'student', price: '2,99\u20AC/mois' },
+  { key: 'mind_maps', icon: '\uD83E\uDDE0', label: 'Cartes mentales', hash: '#mindmap', minPlan: 'student', price: '2,99\u20AC/mois' },
+  { key: 'web_search', icon: '\uD83C\uDF10', label: 'Recherche web', hash: '#websearch', minPlan: 'starter', price: '5,99\u20AC/mois' },
+  { key: 'exports', icon: '\uD83D\uDCE4', label: 'Exports', hash: '#export', minPlan: 'starter', price: '5,99\u20AC/mois' },
+  { key: 'playlists', icon: '\uD83C\uDFAC', label: 'Playlists', hash: '#playlists', minPlan: 'pro', price: '12,99\u20AC/mois' },
+];
+
+export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId, planInfo, onOpenChat }) => {
   const [showDetail, setShowDetail] = useState(false);
 
   const parsed = parseAnalysisToSummary(summary.summary_content);
@@ -38,11 +58,17 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId
 
   const detailedHtml = markdownToFullHtml(escapeHtml(summary.summary_content));
 
+  // Build feature CTAs
+  const availableCTAs: { cta: FeatureCTA; available: boolean }[] = FEATURE_CTAS.map((cta) => ({
+    cta,
+    available: planInfo?.features?.[cta.key] ?? false,
+  }));
+
   return (
     <div className="synthesis">
       {/* Status bar */}
       <div className="synthesis-header">
-        <span className="synthesis-done">\u2705 Analysis Complete</span>
+        <span className="synthesis-done">{'\u2705'} Analyse compl\u00e8te</span>
         <div className="synthesis-badges">
           <span className="synthesis-badge">{categoryIcon} {summary.category}</span>
           <span className={`synthesis-badge ${scoreClass}`}>{scoreIcon} {score}%</span>
@@ -89,7 +115,7 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId
 
       {/* Toggle detail */}
       <button className="toggle-detail" onClick={() => setShowDetail(!showDetail)}>
-        <span>{showDetail ? 'Hide detailed analysis' : 'See detailed analysis'}</span>
+        <span>{showDetail ? 'Masquer l\u0027analyse d\u00e9taill\u00e9e' : 'Voir l\u0027analyse d\u00e9taill\u00e9e'}</span>
         {showDetail ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}
       </button>
 
@@ -104,16 +130,55 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId
       {/* Actions */}
       <div className="synthesis-actions">
         <a
-          href={`https://www.deepsightsynthesis.com/summary/${summaryId}`}
+          href={`${WEBAPP_URL}/summary/${summaryId}`}
           target="_blank"
           rel="noreferrer"
           className="btn-action btn-action-primary"
         >
-          <ExternalLinkIcon size={14} /> Full analysis
+          <ExternalLinkIcon size={14} /> Analyse compl\u00e8te
         </a>
         <button className="btn-action btn-action-secondary" onClick={onOpenChat}>
           <ChatIcon size={14} /> Chat
         </button>
+      </div>
+
+      {/* Feature CTAs */}
+      <div className="feature-ctas">
+        {availableCTAs.map(({ cta, available }) => (
+          available ? (
+            <button
+              key={cta.key}
+              className="feature-cta feature-cta-available"
+              onClick={() => chrome.tabs.create({ url: `${WEBAPP_URL}/summary/${summaryId}${cta.hash}` })}
+            >
+              <span className="feature-cta-icon">{cta.icon}</span>
+              <span className="feature-cta-label">{cta.label}</span>
+              <span className="feature-cta-arrow">{'\u2197'}</span>
+            </button>
+          ) : (
+            <button
+              key={cta.key}
+              className="feature-cta feature-cta-locked"
+              onClick={() => chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` })}
+            >
+              <span className="feature-cta-icon">{'\uD83D\uDD12'}</span>
+              <span className="feature-cta-label">{cta.label}</span>
+              <span className="feature-cta-price">d\u00e8s {cta.price}</span>
+            </button>
+          )
+        ))}
+        <a
+          href={`${WEBAPP_URL}/upgrade`}
+          target="_blank"
+          rel="noreferrer"
+          className="feature-cta-all-plans"
+          onClick={(e) => {
+            e.preventDefault();
+            chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
+          }}
+        >
+          Tous les plans {'\u2197'}
+        </a>
       </div>
     </div>
   );

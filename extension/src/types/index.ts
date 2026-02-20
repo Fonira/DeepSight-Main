@@ -93,6 +93,29 @@ export interface ChatResponse {
   web_search_used: boolean;
 }
 
+// ── Plan Info ──
+
+export interface PlanFeatures {
+  analysis: boolean;
+  synthesis: boolean;
+  chat: boolean;
+  flashcards: boolean;
+  mind_maps: boolean;
+  web_search: boolean;
+  playlists: boolean;
+  exports: boolean;
+}
+
+export interface PlanInfo {
+  plan_name: string;
+  plan_id: 'free' | 'student' | 'starter' | 'pro' | 'team';
+  monthly_analyses: number;
+  analyses_this_month: number;
+  credits: number;
+  credits_monthly: number;
+  features: PlanFeatures;
+}
+
 // ── Settings ──
 
 export interface ExtensionSettings {
@@ -123,7 +146,9 @@ export type MessageAction =
   | 'GET_CHAT_HISTORY'
   | 'OPEN_POPUP'
   | 'SYNC_AUTH_FROM_WEBSITE'
-  | 'ANALYSIS_PROGRESS';
+  | 'ANALYSIS_PROGRESS'
+  | 'GET_PLAN'
+  | 'START_GUEST_ANALYSIS';
 
 export interface ExtensionMessage {
   action: MessageAction;
@@ -136,6 +161,7 @@ export interface MessageResponse {
   user?: User;
   status?: TaskStatus;
   summary?: Summary;
+  plan?: PlanInfo;
   result?: unknown;
   error?: string;
 }

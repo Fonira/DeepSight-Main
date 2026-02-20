@@ -4,10 +4,11 @@ import { GoogleIcon } from './Icons';
 interface LoginViewProps {
   onLogin: (email: string, password: string) => Promise<void>;
   onGoogleLogin: () => Promise<void>;
+  onGuestMode: () => void;
   error: string | null;
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, error }) => {
+export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, onGuestMode, error }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -93,6 +94,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, er
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
       </form>
+
+      {/* Guest mode */}
+      <button className="btn-guest" onClick={onGuestMode}>
+        Essayer sans compte (1 analyse gratuite)
+      </button>
 
       {/* Footer */}
       <div className="login-footer">

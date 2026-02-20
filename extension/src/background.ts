@@ -20,6 +20,7 @@ import type {
   ChatResponse,
   ChatOptions,
   ChatMessage,
+  PlanInfo,
 } from './types';
 
 // ── Core API Request ──
@@ -166,6 +167,12 @@ async function getCurrentUser(): Promise<User> {
   const user = await apiRequest<User>('/auth/me');
   await setStoredUser(user);
   return user;
+}
+
+// ── Plan API ──
+
+async function fetchPlan(): Promise<PlanInfo> {
+  return apiRequest<PlanInfo>('/billing/my-plan?platform=extension');
 }
 
 // ── Video API ──
@@ -377,6 +384,15 @@ async function handleMessage(message: ExtensionMessage): Promise<MessageResponse
       try {
         const messages = await getChatHistory(summaryId);
         return { success: true, result: messages };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case 'GET_PLAN': {
+      try {
+        const plan = await fetchPlan();
+        return { success: true, plan };
       } catch (e) {
         return { success: false, error: (e as Error).message };
       }

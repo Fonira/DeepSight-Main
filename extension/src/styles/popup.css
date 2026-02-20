@@ -945,6 +945,235 @@ body {
 }
 
 /* ══════════════════════════════════════════════
+   PLAN-AWARE HEADER & QUOTA
+   ══════════════════════════════════════════════ */
+
+.btn-header-login {
+  padding: 5px 14px;
+  background: var(--ds-gradient-accent);
+  color: white;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform var(--ds-transition), box-shadow var(--ds-transition);
+}
+.btn-header-login:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 12px rgba(139, 92, 246, 0.3);
+}
+
+.user-quota {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ds-text-secondary);
+}
+.user-quota.quota-warning {
+  color: var(--ds-warning);
+}
+
+/* Guest banner */
+.guest-banner {
+  padding: 8px 16px;
+  background: rgba(245, 158, 11, 0.1);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+  font-size: 12px;
+  color: var(--ds-warning);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* Guest mode button on login */
+.btn-guest {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px dashed rgba(139, 92, 246, 0.3);
+  border-radius: var(--ds-radius);
+  color: var(--ds-text-secondary);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--ds-transition);
+}
+.btn-guest:hover {
+  border-color: var(--ds-accent-purple);
+  color: var(--ds-text-primary);
+  background: rgba(139, 92, 246, 0.06);
+}
+
+/* ══════════════════════════════════════════════
+   QUOTA EXCEEDED
+   ══════════════════════════════════════════════ */
+
+.quota-exceeded {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+}
+.quota-exceeded-text {
+  font-size: 13px;
+  color: var(--ds-warning);
+  padding: 10px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: var(--ds-radius);
+}
+.analyze-btn-disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+  animation: none !important;
+}
+.btn-upgrade-cta {
+  display: inline-block;
+  padding: 10px 20px;
+  background: var(--ds-gradient-warm);
+  color: white;
+  border: none;
+  border-radius: var(--ds-radius);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  text-align: center;
+  transition: transform var(--ds-transition), box-shadow var(--ds-transition);
+}
+.btn-upgrade-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
+}
+
+/* ══════════════════════════════════════════════
+   GUEST EXHAUSTED / POST-ANALYSIS
+   ══════════════════════════════════════════════ */
+
+.guest-exhausted,
+.guest-post-analysis {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px;
+  text-align: center;
+  background: rgba(59, 130, 246, 0.06);
+  border: 1px solid rgba(59, 130, 246, 0.15);
+  border-radius: var(--ds-radius);
+}
+.guest-exhausted-text,
+.guest-post-analysis p {
+  font-size: 13px;
+  color: var(--ds-text-secondary);
+  line-height: 1.5;
+}
+.btn-create-account {
+  padding: 10px 24px;
+  background: var(--ds-gradient-accent);
+  color: white;
+  border: none;
+  border-radius: var(--ds-radius);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform var(--ds-transition), box-shadow var(--ds-transition);
+}
+.btn-create-account:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.3);
+}
+
+/* ══════════════════════════════════════════════
+   FEATURE CTAs (POST-ANALYSIS)
+   ══════════════════════════════════════════════ */
+
+.feature-ctas {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.feature-cta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--ds-radius-sm);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--ds-transition);
+  border: 1px solid var(--ds-border);
+  text-align: left;
+}
+.feature-cta-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+.feature-cta-label {
+  flex: 1;
+  font-weight: 500;
+}
+.feature-cta-arrow {
+  font-size: 12px;
+  color: var(--ds-accent-blue);
+}
+.feature-cta-price {
+  font-size: 10px;
+  color: var(--ds-text-muted);
+  font-weight: 500;
+}
+
+/* Available features — open on web */
+.feature-cta-available {
+  background: rgba(59, 130, 246, 0.06);
+  border-color: rgba(59, 130, 246, 0.15);
+  color: var(--ds-text-primary);
+}
+.feature-cta-available:hover {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Locked features — upgrade prompt */
+.feature-cta-locked {
+  background: var(--ds-bg-secondary);
+  border-color: var(--ds-border);
+  color: var(--ds-text-muted);
+  opacity: 0.7;
+}
+.feature-cta-locked:hover {
+  opacity: 1;
+  border-color: var(--ds-border-hover);
+}
+.feature-cta-locked .feature-cta-label {
+  color: var(--ds-text-muted);
+}
+
+/* All plans link */
+.feature-cta-all-plans {
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  color: var(--ds-accent-blue);
+  text-decoration: none;
+  padding: 4px 0;
+  transition: color var(--ds-transition);
+}
+.feature-cta-all-plans:hover {
+  color: var(--ds-accent-purple);
+}
+
+/* ══════════════════════════════════════════════
    UTILITIES
    ══════════════════════════════════════════════ */
 
