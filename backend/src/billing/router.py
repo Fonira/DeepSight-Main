@@ -380,7 +380,7 @@ async def get_my_plan(
     platform_features = get_platform_features(user_plan, platform)
 
     # ── Calcul de l'usage ──
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()  # timezone-naive pour compatibilit� asyncpg/PostgreSQL
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
