@@ -465,7 +465,8 @@ async def analyze_video_v2(
         user_plan=current_user.plan,
         credit_cost=credit_cost,
         deep_research=deep_research,
-        options=customization_options
+        options=customization_options,
+        force_refresh=request.force_refresh
     )
 
     return AnalyzeV2Response(
@@ -491,7 +492,8 @@ async def _analyze_video_background_v2(
     user_plan: str,
     credit_cost: int,
     deep_research: bool,
-    options: Dict[str, Any]
+    options: Dict[str, Any],
+    force_refresh: bool = False
 ):
     """
     🆕 v2.0: Background analysis avec options de customization.
@@ -650,7 +652,7 @@ async def _analyze_video_background_v2(
                     description=video_info.get("description", ""),
                     web_context=full_context,
                     video_id=video_id,
-                    force_refresh=request.force_refresh,
+                    force_refresh=force_refresh,
                 )
 
             if not summary_content:
@@ -1057,7 +1059,8 @@ async def analyze_video_v2_1(
         user_plan=current_user.plan,
         credit_cost=credit_cost,
         deep_research=deep_research,
-        options=full_options
+        options=full_options,
+        force_refresh=request.force_refresh
     )
 
     return {
@@ -1084,7 +1087,8 @@ async def _analyze_video_background_v2_1(
     user_plan: str,
     credit_cost: int,
     deep_research: bool,
-    options: Dict[str, Any]
+    options: Dict[str, Any],
+    force_refresh: bool = False
 ):
     """
     🆕 v2.1: Background analysis avec TOUTES les fonctionnalités avancées.
@@ -1326,7 +1330,7 @@ async def _analyze_video_background_v2_1(
                     description=video_info.get("description", ""),
                     web_context=full_context,
                     video_id=video_id,
-                    force_refresh=request.force_refresh,
+                    force_refresh=force_refresh,
                 )
 
             if not summary_content:
