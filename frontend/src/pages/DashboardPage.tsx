@@ -21,7 +21,7 @@ import {
   Download, Sparkles, BookOpen, Shield,
   ExternalLink, Copy, Check, MessageCircle, X,
   AlertCircle,
-  FileText, FileDown, GraduationCap, Brain
+  FileText, FileDown, GraduationCap, Brain, Tags
 } from "lucide-react";
 import { DeepSightSpinner, DeepSightSpinnerMicro } from "../components/ui";
 import { EnrichedMarkdown } from "../components/EnrichedMarkdown";
