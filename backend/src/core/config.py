@@ -303,7 +303,11 @@ LEGAL_CONFIG = {
 }
 
 # =============================================================================
-# PLAN_LIMITS — ALIGNE avec UpgradePage v3.1
+# ⚠️ DEPRECATED — PLAN_LIMITS est OBSOLÈTE.
+# La source de vérité unique est : billing/plan_config.py → PLANS[plan]["limits"]
+# Utiliser get_limits(plan_id) de billing/plan_config pour tout nouveau code.
+# Ce dict reste pour rétrocompatibilité avec les modules non encore migrés.
+# NE PAS MODIFIER ICI — modifier billing/plan_config.py à la place.
 # =============================================================================
 
 PLAN_LIMITS: Dict[str, Dict[str, Any]] = {

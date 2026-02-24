@@ -53,6 +53,7 @@ PLANS: dict[str, dict[str, Any]] = {
         "badge": None,
         "popular": False,
         "limits": {
+            "monthly_credits": 150,
             "monthly_analyses": 3,
             "max_video_length_min": 15,
             "concurrent_analyses": 1,
@@ -119,6 +120,7 @@ PLANS: dict[str, dict[str, Any]] = {
         "badge": {"text": "Étudiants", "color": "#10B981"},
         "popular": False,
         "limits": {
+            "monthly_credits": 2000,
             "monthly_analyses": 20,
             "max_video_length_min": 45,
             "concurrent_analyses": 1,
@@ -186,6 +188,7 @@ PLANS: dict[str, dict[str, Any]] = {
         "badge": None,
         "popular": False,
         "limits": {
+            "monthly_credits": 3000,
             "monthly_analyses": 50,
             "max_video_length_min": 120,
             "concurrent_analyses": 1,
@@ -254,6 +257,7 @@ PLANS: dict[str, dict[str, Any]] = {
         "badge": {"text": "Populaire", "color": "#EF4444"},
         "popular": True,
         "limits": {
+            "monthly_credits": 15000,
             "monthly_analyses": 200,
             "max_video_length_min": 240,
             "concurrent_analyses": 3,
@@ -324,6 +328,7 @@ PLANS: dict[str, dict[str, Any]] = {
         "badge": {"text": "Entreprises", "color": "#F97316"},
         "popular": False,
         "limits": {
+            "monthly_credits": 50000,
             "monthly_analyses": 1000,
             "max_video_length_min": -1,
             "concurrent_analyses": 5,

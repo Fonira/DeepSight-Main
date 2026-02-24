@@ -17,7 +17,7 @@ from collections import OrderedDict
 
 from db.database import get_session, User, CreditTransaction, Summary, ChatMessage
 from auth.dependencies import get_current_user, get_current_user_optional
-from core.config import STRIPE_CONFIG, PLAN_LIMITS, FRONTEND_URL, get_stripe_key
+from core.config import STRIPE_CONFIG, FRONTEND_URL, get_stripe_key
 from .plan_config import (
     PLANS,
     PLAN_HIERARCHY,
@@ -750,9 +750,10 @@ async def change_subscription_plan(
                 payment_behavior="error_if_incomplete",
             )
             
-            # Mise à jour immédiate du plan
-            plan_limits = PLAN_LIMITS.get(new_plan, PLAN_LIMITS["free"])
-            credits_bonus = plan_limits.get("monthly_credits", 0) - PLAN_LIMITS.get(current_plan, {}).get("monthly_credits", 0)
+            # Mise à jour immédiate du plan (crédits depuis plan_config — source de vérité)
+            new_plan_limits = get_limits(new_plan)
+            old_plan_limits = get_limits(current_plan)
+            credits_bonus = new_plan_limits.get("monthly_credits", 0) - old_plan_limits.get("monthly_credits", 0)
             
             current_user.plan = new_plan
             if credits_bonus > 0:
@@ -884,9 +885,8 @@ async def confirm_checkout(
                 "already_updated": True
             }
         
-        # Mettre à jour l'utilisateur
-        plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS.get("free", {}))
-        credits_to_add = plan_limits.get("monthly_credits", 0)
+        # Mettre à jour l'utilisateur (crédits depuis plan_config — source de vérité)
+        credits_to_add = get_limits(plan).get("monthly_credits", 0)
         
         old_plan = current_user.plan
         current_user.plan = plan
@@ -1232,8 +1232,8 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
             logger.info("Checkout %s already processed — skipping", payment_id)
             return
 
-    plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
-    credits_to_add = plan_limits.get("monthly_credits", 0)
+    # Crédits depuis plan_config — source de vérité unique
+    credits_to_add = get_limits(plan).get("monthly_credits", 0)
 
     user.plan = plan
     user.credits = (user.credits or 0) + credits_to_add
@@ -1314,9 +1314,9 @@ async def handle_subscription_updated(session: AsyncSession, data: dict):
             old_plan = user.plan
             user.plan = new_plan
             
-            # Calculer la différence de crédits
-            old_credits = PLAN_LIMITS.get(old_plan, {}).get("monthly_credits", 0)
-            new_credits = PLAN_LIMITS.get(new_plan, {}).get("monthly_credits", 0)
+            # Calculer la différence de crédits (plan_config — source de vérité)
+            old_credits = get_limits(old_plan).get("monthly_credits", 0)
+            new_credits = get_limits(new_plan).get("monthly_credits", 0)
             
             if new_credits > old_credits:
                 # Upgrade: ajouter la différence de crédits
@@ -1393,8 +1393,8 @@ async def handle_invoice_paid(session: AsyncSession, data: dict):
                 print(f"Invoice {payment_id} already processed — skipping", flush=True)
                 return
 
-        plan_limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
-        credits_to_add = plan_limits.get("monthly_credits", 0)
+        # Crédits depuis plan_config — source de vérité unique
+        credits_to_add = get_limits(user.plan).get("monthly_credits", 0)
 
         user.credits = (user.credits or 0) + credits_to_add
 
