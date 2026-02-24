@@ -10,13 +10,13 @@
 // 🎨 WRITING STYLE — Styles d'écriture disponibles
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type WritingStyle = 
+export type WritingStyle =
   | 'default'     // Style par défaut (équilibré)
   | 'human'       // Très naturel, comme un humain
   | 'academic'    // Académique, citations, formel
   | 'casual'      // Décontracté, amical
   | 'humorous'    // Avec touches d'humour
-  | 'feminine';   // Style plus doux et empathique
+  | 'soft';       // Style plus doux et empathique
 
 export const WRITING_STYLE_CONFIG: Record<WritingStyle, {
   label: { fr: string; en: string };
@@ -48,7 +48,7 @@ export const WRITING_STYLE_CONFIG: Record<WritingStyle, {
     description: { fr: 'Touches d\'humour et légèreté', en: 'Light and witty touches' },
     emoji: '😄',
   },
-  feminine: {
+  soft: {
     label: { fr: 'Doux', en: 'Soft' },
     description: { fr: 'Empathique et bienveillant', en: 'Empathetic and caring' },
     emoji: '💜',
@@ -95,20 +95,15 @@ export const TARGET_LENGTH_CONFIG: Record<TargetLength, {
 export interface AnalysisCustomization {
   /** Prompt personnalisé de l'utilisateur (max 2000 caractères) */
   userPrompt: string;
-  
+
   /** Active l'anti-détection IA (humanisation du texte) */
   antiAIDetection: boolean;
-  
+
   /** Style d'écriture */
   writingStyle: WritingStyle;
-  
+
   /** Longueur cible */
   targetLength: TargetLength;
-  
-  /** Options avancées */
-  includeComments: boolean;   // Inclure des commentaires/annotations
-  includeMetadata: boolean;   // Inclure les métadonnées de la vidéo
-  includeIntention: boolean;  // Analyser l'intention de l'auteur
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -119,10 +114,7 @@ export const DEFAULT_CUSTOMIZATION: AnalysisCustomization = {
   userPrompt: '',
   antiAIDetection: false,
   writingStyle: 'default',
-  targetLength: 'medium',
-  includeComments: false,
-  includeMetadata: true,
-  includeIntention: false,
+  targetLength: 'auto',
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -136,15 +128,12 @@ export interface AnalyzeVideoV2Request {
   model?: string;
   lang?: string;
   deep_research?: boolean;
-  
+
   // Customization v2
   user_prompt?: string;
   anti_ai_detection?: boolean;
   writing_style?: WritingStyle;
   target_length?: TargetLength;
-  include_comments?: boolean;
-  include_metadata?: boolean;
-  include_intention?: boolean;
 }
 
 export interface AnalyzeVideoV2Response {
@@ -169,9 +158,6 @@ export function customizationToApiParams(customization: AnalysisCustomization): 
     anti_ai_detection: customization.antiAIDetection,
     writing_style: customization.writingStyle,
     target_length: customization.targetLength,
-    include_comments: customization.includeComments,
-    include_metadata: customization.includeMetadata,
-    include_intention: customization.includeIntention,
   };
 }
 

@@ -694,36 +694,28 @@ export const videoApi = {
     options?: {
       category?: string;
       mode?: string;
-      model?: string;
       deepResearch?: boolean;
       lang?: string;
-      // 🆕 Customization v2
+      // Personnalisation v3
       userPrompt?: string;
       antiAIDetection?: boolean;
-      writingStyle?: 'default' | 'human' | 'academic' | 'casual' | 'humorous' | 'feminine';
+      writingStyle?: 'default' | 'human' | 'academic' | 'casual' | 'humorous' | 'soft';
       targetLength?: 'short' | 'medium' | 'long' | 'auto';
-      includeComments?: boolean;
-      includeMetadata?: boolean;
-      includeIntention?: boolean;
     }
   ): Promise<{ task_id: string; status: string; result?: { summary_id: number } }> {
     const body: Record<string, unknown> = {
       url,
-      category: options?.category || 'auto',
+      category: 'auto',
       mode: options?.mode || 'standard',
-      model: options?.model || 'mistral-small-latest',
       deep_research: options?.deepResearch || false,
       lang: options?.lang || 'fr',
     };
 
-    // 🆕 Customization v2 parameters (snake_case for backend)
+    // Personnalisation v3 (snake_case pour backend Python)
     if (options?.userPrompt) body.user_prompt = options.userPrompt;
     if (options?.antiAIDetection !== undefined) body.anti_ai_detection = options.antiAIDetection;
     if (options?.writingStyle) body.writing_style = options.writingStyle;
     if (options?.targetLength) body.target_length = options.targetLength;
-    if (options?.includeComments !== undefined) body.include_comments = options.includeComments;
-    if (options?.includeMetadata !== undefined) body.include_metadata = options.includeMetadata;
-    if (options?.includeIntention !== undefined) body.include_intention = options.includeIntention;
 
     return request('/api/videos/analyze/v2', {
       method: 'POST',
@@ -737,26 +729,18 @@ export const videoApi = {
    * Supporte: URL YouTube, texte brut, ou recherche intelligente
    */
   async analyzeHybrid(params: {
-    // Type d'entrée
     inputType?: 'url' | 'raw_text' | 'search';
-    // Pour URL mode
     url?: string;
-    // Pour RAW_TEXT mode
     rawText?: string;
     textTitle?: string;
     textSource?: string;
-    // Pour SEARCH mode
     searchQuery?: string;
-    // Options communes
     mode?: string;
-    category?: string;
     lang?: string;
-    model?: string;
     deepResearch?: boolean;
   }): Promise<{ task_id: string; status: string }> {
-    // Convertir camelCase → snake_case pour le backend Python
     const body: Record<string, unknown> = {};
-    
+
     if (params.inputType) body.input_type = params.inputType;
     if (params.url) body.url = params.url;
     if (params.rawText) body.raw_text = params.rawText;
@@ -764,11 +748,9 @@ export const videoApi = {
     if (params.textSource) body.text_source = params.textSource;
     if (params.searchQuery) body.search_query = params.searchQuery;
     if (params.mode) body.mode = params.mode;
-    if (params.category) body.category = params.category;
     if (params.lang) body.lang = params.lang;
-    if (params.model) body.model = params.model;
     if (params.deepResearch !== undefined) body.deep_research = params.deepResearch;
-    
+
     return request('/api/videos/analyze/hybrid', {
       method: 'POST',
       body,
