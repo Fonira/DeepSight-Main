@@ -18,7 +18,7 @@ import {
   Search, Trash2, Play, MessageCircle,
   ChevronRight, Clock, Video, Layers,
   Grid, List, RefreshCw, BarChart2,
-  AlertCircle, X,
+  AlertCircle, X, ArrowLeft, BookOpen,
   Maximize2, ExternalLink, Share2,
   // 🆕 Toolbar icons
   Copy, Check, GraduationCap, Brain, Tags,
@@ -33,11 +33,16 @@ import { createTimecodeMarkdownComponents } from "../components/TimecodeRenderer
 import { FloatingChatWindow } from "../components/FloatingChatWindow";
 import DoodleBackground from '../components/DoodleBackground';
 import { ThumbnailImage } from "../components/ThumbnailImage";
+import { EnrichedMarkdown } from "../components/EnrichedMarkdown";
+import { ConceptsGlossary } from "../components/ConceptsGlossary";
+import { AcademicSourcesPanel } from "../components/academic";
+import { YouTubePlayer, YouTubePlayerRef } from "../components/YouTubePlayer";
 // 🆕 Toolbar components
 import { CitationExport } from "../components/CitationExport";
 import { StudyToolsModal } from "../components/StudyToolsModal";
 import { KeywordsModal } from "../components/KeywordsModal";
-import { videoApi, shareApi } from "../services/api";
+import { videoApi, shareApi, reliabilityApi, chatApi } from "../services/api";
+import type { Summary, ReliabilityResult, EnrichedConcept } from "../services/api";
 import { normalizePlanId } from "../config/planPrivileges";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -400,6 +405,25 @@ export const History: React.FC = () => {
   const [, setChatExpanded] = useState(true); // Étendu par défaut
   const chatEndRef = useRef<HTMLDivElement>(null);
 
+  // 🆕 Vue détaillée d'une vidéo inline (au lieu de naviguer vers /dashboard)
+  const [selectedVideoDetail, setSelectedVideoDetail] = useState<Summary | null>(null);
+  const [loadingVideoDetail, setLoadingVideoDetail] = useState(false);
+  const [videoDetailReliability, setVideoDetailReliability] = useState<ReliabilityResult | null>(null);
+  const [videoDetailPlayerVisible, setVideoDetailPlayerVisible] = useState(false);
+  const [videoDetailPlayerStart, setVideoDetailPlayerStart] = useState(0);
+  const videoDetailPlayerRef = useRef<YouTubePlayerRef>(null);
+  // Toolbar states pour vue détail vidéo
+  const [detailCopied, setDetailCopied] = useState(false);
+  const [detailShowExportMenu, setDetailShowExportMenu] = useState(false);
+  const [detailExporting, setDetailExporting] = useState(false);
+  const [detailShowCitationModal, setDetailShowCitationModal] = useState(false);
+  const [detailShowStudyToolsModal, setDetailShowStudyToolsModal] = useState(false);
+  const [detailShowKeywordsModal, setDetailShowKeywordsModal] = useState(false);
+  const [detailConcepts, setDetailConcepts] = useState<EnrichedConcept[]>([]);
+  const [detailConceptsLoading, setDetailConceptsLoading] = useState(false);
+  const [detailConceptsProvider, setDetailConceptsProvider] = useState<string>('none');
+  const [detailConceptsCategories, setDetailConceptsCategories] = useState<Record<string, { label: string; icon: string; count: number }>>({});
+
   // 🗑️ Clear History Modal
   const [showClearModal, setShowClearModal] = useState(false);
   const [clearType, setClearType] = useState<'all' | 'videos' | 'playlists'>('all');
@@ -498,9 +522,80 @@ export const History: React.FC = () => {
     }
   };
 
-  // Handlers
-  const handleViewVideo = (video: VideoSummary) => {
-    navigate(`/dashboard?id=${video.id}`);
+  // Handlers — 🆕 Affichage inline au lieu de naviguer vers /dashboard
+  const handleViewVideo = async (video: VideoSummary) => {
+    setLoadingVideoDetail(true);
+    setVideoDetailPlayerVisible(false);
+    setVideoDetailReliability(null);
+    try {
+      const summary = await videoApi.getSummary(video.id);
+      setSelectedVideoDetail(summary);
+      // Charger reliability en arrière-plan
+      reliabilityApi.getReliability(video.id).then(setVideoDetailReliability).catch(() => {});
+    } catch (err) {
+      console.error('Error loading video detail:', err);
+      setError(language === 'fr' ? "Erreur lors du chargement de l'analyse" : "Error loading analysis");
+    } finally {
+      setLoadingVideoDetail(false);
+    }
+  };
+
+  const handleBackFromVideoDetail = () => {
+    setSelectedVideoDetail(null);
+    setVideoDetailReliability(null);
+    setVideoDetailPlayerVisible(false);
+    setDetailCopied(false);
+    setDetailConcepts([]);
+  };
+
+  const handleDetailTimecodeClick = useCallback((seconds: number) => {
+    if (videoDetailPlayerVisible && videoDetailPlayerRef.current) {
+      videoDetailPlayerRef.current.seekTo(seconds);
+    } else {
+      setVideoDetailPlayerStart(seconds);
+      setVideoDetailPlayerVisible(true);
+    }
+  }, [videoDetailPlayerVisible]);
+
+  const handleDetailCopy = async () => {
+    if (!selectedVideoDetail?.summary_content) return;
+    await navigator.clipboard.writeText(selectedVideoDetail.summary_content);
+    setDetailCopied(true);
+    setTimeout(() => setDetailCopied(false), 2000);
+  };
+
+  const handleDetailExport = async (format: 'pdf' | 'md' | 'txt') => {
+    if (!selectedVideoDetail?.id) return;
+    setDetailExporting(true);
+    setDetailShowExportMenu(false);
+    const formatMap: Record<string, 'pdf' | 'markdown' | 'text'> = { pdf: 'pdf', md: 'markdown', txt: 'text' };
+    try {
+      const blob = await videoApi.exportSummary(selectedVideoDetail.id, formatMap[format]);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${selectedVideoDetail.video_title || 'analyse'}.${format === 'md' ? 'md' : format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export error:', err);
+    } finally {
+      setDetailExporting(false);
+    }
+  };
+
+  const handleDetailOpenKeywords = () => {
+    setDetailShowKeywordsModal(true);
+    if (selectedVideoDetail?.id) {
+      setDetailConceptsLoading(true);
+      videoApi.getEnrichedConcepts(selectedVideoDetail.id).then(data => {
+        setDetailConcepts(data.concepts || []);
+        setDetailConceptsProvider(data.provider || 'none');
+        setDetailConceptsCategories(data.categories || {});
+      }).catch(() => {
+        setDetailConcepts([]);
+      }).finally(() => setDetailConceptsLoading(false));
+    }
   };
 
   const handleOpenVideoChat = async (video: VideoSummary) => {
@@ -888,10 +983,223 @@ export const History: React.FC = () => {
             )}
 
             {/* Content */}
-            {loading ? (
+            {loading || loadingVideoDetail ? (
               <div className="flex items-center justify-center py-20">
                 <DeepSightSpinner size="md" />
               </div>
+            ) : activeTab === "videos" && selectedVideoDetail ? (
+              /* ═══ VUE DÉTAILLÉE VIDÉO INLINE ═══ */
+              <section className="animate-fadeIn">
+                {/* Bouton retour */}
+                <button
+                  onClick={handleBackFromVideoDetail}
+                  className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors mb-4"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    {language === 'fr' ? 'Retour à l\'historique' : 'Back to history'}
+                  </span>
+                </button>
+
+                <div className="space-y-6">
+                  {/* Video Info Card */}
+                  <div className="card overflow-hidden">
+                    <div className="flex flex-col lg:flex-row">
+                      {/* Thumbnail / Player */}
+                      <div className="w-full lg:w-96 flex-shrink-0 relative bg-bg-tertiary">
+                        {videoDetailPlayerVisible ? (
+                          <div className="relative aspect-video">
+                            <YouTubePlayer
+                              ref={videoDetailPlayerRef}
+                              videoId={selectedVideoDetail.video_id}
+                              initialTime={videoDetailPlayerStart}
+                              className="w-full h-full"
+                            />
+                            <button
+                              onClick={() => setVideoDetailPlayerVisible(false)}
+                              className="absolute top-2 right-2 w-10 h-10 sm:w-8 sm:h-8 rounded-lg bg-bg-primary/80 backdrop-blur flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+                            >
+                              <X className="w-5 h-5 sm:w-4 sm:h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div
+                            className="aspect-video relative cursor-pointer group"
+                            onClick={() => setVideoDetailPlayerVisible(true)}
+                          >
+                            <ThumbnailImage
+                              thumbnailUrl={selectedVideoDetail.thumbnail_url}
+                              videoId={selectedVideoDetail.video_id}
+                              title={selectedVideoDetail.video_title}
+                              category={selectedVideoDetail.category}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                                <Play className="w-6 h-6 sm:w-7 sm:h-7 text-bg-primary ml-1" />
+                              </div>
+                            </div>
+                            <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/70 text-white text-xs font-medium">
+                              {formatDuration(selectedVideoDetail.video_duration || 0)}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 p-4 sm:p-5">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <h2 className="font-semibold text-lg sm:text-xl leading-tight text-text-primary line-clamp-2">
+                            {selectedVideoDetail.video_title}
+                          </h2>
+                          <a
+                            href={`https://youtube.com/watch?v=${selectedVideoDetail.video_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-shrink-0 text-text-tertiary hover:text-accent-primary transition-colors p-1"
+                          >
+                            <ExternalLink className="w-5 h-5" />
+                          </a>
+                        </div>
+                        <p className="text-text-secondary text-xs sm:text-sm mb-3">
+                          {selectedVideoDetail.video_channel}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3">
+                          <span className="badge">
+                            <Clock className="w-3.5 h-3.5" />
+                            {formatDuration(selectedVideoDetail.video_duration || 0)}
+                          </span>
+                          {selectedVideoDetail.category && (
+                            <span className="badge badge-primary">
+                              {categoryEmoji[selectedVideoDetail.category] || '📺'} {selectedVideoDetail.category}
+                            </span>
+                          )}
+                          <span className="badge">{selectedVideoDetail.mode || 'standard'}</span>
+                        </div>
+                        <div className="pt-3 border-t border-border-subtle">
+                          <TournesolMini videoId={selectedVideoDetail.video_id} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Summary Content */}
+                  <div className="card">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-5 border-b border-border-subtle">
+                      <h3 className="font-semibold text-text-primary flex items-center gap-2">
+                        <BookOpen className="w-5 h-5 text-accent-primary" />
+                        {language === 'fr' ? 'Analyse' : 'Analysis'}
+                      </h3>
+                      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0">
+                        <button onClick={handleDetailCopy} className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]">
+                          {detailCopied ? <Check className="w-4 h-4 text-accent-success" /> : <Copy className="w-4 h-4" />}
+                          <span className="hidden sm:inline">{detailCopied ? (language === 'fr' ? 'Copié' : 'Copied') : (language === 'fr' ? 'Copier' : 'Copy')}</span>
+                        </button>
+                        <button onClick={() => setDetailShowCitationModal(true)} className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]">
+                          <GraduationCap className="w-4 h-4" />
+                          <span className="hidden sm:inline">{language === 'fr' ? 'Citer' : 'Cite'}</span>
+                        </button>
+                        <button onClick={() => setDetailShowStudyToolsModal(true)} className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]">
+                          <Brain className="w-4 h-4" />
+                          <span className="hidden sm:inline">{language === 'fr' ? 'Réviser' : 'Study'}</span>
+                        </button>
+                        <button onClick={handleDetailOpenKeywords} className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]">
+                          <Tags className="w-4 h-4" />
+                          <span className="hidden sm:inline">{language === 'fr' ? 'Mots-clés' : 'Keywords'}</span>
+                        </button>
+                        <div className="relative flex-shrink-0">
+                          <button onClick={() => setDetailShowExportMenu(!detailShowExportMenu)} className="btn btn-ghost text-xs min-h-[36px] sm:min-h-[32px]" disabled={detailExporting}>
+                            {detailExporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
+                            <span className="hidden sm:inline">Export</span>
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                          {detailShowExportMenu && (
+                            <div className="absolute right-0 top-full mt-1 w-40 bg-bg-elevated border border-border-default rounded-lg shadow-lg z-10 py-1">
+                              <button onClick={() => handleDetailExport('pdf')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
+                                <FileText className="w-4 h-4" /> PDF
+                              </button>
+                              <button onClick={() => handleDetailExport('md')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
+                                <FileDown className="w-4 h-4" /> Markdown
+                              </button>
+                              <button onClick={() => handleDetailExport('txt')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
+                                <FileText className="w-4 h-4" /> Texte
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4 sm:p-5 prose max-w-none">
+                      <EnrichedMarkdown
+                        language={language}
+                        onTimecodeClick={handleDetailTimecodeClick}
+                        className="text-text-primary"
+                      >
+                        {selectedVideoDetail.summary_content || ''}
+                      </EnrichedMarkdown>
+                      <div className="mt-6">
+                        <ConceptsGlossary summaryId={selectedVideoDetail.id} language={language} />
+                      </div>
+                      <div className="mt-6 not-prose">
+                        <AcademicSourcesPanel
+                          summaryId={selectedVideoDetail.id.toString()}
+                          userPlan={user?.plan || 'free'}
+                          onUpgrade={() => navigate('/pricing')}
+                          language={language as 'fr' | 'en'}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Chat FAB pour la vue détail */}
+                {!chatTarget && (
+                  <button
+                    onClick={() => handleOpenVideoChat({ id: selectedVideoDetail.id, video_id: selectedVideoDetail.video_id, video_title: selectedVideoDetail.video_title } as VideoSummary)}
+                    aria-label={language === 'fr' ? 'Ouvrir le chat IA' : 'Open AI chat'}
+                    className="fixed bottom-6 right-6 z-[9999] h-[52px] px-5 rounded-[26px] border-none cursor-pointer flex items-center gap-2 text-white font-bold text-sm bg-gradient-to-br from-[#00BCD4] to-[#00ACC1] shadow-lg hover:scale-105 transition-transform"
+                  >
+                    <MessageCircle size={20} />
+                    <span>Chat IA</span>
+                  </button>
+                )}
+
+                {/* Modals pour la vue détail */}
+                {selectedVideoDetail && (
+                  <>
+                    <CitationExport
+                      isOpen={detailShowCitationModal}
+                      onClose={() => setDetailShowCitationModal(false)}
+                      video={{
+                        title: selectedVideoDetail.video_title || 'Vidéo sans titre',
+                        channel: selectedVideoDetail.video_channel || 'Chaîne inconnue',
+                        videoId: selectedVideoDetail.video_id,
+                        publishedDate: selectedVideoDetail.created_at,
+                        duration: selectedVideoDetail.video_duration,
+                      }}
+                      language={language as 'fr' | 'en'}
+                    />
+                    <StudyToolsModal
+                      isOpen={detailShowStudyToolsModal}
+                      onClose={() => setDetailShowStudyToolsModal(false)}
+                      summaryId={selectedVideoDetail.id}
+                      videoTitle={selectedVideoDetail.video_title || 'Vidéo'}
+                      language={language as 'fr' | 'en'}
+                    />
+                    <KeywordsModal
+                      isOpen={detailShowKeywordsModal}
+                      onClose={() => setDetailShowKeywordsModal(false)}
+                      videoTitle={selectedVideoDetail.video_title || 'Vidéo'}
+                      tags={selectedVideoDetail.tags ? selectedVideoDetail.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []}
+                      concepts={detailConcepts}
+                      loading={detailConceptsLoading}
+                      language={language as 'fr' | 'en'}
+                      provider={detailConceptsProvider}
+                      categories={detailConceptsCategories}
+                    />
+                  </>
+                )}
+              </section>
             ) : activeTab === "videos" ? (
               <section>
                 {/* Section Header Vidéos */}
@@ -907,8 +1215,8 @@ export const History: React.FC = () => {
                       </span>
                     </h2>
                     <p className="text-xs text-text-tertiary">
-                      {language === 'fr' 
-                        ? 'Analyses de vidéos YouTube uniques • Synthèses avec timestamps' 
+                      {language === 'fr'
+                        ? 'Analyses de vidéos YouTube uniques • Synthèses avec timestamps'
                         : 'Single YouTube video analyses • Summaries with timestamps'}
                     </p>
                   </div>
@@ -931,8 +1239,8 @@ export const History: React.FC = () => {
                   </button>
                 </div>
               ) : (
-                <div className={viewMode === "grid" 
-                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" 
+                <div className={viewMode === "grid"
+                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
                   : "space-y-3"
                 }>
                   {videos.map((video) => (

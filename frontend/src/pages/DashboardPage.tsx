@@ -14,7 +14,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   ListVideo,
   Play, Video, ChevronDown, Clock, Timer,
@@ -112,7 +112,6 @@ export const DashboardPage: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const { language } = useTranslation();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
 
   // États principaux
   const [, setVideoUrl] = useState("");
@@ -192,18 +191,8 @@ export const DashboardPage: React.FC = () => {
 
   // === SESSION ONLY: Ne plus persister la dernière analyse ===
   // L'analyse reste uniquement pour la session courante (pas de localStorage)
-
-  // === Charger depuis l'URL (historique) ===
-  
-  useEffect(() => {
-    const summaryId = searchParams.get('id');
-    if (summaryId) {
-      const id = parseInt(summaryId, 10);
-      if (!isNaN(id)) {
-        loadSummaryFromHistory(id);
-      }
-    }
-  }, [searchParams]);
+  // L'onglet Analyse est TOUJOURS vide quand on y arrive depuis un autre onglet.
+  // Les synthèses de l'historique s'affichent désormais inline dans l'onglet Historique.
 
   // === 🕐 Charger les données de fiabilité quand un résumé est sélectionné ===
   
@@ -253,28 +242,6 @@ export const DashboardPage: React.FC = () => {
     setShowKeywordsModal(true);
     if (selectedSummary?.id) {
       loadConcepts(selectedSummary.id);
-    }
-  };
-
-  const loadSummaryFromHistory = async (summaryId: number) => {
-    setLoading(true);
-    setError(null);
-    setLoadingMessage(language === 'fr' ? 'Chargement de l\'analyse...' : 'Loading analysis...');
-    
-    try {
-      const summary = await videoApi.getSummary(summaryId);
-      
-      if (summary) {
-        setSelectedSummary(summary);
-        setVideoUrl(`https://youtube.com/watch?v=${summary.video_id}`);
-      }
-    } catch (err) {
-      console.error('Error loading summary:', err);
-      setError(language === 'fr' 
-        ? "Impossible de charger cette analyse. Elle n'existe peut-être plus."
-        : "Unable to load this analysis. It may no longer exist.");
-    } finally {
-      setLoading(false);
     }
   };
 
