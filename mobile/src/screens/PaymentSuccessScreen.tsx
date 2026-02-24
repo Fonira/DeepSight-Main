@@ -22,6 +22,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
+import { getFeatureListForDisplay, normalizePlanId, type PlanId } from '../config/planPrivileges';
 import type { RootStackParamList } from '../types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -169,76 +170,16 @@ export const PaymentSuccessScreen: React.FC = () => {
   );
 };
 
-// Get benefits based on plan
+// Get benefits based on plan — dynamique depuis planPrivileges (source de vérité unique)
 function getBenefits(plan: string, lang: string): string[] {
-  const benefits: Record<string, { fr: string[]; en: string[] }> = {
-    Pro: {
-      fr: [
-        '300 analyses par mois',
-        'Vidéos jusqu\'à 4 heures',
-        'Chat illimité avec recherche web',
-        'Mode expert avec deep research',
-        'Export PDF professionnel',
-      ],
-      en: [
-        '300 analyses per month',
-        'Videos up to 4 hours',
-        'Unlimited chat with web search',
-        'Expert mode with deep research',
-        'Professional PDF export',
-      ],
-    },
-    Team: {
-      fr: [
-        '1000 analyses par mois',
-        'Vidéos illimitées',
-        'Accès API complet',
-        'Gestion d\'équipe',
-        'Support prioritaire',
-      ],
-      en: [
-        '1000 analyses per month',
-        'Unlimited videos',
-        'Full API access',
-        'Team management',
-        'Priority support',
-      ],
-    },
-    Starter: {
-      fr: [
-        '60 analyses par mois',
-        'Vidéos jusqu\'à 2 heures',
-        '20 questions chat/jour',
-        'Export PDF et Markdown',
-        'Outils d\'étude avancés',
-      ],
-      en: [
-        '60 analyses per month',
-        'Videos up to 2 hours',
-        '20 chat questions/day',
-        'PDF and Markdown export',
-        'Advanced study tools',
-      ],
-    },
-    Student: {
-      fr: [
-        '40 analyses par mois',
-        'Vidéos jusqu\'à 2 heures',
-        'Outils d\'étude (quiz, flashcards)',
-        'Audio TTS inclus',
-        'Tarif étudiant -50%',
-      ],
-      en: [
-        '40 analyses per month',
-        'Videos up to 2 hours',
-        'Study tools (quiz, flashcards)',
-        'TTS audio included',
-        'Student rate -50%',
-      ],
-    },
-  };
-
-  return benefits[plan]?.[lang === 'fr' ? 'fr' : 'en'] || benefits.Pro[lang === 'fr' ? 'fr' : 'en'];
+  const planId = normalizePlanId(plan as any) as PlanId;
+  const locale = lang === 'fr' ? 'fr' : 'en';
+  const features = getFeatureListForDisplay(planId, locale);
+  // Retourner les 5 premières features incluses
+  return features
+    .filter(f => f.included)
+    .slice(0, 5)
+    .map(f => f.text);
 }
 
 const styles = StyleSheet.create({

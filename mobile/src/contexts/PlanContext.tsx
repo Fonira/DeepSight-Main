@@ -9,8 +9,14 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { useAuth } from './AuthContext';
 import { usageApi, authApi } from '../services/api';
 import { PlanType, PLANS } from '../constants/config';
+import {
+  PLAN_LIMITS,
+  PLAN_FEATURES as PP_FEATURES,
+  normalizePlanId,
+  type PlanId,
+} from '../config/planPrivileges';
 
-// Plan features configuration
+// Plan features configuration — dérivé de planPrivileges (source de vérité unique)
 export interface PlanFeatures {
   maxAnalysesPerMonth: number;
   maxVideoMinutes: number;
@@ -33,113 +39,43 @@ export interface PlanFeatures {
   apiAccess: boolean;
 }
 
-// Plan configurations
-const PLAN_FEATURES: Record<PlanType, PlanFeatures> = {
-  free: {
-    maxAnalysesPerMonth: 3,
-    maxVideoMinutes: 10,
-    maxCredits: 150,
-    chatEnabled: true,
-    chatMessagesPerVideo: 5,
-    chatMessagesPerDay: 10,
-    exportEnabled: false,
-    exportFormats: [],
-    flashcardsEnabled: false,
-    quizEnabled: false,
-    mindmapEnabled: false,
-    playlistsEnabled: false,
-    maxPlaylistVideos: 0,
-    factCheckEnabled: false,
-    webEnrichEnabled: false,
-    academicSearchEnabled: false,
-    ttsEnabled: false,
-    historyDays: 3,
-    apiAccess: false,
-  },
-  student: {
-    maxAnalysesPerMonth: 40,
-    maxVideoMinutes: 30,
-    maxCredits: 2000,
-    chatEnabled: true,
-    chatMessagesPerVideo: 20,
-    chatMessagesPerDay: 50,
-    exportEnabled: true,
-    exportFormats: ['markdown', 'text'],
-    flashcardsEnabled: true,
-    quizEnabled: true,
-    mindmapEnabled: true,
-    playlistsEnabled: false,
-    maxPlaylistVideos: 0,
-    factCheckEnabled: false,
-    webEnrichEnabled: false,
-    academicSearchEnabled: false,
-    ttsEnabled: false,
-    historyDays: 30,
-    apiAccess: false,
-  },
-  starter: {
-    maxAnalysesPerMonth: 60,
-    maxVideoMinutes: 120,
-    maxCredits: 3000,
-    chatEnabled: true,
-    chatMessagesPerVideo: 30,
-    chatMessagesPerDay: 100,
-    exportEnabled: true,
-    exportFormats: ['pdf', 'markdown', 'text'],
-    flashcardsEnabled: true,
-    quizEnabled: true,
-    mindmapEnabled: true,
-    playlistsEnabled: false,
-    maxPlaylistVideos: 0,
-    factCheckEnabled: true,
-    webEnrichEnabled: false,
-    academicSearchEnabled: false,
-    ttsEnabled: false,
-    historyDays: 60,
-    apiAccess: false,
-  },
-  pro: {
-    maxAnalysesPerMonth: 300,
-    maxVideoMinutes: 240,
-    maxCredits: 15000,
-    chatEnabled: true,
-    chatMessagesPerVideo: -1, // Unlimited
-    chatMessagesPerDay: -1, // Unlimited
-    exportEnabled: true,
-    exportFormats: ['pdf', 'markdown', 'text'],
-    flashcardsEnabled: true,
-    quizEnabled: true,
-    mindmapEnabled: true,
-    playlistsEnabled: true,
-    maxPlaylistVideos: 50,
-    factCheckEnabled: true,
-    webEnrichEnabled: true,
-    academicSearchEnabled: true,
-    ttsEnabled: true,
-    historyDays: 365,
-    apiAccess: false,
-  },
-  team: {
-    maxAnalysesPerMonth: 1000,
-    maxVideoMinutes: 480,
-    maxCredits: 50000,
-    chatEnabled: true,
-    chatMessagesPerVideo: -1,
-    chatMessagesPerDay: -1,
-    exportEnabled: true,
-    exportFormats: ['pdf', 'markdown', 'text'],
-    flashcardsEnabled: true,
-    quizEnabled: true,
-    mindmapEnabled: true,
-    playlistsEnabled: true,
-    maxPlaylistVideos: 100,
-    factCheckEnabled: true,
-    webEnrichEnabled: true,
-    academicSearchEnabled: true,
-    ttsEnabled: true,
-    historyDays: -1, // Unlimited
-    apiAccess: true,
-  },
+// Construit les features depuis planPrivileges — plus de duplication
+function buildPlanFeatures(planId: PlanId): PlanFeatures {
+  const l = PLAN_LIMITS[planId];
+  const f = PP_FEATURES[planId];
+  const formats: ('pdf' | 'markdown' | 'text')[] = ['text'];
+  if (f.exportMarkdown) formats.push('markdown');
+  if (f.exportPdf) formats.push('pdf');
+  return {
+    maxAnalysesPerMonth: l.monthlyAnalyses,
+    maxVideoMinutes: l.maxVideoDuration === -1 ? -1 : Math.round(l.maxVideoDuration / 60),
+    maxCredits: l.monthlyCredits,
+    chatEnabled: f.chatBasic,
+    chatMessagesPerVideo: l.chatQuestionsPerVideo,
+    chatMessagesPerDay: l.chatDailyLimit,
+    exportEnabled: formats.length > 1,
+    exportFormats: formats,
+    flashcardsEnabled: f.flashcards,
+    quizEnabled: f.flashcards,
+    mindmapEnabled: f.conceptMaps,
+    playlistsEnabled: f.playlists,
+    maxPlaylistVideos: l.maxPlaylistVideos,
+    factCheckEnabled: f.factCheckBasic || f.factCheckAdvanced,
+    webEnrichEnabled: f.chatWebSearch,
+    academicSearchEnabled: f.academicSearch,
+    ttsEnabled: f.ttsAudio,
+    historyDays: l.historyDays,
+    apiAccess: f.apiAccess,
+  };
+}
+
+// Plan configurations — synced from planPrivileges.ts
+const PLAN_FEATURES_MAP: Record<PlanType, PlanFeatures> = {
+  free: buildPlanFeatures('free'),
+  student: buildPlanFeatures('student'),
+  starter: buildPlanFeatures('starter'),
+  pro: buildPlanFeatures('pro'),
+  team: buildPlanFeatures('team'),
 };
 
 // Usage stats interface
@@ -196,7 +132,7 @@ export const PlanProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [isLoading, setIsLoading] = useState(false);
 
   const plan = user?.plan || PLANS.FREE;
-  const features = PLAN_FEATURES[plan] || PLAN_FEATURES[PLANS.FREE];
+  const features = PLAN_FEATURES_MAP[plan] || PLAN_FEATURES_MAP[PLANS.FREE];
 
   // Fetch usage stats
   const refreshUsage = useCallback(async () => {

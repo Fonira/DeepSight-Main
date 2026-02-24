@@ -19,9 +19,13 @@ import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Header, Card, Badge, Button } from '../components';
 import { Colors, Spacing, Typography, BorderRadius } from '../constants/theme';
 import { billingApi, ApiError } from '../services/api';
-import { normalizePlanId, isPlanHigher, comparePlans, type PlanId } from '../config/planPrivileges';
+import {
+  normalizePlanId, isPlanHigher, comparePlans,
+  PLANS_INFO, PLAN_LIMITS, getFeatureListForDisplay,
+  type PlanId,
+} from '../config/planPrivileges';
 
-interface Plan {
+interface PlanWithTranslations {
   id: string;
   name: string;
   price: number;
@@ -29,186 +33,27 @@ interface Plan {
   credits: number;
   features: string[];
   isPopular?: boolean;
-}
-
-interface PlanEn {
-  name: string;
-  features: string[];
-}
-
-interface PlanWithTranslations extends Plan {
-  en: PlanEn;
+  en: { name: string; features: string[] };
   icon: string;
 }
 
-const PLANS: PlanWithTranslations[] = [
-  {
-    id: 'free',
-    name: 'Gratuit',
-    price: 0,
+// Dynamique depuis planPrivileges — plus de hardcoding
+const PLANS: PlanWithTranslations[] = PLANS_INFO.map((info) => {
+  const limits = PLAN_LIMITS[info.id];
+  const frFeatures = getFeatureListForDisplay(info.id, 'fr').filter(f => f.included).map(f => f.text);
+  const enFeatures = getFeatureListForDisplay(info.id, 'en').filter(f => f.included).map(f => f.text);
+  return {
+    id: info.id,
+    name: info.name.fr,
+    price: info.price / 100,
     period: '/mois',
-    credits: 150,
-    icon: 'gift-outline',
-    features: [
-      '3 analyses par mois',
-      '150 crédits',
-      'Vidéos ≤ 10 min',
-      '3 questions chat/vidéo',
-      'Historique 3 jours',
-      'Export texte',
-    ],
-    en: {
-      name: 'Free',
-      features: [
-        '3 analyses/month',
-        '150 credits',
-        'Videos ≤ 10 min',
-        '3 chat questions/video',
-        '3 days history',
-        'Text export',
-      ],
-    },
-  },
-  {
-    id: 'student',
-    name: 'Étudiant',
-    price: 2.99,
-    period: '/mois',
-    credits: 2000,
-    icon: 'school-outline',
-    features: [
-      '40 analyses par mois',
-      '2000 crédits',
-      'Vidéos ≤ 2h',
-      '15 questions chat/vidéo',
-      'Historique 90 jours',
-      'Export PDF + Markdown',
-      'Citations BibTeX',
-      'Audio TTS',
-      'Recherche web (10/mois)',
-    ],
-    en: {
-      name: 'Student',
-      features: [
-        '40 analyses/month',
-        '2000 credits',
-        'Videos ≤ 2h',
-        '15 chat questions/video',
-        '90 days history',
-        'PDF + Markdown export',
-        'BibTeX citations',
-        'Audio TTS',
-        'Web search (10/month)',
-      ],
-    },
-  },
-  {
-    id: 'starter',
-    name: 'Starter',
-    price: 5.99,
-    period: '/mois',
-    credits: 3000,
-    icon: 'rocket-outline',
-    features: [
-      '60 analyses par mois',
-      '3000 crédits',
-      'Vidéos ≤ 2h',
-      '20 questions chat/vidéo',
-      'Historique 60 jours',
-      'Export PDF + TXT',
-      'Citations académiques',
-      'Recherche web (20/mois)',
-    ],
-    en: {
-      name: 'Starter',
-      features: [
-        '60 analyses/month',
-        '3000 credits',
-        'Videos ≤ 2h',
-        '20 chat questions/video',
-        '60 days history',
-        'PDF + TXT export',
-        'Academic citations',
-        'Web search (20/month)',
-      ],
-    },
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 12.99,
-    period: '/mois',
-    credits: 15000,
-    icon: 'star-outline',
-    isPopular: true,
-    features: [
-      '300 analyses par mois',
-      '15 000 crédits',
-      'Vidéos ≤ 4h',
-      'Chat illimité par vidéo',
-      'Historique 180 jours',
-      'Tous les exports + Markdown',
-      'Playlists (20 vidéos max)',
-      'Audio TTS',
-      'Recherche web (100/mois)',
-      'Support prioritaire',
-      'Fact-checking avancé',
-    ],
-    en: {
-      name: 'Pro',
-      features: [
-        '300 analyses/month',
-        '15,000 credits',
-        'Videos ≤ 4h',
-        'Unlimited chat/video',
-        '180 days history',
-        'All exports + Markdown',
-        'Playlists (20 videos max)',
-        'Audio TTS',
-        'Web search (100/month)',
-        'Priority support',
-        'Advanced fact-checking',
-      ],
-    },
-  },
-  {
-    id: 'team',
-    name: 'Team',
-    price: 29.99,
-    period: '/mois',
-    credits: 50000,
-    icon: 'people-outline',
-    features: [
-      '1000 analyses par mois',
-      '50 000 crédits',
-      'Vidéos illimitées',
-      'Chat et exports illimités',
-      'Historique illimité',
-      'Playlists (100 vidéos, illimitées)',
-      'Recherche web illimitée',
-      'API REST (1000 req/jour)',
-      '5 membres d\'équipe',
-      'Support dédié',
-      'Analytics avancés',
-    ],
-    en: {
-      name: 'Team',
-      features: [
-        '1000 analyses/month',
-        '50,000 credits',
-        'Unlimited video length',
-        'Unlimited chat & exports',
-        'Unlimited history',
-        'Playlists (100 videos, unlimited)',
-        'Unlimited web search',
-        'REST API (1000 req/day)',
-        '5 team members',
-        'Dedicated support',
-        'Advanced analytics',
-      ],
-    },
-  },
-];
+    credits: limits.monthlyCredits,
+    icon: info.icon,
+    isPopular: info.popular,
+    features: frFeatures,
+    en: { name: info.name.en, features: enFeatures },
+  };
+});
 
 // Plan progression order for recommendations
 const PLAN_ORDER: PlanId[] = ['free', 'student', 'starter', 'pro', 'team'];

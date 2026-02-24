@@ -31,6 +31,7 @@ import { QuizComponent, QuizQuestion } from '../components/study/QuizComponent';
 import { Header } from '../components/Header';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { usePlan } from '../hooks/usePlan';
+import { getPlanInfo } from '../config/planPrivileges';
 import type { RootStackParamList } from '../types';
 
 type StudyScreenRouteProp = RouteProp<RootStackParamList, 'StudyTools'>;
@@ -354,8 +355,8 @@ export const StudyScreen: React.FC = () => {
             </Text>
             <Text style={[styles.lockDescription, { color: colors.textSecondary }]}>
               {language === 'fr'
-                ? 'Les flashcards et quiz sont disponibles dès le plan Étudiant (2,99€/mois).'
-                : 'Flashcards and quizzes are available from the Student plan (€2.99/mo).'}
+                ? `Les flashcards et quiz sont disponibles dès le plan Étudiant (${getPlanInfo('student').priceDisplay.fr}).`
+                : `Flashcards and quizzes are available from the Student plan (${getPlanInfo('student').priceDisplay.en}).`}
             </Text>
             <Button
               title={language === 'fr' ? 'Découvrir les plans' : 'View plans'}

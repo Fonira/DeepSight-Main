@@ -43,18 +43,19 @@ export type NumericPlanLimits = {
   [K in keyof PlanLimits as PlanLimits[K] extends number ? K : never]: PlanLimits[K];
 };
 
+// ⚠️ SYNCED WITH: frontend/src/config/planPrivileges.ts + backend plan_config.py
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   free: {
     monthlyAnalyses: 3,
     monthlyCredits: 150,
-    maxVideoDuration: 600,        // 10 min max
-    chatQuestionsPerVideo: 3,
+    maxVideoDuration: 900,        // 15 min max (synced w/ frontend)
+    chatQuestionsPerVideo: 5,     // synced (was 3)
     chatDailyLimit: 10,
     maxPlaylistVideos: 0,
     maxPlaylists: 0,
     maxExportsPerDay: 0,
     webSearchMonthly: 0,
-    historyDays: 3,
+    historyDays: 60,              // synced (was 3)
     apiRequestsDaily: 0,
     teamMembers: 1,
     studyQuizQuestions: 3,
@@ -64,16 +65,16 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicPapersPerAnalysis: 3,
   },
   student: {
-    monthlyAnalyses: 40,
+    monthlyAnalyses: 20,          // synced (was 40)
     monthlyCredits: 2000,
-    maxVideoDuration: 7200,       // 2h max
+    maxVideoDuration: 2700,       // 45 min max (synced, was 7200)
     chatQuestionsPerVideo: 15,
-    chatDailyLimit: 50,
+    chatDailyLimit: 40,           // synced (was 50)
     maxPlaylistVideos: 0,
     maxPlaylists: 0,
     maxExportsPerDay: 10,
-    webSearchMonthly: 10,
-    historyDays: 90,
+    webSearchMonthly: 0,          // synced (was 10) — web search starts at Starter
+    historyDays: -1,              // synced (was 90) — permanent dès Student
     apiRequestsDaily: 0,
     teamMembers: 1,
     studyQuizQuestions: 5,
@@ -83,16 +84,16 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicPapersPerAnalysis: 10,
   },
   starter: {
-    monthlyAnalyses: 60,
+    monthlyAnalyses: 50,          // synced (was 60)
     monthlyCredits: 3000,
-    maxVideoDuration: 7200,
-    chatQuestionsPerVideo: 20,
-    chatDailyLimit: 100,
+    maxVideoDuration: 7200,       // 2h max
+    chatQuestionsPerVideo: 25,    // synced (was 20)
+    chatDailyLimit: 80,           // synced (was 100)
     maxPlaylistVideos: 0,
     maxPlaylists: 0,
     maxExportsPerDay: 20,
     webSearchMonthly: 20,
-    historyDays: 60,
+    historyDays: -1,              // synced (was 60) — permanent
     apiRequestsDaily: 0,
     teamMembers: 1,
     studyQuizQuestions: 7,
@@ -102,7 +103,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicPapersPerAnalysis: 15,
   },
   pro: {
-    monthlyAnalyses: 300,
+    monthlyAnalyses: 200,         // synced (was 300)
     monthlyCredits: 15000,
     maxVideoDuration: 14400,      // 4h max
     chatQuestionsPerVideo: -1,
@@ -111,7 +112,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     maxPlaylists: 10,
     maxExportsPerDay: -1,
     webSearchMonthly: 100,
-    historyDays: 180,
+    historyDays: -1,              // synced (was 180) — permanent
     apiRequestsDaily: 0,
     teamMembers: 1,
     studyQuizQuestions: 10,
@@ -216,19 +217,19 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     summaryTimestamps: true,
     summaryConcepts: true,
     chatBasic: true,
-    chatWebSearch: true,
+    chatWebSearch: false,         // synced — web search starts at Starter
     chatSuggestedQuestions: true,
     factCheckBasic: true,
     factCheckAdvanced: false,
-    intelligentSearch: true,
+    intelligentSearch: false,     // synced — starts at Starter
     playlists: false,
     corpus: false,
-    flashcards: true,
-    conceptMaps: true,
+    flashcards: true,             // Student killer feature
+    conceptMaps: true,            // Student killer feature
     citationExport: true,
-    bibtexExport: true,      // Student killer feature
-    exportPdf: true,
-    exportMarkdown: true,
+    bibtexExport: true,
+    exportPdf: false,             // synced — PDF starts at Pro
+    exportMarkdown: true,         // synced — Markdown dès Student
     exportTxt: true,
     exportWatermark: false,
     ttsAudio: true,
@@ -238,7 +239,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     slackIntegration: false,
     teamsIntegration: false,
     academicSearch: true,
-    bibliographyExport: true,    // Student killer feature
+    bibliographyExport: true,
     academicFullText: false,
   },
   starter: {
@@ -247,7 +248,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     summaryTimestamps: true,
     summaryConcepts: true,
     chatBasic: true,
-    chatWebSearch: true,
+    chatWebSearch: true,          // Web search starts at Starter
     chatSuggestedQuestions: true,
     factCheckBasic: true,
     factCheckAdvanced: false,
@@ -258,8 +259,8 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     conceptMaps: true,
     citationExport: true,
     bibtexExport: false,
-    exportPdf: true,
-    exportMarkdown: false,
+    exportPdf: false,             // synced — PDF starts at Pro
+    exportMarkdown: true,         // synced — Markdown dès Student
     exportTxt: true,
     exportWatermark: false,
     ttsAudio: false,

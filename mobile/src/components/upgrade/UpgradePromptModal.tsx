@@ -19,6 +19,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+import { PLAN_LIMITS, type PlanId } from '../../config/planPrivileges';
 import type { RootStackParamList } from '../../types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -43,6 +44,23 @@ interface UpgradePromptModalProps {
   onStartTrial?: () => void;
 }
 
+// Génère les features dynamiques depuis planPrivileges pour le plan recommandé
+function getLimitFeatures(planId: PlanId, lang: 'fr' | 'en'): string[] {
+  const l = PLAN_LIMITS[planId];
+  if (lang === 'fr') {
+    return [
+      `${l.monthlyCredits.toLocaleString()} crédits/mois`,
+      `${l.monthlyAnalyses} analyses/mois`,
+      l.maxVideoDuration === -1 ? 'Vidéos illimitées' : `Vidéos jusqu'à ${Math.round(l.maxVideoDuration / 3600)}h`,
+    ];
+  }
+  return [
+    `${l.monthlyCredits.toLocaleString()} credits/month`,
+    `${l.monthlyAnalyses} analyses/month`,
+    l.maxVideoDuration === -1 ? 'Unlimited videos' : `Videos up to ${Math.round(l.maxVideoDuration / 3600)}h`,
+  ];
+}
+
 const LIMIT_CONFIG: Record<LimitType, {
   icon: keyof typeof Ionicons.glyphMap;
   titleFr: string;
@@ -51,7 +69,7 @@ const LIMIT_CONFIG: Record<LimitType, {
   descriptionEn: string;
   featuresFr: string[];
   featuresEn: string[];
-  recommendedPlan: string;
+  recommendedPlan: PlanId;
 }> = {
   credits: {
     icon: 'wallet-outline',
@@ -59,8 +77,8 @@ const LIMIT_CONFIG: Record<LimitType, {
     titleEn: 'Out of credits',
     descriptionFr: 'Vous avez utilisé tous vos crédits mensuels.',
     descriptionEn: 'You have used all your monthly credits.',
-    featuresFr: ['Plus de crédits mensuels', 'Analyses illimitées', 'Support prioritaire'],
-    featuresEn: ['More monthly credits', 'Unlimited analyses', 'Priority support'],
+    featuresFr: getLimitFeatures('pro', 'fr'),
+    featuresEn: getLimitFeatures('pro', 'en'),
     recommendedPlan: 'pro',
   },
   chat: {
@@ -69,8 +87,8 @@ const LIMIT_CONFIG: Record<LimitType, {
     titleEn: 'Chat limit reached',
     descriptionFr: 'Vous avez atteint votre limite quotidienne de questions.',
     descriptionEn: 'You have reached your daily question limit.',
-    featuresFr: ['Questions illimitées', 'Recherche web intégrée', 'Historique complet'],
-    featuresEn: ['Unlimited questions', 'Web search integration', 'Full history'],
+    featuresFr: getLimitFeatures('pro', 'fr'),
+    featuresEn: getLimitFeatures('pro', 'en'),
     recommendedPlan: 'pro',
   },
   analysis: {
@@ -79,8 +97,8 @@ const LIMIT_CONFIG: Record<LimitType, {
     titleEn: 'Analysis limit reached',
     descriptionFr: 'Vous avez atteint votre limite mensuelle d\'analyses.',
     descriptionEn: 'You have reached your monthly analysis limit.',
-    featuresFr: ['300+ analyses/mois', 'Vidéos jusqu\'à 4h', 'Mode expert'],
-    featuresEn: ['300+ analyses/month', 'Videos up to 4h', 'Expert mode'],
+    featuresFr: getLimitFeatures('pro', 'fr'),
+    featuresEn: getLimitFeatures('pro', 'en'),
     recommendedPlan: 'pro',
   },
   playlist: {
@@ -89,8 +107,8 @@ const LIMIT_CONFIG: Record<LimitType, {
     titleEn: 'Playlist analysis unavailable',
     descriptionFr: 'L\'analyse de playlists nécessite un plan supérieur.',
     descriptionEn: 'Playlist analysis requires a higher plan.',
-    featuresFr: ['Analysez jusqu\'à 50 vidéos', 'Résumé de corpus', 'Méta-analyse'],
-    featuresEn: ['Analyze up to 50 videos', 'Corpus summary', 'Meta-analysis'],
+    featuresFr: getLimitFeatures('pro', 'fr'),
+    featuresEn: getLimitFeatures('pro', 'en'),
     recommendedPlan: 'pro',
   },
   export: {
@@ -99,8 +117,8 @@ const LIMIT_CONFIG: Record<LimitType, {
     titleEn: 'Limited exports',
     descriptionFr: 'Accédez à plus de formats d\'export.',
     descriptionEn: 'Access more export formats.',
-    featuresFr: ['Export PDF professionnel', 'Citations académiques', 'Export en lot'],
-    featuresEn: ['Professional PDF export', 'Academic citations', 'Batch export'],
+    featuresFr: getLimitFeatures('starter', 'fr'),
+    featuresEn: getLimitFeatures('starter', 'en'),
     recommendedPlan: 'starter',
   },
   webSearch: {
@@ -109,8 +127,8 @@ const LIMIT_CONFIG: Record<LimitType, {
     titleEn: 'Limited web search',
     descriptionFr: 'Augmentez votre quota de recherches web.',
     descriptionEn: 'Increase your web search quota.',
-    featuresFr: ['100+ recherches/mois', 'Sources fiables', 'Vérification des faits'],
-    featuresEn: ['100+ searches/month', 'Reliable sources', 'Fact-checking'],
+    featuresFr: getLimitFeatures('pro', 'fr'),
+    featuresEn: getLimitFeatures('pro', 'en'),
     recommendedPlan: 'pro',
   },
   tts: {
@@ -119,8 +137,8 @@ const LIMIT_CONFIG: Record<LimitType, {
     titleEn: 'Limited TTS audio',
     descriptionFr: 'Générez plus d\'audio avec un plan supérieur.',
     descriptionEn: 'Generate more audio with a higher plan.',
-    featuresFr: ['Voix premium', 'Génération illimitée', 'Téléchargement MP3'],
-    featuresEn: ['Premium voices', 'Unlimited generation', 'MP3 download'],
+    featuresFr: getLimitFeatures('pro', 'fr'),
+    featuresEn: getLimitFeatures('pro', 'en'),
     recommendedPlan: 'pro',
   },
   apiKey: {
@@ -129,8 +147,8 @@ const LIMIT_CONFIG: Record<LimitType, {
     titleEn: 'API key required',
     descriptionFr: 'L\'accès API nécessite un plan Team.',
     descriptionEn: 'API access requires a Team plan.',
-    featuresFr: ['API complète', 'Intégrations', 'Webhooks'],
-    featuresEn: ['Full API', 'Integrations', 'Webhooks'],
+    featuresFr: getLimitFeatures('team', 'fr'),
+    featuresEn: getLimitFeatures('team', 'en'),
     recommendedPlan: 'team',
   },
 };
