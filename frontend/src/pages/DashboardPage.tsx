@@ -21,8 +21,7 @@ import {
   Download, Sparkles, BookOpen, Shield,
   ExternalLink, Copy, Check, MessageCircle, X,
   AlertCircle,
-  FileText, FileDown, GraduationCap, Brain,
-  Tags
+  FileText, FileDown, GraduationCap, Brain
 } from "lucide-react";
 import { DeepSightSpinner, DeepSightSpinnerMicro } from "../components/ui";
 import { EnrichedMarkdown } from "../components/EnrichedMarkdown";
@@ -65,18 +64,19 @@ interface ChatMessage {
   web_search_used?: boolean;
 }
 
-const CATEGORIES = [
-  { id: "auto", name: "Auto-détection", emoji: "🎯" },
-  { id: "interview_podcast", name: "Interview/Podcast", emoji: "🎙️" },
-  { id: "tech", name: "Technologie", emoji: "💻" },
-  { id: "science", name: "Science", emoji: "🔬" },
-  { id: "education", name: "Éducation", emoji: "📚" },
-  { id: "finance", name: "Finance", emoji: "💰" },
-  { id: "gaming", name: "Gaming", emoji: "🎮" },
-  { id: "culture", name: "Culture", emoji: "🎨" },
-  { id: "news", name: "Actualités", emoji: "📰" },
-  { id: "health", name: "Santé", emoji: "🏥" },
-] as const;
+// Catégories pour affichage résultat uniquement (sélection supprimée — auto-détection forcée)
+const CATEGORY_DISPLAY: Record<string, { emoji: string; name: string }> = {
+  auto: { emoji: '🎯', name: 'Auto-détection' },
+  interview_podcast: { emoji: '🎙️', name: 'Interview/Podcast' },
+  tech: { emoji: '💻', name: 'Technologie' },
+  science: { emoji: '🔬', name: 'Science' },
+  education: { emoji: '📚', name: 'Éducation' },
+  finance: { emoji: '💰', name: 'Finance' },
+  gaming: { emoji: '🎮', name: 'Gaming' },
+  culture: { emoji: '🎨', name: 'Culture' },
+  news: { emoji: '📰', name: 'Actualités' },
+  health: { emoji: '🏥', name: 'Santé' },
+};
 
 const MODES = [
   { id: "accessible", name: "Accessible", desc: "Grand public" },
@@ -93,7 +93,7 @@ const formatDuration = (seconds: number): string => {
 
 const formatReadingTime = (wordCount: number): string => `${Math.ceil(wordCount / 200)} min`;
 
-const getCategoryInfo = (cat: string) => CATEGORIES.find(c => c.id === cat) || { emoji: "📄", name: cat };
+const getCategoryInfo = (cat: string) => CATEGORY_DISPLAY[cat] || { emoji: "📄", name: cat };
 
 // 🆕 Helper pour détecter si une URL est une playlist
 const isPlaylistUrl = (url: string): boolean => {
@@ -121,7 +121,6 @@ export const DashboardPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedSummary, setSelectedSummary] = useState<Summary | null>(null);
   const [mode, setMode] = useState<string>("standard");
-  const [category, setCategory] = useState<string>("auto");
   
   // 🆕 États pour l'entrée intelligente
   const [smartInput, setSmartInput] = useState<SmartInputValue>({
@@ -131,8 +130,7 @@ export const DashboardPage: React.FC = () => {
   const [discoveryResult, setDiscoveryResult] = useState<DiscoveryResponse | null>(null);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   
-  // 🆕 États pour choix du modèle et recherche approfondie
-  const [selectedModel, setSelectedModel] = useState<string>("mistral-small-latest");
+  // 🆕 État pour recherche approfondie (Expert uniquement)
   const [deepResearchEnabled, setDeepResearchEnabled] = useState(false);
   
   // 🎨 État pour la personnalisation avancée v2
@@ -187,21 +185,6 @@ export const DashboardPage: React.FC = () => {
   const isProUser = user?.plan === "pro" || user?.plan === "team" || user?.plan === "expert";
   // Note: isTeamOrHigher et isStarterPlus réservés pour futures fonctionnalités
   const isExpertUser = user?.plan === "expert" || user?.plan === "unlimited";
-  
-  // 🆕 Configuration des modèles selon le plan
-  const availableModels = useMemo(() => {
-    const plan = user?.plan || 'free';
-    const models = [
-      { id: 'mistral-small-latest', name: 'Mistral Small', desc: language === 'fr' ? 'Rapide' : 'Fast', icon: '⚡' }
-    ];
-    if (['student', 'starter', 'pro', 'team', 'expert', 'unlimited'].includes(plan)) {
-      models.push({ id: 'mistral-medium-latest', name: 'Mistral Medium', desc: language === 'fr' ? 'Équilibré' : 'Balanced', icon: '⚖️' });
-    }
-    if (['pro', 'team', 'expert', 'unlimited'].includes(plan)) {
-      models.push({ id: 'mistral-large-latest', name: 'Mistral Large', desc: language === 'fr' ? 'Puissant' : 'Powerful', icon: '🚀' });
-    }
-    return models;
-  }, [user?.plan, language]);
   
   // SUGGESTED_QUESTIONS disponible pour le chat: language === 'fr' ? SUGGESTED_QUESTIONS_FR : SUGGESTED_QUESTIONS_EN
 
@@ -407,19 +390,15 @@ export const DashboardPage: React.FC = () => {
         const response = await videoApi.analyzeV2(
           smartInput.url!,
           {
-            category,
+            category: 'auto',
             mode,
-            model: selectedModel,
             deepResearch: isExpertUser && deepResearchEnabled,
             lang: language,
-            // 🆕 Options de personnalisation v2
+            // Personnalisation v3
             userPrompt: analysisCustomization.userPrompt || undefined,
             antiAIDetection: analysisCustomization.antiAIDetection,
             writingStyle: analysisCustomization.writingStyle,
             targetLength: analysisCustomization.targetLength,
-            includeComments: analysisCustomization.includeComments,
-            includeMetadata: analysisCustomization.includeMetadata,
-            includeIntention: analysisCustomization.includeIntention,
           }
         );
         
@@ -454,9 +433,7 @@ export const DashboardPage: React.FC = () => {
           textTitle: smartInput.textTitle,
           textSource: smartInput.textSource,
           mode,
-          category: category === 'auto' ? undefined : category,
           lang: language,
-          model: selectedModel,
           deepResearch: isExpertUser && deepResearchEnabled,
         });
         
@@ -494,19 +471,15 @@ export const DashboardPage: React.FC = () => {
       const response = await videoApi.analyzeV2(
         url,
         {
-          category,
+          category: 'auto',
           mode,
-          model: selectedModel,
           deepResearch: isExpertUser && deepResearchEnabled,
           lang: language,
-          // 🆕 Options de personnalisation v2
+          // Personnalisation v3
           userPrompt: analysisCustomization.userPrompt || undefined,
           antiAIDetection: analysisCustomization.antiAIDetection,
           writingStyle: analysisCustomization.writingStyle,
           targetLength: analysisCustomization.targetLength,
-          includeComments: analysisCustomization.includeComments,
-          includeMetadata: analysisCustomization.includeMetadata,
-          includeIntention: analysisCustomization.includeIntention,
         }
       );
       
@@ -759,44 +732,6 @@ export const DashboardPage: React.FC = () => {
                       ))}
                     </div>
                   </div>
-
-                  {/* Catégorie - Full width on mobile */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <span className="text-xs text-text-tertiary uppercase tracking-wider font-medium">
-                      {language === 'fr' ? 'Catégorie' : 'Category'}
-                    </span>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="w-full sm:w-auto bg-bg-tertiary border border-border-default rounded-lg px-3 py-2 sm:py-1.5 text-sm text-text-primary cursor-pointer"
-                    >
-                      {CATEGORIES.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.emoji} {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Sélecteur de modèle (selon le plan) */}
-                  {availableModels.length > 1 && (
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                      <span className="text-xs text-text-tertiary uppercase tracking-wider font-medium">
-                        {language === 'fr' ? 'Modèle' : 'Model'}
-                      </span>
-                      <select
-                        value={selectedModel}
-                        onChange={(e) => setSelectedModel(e.target.value)}
-                        className="w-full sm:w-auto bg-bg-tertiary border border-border-default rounded-lg px-3 py-2 sm:py-1.5 text-sm text-text-primary cursor-pointer"
-                      >
-                        {availableModels.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.icon} {m.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
 
                   {/* Option recherche approfondie (Expert uniquement) */}
                   {isExpertUser && (

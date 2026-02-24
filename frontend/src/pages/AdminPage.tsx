@@ -18,6 +18,7 @@ import {
 import { DeepSightSpinner, DeepSightSpinnerMicro } from '../components/ui';
 import { API_URL } from '../services/api';
 import { useToast } from '../components/Toast';
+import { PLANS_INFO, type PlanId } from '../config/planPrivileges';
 
 // Types
 interface AdminStats {
@@ -57,17 +58,28 @@ type TabType = 'dashboard' | 'users' | 'stats' | 'logs';
 
 const ADMIN_EMAIL = "maximeleparc3@gmail.com";
 
-// Plan colors and labels - v4.0 (Free, Student, Starter, Pro, Team)
-const PLAN_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
-  free: { color: 'text-gray-500', bg: 'bg-gray-100', label: 'Free' },
-  student: { color: 'text-emerald-600', bg: 'bg-emerald-100', label: 'Student (€2.99)' },
-  starter: { color: 'text-blue-600', bg: 'bg-blue-100', label: 'Starter (€5.99)' },
-  pro: { color: 'text-violet-600', bg: 'bg-violet-100', label: 'Pro (€12.99)' },
-  team: { color: 'text-amber-600', bg: 'bg-amber-100', label: 'Team (€29.99)' },
-  // Rétrocompatibilité
-  expert: { color: 'text-amber-600', bg: 'bg-amber-100', label: 'Team (€29.99)' },
-  unlimited: { color: 'text-yellow-600', bg: 'bg-yellow-100', label: 'Unlimited' },
-};
+// Plan colors and labels — synced from planPrivileges.ts
+const PLAN_CONFIG: Record<string, { color: string; bg: string; label: string }> = (() => {
+  const colorMap: Record<string, { color: string; bg: string }> = {
+    free: { color: 'text-gray-500', bg: 'bg-gray-100' },
+    etudiant: { color: 'text-emerald-600', bg: 'bg-emerald-100' },
+    starter: { color: 'text-blue-600', bg: 'bg-blue-100' },
+    pro: { color: 'text-violet-600', bg: 'bg-violet-100' },
+    equipe: { color: 'text-amber-600', bg: 'bg-amber-100' },
+  };
+  const config: Record<string, { color: string; bg: string; label: string }> = {};
+  for (const [id, info] of Object.entries(PLANS_INFO)) {
+    const c = colorMap[id] || colorMap.free;
+    const price = info.priceMonthly > 0 ? ` (€${(info.priceMonthly / 100).toFixed(2)})` : '';
+    config[id] = { ...c, label: `${info.nameEn}${price}` };
+  }
+  // Rétrocompatibilité aliases
+  config.student = config.etudiant;
+  config.team = config.equipe;
+  config.expert = config.equipe;
+  config.unlimited = { color: 'text-yellow-600', bg: 'bg-yellow-100', label: 'Unlimited' };
+  return config;
+})();
 
 export const AdminPage: React.FC = () => {
   const { user } = useAuth();

@@ -8,6 +8,7 @@ import { Clock, TrendingUp, Sparkles, Check, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
+import { PLANS_INFO } from '../config/planPrivileges';
 
 interface AnalysisValueDisplayProps {
   /** Video duration in seconds */
@@ -188,8 +189,8 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
                 </p>
                 <p className="text-xs text-text-tertiary">
                   {language === 'fr'
-                    ? 'Dès 2,99€/mois pour les étudiants'
-                    : 'From €2.99/mo for students'}
+                    ? `Dès ${(PLANS_INFO.etudiant.priceMonthly / 100).toFixed(2).replace('.', ',')}€/mois pour les étudiants`
+                    : `From €${(PLANS_INFO.etudiant.priceMonthly / 100).toFixed(2)}/mo for students`}
                 </p>
               </div>
               <button

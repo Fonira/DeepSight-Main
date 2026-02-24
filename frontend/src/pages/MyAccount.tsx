@@ -10,6 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
 import { billingApi, authApi, type ApiBillingMyPlan } from '../services/api';
+import { PLANS_INFO, getMinPlanForFeature, type PlanId } from '../config/planPrivileges';
 import { useToast } from '../components/Toast';
 import {
   User, Shield, Key, Trash2, LogOut, Check,
@@ -276,19 +277,33 @@ export const MyAccount: React.FC = () => {
     return false;
   };
 
-  // Plan price mapping (centimes)
-  const planPrices: Record<string, number> = {
-    free: 0, student: 299, etudiant: 299, starter: 599,
-    pro: 1299, team: 2999, equipe: 2999, expert: 2999, unlimited: 0,
-  };
+  // Plan prices — dynamiques depuis planPrivileges
+  const planPrices: Record<string, number> = (() => {
+    const prices: Record<string, number> = { unlimited: 0 };
+    for (const [id, info] of Object.entries(PLANS_INFO)) {
+      prices[id] = info.priceMonthly;
+    }
+    // Aliases rétrocompat
+    prices.student = prices.etudiant;
+    prices.team = prices.equipe;
+    prices.expert = prices.equipe;
+    return prices;
+  })();
 
-  // Min plan for locked features
+  // Min plan for locked features — dynamique
+  const fmtPlan = (planId: PlanId) => {
+    const info = PLANS_INFO[planId];
+    const name = language === 'fr' ? info.name : info.nameEn;
+    const price = (info.priceMonthly / 100).toFixed(2).replace('.', ',');
+    const suffix = language === 'fr' ? 'mois' : 'mo';
+    return `${name} (${price}€/${suffix})`;
+  };
   const minPlanForFeature: Record<string, string> = {
-    flashcards: language === 'fr' ? 'Étudiant (2.99€/mois)' : 'Student (€2.99/mo)',
-    mindmap: language === 'fr' ? 'Étudiant (2.99€/mois)' : 'Student (€2.99/mo)',
-    web_search: 'Starter (5.99€/' + (language === 'fr' ? 'mois' : 'mo') + ')',
-    playlists: 'Pro (12.99€/' + (language === 'fr' ? 'mois' : 'mo') + ')',
-    export_pdf: 'Pro (12.99€/' + (language === 'fr' ? 'mois' : 'mo') + ')',
+    flashcards: fmtPlan(getMinPlanForFeature('flashcardsEnabled')),
+    mindmap: fmtPlan(getMinPlanForFeature('mindmapEnabled')),
+    web_search: fmtPlan(getMinPlanForFeature('webSearchEnabled')),
+    playlists: fmtPlan(getMinPlanForFeature('playlistsEnabled')),
+    export_pdf: fmtPlan(getMinPlanForFeature('exportPdf')),
   };
 
   // ─────────────────────────────────────────────────────────────────────────────

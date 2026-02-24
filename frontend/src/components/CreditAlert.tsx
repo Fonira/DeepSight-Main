@@ -8,6 +8,7 @@ import { AlertTriangle, X, Zap, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
+import { PLANS_INFO } from '../config/planPrivileges';
 
 interface CreditAlertProps {
   /** Credits threshold below which to show warning (default: 50) */
@@ -191,8 +192,8 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
             {plan === 'free' && (
               <span className="text-xs text-text-tertiary">
                 {language === 'fr'
-                  ? 'Dès 2,99€/mois'
-                  : 'From €2.99/mo'}
+                  ? `Dès ${(PLANS_INFO.etudiant.priceMonthly / 100).toFixed(2).replace('.', ',')}€/mois`
+                  : `From €${(PLANS_INFO.etudiant.priceMonthly / 100).toFixed(2)}/mo`}
               </span>
             )}
           </div>

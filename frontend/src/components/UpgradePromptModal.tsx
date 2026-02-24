@@ -15,7 +15,7 @@ import { X, Zap, GraduationCap, Star, Crown, Users, Sparkles, ArrowRight, Check,
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
-import { normalizePlanId, PLANS_INFO, CONVERSION_TRIGGERS } from '../config/planPrivileges';
+import { normalizePlanId, PLANS_INFO, PLAN_LIMITS, CONVERSION_TRIGGERS } from '../config/planPrivileges';
 
 interface UpgradePromptModalProps {
   /** Whether the modal is open */
@@ -99,88 +99,105 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
     return info[limitType] || info.credits;
   };
 
-  // Icon mapping
+  // Icon mapping — aligné sur PlanId (planPrivileges.ts)
   const iconMap: Record<string, React.ElementType> = {
     'free': Zap,
-    'student': GraduationCap,
+    'etudiant': GraduationCap,
     'starter': Star,
     'pro': Crown,
-    'team': Users,
+    'equipe': Users,
   };
+
+  // Gradient mapping
+  const gradientMap: Record<string, string> = {
+    'free': 'from-gray-500 to-gray-600',
+    'etudiant': 'from-emerald-500 to-green-600',
+    'starter': 'from-blue-500 to-blue-600',
+    'pro': 'from-violet-500 to-purple-600',
+    'equipe': 'from-amber-500 to-orange-500',
+  };
+
+  const lang = language === 'fr' ? 'fr' : 'en';
+  const formatPrice = (cents: number) => `${(cents / 100).toFixed(2).replace('.', ',')}€`;
 
   // Recommended plan based on current plan and limit type
   const getRecommendedPlan = () => {
     // Playlist limit? Recommend Pro directly
     if (limitType === 'playlist') {
-      const proInfo = PLANS_INFO.find(p => p.id === 'pro')!;
+      const info = PLANS_INFO.pro;
+      const limits = PLAN_LIMITS.pro;
       return {
         id: 'pro',
-        name: proInfo.name[language === 'fr' ? 'fr' : 'en'],
-        price: '12,99€',
+        name: lang === 'fr' ? info.name : info.nameEn,
+        price: formatPrice(info.priceMonthly),
         icon: iconMap.pro,
-        color: proInfo.gradient,
-        highlight: proInfo.killerFeature[language === 'fr' ? 'fr' : 'en'],
-        features: language === 'fr'
-          ? ['300 analyses/mois', 'Playlists (20 vidéos)', 'Chat illimité', 'Support prioritaire']
-          : ['300 analyses/mo', 'Playlists (20 videos)', 'Unlimited chat', 'Priority support'],
+        color: gradientMap.pro,
+        highlight: lang === 'fr' ? `${limits.monthlyAnalyses} analyses/mois` : `${limits.monthlyAnalyses} analyses/mo`,
+        features: lang === 'fr'
+          ? [`${limits.monthlyAnalyses} analyses/mois`, `Playlists (${limits.maxPlaylistVideos} vidéos)`, 'Chat illimité', 'Support prioritaire']
+          : [`${limits.monthlyAnalyses} analyses/mo`, `Playlists (${limits.maxPlaylistVideos} videos)`, 'Unlimited chat', 'Priority support'],
       };
     }
 
-    // Default progression: free → student → starter → pro → team
+    // Default progression: free → etudiant → starter → pro → equipe
     if (plan === 'free') {
-      const studentInfo = PLANS_INFO.find(p => p.id === 'student')!;
+      const info = PLANS_INFO.etudiant;
+      const limits = PLAN_LIMITS.etudiant;
       return {
-        id: 'student',
-        name: studentInfo.name[language === 'fr' ? 'fr' : 'en'],
-        price: '2,99€',
-        icon: iconMap.student,
-        color: studentInfo.gradient,
-        highlight: studentInfo.killerFeature[language === 'fr' ? 'fr' : 'en'],
-        features: language === 'fr'
-          ? ['40 analyses/mois', 'Flashcards & cartes mentales', 'Export PDF & BibTeX', 'Historique 90 jours']
-          : ['40 analyses/mo', 'Flashcards & mind maps', 'PDF & BibTeX export', '90 days history'],
+        id: 'etudiant',
+        name: lang === 'fr' ? info.name : info.nameEn,
+        price: formatPrice(info.priceMonthly),
+        icon: iconMap.etudiant,
+        color: gradientMap.etudiant,
+        highlight: lang === 'fr' ? 'Flashcards & Cartes mentales' : 'Flashcards & Mind maps',
+        features: lang === 'fr'
+          ? [`${limits.monthlyAnalyses} analyses/mois`, 'Flashcards & cartes mentales', 'Export Markdown', 'Historique permanent']
+          : [`${limits.monthlyAnalyses} analyses/mo`, 'Flashcards & mind maps', 'Markdown export', 'Permanent history'],
       };
     }
-    if (plan === 'student') {
-      const starterInfo = PLANS_INFO.find(p => p.id === 'starter')!;
+    if (plan === 'etudiant') {
+      const info = PLANS_INFO.starter;
+      const limits = PLAN_LIMITS.starter;
       return {
         id: 'starter',
-        name: starterInfo.name[language === 'fr' ? 'fr' : 'en'],
-        price: '5,99€',
+        name: lang === 'fr' ? info.name : info.nameEn,
+        price: formatPrice(info.priceMonthly),
         icon: iconMap.starter,
-        color: starterInfo.gradient,
-        highlight: starterInfo.killerFeature[language === 'fr' ? 'fr' : 'en'],
-        features: language === 'fr'
-          ? ['60 analyses/mois', '3000 crédits', 'Recherche web (20/mois)', '20 exports/jour']
-          : ['60 analyses/mo', '3000 credits', 'Web search (20/mo)', '20 exports/day'],
+        color: gradientMap.starter,
+        highlight: lang === 'fr' ? `Recherche web (${limits.webSearchMonthly}/mois)` : `Web search (${limits.webSearchMonthly}/mo)`,
+        features: lang === 'fr'
+          ? [`${limits.monthlyAnalyses} analyses/mois`, `Recherche web (${limits.webSearchMonthly}/mois)`, 'Flashcards & cartes mentales', 'Vidéos jusqu\'à 2h']
+          : [`${limits.monthlyAnalyses} analyses/mo`, `Web search (${limits.webSearchMonthly}/mo)`, 'Flashcards & mind maps', 'Videos up to 2h'],
       };
     }
     if (plan === 'starter') {
-      const proInfo = PLANS_INFO.find(p => p.id === 'pro')!;
+      const info = PLANS_INFO.pro;
+      const limits = PLAN_LIMITS.pro;
       return {
         id: 'pro',
-        name: proInfo.name[language === 'fr' ? 'fr' : 'en'],
-        price: '12,99€',
+        name: lang === 'fr' ? info.name : info.nameEn,
+        price: formatPrice(info.priceMonthly),
         icon: iconMap.pro,
-        color: proInfo.gradient,
-        highlight: proInfo.killerFeature[language === 'fr' ? 'fr' : 'en'],
-        features: language === 'fr'
-          ? ['300 analyses/mois', 'Playlists (20 vidéos)', 'Chat illimité', 'Fact-check avancé']
-          : ['300 analyses/mo', 'Playlists (20 videos)', 'Unlimited chat', 'Advanced fact-check'],
+        color: gradientMap.pro,
+        highlight: lang === 'fr' ? `Playlists (${limits.maxPlaylistVideos} vidéos)` : `Playlists (${limits.maxPlaylistVideos} videos)`,
+        features: lang === 'fr'
+          ? [`${limits.monthlyAnalyses} analyses/mois`, `Playlists (${limits.maxPlaylistVideos} vidéos)`, 'Chat illimité', 'Export PDF']
+          : [`${limits.monthlyAnalyses} analyses/mo`, `Playlists (${limits.maxPlaylistVideos} videos)`, 'Unlimited chat', 'PDF export'],
       };
     }
-    // pro → team
-    const teamInfo = PLANS_INFO.find(p => p.id === 'team')!;
+    // pro → equipe
+    const info = PLANS_INFO.equipe;
+    const limits = PLAN_LIMITS.equipe;
     return {
-      id: 'team',
-      name: teamInfo.name[language === 'fr' ? 'fr' : 'en'],
-      price: '29,99€',
-      icon: iconMap.team,
-      color: teamInfo.gradient,
-      highlight: teamInfo.killerFeature[language === 'fr' ? 'fr' : 'en'],
-      features: language === 'fr'
-        ? ['1000 analyses/mois', 'Accès API REST', '5 utilisateurs', 'Intégrations Slack/Teams']
-        : ['1000 analyses/mo', 'REST API access', '5 users', 'Slack/Teams integrations'],
+      id: 'equipe',
+      name: lang === 'fr' ? info.name : info.nameEn,
+      price: formatPrice(info.priceMonthly),
+      icon: iconMap.equipe,
+      color: gradientMap.equipe,
+      highlight: lang === 'fr' ? `${limits.monthlyAnalyses} analyses/mois` : `${limits.monthlyAnalyses} analyses/mo`,
+      features: lang === 'fr'
+        ? [`${limits.monthlyAnalyses} analyses/mois`, 'Accès API REST', 'Recherche web illimitée', 'Export PDF & Markdown']
+        : [`${limits.monthlyAnalyses} analyses/mo`, 'REST API access', 'Unlimited web search', 'PDF & Markdown export'],
     };
   };
 

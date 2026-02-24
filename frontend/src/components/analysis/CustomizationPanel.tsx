@@ -1,15 +1,12 @@
 /**
  * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  🎨 CUSTOMIZATION PANEL v2.0 — Analyse Personnalisée Avancée                       ║
+ * ║  🎨 CUSTOMIZATION PANEL v3.0 — Analyse Personnalisée Harmonisée                   ║
  * ╠════════════════════════════════════════════════════════════════════════════════════╣
- * ║  Features:                                                                          ║
- * ║  - Zone de texte pour prompt utilisateur (2000 chars max)                          ║
- * ║  - Bouton Anti-Détection IA TRÈS VISIBLE avec animation                            ║
- * ║  - Options avancées dépliables (style, longueur, checkboxes)                       ║
- * ║  - Dark mode compatible                                                             ║
- * ║  - Responsive design (mobile-friendly)                                              ║
- * ║  - Accessibilité (ARIA labels, focus states)                                       ║
- * ║  - Sauvegarde des préférences en localStorage                                      ║
+ * ║  v3.0 — Harmonisation tri-plateforme (Web/Mobile/Extension)                        ║
+ * ║  - L1: Style d'écriture (6 options) + Anti-IA toggle compact                      ║
+ * ║  - L2 (collapsible "Plus"): Longueur cible + Instructions personnalisées          ║
+ * ║  - Suppression: checkboxes (comments/metadata/intention)                           ║
+ * ║  - Renommage: feminine → soft                                                     ║
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
@@ -23,7 +20,6 @@ import {
   MessageSquare,
   FileText,
   Target,
-  Settings,
   Save,
   RotateCcw,
 } from 'lucide-react';
@@ -76,7 +72,16 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
     try {
       const saved = localStorage.getItem(CUSTOMIZATION_STORAGE_KEY);
       if (saved) {
-        return { ...DEFAULT_CUSTOMIZATION, ...JSON.parse(saved), ...initialCustomization };
+        const parsed = JSON.parse(saved);
+        // Migration: feminine → soft
+        if (parsed.writingStyle === 'feminine') {
+          parsed.writingStyle = 'soft';
+        }
+        // Migration: supprimer les anciens champs
+        delete parsed.includeComments;
+        delete parsed.includeMetadata;
+        delete parsed.includeIntention;
+        return { ...DEFAULT_CUSTOMIZATION, ...parsed, ...initialCustomization };
       }
     } catch {
       /* localStorage read failed */
@@ -85,7 +90,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   };
 
   const [customization, setCustomization] = useState<AnalysisCustomization>(loadSavedCustomization);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showMore, setShowMore] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
   // Generate unique IDs for accessibility
@@ -132,7 +137,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🎨 COMPACT MODE
+  // 🎨 COMPACT MODE (pour usage inline)
   // ═══════════════════════════════════════════════════════════════════════════
 
   if (compact) {
@@ -184,7 +189,9 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🎨 FULL MODE
+  // 🎨 FULL MODE — Structure harmonisée v3
+  // L1: Style + Anti-IA toggle compact
+  // L2 (collapsible): Longueur + Instructions
   // ═══════════════════════════════════════════════════════════════════════════
 
   return (
@@ -201,9 +208,9 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
             className="text-base sm:text-lg font-semibold text-text-primary flex items-center gap-2"
           >
             <Sparkles className="w-5 h-5 text-accent-primary" />
-            {t('Personnalisation Avancée', 'Advanced Customization')}
+            {t('Personnalisation', 'Customization')}
           </h2>
-          
+
           <div className="flex items-center gap-2">
             {isSaved && (
               <span className="text-xs text-green-500 flex items-center gap-1 animate-fade-in">
@@ -226,219 +233,141 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
 
       <div className="p-4 sm:p-5 space-y-5">
         {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* 📝 USER PROMPT TEXTAREA */}
+        {/* L1: ✍️ STYLE D'ÉCRITURE — Visible directement */}
         {/* ═══════════════════════════════════════════════════════════════════ */}
-        <div className="space-y-2">
-          <label
-            htmlFor={`${baseId}-prompt`}
-            className="flex items-center gap-2 text-sm font-medium text-text-primary"
-          >
-            <MessageSquare className="w-4 h-4 text-accent-primary" />
-            {t('Instructions personnalisées', 'Custom Instructions')}
-            <span className="text-text-muted font-normal">
-              ({t('optionnel', 'optional')})
-            </span>
+        <div className="space-y-3">
+          <label className="flex items-center gap-2 text-sm font-medium text-text-primary">
+            <FileText className="w-4 h-4 text-accent-primary" />
+            {t("Style d'écriture", 'Writing Style')}
           </label>
-          
-          <div className="relative">
-            <textarea
-              id={`${baseId}-prompt`}
-              value={customization.userPrompt}
-              onChange={(e) => {
-                const value = e.target.value.slice(0, MAX_PROMPT_LENGTH);
-                updateCustomization({ userPrompt: value });
-              }}
-              disabled={disabled}
-              placeholder={t(
-                'Ex: "Concentre-toi sur les aspects pratiques" ou "Ajoute des exemples concrets"...',
-                'E.g., "Focus on practical aspects" or "Add concrete examples"...'
-              )}
-              rows={3}
-              maxLength={MAX_PROMPT_LENGTH}
-              className={`
-                w-full px-4 py-3 rounded-xl
-                bg-bg-tertiary border border-border-default
-                text-text-primary placeholder-text-muted
-                focus:outline-none focus:ring-2 focus:ring-accent-primary/50 focus:border-accent-primary
-                resize-none transition-all duration-200
-                disabled:opacity-50 disabled:cursor-not-allowed
-              `}
-              aria-describedby={`${baseId}-prompt-count`}
-            />
-            <span
-              id={`${baseId}-prompt-count`}
-              className={`
-                absolute bottom-2 right-3 text-xs
-                ${customization.userPrompt.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-orange-500' : 'text-text-muted'}
-              `}
-            >
-              {customization.userPrompt.length}/{MAX_PROMPT_LENGTH}
-            </span>
-          </div>
-        </div>
 
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* 🛡️ ANTI-AI DETECTION TOGGLE — TRÈS VISIBLE */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        <div className="space-y-2">
-          <button
-            type="button"
-            onClick={() => updateCustomization({ antiAIDetection: !customization.antiAIDetection })}
-            disabled={disabled}
-            aria-pressed={customization.antiAIDetection}
-            aria-describedby={`${baseId}-antiai-desc`}
-            className={`
-              w-full py-4 sm:py-5 px-5 sm:px-6 rounded-xl font-bold text-base sm:text-lg
-              transition-all duration-300 transform
-              ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98] cursor-pointer'}
-              flex items-center justify-center gap-3
-              relative overflow-hidden
-              ${
-                customization.antiAIDetection
-                  ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-green-500 text-white shadow-xl shadow-green-500/40 ring-4 ring-green-400/30'
-                  : 'bg-gradient-to-r from-green-600 via-emerald-600 to-green-600 text-white shadow-lg shadow-green-600/30 hover:shadow-xl hover:shadow-green-500/40'
-              }
-            `}
-          >
-            {/* Animated background effect */}
-            <div
-              className={`
-                absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0
-                transition-transform duration-1000
-                ${customization.antiAIDetection ? 'animate-shimmer' : 'translate-x-[-200%]'}
-              `}
-              style={{ backgroundSize: '200% 100%' }}
-            />
-            
-            {/* Icon with animation */}
-            <div className={`relative ${customization.antiAIDetection ? 'animate-pulse-subtle' : ''}`}>
-              {customization.antiAIDetection ? (
-                <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8" />
-              ) : (
-                <Shield className="w-7 h-7 sm:w-8 sm:h-8" />
-              )}
-            </div>
-            
-            {/* Text */}
-            <span className="relative">
-              {customization.antiAIDetection
-                ? t('✓ Anti-Détection IA Activé', '✓ Anti-AI Detection Enabled')
-                : t('🛡️ Activer Anti-Détection IA', '🛡️ Enable Anti-AI Detection')}
-            </span>
-          </button>
-          
-          <p
-            id={`${baseId}-antiai-desc`}
-            className={`
-              text-sm text-center flex items-center justify-center gap-2 px-2
-              transition-colors duration-300
-              ${customization.antiAIDetection ? 'text-green-400' : 'text-text-secondary'}
-            `}
-          >
-            <Info className="w-4 h-4 flex-shrink-0" />
-            <span>
-              {customization.antiAIDetection
-                ? t(
-                    'Le texte sera humanisé pour éviter la détection par GPTZero, Turnitin, etc.',
-                    'Text will be humanized to avoid detection by GPTZero, Turnitin, etc.'
-                  )
-                : t(
-                    'Humanise le texte pour le rendre indétectable par les outils anti-IA',
-                    'Humanizes text to make it undetectable by anti-AI tools'
-                  )}
-            </span>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {(Object.keys(WRITING_STYLE_CONFIG) as WritingStyle[]).map((style) => {
+              const config = WRITING_STYLE_CONFIG[style];
+              const isSelected = customization.writingStyle === style;
+
+              return (
+                <button
+                  key={style}
+                  type="button"
+                  onClick={() => updateCustomization({ writingStyle: style })}
+                  disabled={disabled}
+                  aria-pressed={isSelected}
+                  className={`
+                    flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all
+                    ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]'}
+                    ${
+                      isSelected
+                        ? 'border-accent-primary bg-accent-primary/10 text-accent-primary shadow-md'
+                        : 'border-border-default bg-bg-tertiary text-text-secondary hover:border-border-hover hover:bg-bg-hover'
+                    }
+                  `}
+                >
+                  <span className="text-xl">{config.emoji}</span>
+                  <span className="text-xs sm:text-sm font-medium">
+                    {config.label[language]}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Description du style sélectionné */}
+          <p className="text-xs text-text-muted text-center px-2">
+            {WRITING_STYLE_CONFIG[customization.writingStyle].description[language]}
           </p>
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* ⚙️ ADVANCED OPTIONS — COLLAPSIBLE */}
+        {/* L1: 🛡️ ANTI-IA TOGGLE — Compact (pas le gros bouton) */}
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        <div className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary border border-border-default">
+          <div className="flex items-center gap-3">
+            <div className={`
+              w-9 h-9 rounded-lg flex items-center justify-center transition-all
+              ${customization.antiAIDetection
+                ? 'bg-green-500/20 text-green-400'
+                : 'bg-bg-hover text-text-muted'}
+            `}>
+              {customization.antiAIDetection ? (
+                <ShieldCheck className="w-5 h-5" />
+              ) : (
+                <Shield className="w-5 h-5" />
+              )}
+            </div>
+            <div>
+              <span className="text-sm font-medium text-text-primary">
+                {t('Anti-Détection IA', 'Anti-AI Detection')}
+              </span>
+              <p className="text-xs text-text-muted">
+                {t('Humanise le texte (GPTZero, Turnitin...)', 'Humanizes text (GPTZero, Turnitin...)')}
+              </p>
+            </div>
+          </div>
+
+          {/* Toggle switch */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={customization.antiAIDetection}
+            onClick={() => updateCustomization({ antiAIDetection: !customization.antiAIDetection })}
+            disabled={disabled}
+            className={`
+              relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300
+              ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+              ${customization.antiAIDetection ? 'bg-green-500' : 'bg-gray-600'}
+            `}
+          >
+            <span className={`
+              inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300
+              ${customization.antiAIDetection ? 'translate-x-6' : 'translate-x-1'}
+            `} />
+          </button>
+        </div>
+
+        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* L2: ⚙️ PLUS D'OPTIONS — Collapsible */}
         {/* ═══════════════════════════════════════════════════════════════════ */}
         <div className="border-t border-border-subtle pt-4">
           <button
             type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="flex items-center justify-between w-full text-sm text-text-secondary hover:text-text-primary transition-colors py-2 group"
-            aria-expanded={showAdvanced}
-            aria-controls={`${baseId}-advanced`}
+            onClick={() => setShowMore(!showMore)}
+            className="flex items-center justify-between w-full text-sm text-text-secondary hover:text-text-primary transition-colors py-1 group"
+            aria-expanded={showMore}
+            aria-controls={`${baseId}-more`}
           >
             <span className="font-medium flex items-center gap-2">
-              <Settings className="w-4 h-4" />
-              {t('Options avancées', 'Advanced Options')}
+              <Info className="w-4 h-4" />
+              {t("Plus d'options", 'More Options')}
             </span>
-            <div className={`transform transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`}>
+            <div className={`transform transition-transform duration-200 ${showMore ? 'rotate-180' : ''}`}>
               <ChevronDown className="w-5 h-5" />
             </div>
           </button>
 
-          {/* Advanced Options Content */}
+          {/* More Options Content */}
           <div
-            id={`${baseId}-advanced`}
+            id={`${baseId}-more`}
             className={`
               overflow-hidden transition-all duration-300 ease-in-out
-              ${showAdvanced ? 'max-h-[600px] opacity-100 mt-4' : 'max-h-0 opacity-0'}
+              ${showMore ? 'max-h-[500px] opacity-100 mt-4' : 'max-h-0 opacity-0'}
             `}
           >
             <div className="space-y-5">
-              {/* ─────────────────────────────────────────────────────────────── */}
-              {/* ✍️ WRITING STYLE SELECTOR */}
-              {/* ─────────────────────────────────────────────────────────────── */}
-              <div className="space-y-3">
-                <label className="flex items-center gap-2 text-sm font-medium text-text-primary">
-                  <FileText className="w-4 h-4 text-accent-primary" />
-                  {t("Style d'écriture", 'Writing Style')}
-                </label>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {(Object.keys(WRITING_STYLE_CONFIG) as WritingStyle[]).map((style) => {
-                    const config = WRITING_STYLE_CONFIG[style];
-                    const isSelected = customization.writingStyle === style;
-                    
-                    return (
-                      <button
-                        key={style}
-                        type="button"
-                        onClick={() => updateCustomization({ writingStyle: style })}
-                        disabled={disabled}
-                        aria-pressed={isSelected}
-                        className={`
-                          flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all
-                          ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]'}
-                          ${
-                            isSelected
-                              ? 'border-accent-primary bg-accent-primary/10 text-accent-primary shadow-md'
-                              : 'border-border-default bg-bg-tertiary text-text-secondary hover:border-border-hover hover:bg-bg-hover'
-                          }
-                        `}
-                      >
-                        <span className="text-xl">{config.emoji}</span>
-                        <span className="text-xs sm:text-sm font-medium">
-                          {config.label[language]}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                
-                {/* Description of selected style */}
-                <p className="text-xs text-text-muted text-center px-2">
-                  {WRITING_STYLE_CONFIG[customization.writingStyle].description[language]}
-                </p>
-              </div>
-
-              {/* ─────────────────────────────────────────────────────────────── */}
-              {/* 📏 TARGET LENGTH */}
-              {/* ─────────────────────────────────────────────────────────────── */}
+              {/* ───────────────────────────────────────────────────────── */}
+              {/* 📏 LONGUEUR CIBLE */}
+              {/* ───────────────────────────────────────────────────────── */}
               <div className="space-y-3">
                 <label className="flex items-center gap-2 text-sm font-medium text-text-primary">
                   <Target className="w-4 h-4 text-accent-primary" />
                   {t('Longueur cible', 'Target Length')}
                 </label>
-                
+
                 <div className="grid grid-cols-4 gap-2">
                   {(Object.keys(TARGET_LENGTH_CONFIG) as TargetLength[]).map((length) => {
                     const config = TARGET_LENGTH_CONFIG[length];
                     const isSelected = customization.targetLength === length;
-                    
+
                     return (
                       <button
                         key={length}
@@ -468,98 +397,55 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                 </div>
               </div>
 
-              {/* ─────────────────────────────────────────────────────────────── */}
-              {/* ☑️ CHECKBOXES: commentaires, metadata, intention */}
-              {/* ─────────────────────────────────────────────────────────────── */}
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-text-primary">
-                  {t('Options additionnelles', 'Additional Options')}
+              {/* ───────────────────────────────────────────────────────── */}
+              {/* 📝 INSTRUCTIONS PERSONNALISÉES */}
+              {/* ───────────────────────────────────────────────────────── */}
+              <div className="space-y-2">
+                <label
+                  htmlFor={`${baseId}-prompt`}
+                  className="flex items-center gap-2 text-sm font-medium text-text-primary"
+                >
+                  <MessageSquare className="w-4 h-4 text-accent-primary" />
+                  {t('Instructions personnalisées', 'Custom Instructions')}
+                  <span className="text-text-muted font-normal">
+                    ({t('optionnel', 'optional')})
+                  </span>
                 </label>
-                
-                <div className="space-y-2">
-                  {/* Commentaires */}
-                  <label
-                    className={`
-                      flex items-start gap-3 p-3 rounded-lg bg-bg-tertiary border border-border-default
-                      transition-all cursor-pointer hover:bg-bg-hover
-                      ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-                    `}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={customization.includeComments}
-                      onChange={(e) => updateCustomization({ includeComments: e.target.checked })}
-                      disabled={disabled}
-                      className="mt-0.5 w-5 h-5 text-accent-primary rounded focus:ring-accent-primary focus:ring-offset-0 border-border-default bg-bg-primary cursor-pointer"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-text-primary">
-                        {t('Inclure des commentaires', 'Include Comments')}
-                      </span>
-                      <p className="text-xs text-text-muted mt-0.5">
-                        {t(
-                          'Ajoute des annotations et remarques explicatives',
-                          'Adds explanatory annotations and remarks'
-                        )}
-                      </p>
-                    </div>
-                  </label>
 
-                  {/* Metadata */}
-                  <label
+                <div className="relative">
+                  <textarea
+                    id={`${baseId}-prompt`}
+                    value={customization.userPrompt}
+                    onChange={(e) => {
+                      const value = e.target.value.slice(0, MAX_PROMPT_LENGTH);
+                      updateCustomization({ userPrompt: value });
+                    }}
+                    disabled={disabled}
+                    placeholder={t(
+                      'Ex: "Concentre-toi sur les aspects pratiques" ou "Ajoute des exemples concrets"...',
+                      'E.g., "Focus on practical aspects" or "Add concrete examples"...'
+                    )}
+                    rows={3}
+                    maxLength={MAX_PROMPT_LENGTH}
                     className={`
-                      flex items-start gap-3 p-3 rounded-lg bg-bg-tertiary border border-border-default
-                      transition-all cursor-pointer hover:bg-bg-hover
-                      ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+                      w-full px-4 py-3 rounded-xl
+                      bg-bg-tertiary border border-border-default
+                      text-text-primary placeholder-text-muted
+                      focus:outline-none focus:ring-2 focus:ring-accent-primary/50 focus:border-accent-primary
+                      resize-none transition-all duration-200
+                      disabled:opacity-50 disabled:cursor-not-allowed
+                    `}
+                    aria-describedby={`${baseId}-prompt-count`}
+                  />
+                  <span
+                    id={`${baseId}-prompt-count`}
+                    className={`
+                      absolute bottom-2 right-3 text-xs
+                      ${customization.userPrompt.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-orange-500' : 'text-text-muted'}
                     `}
                   >
-                    <input
-                      type="checkbox"
-                      checked={customization.includeMetadata}
-                      onChange={(e) => updateCustomization({ includeMetadata: e.target.checked })}
-                      disabled={disabled}
-                      className="mt-0.5 w-5 h-5 text-accent-primary rounded focus:ring-accent-primary focus:ring-offset-0 border-border-default bg-bg-primary cursor-pointer"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-text-primary">
-                        {t('Inclure les métadonnées', 'Include Metadata')}
-                      </span>
-                      <p className="text-xs text-text-muted mt-0.5">
-                        {t(
-                          'Affiche les infos de la vidéo (durée, chaîne, date...)',
-                          'Shows video info (duration, channel, date...)'
-                        )}
-                      </p>
-                    </div>
-                  </label>
-
-                  {/* Intention */}
-                  <label
-                    className={`
-                      flex items-start gap-3 p-3 rounded-lg bg-bg-tertiary border border-border-default
-                      transition-all cursor-pointer hover:bg-bg-hover
-                      ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-                    `}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={customization.includeIntention}
-                      onChange={(e) => updateCustomization({ includeIntention: e.target.checked })}
-                      disabled={disabled}
-                      className="mt-0.5 w-5 h-5 text-accent-primary rounded focus:ring-accent-primary focus:ring-offset-0 border-border-default bg-bg-primary cursor-pointer"
-                    />
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-text-primary">
-                        {t("Analyser l'intention", 'Analyze Intention')}
-                      </span>
-                      <p className="text-xs text-text-muted mt-0.5">
-                        {t(
-                          "Décrypte l'objectif et le message de l'auteur",
-                          "Deciphers the author's goal and message"
-                        )}
-                      </p>
-                    </div>
-                  </label>
+                    {customization.userPrompt.length}/{MAX_PROMPT_LENGTH}
+                  </span>
                 </div>
               </div>
             </div>

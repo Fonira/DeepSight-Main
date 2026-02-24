@@ -103,7 +103,7 @@ const MODE_CONFIG = {
     hoverBorder: 'hover:border-blue-500/50',
     focusBorder: 'focus-within:border-blue-500/60',
     gradient: 'from-blue-500 to-cyan-600',
-    placeholder: { fr: 'Collez votre texte ici (article, transcription, notes...)', en: 'Paste your text here (article, transcript, notes...)' },
+    placeholder: { fr: 'Collez votre texte ici (min. 100 caractères)', en: 'Paste your text here (min. 100 characters)' },
   },
 };
 
@@ -282,10 +282,12 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
 
   // Computed values
   const inputVal = getInputValue(value);
-  const canSubmit = inputVal.trim().length > 0 && !loading && !disabled;
   const isTextMode = value.mode === 'text';
   const isSearchMode = value.mode === 'search';
   const charCount = inputVal.length;
+  const TEXT_MIN_CHARS = 100;
+  const textTooShort = isTextMode && charCount > 0 && charCount < TEXT_MIN_CHARS;
+  const canSubmit = inputVal.trim().length > 0 && !loading && !disabled && !textTooShort;
 
   // Credit info
   const creditCost = value.mode === 'search' ? 0 : 1;
@@ -423,7 +425,14 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
           {/* Right: Stats */}
           <div className="flex items-center gap-3 text-text-muted">
             {isTextMode && charCount > 0 && (
-              <span>{charCount.toLocaleString()} {language === 'fr' ? 'caractères' : 'chars'}</span>
+              <span className={textTooShort ? 'text-amber-400' : ''}>
+                {charCount.toLocaleString()}/{TEXT_MIN_CHARS} {language === 'fr' ? 'car. min' : 'min chars'}
+                {textTooShort && (
+                  <span className="ml-1">
+                    ({language === 'fr' ? `encore ${TEXT_MIN_CHARS - charCount}` : `${TEXT_MIN_CHARS - charCount} more`})
+                  </span>
+                )}
+              </span>
             )}
 
             {creditCost > 0 && (

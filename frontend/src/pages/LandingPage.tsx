@@ -142,10 +142,10 @@ const Logo: React.FC<{ className?: string }> = ({ className = "" }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// PLANS CONFIGURATION
+// PLANS CONFIGURATION — Aligné sur planPrivileges.ts (source de vérité)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type PlanId = 'free' | 'student' | 'starter' | 'pro' | 'team';
+import { PLAN_LIMITS, PLANS_INFO, type PlanId } from '../config/planPrivileges';
 
 interface PlanConfig {
   id: PlanId;
@@ -169,82 +169,82 @@ interface PlanConfig {
 const PLANS: PlanConfig[] = [
   {
     id: 'free',
-    name: { fr: 'Gratuit', en: 'Free' },
-    description: { fr: 'Pour découvrir', en: 'To discover' },
-    price: 0,
+    name: { fr: PLANS_INFO.free.name, en: PLANS_INFO.free.nameEn },
+    description: { fr: PLANS_INFO.free.description, en: PLANS_INFO.free.descriptionEn },
+    price: PLANS_INFO.free.priceMonthly / 100,
     icon: Zap,
     color: 'text-gray-400',
     gradient: 'from-gray-500 to-gray-600',
     features: [
-      { text: { fr: '3 analyses/mois', en: '3 analyses/month' }, included: true },
-      { text: { fr: 'Chat (3 q/vidéo)', en: 'Chat (3 q/video)' }, included: true },
-      { text: { fr: 'Historique 3 jours', en: '3 days history' }, included: true },
+      { text: { fr: `${PLAN_LIMITS.free.monthlyAnalyses} analyses/mois`, en: `${PLAN_LIMITS.free.monthlyAnalyses} analyses/month` }, included: true },
+      { text: { fr: `Chat (${PLAN_LIMITS.free.chatQuestionsPerVideo} q/vidéo)`, en: `Chat (${PLAN_LIMITS.free.chatQuestionsPerVideo} q/video)` }, included: true },
+      { text: { fr: `Historique ${PLAN_LIMITS.free.historyRetentionDays} jours`, en: `${PLAN_LIMITS.free.historyRetentionDays} days history` }, included: true },
       { text: { fr: 'Outils d\'étude', en: 'Study tools' }, included: false },
       { text: { fr: 'Recherche web', en: 'Web search' }, included: false },
       { text: { fr: 'Export PDF', en: 'PDF export' }, included: false },
     ],
   },
   {
-    id: 'student',
-    name: { fr: 'Étudiant', en: 'Student' },
-    description: { fr: 'Pour réviser efficacement', en: 'For effective studying' },
-    price: 2.99,
+    id: 'etudiant',
+    name: { fr: PLANS_INFO.etudiant.name, en: PLANS_INFO.etudiant.nameEn },
+    description: { fr: PLANS_INFO.etudiant.description, en: PLANS_INFO.etudiant.descriptionEn },
+    price: PLANS_INFO.etudiant.priceMonthly / 100,
     icon: GraduationCap,
     color: 'text-emerald-400',
     gradient: 'from-emerald-500 to-green-600',
     badge: { fr: 'Étudiants', en: 'Students' },
     badgeColor: 'bg-emerald-500',
     features: [
-      { text: { fr: '40 analyses/mois', en: '40 analyses/month' }, included: true },
-      { text: { fr: 'Chat (15 q/vidéo)', en: 'Chat (15 q/video)' }, included: true },
+      { text: { fr: `${PLAN_LIMITS.etudiant.monthlyAnalyses} analyses/mois`, en: `${PLAN_LIMITS.etudiant.monthlyAnalyses} analyses/month` }, included: true },
+      { text: { fr: `Chat (${PLAN_LIMITS.etudiant.chatQuestionsPerVideo} q/vidéo)`, en: `Chat (${PLAN_LIMITS.etudiant.chatQuestionsPerVideo} q/video)` }, included: true },
       { text: { fr: 'Flashcards & Cartes mentales', en: 'Flashcards & Mind maps' }, included: true, highlight: true },
-      { text: { fr: 'Recherche web (10/mois)', en: 'Web search (10/mo)' }, included: true },
-      { text: { fr: 'Export PDF', en: 'PDF export' }, included: true },
+      { text: { fr: 'Export Markdown', en: 'Markdown export' }, included: true },
       { text: { fr: 'Lecture audio TTS', en: 'TTS audio' }, included: true },
+      { text: { fr: 'Recherche web', en: 'Web search' }, included: false },
     ],
   },
   {
     id: 'starter',
-    name: { fr: 'Starter', en: 'Starter' },
-    description: { fr: 'Pour les réguliers', en: 'For regular users' },
-    price: 5.99,
+    name: { fr: PLANS_INFO.starter.name, en: PLANS_INFO.starter.nameEn },
+    description: { fr: PLANS_INFO.starter.description, en: PLANS_INFO.starter.descriptionEn },
+    price: PLANS_INFO.starter.priceMonthly / 100,
     icon: Star,
     color: 'text-blue-400',
     gradient: 'from-blue-500 to-blue-600',
     features: [
-      { text: { fr: '60 analyses/mois', en: '60 analyses/month' }, included: true },
-      { text: { fr: 'Chat (20 q/vidéo)', en: 'Chat (20 q/video)' }, included: true },
+      { text: { fr: `${PLAN_LIMITS.starter.monthlyAnalyses} analyses/mois`, en: `${PLAN_LIMITS.starter.monthlyAnalyses} analyses/month` }, included: true },
+      { text: { fr: `Chat (${PLAN_LIMITS.starter.chatQuestionsPerVideo} q/vidéo)`, en: `Chat (${PLAN_LIMITS.starter.chatQuestionsPerVideo} q/video)` }, included: true },
       { text: { fr: 'Flashcards & Cartes mentales', en: 'Flashcards & Mind maps' }, included: true },
-      { text: { fr: 'Recherche web (20/mois)', en: 'Web search (20/mo)' }, included: true, highlight: true },
-      { text: { fr: 'Export PDF', en: 'PDF export' }, included: true },
+      { text: { fr: `Recherche web (${PLAN_LIMITS.starter.webSearchMonthly}/mois)`, en: `Web search (${PLAN_LIMITS.starter.webSearchMonthly}/mo)` }, included: true, highlight: true },
+      { text: { fr: 'Export Markdown', en: 'Markdown export' }, included: true },
       { text: { fr: 'Playlists', en: 'Playlists' }, included: false },
     ],
   },
   {
     id: 'pro',
-    name: { fr: 'Pro', en: 'Pro' },
-    description: { fr: 'Pour les power users', en: 'For power users' },
-    price: 12.99,
+    name: { fr: PLANS_INFO.pro.name, en: PLANS_INFO.pro.nameEn },
+    description: { fr: PLANS_INFO.pro.description, en: PLANS_INFO.pro.descriptionEn },
+    price: PLANS_INFO.pro.priceMonthly / 100,
     icon: Crown,
     color: 'text-violet-400',
     gradient: 'from-violet-500 to-purple-600',
     popular: true,
     badge: { fr: 'Populaire', en: 'Popular' },
-    badgeColor: 'bg-red-500',
+    badgeColor: 'bg-violet-500',
     features: [
-      { text: { fr: '300 analyses/mois', en: '300 analyses/month' }, included: true },
+      { text: { fr: `${PLAN_LIMITS.pro.monthlyAnalyses} analyses/mois`, en: `${PLAN_LIMITS.pro.monthlyAnalyses} analyses/month` }, included: true },
       { text: { fr: 'Chat illimité', en: 'Unlimited chat' }, included: true, highlight: true },
-      { text: { fr: 'Flashcards & Cartes mentales', en: 'Flashcards & Mind maps' }, included: true },
-      { text: { fr: 'Playlists (20 vidéos)', en: 'Playlists (20 videos)' }, included: true, highlight: true },
-      { text: { fr: 'Recherche web (100/mois)', en: 'Web search (100/mo)' }, included: true },
-      { text: { fr: 'Export PDF', en: 'PDF export' }, included: true },
+      { text: { fr: `Playlists (${PLAN_LIMITS.pro.maxPlaylistVideos} vidéos)`, en: `Playlists (${PLAN_LIMITS.pro.maxPlaylistVideos} videos)` }, included: true, highlight: true },
+      { text: { fr: `Recherche web (${PLAN_LIMITS.pro.webSearchMonthly}/mois)`, en: `Web search (${PLAN_LIMITS.pro.webSearchMonthly}/mo)` }, included: true },
+      { text: { fr: 'Export PDF & Markdown', en: 'PDF & Markdown export' }, included: true },
+      { text: { fr: 'Support prioritaire', en: 'Priority support' }, included: true },
     ],
   },
   {
-    id: 'team',
-    name: { fr: 'Équipe', en: 'Team' },
-    description: { fr: 'Pour les entreprises', en: 'For businesses' },
-    price: 29.99,
+    id: 'equipe',
+    name: { fr: PLANS_INFO.equipe.name, en: PLANS_INFO.equipe.nameEn },
+    description: { fr: PLANS_INFO.equipe.description, en: PLANS_INFO.equipe.descriptionEn },
+    price: PLANS_INFO.equipe.priceMonthly / 100,
     icon: Users,
     color: 'text-amber-400',
     gradient: 'from-amber-500 to-orange-500',
@@ -252,12 +252,12 @@ const PLANS: PlanConfig[] = [
     badge: { fr: 'Entreprises', en: 'Business' },
     badgeColor: 'bg-orange-500',
     features: [
-      { text: { fr: '1000 analyses/mois', en: '1000 analyses/month' }, included: true, highlight: true },
+      { text: { fr: `${PLAN_LIMITS.equipe.monthlyAnalyses} analyses/mois`, en: `${PLAN_LIMITS.equipe.monthlyAnalyses} analyses/month` }, included: true, highlight: true },
       { text: { fr: 'Chat illimité', en: 'Unlimited chat' }, included: true },
-      { text: { fr: 'Flashcards & Cartes mentales', en: 'Flashcards & Mind maps' }, included: true },
-      { text: { fr: 'Playlists (100 vidéos)', en: 'Playlists (100 videos)' }, included: true, highlight: true },
+      { text: { fr: `Playlists (${PLAN_LIMITS.equipe.maxPlaylistVideos} vidéos)`, en: `Playlists (${PLAN_LIMITS.equipe.maxPlaylistVideos} videos)` }, included: true, highlight: true },
       { text: { fr: 'Recherche web illimitée', en: 'Unlimited web search' }, included: true, highlight: true },
-      { text: { fr: 'Export PDF', en: 'PDF export' }, included: true },
+      { text: { fr: 'Export PDF & Markdown', en: 'PDF & Markdown export' }, included: true },
+      { text: { fr: 'Accès API REST', en: 'REST API access' }, included: true },
     ],
   },
 ];
@@ -893,7 +893,7 @@ const LandingPage: React.FC = () => {
                           ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:opacity-90 shadow-lg'
                           : isRecommended
                           ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 shadow-lg'
-                          : plan.id === 'student'
+                          : plan.id === 'etudiant'
                           ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-90 shadow-lg'
                           : plan.id === 'starter'
                           ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:opacity-90 shadow-lg'

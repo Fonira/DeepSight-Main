@@ -219,11 +219,16 @@ export const detectVolatileTopics = (
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 💳 PLANS & LIMITES (aligné avec Streamlit PLAN_LIMITS)
+// 💳 PLANS & LIMITES
+// ⚠️ DÉPRÉCIÉ — Utiliser config/planPrivileges.ts comme source de vérité unique
+// Ce bloc est conservé pour rétrocompatibilité mais NE DOIT PAS être modifié.
+// Toute nouvelle feature doit importer depuis config/planPrivileges.ts
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/** @deprecated Use PlanId from config/planPrivileges.ts */
 export type PlanType = 'free' | 'student' | 'starter' | 'pro' | 'expert' | 'unlimited';
 
+/** @deprecated Use PLAN_LIMITS + PLANS_INFO from config/planPrivileges.ts */
 export interface PlanConfig {
   id: PlanType;
   name_fr: string;
@@ -347,6 +352,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
   },
 };
 
+/** @deprecated Use getPlanInfo() from config/planPrivileges.ts */
 export const getPlanConfig = (plan: PlanType): PlanConfig => {
   return PLAN_CONFIGS[plan] || PLAN_CONFIGS.free;
 };

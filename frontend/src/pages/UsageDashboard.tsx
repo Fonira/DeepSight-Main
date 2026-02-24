@@ -1,11 +1,11 @@
 /**
  * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  📊 USAGE DASHBOARD v4.0 — Mon Compte + Guide d'utilisation                        ║
+ * ║  📊 USAGE DASHBOARD v5.0 — Mon Compte + Guide d'utilisation                        ║
  * ╠════════════════════════════════════════════════════════════════════════════════════╣
+ * ║  ✅ Données alimentées par planPrivileges.ts (source de vérité unique)             ║
+ * ║  ✅ Guide d'utilisation mis à jour (modes: Accessible/Standard/Expert)             ║
+ * ║  ✅ Section modèles supprimée (auto-sélection selon le plan)                       ║
  * ║  ✅ Vidéo de présentation                                                          ║
- * ║  ✅ Guide d'utilisation complet                                                    ║
- * ║  ✅ Documentation des modèles IA                                                   ║
- * ║  ✅ Suivi de l'abonnement et crédits                                               ║
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
@@ -13,92 +13,27 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart3, Zap, MessageSquare, Globe, TrendingUp, CreditCard, ArrowRight,
-  Sparkles, Info, CheckCircle, XCircle, Brain, Search, Play, BookOpen,
+  Sparkles, CheckCircle, XCircle, Search, Play, BookOpen,
   Video, ChevronDown, ChevronRight, Youtube, FileText, Layers, Clock,
   Lightbulb, Download, History, Settings, Star,
   Compass, Wand2,
-  Languages, Headphones, FileDown, Link2, Bookmark,
+  Languages, FileDown, Link2, Bookmark,
+  Shield, PenTool,
   type LucideIcon,
 } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
+import {
+  PLAN_LIMITS,
+  PLAN_FEATURES,
+  PLANS_INFO,
+  normalizePlanId,
+  type PlanId,
+} from '../config/planPrivileges';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📊 DONNÉES STATIQUES
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const PLAN_INFO = {
-  free: {
-    name: { fr: 'Découverte', en: 'Discovery' },
-    color: '#888888',
-    emoji: '🆓',
-    credits: 500,
-    features: { analyses: 5, chat: 20, webSearch: false, playlists: false, models: ['mistral-small-latest'] }
-  },
-  starter: {
-    name: { fr: 'Starter', en: 'Starter' },
-    color: '#10B981',
-    emoji: '⚡',
-    credits: 5000,
-    features: { analyses: 50, chat: 100, webSearch: false, playlists: false, models: ['mistral-small-latest', 'mistral-medium-latest'] }
-  },
-  pro: {
-    name: { fr: 'Pro', en: 'Pro' },
-    color: '#F59E0B',
-    emoji: '⭐',
-    credits: 25000,
-    features: { analyses: 200, chat: 500, webSearch: true, playlists: true, models: ['mistral-small-latest', 'mistral-medium-latest', 'mistral-large-latest'] }
-  },
-  expert: {
-    name: { fr: 'Expert', en: 'Expert' },
-    color: '#8B5CF6',
-    emoji: '👑',
-    credits: 100000,
-    features: { analyses: -1, chat: -1, webSearch: true, playlists: true, models: ['mistral-small-latest', 'mistral-medium-latest', 'mistral-large-latest'] }
-  }
-};
-
-const MISTRAL_MODELS = [
-  {
-    id: 'mistral-small-latest',
-    name: 'Mistral Small',
-    emoji: '🟢',
-    costs: { analysis: 50, chat: 5 },
-    contextWindow: 32000,
-    description: { fr: 'Rapide et économique. Idéal pour les analyses courtes et le chat quotidien.', en: 'Fast and economical. Ideal for short analyses and daily chat.' },
-    plans: ['free', 'starter', 'pro', 'expert']
-  },
-  {
-    id: 'mistral-medium-latest',
-    name: 'Mistral Medium',
-    emoji: '🟡',
-    costs: { analysis: 100, chat: 10 },
-    contextWindow: 32000,
-    description: { fr: 'Équilibre parfait entre vitesse et qualité. Recommandé pour la plupart des usages.', en: 'Perfect balance between speed and quality. Recommended for most uses.' },
-    plans: ['starter', 'pro', 'expert']
-  },
-  {
-    id: 'mistral-large-latest',
-    name: 'Mistral Large',
-    emoji: '🟣',
-    costs: { analysis: 250, chat: 25 },
-    contextWindow: 128000,
-    description: { fr: 'Le plus puissant. Pour les analyses complexes nécessitant une compréhension approfondie.', en: 'The most powerful. For complex analyses requiring deep understanding.' },
-    plans: ['pro', 'expert']
-  }
-];
-
-const PERPLEXITY_INFO = {
-  name: 'Perplexity Web Search',
-  emoji: '🔍',
-  cost: 30,
-  description: { fr: 'Recherche web en temps réel pour enrichir les analyses.', en: 'Real-time web search to enrich analyses.' },
-  plans: ['pro', 'expert']
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 📚 GUIDE D'UTILISATION COMPLET
+// 📚 GUIDE D'UTILISATION COMPLET (mis à jour v5.0)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface GuideItem {
@@ -123,26 +58,70 @@ const USER_GUIDE: { sections: Array<{ id: string; icon: LucideIcon; title: { fr:
           icon: Youtube,
           title: { fr: 'Analyser une vidéo YouTube', en: 'Analyze a YouTube video' },
           description: {
-            fr: 'Collez simplement l\'URL d\'une vidéo YouTube dans la barre d\'analyse. Deep Sight extraira automatiquement la transcription et générera un résumé intelligent.',
-            en: 'Simply paste a YouTube video URL into the analysis bar. Deep Sight will automatically extract the transcript and generate a smart summary.'
+            fr: 'Collez simplement l\'URL d\'une vidéo YouTube dans la barre d\'analyse. Deep Sight extraira automatiquement la transcription et générera un résumé intelligent avec analyse épistémique bayésienne.',
+            en: 'Simply paste a YouTube video URL into the analysis bar. Deep Sight will automatically extract the transcript and generate a smart summary with Bayesian epistemic analysis.'
           },
           steps: {
-            fr: ['Copiez l\'URL de la vidéo YouTube', 'Collez-la dans la barre "Analyser une vidéo"', 'Choisissez le mode d\'analyse', 'Cliquez sur Analyser'],
-            en: ['Copy the YouTube video URL', 'Paste it in the "Analyze a video" bar', 'Choose the analysis mode', 'Click Analyze']
+            fr: ['Copiez l\'URL de la vidéo YouTube', 'Collez-la dans la barre d\'analyse', 'Choisissez le mode d\'analyse (Accessible, Standard ou Expert)', 'Cliquez sur Analyser — la catégorie et le modèle IA sont détectés automatiquement'],
+            en: ['Copy the YouTube video URL', 'Paste it in the analysis bar', 'Choose the analysis mode (Accessible, Standard or Expert)', 'Click Analyze — the category and AI model are auto-detected']
           }
         },
         {
           icon: Layers,
           title: { fr: 'Choisir le mode d\'analyse', en: 'Choose analysis mode' },
           description: {
-            fr: 'Deep Sight propose 3 modes d\'analyse adaptés à vos besoins : Express pour un aperçu rapide, Standard pour une analyse équilibrée, et Approfondi pour une étude complète.',
-            en: 'Deep Sight offers 3 analysis modes tailored to your needs: Express for a quick overview, Standard for a balanced analysis, and Deep for a complete study.'
+            fr: 'Deep Sight propose 3 modes d\'analyse adaptés à vos besoins. Le modèle IA est automatiquement sélectionné selon votre plan d\'abonnement.',
+            en: 'Deep Sight offers 3 analysis modes tailored to your needs. The AI model is automatically selected based on your subscription plan.'
           },
           modes: [
-            { name: { fr: 'Express (30s)', en: 'Express (30s)' }, desc: { fr: 'Résumé ultra-concis, points clés uniquement', en: 'Ultra-concise summary, key points only' } },
-            { name: { fr: 'Standard (2-4 min)', en: 'Standard (2-4 min)' }, desc: { fr: 'Analyse équilibrée avec contexte', en: 'Balanced analysis with context' } },
-            { name: { fr: 'Approfondi (5-10 min)', en: 'Deep (5-10 min)' }, desc: { fr: 'Étude complète et détaillée', en: 'Complete and detailed study' } }
+            { name: { fr: 'Accessible', en: 'Accessible' }, desc: { fr: 'Grand public, simplifié et clair', en: 'General public, simplified and clear' } },
+            { name: { fr: 'Standard', en: 'Standard' }, desc: { fr: 'Analyse équilibrée avec contexte détaillé', en: 'Balanced analysis with detailed context' } },
+            { name: { fr: 'Expert', en: 'Expert' }, desc: { fr: 'Analyse technique et académique approfondie', en: 'In-depth technical and academic analysis' } }
           ]
+        },
+        {
+          icon: FileText,
+          title: { fr: 'Analyser un texte brut', en: 'Analyze raw text' },
+          description: {
+            fr: 'Vous pouvez aussi coller directement un texte (article, notes, transcription) pour le faire analyser. Minimum 100 caractères requis.',
+            en: 'You can also paste raw text (article, notes, transcript) to have it analyzed. Minimum 100 characters required.'
+          },
+          steps: {
+            fr: ['Sélectionnez le mode "Texte" dans la barre d\'analyse', 'Collez votre texte (min. 100 caractères)', 'Ajoutez un titre et une source si vous le souhaitez', 'Cliquez sur Analyser'],
+            en: ['Select "Text" mode in the analysis bar', 'Paste your text (min. 100 characters)', 'Add a title and source if you wish', 'Click Analyze']
+          }
+        }
+      ]
+    },
+    {
+      id: 'customization',
+      icon: PenTool,
+      title: { fr: 'Personnalisation', en: 'Customization' },
+      color: 'blue',
+      items: [
+        {
+          icon: PenTool,
+          title: { fr: 'Style d\'écriture', en: 'Writing style' },
+          description: {
+            fr: 'Choisissez parmi 6 styles d\'écriture pour adapter le résumé à vos besoins : Standard, Humanisé, Académique, Casual, Humour, ou Doux.',
+            en: 'Choose from 6 writing styles to adapt the summary to your needs: Default, Human, Academic, Casual, Humorous, or Soft.'
+          }
+        },
+        {
+          icon: Shield,
+          title: { fr: 'Anti-détection IA', en: 'Anti-AI detection' },
+          description: {
+            fr: 'Activez cette option pour que le résumé soit rédigé de manière plus naturelle et moins détectable par les outils de détection d\'IA. Idéal pour les travaux académiques.',
+            en: 'Enable this option for a more naturally written summary that is less detectable by AI detection tools. Ideal for academic work.'
+          }
+        },
+        {
+          icon: Sparkles,
+          title: { fr: 'Instructions personnalisées', en: 'Custom instructions' },
+          description: {
+            fr: 'Ajoutez vos propres instructions pour orienter l\'analyse selon vos besoins spécifiques. Par exemple : "Concentre-toi sur les arguments économiques" ou "Extrais les dates clés".',
+            en: 'Add your own instructions to guide the analysis according to your specific needs. For example: "Focus on economic arguments" or "Extract key dates".'
+          }
         }
       ]
     },
@@ -150,7 +129,7 @@ const USER_GUIDE: { sections: Array<{ id: string; icon: LucideIcon; title: { fr:
       id: 'features',
       icon: Wand2,
       title: { fr: 'Fonctionnalités principales', en: 'Main Features' },
-      color: 'blue',
+      color: 'purple',
       items: [
         {
           icon: MessageSquare,
@@ -174,7 +153,7 @@ const USER_GUIDE: { sections: Array<{ id: string; icon: LucideIcon; title: { fr:
         },
         {
           icon: BookOpen,
-          title: { fr: 'Concepts Wikipedia', en: 'Wikipedia Concepts' },
+          title: { fr: 'Concepts enrichis', en: 'Enriched Concepts' },
           description: {
             fr: 'Les termes importants sont automatiquement identifiés et liés à Wikipedia. Survolez un concept pour voir sa définition, cliquez pour en savoir plus.',
             en: 'Important terms are automatically identified and linked to Wikipedia. Hover over a concept to see its definition, click to learn more.'
@@ -182,12 +161,12 @@ const USER_GUIDE: { sections: Array<{ id: string; icon: LucideIcon; title: { fr:
         },
         {
           icon: Search,
-          title: { fr: 'Enrichissement Perplexity', en: 'Perplexity Enrichment' },
+          title: { fr: 'Fact-checking Perplexity', en: 'Perplexity Fact-checking' },
           description: {
-            fr: 'Pour les abonnés Pro et Expert, activez la recherche web pour vérifier les faits, ajouter du contexte actualisé et obtenir des sources supplémentaires.',
-            en: 'For Pro and Expert subscribers, enable web search to fact-check, add current context, and get additional sources.'
+            fr: 'À partir du plan Starter, activez la recherche web pour vérifier les faits, ajouter du contexte actualisé et obtenir des sources supplémentaires.',
+            en: 'Starting from the Starter plan, enable web search to fact-check, add current context, and get additional sources.'
           },
-          badge: { fr: 'Pro/Expert', en: 'Pro/Expert' }
+          badge: { fr: 'Starter+', en: 'Starter+' }
         },
         {
           icon: Layers,
@@ -196,7 +175,7 @@ const USER_GUIDE: { sections: Array<{ id: string; icon: LucideIcon; title: { fr:
             fr: 'Analysez plusieurs vidéos en une seule fois. Deep Sight créera un corpus thématique avec des synthèses croisées et des connexions entre les contenus.',
             en: 'Analyze multiple videos at once. Deep Sight will create a thematic corpus with cross-syntheses and connections between contents.'
           },
-          badge: { fr: 'Pro/Expert', en: 'Pro/Expert' }
+          badge: { fr: 'Pro+', en: 'Pro+' }
         },
         {
           icon: Star,
@@ -212,23 +191,25 @@ const USER_GUIDE: { sections: Array<{ id: string; icon: LucideIcon; title: { fr:
       id: 'export',
       icon: Download,
       title: { fr: 'Export et partage', en: 'Export and Share' },
-      color: 'purple',
+      color: 'amber',
       items: [
         {
           icon: FileDown,
           title: { fr: 'Exporter en PDF', en: 'Export to PDF' },
           description: {
-            fr: 'Téléchargez vos analyses au format PDF avec tous les détails, timestamps et concepts. Idéal pour archiver ou partager.',
-            en: 'Download your analyses in PDF format with all details, timestamps and concepts. Ideal for archiving or sharing.'
-          }
+            fr: 'Téléchargez vos analyses au format PDF avec tous les détails, timestamps et concepts. Disponible à partir du plan Pro.',
+            en: 'Download your analyses in PDF format with all details, timestamps and concepts. Available from the Pro plan.'
+          },
+          badge: { fr: 'Pro+', en: 'Pro+' }
         },
         {
           icon: FileText,
           title: { fr: 'Copier en Markdown', en: 'Copy as Markdown' },
           description: {
-            fr: 'Copiez le résumé au format Markdown pour l\'intégrer facilement dans vos notes (Notion, Obsidian, etc.).',
-            en: 'Copy the summary in Markdown format to easily integrate it into your notes (Notion, Obsidian, etc.).'
-          }
+            fr: 'Copiez le résumé au format Markdown pour l\'intégrer facilement dans vos notes (Notion, Obsidian, etc.). Disponible dès le plan Étudiant.',
+            en: 'Copy the summary in Markdown format to easily integrate it into your notes (Notion, Obsidian, etc.). Available from the Student plan.'
+          },
+          badge: { fr: 'Étudiant+', en: 'Student+' }
         },
         {
           icon: Link2,
@@ -244,15 +225,15 @@ const USER_GUIDE: { sections: Array<{ id: string; icon: LucideIcon; title: { fr:
     {
       id: 'history',
       icon: History,
-      title: { fr: 'Historique et organisation', en: 'History and Organization' },
-      color: 'amber',
+      title: { fr: 'Historique et découverte', en: 'History and Discovery' },
+      color: 'slate',
       items: [
         {
           icon: History,
           title: { fr: 'Historique des analyses', en: 'Analysis History' },
           description: {
-            fr: 'Retrouvez toutes vos analyses passées dans l\'onglet Historique. Recherchez, filtrez et ré-accédez à vos résumés à tout moment.',
-            en: 'Find all your past analyses in the History tab. Search, filter and re-access your summaries at any time.'
+            fr: 'Retrouvez toutes vos analyses passées dans l\'onglet Historique. Recherchez, filtrez et ré-accédez à vos résumés à tout moment. La durée de rétention dépend de votre plan.',
+            en: 'Find all your past analyses in the History tab. Search, filter and re-access your summaries at any time. Retention duration depends on your plan.'
           }
         },
         {
@@ -267,32 +248,8 @@ const USER_GUIDE: { sections: Array<{ id: string; icon: LucideIcon; title: { fr:
           icon: Compass,
           title: { fr: 'Découverte intelligente', en: 'Smart Discovery' },
           description: {
-            fr: 'Utilisez la fonction Découverte pour trouver des vidéos pertinentes sur un sujet. Deep Sight suggère du contenu de qualité basé sur vos intérêts.',
-            en: 'Use the Discovery feature to find relevant videos on a topic. Deep Sight suggests quality content based on your interests.'
-          }
-        }
-      ]
-    },
-    {
-      id: 'settings',
-      icon: Settings,
-      title: { fr: 'Personnalisation', en: 'Customization' },
-      color: 'slate',
-      items: [
-        {
-          icon: Languages,
-          title: { fr: 'Langue de l\'interface', en: 'Interface Language' },
-          description: {
-            fr: 'Changez la langue de l\'interface (Français/Anglais) dans les Paramètres. Les résumés sont générés dans la langue de la vidéo par défaut.',
-            en: 'Change the interface language (French/English) in Settings. Summaries are generated in the video language by default.'
-          }
-        },
-        {
-          icon: Headphones,
-          title: { fr: 'Mode d\'analyse par défaut', en: 'Default Analysis Mode' },
-          description: {
-            fr: 'Définissez votre mode d\'analyse préféré (Express, Standard, Approfondi) dans les Paramètres pour gagner du temps.',
-            en: 'Set your preferred analysis mode (Express, Standard, Deep) in Settings to save time.'
+            fr: 'Utilisez la fonction Découverte pour trouver des vidéos pertinentes sur un sujet. Deep Sight suggère du contenu de qualité classé par pertinence académique. Gratuit et sans crédits !',
+            en: 'Use the Discovery feature to find relevant videos on a topic. Deep Sight suggests quality content ranked by academic relevance. Free and no credits needed!'
           }
         }
       ]
@@ -314,7 +271,7 @@ function formatNumber(num: number, language: string = 'fr'): string {
 // 🎨 COMPOSANTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function StatCard({ icon: Icon, title, value, subtitle, color = 'blue', progress, maxValue }: { 
+function StatCard({ icon: Icon, title, value, subtitle, color = 'blue', progress, maxValue }: {
   icon: React.ElementType; title: string; value: string | number; subtitle?: string; color?: string; progress?: number; maxValue?: number;
 }) {
   const colorClasses: Record<string, { bg: string; icon: string; progress: string }> = {
@@ -345,28 +302,6 @@ function StatCard({ icon: Icon, title, value, subtitle, color = 'blue', progress
   );
 }
 
-function ModelCard({ model, available, language }: { model: typeof MISTRAL_MODELS[0]; available: boolean; language: string }) {
-  return (
-    <div className={`card p-5 ${!available ? 'opacity-50' : ''}`}>
-      <div className="flex items-center gap-3 mb-3">
-        <span className="text-2xl">{model.emoji}</span>
-        <div>
-          <h3 className="font-semibold text-text-primary">{model.name}</h3>
-          {!available && <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">{language === 'fr' ? 'Plan supérieur' : 'Higher plan'}</span>}
-        </div>
-      </div>
-      <p className="text-sm text-text-secondary mb-3">{model.description[language as 'fr' | 'en']}</p>
-      <div className="flex gap-4 text-xs text-text-tertiary">
-        <span>Analyse: <strong className="text-text-primary">{model.costs.analysis}</strong> crédits</span>
-        <span>Chat: <strong className="text-text-primary">{model.costs.chat}</strong> crédits</span>
-      </div>
-      <div className="mt-2 text-xs text-text-tertiary flex items-center gap-1">
-        {model.contextWindow >= 100000 ? '🎯 Précis' : '⚡ Rapide'} • {(model.contextWindow / 1000)}k tokens
-      </div>
-    </div>
-  );
-}
-
 function FeatureItem({ enabled, label }: { enabled: boolean; label: string }) {
   return (
     <div className="flex items-center gap-2 p-2 rounded-lg bg-bg-tertiary/50">
@@ -377,7 +312,7 @@ function FeatureItem({ enabled, label }: { enabled: boolean; label: string }) {
 }
 
 // Section du guide avec accordéon
-function GuideSection({ section, language, isOpen, onToggle }: { 
+function GuideSection({ section, language, isOpen, onToggle }: {
   section: typeof USER_GUIDE.sections[0]; language: string; isOpen: boolean; onToggle: () => void;
 }) {
   const Icon = section.icon;
@@ -400,7 +335,7 @@ function GuideSection({ section, language, isOpen, onToggle }: {
         </div>
         {isOpen ? <ChevronDown className="w-5 h-5 text-text-tertiary" /> : <ChevronRight className="w-5 h-5 text-text-tertiary" />}
       </button>
-      
+
       {isOpen && (
         <div className="px-4 pb-4 space-y-4">
           {section.items.map((item, idx) => {
@@ -421,7 +356,7 @@ function GuideSection({ section, language, isOpen, onToggle }: {
                       )}
                     </div>
                     <p className="text-sm text-text-secondary mt-1">{item.description[language as 'fr' | 'en']}</p>
-                    
+
                     {/* Steps */}
                     {item.steps && (
                       <div className="mt-3 space-y-1">
@@ -433,7 +368,7 @@ function GuideSection({ section, language, isOpen, onToggle }: {
                         ))}
                       </div>
                     )}
-                    
+
                     {/* Modes */}
                     {item.modes && (
                       <div className="mt-3 grid gap-2">
@@ -446,7 +381,7 @@ function GuideSection({ section, language, isOpen, onToggle }: {
                         ))}
                       </div>
                     )}
-                    
+
                     {/* Tips */}
                     {item.tips && (
                       <div className="mt-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
@@ -485,9 +420,11 @@ export function UsageDashboard() {
   const navigate = useNavigate();
   const [openSections, setOpenSections] = useState<string[]>(['getting-started']);
 
-  const currentPlan = (user?.plan || 'free') as keyof typeof PLAN_INFO;
-  const planInfo = PLAN_INFO[currentPlan] || PLAN_INFO.free;
-  const userCredits = user?.credits || 0;
+  // Normaliser le plan user vers les vrais plans (gère student→etudiant, team→equipe, etc.)
+  const planId: PlanId = normalizePlanId(user?.plan);
+  const planInfo = PLANS_INFO[planId];
+  const limits = PLAN_LIMITS[planId];
+  const features = PLAN_FEATURES[planId];
 
   const toggleSection = (id: string) => {
     setOpenSections(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]);
@@ -515,9 +452,14 @@ export function UsageDashboard() {
             <div>
               <div className="text-sm text-text-tertiary mb-1">{language === 'fr' ? 'Plan actuel' : 'Current plan'}</div>
               <div className="text-2xl font-bold text-text-primary flex items-center gap-2">
-                <span>{planInfo.emoji}</span>
-                <span>{planInfo.name[language as 'fr' | 'en']}</span>
+                <span>{planInfo.icon === 'GraduationCap' ? '🎓' : planInfo.icon === 'Crown' ? '👑' : planInfo.icon === 'Users' ? '👥' : '⚡'}</span>
+                <span>{language === 'fr' ? planInfo.name : planInfo.nameEn}</span>
               </div>
+              {planInfo.priceMonthly > 0 && (
+                <div className="text-sm text-text-secondary mt-0.5">
+                  {(planInfo.priceMonthly / 100).toFixed(2)}€/{language === 'fr' ? 'mois' : 'month'}
+                </div>
+              )}
               {user?.email && <div className="text-xs text-text-muted mt-1">{user.email}</div>}
             </div>
             <button onClick={() => navigate('/upgrade')} className="btn btn-primary flex items-center gap-2">
@@ -528,12 +470,38 @@ export function UsageDashboard() {
           </div>
         </div>
 
-        {/* Stats Grid */}
+        {/* Stats Grid — Données réelles depuis planPrivileges */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard icon={Zap} title={language === 'fr' ? 'Crédits disponibles' : 'Available credits'} value={formatNumber(userCredits, language)} subtitle={`/ ${formatNumber(planInfo.credits, language)} ${language === 'fr' ? 'mensuels' : 'monthly'}`} color="green" progress={userCredits} maxValue={planInfo.credits} />
-          <StatCard icon={TrendingUp} title={language === 'fr' ? 'Analyses/mois' : 'Analyses/month'} value={planInfo.features.analyses === -1 ? '∞' : planInfo.features.analyses} subtitle={language === 'fr' ? 'selon votre plan' : 'based on your plan'} color="blue" />
-          <StatCard icon={MessageSquare} title={language === 'fr' ? 'Chat IA/jour' : 'AI Chat/day'} value={planInfo.features.chat === -1 ? '∞' : planInfo.features.chat} subtitle={language === 'fr' ? 'messages quotidiens' : 'daily messages'} color="purple" />
-          <StatCard icon={Globe} title={language === 'fr' ? 'Recherche web' : 'Web search'} value={planInfo.features.webSearch ? (language === 'fr' ? 'Activé' : 'Enabled') : (language === 'fr' ? 'Non disponible' : 'Not available')} subtitle={planInfo.features.webSearch ? 'Perplexity AI' : (language === 'fr' ? 'Plan Pro requis' : 'Pro plan required')} color={planInfo.features.webSearch ? 'amber' : 'rose'} />
+          <StatCard
+            icon={TrendingUp}
+            title={language === 'fr' ? 'Analyses/mois' : 'Analyses/month'}
+            value={user?.analysis_count ?? 0}
+            subtitle={`/ ${formatNumber(limits.monthlyAnalyses, language)} ${language === 'fr' ? 'max' : 'max'}`}
+            color="blue"
+            progress={user?.analysis_count ?? 0}
+            maxValue={limits.monthlyAnalyses === -1 ? 1000 : limits.monthlyAnalyses}
+          />
+          <StatCard
+            icon={MessageSquare}
+            title={language === 'fr' ? 'Chat IA/jour' : 'AI Chat/day'}
+            value={limits.chatDailyLimit === -1 ? '∞' : limits.chatDailyLimit}
+            subtitle={`${limits.chatQuestionsPerVideo === -1 ? '∞' : limits.chatQuestionsPerVideo} ${language === 'fr' ? 'par vidéo' : 'per video'}`}
+            color="purple"
+          />
+          <StatCard
+            icon={Globe}
+            title={language === 'fr' ? 'Recherche web' : 'Web search'}
+            value={limits.webSearchEnabled ? (limits.webSearchMonthly === -1 ? '∞' : formatNumber(limits.webSearchMonthly, language)) : (language === 'fr' ? 'Non' : 'No')}
+            subtitle={limits.webSearchEnabled ? (language === 'fr' ? 'Perplexity AI' : 'Perplexity AI') : (language === 'fr' ? `Plan Starter requis` : 'Starter plan required')}
+            color={limits.webSearchEnabled ? 'amber' : 'rose'}
+          />
+          <StatCard
+            icon={Clock}
+            title={language === 'fr' ? 'Durée max vidéo' : 'Max video length'}
+            value={limits.maxVideoLengthMin === -1 ? '∞' : `${limits.maxVideoLengthMin} min`}
+            subtitle={limits.historyRetentionDays === -1 ? (language === 'fr' ? 'Historique permanent' : 'Permanent history') : `${limits.historyRetentionDays}j ${language === 'fr' ? 'd\'historique' : 'history'}`}
+            color="green"
+          />
         </div>
 
         {/* ═══════════════════════════════════════════════════════════════════════ */}
@@ -546,17 +514,7 @@ export function UsageDashboard() {
           </h2>
 
           <div className="card overflow-hidden">
-            {/* Placeholder pour la vidéo - à remplacer par l'URL YouTube */}
             <div className="aspect-video bg-gradient-to-br from-bg-tertiary to-bg-secondary relative flex items-center justify-center">
-              {/* Remplacer ce div par un iframe YouTube quand la vidéo sera prête */}
-              {/* <iframe 
-                src="https://www.youtube.com/embed/VIDEO_ID" 
-                className="w-full h-full"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              /> */}
-              
-              {/* Placeholder actuel */}
               <div className="text-center">
                 <div className="w-20 h-20 rounded-full bg-accent-primary/20 flex items-center justify-center mx-auto mb-4 cursor-pointer hover:bg-accent-primary/30 transition-colors group">
                   <Play className="w-10 h-10 text-accent-primary group-hover:scale-110 transition-transform" fill="currentColor" />
@@ -565,7 +523,7 @@ export function UsageDashboard() {
                   {language === 'fr' ? 'Découvrez Deep Sight en 3 minutes' : 'Discover Deep Sight in 3 minutes'}
                 </h3>
                 <p className="text-text-secondary max-w-md mx-auto">
-                  {language === 'fr' 
+                  {language === 'fr'
                     ? 'Apprenez à utiliser toutes les fonctionnalités de Deep Sight pour analyser vos vidéos YouTube efficacement.'
                     : 'Learn how to use all Deep Sight features to effectively analyze your YouTube videos.'}
                 </p>
@@ -600,59 +558,9 @@ export function UsageDashboard() {
           </div>
         </div>
 
-        {/* Section Modèles IA Mistral */}
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-            <Brain className="w-5 h-5 text-accent-primary" />
-            {language === 'fr' ? 'Modèles Mistral IA' : 'Mistral AI Models'}
-          </h2>
-
-          <div className="card mb-4 p-4 border-l-4 border-l-blue-500">
-            <div className="flex items-start gap-3">
-              <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-text-secondary">
-                <strong className="text-text-primary">💰 {language === 'fr' ? 'Système de crédits' : 'Credit System'}:</strong>{' '}
-                {language === 'fr' 
-                  ? 'Chaque action consomme des crédits selon le modèle choisi. Les vidéos longues (>60 min) coûtent 2× plus.'
-                  : 'Each action uses credits based on the chosen model. Long videos (>60 min) cost 2× more.'}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {MISTRAL_MODELS.map(model => (
-              <ModelCard key={model.id} model={model} available={model.plans.includes(currentPlan)} language={language} />
-            ))}
-          </div>
-        </div>
-
-        {/* Section Perplexity */}
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
-            <Search className="w-5 h-5 text-amber-500" />
-            {language === 'fr' ? 'Recherche Web Perplexity' : 'Perplexity Web Search'}
-          </h2>
-
-          <div className={`card p-5 ${!planInfo.features.webSearch ? 'opacity-60' : ''}`}>
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-2xl flex-shrink-0">🔍</div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="font-semibold text-text-primary">{PERPLEXITY_INFO.name}</h3>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-500">+{PERPLEXITY_INFO.cost} crédits</span>
-                  {!planInfo.features.webSearch && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-500">
-                      {language === 'fr' ? 'Plan Pro requis' : 'Pro plan required'}
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-text-secondary">{PERPLEXITY_INFO.description[language as 'fr' | 'en']}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Fonctionnalités du plan */}
+        {/* ═══════════════════════════════════════════════════════════════════════ */}
+        {/* ✅ FONCTIONNALITÉS DE VOTRE PLAN — depuis planPrivileges.ts */}
+        {/* ═══════════════════════════════════════════════════════════════════════ */}
         <div className="card p-6">
           <h2 className="text-lg font-semibold text-text-primary mb-4 flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-accent-primary" />
@@ -660,13 +568,19 @@ export function UsageDashboard() {
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <FeatureItem enabled={planInfo.features.playlists} label={language === 'fr' ? 'Analyse de playlists' : 'Playlist analysis'} />
-            <FeatureItem enabled={planInfo.features.webSearch} label={language === 'fr' ? 'Recherche web Perplexity' : 'Perplexity web search'} />
-            <FeatureItem enabled={planInfo.features.models.includes('mistral-medium-latest')} label="Mistral Medium" />
-            <FeatureItem enabled={planInfo.features.models.includes('mistral-large-latest')} label="Mistral Large" />
+            <FeatureItem enabled={features.flashcards} label={language === 'fr' ? 'Flashcards automatiques' : 'Auto flashcards'} />
+            <FeatureItem enabled={features.mindmap} label={language === 'fr' ? 'Cartes conceptuelles' : 'Mind maps'} />
+            <FeatureItem enabled={features.webSearch} label={language === 'fr' ? 'Fact-checking Perplexity' : 'Perplexity fact-checking'} />
+            <FeatureItem enabled={features.playlists} label={language === 'fr' ? 'Analyse de playlists' : 'Playlist analysis'} />
+            <FeatureItem enabled={features.exportPdf} label={language === 'fr' ? 'Export PDF' : 'PDF export'} />
+            <FeatureItem enabled={features.exportMarkdown} label={language === 'fr' ? 'Export Markdown' : 'Markdown export'} />
+            <FeatureItem enabled={features.ttsAudio} label={language === 'fr' ? 'Lecture audio (TTS)' : 'Audio playback (TTS)'} />
+            <FeatureItem enabled={features.apiAccess} label={language === 'fr' ? 'Accès API' : 'API access'} />
+            <FeatureItem enabled={features.prioritySupport} label={language === 'fr' ? 'Support prioritaire' : 'Priority support'} />
+            <FeatureItem enabled={limits.concurrentAnalyses > 1} label={language === 'fr' ? `Analyses simultanées (${limits.concurrentAnalyses})` : `Concurrent analyses (${limits.concurrentAnalyses})`} />
           </div>
 
-          {currentPlan === 'free' && (
+          {planId === 'free' && (
             <div className="mt-6 pt-4 border-t border-border-subtle">
               <button onClick={() => navigate('/upgrade')} className="btn btn-primary w-full flex items-center justify-center gap-2">
                 <Sparkles className="w-4 h-4" />
