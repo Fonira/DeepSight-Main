@@ -11,7 +11,7 @@
  * - Team: Enterprises & labs (29.99/mo)
  */
 
-export type PlanId = 'free' | 'student' | 'starter' | 'pro' | 'team';
+export type PlanId = 'free' | 'student' | 'starter' | 'pro';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PLAN LIMITS
@@ -120,25 +120,6 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyCanGenerateMore: true,
     studyDailyLimit: 50,
     academicPapersPerAnalysis: 30,
-  },
-  team: {
-    monthlyAnalyses: 1000,
-    monthlyCredits: 50000,
-    maxVideoDuration: -1,
-    chatQuestionsPerVideo: -1,
-    chatDailyLimit: -1,
-    maxPlaylistVideos: 100,
-    maxPlaylists: -1,
-    maxExportsPerDay: -1,
-    webSearchMonthly: -1,
-    historyDays: -1,
-    apiRequestsDaily: 1000,
-    teamMembers: 5,
-    studyQuizQuestions: 15,
-    studyMindmapDepth: 5,
-    studyCanGenerateMore: true,
-    studyDailyLimit: -1,
-    academicPapersPerAnalysis: 50,
   },
 };
 
@@ -304,37 +285,6 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     bibliographyExport: true,
     academicFullText: true,
   },
-  team: {
-    summaryExpress: true,
-    summaryDetailed: true,
-    summaryTimestamps: true,
-    summaryConcepts: true,
-    chatBasic: true,
-    chatWebSearch: true,
-    chatSuggestedQuestions: true,
-    factCheckBasic: true,
-    factCheckAdvanced: true,
-    intelligentSearch: true,
-    playlists: true,
-    corpus: true,
-    flashcards: true,
-    conceptMaps: true,
-    citationExport: true,
-    bibtexExport: true,
-    exportPdf: true,
-    exportMarkdown: true,
-    exportTxt: true,
-    exportWatermark: false,
-    ttsAudio: true,
-    apiAccess: true,
-    prioritySupport: true,
-    sharedWorkspace: true,
-    slackIntegration: true,
-    teamsIntegration: true,
-    academicSearch: true,
-    bibliographyExport: true,
-    academicFullText: true,
-  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -374,7 +324,7 @@ export const PLANS_INFO: PlanInfo[] = [
   },
   {
     id: 'student',
-    name: { fr: 'Étudiant', en: 'Student' },
+    name: { fr: 'Starter', en: 'Starter' },
     description: { fr: 'Pour réviser efficacement', en: 'For effective studying' },
     price: 299,
     priceDisplay: { fr: '2,99€/mois', en: '€2.99/mo' },
@@ -388,7 +338,7 @@ export const PLANS_INFO: PlanInfo[] = [
   },
   {
     id: 'starter',
-    name: { fr: 'Starter', en: 'Starter' },
+    name: { fr: 'Étudiant', en: 'Student' },
     description: { fr: 'Pour les utilisateurs réguliers', en: 'For regular users' },
     price: 599,
     priceDisplay: { fr: '5,99€/mois', en: '€5.99/mo' },
@@ -413,21 +363,6 @@ export const PLANS_INFO: PlanInfo[] = [
     order: 3,
     targetAudience: { fr: 'Créateurs & Profs', en: 'Creators & Teachers' },
     killerFeature: { fr: 'Playlists (20 vidéos)', en: 'Playlists (20 videos)' },
-  },
-  {
-    id: 'team',
-    name: { fr: 'Équipe', en: 'Team' },
-    description: { fr: 'Pour les entreprises & laboratoires', en: 'For businesses & labs' },
-    price: 2999,
-    priceDisplay: { fr: '29,99€/mois', en: '€29.99/mo' },
-    badge: { fr: 'Entreprises', en: 'Business' },
-    recommended: true,
-    color: '#F59E0B',
-    icon: 'people-outline',
-    gradient: ['#F59E0B', '#D97706'],
-    order: 4,
-    targetAudience: { fr: 'Entreprises & Labos', en: 'Businesses & Labs' },
-    killerFeature: { fr: 'API + 5 utilisateurs', en: 'API + 5 users' },
   },
 ];
 
@@ -576,10 +511,10 @@ export function normalizePlanId(plan: string | undefined): PlanId {
     'etudiant': 'student',
     'starter': 'starter',
     'pro': 'pro',
-    'team': 'team',
-    'équipe': 'team',
-    'equipe': 'team',
-    'expert': 'team',
+    'team': 'pro',
+    'équipe': 'pro',
+    'equipe': 'pro',
+    'expert': 'pro',
   };
 
   return planMapping[normalized] || 'free';
@@ -636,13 +571,13 @@ export function isPlanHigher(currentPlan: PlanId | string, targetPlan: PlanId | 
  * Get minimum plan required for a feature
  */
 export function getMinPlanForFeature(feature: keyof PlanFeatures): PlanId {
-  const planOrder: PlanId[] = ['free', 'student', 'starter', 'pro', 'team'];
+  const planOrder: PlanId[] = ['free', 'student', 'starter', 'pro'];
   for (const plan of planOrder) {
     if (PLAN_FEATURES[plan][feature]) {
       return plan;
     }
   }
-  return 'team';
+  return 'pro';
 }
 
 /**

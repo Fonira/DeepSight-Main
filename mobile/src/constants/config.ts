@@ -47,7 +47,6 @@ export const PLANS = {
   STUDENT: 'student',
   STARTER: 'starter',
   PRO: 'pro',
-  TEAM: 'team',
 } as const;
 
 export type PlanType = typeof PLANS[keyof typeof PLANS];

@@ -29,14 +29,15 @@ type AnalysisPhase =
   | { phase: 'error'; message: string };
 
 // Plan display names — sync avec planPrivileges.ts (source de vérité)
+// ⚠️ SYNC avec planPrivileges.ts — noms swappés : etudiant→"Starter", starter→"Étudiant"
 const PLAN_DISPLAY: Record<string, string> = {
   free: 'Gratuit',
-  etudiant: 'Étudiant',
-  student: 'Étudiant',   // alias rétrocompatibilité
-  starter: 'Starter',
+  etudiant: 'Starter',
+  student: 'Starter',    // alias rétrocompatibilité
+  starter: 'Étudiant',
   pro: 'Pro',
-  equipe: 'Équipe',
-  team: 'Équipe',        // alias rétrocompatibilité
+  equipe: 'Pro',         // legacy → redirige vers Pro
+  team: 'Pro',           // legacy → redirige vers Pro
 };
 
 export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onLogout, onLoginRedirect, onError }) => {

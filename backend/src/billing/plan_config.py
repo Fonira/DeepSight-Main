@@ -22,7 +22,6 @@ class PlanId(str, Enum):
     ETUDIANT = "etudiant"
     STARTER = "starter"
     PRO = "pro"
-    EQUIPE = "equipe"
 
 
 PLAN_HIERARCHY: list[PlanId] = [
@@ -30,8 +29,30 @@ PLAN_HIERARCHY: list[PlanId] = [
     PlanId.ETUDIANT,
     PlanId.STARTER,
     PlanId.PRO,
-    PlanId.EQUIPE,
 ]
+
+# Aliases rétrocompatibilité — anciens plan IDs → plan valide actuel
+PLAN_ALIASES: dict[str, str] = {
+    "equipe": "pro",
+    "team": "pro",
+    "expert": "pro",
+    "unlimited": "pro",
+    "student": "etudiant",
+}
+
+
+def normalize_plan_id(plan_id: str) -> str:
+    """Normalise un plan_id (gère les anciens noms et aliases)."""
+    if not plan_id:
+        return PlanId.FREE.value
+    lowered = plan_id.lower().strip()
+    if lowered in PLAN_ALIASES:
+        return PLAN_ALIASES[lowered]
+    # Vérifier si c'est un PlanId valide
+    try:
+        return PlanId(lowered).value
+    except ValueError:
+        return PlanId.FREE.value
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -106,18 +127,18 @@ PLANS: dict[str, dict[str, Any]] = {
         },
     },
 
-    # ─── ÉTUDIANT ─────────────────────────────────────────────────────────
+    # ─── ÉTUDIANT (affiché "Starter") ────────────────────────────────────
     PlanId.ETUDIANT: {
-        "name": "Étudiant",
-        "name_en": "Student",
-        "description": "Idéal pour les étudiants et l'apprentissage",
-        "description_en": "Perfect for students and learning",
+        "name": "Starter",
+        "name_en": "Starter",
+        "description": "Découvrez DeepSight avec les essentiels",
+        "description_en": "Discover DeepSight with the essentials",
         "price_monthly_cents": 299,
         "stripe_price_id_test": None,
         "stripe_price_id_live": None,
         "color": "#10B981",
         "icon": "🎓",
-        "badge": {"text": "Étudiants", "color": "#10B981"},
+        "badge": None,
         "popular": False,
         "limits": {
             "monthly_credits": 2000,
@@ -174,18 +195,18 @@ PLANS: dict[str, dict[str, Any]] = {
         },
     },
 
-    # ─── STARTER ──────────────────────────────────────────────────────────
+    # ─── STARTER (affiché "Étudiant") ────────────────────────────────────
     PlanId.STARTER: {
-        "name": "Starter",
-        "name_en": "Starter",
-        "description": "Pour les utilisateurs réguliers",
-        "description_en": "For regular users",
+        "name": "Étudiant",
+        "name_en": "Student",
+        "description": "Idéal pour les étudiants et l'apprentissage",
+        "description_en": "Perfect for students and learning",
         "price_monthly_cents": 599,
         "stripe_price_id_test": None,
         "stripe_price_id_live": None,
         "color": "#8B5CF6",
         "icon": "⭐",
-        "badge": None,
+        "badge": {"text": "Étudiants", "color": "#10B981"},
         "popular": False,
         "limits": {
             "monthly_credits": 3000,
@@ -290,77 +311,6 @@ PLANS: dict[str, dict[str, Any]] = {
             {"text": "Modèle Mistral Large", "icon": "🤖"},
             {"text": "Historique permanent", "icon": "♾️"},
         ],
-        "features_locked": [
-            {"text": "Playlists illimitées", "unlock_plan": "equipe"},
-            {"text": "5 analyses simultanées", "unlock_plan": "equipe"},
-            {"text": "Recherche web illimitée", "unlock_plan": "equipe"},
-        ],
-        "platforms": {
-            "web": {
-                "analyse": True, "chat": True, "flashcards": True,
-                "mindmap": True, "web_search": True, "export_md": True,
-                "export_pdf": True, "playlists": True, "history": True,
-            },
-            "mobile": {
-                "analyse": True, "chat": True, "flashcards": True,
-                "mindmap": False, "web_search": False, "export_md": False,
-                "export_pdf": False, "playlists": True, "history": True,
-            },
-            "extension": {
-                "analyse": True, "chat": True, "flashcards": False,
-                "mindmap": False, "web_search": False, "export_md": False,
-                "export_pdf": False, "playlists": False, "history": True,
-            },
-        },
-    },
-
-    # ─── ÉQUIPE ───────────────────────────────────────────────────────────
-    PlanId.EQUIPE: {
-        "name": "Équipe",
-        "name_en": "Team",
-        "description": "Pour les équipes et entreprises",
-        "description_en": "For teams and businesses",
-        "price_monthly_cents": 2999,
-        "stripe_price_id_test": None,
-        "stripe_price_id_live": None,
-        "color": "#EF4444",
-        "icon": "👑",
-        "badge": {"text": "Entreprises", "color": "#F97316"},
-        "popular": False,
-        "limits": {
-            "monthly_credits": 50000,
-            "monthly_analyses": 1000,
-            "max_video_length_min": -1,
-            "concurrent_analyses": 5,
-            "priority_queue": True,
-            "chat_questions_per_video": -1,
-            "chat_daily_limit": -1,
-            "flashcards_enabled": True,
-            "mindmap_enabled": True,
-            "web_search_enabled": True,
-            "web_search_monthly": -1,
-            "playlists_enabled": True,
-            "max_playlists": -1,
-            "max_playlist_videos": 100,
-            "export_formats": ["txt", "md", "pdf"],
-            "export_markdown": True,
-            "export_pdf": True,
-            "history_retention_days": -1,
-            "allowed_models": ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"],
-            "default_model": "mistral-large-latest",
-        },
-        "features_display": [
-            {"text": "1000 analyses / mois", "icon": "📊"},
-            {"text": "Vidéos sans limite de durée", "icon": "⏱️", "highlight": True},
-            {"text": "Chat IA illimité", "icon": "💬"},
-            {"text": "5 analyses simultanées", "icon": "⚡", "highlight": True},
-            {"text": "File prioritaire", "icon": "🏃"},
-            {"text": "Playlists illimitées (100 vidéos)", "icon": "📋", "highlight": True},
-            {"text": "Recherche web illimitée", "icon": "🔍", "highlight": True},
-            {"text": "Export PDF + Markdown", "icon": "📄"},
-            {"text": "Modèle Mistral Large", "icon": "🤖"},
-            {"text": "Historique permanent", "icon": "♾️"},
-        ],
         "features_locked": [],
         "platforms": {
             "web": {
@@ -380,6 +330,7 @@ PLANS: dict[str, dict[str, Any]] = {
             },
         },
     },
+
 }
 
 
@@ -394,13 +345,11 @@ def init_stripe_prices() -> None:
       STRIPE_PRICE_ETUDIANT_TEST / STRIPE_PRICE_ETUDIANT_LIVE
       STRIPE_PRICE_STARTER_TEST  / STRIPE_PRICE_STARTER_LIVE
       STRIPE_PRICE_PRO_TEST      / STRIPE_PRICE_PRO_LIVE
-      STRIPE_PRICE_EQUIPE_TEST   / STRIPE_PRICE_EQUIPE_LIVE
     """
     mapping = {
         PlanId.ETUDIANT: "ETUDIANT",
         PlanId.STARTER: "STARTER",
         PlanId.PRO: "PRO",
-        PlanId.EQUIPE: "EQUIPE",
     }
     for plan_id, env_key in mapping.items():
         test_id = os.environ.get(f"STRIPE_PRICE_{env_key}_TEST", "")
@@ -416,8 +365,9 @@ def init_stripe_prices() -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def get_plan(plan_id: str) -> dict[str, Any]:
-    """Retourne la config complète d'un plan. Fallback vers FREE si invalide."""
-    return PLANS.get(plan_id, PLANS[PlanId.FREE])
+    """Retourne la config complète d'un plan. Normalise les aliases, fallback vers FREE."""
+    normalized = normalize_plan_id(plan_id)
+    return PLANS.get(normalized, PLANS[PlanId.FREE])
 
 
 def get_limits(plan_id: str) -> dict[str, Any]:
@@ -440,7 +390,8 @@ def is_feature_available(plan_id: str, feature: str, platform: str = "web") -> b
 def get_plan_index(plan_id: str) -> int:
     """Retourne l'index du plan dans la hiérarchie (0 = free)."""
     try:
-        return PLAN_HIERARCHY.index(PlanId(plan_id))
+        normalized = normalize_plan_id(plan_id)
+        return PLAN_HIERARCHY.index(PlanId(normalized))
     except (ValueError, KeyError):
         return 0
 
@@ -466,7 +417,7 @@ def get_minimum_plan_for(feature: str) -> str:
         web = PLANS[plan_id]["platforms"]["web"]
         if feature in web and web[feature]:
             return plan_id.value
-    return PlanId.EQUIPE.value
+    return PlanId.PRO.value
 
 
 def get_price_id(plan_id: str, test_mode: bool = True) -> Optional[str]:

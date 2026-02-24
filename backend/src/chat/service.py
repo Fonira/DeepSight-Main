@@ -139,7 +139,7 @@ async def select_chat_model(question: str, user_plan: str) -> str:
         return "mistral"
 
     # Plans premium: GPT-4 pour questions complexes
-    if user_plan in ["pro", "expert", "team", "unlimited"]:
+    if user_plan in ["pro", "expert", "unlimited"]:
         if _detect_complex_question(question) and is_openai_available():
             return "openai"
 

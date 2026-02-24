@@ -5,7 +5,7 @@ export interface User {
   username: string;
   email: string;
   avatar_url?: string;
-  plan: 'free' | 'student' | 'starter' | 'pro' | 'team';
+  plan: 'free' | 'student' | 'starter' | 'pro';
   credits: number;
   credits_monthly: number;
   default_lang?: string;
@@ -108,7 +108,7 @@ export interface PlanFeatures {
 
 export interface PlanInfo {
   plan_name: string;
-  plan_id: 'free' | 'student' | 'starter' | 'pro' | 'team';
+  plan_id: 'free' | 'student' | 'starter' | 'pro';
   monthly_analyses: number;
   analyses_this_month: number;
   credits: number;

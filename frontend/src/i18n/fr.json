@@ -371,20 +371,20 @@
         "description": "Pour explorer",
         "cta": "Commencer gratuitement"
       },
-      "starter": {
+      "etudiant": {
         "name": "Starter",
-        "description": "Pour les réguliers",
+        "description": "Découvrez les essentiels",
         "cta": "Choisir Starter"
+      },
+      "starter": {
+        "name": "Étudiant",
+        "description": "Idéal pour les étudiants",
+        "cta": "Choisir Étudiant"
       },
       "pro": {
         "name": "Pro",
         "description": "Pour les power users",
         "cta": "Choisir Pro"
-      },
-      "expert": {
-        "name": "Expert",
-        "description": "Pour les professionnels",
-        "cta": "Passer à Expert"
       }
     },
     "features_list": {

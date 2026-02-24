@@ -212,13 +212,12 @@ VITE_SENTRY_DSN=optional-sentry-dsn
 
 ## 💰 Pricing Plans
 
-| Plan | Price | Analyses/mo | Key Features |
-|------|-------|-------------|--------------|
-| **Free** | $0 | 3 | 10min videos, 3-day history |
-| **Student** | $2.99 | 40 | Flashcards, concept maps |
-| **Starter** | $5.99 | 60 | 2h videos, exports, 60-day history |
-| **Pro** | $12.99 | 300 | Playlists, unlimited chat |
-| **Team** | $29.99 | 1000 | API access, 5 users |
+| Plan (Display) | Internal ID | Price | Analyses/mo | Key Features |
+|----------------|------------|-------|-------------|--------------|
+| **Free** | free | $0 | 3 | 15min videos, 60-day history |
+| **Starter** | etudiant | $2.99 | 20 | Flashcards, mind maps |
+| **Student** | starter | $5.99 | 50 | 2h videos, web search AI |
+| **Pro** | pro | $12.99 | 200 | Playlists, unlimited chat, PDF export |
 
 ---
 

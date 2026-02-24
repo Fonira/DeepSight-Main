@@ -12,7 +12,6 @@ const PLAN_ANALYSES: Record<string, number> = {
   student: 40,
   starter: 60,
   pro: 300,
-  team: 1000,
 };
 
 export const UsageSection: React.FC = () => {

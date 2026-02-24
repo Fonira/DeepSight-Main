@@ -36,12 +36,10 @@ import {
 
 const PLAN_ICON_MAP: Record<string, React.ElementType> = {
   free: Zap,
-  etudiant: GraduationCap,
-  student: GraduationCap,
-  starter: Star,
+  etudiant: Star,
+  student: Star,
+  starter: GraduationCap,
   pro: Crown,
-  equipe: Users,
-  team: Users,
 };
 
 const PLAN_GRADIENT_MAP: Record<string, string> = {
@@ -50,8 +48,6 @@ const PLAN_GRADIENT_MAP: Record<string, string> = {
   student: 'from-emerald-500 to-green-600',
   starter: 'from-blue-500 to-blue-600',
   pro: 'from-violet-500 to-purple-600',
-  equipe: 'from-amber-500 to-orange-500',
-  team: 'from-amber-500 to-orange-500',
 };
 
 function formatPriceFr(cents: number): string {

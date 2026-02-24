@@ -31,8 +31,7 @@ type LimitType =
   | 'playlist'
   | 'export'
   | 'webSearch'
-  | 'tts'
-  | 'apiKey';
+  | 'tts';
 
 interface UpgradePromptModalProps {
   visible: boolean;
@@ -140,16 +139,6 @@ const LIMIT_CONFIG: Record<LimitType, {
     featuresFr: getLimitFeatures('pro', 'fr'),
     featuresEn: getLimitFeatures('pro', 'en'),
     recommendedPlan: 'pro',
-  },
-  apiKey: {
-    icon: 'key-outline',
-    titleFr: 'Clé API requise',
-    titleEn: 'API key required',
-    descriptionFr: 'L\'accès API nécessite un plan Team.',
-    descriptionEn: 'API access requires a Team plan.',
-    featuresFr: getLimitFeatures('team', 'fr'),
-    featuresEn: getLimitFeatures('team', 'en'),
-    recommendedPlan: 'team',
   },
 };
 

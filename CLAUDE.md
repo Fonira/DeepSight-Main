@@ -245,13 +245,12 @@ async def route(user: User = Depends(require_plan("pro"))): ...
 
 ## Pricing Plans
 
-| Plan | Prix | Analyses/mois | Crédits | Features clés |
-|------|------|---------------|---------|---------------|
-| Free | 0 | 3 | 150 | 10min max, 3j historique |
-| Student | 2.99€ | 40 | 2000 | Flashcards, concept maps |
-| Starter | 5.99€ | 60 | 3000 | 2h max, exports, 60j historique |
-| Pro | 12.99€ | 300 | 15000 | Playlists, chat illimité, TTS |
-| Team | 29.99€ | 1000 | 50000 | API access, 5 users |
+| Plan (affiché) | ID interne | Prix | Analyses/mois | Crédits | Features clés |
+|----------------|-----------|------|---------------|---------|---------------|
+| Gratuit | free | 0€ | 3 | 150 | 15min max, historique 60j |
+| Starter | etudiant | 2.99€ | 20 | 2000 | Flashcards, cartes mentales |
+| Étudiant | starter | 5.99€ | 50 | 3000 | 2h max, recherche web IA |
+| Pro | pro | 12.99€ | 200 | 15000 | Playlists, chat illimité, export PDF |
 
 ---
 

@@ -493,5 +493,5 @@ async def _get_papers_by_ids(
 
 def _can_export_bibliography(plan: str) -> bool:
     """Check if plan allows bibliography export"""
-    allowed_plans = ["starter", "student", "pro", "expert", "team", "unlimited"]
+    allowed_plans = ["starter", "student", "pro", "expert", "unlimited"]
     return plan in allowed_plans

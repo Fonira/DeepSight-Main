@@ -141,10 +141,10 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
     const models: AIModel[] = [
       { id: 'mistral-small-latest', name: 'Mistral Small', desc: 'Rapide', descEn: 'Fast', icon: '⚡' },
     ];
-    if (['student', 'starter', 'pro', 'team', 'expert', 'unlimited'].includes(normalizedPlan)) {
+    if (['student', 'starter', 'pro', 'expert', 'unlimited'].includes(normalizedPlan)) {
       models.push({ id: 'mistral-medium-latest', name: 'Mistral Medium', desc: 'Équilibré', descEn: 'Balanced', icon: '⚖️' });
     }
-    if (['pro', 'team', 'expert', 'unlimited'].includes(normalizedPlan)) {
+    if (['pro', 'expert', 'unlimited'].includes(normalizedPlan)) {
       models.push({ id: 'mistral-large-latest', name: 'Mistral Large', desc: 'Puissant', descEn: 'Powerful', icon: '🚀' });
     }
     return models;

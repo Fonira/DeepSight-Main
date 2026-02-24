@@ -8,7 +8,6 @@ const PLAN_CREDITS: Record<string, number> = {
   student: 2000,
   starter: 3000,
   pro: 15000,
-  team: 50000,
 };
 
 export function useCredits() {

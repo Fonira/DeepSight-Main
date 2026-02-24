@@ -32,7 +32,6 @@ TIER_LIMITS = {
     "student": 10,
     "pro": 30,
     "expert": 50,
-    "team": 50,
     "unlimited": 100
 }
 

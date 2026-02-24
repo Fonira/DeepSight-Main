@@ -4,9 +4,9 @@
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type PlanId = 'free' | 'etudiant' | 'starter' | 'pro' | 'equipe';
+export type PlanId = 'free' | 'etudiant' | 'starter' | 'pro';
 
-export const PLAN_HIERARCHY: PlanId[] = ['free', 'etudiant', 'starter', 'pro', 'equipe'];
+export const PLAN_HIERARCHY: PlanId[] = ['free', 'etudiant', 'starter', 'pro'];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LIMITES PAR PLAN
@@ -129,28 +129,6 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     allowedModels: ['mistral-small-latest', 'mistral-medium-latest', 'mistral-large-latest'],
     defaultModel: 'mistral-medium-latest',
   },
-
-  equipe: {
-    monthlyAnalyses: 1000,
-    maxVideoLengthMin: -1,
-    concurrentAnalyses: 5,
-    priorityQueue: true,
-    chatQuestionsPerVideo: -1,
-    chatDailyLimit: -1,
-    flashcardsEnabled: true,
-    mindmapEnabled: true,
-    webSearchEnabled: true,
-    webSearchMonthly: -1,
-    playlistsEnabled: true,
-    maxPlaylists: -1,
-    maxPlaylistVideos: 100,
-    exportFormats: ['txt', 'md', 'pdf'],
-    exportMarkdown: true,
-    exportPdf: true,
-    historyRetentionDays: -1,
-    allowedModels: ['mistral-small-latest', 'mistral-medium-latest', 'mistral-large-latest'],
-    defaultModel: 'mistral-medium-latest',
-  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -174,7 +152,6 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
   etudiant: { flashcards: true, mindmap: true, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: false },
   starter: { flashcards: true, mindmap: true, webSearch: true, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: false, apiAccess: false, prioritySupport: false },
   pro: { flashcards: true, mindmap: true, webSearch: true, playlists: true, exportPdf: true, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: true },
-  equipe: { flashcards: true, mindmap: true, webSearch: true, playlists: true, exportPdf: true, exportMarkdown: true, ttsAudio: true, apiAccess: true, prioritySupport: true },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -215,27 +192,27 @@ export const PLANS_INFO: Record<PlanId, PlanInfo> = {
 
   etudiant: {
     id: 'etudiant',
-    name: 'Étudiant',
-    nameEn: 'Student',
-    description: 'Pour réviser efficacement',
-    descriptionEn: 'Study smarter',
+    name: 'Starter',
+    nameEn: 'Starter',
+    description: 'Découvrez DeepSight avec les essentiels',
+    descriptionEn: 'Discover DeepSight with essentials',
     priceMonthly: 299,
     color: '#10B981',
-    icon: 'GraduationCap',
-    badge: { text: 'Étudiants', color: '#10B981' },
+    icon: '⭐',
+    badge: null,
     popular: false,
   },
 
   starter: {
     id: 'starter',
-    name: 'Starter',
-    nameEn: 'Starter',
-    description: 'Pour les utilisateurs réguliers',
-    descriptionEn: 'For regular users',
+    name: 'Étudiant',
+    nameEn: 'Student',
+    description: 'Idéal pour les étudiants et l\'apprentissage',
+    descriptionEn: 'Ideal for students and learning',
     priceMonthly: 599,
     color: '#3B82F6',
-    icon: 'Zap',
-    badge: null,
+    icon: '🎓',
+    badge: { text: 'Étudiants', color: '#10B981' },
     popular: false,
   },
 
@@ -250,19 +227,6 @@ export const PLANS_INFO: Record<PlanId, PlanInfo> = {
     icon: 'Crown',
     badge: { text: 'Populaire', color: '#8B5CF6' },
     popular: true,
-  },
-
-  equipe: {
-    id: 'equipe',
-    name: 'Équipe',
-    nameEn: 'Team',
-    description: 'Pour les entreprises et laboratoires',
-    descriptionEn: 'For businesses & labs',
-    priceMonthly: 2999,
-    color: '#F59E0B',
-    icon: 'Users',
-    badge: { text: 'Entreprises', color: '#F59E0B' },
-    popular: false,
   },
 };
 
@@ -302,7 +266,7 @@ export function getMinPlanForFeature(feature: keyof PlanLimits): PlanId {
       return plan;
     }
   }
-  return 'equipe';
+  return 'pro';
 }
 
 export function formatLimit(value: number, unit?: string): string {
@@ -320,7 +284,7 @@ export const CONVERSION_TRIGGERS = {
   trialPlan: 'pro' as PlanId,
 };
 
-/** Normalise les alias de plans (student→etudiant, team→equipe, etc.) */
+/** Normalise les alias de plans (student→etudiant, team→pro, etc.) */
 export function normalizePlanId(raw: string | undefined | null): PlanId {
   if (!raw) return 'free';
   const lower = raw.toLowerCase().trim();
@@ -332,9 +296,9 @@ export function normalizePlanId(raw: string | undefined | null): PlanId {
     'étudiant': 'etudiant',
     starter: 'starter',
     pro: 'pro',
-    team: 'equipe',
-    equipe: 'equipe',
-    'équipe': 'equipe',
+    team: 'pro',
+    equipe: 'pro',
+    'équipe': 'pro',
   };
   return aliases[lower] ?? 'free';
 }
@@ -371,16 +335,6 @@ export const TESTIMONIALS: Testimonial[] = [
       en: 'I analyze competitor videos in minutes. Incredible time saver.',
     },
     plan: 'pro',
-  },
-  {
-    avatar: '🔬',
-    author: 'Dr. Sophie M.',
-    role: { fr: 'Chercheuse en IA', en: 'AI Researcher' },
-    text: {
-      fr: 'Les playlists m\'aident à synthétiser des heures de conférences.',
-      en: 'Playlists help me synthesize hours of conferences.',
-    },
-    plan: 'equipe',
   },
   {
     avatar: '📚',

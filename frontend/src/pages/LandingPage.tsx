@@ -240,26 +240,6 @@ const PLANS: PlanConfig[] = [
       { text: { fr: 'Support prioritaire', en: 'Priority support' }, included: true },
     ],
   },
-  {
-    id: 'equipe',
-    name: { fr: PLANS_INFO.equipe.name, en: PLANS_INFO.equipe.nameEn },
-    description: { fr: PLANS_INFO.equipe.description, en: PLANS_INFO.equipe.descriptionEn },
-    price: PLANS_INFO.equipe.priceMonthly / 100,
-    icon: Users,
-    color: 'text-amber-400',
-    gradient: 'from-amber-500 to-orange-500',
-    recommended: true,
-    badge: { fr: 'Entreprises', en: 'Business' },
-    badgeColor: 'bg-orange-500',
-    features: [
-      { text: { fr: `${PLAN_LIMITS.equipe.monthlyAnalyses} analyses/mois`, en: `${PLAN_LIMITS.equipe.monthlyAnalyses} analyses/month` }, included: true, highlight: true },
-      { text: { fr: 'Chat illimité', en: 'Unlimited chat' }, included: true },
-      { text: { fr: `Playlists (${PLAN_LIMITS.equipe.maxPlaylistVideos} vidéos)`, en: `Playlists (${PLAN_LIMITS.equipe.maxPlaylistVideos} videos)` }, included: true, highlight: true },
-      { text: { fr: 'Recherche web illimitée', en: 'Unlimited web search' }, included: true, highlight: true },
-      { text: { fr: 'Export PDF & Markdown', en: 'PDF & Markdown export' }, included: true },
-      { text: { fr: 'Accès API REST', en: 'REST API access' }, included: true },
-    ],
-  },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════

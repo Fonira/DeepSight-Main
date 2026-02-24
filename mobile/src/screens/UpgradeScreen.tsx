@@ -56,7 +56,7 @@ const PLANS: PlanWithTranslations[] = PLANS_INFO.map((info) => {
 });
 
 // Plan progression order for recommendations
-const PLAN_ORDER: PlanId[] = ['free', 'student', 'starter', 'pro', 'team'];
+const PLAN_ORDER: PlanId[] = ['free', 'student', 'starter', 'pro'];
 
 // Get recommended upgrade path based on current plan
 const getRecommendedPlan = (currentPlan: PlanId): PlanId | null => {

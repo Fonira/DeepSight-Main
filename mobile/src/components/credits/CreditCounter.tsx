@@ -27,7 +27,6 @@ const PLAN_LIMITS: Record<string, { monthlyCredits: number; monthlyAnalyses: num
   student: { monthlyCredits: 2000, monthlyAnalyses: 40 },
   starter: { monthlyCredits: 3000, monthlyAnalyses: 60 },
   pro: { monthlyCredits: 15000, monthlyAnalyses: 300 },
-  team: { monthlyCredits: 50000, monthlyAnalyses: 1000 },
 };
 
 interface CreditCounterProps {
@@ -261,7 +260,7 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
       )}
 
       {/* Upgrade button */}
-      {showUpgradeButton && normalizedPlan !== 'team' && (
+      {showUpgradeButton && normalizedPlan !== 'pro' && (
         <TouchableOpacity
           style={[styles.upgradeButton, { backgroundColor: `${colors.accentPrimary}20` }]}
           onPress={handleUpgrade}

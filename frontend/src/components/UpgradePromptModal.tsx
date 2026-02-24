@@ -4,10 +4,9 @@
  *
  * Aligned with new pricing strategy:
  * - Free: 0€ - Maximum friction (3 analyses)
- * - Student: 2.99€ - Focus apprentissage
- * - Starter: 5.99€ - Particuliers
+ * - Starter: 2.99€ - Essentials (was "Étudiant")
+ * - Student: 5.99€ - Learning (was "Starter")
  * - Pro: 12.99€ - Créateurs & Pros (POPULAIRE)
- * - Team: 29.99€ - Entreprises
  */
 
 import React from 'react';
@@ -102,10 +101,9 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
   // Icon mapping — aligné sur PlanId (planPrivileges.ts)
   const iconMap: Record<string, React.ElementType> = {
     'free': Zap,
-    'etudiant': GraduationCap,
-    'starter': Star,
+    'etudiant': Star,
+    'starter': GraduationCap,
     'pro': Crown,
-    'equipe': Users,
   };
 
   // Gradient mapping
@@ -114,7 +112,6 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
     'etudiant': 'from-emerald-500 to-green-600',
     'starter': 'from-blue-500 to-blue-600',
     'pro': 'from-violet-500 to-purple-600',
-    'equipe': 'from-amber-500 to-orange-500',
   };
 
   const lang = language === 'fr' ? 'fr' : 'en';
@@ -139,7 +136,7 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
       };
     }
 
-    // Default progression: free → etudiant → starter → pro → equipe
+    // Default progression: free → etudiant → starter → pro
     if (plan === 'free') {
       const info = PLANS_INFO.etudiant;
       const limits = PLAN_LIMITS.etudiant;
@@ -149,7 +146,7 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
         price: formatPrice(info.priceMonthly),
         icon: iconMap.etudiant,
         color: gradientMap.etudiant,
-        highlight: lang === 'fr' ? 'Flashcards & Cartes mentales' : 'Flashcards & Mind maps',
+        highlight: lang === 'fr' ? 'Découvrez les essentiels' : 'Discover essentials',
         features: lang === 'fr'
           ? [`${limits.monthlyAnalyses} analyses/mois`, 'Flashcards & cartes mentales', 'Export Markdown', 'Historique permanent']
           : [`${limits.monthlyAnalyses} analyses/mo`, 'Flashcards & mind maps', 'Markdown export', 'Permanent history'],
@@ -170,34 +167,19 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
           : [`${limits.monthlyAnalyses} analyses/mo`, `Web search (${limits.webSearchMonthly}/mo)`, 'Flashcards & mind maps', 'Videos up to 2h'],
       };
     }
-    if (plan === 'starter') {
-      const info = PLANS_INFO.pro;
-      const limits = PLAN_LIMITS.pro;
-      return {
-        id: 'pro',
-        name: lang === 'fr' ? info.name : info.nameEn,
-        price: formatPrice(info.priceMonthly),
-        icon: iconMap.pro,
-        color: gradientMap.pro,
-        highlight: lang === 'fr' ? `Playlists (${limits.maxPlaylistVideos} vidéos)` : `Playlists (${limits.maxPlaylistVideos} videos)`,
-        features: lang === 'fr'
-          ? [`${limits.monthlyAnalyses} analyses/mois`, `Playlists (${limits.maxPlaylistVideos} vidéos)`, 'Chat illimité', 'Export PDF']
-          : [`${limits.monthlyAnalyses} analyses/mo`, `Playlists (${limits.maxPlaylistVideos} videos)`, 'Unlimited chat', 'PDF export'],
-      };
-    }
-    // pro → equipe
-    const info = PLANS_INFO.equipe;
-    const limits = PLAN_LIMITS.equipe;
+    // starter → pro
+    const info = PLANS_INFO.pro;
+    const limits = PLAN_LIMITS.pro;
     return {
-      id: 'equipe',
+      id: 'pro',
       name: lang === 'fr' ? info.name : info.nameEn,
       price: formatPrice(info.priceMonthly),
-      icon: iconMap.equipe,
-      color: gradientMap.equipe,
-      highlight: lang === 'fr' ? `${limits.monthlyAnalyses} analyses/mois` : `${limits.monthlyAnalyses} analyses/mo`,
+      icon: iconMap.pro,
+      color: gradientMap.pro,
+      highlight: lang === 'fr' ? `Playlists (${limits.maxPlaylistVideos} vidéos)` : `Playlists (${limits.maxPlaylistVideos} videos)`,
       features: lang === 'fr'
-        ? [`${limits.monthlyAnalyses} analyses/mois`, 'Accès API REST', 'Recherche web illimitée', 'Export PDF & Markdown']
-        : [`${limits.monthlyAnalyses} analyses/mo`, 'REST API access', 'Unlimited web search', 'PDF & Markdown export'],
+        ? [`${limits.monthlyAnalyses} analyses/mois`, `Playlists (${limits.maxPlaylistVideos} vidéos)`, 'Chat illimité', 'Export PDF']
+        : [`${limits.monthlyAnalyses} analyses/mo`, `Playlists (${limits.maxPlaylistVideos} videos)`, 'Unlimited chat', 'PDF export'],
     };
   };
 

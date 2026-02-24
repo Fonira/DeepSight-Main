@@ -91,7 +91,6 @@ BATCH_LIMITS = {
     "starter": 5,
     "pro": 10,
     "expert": 20,
-    "team": 50,
     "unlimited": 100,
 }
 
@@ -136,8 +135,8 @@ async def create_batch_analysis(
             detail="At least one video is required."
         )
 
-    # Vérifier priorité (high = Team only)
-    if request.priority == "high" and user_plan not in ["team", "expert", "unlimited"]:
+    # Vérifier priorité (high = Expert+ only)
+    if request.priority == "high" and user_plan not in ["expert", "unlimited"]:
         request.priority = "normal"
 
     # Calculer le coût total en crédits
