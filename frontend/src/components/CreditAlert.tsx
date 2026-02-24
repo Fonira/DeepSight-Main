@@ -8,7 +8,7 @@ import { AlertTriangle, X, Zap, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
-import { PLANS_INFO } from '../config/planPrivileges';
+import { PLANS_INFO, normalizePlanId } from '../config/planPrivileges';
 
 interface CreditAlertProps {
   /** Credits threshold below which to show warning (default: 50) */
@@ -40,10 +40,10 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
   const [lastDismissedCredits, setLastDismissedCredits] = useState<number | null>(null);
 
   const credits = user?.credits ?? 0;
-  const plan = user?.plan || 'free';
+  const normalizedPlan = normalizePlanId(user?.plan);
 
-  // Don't show for unlimited/team plans (high credit limits)
-  if (plan === 'unlimited' || plan === 'team' || plan === 'expert') {
+  // Don't show for pro plan (high credit limits)
+  if (normalizedPlan === 'pro') {
     return null;
   }
 
@@ -189,7 +189,7 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
               <ArrowRight className="w-4 h-4" />
             </button>
 
-            {plan === 'free' && (
+            {normalizedPlan === 'free' && (
               <span className="text-xs text-text-tertiary">
                 {language === 'fr'
                   ? `Dès ${(PLANS_INFO.etudiant.priceMonthly / 100).toFixed(2).replace('.', ',')}€/mois`

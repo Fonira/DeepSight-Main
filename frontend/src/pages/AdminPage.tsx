@@ -62,10 +62,9 @@ const ADMIN_EMAIL = "maximeleparc3@gmail.com";
 const PLAN_CONFIG: Record<string, { color: string; bg: string; label: string }> = (() => {
   const colorMap: Record<string, { color: string; bg: string }> = {
     free: { color: 'text-gray-500', bg: 'bg-gray-100' },
-    etudiant: { color: 'text-emerald-600', bg: 'bg-emerald-100' },
-    starter: { color: 'text-blue-600', bg: 'bg-blue-100' },
+    etudiant: { color: 'text-blue-600', bg: 'bg-blue-100' },
+    starter: { color: 'text-emerald-600', bg: 'bg-emerald-100' },
     pro: { color: 'text-violet-600', bg: 'bg-violet-100' },
-    equipe: { color: 'text-amber-600', bg: 'bg-amber-100' },
   };
   const config: Record<string, { color: string; bg: string; label: string }> = {};
   for (const [id, info] of Object.entries(PLANS_INFO)) {
@@ -73,11 +72,6 @@ const PLAN_CONFIG: Record<string, { color: string; bg: string; label: string }> 
     const price = info.priceMonthly > 0 ? ` (€${(info.priceMonthly / 100).toFixed(2)})` : '';
     config[id] = { ...c, label: `${info.nameEn}${price}` };
   }
-  // Rétrocompatibilité aliases
-  config.student = config.etudiant;
-  config.team = config.equipe;
-  config.expert = config.equipe;
-  config.unlimited = { color: 'text-yellow-600', bg: 'bg-yellow-100', label: 'Unlimited' };
   return config;
 })();
 
@@ -490,10 +484,9 @@ export const AdminPage: React.FC = () => {
                         >
                           <option value="">{language === 'fr' ? 'Tous les plans' : 'All plans'}</option>
                           <option value="free">Free</option>
-                          <option value="student">Student (€2.99)</option>
-                          <option value="starter">Starter (€5.99)</option>
+                          <option value="etudiant">Starter (€2.99)</option>
+                          <option value="starter">Student (€5.99)</option>
                           <option value="pro">Pro (€12.99)</option>
-                          <option value="team">Team (€29.99)</option>
                         </select>
                         <span className="text-text-secondary self-center">
                           {usersTotal} {language === 'fr' ? 'utilisateurs' : 'users'}
@@ -732,11 +725,9 @@ export const AdminPage: React.FC = () => {
                 className="w-full px-4 py-2 rounded-lg border border-border-subtle bg-bg-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
               >
                 <option value="free">Free (€0)</option>
-                <option value="student">Student (€2.99/mois)</option>
-                <option value="starter">Starter (€5.99/mois)</option>
+                <option value="etudiant">Starter (€2.99/mois)</option>
+                <option value="starter">Student (€5.99/mois)</option>
                 <option value="pro">Pro (€12.99/mois)</option>
-                <option value="team">Team (€29.99/mois)</option>
-                <option value="unlimited">Unlimited (Admin)</option>
               </select>
             </div>
             

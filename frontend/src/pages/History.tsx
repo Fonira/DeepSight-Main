@@ -38,6 +38,7 @@ import { CitationExport } from "../components/CitationExport";
 import { StudyToolsModal } from "../components/StudyToolsModal";
 import { KeywordsModal } from "../components/KeywordsModal";
 import { videoApi, shareApi } from "../services/api";
+import { normalizePlanId } from "../config/planPrivileges";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🌐 API CONFIGURATION
@@ -404,7 +405,7 @@ export const History: React.FC = () => {
   const [clearType, setClearType] = useState<'all' | 'videos' | 'playlists'>('all');
   const [clearLoading, setClearLoading] = useState(false);
 
-  const isProUser = user?.plan === "pro" || user?.plan === "team" || user?.plan === "expert" || user?.plan === "unlimited";
+  const isProUser = normalizePlanId(user?.plan) === 'pro';
 
   // 🎯 Composants Markdown avec timecodes cliquables (ouvrent YouTube)
   const getTimecodeComponents = useCallback((videoId?: string) => {

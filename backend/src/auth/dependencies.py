@@ -243,12 +243,28 @@ def require_plan(min_plan: str):
     Factory de dépendance pour vérifier le plan utilisateur.
     Usage: Depends(require_plan("pro"))
     """
-    plan_order = ["free", "starter", "pro", "expert", "unlimited"]
-    
+    plan_order = ["free", "etudiant", "starter", "pro"]
+    # Aliases rétrocompatibilité pour anciens plans en DB
+    plan_aliases = {
+        "equipe": "pro", "team": "pro", "expert": "pro",
+        "unlimited": "pro", "student": "etudiant",
+    }
+
     async def check_plan(current_user: User = Depends(get_verified_user)) -> User:
-        user_plan = current_user.plan or "free"
-        
-        if plan_order.index(user_plan) < plan_order.index(min_plan):
+        raw_plan = current_user.plan or "free"
+        user_plan = plan_aliases.get(raw_plan, raw_plan)
+        normalized_min = plan_aliases.get(min_plan, min_plan)
+
+        try:
+            user_idx = plan_order.index(user_plan)
+        except ValueError:
+            user_idx = 0  # Fallback free
+        try:
+            min_idx = plan_order.index(normalized_min)
+        except ValueError:
+            min_idx = 0
+
+        if user_idx < min_idx:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={

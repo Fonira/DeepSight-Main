@@ -43,7 +43,7 @@ const PLAN_BORDER_COLORS: Record<string, string> = {
 interface SidebarUserCardProps {
   username: string;
   credits: number;
-  plan?: "free" | "student" | "starter" | "pro" | "expert" | "unlimited";
+  plan?: "free" | "etudiant" | "starter" | "pro" | "student" | "expert" | "unlimited" | "team"; // Aliases pour rétrocompat
   avatarUrl?: string | null;
   onLogout: () => void;
 }
@@ -114,7 +114,7 @@ export const SidebarUserCard: React.FC<SidebarUserCardProps> = ({
     })(),
     glowColor: PLAN_GLOW_COLORS[plan] || PLAN_GLOW_COLORS.free,
     borderColor: PLAN_BORDER_COLORS[plan] || PLAN_BORDER_COLORS.free,
-    hasGlow: ["pro", "expert", "unlimited"].includes(plan),
+    hasGlow: ["pro", "expert", "unlimited", "team"].includes(plan),
   }), [plan]);
 
   // Génération des initiales

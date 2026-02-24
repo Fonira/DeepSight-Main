@@ -814,7 +814,7 @@ export const UpgradePage: React.FC = () => {
     <div className="min-h-screen bg-bg-primary relative">
       <SEO
         title="Tarifs"
-        description="Découvrez les plans Deep Sight : Gratuit, Étudiant, Starter, Pro et Équipe. Analysez vos vidéos YouTube avec l'IA."
+        description="Découvrez les plans Deep Sight : Gratuit, Starter, Étudiant, Pro. Analysez vos vidéos YouTube avec l'IA."
         path="/upgrade"
       />
       <DoodleBackground variant="creative" />

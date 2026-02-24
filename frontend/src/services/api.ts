@@ -27,7 +27,7 @@ export interface User {
   username: string;
   email: string;
   email_verified: boolean;
-  plan: 'free' | 'student' | 'starter' | 'pro' | 'team' | 'expert' | 'unlimited';
+  plan: 'free' | 'etudiant' | 'starter' | 'pro' | 'student' | 'team' | 'expert' | 'unlimited'; // Aliases pour rétrocompat
   credits: number;
   credits_monthly: number;
   is_admin: boolean;
@@ -927,7 +927,7 @@ export const chatApi = {
 
 export const reliabilityApi = {
   async getReliability(summaryId: number): Promise<ReliabilityResult> {
-    return request(`/api/videos/summary/${summaryId}/reliability`);
+    return request(`/api/videos/reliability/${summaryId}`);
   },
 
   async checkChannel(channelId: string): Promise<{

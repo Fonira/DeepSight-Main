@@ -226,7 +226,7 @@ export const detectVolatileTopics = (
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** @deprecated Use PlanId from config/planPrivileges.ts */
-export type PlanType = 'free' | 'student' | 'starter' | 'pro' | 'expert' | 'unlimited';
+export type PlanType = 'free' | 'etudiant' | 'starter' | 'pro' | 'student' | 'expert' | 'unlimited' | 'team'; // Aliases pour rétrocompat
 
 /** @deprecated Use PLAN_LIMITS + PLANS_INFO from config/planPrivileges.ts */
 export interface PlanConfig {

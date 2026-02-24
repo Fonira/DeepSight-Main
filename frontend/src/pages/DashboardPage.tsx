@@ -30,6 +30,7 @@ import { videoApi, chatApi, reliabilityApi, ApiError } from "../services/api";
 import type { Summary, TaskStatus, ChatQuota, DiscoveryResponse, VideoCandidate, ReliabilityResult, EnrichedConcept } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from '../hooks/useTranslation';
+import { normalizePlanId } from '../config/planPrivileges';
 import { YouTubePlayer, YouTubePlayerRef } from "../components/YouTubePlayer";
 import { createTimecodeMarkdownComponents, TimecodeInfo } from "../components/TimecodeRenderer";
 import { TournesolWidget, TournesolMini } from "../components/TournesolWidget";
@@ -182,9 +183,10 @@ export const DashboardPage: React.FC = () => {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<boolean>(false);
 
-  const isProUser = user?.plan === "pro" || user?.plan === "team" || user?.plan === "expert";
-  // Note: isTeamOrHigher et isStarterPlus réservés pour futures fonctionnalités
-  const isExpertUser = user?.plan === "expert" || user?.plan === "unlimited";
+  const normalizedPlan = normalizePlanId(user?.plan);
+  const isProUser = normalizedPlan === 'pro';
+  // Note: isStarterPlus réservé pour futures fonctionnalités
+  const isExpertUser = normalizedPlan === 'pro'; // Pro est le plan le plus élevé
   
   // SUGGESTED_QUESTIONS disponible pour le chat: language === 'fr' ? SUGGESTED_QUESTIONS_FR : SUGGESTED_QUESTIONS_EN
 

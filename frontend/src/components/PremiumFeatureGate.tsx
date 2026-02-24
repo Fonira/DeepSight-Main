@@ -130,7 +130,7 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
       return getPlanInfo(requiredPlan);
     }
     // For limits, suggest the next plan up
-    const planOrder: PlanId[] = ['free', 'student', 'starter', 'pro', 'team'];
+    const planOrder: PlanId[] = ['free', 'etudiant', 'starter', 'pro'];
     const currentIndex = planOrder.indexOf(userPlan);
     const nextPlan = planOrder[Math.min(currentIndex + 1, planOrder.length - 1)];
     return getPlanInfo(nextPlan);

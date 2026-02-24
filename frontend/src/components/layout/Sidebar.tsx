@@ -25,6 +25,7 @@ import {
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
 import { PlanBadge } from "../PlanBadge";
+import { normalizePlanId } from "../../config/planPrivileges";
 
 // === Logo ===
 const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({ collapsed, onClick }) => {
@@ -148,41 +149,26 @@ const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
 
   if (!user) return null;
 
-  // Aligné sur planPrivileges.ts (free/etudiant/starter/pro/equipe)
+  // Aligné sur planPrivileges.ts (free/etudiant/starter/pro)
   const planLabels: Record<string, string> = {
     free: language === 'fr' ? 'Gratuit' : 'Free',
-    etudiant: language === 'fr' ? 'Étudiant' : 'Student',
-    student: language === 'fr' ? 'Étudiant' : 'Student',
-    starter: 'Starter',
+    etudiant: 'Starter',
+    starter: language === 'fr' ? 'Étudiant' : 'Student',
     pro: 'Pro',
-    equipe: language === 'fr' ? 'Équipe' : 'Team',
-    team: language === 'fr' ? 'Équipe' : 'Team',
-    expert: language === 'fr' ? 'Équipe' : 'Team', // rétrocompat
-    unlimited: 'Admin',
   };
 
   const planColors: Record<string, string> = {
     free: 'text-text-tertiary',
-    etudiant: 'text-emerald-400',
-    student: 'text-emerald-400',
-    starter: 'text-blue-400',
+    etudiant: 'text-blue-400',
+    starter: 'text-emerald-400',
     pro: 'text-violet-400',
-    equipe: 'text-amber-400',
-    team: 'text-amber-400',
-    expert: 'text-amber-400',
-    unlimited: 'text-yellow-400',
   };
 
   const planBgColors: Record<string, string> = {
     free: 'bg-bg-tertiary',
-    etudiant: 'bg-emerald-500/10',
-    student: 'bg-emerald-500/10',
-    starter: 'bg-blue-500/10',
+    etudiant: 'bg-blue-500/10',
+    starter: 'bg-emerald-500/10',
     pro: 'bg-violet-500/10',
-    equipe: 'bg-amber-500/10',
-    team: 'bg-amber-500/10',
-    expert: 'bg-amber-500/10',
-    unlimited: 'bg-yellow-500/10',
   };
 
   const currentPlan = user.plan || 'free';
@@ -241,10 +227,10 @@ const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
                 <motion.div
                   className={`h-full rounded-full ${
                     currentPlan === 'free' ? 'bg-text-muted' :
-                    (currentPlan === 'etudiant' || currentPlan === 'student') ? 'bg-emerald-500' :
-                    currentPlan === 'starter' ? 'bg-blue-500' :
+                    currentPlan === 'etudiant' ? 'bg-blue-500' :
+                    currentPlan === 'starter' ? 'bg-emerald-500' :
                     currentPlan === 'pro' ? 'bg-violet-500' :
-                    'bg-amber-500'
+                    'bg-text-muted'
                   }`}
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min((user.credits / user.credits_monthly) * 100, 100)}%` }}
@@ -296,7 +282,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const isProUser = user?.plan === 'pro' || user?.plan === 'team' || user?.plan === 'equipe' || user?.plan === 'expert' || user?.plan === 'unlimited';
+  const isProUser = normalizePlanId(user?.plan) === 'pro';
   const ADMIN_EMAIL = "maximeleparc3@gmail.com";
   const isUserAdmin = user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 

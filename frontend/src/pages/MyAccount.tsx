@@ -10,7 +10,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
 import { billingApi, authApi, type ApiBillingMyPlan } from '../services/api';
-import { PLANS_INFO, getMinPlanForFeature, type PlanId } from '../config/planPrivileges';
+import { PLANS_INFO, getMinPlanForFeature, normalizePlanId, type PlanId } from '../config/planPrivileges';
 import { useToast } from '../components/Toast';
 import {
   User, Shield, Key, Trash2, LogOut, Check,
@@ -72,7 +72,7 @@ export const MyAccount: React.FC = () => {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const isTeamOrHigher = user?.plan === 'team' || user?.plan === 'expert' || user?.plan === 'unlimited';
+  const isProUser = normalizePlanId(user?.plan) === 'pro';
 
   // Plan data from API
   const [myPlan, setMyPlan] = useState<ApiBillingMyPlan | null>(null);
@@ -108,9 +108,9 @@ export const MyAccount: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────────
   // 📡 Fetch API Key Status
   // ─────────────────────────────────────────────────────────────────────────────
-  
+
   useEffect(() => {
-    if (!isTeamOrHigher) return;
+    if (!isProUser) return;
     
     const fetchStatus = async () => {
       try {
@@ -127,7 +127,7 @@ export const MyAccount: React.FC = () => {
     
     setApiKey(prev => ({ ...prev, loading: true }));
     fetchStatus();
-  }, [isTeamOrHigher, tr]);
+  }, [isProUser, tr]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 📋 Fetch My Plan (billing/my-plan)
@@ -245,15 +245,12 @@ export const MyAccount: React.FC = () => {
     navigate('/');
   };
 
-  // Plan info - v4.0 (Free, Student, Starter, Pro, Team)
+  // Plan info - v4.0 (Free, Etudiant, Starter, Pro)
   const planConfig: Record<string, { label: string; color: string; bgColor: string; icon: string }> = {
     free: { label: tr('Gratuit', 'Free'), color: 'text-gray-400', bgColor: 'bg-gray-500/10', icon: '🆓' },
-    student: { label: tr('Étudiant', 'Student'), color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', icon: '🎓' },
-    starter: { label: 'Starter', color: 'text-blue-400', bgColor: 'bg-blue-500/10', icon: '⚡' },
+    etudiant: { label: 'Starter', color: 'text-blue-400', bgColor: 'bg-blue-500/10', icon: '⚡' },
+    starter: { label: tr('Étudiant', 'Student'), color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', icon: '🎓' },
     pro: { label: 'Pro', color: 'text-violet-400', bgColor: 'bg-violet-500/10', icon: '⭐' },
-    team: { label: tr('Équipe', 'Team'), color: 'text-amber-400', bgColor: 'bg-amber-500/10', icon: '👥' },
-    expert: { label: tr('Équipe', 'Team'), color: 'text-amber-400', bgColor: 'bg-amber-500/10', icon: '👥' }, // Rétrocompatibilité
-    unlimited: { label: 'Admin', color: 'text-yellow-400', bgColor: 'bg-yellow-500/10', icon: '👑' },
   };
 
   const currentPlan = planConfig[user?.plan || 'free'];
@@ -279,14 +276,10 @@ export const MyAccount: React.FC = () => {
 
   // Plan prices — dynamiques depuis planPrivileges
   const planPrices: Record<string, number> = (() => {
-    const prices: Record<string, number> = { unlimited: 0 };
+    const prices: Record<string, number> = {};
     for (const [id, info] of Object.entries(PLANS_INFO)) {
       prices[id] = info.priceMonthly;
     }
-    // Aliases rétrocompat
-    prices.student = prices.etudiant;
-    prices.team = prices.equipe;
-    prices.expert = prices.equipe;
     return prices;
   })();
 
@@ -671,21 +664,21 @@ export const MyAccount: React.FC = () => {
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
                   <Key className="w-5 h-5 text-accent-primary" />
                   {tr('Clés API', 'API Keys')}
-                  {isTeamOrHigher && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400">Team</span>}
+                  {isProUser && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-violet-500/10 text-violet-400">Pro</span>}
                 </h2>
               </div>
               <div className="panel-body">
-                {!isTeamOrHigher ? (
+                {!isProUser ? (
                   <div className="text-center py-6">
-                    <div className="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto mb-3">
-                      <Lock className="w-6 h-6 text-amber-400" />
+                    <div className="w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center mx-auto mb-3">
+                      <Lock className="w-6 h-6 text-violet-400" />
                     </div>
                     <p className="text-text-secondary mb-3">
-                      {tr('L\'accès API est réservé aux abonnés Équipe (29.99€/mois).', 'API access is available for Team subscribers (€29.99/mo).')}
+                      {tr('L\'accès API est réservé aux abonnés Pro (12.99€/mois).', 'API access is available for Pro subscribers (€12.99/mo).')}
                     </p>
-                    <Link to="/upgrade" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/10 text-amber-400 text-sm font-medium hover:bg-amber-500/20 transition-colors">
+                    <Link to="/upgrade" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-500/10 text-violet-400 text-sm font-medium hover:bg-violet-500/20 transition-colors">
                       <Users className="w-4 h-4" />
-                      {tr('Passer à Équipe', 'Upgrade to Team')}
+                      {tr('Passer à Pro', 'Upgrade to Pro')}
                     </Link>
                   </div>
                 ) : (

@@ -4,10 +4,9 @@
  *
  * Aligned with new pricing strategy:
  * - Free: 150 credits, 3 analyses
- * - Student: 2000 credits
+ * - Etudiant: 2000 credits
  * - Starter: 3000 credits
  * - Pro: 15000 credits
- * - Team: 50000 credits
  */
 
 import React, { useMemo } from 'react';
@@ -56,8 +55,8 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
 
   // Calculate urgency level based on plan and credits
   const urgency = useMemo(() => {
-    // Team plan with huge limits - check if still good
-    if (plan === 'team' && maxCredits >= 50000) {
+    // Pro plan with higher limits - check if still good
+    if (plan === 'pro' && maxCredits >= 10000) {
       const alertLevel = shouldShowLowCreditsAlert(credits, maxCredits);
       if (alertLevel === 'critical') {
         return { level: 'critical', color: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/30' };
@@ -205,7 +204,7 @@ export const CreditCounter: React.FC<CreditCounterProps> = ({
       )}
 
       {/* Upgrade button */}
-      {showUpgradeButton && plan !== 'team' && (
+      {showUpgradeButton && plan !== 'pro' && (
         <button
           onClick={handleUpgrade}
           className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-gradient-to-r from-accent-primary/20 to-accent-secondary/20 hover:from-accent-primary/30 hover:to-accent-secondary/30 text-accent-primary text-sm font-medium transition-colors"
