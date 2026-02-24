@@ -39,12 +39,13 @@ interface FeatureCTA {
   price: string; // display price for locked CTA
 }
 
+// ⚠️ SYNC avec billing/plan_config.py et frontend/src/config/planPrivileges.ts
 const FEATURE_CTAS: FeatureCTA[] = [
-  { key: 'flashcards', icon: '\uD83D\uDDC2\uFE0F', label: 'Flashcards', hash: '#flashcards', minPlan: 'student', price: '2,99\u20AC/mois' },
-  { key: 'mind_maps', icon: '\uD83E\uDDE0', label: 'Cartes mentales', hash: '#mindmap', minPlan: 'student', price: '2,99\u20AC/mois' },
-  { key: 'web_search', icon: '\uD83C\uDF10', label: 'Recherche web', hash: '#websearch', minPlan: 'starter', price: '5,99\u20AC/mois' },
-  { key: 'exports', icon: '\uD83D\uDCE4', label: 'Exports', hash: '#export', minPlan: 'starter', price: '5,99\u20AC/mois' },
-  { key: 'playlists', icon: '\uD83C\uDFAC', label: 'Playlists', hash: '#playlists', minPlan: 'pro', price: '12,99\u20AC/mois' },
+  { key: 'flashcards', icon: '🗂️', label: 'Flashcards', hash: '#flashcards', minPlan: 'etudiant', price: '2,99€/mois' },
+  { key: 'mind_maps', icon: '🧠', label: 'Cartes mentales', hash: '#mindmap', minPlan: 'etudiant', price: '2,99€/mois' },
+  { key: 'web_search', icon: '🌐', label: 'Recherche web', hash: '#websearch', minPlan: 'starter', price: '5,99€/mois' },
+  { key: 'exports', icon: '📤', label: 'Exports', hash: '#export', minPlan: 'pro', price: '12,99€/mois' },
+  { key: 'playlists', icon: '🎬', label: 'Playlists', hash: '#playlists', minPlan: 'pro', price: '12,99€/mois' },
 ];
 
 export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId, planInfo, onOpenChat }) => {

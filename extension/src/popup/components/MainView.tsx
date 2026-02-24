@@ -28,13 +28,15 @@ type AnalysisPhase =
   | { phase: 'complete'; summaryId: number; summary: Summary }
   | { phase: 'error'; message: string };
 
-// Plan display names
+// Plan display names — sync avec planPrivileges.ts (source de vérité)
 const PLAN_DISPLAY: Record<string, string> = {
-  free: 'D\u00e9couverte',
-  student: 'Student',
+  free: 'Gratuit',
+  etudiant: 'Étudiant',
+  student: 'Étudiant',   // alias rétrocompatibilité
   starter: 'Starter',
   pro: 'Pro',
-  team: 'Team',
+  equipe: 'Équipe',
+  team: 'Équipe',        // alias rétrocompatibilité
 };
 
 export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onLogout, onLoginRedirect, onError }) => {
