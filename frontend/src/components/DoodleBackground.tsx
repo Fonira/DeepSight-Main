@@ -13,7 +13,7 @@
  * - Grid-jitter placement for even distribution
  */
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -195,6 +195,21 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
   className,
 }) => {
   const { isDark } = useTheme();
+
+  // 📱 Désactiver sur mobile (< 1024px) et pour prefers-reduced-motion
+  const [isMobileOrReduced, setIsMobileOrReduced] = useState(false);
+  useEffect(() => {
+    const checkShouldDisable = () => {
+      const isMobile = window.innerWidth < 1024;
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      setIsMobileOrReduced(isMobile || prefersReduced);
+    };
+    checkShouldDisable();
+    window.addEventListener('resize', checkShouldDisable);
+    return () => window.removeEventListener('resize', checkShouldDisable);
+  }, []);
+
+  if (isMobileOrReduced) return null;
 
   const accentPrimary = isDark ? '#A78BFA' : '#8B5CF6';
   const accentSecondary = isDark ? '#818CF8' : '#6366F1';

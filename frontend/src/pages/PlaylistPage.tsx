@@ -456,7 +456,7 @@ export const PlaylistPage: React.FC = () => {
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
-                {language === 'fr' ? 'Analyse de corpus' : 'Corpus Analysis'}
+                {language === 'fr' ? 'Playlists' : 'Playlists'}
               </h1>
             </div>
             <p className="text-text-secondary">

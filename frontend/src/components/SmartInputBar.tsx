@@ -1,10 +1,11 @@
 /**
- * 🔮 SMART INPUT BAR v4.1 - FIX PLAYLIST URL
+ * 🔮 SMART INPUT BAR v4.2 - UX FIXES
  * Barre d'entrée ultra-intelligente avec détection automatique
  *
- * ✨ FIX v4.1:
- * - Ajout pattern youtube.com/playlist?list= pour playlists
- * - Meilleure détection des URLs de playlists
+ * ✨ FIX v4.2:
+ * - Bordure URL : neutre par défaut, rouge seulement après submit invalide, verte si URL YouTube valide
+ * - Tooltip descriptif sur le sélecteur de langues
+ * - Label "Langue de l'analyse" visible au-dessus des drapeaux
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
@@ -88,9 +89,10 @@ const MODE_CONFIG = {
     label: { fr: 'URL YouTube', en: 'YouTube URL' },
     bgColor: 'bg-red-500/10',
     textColor: 'text-red-400',
-    borderColor: 'border-red-500/30',
-    hoverBorder: 'hover:border-red-500/50',
-    focusBorder: 'focus-within:border-red-500/60',
+    // Bordure dynamique gérée via getDynamicBorderClasses()
+    borderColor: 'border-border-default',
+    hoverBorder: 'hover:border-border-hover',
+    focusBorder: 'focus-within:border-accent-primary/60',
     gradient: 'from-red-500 to-rose-600',
     placeholder: { fr: 'https://youtube.com/watch?v=... ou playlist?list=...', en: 'https://youtube.com/watch?v=... or playlist?list=...' },
   },
@@ -150,6 +152,12 @@ const getInputValue = (value: SmartInputValue): string => {
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════
 
+// Helper : teste si une URL est une URL YouTube valide
+const isValidYouTubeUrl = (url: string): boolean => {
+  if (!url || url.trim().length === 0) return false;
+  return YOUTUBE_PATTERNS.some(pattern => pattern.test(url.trim()));
+};
+
 const SmartInputBar: React.FC<SmartInputBarProps> = ({
   value,
   onChange,
@@ -162,6 +170,8 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
 }) => {
   const [showModeSelector, setShowModeSelector] = useState(false);
   const [autoDetected, setAutoDetected] = useState(true);
+  // État de soumission : la bordure rouge n'apparaît qu'après une tentative invalide
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const modeSelectorRef = useRef<HTMLDivElement>(null);
 
@@ -267,6 +277,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
 
   // Handle submit
   const handleSubmit = useCallback(() => {
+    setHasAttemptedSubmit(true);
     const inputVal = getInputValue(value);
     if (!inputVal.trim() || loading || disabled) return;
     onSubmit();
@@ -284,7 +295,23 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   const inputVal = getInputValue(value);
   const isTextMode = value.mode === 'text';
   const isSearchMode = value.mode === 'search';
+  const isUrlMode = value.mode === 'url';
   const charCount = inputVal.length;
+
+  // Bordure dynamique pour le mode URL : neutre → vert (URL valide) → rouge (soumis + invalide)
+  const getDynamicBorderClasses = (): string => {
+    if (!isUrlMode) {
+      return `${config.borderColor} ${config.hoverBorder} ${config.focusBorder}`;
+    }
+    const urlValid = isValidYouTubeUrl(inputVal);
+    if (urlValid) {
+      return 'border-green-500/40 hover:border-green-500/60 focus-within:border-green-500/70';
+    }
+    if (hasAttemptedSubmit && inputVal.trim().length > 0) {
+      return 'border-red-500/40 hover:border-red-500/60 focus-within:border-red-500/70';
+    }
+    return 'border-border-default hover:border-border-hover focus-within:border-accent-primary/60';
+  };
   const TEXT_MIN_CHARS = 100;
   const textTooShort = isTextMode && charCount > 0 && charCount < TEXT_MIN_CHARS;
   const canSubmit = inputVal.trim().length > 0 && !loading && !disabled && !textTooShort;
@@ -296,7 +323,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   return (
     <div className="space-y-3">
       {/* Main Input Area */}
-      <div className={`relative rounded-xl border-2 transition-all duration-300 bg-bg-secondary/50 backdrop-blur-sm ${config.borderColor} ${config.focusBorder}`}>
+      <div className={`relative rounded-xl border-2 transition-all duration-300 bg-bg-secondary/50 backdrop-blur-sm ${getDynamicBorderClasses()}`}>
 
         {/* Mode Badge + Input */}
         <div className="flex items-start gap-3 p-4">
@@ -470,8 +497,11 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
 
           {/* Search Mode: Language Selector */}
           {isSearchMode && showLanguageSelector && (
-            <div className="flex items-center gap-2">
-              <Globe className="w-4 h-4 text-text-muted" />
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] text-text-muted flex items-center gap-1">
+                <Globe className="w-3 h-3" />
+                {language === 'fr' ? 'Langue de l\'analyse' : 'Analysis language'}
+              </span>
               <div className="flex gap-1">
                 {SEARCH_LANGUAGES.map((lang) => {
                   const isSelected = (value.searchLanguages || ['fr', 'en']).includes(lang.code);
@@ -480,12 +510,14 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
                       key={lang.code}
                       type="button"
                       onClick={() => toggleLanguage(lang.code)}
-                      className={`px-2 py-1 rounded-md text-sm transition-all ${
+                      className={`min-w-[44px] min-h-[44px] px-2 py-1 rounded-md text-sm transition-all ${
                         isSelected
                           ? 'bg-violet-500/20 text-violet-400 ring-1 ring-violet-500/50'
                           : 'bg-bg-tertiary text-text-muted hover:text-text-secondary'
                       }`}
-                      title={lang.name}
+                      title={language === 'fr' ? `Langue de l'analyse : ${lang.name}` : `Analysis language: ${lang.name}`}
+                      aria-label={language === 'fr' ? `Analyser en ${lang.name}` : `Analyze in ${lang.name}`}
+                      aria-pressed={isSelected}
                     >
                       {lang.flag}
                     </button>

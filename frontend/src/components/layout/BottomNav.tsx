@@ -12,7 +12,7 @@ import {
   FolderOpen,
   Clock,
   User,
-  Sparkles
+  CreditCard
 } from 'lucide-react';
 
 interface NavItem {
@@ -26,7 +26,7 @@ const navItems: NavItem[] = [
   { path: '/dashboard', icon: <Home className="w-5 h-5" />, label: 'Accueil' },
   { path: '/history', icon: <Clock className="w-5 h-5" />, label: 'Historique' },
   { path: '/playlists', icon: <FolderOpen className="w-5 h-5" />, label: 'Playlists' },
-  { path: '/upgrade', icon: <Sparkles className="w-5 h-5" />, label: 'Pro' },
+  { path: '/upgrade', icon: <CreditCard className="w-5 h-5" />, label: 'Mon plan' },
   { path: '/settings', icon: <User className="w-5 h-5" />, label: 'Profil' },
 ];
 

@@ -177,6 +177,15 @@ export const DashboardPage: React.FC = () => {
   const [playerVisible, setPlayerVisible] = useState(false);
   const [playerStartTime, setPlayerStartTime] = useState(0);
   const playerRef = useRef<YouTubePlayerRef>(null);
+
+  // 📍 Ref pour scroll automatique vers les résultats après analyse
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  const scrollToResults = useCallback(() => {
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 400);
+  }, []);
   
   // Refs
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -375,9 +384,10 @@ export const DashboardPage: React.FC = () => {
         if (response.status === "completed" && response.result?.summary_id) {
           setLoadingMessage(language === 'fr' ? "Chargement du résumé..." : "Loading summary...");
           setLoadingProgress(90);
-          
+
           const fullSummary = await videoApi.getSummary(response.result.summary_id);
           setSelectedSummary(fullSummary);
+          scrollToResults();
           setPlayerVisible(false);
           setLoadingProgress(100);
           await refreshUser(true);
@@ -456,6 +466,7 @@ export const DashboardPage: React.FC = () => {
         setLoadingProgress(90);
         const fullSummary = await videoApi.getSummary(response.result.summary_id);
         setSelectedSummary(fullSummary);
+        scrollToResults();
         setPlayerVisible(false);
         setLoadingProgress(100);
         await refreshUser(true);
@@ -494,10 +505,12 @@ export const DashboardPage: React.FC = () => {
           if (summaryId) {
             const fullSummary = await videoApi.getSummary(summaryId);
             setSelectedSummary(fullSummary);
+            scrollToResults();
           } else {
             setSelectedSummary(status.result as any);
+            scrollToResults();
           }
-          
+
           setPlayerVisible(false);
           setLoadingProgress(100);
           await refreshUser(true);
@@ -906,7 +919,7 @@ export const DashboardPage: React.FC = () => {
 
             {/* Results */}
             {selectedSummary && !loading && (
-              <div className="space-y-6 animate-fadeInUp">
+              <div ref={resultsRef} className="space-y-6 animate-fadeInUp">
                 {/* Video Info Card */}
                 <div className="card overflow-hidden">
                   <div className="flex flex-col lg:flex-row">
