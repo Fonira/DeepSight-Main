@@ -325,6 +325,27 @@ export const DashboardPage: React.FC = () => {
     if (smartInput.mode === 'text' && !smartInput.rawText?.trim()) return;
     if (smartInput.mode === 'search' && !smartInput.searchQuery?.trim()) return;
 
+    // Validation URL YouTube côté client — évite un aller-retour API avec erreur Pydantic illisible
+    if (smartInput.mode === 'url' && smartInput.url?.trim()) {
+      const YOUTUBE_PATTERNS = [
+        /youtube\.com\/watch\?v=/i,
+        /youtu\.be\//i,
+        /youtube\.com\/embed\//i,
+        /youtube\.com\/shorts\//i,
+        /youtube\.com\/live\//i,
+        /youtube\.com\/playlist\?list=/i,
+        /youtube\.com\/watch\?.*list=/i,
+        /[?&]list=[A-Za-z0-9_-]+/i,
+      ];
+      const isValidYT = YOUTUBE_PATTERNS.some(p => p.test(smartInput.url!.trim()));
+      if (!isValidYT) {
+        setError(language === 'fr'
+          ? "URL invalide. Veuillez coller un lien YouTube (vidéo, short, live ou playlist)."
+          : "Invalid URL. Please paste a YouTube link (video, short, live or playlist).");
+        return;
+      }
+    }
+
     // 🆕 Détection de playlist - redirection vers page Playlists
     if (smartInput.mode === 'url' && isPlaylistUrl(smartInput.url || '')) {
       setPlaylistDetected(true);

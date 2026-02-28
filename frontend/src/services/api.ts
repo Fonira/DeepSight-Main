@@ -417,7 +417,26 @@ async function request<T>(
       
       try {
         errorData = await response.json();
-        errorMessage = (errorData.detail as string) || (errorData.message as string) || errorMessage;
+        // FastAPI peut retourner detail comme string, tableau Pydantic [{loc, msg, type}] ou objet
+        const rawDetail = errorData.detail;
+        if (typeof rawDetail === 'string') {
+          errorMessage = rawDetail;
+        } else if (Array.isArray(rawDetail)) {
+          // Erreur de validation Pydantic : extraire les messages lisibles
+          errorMessage = rawDetail
+            .map((e: unknown) => {
+              if (typeof e === 'object' && e !== null && 'msg' in e) {
+                return String((e as Record<string, unknown>).msg);
+              }
+              return typeof e === 'string' ? e : JSON.stringify(e);
+            })
+            .join(', ');
+        } else if (rawDetail && typeof rawDetail === 'object') {
+          const detailObj = rawDetail as Record<string, unknown>;
+          errorMessage = (detailObj.message as string) || (detailObj.error as string) || errorMessage;
+        } else if (errorData.message && typeof errorData.message === 'string') {
+          errorMessage = errorData.message;
+        }
       } catch {
         // Ignore JSON parse errors
       }
