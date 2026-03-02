@@ -183,6 +183,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         videoTitle={analysis.summary.video_title}
         onClose={() => setChatOpen(false)}
         onSessionExpired={onLogout}
+        userPlan={planInfo?.plan_id || user?.plan || 'free'}
       />
     );
   }

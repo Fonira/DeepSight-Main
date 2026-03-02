@@ -12,6 +12,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 
+import { parseAskQuestions } from '../components/ClickableQuestions';
 import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
@@ -494,8 +495,30 @@ const CorpusChat: React.FC<{
               {suggestedQuestions.map((q, i) => (
                 <button
                   key={i}
-                  onClick={() => { setInput(q); inputRef.current?.focus(); }}
-                  className="px-3 py-2 bg-bg-tertiary hover:bg-bg-secondary text-text-secondary text-sm rounded-lg transition-colors text-left"
+                  onClick={() => {
+                    if (!isLoading) {
+                      setInput(q);
+                      // Envoi direct : setInput + handleSend via un micro-delay
+                      setTimeout(() => {
+                        const userMsg: CorpusChatMessage = { id: Date.now(), role: 'user', content: q, created_at: new Date().toISOString() };
+                        setMessages(prev => [...prev, userMsg]);
+                        setInput('');
+                        setIsLoading(true);
+                        setError(null);
+                        playlistApi.chatWithCorpus(playlistId, q, { lang: language, mode: 'standard' }).then(response => {
+                          const assistantMsg: CorpusChatMessage = { id: Date.now() + 1, role: 'assistant', content: response.response, created_at: new Date().toISOString(), sources: response.sources };
+                          setMessages(prev => [...prev, assistantMsg]);
+                        }).catch((err: any) => {
+                          setError(err?.message || (language === 'fr' ? 'Erreur' : 'Error'));
+                        }).finally(() => {
+                          setIsLoading(false);
+                          inputRef.current?.focus();
+                        });
+                      }, 0);
+                    }
+                  }}
+                  disabled={isLoading}
+                  className="px-3 py-2 bg-bg-tertiary hover:bg-bg-secondary text-text-secondary text-sm rounded-lg transition-colors text-left disabled:opacity-50"
                 >
                   {q}
                 </button>
@@ -503,49 +526,91 @@ const CorpusChat: React.FC<{
             </div>
           </div>
         ) : (
-          messages.map((msg) => (
-            <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-              {msg.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-full bg-accent-primary/20 flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-4 h-4 text-accent-primary" />
-                </div>
-              )}
-              <div className={`max-w-[80%] rounded-xl p-4 ${
-                msg.role === 'user'
-                  ? 'bg-accent-primary text-white'
-                  : 'bg-bg-secondary text-text-secondary'
-              }`}>
-                {msg.role === 'assistant' ? (
-                  <div className="prose prose-invert prose-sm max-w-none">
-                    <ReactMarkdown>{msg.content}</ReactMarkdown>
-                  </div>
-                ) : (
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                )}
+          messages.map((msg) => {
+            const contentStr = typeof msg.content === 'string' ? msg.content : String(msg.content || '');
+            const { beforeQuestions, questions } = msg.role === 'assistant'
+              ? parseAskQuestions(contentStr)
+              : { beforeQuestions: contentStr, questions: [] as string[] };
 
-                {/* Sources */}
-                {msg.sources && msg.sources.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-white/10">
-                    <p className="text-xs font-medium mb-1 opacity-70">
-                      {language === 'fr' ? 'Sources :' : 'Sources:'}
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {msg.sources.map((src, i) => (
-                        <span key={i} className="text-xs px-2 py-0.5 bg-white/10 rounded-full">
-                          {src.video_title} ({Math.round(src.relevance_score * 100)}%)
-                        </span>
-                      ))}
+            return (
+              <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                {msg.role === 'assistant' && (
+                  <div className="w-8 h-8 rounded-full bg-accent-primary/20 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-4 h-4 text-accent-primary" />
+                  </div>
+                )}
+                <div className={`max-w-[80%] rounded-xl p-4 ${
+                  msg.role === 'user'
+                    ? 'bg-accent-primary text-white'
+                    : 'bg-bg-secondary text-text-secondary'
+                }`}>
+                  {msg.role === 'assistant' ? (
+                    <>
+                      <div className="prose prose-invert prose-sm max-w-none">
+                        <ReactMarkdown>{beforeQuestions}</ReactMarkdown>
+                      </div>
+
+                      {/* [ask:] Suggestions cliquables → envoi direct */}
+                      {questions.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap gap-2">
+                          {questions.map((q, qi) => (
+                            <button
+                              key={qi}
+                              onClick={() => {
+                                if (isLoading) return;
+                                const cleanQ = q.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, term, display) => display || term);
+                                const userMsg: CorpusChatMessage = { id: Date.now(), role: 'user', content: cleanQ, created_at: new Date().toISOString() };
+                                setMessages(prev => [...prev, userMsg]);
+                                setInput('');
+                                setIsLoading(true);
+                                setError(null);
+                                playlistApi.chatWithCorpus(playlistId, cleanQ, { lang: language, mode: 'standard' }).then(response => {
+                                  const assistantMsg: CorpusChatMessage = { id: Date.now() + 1, role: 'assistant', content: response.response, created_at: new Date().toISOString(), sources: response.sources };
+                                  setMessages(prev => [...prev, assistantMsg]);
+                                }).catch((err: any) => {
+                                  setError(err?.message || (language === 'fr' ? 'Erreur' : 'Error'));
+                                }).finally(() => {
+                                  setIsLoading(false);
+                                  inputRef.current?.focus();
+                                });
+                              }}
+                              disabled={isLoading}
+                              className="px-3 py-1.5 bg-bg-tertiary hover:bg-bg-secondary text-text-secondary text-xs rounded-lg transition-colors disabled:opacity-50"
+                            >
+                              {q.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, _term, display) => display || _term)}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="whitespace-pre-wrap">{contentStr}</p>
+                  )}
+
+                  {/* Sources */}
+                  {msg.sources && msg.sources.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-white/10">
+                      <p className="text-xs font-medium mb-1 opacity-70">
+                        {language === 'fr' ? 'Sources :' : 'Sources:'}
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {msg.sources.map((src, i) => (
+                          <span key={i} className="text-xs px-2 py-0.5 bg-white/10 rounded-full">
+                            {src.video_title} ({Math.round(src.relevance_score * 100)}%)
+                          </span>
+                        ))}
+                      </div>
                     </div>
+                  )}
+                </div>
+                {msg.role === 'user' && (
+                  <div className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center flex-shrink-0">
+                    <User className="w-4 h-4 text-text-muted" />
                   </div>
                 )}
               </div>
-              {msg.role === 'user' && (
-                <div className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center flex-shrink-0">
-                  <User className="w-4 h-4 text-text-muted" />
-                </div>
-              )}
-            </div>
-          ))
+            );
+          })
         )}
 
         {isLoading && (

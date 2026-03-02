@@ -75,7 +75,7 @@ export const AnalysisScreen: React.FC = () => {
 
   const { summaryId, videoUrl } = route.params || {};
 
-  const [activeTab, setActiveTab] = useState<TabType>('chat');
+  const [activeTab, setActiveTab] = useState<TabType>('summary');
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState<AnalysisSummary | null>(null);
   const [concepts, setConcepts] = useState<Array<{ name: string; definition: string }>>([]);
@@ -100,6 +100,7 @@ export const AnalysisScreen: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
 
   // Study tools state
   const [flashcards, setFlashcards] = useState<Array<{ front: string; back: string }>>([]);
@@ -131,7 +132,7 @@ export const AnalysisScreen: React.FC = () => {
 
   // Upgrade modal state
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradeLimitType, setUpgradeLimitType] = useState<'chat' | 'analysis' | 'playlist' | 'export' | 'webSearch' | 'tts' | 'apiKey' | 'credits'>('analysis');
+  const [upgradeLimitType, setUpgradeLimitType] = useState<'chat' | 'analysis' | 'playlist' | 'export' | 'webSearch' | 'tts' | 'credits'>('analysis');
 
   // Helper to calculate step from progress
   const calculateStepFromProgress = useCallback((progress: number): number => {
@@ -385,7 +386,9 @@ export const AnalysisScreen: React.FC = () => {
         const status = await videoApi.getStatus(apiTaskId);
         if (!isMountedRef.current) return;
 
-        const actualSummaryId = status.summary_id || status.result?.id;
+        const actualSummaryId = status.summary_id
+          || (status.result?.id != null ? String(status.result.id) : undefined)
+          || (status.result?.summary_id != null ? String(status.result.summary_id) : undefined);
         if (actualSummaryId) {
           // Use replace to prevent going back to the loading screen
           navigation.replace('Analysis', { summaryId: actualSummaryId });
@@ -442,32 +445,36 @@ export const AnalysisScreen: React.FC = () => {
     }
   }, [summary?.id, loadReliabilityData]);
 
-  // Send chat message
-  const handleSendMessage = async () => {
-    if (!chatInput.trim() || !summary?.id || isSendingMessage) return;
+  // Send chat message (supports direct call with custom message for suggestions)
+  const handleSendMessage = async (customMessage?: string) => {
+    const messageText = customMessage || chatInput.trim();
+    if (!messageText || !summary?.id || isSendingMessage) return;
 
-    const userMessage = chatInput.trim();
-    setChatInput('');
+    if (!customMessage) setChatInput('');
     setIsSendingMessage(true);
 
     // Add user message to chat
     const newUserMessage: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: userMessage,
+      content: messageText,
       timestamp: new Date().toISOString(),
     };
     setChatMessages(prev => [...prev, newUserMessage]);
 
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      const response = await chatApi.sendMessage(summary.id, userMessage);
+      const canWs = (PLAN_LIMITS[userPlan]?.webSearchMonthly ?? 0) > 0;
+      const response = await chatApi.sendMessage(summary.id, messageText, {
+        useWebSearch: canWs && webSearchEnabled,
+      });
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: response.response,
         timestamp: new Date().toISOString(),
+        web_search_used: response.web_search_used === true,
       };
       setChatMessages(prev => [...prev, assistantMessage]);
     } catch (err: any) {
@@ -493,7 +500,7 @@ export const AnalysisScreen: React.FC = () => {
       Alert.alert(t.common.error, errorMessage);
       // Remove the user message on error
       setChatMessages(prev => prev.filter(m => m.id !== newUserMessage.id));
-      setChatInput(userMessage);
+      setChatInput(messageText);
     } finally {
       setIsSendingMessage(false);
     }
@@ -1120,7 +1127,7 @@ export const AnalysisScreen: React.FC = () => {
                 </Text>
                 <View style={{ marginTop: Spacing.lg, width: '100%' }}>
                   <SuggestedQuestions
-                    onQuestionSelect={(question) => setChatInput(question)}
+                    onQuestionSelect={(question) => handleSendMessage(question)}
                     variant="chat"
                     category={summary?.category}
                   />
@@ -1133,6 +1140,8 @@ export const AnalysisScreen: React.FC = () => {
                 content={item.content}
                 timestamp={item.timestamp}
                 index={index}
+                onQuestionPress={(question) => handleSendMessage(question)}
+                webSearchUsed={item.web_search_used}
               />
             )}
             ListFooterComponent={isSendingMessage ? <TypingIndicator /> : null}
@@ -1152,8 +1161,20 @@ export const AnalysisScreen: React.FC = () => {
           <ChatInput
             value={chatInput}
             onChangeText={setChatInput}
-            onSend={handleSendMessage}
+            onSend={() => handleSendMessage()}
             isLoading={isSendingMessage}
+            showWebSearch={true}
+            webSearchEnabled={webSearchEnabled}
+            onToggleWebSearch={() => {
+              const canWs = (PLAN_LIMITS[userPlan]?.webSearchMonthly ?? 0) > 0;
+              if (!canWs) {
+                setUpgradeLimitType('webSearch');
+                setShowUpgradeModal(true);
+              } else {
+                setWebSearchEnabled(!webSearchEnabled);
+              }
+            }}
+            canUseWebSearch={(PLAN_LIMITS[userPlan]?.webSearchMonthly ?? 0) > 0}
           />
         </KeyboardAvoidingView>
       )}

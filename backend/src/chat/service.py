@@ -1358,7 +1358,20 @@ async def process_chat_message_v4(
     await increment_chat_quota(session, user_id)
     if web_search_used:
         await increment_web_search_usage(session, user_id)
-    
+
+    # 10. Enrichir quota_info avec les quotas web search
+    try:
+        can_search, ws_used, ws_limit = await check_web_search_quota(session, user_id)
+        quota_info["web_search_available"] = can_search
+        quota_info["web_search_used"] = ws_used
+        quota_info["web_search_limit"] = ws_limit
+        quota_info["web_search_remaining"] = max(0, ws_limit - ws_used)
+    except Exception:
+        quota_info["web_search_available"] = False
+        quota_info["web_search_used"] = 0
+        quota_info["web_search_limit"] = 0
+        quota_info["web_search_remaining"] = 0
+
     return {
         "response": response,
         "web_search_used": web_search_used,

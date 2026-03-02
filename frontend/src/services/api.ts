@@ -881,7 +881,19 @@ export const chatApi = {
     summaryId: number,
     message: string,
     useWebSearch: boolean = false
-  ): Promise<{ response: string; web_search_used: boolean; sources: Array<{ title: string; url: string }> }> {
+  ): Promise<{
+    response: string;
+    web_search_used: boolean;
+    sources: Array<{ title: string; url: string }>;
+    quota_info?: {
+      web_search_available?: boolean;
+      web_search_used?: number;
+      web_search_limit?: number;
+      web_search_remaining?: number;
+      [key: string]: unknown;
+    };
+    enrichment_level?: string;
+  }> {
     return request('/api/chat/ask', {
       method: 'POST',
       body: {

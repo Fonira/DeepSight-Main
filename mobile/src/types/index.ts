@@ -90,11 +90,13 @@ export interface AnalysisRequest {
 }
 
 export interface AnalysisStatus {
-  taskId: string;
+  // Backend returns snake_case (task_id), but we also accept camelCase
+  task_id?: string;
+  taskId?: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   progress: number;
   message?: string;
-  result?: AnalysisSummary;
+  result?: Record<string, unknown>;
   error?: string;
   summary_id?: string;
 }
@@ -105,6 +107,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: string;
+  web_search_used?: boolean;
 }
 
 export interface ChatHistory {
@@ -287,6 +290,7 @@ export type RootStackParamList = {
   Settings: undefined;
   Account: undefined;
   Upgrade: undefined;
+  UpgradeModal: undefined;
   Usage: undefined;
 
   // Payment screens

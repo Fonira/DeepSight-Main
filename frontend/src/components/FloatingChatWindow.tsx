@@ -1,29 +1,26 @@
 /**
- * 🗨️ FLOATING CHAT WINDOW v3.0 — Modern Messaging UI
+ * 🗨️ FLOATING CHAT WINDOW v5.0 — Web Search Enriched + Plan Gating
  * ═══════════════════════════════════════════════════════════════════════════════
  *
- * 🔧 REFONTE v3.0:
- *   - ✅ iMessage/WhatsApp-style message bubbles with proper alignment
- *   - ✅ Typing indicator with 3 pulsing dots
- *   - ✅ Rounded modern input with inline web toggle pill
- *   - ✅ Compact header with subtle border
- *   - ✅ Suggestion pills as horizontal scrollable chips
- *   - ✅ Panel slide-in + message fade-in animations
- *   - ✅ Darker uniform message area with empty state
- *   - ✅ Preserved: drag, resize, copy, all props & logic
+ * 🔧 REFONTE v5.0:
+ *   - ✅ Design unifié avec CorpusChat (PlaylistDetailPage)
+ *   - ✅ Suggestions empty state → envoi direct (onSendMessage)
+ *   - ✅ Bouton "Approfondir avec recherche web" après chaque msg assistant
+ *   - ✅ Plan-based gating (🔒 free, compteur payants)
+ *   - ✅ Badge "Enrichi par le web 🌐" sur messages web_search_used
+ *   - ✅ Quota restant affiché au hover du toggle Globe
+ *   - ✅ Conserve: drag, resize, copy, EnrichedMarkdown, [ask:] cliquables
  *
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  MessageCircle, X, Send, Globe, Bot, User,
-  Minimize2, Maximize2, Layers, Move, Copy, Check,
-  ExternalLink
+  MessageSquare, X, Send, Globe, Bot, User,
+  Minimize2, Maximize2, Move, Copy, Check,
+  ExternalLink, Loader2, Trash2, Search, Lock
 } from 'lucide-react';
-import { DeepSightSpinnerMicro } from './ui';
-import { parseAskQuestions, ClickableQuestionsBlock } from './ClickableQuestions';
-// 🔧 v2.0: Import depuis EnrichedMarkdown (plus de WikiTooltip séparé)
+import { parseAskQuestions } from './ClickableQuestions';
 import { EnrichedMarkdown, cleanConceptMarkers } from './EnrichedMarkdown';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -46,6 +43,12 @@ interface ChatMessage {
 interface Position { x: number; y: number; }
 interface Size { width: number; height: number; }
 
+interface WebSearchQuota {
+  used: number;
+  limit: number;
+  remaining: number;
+}
+
 interface FloatingChatWindowProps {
   isOpen: boolean;
   onClose: () => void;
@@ -56,17 +59,22 @@ interface FloatingChatWindowProps {
   isLoading: boolean;
   webSearchEnabled: boolean;
   onToggleWebSearch: (enabled: boolean) => void;
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, options?: { useWebSearch?: boolean }) => void;
+  onClearHistory?: () => void;
   markdownComponents?: Record<string, React.ComponentType<any>>;
   language?: 'fr' | 'en';
   storageKey?: string;
+  // v5.0 — Web Search Gating
+  userPlan?: string;
+  webSearchQuota?: WebSearchQuota;
+  onUpgrade?: () => void;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎨 CSS KEYFRAMES (injected once)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const STYLE_ID = 'fcw-v3-styles';
+const STYLE_ID = 'fcw-v5-styles';
 
 const injectStyles = () => {
   if (document.getElementById(STYLE_ID)) return;
@@ -78,12 +86,8 @@ const injectStyles = () => {
       to { opacity: 1; transform: translateX(0); }
     }
     @keyframes fcw-fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    @keyframes fcw-dotPulse {
-      0%, 100% { opacity: 0.3; }
-      50% { opacity: 1; }
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .fcw-panel-enter {
       animation: fcw-slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1) both;
@@ -91,13 +95,18 @@ const injectStyles = () => {
     .fcw-msg-enter {
       animation: fcw-fadeIn 0.2s ease-out both;
     }
-    .fcw-dot-1 { animation: fcw-dotPulse 1.4s ease-in-out infinite; }
-    .fcw-dot-2 { animation: fcw-dotPulse 1.4s ease-in-out 0.2s infinite; }
-    .fcw-dot-3 { animation: fcw-dotPulse 1.4s ease-in-out 0.4s infinite; }
-    .fcw-suggestions-scroll::-webkit-scrollbar { display: none; }
-    .fcw-suggestions-scroll { -ms-overflow-style: none; scrollbar-width: none; }
   `;
   document.head.appendChild(style);
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🔐 PLAN HELPERS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const canUseWebSearch = (plan?: string): boolean => {
+  if (!plan) return false;
+  const paid = ['starter', 'etudiant', 'student', 'pro', 'expert', 'team', 'equipe'];
+  return paid.includes(plan.toLowerCase());
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -115,7 +124,7 @@ const useDraggable = (initialPos: Position, storageKey: string) => {
   const dragOffset = useRef({ x: 0, y: 0 });
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button, input')) return;
+    if ((e.target as HTMLElement).closest('button, input, textarea')) return;
     setIsDragging(true);
     dragOffset.current = { x: e.clientX - position.x, y: e.clientY - position.y };
     e.preventDefault();
@@ -190,20 +199,22 @@ const useResizable = (initialSize: Size, minSize: Size, maxSize: Size, storageKe
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🎨 COMPOSANT PRINCIPAL
+// 🎨 COMPOSANT PRINCIPAL — v5.0 Web Search Enriched + Plan Gating
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
   isOpen, onClose, title, subtitle, type, messages, isLoading,
-  webSearchEnabled, onToggleWebSearch, onSendMessage,
-  language = 'fr', storageKey = 'floating-chat'
+  webSearchEnabled, onToggleWebSearch, onSendMessage, onClearHistory,
+  language = 'fr', storageKey = 'floating-chat',
+  userPlan, webSearchQuota, onUpgrade
 }) => {
   const [input, setInput] = useState('');
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [showQuotaTooltip, setShowQuotaTooltip] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const defaultPos = { x: window.innerWidth - 620, y: 100 };
   const defaultSize = { width: 580, height: 650 };
@@ -212,6 +223,12 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
   const { size, setSize, isResizing, handleResizeStart } = useResizable(
     defaultSize, { width: 350, height: 400 }, { width: 900, height: 850 }, storageKey
   );
+
+  const hasWebSearch = canUseWebSearch(userPlan);
+  const isFree = !userPlan || userPlan === 'free';
+  const quotaRemaining = webSearchQuota?.remaining ?? 0;
+  const quotaLimit = webSearchQuota?.limit ?? 0;
+  const quotaUsed = webSearchQuota?.used ?? 0;
 
   useEffect(() => { injectStyles(); }, []);
 
@@ -231,7 +248,13 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
     }
   };
 
-  // 🔧 v2.0: Utiliser cleanConceptMarkers pour copier sans les [[]]
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   const copyToClipboard = async (content: string, msgId: string) => {
     try {
       const cleanContent = cleanConceptMarkers(content);
@@ -254,32 +277,83 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
     setIsMaximized(!isMaximized);
   };
 
+  // 🔍 "Approfondir" — renvoie la dernière question user avec web search forcé
+  const handleDeepen = (msgIndex: number) => {
+    if (!hasWebSearch || isLoading) return;
+    // Trouver la dernière question user AVANT ce message assistant
+    for (let i = msgIndex - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        onSendMessage(messages[i].content, { useWebSearch: true });
+        return;
+      }
+    }
+  };
+
   if (!isOpen) return null;
 
   const isPlaylist = type === 'playlist';
-  const accent = isPlaylist ? 'rgba(168, 85, 247,' : 'rgba(0, 188, 212,';
 
   const t = language === 'fr' ? {
     web: 'Web',
-    placeholder: 'Message...',
-    thinking: 'Réflexion en cours...',
+    placeholder: isPlaylist ? 'Posez une question sur le corpus...' : 'Posez une question sur cette vidéo...',
+    analyzing: isPlaylist ? 'Analyse du corpus...' : 'Analyse en cours...',
     copy: 'Copier',
     copied: 'Copié !',
-    emptyState: isPlaylist ? 'Posez une question sur ce corpus' : 'Posez une question sur cette vidéo',
+    headerTitle: isPlaylist ? 'Chat IA Corpus' : 'Chat IA Vidéo',
+    emptyTitle: isPlaylist ? 'Posez une question sur le corpus' : 'Posez une question sur la vidéo',
+    emptySubtitle: isPlaylist
+      ? 'L\'IA a accès à toutes les synthèses et transcriptions du corpus pour vous répondre.'
+      : 'L\'IA a accès à la synthèse et la transcription de la vidéo pour vous répondre.',
+    clearHistory: 'Effacer l\'historique',
+    deepen: 'Approfondir avec recherche web',
+    deepenLocked: 'Disponible dès le plan Starter',
+    webLocked: 'Plan Starter requis',
+    webEnriched: 'Enrichi par le web',
+    quotaLabel: 'recherches ce mois',
+    upgradeHint: 'Obtenez des réponses enrichies par le web',
   } : {
     web: 'Web',
-    placeholder: 'Message...',
-    thinking: 'Thinking...',
+    placeholder: isPlaylist ? 'Ask a question about the corpus...' : 'Ask a question about this video...',
+    analyzing: isPlaylist ? 'Analyzing corpus...' : 'Analyzing...',
     copy: 'Copy',
     copied: 'Copied!',
-    emptyState: `Ask a question about this ${type}`,
+    headerTitle: isPlaylist ? 'Corpus AI Chat' : 'Video AI Chat',
+    emptyTitle: isPlaylist ? 'Ask a question about the corpus' : 'Ask a question about the video',
+    emptySubtitle: isPlaylist
+      ? 'The AI has access to all corpus summaries and transcriptions to answer you.'
+      : 'The AI has access to the video summary and transcription to answer you.',
+    clearHistory: 'Clear history',
+    deepen: 'Deepen with web search',
+    deepenLocked: 'Available from Starter plan',
+    webLocked: 'Starter plan required',
+    webEnriched: 'Web enriched',
+    quotaLabel: 'searches this month',
+    upgradeHint: 'Get web-enriched answers',
   };
 
-  // Helper: check if previous message is from the same role (for tighter grouping)
-  const isSameAuthorAsPrev = (index: number): boolean => {
-    if (index === 0) return false;
-    return messages[index].role === messages[index - 1].role;
-  };
+  const suggestedQuestions = language === 'fr'
+    ? (isPlaylist ? [
+        'Quels sont les thèmes principaux abordés ?',
+        'Quels points de vue divergent entre les vidéos ?',
+        'Résume les conclusions les plus importantes.',
+        'Quelles vidéos se contredisent ?',
+      ] : [
+        'Quels sont les points clés de cette vidéo ?',
+        'Quels arguments sont les plus solides ?',
+        'Y a-t-il des biais dans le raisonnement ?',
+        'Résume en 3 bullet points.',
+      ])
+    : (isPlaylist ? [
+        'What are the main themes covered?',
+        'Which videos have divergent viewpoints?',
+        'Summarize the most important conclusions.',
+        'Which videos contradict each other?',
+      ] : [
+        'What are the key takeaways?',
+        'Which arguments are strongest?',
+        'Are there any reasoning biases?',
+        'Summarize in 3 bullet points.',
+      ]);
 
   return (
     <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 99999 }}>
@@ -289,13 +363,12 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
           position: 'absolute',
           top: position.y,
           left: position.x,
-          width: isMinimized ? 280 : size.width,
+          width: isMinimized ? 300 : size.width,
           height: isMinimized ? 'auto' : size.height,
-          borderRadius: 16,
+          borderRadius: 12,
           overflow: 'hidden',
-          boxShadow: `0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)`,
-          background: 'rgba(8, 12, 20, 0.98)',
-          backdropFilter: 'blur(20px)',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)',
+          background: 'var(--bg-secondary, #12121a)',
           transition: isDragging || isResizing ? 'none' : 'width 0.2s, height 0.2s',
         }}
       >
@@ -308,51 +381,44 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
           </>
         )}
 
-        {/* ─── Header (compact) ─── */}
+        {/* ─── Header (style CorpusChat) ─── */}
         <div
           onMouseDown={handleMouseDown}
           onDoubleClick={handleDoubleClick}
-          className="flex items-center justify-between px-3 py-2 flex-shrink-0 select-none"
-          style={{
-            background: 'rgba(10, 14, 22, 0.95)',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
-            cursor: isDragging ? 'grabbing' : 'grab',
-          }}
+          className="p-4 border-b border-border-subtle flex items-center justify-between flex-shrink-0 select-none"
+          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
         >
           <div className="flex items-center gap-2">
-            <Move className="w-3.5 h-3.5 text-gray-600" />
-            <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{
-                background: isPlaylist ? 'rgba(168, 85, 247, 0.2)' : 'rgba(0, 188, 212, 0.2)',
-                border: `1px solid ${isPlaylist ? 'rgba(168, 85, 247, 0.3)' : 'rgba(0, 188, 212, 0.3)'}`,
-              }}
-            >
-              {isPlaylist
-                ? <Layers className="w-3.5 h-3.5" style={{ color: '#a855f7' }} />
-                : <MessageCircle className="w-3.5 h-3.5" style={{ color: '#00bcd4' }} />
-              }
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-gray-200 truncate">{title}</h3>
-              {subtitle && !isMinimized && (
-                <p className="text-[10px] text-gray-500 truncate max-w-[200px]">{subtitle}</p>
-              )}
-            </div>
+            <Move className="w-3.5 h-3.5 text-text-muted opacity-40" />
+            <Bot className="w-5 h-5 text-accent-primary" />
+            <span className="font-semibold text-text-primary">
+              {t.headerTitle}
+            </span>
+            {subtitle && !isMinimized && (
+              <span className="text-xs text-text-muted truncate max-w-[200px]">— {subtitle}</span>
+            )}
           </div>
-
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
+            {messages.length > 0 && onClearHistory && (
+              <button
+                onClick={onClearHistory}
+                className="p-2 rounded hover:bg-bg-tertiary transition-colors text-text-muted hover:text-red-400"
+                title={t.clearHistory}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={() => setIsMinimized(!isMinimized)}
-              className="p-1.5 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors"
+              className="p-2 rounded hover:bg-bg-tertiary transition-colors text-text-muted hover:text-text-primary"
             >
-              {isMinimized ? <Maximize2 className="w-3.5 h-3.5" /> : <Minimize2 className="w-3.5 h-3.5" />}
+              {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              className="p-2 rounded hover:bg-bg-tertiary transition-colors text-text-muted hover:text-red-400"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -361,274 +427,312 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
         {!isMinimized && (
           <>
             {/* ─── Messages Area ─── */}
-            <div
-              className="flex-1 overflow-y-auto px-4 py-3"
-              style={{ background: 'rgba(2, 6, 12, 0.95)' }}
-            >
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {messages.length === 0 ? (
                 /* ─── Empty State ─── */
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center p-6">
-                    <div
-                      className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                      style={{
-                        background: `${accent} 0.1)`,
-                        border: `1px solid ${accent} 0.15)`,
-                      }}
-                    >
-                      {isPlaylist
-                        ? <Layers className="w-7 h-7" style={{ color: 'rgba(168, 85, 247, 0.5)' }} />
-                        : <MessageCircle className="w-7 h-7" style={{ color: 'rgba(0, 188, 212, 0.5)' }} />
-                      }
-                    </div>
-                    <p className="text-gray-500 text-sm">{t.emptyState}</p>
+                <div className="text-center py-8">
+                  <MessageSquare className="w-12 h-12 mx-auto mb-4 text-text-muted opacity-50" />
+                  <h3 className="font-semibold text-text-primary mb-2">
+                    {t.emptyTitle}
+                  </h3>
+                  <p className="text-sm text-text-secondary mb-6 max-w-md mx-auto">
+                    {t.emptySubtitle}
+                  </p>
+                  {/* ✅ v5.0: Suggestions → envoi direct via onSendMessage */}
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {suggestedQuestions.map((q, i) => (
+                      <button
+                        key={i}
+                        onClick={() => !isLoading && onSendMessage(q)}
+                        disabled={isLoading}
+                        className="px-3 py-2 bg-bg-tertiary hover:bg-bg-secondary text-text-secondary text-sm rounded-lg transition-colors text-left disabled:opacity-50"
+                      >
+                        {q}
+                      </button>
+                    ))}
                   </div>
                 </div>
               ) : (
-                <>
-                  <div className="flex flex-col">
-                    {messages.map((msg, index) => {
-                      // 🔧 S'assurer que content est une string
-                      const contentStr = typeof msg.content === 'string'
-                        ? msg.content
-                        : (msg.content && typeof msg.content === 'object'
-                            ? JSON.stringify(msg.content)
-                            : String(msg.content || ''));
+                /* ─── Message List ─── */
+                messages.map((msg, msgIndex) => {
+                  const contentStr = typeof msg.content === 'string'
+                    ? msg.content
+                    : (msg.content && typeof msg.content === 'object'
+                        ? JSON.stringify(msg.content)
+                        : String(msg.content || ''));
 
-                      const { beforeQuestions, questions } = msg.role === 'assistant'
-                        ? parseAskQuestions(contentStr)
-                        : { beforeQuestions: contentStr, questions: [] };
+                  const { beforeQuestions, questions } = msg.role === 'assistant'
+                    ? parseAskQuestions(contentStr)
+                    : { beforeQuestions: contentStr, questions: [] };
 
-                      const sameAsPrev = isSameAuthorAsPrev(index);
-                      const isUser = msg.role === 'user';
+                  const isUser = msg.role === 'user';
+                  const isWebEnriched = msg.web_search_used === true;
 
-                      return (
-                        <div
-                          key={msg.id}
-                          className="fcw-msg-enter"
-                          style={{ marginTop: sameAsPrev ? 4 : 12 }}
-                        >
-                          <div className={`flex gap-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
-                            {/* Assistant avatar */}
-                            {!isUser && (
-                              <div
-                                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
-                                style={{
-                                  background: isPlaylist ? 'rgba(168, 85, 247, 0.2)' : 'rgba(0, 188, 212, 0.3)',
-                                  visibility: sameAsPrev ? 'hidden' : 'visible',
-                                }}
-                              >
-                                <Bot className="w-3.5 h-3.5" style={{ color: isPlaylist ? '#c084fc' : '#67e8f9' }} />
-                              </div>
-                            )}
+                  return (
+                    <div key={msg.id} className={`fcw-msg-enter flex gap-3 ${isUser ? 'justify-end' : ''}`}>
+                      {/* Assistant avatar */}
+                      {!isUser && (
+                        <div className="w-8 h-8 rounded-full bg-accent-primary/20 flex items-center justify-center flex-shrink-0">
+                          <Bot className="w-4 h-4 text-accent-primary" />
+                        </div>
+                      )}
 
-                            {/* Message Bubble */}
-                            <div
-                              className="max-w-[80%] px-3.5 py-2.5 relative group"
-                              style={isUser ? {
-                                background: isPlaylist ? 'rgba(168, 85, 247, 0.15)' : 'rgba(0, 188, 212, 0.15)',
-                                border: `1px solid ${isPlaylist ? 'rgba(168, 85, 247, 0.25)' : 'rgba(0, 188, 212, 0.25)'}`,
-                                borderRadius: '18px 18px 4px 18px',
-                                color: '#e2e8f0',
-                              } : {
-                                background: '#1a2332',
-                                border: '1px solid rgba(255,255,255,0.06)',
-                                borderRadius: '18px 18px 18px 4px',
-                                color: '#d1d5db',
-                              }}
-                            >
-                              {msg.role === 'assistant' ? (
-                                <>
-                                  {/* 🔧 v2.0: EnrichedMarkdown avec support [[concepts]] */}
-                                  <EnrichedMarkdown language={language} className="text-sm leading-relaxed">
-                                    {beforeQuestions}
-                                  </EnrichedMarkdown>
-                                  {/* Suggestions as horizontal scrollable pills */}
-                                  {questions.length > 0 && (
-                                    <div
-                                      className="fcw-suggestions-scroll mt-3 pt-2 flex gap-2 overflow-x-auto"
-                                      style={{
-                                        borderTop: '1px solid rgba(255,255,255,0.06)',
-                                        flexWrap: 'nowrap',
-                                      }}
-                                    >
-                                      {questions.map((q, qi) => (
-                                        <button
-                                          key={qi}
-                                          onClick={() => !isLoading && onSendMessage(q.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, term, display) => display || term))}
-                                          disabled={isLoading}
-                                          className="flex-shrink-0 text-xs transition-all duration-200 hover:scale-[1.02] disabled:opacity-50"
-                                          style={{
-                                            padding: '6px 14px',
-                                            borderRadius: 16,
-                                            background: 'transparent',
-                                            border: `1px solid ${isPlaylist ? 'rgba(168, 85, 247, 0.4)' : 'rgba(0, 188, 212, 0.4)'}`,
-                                            color: isPlaylist ? '#c084fc' : '#67e8f9',
-                                            whiteSpace: 'nowrap',
-                                          }}
-                                        >
-                                          {q.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, _term, display) => display || _term)}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
-                                </>
-                              ) : (
-                                <p className="text-sm leading-relaxed">{contentStr}</p>
-                              )}
+                      {/* Message Bubble */}
+                      <div className={`max-w-[80%] rounded-xl p-4 relative group ${
+                        isUser
+                          ? 'bg-accent-primary text-white'
+                          : 'bg-bg-secondary text-text-secondary'
+                      }`}>
+                        {/* ✅ v5.0: Badge "Enrichi par le web 🌐" */}
+                        {!isUser && isWebEnriched && (
+                          <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-white/10">
+                            <Globe className="w-3 h-3 text-emerald-400" />
+                            <span className="text-[10px] font-medium text-emerald-400 uppercase tracking-wide">
+                              {t.webEnriched}
+                            </span>
+                          </div>
+                        )}
 
-                              {/* Sources */}
-                              {msg.sources && msg.sources.length > 0 && (
-                                <div className="mt-2 pt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-                                  <p className="text-[10px] text-gray-500 mb-1">Sources:</p>
-                                  {msg.sources.slice(0, 3).map((src, i) => (
-                                    <a key={i} href={src.url} target="_blank" rel="noopener noreferrer"
-                                      className="flex items-center gap-1 text-[10px] hover:underline"
-                                      style={{ color: isPlaylist ? '#c084fc' : '#67e8f9' }}
-                                    >
-                                      <ExternalLink className="w-2.5 h-2.5" />{src.title || 'Source'}
-                                    </a>
-                                  ))}
-                                </div>
-                              )}
-
-                              {/* Copy button (assistant only) */}
-                              {msg.role === 'assistant' && (
-                                <button
-                                  onClick={() => copyToClipboard(contentStr, msg.id)}
-                                  className="mt-1.5 text-[10px] text-gray-600 hover:text-gray-400 flex items-center gap-1 transition-colors opacity-0 group-hover:opacity-100"
-                                >
-                                  {copiedId === msg.id
-                                    ? <><Check className="w-2.5 h-2.5" />{t.copied}</>
-                                    : <><Copy className="w-2.5 h-2.5" />{t.copy}</>
-                                  }
-                                </button>
-                              )}
+                        {msg.role === 'assistant' ? (
+                          <>
+                            <div className="prose prose-invert prose-sm max-w-none">
+                              <EnrichedMarkdown language={language} className="text-sm leading-relaxed">
+                                {beforeQuestions}
+                              </EnrichedMarkdown>
                             </div>
 
-                            {/* User avatar */}
-                            {isUser && (
-                              <div
-                                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
-                                style={{
-                                  background: isPlaylist ? 'rgba(168, 85, 247, 0.5)' : 'rgba(0, 188, 212, 0.5)',
-                                  visibility: sameAsPrev ? 'hidden' : 'visible',
-                                }}
-                              >
-                                <User className="w-3.5 h-3.5 text-white" />
+                            {/* [ask:] Suggestion questions → envoi direct */}
+                            {questions.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-white/10 flex flex-wrap gap-2">
+                                {questions.map((q, qi) => (
+                                  <button
+                                    key={qi}
+                                    onClick={() => !isLoading && onSendMessage(
+                                      q.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, term, display) => display || term)
+                                    )}
+                                    disabled={isLoading}
+                                    className="px-3 py-1.5 bg-bg-tertiary hover:bg-bg-secondary text-text-secondary text-xs rounded-lg transition-colors disabled:opacity-50"
+                                  >
+                                    {q.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, _term, display) => display || _term)}
+                                  </button>
+                                ))}
                               </div>
                             )}
-                          </div>
-                        </div>
-                      );
-                    })}
+                          </>
+                        ) : (
+                          <p className="whitespace-pre-wrap">{contentStr}</p>
+                        )}
 
-                    {/* ─── Typing Indicator ─── */}
-                    {isLoading && (
-                      <div className="fcw-msg-enter" style={{ marginTop: 12 }}>
-                        <div className="flex gap-2 justify-start">
-                          <div
-                            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-1"
-                            style={{
-                              background: isPlaylist ? 'rgba(168, 85, 247, 0.2)' : 'rgba(0, 188, 212, 0.3)',
-                            }}
-                          >
-                            <Bot className="w-3.5 h-3.5" style={{ color: isPlaylist ? '#c084fc' : '#67e8f9' }} />
+                        {/* Sources */}
+                        {msg.sources && msg.sources.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-white/10">
+                            <p className="text-xs font-medium mb-1 opacity-70">
+                              {language === 'fr' ? 'Sources :' : 'Sources:'}
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {msg.sources.map((src, i) => (
+                                <a
+                                  key={i}
+                                  href={src.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs px-2 py-0.5 bg-white/10 rounded-full hover:bg-white/15 transition-colors flex items-center gap-1"
+                                >
+                                  <ExternalLink className="w-2.5 h-2.5" />
+                                  {src.title || 'Source'}
+                                </a>
+                              ))}
+                            </div>
                           </div>
-                          <div
-                            className="flex items-center gap-1.5 px-4 py-3"
-                            style={{
-                              background: '#1a2332',
-                              border: '1px solid rgba(255,255,255,0.06)',
-                              borderRadius: '18px 18px 18px 4px',
-                            }}
-                          >
-                            <span
-                              className="fcw-dot-1 inline-block w-2 h-2 rounded-full"
-                              style={{ background: isPlaylist ? '#a855f7' : '#00bcd4' }}
-                            />
-                            <span
-                              className="fcw-dot-2 inline-block w-2 h-2 rounded-full"
-                              style={{ background: isPlaylist ? '#a855f7' : '#00bcd4' }}
-                            />
-                            <span
-                              className="fcw-dot-3 inline-block w-2 h-2 rounded-full"
-                              style={{ background: isPlaylist ? '#a855f7' : '#00bcd4' }}
-                            />
+                        )}
+
+                        {/* Copy button + Approfondir (assistant only) */}
+                        {msg.role === 'assistant' && (
+                          <div className="mt-2 flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* Copy */}
+                            <button
+                              onClick={() => copyToClipboard(contentStr, msg.id)}
+                              className="text-xs text-text-muted hover:text-text-primary flex items-center gap-1 transition-colors"
+                            >
+                              {copiedId === msg.id
+                                ? <><Check className="w-3 h-3" />{t.copied}</>
+                                : <><Copy className="w-3 h-3" />{t.copy}</>
+                              }
+                            </button>
+
+                            {/* ✅ v5.0: Bouton "Approfondir avec recherche web" */}
+                            {!isWebEnriched && (
+                              <button
+                                onClick={() => {
+                                  if (isFree && onUpgrade) {
+                                    onUpgrade();
+                                  } else {
+                                    handleDeepen(msgIndex);
+                                  }
+                                }}
+                                disabled={isLoading || (hasWebSearch && quotaRemaining <= 0)}
+                                className={`text-xs flex items-center gap-1 transition-colors ${
+                                  isFree
+                                    ? 'text-text-muted/60 cursor-pointer'
+                                    : hasWebSearch && quotaRemaining > 0
+                                      ? 'text-accent-primary/70 hover:text-accent-primary cursor-pointer'
+                                      : 'text-text-muted/40 cursor-not-allowed'
+                                } disabled:opacity-40`}
+                                title={isFree ? t.deepenLocked : `${t.deepen} (${quotaRemaining}/${quotaLimit})`}
+                              >
+                                {isFree ? (
+                                  <Lock className="w-3 h-3" />
+                                ) : (
+                                  <Search className="w-3 h-3" />
+                                )}
+                                <span>{t.deepen}</span>
+                                {isFree && <Lock className="w-2.5 h-2.5 ml-0.5" />}
+                              </button>
+                            )}
                           </div>
-                        </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                  <div ref={messagesEndRef} />
-                </>
+
+                      {/* User avatar */}
+                      {isUser && (
+                        <div className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center flex-shrink-0">
+                          <User className="w-4 h-4 text-text-muted" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
               )}
+
+              {/* Loading indicator */}
+              {isLoading && (
+                <div className="flex gap-3 fcw-msg-enter">
+                  <div className="w-8 h-8 rounded-full bg-accent-primary/20 flex items-center justify-center flex-shrink-0">
+                    <Bot className="w-4 h-4 text-accent-primary" />
+                  </div>
+                  <div className="bg-bg-secondary rounded-xl p-4">
+                    <div className="flex items-center gap-2 text-text-muted">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">{t.analyzing}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div ref={messagesEndRef} />
             </div>
 
+            {/* ─── Upgrade Banner (Free users, after first interaction) ─── */}
+            {isFree && messages.length > 0 && messages.length <= 4 && (
+              <div className="mx-4 mb-2 px-3 py-2 rounded-lg bg-accent-primary/5 border border-accent-primary/10 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-accent-primary" />
+                  <span className="text-xs text-text-secondary">{t.upgradeHint}</span>
+                </div>
+                {onUpgrade && (
+                  <button
+                    onClick={onUpgrade}
+                    className="text-xs font-medium text-accent-primary hover:underline"
+                  >
+                    Upgrade
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* ─── Input Area ─── */}
-            <div className="px-3 py-2.5 flex-shrink-0" style={{ background: 'rgba(6, 10, 18, 0.98)', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-              <form onSubmit={handleSubmit} className="flex items-center gap-2">
+            <div className="p-4 border-t border-border-subtle">
+              <div className="flex items-end gap-2">
+                {/* Web Search Toggle — with gating */}
                 <div
-                  className="flex-1 flex items-center gap-2 px-1 transition-colors"
-                  style={{
-                    background: 'rgba(15, 20, 30, 0.9)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 24,
-                  }}
+                  className="relative"
+                  onMouseEnter={() => setShowQuotaTooltip(true)}
+                  onMouseLeave={() => setShowQuotaTooltip(false)}
                 >
-                  {/* Web toggle pill inside input */}
                   <button
                     type="button"
-                    onClick={() => onToggleWebSearch(!webSearchEnabled)}
-                    className="flex-shrink-0 flex items-center gap-1 ml-1.5 transition-all"
-                    style={{
-                      padding: '4px 10px',
-                      borderRadius: 12,
-                      fontSize: 11,
-                      fontWeight: 500,
-                      background: webSearchEnabled
-                        ? (isPlaylist ? 'rgba(168, 85, 247, 0.3)' : 'rgba(0, 188, 212, 0.3)')
-                        : 'rgba(255,255,255,0.05)',
-                      color: webSearchEnabled
-                        ? (isPlaylist ? '#c084fc' : '#67e8f9')
-                        : '#6b7280',
-                      border: webSearchEnabled
-                        ? `1px solid ${isPlaylist ? 'rgba(168, 85, 247, 0.4)' : 'rgba(0, 188, 212, 0.4)'}`
-                        : '1px solid transparent',
+                    onClick={() => {
+                      if (isFree) {
+                        onUpgrade?.();
+                      } else if (hasWebSearch && quotaRemaining > 0) {
+                        onToggleWebSearch(!webSearchEnabled);
+                      }
                     }}
+                    disabled={!isFree && (!hasWebSearch || quotaRemaining <= 0)}
+                    className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-medium transition-all border ${
+                      isFree
+                        ? 'bg-bg-tertiary border-border-subtle text-text-muted/60 cursor-pointer'
+                        : webSearchEnabled && hasWebSearch
+                          ? 'bg-accent-primary/15 border-accent-primary/30 text-accent-primary'
+                          : 'bg-bg-tertiary border-border-subtle text-text-muted hover:text-text-secondary'
+                    } disabled:opacity-40 disabled:cursor-not-allowed`}
+                    title={isFree ? t.webLocked : (hasWebSearch ? `${quotaRemaining}/${quotaLimit} ${t.quotaLabel}` : t.webLocked)}
                   >
-                    <Globe className="w-3 h-3" />
+                    {isFree ? (
+                      <>
+                        <Lock className="w-3 h-3" />
+                        <Globe className="w-3.5 h-3.5" />
+                      </>
+                    ) : (
+                      <Globe className="w-3.5 h-3.5" />
+                    )}
                     {t.web}
+                    {/* Quota mini-badge for paid users */}
+                    {hasWebSearch && !isFree && webSearchQuota && (
+                      <span className="ml-1 text-[10px] opacity-70">
+                        {quotaRemaining}/{quotaLimit}
+                      </span>
+                    )}
                   </button>
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder={t.placeholder}
-                    disabled={isLoading}
-                    className="flex-1 bg-transparent text-sm text-gray-200 placeholder-gray-600 focus:outline-none disabled:opacity-50 py-2.5"
-                  />
+
+                  {/* Quota Tooltip on hover */}
+                  {showQuotaTooltip && (
+                    <div className="absolute bottom-full left-0 mb-2 px-3 py-2 bg-bg-primary border border-border-subtle rounded-lg shadow-xl text-xs whitespace-nowrap z-50">
+                      {isFree ? (
+                        <span className="text-text-muted">{t.webLocked}</span>
+                      ) : hasWebSearch && webSearchQuota ? (
+                        <div className="space-y-1">
+                          <div className="text-text-primary font-medium">
+                            {quotaUsed}/{quotaLimit} {t.quotaLabel}
+                          </div>
+                          <div className="w-full bg-bg-tertiary rounded-full h-1.5">
+                            <div
+                              className="h-1.5 rounded-full bg-accent-primary transition-all"
+                              style={{ width: `${Math.min(100, (quotaUsed / Math.max(1, quotaLimit)) * 100)}%` }}
+                            />
+                          </div>
+                          <div className="text-text-muted">
+                            {quotaRemaining} {language === 'fr' ? 'restantes' : 'remaining'}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-text-muted">{t.webLocked}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
-                {/* Send button */}
+
+                {/* Textarea */}
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={t.placeholder}
+                  className="flex-1 resize-none bg-bg-secondary text-text-primary placeholder:text-text-muted rounded-xl px-4 py-3 border border-border-subtle focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 outline-none transition-colors text-sm"
+                  rows={1}
+                  style={{ maxHeight: '120px' }}
+                />
+
+                {/* Send Button */}
                 <button
-                  type="submit"
+                  onClick={() => handleSubmit()}
                   disabled={!input.trim() || isLoading}
-                  className="flex-shrink-0 flex items-center justify-center transition-all disabled:opacity-30"
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: '50%',
-                    background: isPlaylist
-                      ? 'linear-gradient(135deg, #a855f7, #7c3aed)'
-                      : 'linear-gradient(135deg, #00bcd4, #0097a7)',
-                    color: '#fff',
-                    boxShadow: (!input.trim() || isLoading) ? 'none' : `0 2px 12px ${isPlaylist ? 'rgba(168, 85, 247, 0.4)' : 'rgba(0, 188, 212, 0.4)'}`,
-                  }}
+                  className="btn btn-primary p-3 rounded-xl disabled:opacity-30 transition-all"
                 >
-                  <Send className="w-4 h-4" style={{ marginLeft: 1 }} />
+                  <Send className="w-5 h-5" />
                 </button>
-              </form>
+              </div>
             </div>
           </>
         )}

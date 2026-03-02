@@ -402,6 +402,7 @@ export const History: React.FC = () => {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatWebSearch, setChatWebSearch] = useState(false);
+  const [wsQuota, setWsQuota] = useState<{ used: number; limit: number; remaining: number } | undefined>(undefined);
   const [, setChatExpanded] = useState(true); // Étendu par défaut
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -729,9 +730,11 @@ export const History: React.FC = () => {
   };
 
   // Chat handler - accepte un message en paramètre ou utilise chatInput
-  const handleSendChat = async (messageParam?: string) => {
+  const handleSendChat = async (messageParam?: string, options?: { useWebSearch?: boolean }) => {
     const message = messageParam || chatInput;
     if (!message.trim() || !chatTarget || chatLoading) return;
+
+    const forceWebSearch = options?.useWebSearch === true;
 
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
@@ -745,9 +748,9 @@ export const History: React.FC = () => {
     try {
       let response;
       if (chatTarget.type === 'video') {
-        response = await api.chatWithVideo(chatTarget.id, message, chatWebSearch);
+        response = await api.chatWithVideo(chatTarget.id, message, forceWebSearch || chatWebSearch);
       } else {
-        response = await api.chatWithPlaylist(chatTarget.id, message, chatWebSearch);
+        response = await api.chatWithPlaylist(chatTarget.id, message, forceWebSearch || chatWebSearch);
       }
 
       const assistantMessage: ChatMessage = {
@@ -758,6 +761,18 @@ export const History: React.FC = () => {
         web_search_used: response.web_search_used,
       };
       setChatMessages(prev => [...prev, assistantMessage]);
+
+      // Mettre à jour web search quota si disponible
+      if (response.quota_info) {
+        const qi = response.quota_info as Record<string, unknown>;
+        if (typeof qi.web_search_used === 'number' && typeof qi.web_search_limit === 'number') {
+          setWsQuota({
+            used: qi.web_search_used as number,
+            limit: qi.web_search_limit as number,
+            remaining: (qi.web_search_remaining as number) ?? Math.max(0, (qi.web_search_limit as number) - (qi.web_search_used as number)),
+          });
+        }
+      }
     } catch (err: any) {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -1371,6 +1386,9 @@ export const History: React.FC = () => {
           markdownComponents={chatTarget?.type === 'video' ? getTimecodeComponents(chatTarget.videoId) : undefined}
           language={language as 'fr' | 'en'}
           storageKey={`history-chat-${chatTarget.type}`}
+          userPlan={user?.plan || 'free'}
+          webSearchQuota={wsQuota}
+          onUpgrade={() => navigate('/pricing')}
         />
       )}
 

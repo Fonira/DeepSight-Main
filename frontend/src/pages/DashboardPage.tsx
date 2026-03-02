@@ -145,6 +145,7 @@ export const DashboardPage: React.FC = () => {
   const [chatLoading, setChatLoading] = useState(false);
   const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [chatQuota, setChatQuota] = useState<ChatQuota | null>(null);
+  const [wsQuota, setWsQuota] = useState<{ used: number; limit: number; remaining: number } | undefined>(undefined);
   
   // États UI
   const [copied, setCopied] = useState(false);
@@ -578,25 +579,28 @@ export const DashboardPage: React.FC = () => {
 
   // === Chat ===
   
-  const handleSendChat = async (customMessage?: string) => {
+  const handleSendChat = async (customMessage?: string, options?: { useWebSearch?: boolean }) => {
     const message = customMessage || chatInput.trim();
     if (!message || !selectedSummary?.id) return;
-    
+
+    // Si options.useWebSearch est explicitement true (bouton "Approfondir"), forcer web search
+    const forceWebSearch = options?.useWebSearch === true;
+
     const userMsg: ChatMessage = {
       id: `user-${Date.now()}`,
       role: "user",
       content: message,
     };
-    
+
     setChatMessages(prev => [...prev, userMsg]);
     setChatInput("");
     setChatLoading(true);
-    
+
     try {
       const response = await chatApi.send(
         selectedSummary.id,
         message,
-        isProUser && webSearchEnabled
+        forceWebSearch || (isProUser && webSearchEnabled)
       );
       
       
@@ -614,8 +618,20 @@ export const DashboardPage: React.FC = () => {
       };
       
       setChatMessages(prev => [...prev, assistantMsg]);
-      
-      // Rafraîchir quota
+
+      // Mettre à jour web search quota depuis la réponse
+      if (response.quota_info) {
+        const qi = response.quota_info;
+        if (typeof qi.web_search_used === 'number' && typeof qi.web_search_limit === 'number') {
+          setWsQuota({
+            used: qi.web_search_used,
+            limit: qi.web_search_limit,
+            remaining: qi.web_search_remaining ?? Math.max(0, qi.web_search_limit - qi.web_search_used),
+          });
+        }
+      }
+
+      // Rafraîchir quota chat
       try {
         const newQuota = await chatApi.getQuota(selectedSummary.id);
         setChatQuota(newQuota);
@@ -1281,6 +1297,9 @@ export const DashboardPage: React.FC = () => {
         markdownComponents={chatMarkdownComponents}
         language={language as 'fr' | 'en'}
         storageKey="dashboard-chat"
+        userPlan={user?.plan || 'free'}
+        webSearchQuota={wsQuota}
+        onUpgrade={() => navigate('/pricing')}
       />
 
       {/* 🎓 Modal Citation Académique */}

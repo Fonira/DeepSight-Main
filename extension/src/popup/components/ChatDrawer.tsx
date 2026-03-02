@@ -1,22 +1,71 @@
-import React, { useState, useEffect, useRef } from 'react';
-import type { ChatMessage } from '../../types';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import type { ChatMessage, ChatOptions } from '../../types';
 import { escapeHtml, markdownToSafeHtml } from '../../utils/sanitize';
 import { BackIcon, SendIcon } from './Icons';
 
+// ── [ask:] parser ──────────────────────────────────────────────────
+interface ParsedContent {
+  text: string;
+  questions: string[];
+}
+
+function parseAskQuestions(content: string): ParsedContent {
+  const regex = /\[ask:\s*([^\]]+)\]/g;
+  const questions: string[] = [];
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(content)) !== null) {
+    const q = match[1].trim();
+    if (q) questions.push(q);
+  }
+  const text = content.replace(regex, '').trim();
+  return { text, questions };
+}
+
+function cleanQuestion(q: string): string {
+  return q.replace(/\[\[([^\]]+)\]\]/g, '$1').trim();
+}
+
+// ── Suggestions (empty state) ─────────────────────────────────────
+const EMPTY_SUGGESTIONS = [
+  'Quels sont les points clés ?',
+  'Résume en 3 phrases',
+  'Y a-t-il des biais ?',
+  'Quelles sources sont citées ?',
+];
+
+// ── Plan helpers ──────────────────────────────────────────────────
+const PAID_PLANS = ['starter', 'student', 'etudiant', 'pro', 'expert', 'team', 'equipe'];
+function canUseWebSearch(plan?: string): boolean {
+  if (!plan) return false;
+  return PAID_PLANS.includes(plan.toLowerCase());
+}
+
+// ── Props ─────────────────────────────────────────────────────────
 interface ChatDrawerProps {
   summaryId: number;
   videoTitle: string;
   onClose: () => void;
   onSessionExpired?: () => void;
+  /** User plan id for web search gating */
+  userPlan?: string;
 }
 
-export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, onClose, onSessionExpired }) => {
+export const ChatDrawer: React.FC<ChatDrawerProps> = ({
+  summaryId,
+  videoTitle,
+  onClose,
+  onSessionExpired,
+  userPlan,
+}) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
+
+  const canWs = canUseWebSearch(userPlan);
 
   // Load chat history on mount
   useEffect(() => {
@@ -46,18 +95,23 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, o
     }
   }
 
-  async function sendMessage(): Promise<void> {
-    const question = input.trim();
+  async function sendMessage(customQuestion?: string, forceWebSearch?: boolean): Promise<void> {
+    const question = customQuestion || input.trim();
     if (!question || loading) return;
 
-    setInput('');
+    if (!customQuestion) setInput('');
     setMessages((prev) => [...prev, { role: 'user', content: question }]);
     setLoading(true);
+
+    const options: ChatOptions = {};
+    if (forceWebSearch || (canWs && webSearchEnabled)) {
+      options.use_web_search = true;
+    }
 
     try {
       const response = await chrome.runtime.sendMessage({
         action: 'ASK_QUESTION',
-        data: { summaryId, question },
+        data: { summaryId, question, options },
       });
 
       if (response.success) {
@@ -77,7 +131,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, o
         } else {
           setMessages((prev) => [
             ...prev,
-            { role: 'assistant', content: `Erreur\u00a0: ${errorMsg || 'R\u00e9ponse indisponible'}` },
+            { role: 'assistant', content: `Erreur\u00a0: ${errorMsg || 'Réponse indisponible'}` },
           ]);
         }
       }
@@ -103,6 +157,14 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, o
     }
   }
 
+  function handleQuestionClick(question: string): void {
+    sendMessage(cleanQuestion(question));
+  }
+
+  function handleSuggestionClick(question: string): void {
+    sendMessage(question);
+  }
+
   const truncatedTitle = videoTitle.length > 30 ? videoTitle.substring(0, 30) + '...' : videoTitle;
 
   return (
@@ -124,26 +186,29 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, o
         ) : messages.length === 0 ? (
           <div className="chat-welcome">
             <span className="chat-welcome-icon">{'\u{1F4AC}'}</span>
-            <p>Pose une question sur cette vid\u00e9o.</p>
+            <p>Pose une question sur cette vidéo.</p>
+            {/* Clickable suggestions */}
+            <div className="chat-suggestions">
+              {EMPTY_SUGGESTIONS.map((q, i) => (
+                <button
+                  key={i}
+                  className="chat-suggestion-btn"
+                  onClick={() => handleSuggestionClick(q)}
+                  disabled={loading || sessionExpired}
+                >
+                  <span className="chat-suggestion-arrow">→</span>
+                  {q}
+                </button>
+              ))}
+            </div>
           </div>
         ) : (
           messages.map((msg, i) => (
-            <div key={i} className={`chat-msg chat-msg-${msg.role}`}>
-              {msg.role === 'assistant' ? (
-                <>
-                  <span
-                    dangerouslySetInnerHTML={{
-                      __html: markdownToSafeHtml(escapeHtml(msg.content)),
-                    }}
-                  />
-                  {msg.web_search_used && (
-                    <div className="chat-web-badge">{'\u{1F310}'} Recherche web utilis\u00e9e</div>
-                  )}
-                </>
-              ) : (
-                msg.content
-              )}
-            </div>
+            <MessageBubble
+              key={i}
+              msg={msg}
+              onQuestionClick={handleQuestionClick}
+            />
           ))
         )}
 
@@ -176,8 +241,21 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, o
         </div>
       )}
 
-      {/* Input */}
+      {/* Input area with web search toggle */}
       <div className="chat-input-area">
+        <button
+          className={`chat-ws-toggle ${webSearchEnabled && canWs ? 'chat-ws-active' : ''}`}
+          onClick={() => {
+            if (canWs) setWebSearchEnabled(!webSearchEnabled);
+          }}
+          title={canWs
+            ? (webSearchEnabled ? 'Désactiver recherche web' : 'Activer recherche web')
+            : 'Recherche web — plan payant requis'
+          }
+          style={{ opacity: canWs ? 1 : 0.4 }}
+        >
+          {canWs ? '🌐' : '🔒'}
+        </button>
         <input
           type="text"
           className="chat-input"
@@ -190,13 +268,60 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, o
         />
         <button
           className="chat-send-btn"
-          onClick={sendMessage}
+          onClick={() => sendMessage()}
           disabled={!input.trim() || loading || sessionExpired}
           title="Envoyer"
         >
           <SendIcon size={16} />
         </button>
       </div>
+    </div>
+  );
+};
+
+// ── Message Bubble with [ask:] parsing ───────────────────────────
+interface MessageBubbleProps {
+  msg: ChatMessage;
+  onQuestionClick: (question: string) => void;
+}
+
+const MessageBubble: React.FC<MessageBubbleProps> = ({ msg, onQuestionClick }) => {
+  const parsed = useMemo(() => {
+    if (msg.role === 'user') return { text: msg.content, questions: [] };
+    return parseAskQuestions(msg.content);
+  }, [msg.content, msg.role]);
+
+  return (
+    <div className={`chat-msg chat-msg-${msg.role}`}>
+      {msg.role === 'assistant' ? (
+        <>
+          {msg.web_search_used && (
+            <div className="chat-web-badge">{'\u{1F310}'} Enrichi par le web</div>
+          )}
+          <span
+            dangerouslySetInnerHTML={{
+              __html: markdownToSafeHtml(escapeHtml(parsed.text)),
+            }}
+          />
+          {/* [ask:] question pills */}
+          {parsed.questions.length > 0 && (
+            <div className="chat-ask-pills">
+              {parsed.questions.map((q, i) => (
+                <button
+                  key={i}
+                  className="chat-ask-pill"
+                  onClick={() => onQuestionClick(q)}
+                >
+                  <span className="chat-ask-arrow">→</span>
+                  {cleanQuestion(q)}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        msg.content
+      )}
     </div>
   );
 };
