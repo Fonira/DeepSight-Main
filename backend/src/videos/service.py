@@ -133,7 +133,8 @@ async def save_summary(
     entities_extracted: Optional[Dict] = None,
     reliability_score: Optional[float] = None,
     fact_check_result: Optional[str] = None,
-    enrichment_data: Optional[Dict] = None
+    enrichment_data: Optional[Dict] = None,
+    platform: str = "youtube"  # 🎵 TikTok support
 ) -> int:
     """Sauvegarde un nouveau résumé et retourne son ID"""
     print(f"💾 [save_summary v2] Saving video_id={video_id}, user_id={user_id}", flush=True)
@@ -206,6 +207,7 @@ async def save_summary(
         video_url=video_url,
         thumbnail_url=thumbnail_url,
         video_upload_date=video_upload_date,
+        platform=platform,  # 🎵 TikTok support
         category=category,
         category_confidence=category_confidence,
         lang=lang,

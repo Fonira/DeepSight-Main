@@ -155,7 +155,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
     [availableModels, selectedModel]
   );
 
-  const scaleAnim = useMemo(() => new Animated.Value(1), []);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const detectInputType = useCallback((value: string): InputMode => {
     const trimmed = value.trim();
@@ -266,8 +266,8 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
     switch (inputMode) {
       case 'url':
         return isEn
-          ? 'Paste a YouTube URL or playlist link...'
-          : 'Collez une URL YouTube ou un lien de playlist...';
+          ? 'YouTube, TikTok... paste your link here'
+          : 'YouTube, TikTok... collez votre lien ici';
       case 'text':
         return isEn
           ? 'Paste or type the text to analyze...'

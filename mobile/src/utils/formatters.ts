@@ -109,9 +109,38 @@ export const truncateText = (text: string, maxLength: number): string => {
 export interface URLValidationResult {
   isValid: boolean;
   videoId: string | null;
-  urlType: 'watch' | 'youtu.be' | 'embed' | 'v' | 'shorts' | 'direct' | null;
+  urlType: 'watch' | 'youtu.be' | 'embed' | 'v' | 'shorts' | 'direct' | 'tiktok' | null;
+  platform?: 'youtube' | 'tiktok';
   error?: string;
 }
+
+// 🎵 TikTok URL patterns
+const TIKTOK_PATTERNS = [
+  /tiktok\.com\/@[\w.-]+\/video\/(\d+)/i,
+  /vm\.tiktok\.com\/([\w-]+)/i,
+  /m\.tiktok\.com\/v\/(\d+)/i,
+  /tiktok\.com\/t\/([\w-]+)/i,
+  /tiktok\.com\/video\/(\d+)/i,
+];
+
+// Check if URL is a TikTok URL
+export const isTikTokUrl = (url: string): boolean => {
+  if (!url) return false;
+  return TIKTOK_PATTERNS.some(pattern => pattern.test(url.trim()));
+};
+
+// Extract TikTok video ID
+export const extractTikTokId = (url: string): string | null => {
+  if (!url) return null;
+  const trimmed = url.trim();
+  for (const pattern of TIKTOK_PATTERNS) {
+    const match = trimmed.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+  return null;
+};
 
 // Extract YouTube video ID from URL (synced with backend patterns)
 export const extractYouTubeId = (url: string): string | null => {
@@ -182,7 +211,13 @@ export const validateYouTubeUrl = (url: string): URLValidationResult => {
     return { isValid: true, videoId: trimmed, urlType: 'direct' };
   }
 
-  // Check if it looks like a URL but isn't valid YouTube
+  // 🎵 Check TikTok URLs
+  const tiktokId = extractTikTokId(trimmed);
+  if (tiktokId) {
+    return { isValid: true, videoId: tiktokId, urlType: 'tiktok', platform: 'tiktok' };
+  }
+
+  // Check if it looks like a URL but isn't valid YouTube/TikTok
   if (trimmed.includes('youtube.com') || trimmed.includes('youtu.be')) {
     return {
       isValid: false,
@@ -192,12 +227,21 @@ export const validateYouTubeUrl = (url: string): URLValidationResult => {
     };
   }
 
+  if (trimmed.includes('tiktok.com')) {
+    return {
+      isValid: false,
+      videoId: null,
+      urlType: null,
+      error: 'Invalid TikTok URL format'
+    };
+  }
+
   return { isValid: false, videoId: null, urlType: null };
 };
 
-// Validate YouTube URL (simple boolean check)
+// Validate video URL (YouTube or TikTok — simple boolean check)
 export const isValidYouTubeUrl = (url: string): boolean => {
-  return extractYouTubeId(url) !== null;
+  return extractYouTubeId(url) !== null || isTikTokUrl(url);
 };
 
 // Get YouTube thumbnail URL
@@ -237,6 +281,8 @@ export default {
   formatFileSize,
   truncateText,
   extractYouTubeId,
+  extractTikTokId,
+  isTikTokUrl,
   validateYouTubeUrl,
   isValidYouTubeUrl,
   getYouTubeThumbnail,

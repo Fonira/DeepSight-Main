@@ -198,6 +198,9 @@ class Summary(Base):
     reliability_score = Column(Float)
     tags = Column(Text)
 
+    # Plateforme source (youtube, tiktok)
+    platform = Column(String(20), default="youtube", server_default="youtube")
+
     # Playlist
     playlist_id = Column(String(100), index=True)
     playlist_position = Column(Integer)
@@ -607,6 +610,8 @@ async def run_schema_migrations():
     migrations = [
         # Hierarchical Digest Pipeline (Feb 2026)
         "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS full_digest TEXT",
+        # 🎵 TikTok support (Mar 2026)
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS platform VARCHAR(20) DEFAULT 'youtube'",
         # VideoChunks table (créée par create_all si absente, mais on sécurise)
         """
         CREATE TABLE IF NOT EXISTS video_chunks (

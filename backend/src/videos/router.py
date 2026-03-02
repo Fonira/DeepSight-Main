@@ -101,6 +101,12 @@ from transcripts import (
     get_video_info, get_transcript_with_timestamps,
     get_playlist_videos, get_playlist_info
 )
+# 🎵 TikTok support
+from transcripts.tiktok import (
+    is_tiktok_url, extract_tiktok_video_id,
+    get_tiktok_video_info, get_tiktok_transcript,
+    detect_platform
+)
 
 # 🔔 Import du système de notifications (SSE)
 try:
@@ -143,14 +149,25 @@ async def analyze_video(
     - Coût variable selon le modèle
     """
     print(f"📥 [v6.0] Analyze request: {request.url} by user {current_user.id} (plan: {current_user.plan})", flush=True)
-    
-    # Extraire l'ID vidéo d'abord pour validation
-    video_id = extract_video_id(request.url)
-    if not video_id:
-        raise HTTPException(status_code=400, detail={
-            "code": "invalid_url",
-            "message": "Invalid YouTube URL"
-        })
+
+    # 🎵 Détecter la plateforme (YouTube ou TikTok)
+    platform = detect_platform(request.url)
+
+    if platform == "tiktok":
+        video_id = extract_tiktok_video_id(request.url)
+        if not video_id:
+            raise HTTPException(status_code=400, detail={
+                "code": "invalid_url",
+                "message": "Invalid TikTok URL"
+            })
+        print(f"🎵 [TIKTOK] Detected TikTok video: {video_id}", flush=True)
+    else:
+        video_id = extract_video_id(request.url)
+        if not video_id:
+            raise HTTPException(status_code=400, detail={
+                "code": "invalid_url",
+                "message": "Invalid YouTube URL"
+            })
     
     # Déterminer le modèle à utiliser
     plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
@@ -276,9 +293,10 @@ async def analyze_video(
         user_id=current_user.id,
         user_plan=current_user.plan,
         credit_cost=credit_cost,
-        deep_research=deep_research  # 🆕 v5.5
+        deep_research=deep_research,  # 🆕 v5.5
+        platform=platform  # 🎵 TikTok support
     )
-    
+
     return TaskStatusResponse(
         task_id=task_id,
         status="pending",
@@ -318,13 +336,23 @@ async def analyze_video_v2(
     """
     print(f"📥 [v2.0] Analyze request: {request.url} by user {current_user.id}", flush=True)
 
-    # Extraire l'ID vidéo
-    video_id = extract_video_id(request.url)
-    if not video_id:
-        raise HTTPException(status_code=400, detail={
-            "code": "invalid_url",
-            "message": "Invalid YouTube URL"
-        })
+    # 🎵 Détecter la plateforme
+    platform = detect_platform(request.url)
+
+    if platform == "tiktok":
+        video_id = extract_tiktok_video_id(request.url)
+        if not video_id:
+            raise HTTPException(status_code=400, detail={
+                "code": "invalid_url",
+                "message": "Invalid TikTok URL"
+            })
+    else:
+        video_id = extract_video_id(request.url)
+        if not video_id:
+            raise HTTPException(status_code=400, detail={
+                "code": "invalid_url",
+                "message": "Invalid YouTube URL"
+            })
 
     # Déterminer le modèle
     plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
@@ -466,7 +494,8 @@ async def analyze_video_v2(
         credit_cost=credit_cost,
         deep_research=deep_research,
         options=customization_options,
-        force_refresh=request.force_refresh
+        force_refresh=request.force_refresh,
+        platform=platform  # 🎵 TikTok support
     )
 
     return AnalyzeV2Response(
@@ -493,7 +522,8 @@ async def _analyze_video_background_v2(
     credit_cost: int,
     deep_research: bool,
     options: Dict[str, Any],
-    force_refresh: bool = False
+    force_refresh: bool = False,
+    platform: str = "youtube"
 ):
     """
     🆕 v2.0: Background analysis avec options de customization.
@@ -525,7 +555,10 @@ async def _analyze_video_background_v2(
             _task_store[task_id]["progress"] = 10
             _task_store[task_id]["message"] = "📺 Récupération des infos vidéo..."
 
-            video_info = await get_video_info(video_id)
+            if platform == "tiktok":
+                video_info = await get_tiktok_video_info(url)
+            else:
+                video_info = await get_video_info(video_id)
             if not video_info:
                 raise Exception("Could not fetch video info")
 
@@ -533,7 +566,10 @@ async def _analyze_video_background_v2(
             _task_store[task_id]["progress"] = 20
             _task_store[task_id]["message"] = "📝 Extraction du transcript..."
 
-            transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id)
+            if platform == "tiktok":
+                transcript, transcript_timestamped, detected_lang = await get_tiktok_transcript(url, video_id)
+            else:
+                transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id)
             if not transcript:
                 raise Exception("No transcript available for this video")
 
@@ -700,6 +736,12 @@ async def _analyze_video_background_v2(
                     "v2_options": options
                 }
 
+            # Thumbnail dynamique selon la plateforme
+            if platform == "tiktok":
+                default_thumbnail = video_info.get("thumbnail_url", "")
+            else:
+                default_thumbnail = video_info.get("thumbnail_url", f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg")
+
             summary_id = await save_summary(
                 session=session,
                 user_id=user_id,
@@ -708,7 +750,7 @@ async def _analyze_video_background_v2(
                 video_channel=video_info.get("channel", "Unknown"),
                 video_duration=video_info.get("duration", 0),
                 video_url=url,
-                thumbnail_url=video_info.get("thumbnail_url", f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"),
+                thumbnail_url=default_thumbnail,
                 category=category,
                 category_confidence=confidence,
                 lang=lang,
@@ -719,7 +761,8 @@ async def _analyze_video_background_v2(
                 video_upload_date=video_info.get("upload_date"),
                 entities_extracted=entities,
                 reliability_score=reliability,
-                enrichment_data=enrichment_metadata
+                enrichment_data=enrichment_metadata,
+                platform=platform
             )
 
             # Incrémenter le quota quotidien
@@ -860,13 +903,24 @@ async def analyze_video_v2_1(
             "message": "Advanced analysis features are not available"
         })
 
-    # Extraire l'ID vidéo
-    video_id = extract_video_id(request.url)
-    if not video_id:
-        raise HTTPException(status_code=400, detail={
-            "code": "invalid_url",
-            "message": "Invalid YouTube URL"
-        })
+    # 🎵 Détecter la plateforme (YouTube ou TikTok)
+    platform = detect_platform(request.url)
+
+    if platform == "tiktok":
+        video_id = extract_tiktok_video_id(request.url)
+        if not video_id:
+            raise HTTPException(status_code=400, detail={
+                "code": "invalid_url",
+                "message": "Invalid TikTok URL"
+            })
+        print(f"🎵 [TIKTOK] Detected TikTok video: {video_id}", flush=True)
+    else:
+        video_id = extract_video_id(request.url)
+        if not video_id:
+            raise HTTPException(status_code=400, detail={
+                "code": "invalid_url",
+                "message": "Invalid YouTube URL"
+            })
 
     # Déterminer le modèle
     plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
@@ -1060,7 +1114,8 @@ async def analyze_video_v2_1(
         credit_cost=credit_cost,
         deep_research=deep_research,
         options=full_options,
-        force_refresh=request.force_refresh
+        force_refresh=request.force_refresh,
+        platform=platform  # 🎵 TikTok support
     )
 
     return {
@@ -1088,7 +1143,8 @@ async def _analyze_video_background_v2_1(
     credit_cost: int,
     deep_research: bool,
     options: Dict[str, Any],
-    force_refresh: bool = False
+    force_refresh: bool = False,
+    platform: str = "youtube"
 ):
     """
     🆕 v2.1: Background analysis avec TOUTES les fonctionnalités avancées.
@@ -1131,7 +1187,10 @@ async def _analyze_video_background_v2_1(
             _task_store[task_id]["progress"] = 8
             _task_store[task_id]["message"] = "📺 Récupération des infos vidéo..."
 
-            video_info = await get_video_info(video_id)
+            if platform == "tiktok":
+                video_info = await get_tiktok_video_info(url)
+            else:
+                video_info = await get_video_info(video_id)
             if not video_info:
                 raise Exception("Could not fetch video info")
 
@@ -1141,7 +1200,10 @@ async def _analyze_video_background_v2_1(
             _task_store[task_id]["progress"] = 15
             _task_store[task_id]["message"] = "📝 Extraction du transcript..."
 
-            transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id)
+            if platform == "tiktok":
+                transcript, transcript_timestamped, detected_lang = await get_tiktok_transcript(url, video_id)
+            else:
+                transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id)
             if not transcript:
                 raise Exception("No transcript available for this video")
 
@@ -1395,6 +1457,12 @@ async def _analyze_video_background_v2_1(
                 "propaganda_risk": metadata_enriched_result.propaganda_analysis.risk_level.value if metadata_enriched_result and metadata_enriched_result.propaganda_analysis else None
             }
 
+            # Thumbnail dynamique selon la plateforme
+            if platform == "tiktok":
+                default_thumbnail = video_info.get("thumbnail_url", "")
+            else:
+                default_thumbnail = video_info.get("thumbnail_url", f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg")
+
             summary_id = await save_summary(
                 session=session,
                 user_id=user_id,
@@ -1403,7 +1471,7 @@ async def _analyze_video_background_v2_1(
                 video_channel=video_info.get("channel", "Unknown"),
                 video_duration=video_info.get("duration", 0),
                 video_url=url,
-                thumbnail_url=video_info.get("thumbnail_url", f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"),
+                thumbnail_url=default_thumbnail,
                 category=category,
                 category_confidence=confidence,
                 lang=lang,
@@ -1414,7 +1482,8 @@ async def _analyze_video_background_v2_1(
                 video_upload_date=video_info.get("upload_date"),
                 entities_extracted=entities,
                 reliability_score=reliability,
-                enrichment_data=enrichment_metadata
+                enrichment_data=enrichment_metadata,
+                platform=platform
             )
 
             # Incrémenter le quota
@@ -1574,7 +1643,8 @@ async def _analyze_video_background_v6(
     user_id: int,
     user_plan: str,
     credit_cost: int,
-    deep_research: bool = False  # 🆕 v5.5
+    deep_research: bool = False,  # 🆕 v5.5
+    platform: str = "youtube"  # 🎵 TikTok support
 ):
     """
     🔐 Fonction d'analyse v6.0 avec SÉCURITÉ RENFORCÉE.
@@ -1597,7 +1667,7 @@ async def _analyze_video_background_v6(
     """
     from db.database import async_session_maker
     
-    print(f"🔧 [v6.0] Background task started: {task_id} (deep_research={deep_research})", flush=True)
+    print(f"🔧 [v6.0] Background task started: {task_id} (deep_research={deep_research}, platform={platform})", flush=True)
     
     # 🆕 v5.5: Si deep_research activé, utiliser enrichissement maximal
     if deep_research:
@@ -1621,8 +1691,11 @@ async def _analyze_video_background_v6(
             _task_store[task_id]["progress"] = 10
             _task_store[task_id]["message"] = "📺 Récupération des infos vidéo..."
             
-            print(f"📺 Fetching video info for {video_id}...", flush=True)
-            video_info = await get_video_info(video_id)
+            print(f"📺 Fetching video info for {video_id} (platform={platform})...", flush=True)
+            if platform == "tiktok":
+                video_info = await get_tiktok_video_info(url)
+            else:
+                video_info = await get_video_info(video_id)
             if not video_info:
                 raise Exception("Could not fetch video info")
             
@@ -1634,8 +1707,11 @@ async def _analyze_video_background_v6(
             _task_store[task_id]["progress"] = 20
             _task_store[task_id]["message"] = "📝 Extraction du transcript..."
             
-            transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id)
-            
+            if platform == "tiktok":
+                transcript, transcript_timestamped, detected_lang = await get_tiktok_transcript(url, video_id)
+            else:
+                transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id)
+
             if not transcript:
                 raise Exception("No transcript available for this video")
             
@@ -1845,7 +1921,12 @@ async def _analyze_video_background_v6(
                     "sources": enrichment_sources,
                     "enriched_at": datetime.utcnow().isoformat()
                 }
-            
+
+            # 🎵 Thumbnail par défaut selon la plateforme
+            default_thumbnail = video_info.get("thumbnail_url", "")
+            if not default_thumbnail and platform == "youtube":
+                default_thumbnail = f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"
+
             # Sauvegarder le résumé
             summary_id = await save_summary(
                 session=session,
@@ -1855,7 +1936,7 @@ async def _analyze_video_background_v6(
                 video_channel=video_info.get("channel", "Unknown"),
                 video_duration=video_info.get("duration", 0),
                 video_url=url,
-                thumbnail_url=video_info.get("thumbnail_url", f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"),
+                thumbnail_url=default_thumbnail,
                 category=category,
                 category_confidence=confidence,
                 lang=lang,
@@ -1895,12 +1976,13 @@ async def _analyze_video_background_v6(
                     "video_id": video_id,
                     "video_title": video_info["title"],
                     "video_channel": video_info.get("channel", "Unknown"),
-                    "thumbnail_url": video_info.get("thumbnail_url", f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg"),
+                    "thumbnail_url": default_thumbnail,
                     "word_count": final_word_count,
                     "category": category,
                     "reliability_score": reliability,
                     "mode": mode,
                     "lang": lang,
+                    "platform": platform,  # 🎵 TikTok support
                     # 🆕 Infos enrichissement
                     "enrichment": {
                         "level": enrichment_level.value,

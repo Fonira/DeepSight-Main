@@ -47,7 +47,7 @@ interface SmartInputBarProps {
 // CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════
 
-// 🔧 FIX: Ajout des patterns de playlists YouTube
+// 🔧 FIX: Ajout des patterns de playlists YouTube + 🎵 TikTok
 const YOUTUBE_PATTERNS = [
   /youtube\.com\/watch\?v=/i,
   /youtu\.be\//i,
@@ -59,6 +59,18 @@ const YOUTUBE_PATTERNS = [
   /youtube\.com\/watch\?.*list=/i,  // vidéo avec playlist
   /[?&]list=[A-Za-z0-9_-]+/i,       // paramètre list= dans l'URL
 ];
+
+// 🎵 Patterns TikTok
+const TIKTOK_PATTERNS = [
+  /tiktok\.com\/@[\w.-]+\/video\/\d+/i,
+  /vm\.tiktok\.com\/[\w-]+/i,
+  /m\.tiktok\.com\/v\/\d+/i,
+  /tiktok\.com\/t\/[\w-]+/i,
+  /tiktok\.com\/video\/\d+/i,
+];
+
+// Tous les patterns vidéo supportés (YouTube + TikTok)
+const ALL_VIDEO_PATTERNS = [...YOUTUBE_PATTERNS, ...TIKTOK_PATTERNS];
 
 const SEARCH_LANGUAGES = [
   { code: 'fr', name: 'Français', flag: '🇫🇷' },
@@ -86,7 +98,7 @@ const MODE_CONFIG = {
   },
   url: {
     icon: Link2,
-    label: { fr: 'URL YouTube', en: 'YouTube URL' },
+    label: { fr: 'URL Vidéo', en: 'Video URL' },
     bgColor: 'bg-red-500/10',
     textColor: 'text-red-400',
     // Bordure dynamique gérée via getDynamicBorderClasses()
@@ -94,7 +106,7 @@ const MODE_CONFIG = {
     hoverBorder: 'hover:border-border-hover',
     focusBorder: 'focus-within:border-accent-primary/60',
     gradient: 'from-red-500 to-rose-600',
-    placeholder: { fr: 'https://youtube.com/watch?v=... ou playlist?list=...', en: 'https://youtube.com/watch?v=... or playlist?list=...' },
+    placeholder: { fr: 'YouTube, TikTok... collez votre lien ici', en: 'YouTube, TikTok... paste your link here' },
   },
   text: {
     icon: FileText,
@@ -118,14 +130,14 @@ const detectInputMode = (input: string): InputMode => {
 
   const trimmed = input.trim();
 
-  // 🔧 FIX: Check YouTube URL first (inclut playlists)
-  for (const pattern of YOUTUBE_PATTERNS) {
+  // 🔧 FIX: Check YouTube/TikTok URL first (inclut playlists)
+  for (const pattern of ALL_VIDEO_PATTERNS) {
     if (pattern.test(trimmed)) {
       return 'url';
     }
   }
 
-  // Non-YouTube URLs → treat as search query
+  // Non-video URLs → treat as search query
   if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
     return 'search';
   }
@@ -152,11 +164,20 @@ const getInputValue = (value: SmartInputValue): string => {
 // COMPONENT
 // ═══════════════════════════════════════════════════════════════════
 
-// Helper : teste si une URL est une URL YouTube valide
-const isValidYouTubeUrl = (url: string): boolean => {
+// Helper : teste si une URL est une URL vidéo valide (YouTube ou TikTok)
+const isValidVideoUrl = (url: string): boolean => {
   if (!url || url.trim().length === 0) return false;
-  return YOUTUBE_PATTERNS.some(pattern => pattern.test(url.trim()));
+  return ALL_VIDEO_PATTERNS.some(pattern => pattern.test(url.trim()));
 };
+
+// 🎵 Helper : détecte si c'est TikTok
+const isTikTokUrl = (url: string): boolean => {
+  if (!url || url.trim().length === 0) return false;
+  return TIKTOK_PATTERNS.some(pattern => pattern.test(url.trim()));
+};
+
+// Backward compat
+const isValidYouTubeUrl = isValidVideoUrl;
 
 const SmartInputBar: React.FC<SmartInputBarProps> = ({
   value,
