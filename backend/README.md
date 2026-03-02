@@ -1,6 +1,6 @@
 # 🤿 Deep Sight API v3.0
 
-> Backend FastAPI pour l'analyse intelligente de vidéos YouTube avec IA bayésienne
+> Backend FastAPI pour l'analyse intelligente et sourcée de vidéos YouTube
 
 ## 📋 Table des matières
 
@@ -29,7 +29,7 @@ src/
 ├── videos/
 │   ├── router.py           # Endpoints analyse vidéo
 │   ├── service.py          # Opérations DB summaries
-│   ├── analysis.py         # Prompts Mistral bayésiens
+│   ├── analysis.py         # Prompts Mistral analyse critique
 │   ├── schemas.py          # Modèles Pydantic
 │   └── export.py           # Export PDF/DOCX/MD
 ├── transcripts/
@@ -202,7 +202,7 @@ Ajouter le service PostgreSQL dans Railway. La `DATABASE_URL` est automatiquemen
 
 ## ✨ Fonctionnalités
 
-### Analyse vidéo avec IA bayésienne
+### Analyse vidéo avec IA sourcée et nuancée
 
 - **3 modes d'analyse** : accessible, standard, expert
 - **Prompts épistémiques** avec marqueurs (✅ SOLIDE, ⚖️ PLAUSIBLE, ❓ INCERTAIN, ⚠️ À VÉRIFIER)

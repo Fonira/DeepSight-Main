@@ -36,8 +36,8 @@
 - Highlight the clean, modern dark UI
 
 ### Screenshot 2 — Analysis Summary
-- Show a completed analysis with the Bayesian summary
-- Text overlay: "Bayesian summaries with certainty levels" / "Résumés bayésiens avec niveaux de certitude"
+- Show a completed analysis with the sourced summary
+- Text overlay: "Sourced summaries with certainty levels" / "Résumés sourcés avec niveaux de certitude"
 - Show the epistemic markers (SOLID, PLAUSIBLE, etc.)
 
 ### Screenshot 3 — Fact-Check Results

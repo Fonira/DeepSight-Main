@@ -31,7 +31,7 @@ Chaque requête API porte le header : `?platform=web|mobile|extension`
 
 ## Project Identity
 
-**DeepSight** est un SaaS d'analyse IA de vidéos YouTube avec épistémologie bayésienne. Synthèses intelligentes, fact-checking, outils d'étude, chat contextuel.
+**DeepSight** est un SaaS d'analyse IA de vidéos YouTube avec analyse sourcée et nuancée. Synthèses intelligentes, fact-checking, outils d'étude, chat contextuel.
 
 | Composant | Technologie | Déploiement | URL |
 |-----------|-------------|-------------|-----|
@@ -199,7 +199,7 @@ eas submit --platform android
 | `backend/src/core/config.py` | Settings, plans, quotas, API keys |
 | `backend/src/db/database.py` | SQLAlchemy models (15 tables) |
 | `backend/src/auth/dependencies.py` | `get_current_user`, `require_plan` |
-| `backend/src/videos/analysis.py` | Bayesian analysis prompts |
+| `backend/src/videos/analysis.py` | Critical analysis prompts |
 | `backend/src/transcripts/youtube.py` | Multi-fallback YouTube extraction |
 | `backend/src/billing/router.py` | Stripe checkout + webhooks |
 
@@ -400,7 +400,7 @@ export const GOOGLE_CLIENT_ID = 'your-client-id.apps.googleusercontent.com';
 
 ---
 
-## Bayesian Analysis Features
+## Critical Analysis Features
 
 ### Marqueurs épistémiques
 - **SOLIDE** — Fait établi, consensus scientifique

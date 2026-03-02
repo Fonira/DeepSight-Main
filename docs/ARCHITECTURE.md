@@ -341,7 +341,7 @@ RootNavigator
 │  3. Background Task:                                              │
 │     a. Extract video metadata (title, thumbnail, duration)       │
 │     b. Extract transcript (multi-fallback system)                │
-│     c. Call Mistral AI for Bayesian analysis                     │
+│     c. Call Mistral AI for critical analysis                     │
 │     d. Extract concepts and epistemic markers                    │
 │     e. Save Summary to database                                  │
 │     f. Deduct credits from user                                  │
@@ -595,7 +595,7 @@ CREATE TABLE subscriptions (
 
 | Feature | Model | Purpose |
 |---------|-------|---------|
-| Analysis | mistral-large | Bayesian video summaries |
+| Analysis | mistral-large | Source-verified video summaries |
 | Chat | mistral-medium | Contextual Q&A |
 | Study Tools | mistral-medium | Quiz/flashcard generation |
 
@@ -603,7 +603,7 @@ CREATE TABLE subscriptions (
 
 ```python
 ANALYSIS_SYSTEM_PROMPT = """
-You are an expert analyst using Bayesian epistemology.
+You are an expert analyst using evidence-based epistemology.
 Analyze the content and mark claims with epistemic markers:
 
 - **SOLID** [🟢]: Established fact, scientific consensus

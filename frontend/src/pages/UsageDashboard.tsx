@@ -58,8 +58,8 @@ const USER_GUIDE: { sections: Array<{ id: string; icon: LucideIcon; title: { fr:
           icon: Youtube,
           title: { fr: 'Analyser une vidéo YouTube', en: 'Analyze a YouTube video' },
           description: {
-            fr: 'Collez simplement l\'URL d\'une vidéo YouTube dans la barre d\'analyse. Deep Sight extraira automatiquement la transcription et générera un résumé intelligent avec analyse épistémique bayésienne.',
-            en: 'Simply paste a YouTube video URL into the analysis bar. Deep Sight will automatically extract the transcript and generate a smart summary with Bayesian epistemic analysis.'
+            fr: 'Collez simplement l\'URL d\'une vidéo YouTube dans la barre d\'analyse. Deep Sight extraira automatiquement la transcription et générera un résumé intelligent avec analyse sourcée et nuancée.',
+            en: 'Simply paste a YouTube video URL into the analysis bar. Deep Sight will automatically extract the transcript and generate a smart summary with source-verified, evidence-based analysis.'
           },
           steps: {
             fr: ['Copiez l\'URL de la vidéo YouTube', 'Collez-la dans la barre d\'analyse', 'Choisissez le mode d\'analyse (Accessible, Standard ou Expert)', 'Cliquez sur Analyser — la catégorie et le modèle IA sont détectés automatiquement'],

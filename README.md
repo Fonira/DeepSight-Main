@@ -5,7 +5,7 @@
 <h1 align="center">🤿 DeepSight</h1>
 
 <p align="center">
-  <strong>AI-Powered YouTube Video Analysis with Bayesian Epistemology</strong>
+  <strong>AI-Powered YouTube Video Analysis — Sourced & Evidence-Based</strong>
 </p>
 
 <p align="center">
@@ -35,7 +35,7 @@
 
 ## 📖 About
 
-**DeepSight** is a SaaS platform that transforms how you consume YouTube content. Using advanced AI models and Bayesian epistemology principles, it provides:
+**DeepSight** is a SaaS platform that transforms how you consume YouTube content. Using advanced AI models and source-verified analysis, it provides:
 
 - 🎯 **Intelligent Summaries** — Structured analysis with key concepts extraction
 - 🔍 **Fact-Checking** — AI-powered claim verification with confidence levels
@@ -49,7 +49,7 @@
 
 <p align="center">
   <img src="docs/screenshots/analysis-view.png" alt="Analysis View" width="80%">
-  <br><em>Video analysis with Bayesian epistemic markers</em>
+  <br><em>Video analysis with epistemic certainty markers</em>
 </p>
 
 <p align="center">

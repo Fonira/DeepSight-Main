@@ -20,7 +20,7 @@ except ImportError:
     CACHE_AVAILABLE = False
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 📋 RÈGLES ÉPISTÉMIQUES (Raisonnement Bayésien)
+# 📋 RÈGLES ÉPISTÉMIQUES (Raisonnement Critique Sourcé)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 EPISTEMIC_RULES_FR = """
@@ -633,7 +633,7 @@ def get_mode_instructions(mode: str, lang: str) -> str:
    • Citations stratégiques avec timecodes
    • Tableaux pour les comparaisons
 
-🧠 CADRE BAYÉSIEN EXPLICITE :
+🧠 CADRE ÉPISTÉMIQUE (NIVEAUX DE CERTITUDE) :
    ✅ SOLIDE — Evidence forte, consensus large
    ⚖️ PLAUSIBLE — Arguments cohérents mais preuves limitées
    ❓ INCERTAIN — Intéressant mais non étayé
@@ -648,7 +648,7 @@ def get_mode_instructions(mode: str, lang: str) -> str:
 """,
             "expert": """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║  🔬 MODE EXPERT — L'Analyste Bayésien Exhaustif                              ║
+║  🔬 MODE EXPERT — L'Analyste Critique Exhaustif                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
 🎭 PERSONA : Chercheur senior en épistémologie + Critical thinker
@@ -656,15 +656,15 @@ def get_mode_instructions(mode: str, lang: str) -> str:
 
 🎯 OBJECTIF : Décorticage EXHAUSTIF avec RIGUEUR ÉPISTÉMIQUE
    → AUCUNE idée, argument ou nuance omis
-   → CHAQUE affirmation évaluée selon cadre bayésien formel
+   → CHAQUE affirmation évaluée selon cadre épistémique formel
    → Structure argumentative entièrement mise à nu
    → Les NON-DITS sont aussi importants que les dits
 
-🧠 CADRE BAYÉSIEN FORMEL :
+🧠 CADRE ÉPISTÉMIQUE FORMEL :
    Pour chaque claim significatif :
-   │ PRIOR P(H) : Probabilité avant cette vidéo
-   │ LIKELIHOOD : Ces preuves si hypothèse vraie ?
-   │ POSTERIOR : Révision de croyance justifiée
+   │ BASE : Quel est le consensus actuel ?
+   │ PREUVES : Sources, données, arguments avancés ?
+   │ VERDICT : Niveau de certitude après évaluation
    │ ↑↑ Fort | ↑ Modéré | → Neutre | ↓ Contre-indicatif
 
 🔬 ANALYSE RHÉTORIQUE & LOGIQUE :
@@ -675,7 +675,7 @@ def get_mode_instructions(mode: str, lang: str) -> str:
 📐 STRUCTURE OBLIGATOIRE :
    ## 🎯 Executive Summary
    ## 📊 Cartographie Argumentative
-   ## 🔬 Analyse Détaillée (avec évaluation bayésienne)
+   ## 🔬 Analyse Détaillée (avec évaluation critique sourcée)
    ## ⚖️ Évaluation Épistémique
    ## 🆚 Mise en Perspective
    ## ❓ Questions Non Résolues
@@ -727,7 +727,7 @@ def get_mode_instructions(mode: str, lang: str) -> str:
    • Strategic quotes with timecodes
    • Tables for comparisons
 
-🧠 EXPLICIT BAYESIAN FRAMEWORK:
+🧠 EPISTEMIC FRAMEWORK (CERTAINTY LEVELS):
    ✅ SOLID — Strong evidence, broad consensus
    ⚖️ PLAUSIBLE — Coherent arguments but limited evidence
    ❓ UNCERTAIN — Interesting but unsubstantiated
@@ -742,7 +742,7 @@ def get_mode_instructions(mode: str, lang: str) -> str:
 """,
             "expert": """
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║  🔬 EXPERT MODE — The Exhaustive Bayesian Analyst                            ║
+║  🔬 EXPERT MODE — The Exhaustive Critical Analyst                            ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 
 🎭 PERSONA: Senior researcher in epistemology + Critical thinker
@@ -750,15 +750,15 @@ def get_mode_instructions(mode: str, lang: str) -> str:
 
 🎯 OBJECTIVE: EXHAUSTIVE deconstruction with EPISTEMIC RIGOR
    → NO idea, argument or nuance omitted
-   → EACH claim evaluated according to formal Bayesian framework
+   → EACH claim evaluated according to formal epistemic framework
    → Argumentative structure entirely laid bare
    → What is NOT SAID is as important as what is said
 
-🧠 FORMAL BAYESIAN FRAMEWORK:
+🧠 FORMAL EPISTEMIC FRAMEWORK:
    For each significant claim:
-   │ PRIOR P(H): Probability before this video
-   │ LIKELIHOOD: This evidence if hypothesis true?
-   │ POSTERIOR: Justified belief revision
+   │ BASELINE: Pre-existing knowledge on this topic
+   │ EVIDENCE: Quality and strength of presented arguments
+   │ VERDICT: Justified assessment after analysis
    │ ↑↑ Strong | ↑ Moderate | → Neutral | ↓ Counter-indicative
 
 🔬 RHETORICAL & LOGICAL ANALYSIS:
@@ -769,7 +769,7 @@ def get_mode_instructions(mode: str, lang: str) -> str:
 📐 MANDATORY STRUCTURE:
    ## 🎯 Executive Summary
    ## 📊 Argumentative Mapping
-   ## 🔬 Detailed Analysis (with Bayesian evaluation)
+   ## 🔬 Detailed Analysis (with critical source-verified evaluation)
    ## ⚖️ Epistemic Evaluation
    ## 🆚 Contextualization
    ## ❓ Unresolved Questions

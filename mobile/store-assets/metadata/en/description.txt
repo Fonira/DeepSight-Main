@@ -1,10 +1,10 @@
-DeepSight transforms how you watch YouTube. Powered by artificial intelligence and Bayesian epistemology, every video becomes a reliable, structured source of knowledge.
+DeepSight transforms how you watch YouTube. Powered by artificial intelligence and source-verified analysis, every video becomes a reliable, structured source of knowledge.
 
 INTELLIGENT ANALYSIS
 Paste a YouTube link and instantly get a detailed summary. Our AI identifies key ideas, arguments, and the logical structure of each video. Three analysis modes — accessible, standard, and expert — adapt to your level.
 
 FACT-CHECKING WITH SOURCES
-Every claim is evaluated with Bayesian certainty markers:
+Every claim is evaluated with certainty markers:
 • SOLID — Established fact, scientific consensus
 • PLAUSIBLE — Probable but needs confirmation
 • UNCERTAIN — Hypothesis, ongoing debate

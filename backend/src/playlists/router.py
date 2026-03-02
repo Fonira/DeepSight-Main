@@ -7,7 +7,7 @@
 ║  🔀 Fusion multi-sources Mistral + Perplexity                                      ║
 ║  🎯 Allocation dynamique de tokens selon pertinence                                ║
 ║  ⏱️ Extraction et validation automatique des timecodes                             ║
-║  🧠 Raisonnement bayésien adaptatif par mode                                       ║
+║  🧠 Raisonnement critique adaptatif par mode                                       ║
 ║  📊 Métriques de confiance et sourçage enrichi                                     ║
 ║  📹 FIX v4.1: Endpoint video individuel ajouté                                     ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
@@ -168,8 +168,8 @@ MODE_CONFIG = {
         "max_tokens": 8000,
         "num_segments": 5,
         "timecode_min": 6,
-        "style_fr": "Analyste bayésien exhaustif: analyse détaillée, identifie sophismes et biais, impitoyablement rigoureux",
-        "style_en": "Exhaustive Bayesian analyst: detailed analysis, identifies fallacies and biases, ruthlessly rigorous"
+        "style_fr": "Analyste critique exhaustif: analyse détaillée et sourcée, identifie sophismes et biais, impitoyablement rigoureux",
+        "style_en": "Exhaustive critical analyst: detailed source-verified analysis, identifies fallacies and biases, ruthlessly rigorous"
     }
 }
 

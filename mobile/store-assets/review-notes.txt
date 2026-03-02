@@ -2,7 +2,7 @@ APPLE APP REVIEW — NOTES FOR REVIEWERS
 ========================================
 
 APP OVERVIEW
-DeepSight is an AI-powered YouTube video analysis application. Users paste a YouTube URL, and the app generates detailed summaries using Bayesian epistemology, fact-checks claims with external sources, and provides study tools (flashcards, quizzes, concept glossary).
+DeepSight is an AI-powered YouTube video analysis application. Users paste a YouTube URL, and the app generates detailed source-verified summaries, fact-checks claims with external sources, and provides study tools (flashcards, quizzes, concept glossary).
 
 HOW TO TEST
 1. Launch the app and sign up with email/password, or use the demo account below
@@ -29,7 +29,7 @@ This app uses artificial intelligence in the following ways:
 • Perplexity AI — For fact-checking claims and retrieving external sources
 • Text-to-Speech — For audio synthesis of summaries
 
-All AI-generated content is clearly labeled with Bayesian certainty markers (Solid, Plausible, Uncertain, Verify) to indicate confidence levels. Users are encouraged to verify claims independently.
+All AI-generated content is clearly labeled with certainty markers (Solid, Plausible, Uncertain, Verify) to indicate confidence levels. Users are encouraged to verify claims independently.
 
 No AI is used for user profiling, biometric analysis, or automated decision-making that affects users.
 

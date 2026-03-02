@@ -2,7 +2,7 @@
 
 ## 🎯 Identité du projet
 
-**Deep Sight API** - Backend FastAPI pour l'analyse intelligente de vidéos YouTube avec IA bayésienne.
+**Deep Sight API** - Backend FastAPI pour l'analyse intelligente et sourcée de vidéos YouTube.
 
 - **URL Production**: Railway (https://api.deepsightsynthesis.com)
 - **Frontend**: Vercel (React/TypeScript)
@@ -49,7 +49,7 @@ src/
 ├── videos/
 │   ├── router.py           # Endpoints vidéos (/analyze, /history)
 │   ├── service.py          # CRUD summaries
-│   ├── analysis.py         # Prompts Mistral bayésiens ⭐
+│   ├── analysis.py         # Prompts Mistral analyse critique ⭐
 │   ├── intelligent_discovery.py # Recherche vidéos intelligente
 │   ├── web_enrichment.py   # Enrichissement Perplexity
 │   ├── streaming.py        # SSE pour analyse temps réel
@@ -82,7 +82,7 @@ src/
 | `core/config.py` | ⭐⭐⭐ | Plans, quotas, toutes les settings |
 | `db/database.py` | ⭐⭐⭐ | Modèles SQLAlchemy (15 tables) |
 | `auth/dependencies.py` | ⭐⭐⭐ | Dépendances auth FastAPI |
-| `videos/analysis.py` | ⭐⭐⭐ | Prompts IA bayésiens |
+| `videos/analysis.py` | ⭐⭐⭐ | Prompts IA analyse critique |
 | `transcripts/youtube.py` | ⭐⭐ | Extraction YouTube multi-fallback |
 | `billing/router.py` | ⭐⭐ | Intégration Stripe complète |
 
@@ -188,7 +188,7 @@ async def export_csv(user: User = Depends(require_feature("export_csv"))):
 - Analyse longue (>30min): 2 crédits
 - Playlist: 1 crédit/vidéo
 
-## 🤖 Analyse IA Bayésienne
+## 🤖 Analyse IA Sourcée et Nuancée
 
 ### Modes d'analyse
 ```python

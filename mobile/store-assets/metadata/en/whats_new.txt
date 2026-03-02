@@ -1,7 +1,7 @@
 What's new in version 1.0.0:
 
 • Official launch of DeepSight!
-• AI-powered YouTube video analysis with Bayesian summaries
+• AI-powered YouTube video analysis with source-verified summaries
 • Fact-checking with certainty markers and sources
 • Flashcards, quizzes, and concept glossary
 • Contextual AI chat for each video
