@@ -320,6 +320,74 @@ function processTimestamps(html: string): string {
   );
 }
 
+// ── Premium Feature Teasers ──
+
+interface FeatureTeaser {
+  icon: string;
+  label: string;
+  minPlan: string;
+  url: string;
+}
+
+const FEATURE_TEASERS: FeatureTeaser[] = [
+  { icon: '\u{1F0CF}', label: 'Flashcards IA', minPlan: 'etudiant', url: `${WEBAPP_URL}/upgrade` },
+  { icon: '\u{1F9E0}', label: 'Carte mentale', minPlan: 'etudiant', url: `${WEBAPP_URL}/upgrade` },
+  { icon: '\u{1F310}', label: 'Recherche web IA', minPlan: 'starter', url: `${WEBAPP_URL}/upgrade` },
+  { icon: '\u{1F4E6}', label: 'Export PDF/DOCX', minPlan: 'pro', url: `${WEBAPP_URL}/upgrade` },
+  { icon: '\u{1F4CB}', label: 'Playlists entières', minPlan: 'pro', url: `${WEBAPP_URL}/upgrade` },
+];
+
+const PLAN_RANK: Record<string, number> = { free: 0, etudiant: 1, student: 1, starter: 2, pro: 3 };
+
+const PLAN_PRICE_LABEL: Record<string, string> = {
+  etudiant: 'Starter 2,99\u20AC',
+  starter: '\u00C9tudiant 5,99\u20AC',
+  pro: 'Pro 12,99\u20AC',
+};
+
+async function buildPremiumTeasers(summaryId: number): Promise<void> {
+  const container = document.getElementById('ds-premium-teasers');
+  if (!container) return;
+
+  try {
+    const authRes = await chrome.runtime.sendMessage({ action: 'CHECK_AUTH' });
+    const userPlan = authRes?.user?.plan || 'free';
+    const userRank = PLAN_RANK[userPlan] ?? 0;
+
+    // Filter features that require a higher plan
+    const locked = FEATURE_TEASERS.filter(f => (PLAN_RANK[f.minPlan] ?? 0) > userRank);
+    if (locked.length === 0) {
+      // Pro users: show cross-platform CTA instead
+      container.innerHTML = `
+        <div class="ds-teaser-pro-cta">
+          <span>\u{1F4F1} R\u00E9visez vos flashcards sur mobile &mdash;</span>
+          <a href="${WEBAPP_URL}/mobile" target="_blank" rel="noreferrer" class="ds-teaser-link">T\u00E9l\u00E9charger l'app</a>
+        </div>
+      `;
+      return;
+    }
+
+    const teasersHtml = locked.slice(0, 3).map(f => `
+      <a href="${f.url}" target="_blank" rel="noreferrer" class="ds-teaser-item" title="D\u00E8s ${PLAN_PRICE_LABEL[f.minPlan] || f.minPlan}/mois">
+        <span class="ds-teaser-icon">${f.icon}</span>
+        <span class="ds-teaser-label">${f.label}</span>
+        <span class="ds-teaser-lock">\u{1F512}</span>
+        <span class="ds-teaser-price">${PLAN_PRICE_LABEL[f.minPlan] || ''}</span>
+      </a>
+    `).join('');
+
+    container.innerHTML = `
+      <div class="ds-teasers-section">
+        <div class="ds-teasers-title">\u2728 D\u00E9bloquez plus</div>
+        <div class="ds-teasers-grid">${teasersHtml}</div>
+        <a href="${WEBAPP_URL}/upgrade" target="_blank" rel="noreferrer" class="ds-teasers-all">Voir tous les plans \u2192</a>
+      </div>
+    `;
+  } catch {
+    // Silently fail — teasers are non-critical
+  }
+}
+
 // ── Display Summary ──
 
 async function displaySummary(summaryId: number): Promise<void> {
@@ -392,8 +460,12 @@ async function displaySummary(summaryId: number): Promise<void> {
             \u{1F4AC} Chat with video
           </button>
         </div>
+        <div class="ds-premium-teasers" id="ds-premium-teasers"></div>
       </div>
     `;
+
+    // ── Inject premium feature teasers (plan-aware) ──
+    buildPremiumTeasers(summaryId);
 
     const toggleBtn = document.getElementById('ds-toggle-detail');
     const detailPanel = document.getElementById('ds-detail-panel');

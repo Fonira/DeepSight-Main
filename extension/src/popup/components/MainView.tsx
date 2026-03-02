@@ -6,6 +6,7 @@ import { WEBAPP_URL } from '../../utils/config';
 import { LogoutIcon, PlayIcon, ExternalLinkIcon } from './Icons';
 import { SynthesisView } from './SynthesisView';
 import { ChatDrawer } from './ChatDrawer';
+import { PromoBanner } from './PromoBanner';
 
 interface MainViewProps {
   user: User | null;
@@ -38,6 +39,20 @@ const PLAN_DISPLAY: Record<string, string> = {
   pro: 'Pro',
   equipe: 'Pro',         // legacy → redirige vers Pro
   team: 'Pro',           // legacy → redirige vers Pro
+};
+
+// ── Next plan upsell config ──
+interface NextPlanHint {
+  label: string;
+  feature: string;
+  price: string;
+}
+
+const NEXT_PLAN_HINT: Record<string, NextPlanHint> = {
+  free: { label: 'Starter', feature: 'Flashcards + Cartes mentales', price: '2,99€' },
+  etudiant: { label: 'Étudiant', feature: 'Recherche web IA + 50 analyses', price: '5,99€' },
+  student: { label: 'Étudiant', feature: 'Recherche web IA + 50 analyses', price: '5,99€' },
+  starter: { label: 'Pro', feature: 'Playlists + Exports + Chat illimité', price: '12,99€' },
 };
 
 export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onLogout, onLoginRedirect, onError }) => {
@@ -80,7 +95,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
     setRecentAnalyses(items);
   }
 
-  // Quota calculations
+  // ── Quota calculations ──
   const isQuotaExceeded = planInfo
     ? planInfo.analyses_this_month >= planInfo.monthly_analyses
     : false;
@@ -90,6 +105,16 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
   const quotaWarning = planInfo && planInfo.monthly_analyses > 0
     ? (quotaRemaining !== null && quotaRemaining / planInfo.monthly_analyses < 0.2)
     : false;
+
+  // ── Credits urgency ──
+  const creditsTotal = planInfo?.credits_monthly || user?.credits_monthly || 0;
+  const creditsRemaining = planInfo?.credits ?? user?.credits ?? 0;
+  const creditsLow = creditsTotal > 0 && creditsRemaining / creditsTotal < 0.3;
+  const creditsCritical = creditsTotal > 0 && creditsRemaining / creditsTotal < 0.1;
+
+  // ── Next plan hint for upsell ──
+  const userPlanId = planInfo?.plan_id || user?.plan || 'free';
+  const nextPlan = NEXT_PLAN_HINT[userPlanId] || null;
 
   const startAnalysis = useCallback(async () => {
     if (!video) return;
@@ -224,10 +249,12 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         </div>
       </div>
 
-      {/* User/Plan bar */}
+      {/* User/Plan bar with credits urgency */}
       {!isGuest && user && (
         <div className="user-bar">
-          <span className={`plan-badge plan-${user.plan}`}>{user.plan}</span>
+          <span className={`plan-badge plan-${user.plan}`}>
+            {PLAN_DISPLAY[user.plan] || user.plan}
+          </span>
           {planInfo ? (
             <span className={`user-quota ${quotaWarning ? 'quota-warning' : ''}`}>
               {planInfo.analyses_this_month}/{planInfo.monthly_analyses} analyses
@@ -235,6 +262,28 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
           ) : (
             <span className="user-credits">{user.credits} crédits</span>
           )}
+          {/* Credits urgency badge */}
+          {creditsLow && (
+            <span
+              className={`credits-urgency ${creditsCritical ? 'credits-critical' : 'credits-low'}`}
+              title={`${creditsRemaining} crédits restants`}
+            >
+              {creditsCritical ? '\u{1F6A8}' : '\u26A0\uFE0F'} {creditsRemaining} cr.
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Credits urgency banner — full width when critical */}
+      {!isGuest && creditsCritical && (
+        <div className="credits-banner-critical">
+          <span>Plus que {creditsRemaining} crédits — </span>
+          <a
+            href={`${WEBAPP_URL}/upgrade`}
+            onClick={(e) => { e.preventDefault(); chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` }); }}
+          >
+            Recharger {'\u2197'}
+          </a>
         </div>
       )}
 
@@ -270,7 +319,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               <PlayIcon size={16} />
             </div>
             <span className="video-status-text video-status-none">
-              Ouvre une vid\u00e9o YouTube pour l&apos;analyser
+              Ouvre une vid&eacute;o YouTube pour l&apos;analyser
             </span>
           </div>
         )}
@@ -282,13 +331,13 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
             {!isGuest && isQuotaExceeded ? (
               <div className="quota-exceeded">
                 <p className="quota-exceeded-text">
-                  {'\uD83D\uDCCA'} Quota atteint ({planInfo?.analyses_this_month}/{planInfo?.monthly_analyses}) — Passez au plan sup\u00e9rieur
+                  {'\uD83D\uDCCA'} Quota atteint ({planInfo?.analyses_this_month}/{planInfo?.monthly_analyses}) — Passez au plan sup&eacute;rieur
                 </p>
                 <button
                   className="analyze-btn analyze-btn-disabled"
                   disabled
                 >
-                  {'\u2728'} Analyser cette vid\u00e9o
+                  {'\u2728'} Analyser cette vid&eacute;o
                 </button>
                 <a
                   href={`${WEBAPP_URL}/upgrade`}
@@ -307,13 +356,13 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               /* Guest used their free analysis */
               <div className="guest-exhausted">
                 <p className="guest-exhausted-text">
-                  Cr\u00e9ez un compte gratuit pour sauvegarder vos analyses et en faire plus
+                  Cr&eacute;ez un compte gratuit pour sauvegarder vos analyses et en faire plus
                 </p>
                 <button
                   className="btn-create-account"
                   onClick={() => chrome.tabs.create({ url: `${WEBAPP_URL}/register` })}
                 >
-                  Cr\u00e9er un compte {'\u2197'}
+                  Cr&eacute;er un compte {'\u2197'}
                 </button>
               </div>
             ) : (
@@ -339,12 +388,12 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                   </div>
                 </div>
                 <button className="analyze-btn" onClick={startAnalysis}>
-                  {'\u2728'} Analyser cette vid\u00e9o
+                  {'\u2728'} Analyser cette vid&eacute;o
                 </button>
                 {/* Mistral AI attribution */}
                 <div className="mistral-badge">
-                  <span>🇫🇷</span>
-                  <span>Propuls\u00e9 par Mistral AI</span>
+                  <span>{'\uD83C\uDDEB\uD83C\uDDF7'}</span>
+                  <span>Propuls&eacute; par Mistral AI</span>
                 </div>
               </>
             )}
@@ -372,7 +421,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               onClick={() => setAnalysis({ phase: 'idle' })}
               style={{ height: '40px', fontSize: '13px' }}
             >
-              R\u00e9essayer
+              R&eacute;essayer
             </button>
           </div>
         )}
@@ -386,15 +435,40 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               planInfo={planInfo}
               onOpenChat={() => setChatOpen(true)}
             />
+
+            {/* Post-analysis upsell — plan-aware CTA */}
+            {!isGuest && nextPlan && userPlanId !== 'pro' && (
+              <div className="post-analysis-upsell">
+                <div className="upsell-content">
+                  <span className="upsell-emoji">{'\u2728'}</span>
+                  <div className="upsell-text">
+                    <span className="upsell-headline">
+                      {nextPlan.feature}
+                    </span>
+                    <span className="upsell-sub">
+                      Plan {nextPlan.label} — {nextPlan.price}/mois
+                    </span>
+                  </div>
+                </div>
+                <a
+                  href={`${WEBAPP_URL}/upgrade`}
+                  className="upsell-btn"
+                  onClick={(e) => { e.preventDefault(); chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` }); }}
+                >
+                  D&eacute;bloquer {'\u2197'}
+                </a>
+              </div>
+            )}
+
             {/* Guest post-analysis CTA */}
             {isGuest && (
               <div className="guest-post-analysis">
-                <p>Cr\u00e9ez un compte gratuit pour sauvegarder vos analyses et en faire plus</p>
+                <p>Cr&eacute;ez un compte gratuit pour sauvegarder vos analyses et en faire plus</p>
                 <button
                   className="btn-create-account"
                   onClick={() => chrome.tabs.create({ url: `${WEBAPP_URL}/register` })}
                 >
-                  Cr\u00e9er un compte {'\u2197'}
+                  Cr&eacute;er un compte {'\u2197'}
                 </button>
               </div>
             )}
@@ -404,7 +478,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         {/* Recent */}
         {!isGuest && analysis.phase === 'idle' && recentAnalyses.length > 0 && (
           <div className="recent-section">
-            <h3>Analyses r\u00e9centes</h3>
+            <h3>Analyses r&eacute;centes</h3>
             <div className="recent-list">
               {recentAnalyses.slice(0, 5).map((item) => (
                 <a
@@ -422,6 +496,9 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
           </div>
         )}
       </div>
+
+      {/* Promo Banner — plan-aware, at the bottom */}
+      <PromoBanner planInfo={planInfo} />
     </div>
   );
 };
