@@ -143,10 +143,10 @@ class AcademicAggregator:
             AcademicSearchResponse with deduplicated and scored papers
         """
         keywords = request.keywords
-        # Build multiple query formulations
-        focused_query = self._build_query(keywords, max_keywords=5)
-        broad_query = self._build_query(keywords, max_keywords=8)
-        simple_query = self._build_simple_query(keywords, max_keywords=6)
+        # Build multiple query formulations from AI-enriched keywords
+        focused_query = self._build_query(keywords, max_keywords=6)
+        broad_query = self._build_query(keywords, max_keywords=10)
+        simple_query = self._build_simple_query(keywords, max_keywords=8)
 
         # Title-based query (often the best for broad searches)
         title_query = None

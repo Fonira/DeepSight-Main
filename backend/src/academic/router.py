@@ -112,8 +112,8 @@ async def enrich_summary_with_academic_sources(
             }
         )
 
-    # Extract keywords from summary
-    keywords = _extract_keywords_from_summary(summary)
+    # Extract keywords from summary (AI-powered topic analysis)
+    keywords = await _extract_keywords_from_summary(summary)
     print(f"Extracted keywords for summary {summary_id}: {keywords}", flush=True)
 
     if not keywords:
@@ -136,8 +136,8 @@ async def enrich_summary_with_academic_sources(
     user_plan = current_user.plan or "free"
     max_papers = request.max_papers if request else None
 
-    # Build search request with top keywords
-    search_keywords = keywords[:10]
+    # Build search request with top keywords (AI topics first, then structured)
+    search_keywords = keywords[:15]
     search_request = AcademicSearchRequest(
         keywords=search_keywords,
         summary_id=str(summary_id),
@@ -526,17 +526,24 @@ def _strip_accents(text: str) -> str:
     return text
 
 
-def _extract_keywords_from_summary(summary: Summary) -> List[str]:
-    """Extract searchable keywords from a summary.
+async def _extract_keywords_from_summary(summary: Summary) -> List[str]:
+    """Extract searchable keywords from a summary using AI topic analysis.
+
+    Strategy: Use Mistral AI to identify the video's MAIN RESEARCH TOPICS,
+    then combine with structured extraction for maximum coverage.
 
     Priority order:
-    1. [[concepts]] marked in summary_content (most relevant)
-    2. Video title words (often describe the topic well)
-    3. Tags from the summary
-    4. Extracted entities
-    5. TF analysis of content (frequency-based)
+    1. 🧠 AI-extracted main topics from summary content (most relevant!)
+    2. [[concepts]] marked in summary_content
+    3. Video title words
+    4. Category + tags
+    5. Extracted entities
+    6. TF analysis of content (frequency-based)
+
+    Target: 20-25 diverse, academically-relevant keywords.
     """
-    keywords = []
+    keywords_prioritized: List[str] = []  # AI topics go first
+    keywords_structured: List[str] = []   # Structured extraction
 
     stop_words = {
         "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
@@ -559,77 +566,200 @@ def _extract_keywords_from_summary(summary: Summary) -> List[str]:
         "nous", "vous", "ils", "elles", "leur", "leurs", "lui", "elle", "se",
         "son", "sa", "ses", "mon", "ma", "mes", "ton", "ta", "tes",
         "vidéo", "video", "chaîne", "partie", "épisode", "episode",
+        "youtube", "abonnez", "commentaire", "lien", "description",
     }
 
-    # 1. 🎯 PRIORITY: Extract [[concepts]] markers (most relevant!)
+    # ── 1. 🧠 AI TOPIC EXTRACTION (highest priority) ──────────────────────
+    # Use Mistral to analyze summary content and extract main research topics
+    content_for_ai = ""
+    if summary.summary_content:
+        # Clean the summary: remove [[markers]], trim to ~3000 chars for efficiency
+        clean = re.sub(r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]', r'\1', summary.summary_content)
+        content_for_ai = clean[:3000]
+
+    if not content_for_ai and summary.full_digest:
+        content_for_ai = summary.full_digest[:3000]
+
+    if content_for_ai:
+        ai_topics = await _extract_topics_with_ai(
+            content=content_for_ai,
+            video_title=summary.video_title or "",
+            category=summary.category or "",
+        )
+        if ai_topics:
+            keywords_prioritized.extend(ai_topics)
+            print(f"AI-extracted {len(ai_topics)} topics: {ai_topics}", flush=True)
+
+    # ── 2. 🎯 Extract [[concepts]] markers ──────────────────────────────
     if summary.summary_content:
         concept_pattern = r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]'
         concept_matches = re.findall(concept_pattern, summary.summary_content)
         for term in concept_matches:
             term = term.strip()
             if term and len(term) > 2:
-                keywords.append(term)
+                keywords_structured.append(term)
 
-    # 2. Extract from video title (important topic words)
+    # ── 3. Extract from video title ─────────────────────────────────────
     if summary.video_title:
-        # First extract multi-word capitalized phrases
-        capitalized = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', summary.video_title)
+        # Multi-word capitalized phrases (proper nouns, names)
+        capitalized = re.findall(r'\b[A-Z][a-zéèêëàâäùûüôöïîç]+(?:\s+[A-Z][a-zéèêëàâäùûüôöïîç]+)*\b', summary.video_title)
         for term in capitalized:
             if term.lower() not in stop_words and len(term) > 2:
-                keywords.append(term)
+                keywords_structured.append(term)
 
-        # Then individual significant words
+        # Individual significant words from title
         words = summary.video_title.lower().split()
         for word in words:
             clean_word = "".join(c for c in word if c.isalnum() or c in "éèêëàâäùûüôöïîç-")
             if clean_word and len(clean_word) > 3 and clean_word not in stop_words:
-                keywords.append(clean_word)
+                keywords_structured.append(clean_word)
 
-    # 3. From tags
+    # ── 4. Category as keyword ──────────────────────────────────────────
+    if summary.category and summary.category.lower() not in stop_words:
+        keywords_structured.append(summary.category)
+
+    # ── 5. From tags (more generous — up to 10) ────────────────────────
     if summary.tags:
         try:
             if isinstance(summary.tags, str):
                 tags = json.loads(summary.tags) if summary.tags.startswith("[") else summary.tags.split(",")
-                keywords.extend([t.strip() for t in tags[:5]])
+                keywords_structured.extend([t.strip() for t in tags[:10] if t.strip()])
         except (json.JSONDecodeError, AttributeError, ValueError):
             pass
 
-    # 4. From entities if available
+    # ── 6. From entities (more generous — up to 8 per category) ────────
     if summary.entities_extracted:
         try:
             entities = json.loads(summary.entities_extracted)
             if isinstance(entities, list):
-                keywords.extend(entities[:5])
+                keywords_structured.extend(entities[:10])
             elif isinstance(entities, dict):
-                for key in ["concepts", "topics", "keywords", "persons", "organizations"]:
+                for key in ["concepts", "topics", "keywords", "persons", "organizations", "theories", "methods"]:
                     if key in entities and isinstance(entities[key], list):
-                        keywords.extend(entities[key][:5])
+                        keywords_structured.extend(entities[key][:8])
         except (json.JSONDecodeError, ValueError):
             pass
 
-    # 5. TF analysis from content (fallback)
-    if summary.summary_content and len(keywords) < 5:
+    # ── 7. TF analysis from content (always run, not just fallback) ────
+    if summary.summary_content:
         clean_content = re.sub(r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]', r'\1', summary.summary_content)
 
+        # Extract multi-word terms (2-3 word phrases that appear together)
+        bigrams = re.findall(
+            r'\b([a-zA-ZéèêëàâäùûüôöïîçÉÈÊËÀÂÄÙÛÜÔÖÏÎÇ]{3,}\s+[a-zA-ZéèêëàâäùûüôöïîçÉÈÊËÀÂÄÙÛÜÔÖÏÎÇ]{3,})\b',
+            clean_content.lower()
+        )
+        bigram_freq = Counter(
+            bg for bg in bigrams
+            if not all(w in stop_words for w in bg.split())
+        )
+        for bigram, count in bigram_freq.most_common(8):
+            if count >= 2:  # Must appear at least twice
+                keywords_structured.append(bigram)
+
+        # Single words (high frequency)
         words = re.findall(r'\b[a-zA-ZéèêëàâäùûüôöïîçÉÈÊËÀÂÄÙÛÜÔÖÏÎÇ]{4,}\b', clean_content.lower())
         word_freq = Counter(w for w in words if w not in stop_words)
-        for word, _ in word_freq.most_common(10):
-            keywords.append(word)
+        for word, count in word_freq.most_common(12):
+            if count >= 2:
+                keywords_structured.append(word)
 
-    # Deduplicate and limit
+    # ── MERGE: AI topics first, then structured extraction ─────────────
+    # AI topics are the most relevant → they go first
+    all_keywords = keywords_prioritized + keywords_structured
+
+    # Deduplicate while preserving priority order
     seen = set()
     unique_keywords = []
-    for kw in keywords:
+    for kw in all_keywords:
         if isinstance(kw, str):
             kw_lower = kw.lower().strip()
             if kw_lower and kw_lower not in seen and len(kw_lower) > 2 and kw_lower not in stop_words:
                 seen.add(kw_lower)
                 unique_keywords.append(kw)
-                if len(unique_keywords) >= 15:
+                if len(unique_keywords) >= 25:
                     break
 
-    print(f"Extracted {len(unique_keywords)} keywords: {unique_keywords[:10]}...", flush=True)
+    print(f"Extracted {len(unique_keywords)} keywords (AI:{len(keywords_prioritized)} + struct:{len(keywords_structured)}): {unique_keywords}", flush=True)
     return unique_keywords
+
+
+async def _extract_topics_with_ai(
+    content: str,
+    video_title: str = "",
+    category: str = "",
+) -> List[str]:
+    """Use Mistral AI to extract main research topics from the video summary.
+
+    This is the core of topic-based academic search: instead of just extracting
+    individual concept names, we ask the AI to identify the RESEARCH DOMAINS
+    and SCIENTIFIC TOPICS that this video covers.
+
+    Returns: List of 8-15 academic-oriented topic terms in English.
+    """
+    api_key = get_mistral_key()
+    if not api_key:
+        print("No Mistral key — skipping AI topic extraction", flush=True)
+        return []
+
+    # Build context
+    context_parts = []
+    if video_title:
+        context_parts.append(f"Video title: {video_title}")
+    if category:
+        context_parts.append(f"Category: {category}")
+    context_parts.append(f"Summary excerpt:\n{content[:2500]}")
+
+    context = "\n".join(context_parts)
+
+    prompt = f"""You are an academic research assistant. Analyze this video summary and extract the main RESEARCH TOPICS and SCIENTIFIC DOMAINS that would help find relevant academic papers.
+
+{context}
+
+Instructions:
+1. Identify the 8-15 most important research topics covered in this content
+2. Include both SPECIFIC topics (e.g. "endocannabinoid system", "dopamine receptors") and BROADER domains (e.g. "neuropharmacology", "cognitive neuroscience")
+3. Use standard ENGLISH academic terminology (translate from French if needed)
+4. Include related scientific fields that would have relevant papers
+5. Focus on terms that would yield results on academic databases like OpenAlex, CrossRef, PubMed
+6. Do NOT include generic terms like "research", "study", "analysis", "science"
+
+Return ONLY a JSON array of topic strings, nothing else.
+Example: ["endocannabinoid system", "THC neurotoxicity", "cannabinoid receptors", "prefrontal cortex development", "adolescent brain development", "neuropharmacology", "substance abuse", "synaptic plasticity", "cognitive impairment", "cannabis use disorder"]
+
+JSON array:"""
+
+    try:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            response = await client.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "mistral-small-latest",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 600,
+                    "temperature": 0.2
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+            text = data["choices"][0]["message"]["content"].strip()
+
+            # Parse JSON array from response
+            json_match = re.search(r'\[.*?\]', text, re.DOTALL)
+            if json_match:
+                result = json.loads(json_match.group())
+                if isinstance(result, list):
+                    topics = [t.strip() for t in result if isinstance(t, str) and t.strip() and len(t.strip()) > 2]
+                    return topics[:15]
+
+        return []
+    except Exception as e:
+        print(f"AI topic extraction error: {e}", flush=True)
+        return []
 
 
 async def _cache_papers(
