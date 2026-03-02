@@ -236,6 +236,7 @@ const UsageDashboard = lazy(() => import("./pages/UsageDashboard"));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const StudyPage = lazy(() => import("./pages/StudyPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+const ExtensionWelcomePage = lazy(() => import("./pages/ExtensionWelcomePage"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -544,6 +545,15 @@ const AppRoutes = () => {
                     </Suspense>
                   } />
                 </Route>
+
+                {/* Extension Welcome — post-install landing */}
+                <Route path="/extension-welcome" element={
+                  <RouteErrorBoundary variant="full" componentName="ExtensionWelcome">
+                    <Suspense fallback={<PageSkeleton variant="simple" />}>
+                      <ExtensionWelcomePage />
+                    </Suspense>
+                  </RouteErrorBoundary>
+                } />
 
                 {/* 404 Page */}
                 <Route path="*" element={
