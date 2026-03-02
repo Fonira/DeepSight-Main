@@ -813,6 +813,10 @@ async def get_all_keywords(
     Utilisé pour le widget "Le Saviez-Vous" qui affiche un mot aléatoire
     et permet de naviguer vers l'analyse source.
 
+    Sources d'extraction (par priorité):
+    1. [[concepts]] marqués dans le summary_content (les plus pertinents)
+    2. Tags du résumé (comma-separated)
+
     Params:
     - limit: Nombre max de mots-clés (défaut: 100)
     - with_definitions: Si True, génère des définitions via Mistral (défaut: True)
@@ -822,89 +826,93 @@ async def get_all_keywords(
     - total: Nombre total de mots-clés
     - has_history: True si l'utilisateur a des analyses
     """
-    from sqlalchemy import select
+    import re
+    from sqlalchemy import select, or_
     from db.database import Summary
 
-    # Récupérer toutes les analyses avec des tags
+    # Récupérer TOUTES les analyses (pas seulement celles avec tags)
     stmt = (
         select(Summary)
         .where(Summary.user_id == current_user.id)
-        .where(Summary.tags.isnot(None))
-        .where(Summary.tags != "")
+        .where(
+            or_(
+                Summary.tags.isnot(None),
+                Summary.summary_content.isnot(None)
+            )
+        )
         .order_by(Summary.created_at.desc())
     )
 
     result = await session.execute(stmt)
     summaries = result.scalars().all()
 
-    # Extraire tous les mots-clés avec leur source
     keywords_raw = []
-    seen_terms = set()  # Pour éviter les doublons
+    seen_terms = set()
+
+    def _add_keyword(term: str, summary: Summary):
+        """Helper pour ajouter un keyword sans doublon"""
+        term = term.strip()
+        if not term or len(term) < 2:
+            return
+        term_lower = term.lower()
+        if term_lower in seen_terms:
+            return
+        if len(keywords_raw) >= limit:
+            return
+        seen_terms.add(term_lower)
+        keywords_raw.append({
+            "term": term,
+            "summary_id": summary.id,
+            "video_title": summary.video_title,
+            "video_id": summary.video_id,
+            "category": summary.category,
+            "created_at": summary.created_at.isoformat() if summary.created_at else None
+        })
 
     for summary in summaries:
-        if not summary.tags:
-            continue
-
-        # Parser les tags (comma-separated)
-        tags = [t.strip() for t in summary.tags.split(",") if t.strip()]
-
-        for tag in tags:
-            # Éviter les doublons tout en gardant trace de la première occurrence
-            tag_lower = tag.lower()
-            if tag_lower in seen_terms:
-                continue
-            seen_terms.add(tag_lower)
-
-            keywords_raw.append({
-                "term": tag,
-                "summary_id": summary.id,
-                "video_title": summary.video_title,
-                "video_id": summary.video_id,
-                "category": summary.category,
-                "created_at": summary.created_at.isoformat() if summary.created_at else None
-            })
-
-            # Limiter le nombre total
-            if len(keywords_raw) >= limit:
-                break
-
         if len(keywords_raw) >= limit:
             break
+
+        # 1. PRIORITÉ: Extraire les [[concepts]] du contenu
+        if summary.summary_content:
+            concept_pattern = r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]'
+            concepts = re.findall(concept_pattern, summary.summary_content)
+            for concept in concepts:
+                _add_keyword(concept, summary)
+
+        # 2. Extraire des tags
+        if summary.tags:
+            tags = [t.strip() for t in summary.tags.split(",") if t.strip()]
+            for tag in tags:
+                _add_keyword(tag, summary)
 
     # Générer les définitions académiques si demandé
     if with_definitions and keywords_raw:
         terms = [k["term"] for k in keywords_raw]
         definitions = await _generate_academic_definitions(terms)
 
-        # Ajouter les définitions aux keywords
         for kw in keywords_raw:
             term_lower = kw["term"].lower()
             if term_lower in definitions:
                 def_data = definitions[term_lower]
                 kw["definition"] = def_data.get("definition", "")
-                # Ajouter wiki_url et confidence
                 kw["wiki_url"] = def_data.get("wiki_url")
                 kw["confidence"] = def_data.get("confidence", "medium")
-                # Créer une version courte (2 premières phrases ou 150 caractères)
                 full_def = def_data.get("definition", "")
                 if full_def:
-                    # Prendre les 2 premières phrases
                     sentences = full_def.split('. ')
                     if len(sentences) >= 2:
                         short = sentences[0] + '. ' + sentences[1] + '.'
                     else:
                         short = full_def
-                    # Tronquer si trop long (max 180 caractères)
                     if len(short) > 180:
                         short = short[:177] + '...'
                     kw["short_definition"] = short
                 else:
                     kw["short_definition"] = None
-                # Utiliser la catégorie de Mistral si disponible
                 if def_data.get("category"):
                     kw["category"] = def_data["category"]
 
-    # Construire la réponse
     keywords = [KeywordItem(**kw) for kw in keywords_raw]
 
     return KeywordsResponse(

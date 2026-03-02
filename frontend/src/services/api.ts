@@ -111,6 +111,8 @@ export interface Concept {
   definition: string;
   category?: string;
   importance?: number;
+  wiki_url?: string | null;
+  source?: string;
 }
 
 // 📚 Concept enrichi avec définitions IA

@@ -15,7 +15,7 @@ from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 from datetime import datetime
 
-from core.config import get_perplexity_key
+from core.config import get_perplexity_key, get_mistral_key
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -257,6 +257,125 @@ IMPORTANT:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🤖 MISTRAL FALLBACK — DÉFINITIONS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def get_definitions_from_mistral(
+    concepts: List[str],
+    context: str = "",
+    language: str = "fr"
+) -> Dict[str, ConceptDefinition]:
+    """
+    Fallback Mistral pour les définitions quand Perplexity échoue.
+    Utilise mistral-small-latest (rapide, économique).
+    """
+    api_key = get_mistral_key()
+    if not api_key or not concepts:
+        return {}
+
+    concepts = concepts[:15]
+
+    if language == "fr":
+        prompt = f"""Tu es un professeur encyclopédiste. Donne une définition COURTE et VÉRIFIABLE (2-3 phrases, max 60 mots) pour chaque terme ci-dessous.
+
+⚠️ RÈGLES:
+- Ne définis que des termes/personnes/entreprises CONNUS
+- Si incertain: "definition": null
+- N'invente AUCUN fait
+
+📚 SOURCE: Fournis l'URL Wikipedia française si elle existe, sinon null.
+
+Contexte: {context if context else "Analyse de vidéo YouTube"}
+
+Termes:
+{chr(10).join(f"- {c}" for c in concepts)}
+
+Réponds UNIQUEMENT en JSON valide:
+{{
+  "definitions": [
+    {{"term": "Nom", "definition": "Définition courte OU null", "category": "person|technology|company|concept|other", "wiki_url": "URL OU null"}}
+  ]
+}}"""
+    else:
+        prompt = f"""You are an encyclopedia professor. Give a SHORT, VERIFIABLE definition (2-3 sentences, max 60 words) for each term below.
+
+⚠️ RULES:
+- Only define KNOWN terms/people/companies
+- If uncertain: "definition": null
+- NEVER invent facts
+
+📚 SOURCE: Provide English Wikipedia URL if it exists, otherwise null.
+
+Context: {context if context else "YouTube video analysis"}
+
+Terms:
+{chr(10).join(f"- {c}" for c in concepts)}
+
+Reply ONLY with valid JSON:
+{{
+  "definitions": [
+    {{"term": "Name", "definition": "Short definition OR null", "category": "person|technology|company|concept|other", "wiki_url": "URL OR null"}}
+  ]
+}}"""
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "mistral-small-latest",
+                    "messages": [
+                        {"role": "user", "content": prompt}
+                    ],
+                    "max_tokens": 2500,
+                    "temperature": 0.2
+                }
+            )
+
+            if response.status_code != 200:
+                print(f"❌ [Concepts] Mistral fallback error: {response.status_code}")
+                return {}
+
+            data = response.json()
+            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+
+            content = content.strip()
+            if content.startswith("```"):
+                content = re.sub(r'^```\w*\n?', '', content)
+                content = re.sub(r'\n?```$', '', content)
+
+            parsed = json.loads(content)
+            definitions = parsed.get("definitions", [])
+
+            result = {}
+            for item in definitions:
+                term = item.get("term", "")
+                defn = item.get("definition")
+                if term and defn:  # Skip null definitions
+                    result[term.lower()] = ConceptDefinition(
+                        term=term,
+                        definition=defn,
+                        category=item.get("category", "other"),
+                        source="mistral",
+                        wiki_url=item.get("wiki_url")
+                    )
+
+            print(f"✅ [Concepts] Mistral fallback: {len(result)} definitions")
+            return result
+
+    except json.JSONDecodeError as e:
+        print(f"❌ [Concepts] Mistral JSON parse error: {e}")
+        return {}
+    except Exception as e:
+        print(f"❌ [Concepts] Mistral fallback error: {e}")
+        return {}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 🎯 FONCTION PRINCIPALE
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -297,9 +416,17 @@ async def get_concepts_with_definitions(
             "count": 0
         }
     
-    # Récupérer les définitions
+    # Récupérer les définitions — Perplexity en priorité, Mistral en fallback
     definitions = await get_definitions_from_perplexity(concepts, context, language)
-    
+
+    # Identifier les concepts sans définition pour le fallback Mistral
+    missing_concepts = [c for c in concepts if c.lower() not in definitions]
+
+    if missing_concepts:
+        print(f"🔄 [Concepts] {len(missing_concepts)} concepts sans définition Perplexity, fallback Mistral...")
+        mistral_definitions = await get_definitions_from_mistral(missing_concepts, context, language)
+        definitions.update(mistral_definitions)
+
     # Construire la liste finale
     concepts_list = []
     for concept in concepts:
@@ -308,17 +435,19 @@ async def get_concepts_with_definitions(
             defn = definitions[concept_lower]
             concepts_list.append({
                 "term": defn.term,
-                "definition": defn.definition,
+                "definition": defn.definition or "",
                 "category": defn.category,
-                "wiki_url": defn.wiki_url
+                "wiki_url": defn.wiki_url,
+                "source": defn.source
             })
         else:
-            # Pas de définition trouvée, ajouter quand même
+            # Pas de définition trouvée même après fallback
             concepts_list.append({
                 "term": concept,
                 "definition": "",
                 "category": "other",
-                "wiki_url": None
+                "wiki_url": None,
+                "source": "none"
             })
     
     return {

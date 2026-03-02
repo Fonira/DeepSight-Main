@@ -11,7 +11,7 @@
  */
 
 import React, { useState, useEffect, memo } from 'react';
-import { BookOpen, ChevronDown, ChevronUp, User, Building2, Cpu, Lightbulb, HelpCircle, RefreshCw } from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronUp, User, Building2, Cpu, Lightbulb, HelpCircle, RefreshCw, ExternalLink } from 'lucide-react';
 import { DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
 import { videoApi } from '../services/api';
 
@@ -23,6 +23,8 @@ interface Concept {
   term: string;
   definition: string;
   category: 'person' | 'technology' | 'company' | 'concept' | 'other';
+  wiki_url?: string | null;
+  source?: string;
 }
 
 interface ConceptsGlossaryProps {
@@ -221,8 +223,21 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = memo(({
                         </p>
                       ) : (
                         <p className="text-sm text-text-muted italic">
-                          {language === 'fr' ? 'Définition non disponible' : 'Definition not available'}
+                          {language === 'fr' ? 'Définition en cours de génération...' : 'Definition loading...'}
                         </p>
+                      )}
+
+                      {/* Lien source (Wiki ou autre) */}
+                      {concept.wiki_url && (
+                        <a
+                          href={concept.wiki_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 mt-1.5 text-xs text-accent-primary/70 hover:text-accent-primary transition-colors"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          {concept.wiki_url.includes('wikipedia') ? 'Wikipedia' : 'Source'}
+                        </a>
                       )}
                     </div>
                   </div>

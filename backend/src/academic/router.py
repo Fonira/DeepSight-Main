@@ -296,15 +296,21 @@ async def get_available_formats(
 # ═══════════════════════════════════════════════════════════════════════════════
 
 def _extract_keywords_from_summary(summary: Summary) -> List[str]:
-    """Extract searchable keywords from a summary"""
+    """Extract searchable keywords from a summary.
+
+    Priorité d'extraction:
+    1. [[concepts]] marqués dans le summary_content (les plus pertinents)
+    2. Titre de la vidéo (termes capitalisés = noms propres)
+    3. Tags du résumé
+    4. Entités extraites
+    5. TF analysis du contenu (fréquence)
+    """
     import re
     from collections import Counter
 
     keywords = []
 
-    # Enhanced stop words list
     stop_words = {
-        # English
         "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
         "have", "has", "had", "do", "does", "did", "will", "would", "could",
         "should", "may", "might", "must", "can", "and", "or", "but", "if",
@@ -318,7 +324,6 @@ def _extract_keywords_from_summary(summary: Summary) -> List[str]:
         "who", "whom", "this", "those", "am", "as", "at", "by", "for", "it", "its",
         "of", "to", "with", "you", "your", "we", "our", "they", "their", "them",
         "he", "him", "his", "she", "her", "hers", "me", "my", "mine", "us",
-        # French
         "le", "la", "les", "un", "une", "des", "de", "du", "et", "ou", "pour",
         "dans", "sur", "avec", "par", "en", "au", "aux", "ce", "cette", "ces",
         "qui", "que", "dont", "où", "est", "sont", "être", "avoir", "fait",
@@ -328,41 +333,38 @@ def _extract_keywords_from_summary(summary: Summary) -> List[str]:
         "son", "sa", "ses", "mon", "ma", "mes", "ton", "ta", "tes"
     }
 
-    # 1. Extract from video title (prioritize capitalized terms)
+    # 1. 🎯 PRIORITÉ: Extraire les [[concepts]] marqués (les plus pertinents!)
+    if summary.summary_content:
+        concept_pattern = r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]'
+        concept_matches = re.findall(concept_pattern, summary.summary_content)
+        for term in concept_matches:
+            term = term.strip()
+            if term and len(term) > 2:
+                keywords.append(term)
+
+    # 2. Extract from video title (prioritize capitalized terms)
     if summary.video_title:
-        # Extract capitalized terms (likely proper nouns/important concepts)
         capitalized = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', summary.video_title)
         for term in capitalized:
             if term.lower() not in stop_words and len(term) > 2:
                 keywords.append(term)
 
-        # Extract other meaningful words
         words = summary.video_title.lower().split()
         for word in words:
             clean_word = "".join(c for c in word if c.isalnum())
             if clean_word and len(clean_word) > 3 and clean_word not in stop_words:
                 keywords.append(clean_word)
 
-    # 2. Extract from summary content (most important source!)
-    if summary.summary_content:
-        content = summary.summary_content
+    # 3. From tags
+    if summary.tags:
+        try:
+            if isinstance(summary.tags, str):
+                tags = json.loads(summary.tags) if summary.tags.startswith("[") else summary.tags.split(",")
+                keywords.extend([t.strip() for t in tags[:5]])
+        except (json.JSONDecodeError, AttributeError, ValueError):
+            pass
 
-        # Extract capitalized terms (concepts, names, etc.)
-        capitalized = re.findall(r'\b[A-Z][A-Z]+\b|\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', content)
-        for term in capitalized[:10]:  # Limit to top 10
-            if term.lower() not in stop_words and len(term) > 2:
-                keywords.append(term)
-
-        # Extract frequently used terms (TF analysis)
-        words = re.findall(r'\b[a-zA-Z]{4,}\b', content.lower())
-        word_freq = Counter(w for w in words if w not in stop_words)
-
-        # Add top 10 most frequent words
-        for word, _ in word_freq.most_common(10):
-            if len(word) > 3:
-                keywords.append(word)
-
-    # 3. From entities if available
+    # 4. From entities if available
     if summary.entities_extracted:
         try:
             entities = json.loads(summary.entities_extracted)
@@ -375,14 +377,21 @@ def _extract_keywords_from_summary(summary: Summary) -> List[str]:
         except (json.JSONDecodeError, ValueError):
             pass
 
-    # 4. From tags
-    if summary.tags:
-        try:
-            if isinstance(summary.tags, str):
-                tags = json.loads(summary.tags) if summary.tags.startswith("[") else summary.tags.split(",")
-                keywords.extend([t.strip() for t in tags[:5]])
-        except (json.JSONDecodeError, AttributeError, ValueError):
-            pass
+    # 5. TF analysis from content (fallback)
+    if summary.summary_content:
+        # Clean [[]] markers before TF analysis
+        clean_content = re.sub(r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]', r'\1', summary.summary_content)
+
+        capitalized = re.findall(r'\b[A-Z][A-Z]+\b|\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', clean_content)
+        for term in capitalized[:10]:
+            if term.lower() not in stop_words and len(term) > 2:
+                keywords.append(term)
+
+        words = re.findall(r'\b[a-zA-Z]{4,}\b', clean_content.lower())
+        word_freq = Counter(w for w in words if w not in stop_words)
+        for word, _ in word_freq.most_common(10):
+            if len(word) > 3:
+                keywords.append(word)
 
     # Deduplicate and limit
     seen = set()
@@ -390,11 +399,10 @@ def _extract_keywords_from_summary(summary: Summary) -> List[str]:
     for kw in keywords:
         if isinstance(kw, str):
             kw_lower = kw.lower().strip()
-            # Skip if too short, already seen, or is a stop word
             if kw_lower and kw_lower not in seen and len(kw_lower) > 2 and kw_lower not in stop_words:
                 seen.add(kw_lower)
                 unique_keywords.append(kw)
-                if len(unique_keywords) >= 15:  # Increased from 10 to 15
+                if len(unique_keywords) >= 15:
                     break
 
     print(f"Extracted {len(unique_keywords)} keywords: {unique_keywords[:10]}...", flush=True)
