@@ -235,6 +235,8 @@ const AdminPage = lazy(() => import("./pages/AdminPage"));
 const UsageDashboard = lazy(() => import("./pages/UsageDashboard"));
 const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
 const StudyPage = lazy(() => import("./pages/StudyPage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔮 PREFETCH CONFIGURATION
@@ -396,6 +398,14 @@ const AppRoutes = () => {
                   </RouteErrorBoundary>
                 } />
 
+                <Route path="/legal/privacy" element={
+                  <RouteErrorBoundary variant="full" componentName="PrivacyPolicy">
+                    <Suspense fallback={<PageSkeleton variant="full" />}>
+                      <PrivacyPolicy />
+                    </Suspense>
+                  </RouteErrorBoundary>
+                } />
+
                 <Route path="/legal" element={
                   <RouteErrorBoundary variant="full" componentName="LegalPage">
                     <Suspense fallback={<PageSkeleton variant="full" />}>
@@ -535,8 +545,12 @@ const AppRoutes = () => {
                   } />
                 </Route>
 
-                {/* 404 Redirect */}
-                <Route path="*" element={<Navigate to="/" replace />} />
+                {/* 404 Page */}
+                <Route path="*" element={
+                  <Suspense fallback={<PageSkeleton variant="simple" />}>
+                    <NotFoundPage />
+                  </Suspense>
+                } />
               </Routes>
             </ErrorBoundary>
             

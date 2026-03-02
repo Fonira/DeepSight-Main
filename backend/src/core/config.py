@@ -106,7 +106,7 @@ class _DeepSightSettings(BaseSettings):
 
     # -- Legal --
     LEGAL_OWNER_NAME: str = "LEPARC Maxime Bertrand"
-    LEGAL_SIRET: str = "XXX XXX XXX XXXXX"
+    LEGAL_SIRET: str = "994 558 898 00015"
     LEGAL_RCS: str = "994 558 898 R.C.S. Lyon"
     LEGAL_CITY: str = "La Mulatiere, France"
     LEGAL_ADDRESS: str = "15 Chemin Clement Mulat, 69350 La Mulatiere"
