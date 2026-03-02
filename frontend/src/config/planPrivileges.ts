@@ -39,6 +39,11 @@ export interface PlanLimits {
 
   allowedModels: string[];
   defaultModel: string;
+
+  // Sources académiques (Semantic Scholar, OpenAlex, arXiv)
+  academicSearch: boolean;          // Recherche de sources académiques
+  academicPapersPerAnalysis: number; // Nombre max de papiers (backend contrôle aussi)
+  bibliographyExport: boolean;      // Export bibliographie (BibTeX, APA, etc.)
 }
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
@@ -62,6 +67,9 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     historyRetentionDays: 60,
     allowedModels: ['mistral-small-latest'],
     defaultModel: 'mistral-small-latest',
+    academicSearch: true,
+    academicPapersPerAnalysis: 3,
+    bibliographyExport: false,
   },
 
   etudiant: {
@@ -84,6 +92,9 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     historyRetentionDays: -1,
     allowedModels: ['mistral-small-latest'],
     defaultModel: 'mistral-small-latest',
+    academicSearch: true,
+    academicPapersPerAnalysis: 10,
+    bibliographyExport: true,
   },
 
   starter: {
@@ -106,6 +117,9 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     historyRetentionDays: -1,
     allowedModels: ['mistral-small-latest', 'mistral-medium-latest'],
     defaultModel: 'mistral-small-latest',
+    academicSearch: true,
+    academicPapersPerAnalysis: 20,
+    bibliographyExport: true,
   },
 
   pro: {
@@ -128,6 +142,9 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     historyRetentionDays: -1,
     allowedModels: ['mistral-small-latest', 'mistral-medium-latest', 'mistral-large-latest'],
     defaultModel: 'mistral-medium-latest',
+    academicSearch: true,
+    academicPapersPerAnalysis: 50,
+    bibliographyExport: true,
   },
 };
 
@@ -145,13 +162,15 @@ export interface PlanFeatures {
   ttsAudio: boolean;
   apiAccess: boolean;
   prioritySupport: boolean;
+  academicSearch: boolean;
+  bibliographyExport: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
-  free: { flashcards: false, mindmap: false, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: false, ttsAudio: false, apiAccess: false, prioritySupport: false },
-  etudiant: { flashcards: true, mindmap: true, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: false },
-  starter: { flashcards: true, mindmap: true, webSearch: true, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: false, apiAccess: false, prioritySupport: false },
-  pro: { flashcards: true, mindmap: true, webSearch: true, playlists: true, exportPdf: true, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: true },
+  free: { flashcards: false, mindmap: false, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: false, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: false },
+  etudiant: { flashcards: true, mindmap: true, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true },
+  starter: { flashcards: true, mindmap: true, webSearch: true, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true },
+  pro: { flashcards: true, mindmap: true, webSearch: true, playlists: true, exportPdf: true, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: true, academicSearch: true, bibliographyExport: true },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════

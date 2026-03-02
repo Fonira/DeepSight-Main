@@ -103,7 +103,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
       }
     }
 
-    setAnalysis({ phase: 'analyzing', progress: 0, message: 'Starting analysis...' });
+    setAnalysis({ phase: 'analyzing', progress: 0, message: 'Démarrage de l\'analyse...' });
 
     try {
       const startRes = await chrome.runtime.sendMessage({
@@ -112,7 +112,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
       });
 
       if (!startRes.success) {
-        setAnalysis({ phase: 'error', message: startRes.error || 'Failed to start analysis' });
+        setAnalysis({ phase: 'error', message: startRes.error || 'Impossible de démarrer l\'analyse' });
         return;
       }
 
@@ -158,12 +158,12 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
             }
           } else if (status.status === 'failed') {
             if (pollRef.current) clearInterval(pollRef.current);
-            setAnalysis({ phase: 'error', message: status.error || 'Analysis failed' });
+            setAnalysis({ phase: 'error', message: status.error || 'Analyse échouée' });
           } else {
             setAnalysis({
               phase: 'analyzing',
               progress: status.progress || 0,
-              message: status.message || 'Processing...',
+              message: status.message || 'Traitement en cours...',
             });
           }
         } catch {
@@ -182,6 +182,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         summaryId={analysis.summaryId}
         videoTitle={analysis.summary.video_title}
         onClose={() => setChatOpen(false)}
+        onSessionExpired={onLogout}
       />
     );
   }
@@ -215,7 +216,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               Se connecter
             </button>
           ) : (
-            <button className="icon-btn icon-btn-danger" onClick={onLogout} title="Sign out">
+            <button className="icon-btn icon-btn-danger" onClick={onLogout} title="Déconnexion">
               <LogoutIcon size={16} />
             </button>
           )}
@@ -231,7 +232,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               {planInfo.analyses_this_month}/{planInfo.monthly_analyses} analyses
             </span>
           ) : (
-            <span className="user-credits">{user.credits} credits</span>
+            <span className="user-credits">{user.credits} crédits</span>
           )}
         </div>
       )}
@@ -239,23 +240,39 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
       {/* Guest banner */}
       {isGuest && (
         <div className="guest-banner">
-          <span>Mode d\u00e9couverte — 1 analyse gratuite sans compte</span>
+          <span>Mode découverte — 1 analyse gratuite sans compte</span>
         </div>
       )}
 
       {/* Content */}
       <div className="main-content">
-        {/* Video status */}
-        <div className="video-status">
-          <div className="video-status-icon">
-            <PlayIcon size={16} />
+        {/* Video status — card with thumbnail when detected, minimal when not */}
+        {video ? (
+          <div className="video-status-card">
+            <img
+              src={`https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`}
+              alt=""
+              className="video-thumbnail"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+            <div className="video-status-body">
+              <span className="video-status-title">
+                {video.title.length > 52 ? video.title.substring(0, 52) + '\u2026' : video.title}
+              </span>
+              <span className="video-status-url">youtube.com/watch?v={video.videoId}</span>
+            </div>
+            <div className="video-live-dot" title="Vidéo détectée" />
           </div>
-          <span className={`video-status-text ${video ? 'video-status-detected' : 'video-status-none'}`}>
-            {video
-              ? video.title.length > 45 ? video.title.substring(0, 45) + '...' : video.title
-              : 'Open a YouTube video to analyze'}
-          </span>
-        </div>
+        ) : (
+          <div className="video-status">
+            <div className="video-status-icon">
+              <PlayIcon size={16} />
+            </div>
+            <span className="video-status-text video-status-none">
+              Ouvre une vid\u00e9o YouTube pour l&apos;analyser
+            </span>
+          </div>
+        )}
 
         {/* Analysis controls */}
         {video && analysis.phase === 'idle' && (
@@ -311,7 +328,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                     </select>
                   </div>
                   <div className="ds-select-wrapper">
-                    <label>Language</label>
+                    <label>Langue</label>
                     <select className="ds-select" value={lang} onChange={(e) => setLang(e.target.value)}>
                       <option value="fr">Fran&ccedil;ais</option>
                       <option value="en">English</option>
@@ -323,6 +340,11 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                 <button className="analyze-btn" onClick={startAnalysis}>
                   {'\u2728'} Analyser cette vid\u00e9o
                 </button>
+                {/* Mistral AI attribution */}
+                <div className="mistral-badge">
+                  <span>🇫🇷</span>
+                  <span>Propuls\u00e9 par Mistral AI</span>
+                </div>
               </>
             )}
           </>
@@ -349,7 +371,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               onClick={() => setAnalysis({ phase: 'idle' })}
               style={{ height: '40px', fontSize: '13px' }}
             >
-              Retry
+              R\u00e9essayer
             </button>
           </div>
         )}
@@ -381,7 +403,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         {/* Recent */}
         {!isGuest && analysis.phase === 'idle' && recentAnalyses.length > 0 && (
           <div className="recent-section">
-            <h3>Recent analyses</h3>
+            <h3>Analyses r\u00e9centes</h3>
             <div className="recent-list">
               {recentAnalyses.slice(0, 5).map((item) => (
                 <a

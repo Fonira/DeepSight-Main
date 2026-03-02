@@ -7,13 +7,15 @@ interface ChatDrawerProps {
   summaryId: number;
   videoTitle: string;
   onClose: () => void;
+  onSessionExpired?: () => void;
 }
 
-export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, onClose }) => {
+export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, onClose, onSessionExpired }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
 
   // Load chat history on mount
@@ -69,16 +71,26 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, o
           },
         ]);
       } else {
-        setMessages((prev) => [
-          ...prev,
-          { role: 'assistant', content: `Error: ${response.error || 'Failed to get response'}` },
-        ]);
+        const errorMsg = response.error || '';
+        if (errorMsg.includes('SESSION_EXPIRED')) {
+          setSessionExpired(true);
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            { role: 'assistant', content: `Erreur\u00a0: ${errorMsg || 'R\u00e9ponse indisponible'}` },
+          ]);
+        }
       }
     } catch (e) {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: `Error: ${(e as Error).message}` },
-      ]);
+      const errorMsg = (e as Error).message || '';
+      if (errorMsg.includes('SESSION_EXPIRED')) {
+        setSessionExpired(true);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', content: `Erreur\u00a0: ${errorMsg}` },
+        ]);
+      }
     } finally {
       setLoading(false);
     }
@@ -97,10 +109,10 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, o
     <div className="chat-view">
       {/* Header */}
       <div className="chat-header">
-        <button className="icon-btn" onClick={onClose} title="Back">
+        <button className="icon-btn" onClick={onClose} title="Retour">
           <BackIcon size={18} />
         </button>
-        <span className="chat-header-title">Chat: &ldquo;{truncatedTitle}&rdquo;</span>
+        <span className="chat-header-title">Chat&nbsp;: &laquo;&nbsp;{truncatedTitle}&nbsp;&raquo;</span>
       </div>
 
       {/* Messages */}
@@ -112,7 +124,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, o
         ) : messages.length === 0 ? (
           <div className="chat-welcome">
             <span className="chat-welcome-icon">{'\u{1F4AC}'}</span>
-            <p>Ask me anything about this video.</p>
+            <p>Pose une question sur cette vid\u00e9o.</p>
           </div>
         ) : (
           messages.map((msg, i) => (
@@ -125,7 +137,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, o
                     }}
                   />
                   {msg.web_search_used && (
-                    <div className="chat-web-badge">{'\u{1F310}'} Web search used</div>
+                    <div className="chat-web-badge">{'\u{1F310}'} Recherche web utilis\u00e9e</div>
                   )}
                 </>
               ) : (
@@ -145,6 +157,25 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, o
         )}
       </div>
 
+      {/* Session expired banner */}
+      {sessionExpired && (
+        <div className="chat-session-expired">
+          <span>{'\u{1F512}'} Session expirée</span>
+          <button
+            className="chat-reconnect-btn"
+            onClick={() => {
+              if (onSessionExpired) {
+                onSessionExpired();
+              } else {
+                onClose();
+              }
+            }}
+          >
+            Se reconnecter
+          </button>
+        </div>
+      )}
+
       {/* Input */}
       <div className="chat-input-area">
         <input
@@ -153,15 +184,15 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({ summaryId, videoTitle, o
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask a question..."
-          disabled={loading}
+          placeholder={sessionExpired ? 'Session expirée...' : 'Pose une question...'}
+          disabled={loading || sessionExpired}
           autoFocus
         />
         <button
           className="chat-send-btn"
           onClick={sendMessage}
-          disabled={!input.trim() || loading}
-          title="Send"
+          disabled={!input.trim() || loading || sessionExpired}
+          title="Envoyer"
         >
           <SendIcon size={16} />
         </button>

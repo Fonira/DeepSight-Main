@@ -847,6 +847,35 @@ body {
 .chat-send-btn:hover:not(:disabled) { transform: scale(1.05); box-shadow: 0 2px 12px rgba(139, 92, 246, 0.3); }
 .chat-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Session expired banner */
+.chat-session-expired {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(239, 68, 68, 0.1);
+  border-top: 1px solid rgba(239, 68, 68, 0.2);
+  color: var(--ds-error);
+  font-size: 13px;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+.chat-reconnect-btn {
+  padding: 6px 14px;
+  background: var(--ds-gradient-accent);
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--ds-transition), box-shadow var(--ds-transition);
+}
+.chat-reconnect-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 12px rgba(139, 92, 246, 0.3);
+}
+
 /* ══════════════════════════════════════════════
    PROMO BANNER
    ══════════════════════════════════════════════ */
@@ -1183,4 +1212,139 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* ══════════════════════════════════════════════
+   ENHANCEMENTS v2.1 — Premium Polish
+   ══════════════════════════════════════════════ */
+
+/* Ambient glow on app container */
+.app-container {
+  position: relative;
+}
+.app-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 180px;
+  background: radial-gradient(ellipse at 50% -20%, rgba(59, 130, 246, 0.07) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+.app-container > * { position: relative; z-index: 1; }
+
+/* Login tagline — centered + italic identity */
+.login-tagline {
+  font-style: italic;
+  text-align: center;
+  font-size: 12.5px;
+  color: var(--ds-text-secondary);
+  margin-bottom: 20px;
+  letter-spacing: 0.2px;
+}
+
+/* Login FR/EU badges */
+.login-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.login-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--ds-text-secondary);
+}
+.login-badge-flag {
+  font-size: 12px;
+}
+
+/* Video card with thumbnail (detected state) */
+.video-status-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: var(--ds-bg-secondary);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--ds-radius);
+  animation: ds-slide-up 200ms ease-out;
+  transition: border-color var(--ds-transition);
+}
+.video-status-card:hover {
+  border-color: rgba(59, 130, 246, 0.35);
+}
+.video-thumbnail {
+  width: 68px;
+  height: 38px;
+  border-radius: 5px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--ds-bg-tertiary);
+}
+.video-status-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.video-status-title {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ds-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+.video-status-url {
+  font-size: 10px;
+  color: var(--ds-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.video-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ds-accent-blue);
+  flex-shrink: 0;
+  animation: ds-pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.6);
+}
+
+/* Mistral AI attribution */
+.mistral-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--ds-text-muted);
+  padding: 2px 0;
+  margin-top: -4px;
+}
+
+/* Progress fill — animated shimmer */
+.progress-fill {
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4, #3b82f6) !important;
+  background-size: 200% 100% !important;
+  animation: ds-shimmer 1.8s linear infinite !important;
+}
+
+/* Header logo subtle glow */
+.main-header-logo {
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.25);
 }

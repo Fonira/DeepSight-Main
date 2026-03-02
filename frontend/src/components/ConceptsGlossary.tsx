@@ -13,6 +13,7 @@
 import React, { useState, useEffect, memo } from 'react';
 import { BookOpen, ChevronDown, ChevronUp, User, Building2, Cpu, Lightbulb, HelpCircle, RefreshCw } from 'lucide-react';
 import { DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
+import { videoApi } from '../services/api';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 TYPES
@@ -96,34 +97,26 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = memo(({
   const [isExpanded, setIsExpanded] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'https://deep-sight-backend-v3-production.up.railway.app';
-
-  // Charger les concepts quand on expand
+  // Charger les concepts quand on expand (via api.ts avec gestion auth/refresh)
   const loadConcepts = async () => {
     if (hasLoaded || loading) return;
-    
+
     setLoading(true);
     setError(null);
 
     try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`${API_URL}/api/videos/concepts/${summaryId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to load concepts');
-      }
-
-      const data: ConceptsResponse = await response.json();
-      setConcepts(data.concepts);
+      const data = await videoApi.getConcepts(summaryId);
+      setConcepts(data.concepts || []);
       setHasLoaded(true);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Error loading concepts:', err);
-      setError(language === 'fr' ? 'Erreur de chargement' : 'Loading error');
+      const message = err instanceof Error ? err.message : '';
+      // Message plus informatif selon l'erreur
+      if (message.includes('401') || message.includes('auth')) {
+        setError(language === 'fr' ? 'Session expirée — rechargez la page' : 'Session expired — reload the page');
+      } else {
+        setError(language === 'fr' ? 'Erreur de chargement des concepts' : 'Failed to load concepts');
+      }
     } finally {
       setLoading(false);
     }

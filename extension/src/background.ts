@@ -72,7 +72,10 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 
 async function tryRefreshToken(): Promise<boolean> {
   const { refreshToken } = await getStoredTokens();
-  if (!refreshToken) return false;
+  if (!refreshToken) {
+    console.warn('[DeepSight] No refresh token available');
+    return false;
+  }
 
   try {
     const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
@@ -81,13 +84,22 @@ async function tryRefreshToken(): Promise<boolean> {
       body: JSON.stringify({ refresh_token: refreshToken }),
     });
 
-    if (!response.ok) return false;
+    if (!response.ok) {
+      console.warn('[DeepSight] Refresh token failed:', response.status);
+      return false;
+    }
 
     const data: LoginResponse = await response.json();
+    if (!data.access_token) {
+      console.warn('[DeepSight] Refresh response missing access_token');
+      return false;
+    }
     await setStoredTokens(data.access_token, data.refresh_token);
     await setStoredUser(data.user);
+    console.log('[DeepSight] Token refreshed successfully');
     return true;
-  } catch {
+  } catch (err) {
+    console.error('[DeepSight] Token refresh error:', err);
     return false;
   }
 }
@@ -471,7 +483,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 // ── Alarms ──
 
 chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 });
-chrome.alarms.create('refreshToken', { periodInMinutes: 14 });
+chrome.alarms.create('refreshToken', { periodInMinutes: 12 }); // Refresh avant expiration (access_token = 15min)
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'refreshToken' && (await isAuthenticated())) {
