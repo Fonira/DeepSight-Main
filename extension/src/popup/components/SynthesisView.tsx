@@ -4,7 +4,7 @@ import { CATEGORY_ICONS } from '../../types';
 import { escapeHtml, markdownToFullHtml, parseAnalysisToSummary } from '../../utils/sanitize';
 import type { KeyPoint } from '../../utils/sanitize';
 import { WEBAPP_URL } from '../../utils/config';
-import { ChatIcon, ExternalLinkIcon, ChevronDownIcon, ChevronUpIcon } from './Icons';
+import { ChatIcon, ExternalLinkIcon, ChevronDownIcon, ChevronUpIcon, ShareIcon } from './Icons';
 
 interface SynthesisViewProps {
   summary: Summary;
@@ -39,6 +39,126 @@ interface FeatureCTA {
   price: string; // display price for locked CTA
 }
 
+/**
+ * Generates a beautiful standalone HTML page for sharing a synthesis.
+ * Modern, dark-themed, print-friendly design.
+ */
+function generateShareHtml(summary: Summary, parsed: ReturnType<typeof parseAnalysisToSummary>, score: number): string {
+  const scoreClass = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : '#ef4444';
+  const scoreLabel = score >= 80 ? 'Fiable' : score >= 60 ? 'À vérifier' : 'Peu fiable';
+  const date = new Date(summary.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const keyPointsHtml = parsed.keyPoints.map(kp => {
+    const icon = kp.type === 'solid' ? '✅' : kp.type === 'weak' ? '⚠️' : '💡';
+    const color = kp.type === 'solid' ? '#22c55e' : kp.type === 'weak' ? '#f87171' : '#facc15';
+    return `<div style="display:flex;gap:10px;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);margin-bottom:8px">
+      <span style="font-size:16px;flex-shrink:0">${icon}</span>
+      <span style="color:#d4d4d8;font-size:14px;line-height:1.6">${kp.text}</span>
+    </div>`;
+  }).join('');
+
+  const tagsHtml = parsed.tags.map(tag =>
+    `<span style="display:inline-block;padding:4px 12px;border-radius:20px;background:rgba(59,130,246,0.12);color:#60a5fa;font-size:12px;font-weight:500">${tag}</span>`
+  ).join(' ');
+
+  const conceptsHtml = (summary.concepts || []).slice(0, 5).map(c =>
+    `<div style="padding:14px 18px;border-radius:12px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.15)">
+      <div style="font-weight:600;color:#c4b5fd;font-size:14px;margin-bottom:4px">${c.name}</div>
+      <div style="color:#a1a1aa;font-size:13px;line-height:1.5">${c.definition || 'Définition en cours de génération...'}</div>
+    </div>`
+  ).join('');
+
+  return `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${summary.video_title} — Synthèse DeepSight</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',system-ui,sans-serif;background:#0a0a0f;color:#e4e4e7;min-height:100vh}
+    .page{max-width:720px;margin:0 auto;padding:40px 24px 60px}
+    .header{text-align:center;margin-bottom:32px}
+    .logo{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#8b5cf6;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:16px}
+    .logo svg{width:18px;height:18px}
+    .video-title{font-size:22px;font-weight:700;line-height:1.35;color:#fafafa;margin-bottom:8px}
+    .video-meta{display:flex;align-items:center;justify-content:center;gap:16px;font-size:13px;color:#71717a;flex-wrap:wrap}
+    .score-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-weight:600;font-size:13px;background:${scoreClass}15;color:${scoreClass}}
+    .section{margin-top:28px}
+    .section-title{font-size:15px;font-weight:600;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+    .verdict{padding:20px 24px;border-radius:14px;background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(139,92,246,0.08));border:1px solid rgba(139,92,246,0.15);font-size:15px;line-height:1.7;color:#d4d4d8}
+    .concepts-grid{display:grid;gap:10px}
+    .tags{display:flex;flex-wrap:wrap;gap:8px}
+    .footer{margin-top:40px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;color:#52525b;font-size:12px}
+    .footer a{color:#8b5cf6;text-decoration:none}
+    .footer a:hover{text-decoration:underline}
+    .btn-print{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:white;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all 0.2s}
+    .btn-print:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(99,102,241,0.35)}
+    .actions{text-align:center;margin-top:28px;display:flex;gap:12px;justify-content:center}
+    @media print{
+      body{background:white;color:#1a1a1a}
+      .verdict{background:#f8fafc;border-color:#e2e8f0}
+      .score-badge{background:#f0fdf4}
+      .actions,.btn-print{display:none!important}
+      .section-title{color:#64748b}
+      .footer{color:#94a3b8}
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        DeepSight Synthesis
+      </div>
+      <h1 class="video-title">${summary.video_title}</h1>
+      <div class="video-meta">
+        <span>📺 ${summary.video_channel}</span>
+        <span>📁 ${summary.category}</span>
+        <span>${date}</span>
+        <span class="score-badge">🎯 ${score}% — ${scoreLabel}</span>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🔍 Verdict</div>
+      <div class="verdict">${parsed.verdict}</div>
+    </div>
+
+    ${parsed.keyPoints.length > 0 ? `
+    <div class="section">
+      <div class="section-title">📌 Points Clés</div>
+      ${keyPointsHtml}
+    </div>` : ''}
+
+    ${(summary.concepts || []).length > 0 ? `
+    <div class="section">
+      <div class="section-title">🧠 Concepts</div>
+      <div class="concepts-grid">${conceptsHtml}</div>
+    </div>` : ''}
+
+    ${parsed.tags.length > 0 ? `
+    <div class="section">
+      <div class="section-title">🏷️ Tags</div>
+      <div class="tags">${tagsHtml}</div>
+    </div>` : ''}
+
+    <div class="actions">
+      <button class="btn-print" onclick="window.print()">🖨️ Imprimer / PDF</button>
+    </div>
+
+    <div class="footer">
+      <p>Généré par <a href="https://www.deepsightsynthesis.com" target="_blank">DeepSight</a> — Analyse IA de vidéos YouTube</p>
+      <p style="margin-top:4px">🇫🇷🇪🇺 IA 100% Européenne propulsée par Mistral AI</p>
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
 // ⚠️ SYNC avec billing/plan_config.py et frontend/src/config/planPrivileges.ts
 const FEATURE_CTAS: FeatureCTA[] = [
   { key: 'flashcards', icon: '🗂️', label: 'Flashcards', hash: '#flashcards', minPlan: 'etudiant', price: '2,99€/mois' },
@@ -58,6 +178,13 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId
   const scoreIcon = score >= 80 ? '\u2705' : score >= 60 ? '\u26A0\uFE0F' : '\u2753';
 
   const detailedHtml = markdownToFullHtml(escapeHtml(summary.summary_content));
+
+  const handleShare = () => {
+    const html = generateShareHtml(summary, parsed, score);
+    const blob = new Blob([html], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    chrome.tabs.create({ url });
+  };
 
   // Build feature CTAs
   const availableCTAs: { cta: FeatureCTA; available: boolean }[] = FEATURE_CTAS.map((cta) => ({
@@ -140,6 +267,9 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId
         </a>
         <button className="btn-action btn-action-secondary" onClick={onOpenChat}>
           <ChatIcon size={14} /> Chat
+        </button>
+        <button className="btn-action btn-action-secondary" onClick={handleShare} title="Partager / PDF">
+          <ShareIcon size={14} /> Partager
         </button>
       </div>
 

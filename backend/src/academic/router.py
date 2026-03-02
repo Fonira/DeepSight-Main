@@ -9,10 +9,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
+import httpx
 
 from db.database import get_session, User, Summary, AcademicPaper as AcademicPaperDB
 from auth.dependencies import get_current_user, get_verified_user
-from core.config import get_plan_limits
+from core.config import get_plan_limits, get_mistral_key
 
 from .schemas import (
     AcademicPaper,
@@ -122,12 +123,21 @@ async def enrich_summary_with_academic_sources(
             }
         )
 
+    # 🌍 Traduire les keywords FR → EN pour les APIs académiques anglophones
+    translated = await _translate_keywords_to_english(keywords)
+    if translated:
+        print(f"Translated keywords for academic search: {translated}", flush=True)
+        keywords = translated
+    else:
+        print(f"Using original keywords (translation failed or not needed)", flush=True)
+
     user_plan = current_user.plan or "free"
     max_papers = request.max_papers if request else None
 
-    # Search for papers
+    # Search for papers (use top 8 keywords max for focused queries)
+    search_keywords = keywords[:8]
     search_request = AcademicSearchRequest(
-        keywords=keywords,
+        keywords=search_keywords,
         summary_id=str(summary_id),
         limit=max_papers or get_tier_limit(user_plan)
     )
@@ -294,6 +304,81 @@ async def get_available_formats(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════════════════
+
+async def _translate_keywords_to_english(keywords: List[str]) -> List[str]:
+    """
+    Translate keywords to English for academic API search.
+    Uses Mistral to detect if keywords are in French and translate them.
+    Returns translated keywords or empty list if translation fails/not needed.
+    """
+    api_key = get_mistral_key()
+    if not api_key or not keywords:
+        return []
+
+    # Quick check: if most keywords look English already, skip translation
+    french_indicators = {
+        "artificielle", "apprentissage", "profond", "réseau", "neurone",
+        "cerveau", "données", "modèle", "système", "analyse", "théorie",
+        "société", "économie", "philosophie", "psychologie", "biologie",
+        "histoire", "politique", "mathématique", "physique", "chimie",
+        "environnement", "climatique", "énergie", "santé", "médecine",
+        "génétique", "algorithme", "numérique", "quantique", "relativité",
+        "évolution", "cognitif", "conscience", "comportement", "langage",
+    }
+
+    text_lower = " ".join(keywords).lower()
+    has_french = any(ind in text_lower for ind in french_indicators)
+    # Also check for accented characters common in French
+    has_accents = any(c in text_lower for c in "éèêëàâäùûüôöïîç")
+
+    if not has_french and not has_accents:
+        print("Keywords appear to be in English, skipping translation", flush=True)
+        return []
+
+    keywords_text = "\n".join(f"- {kw}" for kw in keywords[:12])
+
+    prompt = f"""Translate these French academic keywords to English for searching scientific papers.
+Return ONLY a JSON array of translated terms. Keep proper nouns unchanged. Use standard academic English terms.
+
+French keywords:
+{keywords_text}
+
+Return format: ["term1", "term2", "term3"]
+JSON array:"""
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "mistral-small-latest",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "max_tokens": 500,
+                    "temperature": 0.1
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+            text = data["choices"][0]["message"]["content"].strip()
+
+            # Parse JSON array from response
+            import re
+            json_match = re.search(r'\[.*?\]', text, re.DOTALL)
+            if json_match:
+                translated = json.loads(json_match.group())
+                if isinstance(translated, list) and len(translated) > 0:
+                    # Filter out empty/null values
+                    return [t.strip() for t in translated if isinstance(t, str) and t.strip()]
+
+        return []
+    except Exception as e:
+        print(f"Keyword translation error: {e}", flush=True)
+        return []
+
 
 def _extract_keywords_from_summary(summary: Summary) -> List[str]:
     """Extract searchable keywords from a summary.

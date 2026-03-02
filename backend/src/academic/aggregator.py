@@ -90,6 +90,27 @@ class AcademicAggregator:
         self.openalex = openalex_client
         self.arxiv = arxiv_client
 
+    def _build_query(self, keywords: List[str], max_keywords: int = 5) -> str:
+        """Build an optimized search query from keywords.
+
+        Strategy:
+        - Use top N keywords (most relevant first)
+        - Quote multi-word terms to keep them as phrases
+        - Keep total query concise for API compatibility
+        """
+        top_keywords = keywords[:max_keywords]
+        parts = []
+        for kw in top_keywords:
+            kw = kw.strip()
+            if not kw:
+                continue
+            # Quote multi-word terms for phrase matching
+            if " " in kw:
+                parts.append(f'"{kw}"')
+            else:
+                parts.append(kw)
+        return " ".join(parts)
+
     async def search(
         self,
         request: AcademicSearchRequest,
@@ -105,8 +126,12 @@ class AcademicAggregator:
         Returns:
             AcademicSearchResponse with deduplicated and scored papers
         """
-        # Build query from keywords
-        query = " ".join(request.keywords)
+        # Build optimized query from keywords (top 5 for focused results)
+        query = self._build_query(request.keywords, max_keywords=5)
+        # Also build a broader query with more keywords for fallback
+        broad_query = self._build_query(request.keywords, max_keywords=8)
+        print(f"Academic search query: {query}", flush=True)
+        print(f"Academic broad query: {broad_query}", flush=True)
 
         # Query all sources in parallel with overall timeout
         try:
@@ -134,6 +159,28 @@ class AcademicAggregator:
                 continue
             sources_queried.append(source_name)
             all_papers.extend(result)
+
+        # 🔄 FALLBACK: If no results, retry with broader query
+        if len(all_papers) == 0 and broad_query != query:
+            print(f"No results with focused query, retrying with broad query: {broad_query}", flush=True)
+            try:
+                results = await asyncio.wait_for(
+                    asyncio.gather(
+                        self._search_semantic_scholar(broad_query, request),
+                        self._search_openalex(broad_query, request),
+                        return_exceptions=True
+                    ),
+                    timeout=45.0
+                )
+                for i, result in enumerate(results):
+                    source_name = ["semantic_scholar", "openalex"][i]
+                    if isinstance(result, Exception):
+                        continue
+                    if source_name not in sources_queried:
+                        sources_queried.append(source_name)
+                    all_papers.extend(result)
+            except asyncio.TimeoutError:
+                print("Broad query also timed out", flush=True)
 
         print(f"Total papers before deduplication: {len(all_papers)}", flush=True)
 
