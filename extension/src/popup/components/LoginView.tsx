@@ -57,7 +57,19 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
         />
         <h1>DeepSight</h1>
       </div>
-      <p className="login-tagline">AI-Powered Video Analysis</p>
+
+      {/* Tagline — brand identity */}
+      <p className="login-tagline">Ne regardez plus vos vidéos. Analysez-les.</p>
+
+      {/* FR/EU trust badges */}
+      <div className="login-badges">
+        <span className="login-badge">
+          <span className="login-badge-flag">🇫🇷</span> IA Française
+        </span>
+        <span className="login-badge">
+          <span className="login-badge-flag">🇪🇺</span> Données en Europe
+        </span>
+      </div>
 
       {/* Google Login */}
       <button
@@ -65,17 +77,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
         onClick={handleGoogle}
         disabled={googleLoading || loading}
       >
-        {googleLoading ? 'Connecting...' : <><GoogleIcon /> Sign in with Google</>}
+        {googleLoading ? 'Connexion Google...' : <><GoogleIcon /> Continuer avec Google</>}
       </button>
 
       {/* Divider */}
-      <div className="login-divider">or</div>
+      <div className="login-divider">ou</div>
 
       {/* Email/Password */}
       <form className="login-form" onSubmit={handleSubmit}>
         <input
           type="email"
-          placeholder="Email"
+          placeholder="Adresse e-mail"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -83,7 +95,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
         />
         <input
           type="password"
-          placeholder="Password"
+          placeholder="Mot de passe"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -91,7 +103,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
         />
         {displayError && <div className="login-error">{displayError}</div>}
         <button type="submit" className="btn-login" disabled={loading || !email || !password}>
-          {loading ? 'Signing in...' : 'Sign In'}
+          {loading ? 'Connexion...' : 'Se connecter'}
         </button>
       </form>
 
@@ -103,11 +115,22 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
       {/* Footer */}
       <div className="login-footer">
         <a href="https://www.deepsightsynthesis.com/register" target="_blank" rel="noreferrer">
-          Create account
+          Créer un compte
         </a>
         <span>&middot;</span>
         <a href="https://www.deepsightsynthesis.com" target="_blank" rel="noreferrer">
           deepsightsynthesis.com
+        </a>
+      </div>
+
+      {/* Legal links — Chrome Web Store requirement */}
+      <div className="login-legal">
+        <a href="https://www.deepsightsynthesis.com/legal/privacy" target="_blank" rel="noreferrer">
+          Confidentialité
+        </a>
+        <span>&middot;</span>
+        <a href="https://www.deepsightsynthesis.com/legal/cgu" target="_blank" rel="noreferrer">
+          CGU
         </a>
       </div>
     </div>

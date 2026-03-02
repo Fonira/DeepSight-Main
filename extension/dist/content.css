@@ -990,6 +990,33 @@
   opacity: 0.4;
 }
 
+/* ── Legal links — Chrome Web Store requirement ── */
+
+.ds-card-legal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--ds-text-muted);
+}
+
+.ds-card-legal a {
+  color: var(--ds-text-secondary);
+  text-decoration: none;
+  transition: color var(--ds-transition);
+}
+
+.ds-card-legal a:hover {
+  color: var(--ds-accent-blue);
+  text-decoration: underline;
+}
+
+.ds-card-legal span {
+  opacity: 0.4;
+}
+
 /* ── Hidden utility ── */
 
 .hidden {

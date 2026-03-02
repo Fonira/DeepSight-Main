@@ -133,6 +133,11 @@ function renderLogin(container: HTMLElement): void {
       <span>\u00B7</span>
       <a href="${WEBAPP_URL}" target="_blank" rel="noreferrer">deepsightsynthesis.com</a>
     </div>
+    <div class="ds-card-legal">
+      <a href="${WEBAPP_URL}/legal/privacy" target="_blank" rel="noreferrer">Privacy</a>
+      <span>\u00B7</span>
+      <a href="${WEBAPP_URL}/legal/cgu" target="_blank" rel="noreferrer">Terms</a>
+    </div>
   `;
 
   document.getElementById('ds-google-login')?.addEventListener('click', async () => {
@@ -214,6 +219,11 @@ function renderAnalyzeReady(container: HTMLElement, user: { credits: number; pla
     <div class="ds-card-footer">
       <a href="${WEBAPP_URL}" target="_blank" rel="noreferrer">\u{1F310} deepsightsynthesis.com</a>
       <button id="ds-logout" class="ds-link-btn">Sign out</button>
+    </div>
+    <div class="ds-card-legal">
+      <a href="${WEBAPP_URL}/legal/privacy" target="_blank" rel="noreferrer">Privacy</a>
+      <span>\u00B7</span>
+      <a href="${WEBAPP_URL}/legal/cgu" target="_blank" rel="noreferrer">Terms</a>
     </div>
   `;
 

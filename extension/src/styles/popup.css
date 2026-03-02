@@ -266,6 +266,27 @@ body {
 .login-footer a:hover { color: var(--ds-accent-purple); }
 .login-footer span { color: var(--ds-text-muted); }
 
+/* Legal links — Chrome Web Store requirement */
+.login-legal {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: var(--ds-text-muted);
+}
+.login-legal a {
+  color: var(--ds-text-secondary);
+  text-decoration: none;
+  transition: color var(--ds-transition);
+}
+.login-legal a:hover {
+  color: var(--ds-accent-blue);
+  text-decoration: underline;
+}
+.login-legal span { color: var(--ds-text-muted); opacity: 0.5; }
+
 /* ══════════════════════════════════════════════
    MAIN VIEW
    ══════════════════════════════════════════════ */
