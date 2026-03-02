@@ -483,7 +483,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 // ── Alarms ──
 
 chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 });
-chrome.alarms.create('refreshToken', { periodInMinutes: 12 }); // Refresh avant expiration (access_token = 15min)
+chrome.alarms.create('refreshToken', { periodInMinutes: 50 }); // Refresh avant expiration (access_token = 60min)
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'refreshToken' && (await isAuthenticated())) {
