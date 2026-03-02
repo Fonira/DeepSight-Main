@@ -573,7 +573,7 @@ const LandingPage: React.FC = () => {
       <section className="py-10 sm:py-16 px-4 sm:px-6">
         <ScrollReveal className="max-w-3xl mx-auto text-center">
           <p className="text-xs sm:text-sm text-text-tertiary uppercase tracking-widest mb-6">
-            {language === 'fr' ? 'Propulsé par' : 'Powered by'}
+            {language === 'fr' ? 'Notre technologie' : 'Our technology'}
           </p>
           <div className="flex items-center justify-center mb-4">
             <img
