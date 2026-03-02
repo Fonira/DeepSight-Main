@@ -13,6 +13,7 @@ class AcademicSource(str, Enum):
     SEMANTIC_SCHOLAR = "semantic_scholar"
     OPENALEX = "openalex"
     ARXIV = "arxiv"
+    CROSSREF = "crossref"
 
 
 class BibliographyFormat(str, Enum):

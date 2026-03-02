@@ -16,7 +16,7 @@ import httpx
 from .schemas import AcademicPaper, Author, AcademicSource
 
 # API Configuration
-ARXIV_API_URL = "http://export.arxiv.org/api/query"
+ARXIV_API_URL = "https://export.arxiv.org/api/query"
 
 # arXiv categories mapping
 ARXIV_CATEGORIES = {

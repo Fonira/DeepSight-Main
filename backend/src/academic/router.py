@@ -5,10 +5,12 @@ API endpoints for academic paper search and bibliography export
 
 import asyncio
 import json
+import re
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
+from collections import Counter
 import httpx
 
 from db.database import get_session, User, Summary, AcademicPaper as AcademicPaperDB
@@ -43,7 +45,7 @@ async def search_academic_papers(
     session: AsyncSession = Depends(get_session)
 ):
     """
-    Search for academic papers across Semantic Scholar, OpenAlex, and arXiv.
+    Search for academic papers across OpenAlex, CrossRef, Semantic Scholar, and arXiv.
 
     Results are deduplicated, scored by relevance, and limited based on user's plan.
     """
@@ -123,19 +125,19 @@ async def enrich_summary_with_academic_sources(
             }
         )
 
-    # 🌍 Traduire les keywords FR → EN pour les APIs académiques anglophones
+    # 🌍 Translate keywords FR → EN for English-centric academic APIs
     translated = await _translate_keywords_to_english(keywords)
     if translated:
-        print(f"Translated keywords for academic search: {translated}", flush=True)
+        print(f"Translated keywords: {translated}", flush=True)
         keywords = translated
     else:
-        print(f"Using original keywords (translation failed or not needed)", flush=True)
+        print(f"Using original keywords (translation skipped or failed)", flush=True)
 
     user_plan = current_user.plan or "free"
     max_papers = request.max_papers if request else None
 
-    # Search for papers (use top 8 keywords max for focused queries)
-    search_keywords = keywords[:8]
+    # Build search request with top keywords
+    search_keywords = keywords[:10]
     search_request = AcademicSearchRequest(
         keywords=search_keywords,
         summary_id=str(summary_id),
@@ -143,7 +145,13 @@ async def enrich_summary_with_academic_sources(
     )
 
     try:
-        response = await academic_aggregator.search(search_request, user_plan)
+        # Pass video title for title-based search fallback
+        video_title = summary.video_title if summary.video_title else None
+        response = await academic_aggregator.search(
+            search_request,
+            user_plan,
+            video_title=video_title
+        )
 
         # Cache papers in database
         await _cache_papers(session, summary_id, response.papers)
@@ -170,7 +178,6 @@ async def get_cached_papers(
 ):
     """
     Get cached academic papers for a summary.
-
     Returns papers that were previously found and cached.
     """
     # Verify summary ownership
@@ -228,16 +235,9 @@ async def export_bibliography(
 ):
     """
     Export selected papers as bibliography in various formats.
-
-    Available formats: BibTeX, RIS, APA, MLA, Chicago, Harvard
-
-    Requires at least 'starter' plan for basic formats,
-    'pro' plan for all formats.
     """
     user_plan = current_user.plan or "free"
-    plan_limits = get_plan_limits(user_plan)
 
-    # Check if bibliography export is enabled for this plan
     if not _can_export_bibliography(user_plan):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -250,7 +250,6 @@ async def export_bibliography(
             }
         )
 
-    # Fetch papers by IDs
     papers = await _get_papers_by_ids(session, current_user.id, request.paper_ids)
 
     if not papers:
@@ -262,7 +261,6 @@ async def export_bibliography(
             }
         )
 
-    # Export to requested format
     content = bibliography_exporter.export(papers, request.format)
     filename = bibliography_exporter.get_filename(request.format)
 
@@ -278,9 +276,7 @@ async def export_bibliography(
 async def get_available_formats(
     current_user: User = Depends(get_current_user)
 ):
-    """
-    Get available bibliography export formats for the user's plan.
-    """
+    """Get available bibliography export formats for the user's plan."""
     user_plan = current_user.plan or "free"
 
     all_formats = [
@@ -305,37 +301,175 @@ async def get_available_formats(
 # 🔧 HELPER FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════════════════
 
+# Common French academic terms → English mapping for fast fallback translation
+_FR_EN_TERMS = {
+    "intelligence artificielle": "artificial intelligence",
+    "apprentissage automatique": "machine learning",
+    "apprentissage profond": "deep learning",
+    "réseau de neurones": "neural network",
+    "réseaux de neurones": "neural networks",
+    "cerveau": "brain",
+    "neuroscience": "neuroscience",
+    "conscience": "consciousness",
+    "comportement": "behavior",
+    "mémoire": "memory",
+    "émotion": "emotion",
+    "perception": "perception",
+    "cognition": "cognition",
+    "psychologie": "psychology",
+    "biologie": "biology",
+    "génétique": "genetics",
+    "évolution": "evolution",
+    "écologie": "ecology",
+    "environnement": "environment",
+    "changement climatique": "climate change",
+    "réchauffement climatique": "global warming",
+    "énergie renouvelable": "renewable energy",
+    "développement durable": "sustainable development",
+    "santé": "health",
+    "médecine": "medicine",
+    "maladie": "disease",
+    "traitement": "treatment",
+    "vaccin": "vaccine",
+    "virus": "virus",
+    "bactérie": "bacteria",
+    "système immunitaire": "immune system",
+    "cellule": "cell",
+    "protéine": "protein",
+    "molécule": "molecule",
+    "chimie": "chemistry",
+    "physique": "physics",
+    "quantique": "quantum",
+    "relativité": "relativity",
+    "astronomie": "astronomy",
+    "espace": "space",
+    "gravité": "gravity",
+    "mathématiques": "mathematics",
+    "algorithme": "algorithm",
+    "données": "data",
+    "numérique": "digital",
+    "informatique": "computer science",
+    "économie": "economics",
+    "société": "society",
+    "politique": "politics",
+    "philosophie": "philosophy",
+    "histoire": "history",
+    "éducation": "education",
+    "langage": "language",
+    "communication": "communication",
+    "nutrition": "nutrition",
+    "alimentation": "nutrition",
+    "obésité": "obesity",
+    "diabète": "diabetes",
+    "cancer": "cancer",
+    "dépression": "depression",
+    "anxiété": "anxiety",
+    "sommeil": "sleep",
+    "stress": "stress",
+    "addiction": "addiction",
+    "drogue": "drug",
+    "cannabis": "cannabis",
+    "alcool": "alcohol",
+    "tabac": "tobacco",
+    "dopamine": "dopamine",
+    "sérotonine": "serotonin",
+    "neurotransmetteur": "neurotransmitter",
+    "synapse": "synapse",
+    "cortex": "cortex",
+    "hippocampe": "hippocampus",
+    "amygdale": "amygdala",
+    "système nerveux": "nervous system",
+    "système endocannabinoïde": "endocannabinoid system",
+    "récepteur": "receptor",
+}
+
+
 async def _translate_keywords_to_english(keywords: List[str]) -> List[str]:
     """
     Translate keywords to English for academic API search.
-    Uses Mistral to detect if keywords are in French and translate them.
-    Returns translated keywords or empty list if translation fails/not needed.
+    Uses a 2-level approach:
+    1. Fast dictionary lookup for common terms
+    2. Mistral AI for complex/unknown terms
+    Returns translated keywords or empty list if translation not needed.
     """
-    api_key = get_mistral_key()
-    if not api_key or not keywords:
+    if not keywords:
         return []
 
-    # Quick check: if most keywords look English already, skip translation
+    # Quick check: if keywords appear to be already in English, skip
+    text_lower = " ".join(keywords).lower()
     french_indicators = {
         "artificielle", "apprentissage", "profond", "réseau", "neurone",
         "cerveau", "données", "modèle", "système", "analyse", "théorie",
         "société", "économie", "philosophie", "psychologie", "biologie",
         "histoire", "politique", "mathématique", "physique", "chimie",
         "environnement", "climatique", "énergie", "santé", "médecine",
-        "génétique", "algorithme", "numérique", "quantique", "relativité",
+        "génétique", "numérique", "quantique", "relativité", "maladie",
         "évolution", "cognitif", "conscience", "comportement", "langage",
+        "traitement", "récepteur", "neurotransmetteur", "molécule",
+        "cellule", "protéine", "dépression", "addiction", "drogue",
     }
 
-    text_lower = " ".join(keywords).lower()
     has_french = any(ind in text_lower for ind in french_indicators)
-    # Also check for accented characters common in French
     has_accents = any(c in text_lower for c in "éèêëàâäùûüôöïîç")
 
     if not has_french and not has_accents:
-        print("Keywords appear to be in English, skipping translation", flush=True)
+        print("Keywords appear English — skipping translation", flush=True)
         return []
 
-    keywords_text = "\n".join(f"- {kw}" for kw in keywords[:12])
+    # ── LEVEL 1: Fast dictionary translation ──
+    translated = []
+    needs_ai_translation = []
+
+    for kw in keywords[:12]:
+        kw_lower = kw.lower().strip()
+
+        # Check exact match in dictionary
+        if kw_lower in _FR_EN_TERMS:
+            translated.append(_FR_EN_TERMS[kw_lower])
+            continue
+
+        # Check if it contains a known French term
+        found = False
+        for fr_term, en_term in _FR_EN_TERMS.items():
+            if fr_term in kw_lower:
+                translated.append(en_term)
+                found = True
+                break
+
+        if not found:
+            # If the word has no accent and looks like it could be English/Latin, keep it
+            if not any(c in kw_lower for c in "éèêëàâäùûüôöïîç") and len(kw) > 2:
+                translated.append(kw)  # Keep as-is (might be a proper noun or shared term)
+            else:
+                needs_ai_translation.append(kw)
+
+    # ── LEVEL 2: Mistral AI for remaining terms ──
+    if needs_ai_translation:
+        api_key = get_mistral_key()
+        if api_key:
+            ai_translated = await _mistral_translate(needs_ai_translation, api_key)
+            translated.extend(ai_translated)
+        else:
+            # Last resort: strip accents and hope for the best
+            for term in needs_ai_translation:
+                cleaned = _strip_accents(term)
+                translated.append(cleaned)
+
+    # Deduplicate while preserving order
+    seen = set()
+    unique = []
+    for t in translated:
+        t_lower = t.lower().strip()
+        if t_lower and t_lower not in seen:
+            seen.add(t_lower)
+            unique.append(t)
+
+    return unique
+
+
+async def _mistral_translate(terms: List[str], api_key: str) -> List[str]:
+    """Translate terms using Mistral AI"""
+    keywords_text = "\n".join(f"- {kw}" for kw in terms)
 
     prompt = f"""Translate these French academic keywords to English for searching scientific papers.
 Return ONLY a JSON array of translated terms. Keep proper nouns unchanged. Use standard academic English terms.
@@ -347,7 +481,7 @@ Return format: ["term1", "term2", "term3"]
 JSON array:"""
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
                 headers={
@@ -365,34 +499,43 @@ JSON array:"""
             data = response.json()
             text = data["choices"][0]["message"]["content"].strip()
 
-            # Parse JSON array from response
-            import re
             json_match = re.search(r'\[.*?\]', text, re.DOTALL)
             if json_match:
-                translated = json.loads(json_match.group())
-                if isinstance(translated, list) and len(translated) > 0:
-                    # Filter out empty/null values
-                    return [t.strip() for t in translated if isinstance(t, str) and t.strip()]
+                result = json.loads(json_match.group())
+                if isinstance(result, list):
+                    return [t.strip() for t in result if isinstance(t, str) and t.strip()]
 
         return []
     except Exception as e:
-        print(f"Keyword translation error: {e}", flush=True)
+        print(f"Mistral translation error: {e}", flush=True)
         return []
+
+
+def _strip_accents(text: str) -> str:
+    """Remove French accents from text as last-resort translation"""
+    replacements = {
+        'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+        'à': 'a', 'â': 'a', 'ä': 'a',
+        'ù': 'u', 'û': 'u', 'ü': 'u',
+        'ô': 'o', 'ö': 'o',
+        'ï': 'i', 'î': 'i',
+        'ç': 'c',
+    }
+    for fr, en in replacements.items():
+        text = text.replace(fr, en)
+    return text
 
 
 def _extract_keywords_from_summary(summary: Summary) -> List[str]:
     """Extract searchable keywords from a summary.
 
-    Priorité d'extraction:
-    1. [[concepts]] marqués dans le summary_content (les plus pertinents)
-    2. Titre de la vidéo (termes capitalisés = noms propres)
-    3. Tags du résumé
-    4. Entités extraites
-    5. TF analysis du contenu (fréquence)
+    Priority order:
+    1. [[concepts]] marked in summary_content (most relevant)
+    2. Video title words (often describe the topic well)
+    3. Tags from the summary
+    4. Extracted entities
+    5. TF analysis of content (frequency-based)
     """
-    import re
-    from collections import Counter
-
     keywords = []
 
     stop_words = {
@@ -404,9 +547,8 @@ def _extract_keywords_from_summary(summary: Summary) -> List[str]:
         "not", "only", "own", "same", "so", "than", "too", "very", "just",
         "about", "into", "through", "during", "before", "after", "above", "below",
         "from", "up", "down", "in", "out", "on", "off", "over", "under", "again",
-        "further", "once", "here", "there", "all", "any", "both", "each", "more",
-        "most", "other", "some", "such", "that", "these", "those", "what", "which",
-        "who", "whom", "this", "those", "am", "as", "at", "by", "for", "it", "its",
+        "further", "once", "here", "there", "that", "these", "those", "what", "which",
+        "who", "whom", "this", "am", "as", "at", "by", "for", "it", "its",
         "of", "to", "with", "you", "your", "we", "our", "they", "their", "them",
         "he", "him", "his", "she", "her", "hers", "me", "my", "mine", "us",
         "le", "la", "les", "un", "une", "des", "de", "du", "et", "ou", "pour",
@@ -415,10 +557,11 @@ def _extract_keywords_from_summary(summary: Summary) -> List[str]:
         "faire", "plus", "comme", "tout", "tous", "toute", "toutes", "même",
         "aussi", "bien", "très", "pas", "ne", "sans", "sous", "après", "avant",
         "nous", "vous", "ils", "elles", "leur", "leurs", "lui", "elle", "se",
-        "son", "sa", "ses", "mon", "ma", "mes", "ton", "ta", "tes"
+        "son", "sa", "ses", "mon", "ma", "mes", "ton", "ta", "tes",
+        "vidéo", "video", "chaîne", "partie", "épisode", "episode",
     }
 
-    # 1. 🎯 PRIORITÉ: Extraire les [[concepts]] marqués (les plus pertinents!)
+    # 1. 🎯 PRIORITY: Extract [[concepts]] markers (most relevant!)
     if summary.summary_content:
         concept_pattern = r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]'
         concept_matches = re.findall(concept_pattern, summary.summary_content)
@@ -427,16 +570,18 @@ def _extract_keywords_from_summary(summary: Summary) -> List[str]:
             if term and len(term) > 2:
                 keywords.append(term)
 
-    # 2. Extract from video title (prioritize capitalized terms)
+    # 2. Extract from video title (important topic words)
     if summary.video_title:
+        # First extract multi-word capitalized phrases
         capitalized = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', summary.video_title)
         for term in capitalized:
             if term.lower() not in stop_words and len(term) > 2:
                 keywords.append(term)
 
+        # Then individual significant words
         words = summary.video_title.lower().split()
         for word in words:
-            clean_word = "".join(c for c in word if c.isalnum())
+            clean_word = "".join(c for c in word if c.isalnum() or c in "éèêëàâäùûüôöïîç-")
             if clean_word and len(clean_word) > 3 and clean_word not in stop_words:
                 keywords.append(clean_word)
 
@@ -463,20 +608,13 @@ def _extract_keywords_from_summary(summary: Summary) -> List[str]:
             pass
 
     # 5. TF analysis from content (fallback)
-    if summary.summary_content:
-        # Clean [[]] markers before TF analysis
+    if summary.summary_content and len(keywords) < 5:
         clean_content = re.sub(r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]', r'\1', summary.summary_content)
 
-        capitalized = re.findall(r'\b[A-Z][A-Z]+\b|\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', clean_content)
-        for term in capitalized[:10]:
-            if term.lower() not in stop_words and len(term) > 2:
-                keywords.append(term)
-
-        words = re.findall(r'\b[a-zA-Z]{4,}\b', clean_content.lower())
+        words = re.findall(r'\b[a-zA-ZéèêëàâäùûüôöïîçÉÈÊËÀÂÄÙÛÜÔÖÏÎÇ]{4,}\b', clean_content.lower())
         word_freq = Counter(w for w in words if w not in stop_words)
         for word, _ in word_freq.most_common(10):
-            if len(word) > 3:
-                keywords.append(word)
+            keywords.append(word)
 
     # Deduplicate and limit
     seen = set()
@@ -500,12 +638,10 @@ async def _cache_papers(
     papers: List[AcademicPaper]
 ):
     """Cache papers in the database"""
-    # Delete existing cached papers for this summary
     await session.execute(
         delete(AcademicPaperDB).where(AcademicPaperDB.summary_id == summary_id)
     )
 
-    # Insert new papers
     for paper in papers:
         db_paper = AcademicPaperDB(
             summary_id=summary_id,
@@ -570,7 +706,6 @@ async def _get_papers_by_ids(
     paper_ids: List[str]
 ) -> List[AcademicPaper]:
     """Get papers by external IDs, verifying user ownership"""
-    # Get all papers for user's summaries
     result = await session.execute(
         select(AcademicPaperDB)
         .join(Summary)
@@ -580,11 +715,10 @@ async def _get_papers_by_ids(
         )
     )
     db_papers = result.scalars().all()
-
     return [_db_to_model(p) for p in db_papers]
 
 
 def _can_export_bibliography(plan: str) -> bool:
     """Check if plan allows bibliography export"""
-    allowed_plans = ["starter", "student", "pro", "expert", "unlimited"]
+    allowed_plans = ["starter", "etudiant", "student", "pro", "expert", "unlimited"]
     return plan in allowed_plans
