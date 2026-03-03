@@ -86,6 +86,9 @@ export interface Summary {
   created_at: string;
   updated_at?: string;
 
+  // 🎵 Platform (YouTube or TikTok)
+  platform?: 'youtube' | 'tiktok';
+
   // Optional/legacy fields for compatibility
   channel_id?: string;
   transcript?: string;
@@ -146,11 +149,39 @@ export interface TaskStatus {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   progress?: number;
   message?: string;
+  platform?: 'youtube' | 'tiktok';
   result?: {
     summary_id?: number;
     summary?: Summary;
   };
   error?: string;
+}
+
+// 🎵 Platform detection helper
+export type VideoPlatform = 'youtube' | 'tiktok';
+
+const TIKTOK_URL_PATTERNS = [
+  /tiktok\.com\/@[\w.-]+\/video\/\d+/i,
+  /vm\.tiktok\.com\/[\w-]+/i,
+  /m\.tiktok\.com\/v\/\d+/i,
+  /tiktok\.com\/t\/[\w-]+/i,
+  /tiktok\.com\/video\/\d+/i,
+];
+
+export function getPlatformFromUrl(url: string): VideoPlatform {
+  if (!url) return 'youtube';
+  return TIKTOK_URL_PATTERNS.some(p => p.test(url.trim())) ? 'tiktok' : 'youtube';
+}
+
+export function getPlatformLabel(platform?: VideoPlatform): string {
+  return platform === 'tiktok' ? 'TikTok' : 'YouTube';
+}
+
+export function getVideoUrl(videoId: string, platform?: VideoPlatform): string {
+  if (platform === 'tiktok') {
+    return `https://www.tiktok.com/video/${videoId}`;
+  }
+  return `https://www.youtube.com/watch?v=${videoId}`;
 }
 
 export interface PlaylistTaskStatus {

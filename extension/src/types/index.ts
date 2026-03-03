@@ -73,6 +73,7 @@ export interface RecentAnalysis {
   summaryId: number;
   title: string;
   timestamp: number;
+  platform?: 'youtube' | 'tiktok';
 }
 
 // ── Chat ──

@@ -335,6 +335,47 @@ PLANS: dict[str, dict[str, Any]] = {
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🎵 PLATFORM-SPECIFIC LIMITS (YouTube vs TikTok)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+PLATFORM_LIMITS: dict[str, dict[str, Any]] = {
+    "youtube": {
+        "max_video_length_min": None,  # Utilise la limite du plan
+        "credit_multiplier": 1.0,      # Coût standard
+        "supported": True,
+    },
+    "tiktok": {
+        "max_video_length_min": 10,    # TikTok max 10 min (au-delà c'est très rare)
+        "credit_multiplier": 0.5,      # Vidéos courtes = 50% du coût
+        "supported": True,
+    },
+}
+
+
+def get_platform_limits(platform: str) -> dict[str, Any]:
+    """Retourne les limites spécifiques à une plateforme."""
+    return PLATFORM_LIMITS.get(platform, PLATFORM_LIMITS["youtube"])
+
+
+def get_credit_multiplier(platform: str) -> float:
+    """Retourne le multiplicateur de crédits pour une plateforme (TikTok = 0.5x)."""
+    return get_platform_limits(platform).get("credit_multiplier", 1.0)
+
+
+def get_max_duration_for_platform(plan_id: str, platform: str) -> int:
+    """
+    Retourne la durée max en minutes pour un plan + plateforme.
+    TikTok a une limite propre (10 min) qui prime si elle est plus basse.
+    """
+    plan_limit = get_limits(plan_id).get("max_video_length_min", 15)
+    platform_limit = get_platform_limits(platform).get("max_video_length_min")
+
+    if platform_limit is None:
+        return plan_limit
+    return min(plan_limit, platform_limit)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # STRIPE PRICE INITIALIZATION
 # ═══════════════════════════════════════════════════════════════════════════════
 

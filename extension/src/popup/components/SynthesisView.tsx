@@ -151,7 +151,7 @@ function generateShareHtml(summary: Summary, parsed: ReturnType<typeof parseAnal
     </div>
 
     <div class="footer">
-      <p>Généré par <a href="https://www.deepsightsynthesis.com" target="_blank">DeepSight</a> — Analyse IA de vidéos YouTube</p>
+      <p>Généré par <a href="https://www.deepsightsynthesis.com" target="_blank">DeepSight</a> — Analyse IA de vidéos YouTube & TikTok</p>
       <p style="margin-top:4px">🇫🇷🇪🇺 IA 100% Européenne propulsée par Mistral AI</p>
     </div>
   </div>

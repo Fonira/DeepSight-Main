@@ -324,6 +324,27 @@ CATEGORIES = {
     },
     
     # ═══════════════════════════════════════════════════════════════════════════
+    # 🎵 SHORT-FORM / TIKTOK
+    # ═══════════════════════════════════════════════════════════════════════════
+    "shortform": {
+        "name": {"fr": "🎵 Short-form", "en": "🎵 Short-form"},
+        "keywords": [
+            # Format court
+            "tiktok", "shorts", "short", "reel", "reels", "clip",
+            "viral", "trend", "tendance", "challenge", "duet", "duo",
+            # Créateurs TikTok
+            "creator", "créateur", "influenceur", "influencer",
+            "storytime", "pov", "grwm", "get ready with me",
+            # Contenus typiques
+            "hack", "astuce", "life hack", "recette rapide", "quick recipe",
+            "before after", "avant après", "transformation",
+        ],
+        "min_words": 300,
+        "max_words": 1200,
+        "template_focus": "concise_impact"
+    },
+
+    # ═══════════════════════════════════════════════════════════════════════════
     # 📋 GÉNÉRAL (Fallback)
     # ═══════════════════════════════════════════════════════════════════════════
     "general": {
@@ -426,6 +447,12 @@ KNOWN_CHANNELS = {
     "debate": [
         "c dans l'air", "28 minutes arte", "l'heure des pros",
         "bfm story", "punchline", "face à l'info",
+    ],
+    "shortform": [
+        # Créateurs TikTok éducatifs connus
+        "khaby lame", "charli d'amelio", "addison rae",
+        "hank green", "sciencewithkatie", "dr. karan raj",
+        "docteur jimmy", "scienceetonnante",
     ],
 }
 
@@ -899,6 +926,15 @@ def get_category_specific_instructions(category: str, lang: str) -> str:
 • Analyse : Thèmes, techniques, symbolisme
 • Réception : Critique, public, impact
 • Héritage : Influence sur la culture
+""",
+            "shortform": """
+📌 FOCUS SHORT-FORM / TIKTOK :
+• Message clé : Quel est le point central en 1 phrase ?
+• Format : Quel type de contenu (storytime, hack, tutorial, POV, trend) ?
+• Impact : Pourquoi cette vidéo est-elle virale/intéressante ?
+• Vérification : Les astuces/infos sont-elles fiables ?
+• Contexte : S'inscrit-elle dans une tendance plus large ?
+• Call to action : Que suggère le créateur ?
 """
         }
         return instructions.get(category, "")
@@ -943,7 +979,8 @@ def build_analysis_prompt(
     mode: str,
     duration: int = 0,
     channel: str = "",
-    description: str = ""
+    description: str = "",
+    platform: str = "youtube"
 ) -> Tuple[str, str]:
     """
     Construit le prompt système et utilisateur pour l'analyse.
@@ -1023,12 +1060,14 @@ C'est une fonctionnalité ESSENTIELLE de Deep Sight. Sans [[concepts]], la répo
 🌐 RÉPONDS ENTIÈREMENT EN FRANÇAIS IMPECCABLE.
 """
         
-        user_prompt = f"""Analyse cette vidéo YouTube :
+        platform_label = "TikTok" if platform == "tiktok" else "YouTube"
+        user_prompt = f"""Analyse cette vidéo {platform_label} :
 
 📺 TITRE : {title}
 📺 CHAÎNE : {channel}
 ⏱️ DURÉE : {duration // 60} minutes
 📁 CATÉGORIE : {category}
+🎬 PLATEFORME : {platform_label}
 
 📝 TRANSCRIPTION :
 {transcript[:transcript_limit]}
@@ -1074,12 +1113,14 @@ TARGET LENGTH: {min_words}-{max_words} words
 RESPOND ENTIRELY IN ENGLISH.
 """
         
-        user_prompt = f"""Analyze this YouTube video:
+        platform_label = "TikTok" if platform == "tiktok" else "YouTube"
+        user_prompt = f"""Analyze this {platform_label} video:
 
 📺 TITLE: {title}
 📺 CHANNEL: {channel}
 ⏱️ DURATION: {duration // 60} minutes
 📁 CATEGORY: {category}
+🎬 PLATFORM: {platform_label}
 
 📝 TRANSCRIPT:
 {transcript[:transcript_limit]}
@@ -1107,6 +1148,7 @@ async def generate_summary(
     web_context: str = None,  # 🆕 v3.0: Contexte web pré-analyse
     video_id: str = None,     # 🆕 v3.1: Pour le cache
     force_refresh: bool = False,  # 🆕 v3.1: Forcer la ré-génération
+    platform: str = "youtube",  # 🎵 TikTok support
 ) -> Optional[str]:
     """
     Génère un résumé avec Mistral AI.
@@ -1144,7 +1186,8 @@ async def generate_summary(
         mode=mode,
         duration=duration,
         channel=channel,
-        description=description
+        description=description,
+        platform=platform
     )
     
     # 🆕 v3.0: Injecter le contexte web dans le prompt utilisateur

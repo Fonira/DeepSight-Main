@@ -1,13 +1,13 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
-║  🎵 TIKTOK — Extraction de transcripts TikTok via yt-dlp + Groq Whisper          ║
+║  🎵 TIKTOK v2.0 — Extraction de transcripts TikTok multi-fallback                ║
 ║                                                                                    ║
-║  Pipeline:                                                                         ║
-║  1. Valider l'URL TikTok                                                           ║
-║  2. Récupérer les métadonnées (titre, auteur, durée) via yt-dlp                    ║
-║  3. Télécharger l'audio via yt-dlp                                                 ║
-║  4. Transcrire via Groq Whisper                                                    ║
-║  5. Retourner TranscriptResult compatible avec le pipeline YouTube                 ║
+║  Pipeline multi-phase (inspiré du système YouTube ultra-résilient):               ║
+║  Phase 1: yt-dlp standard → Groq Whisper                                          ║
+║  Phase 2: yt-dlp avec headers alternatifs → Groq Whisper                          ║
+║  Phase 3: yt-dlp avec retry exponentiel → Groq Whisper                            ║
+║                                                                                    ║
+║  + Circuit breaker + exponential backoff + meilleure gestion d'erreurs            ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -15,9 +15,11 @@ import re
 import asyncio
 import subprocess
 import json
+import time
+import logging
 from typing import Optional, Dict, Any, Tuple
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from transcripts.audio_utils import (
     download_audio_ytdlp,
@@ -26,12 +28,67 @@ from transcripts.audio_utils import (
     executor as audio_executor,
 )
 
+logger = logging.getLogger(__name__)
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Durée max TikTok supportée (10 minutes — au-delà c'est rare)
 TIKTOK_MAX_DURATION = 600
+
+# Headers alternatifs pour contourner les restrictions TikTok
+ALT_HEADERS = [
+    {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Referer": "https://www.tiktok.com/",
+    },
+    {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+        "Accept-Language": "fr-FR,fr;q=0.9",
+        "Referer": "https://www.tiktok.com/",
+    },
+]
+
+# Retry config
+MAX_RETRIES = 3
+BASE_BACKOFF_SEC = 2.0
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔌 CIRCUIT BREAKER (évite de spammer TikTok si le service est down)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class CircuitBreaker:
+    """Simple circuit breaker pour les requêtes TikTok."""
+    failure_count: int = 0
+    last_failure_time: float = 0.0
+    threshold: int = 5          # Nombre d'échecs avant ouverture
+    reset_timeout: float = 300  # 5 min avant de réessayer
+
+    def record_failure(self) -> None:
+        self.failure_count += 1
+        self.last_failure_time = time.time()
+        logger.warning(f"[TIKTOK] Circuit breaker: failure #{self.failure_count}")
+
+    def record_success(self) -> None:
+        self.failure_count = 0
+        self.last_failure_time = 0.0
+
+    def is_open(self) -> bool:
+        if self.failure_count < self.threshold:
+            return False
+        elapsed = time.time() - self.last_failure_time
+        if elapsed > self.reset_timeout:
+            # Half-open: on laisse passer pour tester
+            logger.info("[TIKTOK] Circuit breaker: half-open, allowing retry")
+            return False
+        logger.warning(f"[TIKTOK] Circuit breaker OPEN ({self.failure_count} failures, retry in {int(self.reset_timeout - elapsed)}s)")
+        return True
+
+
+_circuit_breaker = CircuitBreaker()
 
 # Patterns TikTok reconnus
 TIKTOK_PATTERNS = [
@@ -84,6 +141,7 @@ def extract_tiktok_video_id(url: str) -> Optional[str]:
 async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
     """
     Récupère les métadonnées d'une vidéo TikTok via yt-dlp --dump-json.
+    🆕 v2.0: Retry avec headers alternatifs + meilleure gestion d'erreurs.
 
     Retourne un dict compatible avec le format get_video_info() de youtube.py:
     {
@@ -97,65 +155,97 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
         "platform": "tiktok",
     }
     """
-    print(f"📺 [TIKTOK] Getting video info for: {url}", flush=True)
+    logger.info(f"[TIKTOK] Getting video info for: {url}")
 
-    try:
-        loop = asyncio.get_event_loop()
+    # Circuit breaker check
+    if _circuit_breaker.is_open():
+        logger.error("[TIKTOK] Circuit breaker is open, skipping info request")
+        return None
 
-        def _get_info():
-            cmd = [
-                "yt-dlp", "--dump-json",
-                "--no-warnings", "--skip-download",
-                "--no-playlist",
-                url
-            ]
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-            if result.returncode == 0:
-                return json.loads(result.stdout)
-            print(f"  ⚠️ [TIKTOK] yt-dlp info failed: {result.stderr[:150]}", flush=True)
-            return None
+    attempts = [
+        {"headers": None, "label": "standard"},
+        {"headers": ALT_HEADERS[0], "label": "alt-headers-chrome"},
+        {"headers": ALT_HEADERS[1], "label": "alt-headers-safari"},
+    ]
 
-        data = await asyncio.wait_for(
-            loop.run_in_executor(audio_executor, _get_info),
-            timeout=30
-        )
+    for attempt in attempts:
+        try:
+            loop = asyncio.get_event_loop()
+            headers = attempt["headers"]
+            label = attempt["label"]
 
-        if not data:
-            return None
+            def _get_info():
+                cmd = [
+                    "yt-dlp", "--dump-json",
+                    "--no-warnings", "--skip-download",
+                    "--no-playlist",
+                ]
+                if headers:
+                    for key, value in headers.items():
+                        cmd.extend(["--add-header", f"{key}: {value}"])
+                cmd.append(url)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+                if result.returncode == 0:
+                    return json.loads(result.stdout)
+                stderr = result.stderr[:200] if result.stderr else "no stderr"
+                # Détecter les erreurs spécifiques
+                if "private" in stderr.lower() or "removed" in stderr.lower():
+                    logger.warning(f"[TIKTOK] Video is private or removed")
+                    return {"_error": "private_or_removed"}
+                if "geo" in stderr.lower() or "not available" in stderr.lower():
+                    logger.warning(f"[TIKTOK] Video is geo-restricted")
+                    return {"_error": "geo_restricted"}
+                logger.warning(f"[TIKTOK] yt-dlp info failed ({label}): {stderr}")
+                return None
 
-        video_id = str(data.get("id", extract_tiktok_video_id(url) or "unknown"))
-        duration = data.get("duration", 0) or 0
+            data = await asyncio.wait_for(
+                loop.run_in_executor(audio_executor, _get_info),
+                timeout=30
+            )
 
-        # Vérifier la durée
-        if duration > TIKTOK_MAX_DURATION:
-            print(f"  ⚠️ [TIKTOK] Video too long: {duration}s (max {TIKTOK_MAX_DURATION}s)", flush=True)
-            return None
+            # Gestion des erreurs détectées
+            if data and "_error" in data:
+                _circuit_breaker.record_failure()
+                return None
 
-        info = {
-            "video_id": video_id,
-            "title": data.get("title", data.get("description", "TikTok Video"))[:500],
-            "channel": data.get("uploader", data.get("creator", "Unknown")),
-            "thumbnail_url": data.get("thumbnail", ""),
-            "duration": duration,
-            "upload_date": data.get("upload_date"),
-            "description": (data.get("description", "") or "")[:2000],
-            "platform": "tiktok",
-            # Métadonnées TikTok supplémentaires
-            "like_count": data.get("like_count", 0),
-            "comment_count": data.get("comment_count", 0),
-            "view_count": data.get("view_count", 0),
-            "tags": data.get("tags", []),
-            "categories": ["Social Media"],
-        }
+            if not data:
+                continue  # Essayer le prochain set de headers
 
-        print(f"  ✅ [TIKTOK] Info: \"{info['title'][:50]}\" by {info['channel']} ({duration}s)", flush=True)
-        return info
+            video_id = str(data.get("id", extract_tiktok_video_id(url) or "unknown"))
+            duration = data.get("duration", 0) or 0
 
-    except asyncio.TimeoutError:
-        print(f"  ⚠️ [TIKTOK] Info timeout", flush=True)
-    except Exception as e:
-        print(f"  ❌ [TIKTOK] Info error: {e}", flush=True)
+            # Vérifier la durée
+            if duration > TIKTOK_MAX_DURATION:
+                logger.warning(f"[TIKTOK] Video too long: {duration}s (max {TIKTOK_MAX_DURATION}s)")
+                return None
 
+            info = {
+                "video_id": video_id,
+                "title": data.get("title", data.get("description", "TikTok Video"))[:500],
+                "channel": data.get("uploader", data.get("creator", "Unknown")),
+                "thumbnail_url": data.get("thumbnail", ""),
+                "duration": duration,
+                "upload_date": data.get("upload_date"),
+                "description": (data.get("description", "") or "")[:2000],
+                "platform": "tiktok",
+                # Métadonnées TikTok supplémentaires
+                "like_count": data.get("like_count", 0),
+                "comment_count": data.get("comment_count", 0),
+                "view_count": data.get("view_count", 0),
+                "tags": data.get("tags", []),
+                "categories": ["Social Media"],
+            }
+
+            logger.info(f"[TIKTOK] Info OK ({label}): \"{info['title'][:50]}\" by {info['channel']} ({duration}s)")
+            _circuit_breaker.record_success()
+            return info
+
+        except asyncio.TimeoutError:
+            logger.warning(f"[TIKTOK] Info timeout ({attempt['label']})")
+        except Exception as e:
+            logger.error(f"[TIKTOK] Info error ({attempt['label']}): {e}")
+
+    _circuit_breaker.record_failure()
     return None
 
 
@@ -168,10 +258,11 @@ async def get_tiktok_transcript(
     video_id: Optional[str] = None
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
-    Pipeline complet de transcription TikTok :
-    1. Télécharge l'audio via yt-dlp
-    2. Compresse si nécessaire
-    3. Transcrit via Groq Whisper
+    🆕 v2.0: Pipeline multi-fallback de transcription TikTok.
+
+    Phase 1: yt-dlp standard → Groq Whisper
+    Phase 2: yt-dlp avec headers alternatifs → Groq Whisper
+    Phase 3: Retry avec exponential backoff
 
     Args:
         url: URL TikTok complète
@@ -181,32 +272,103 @@ async def get_tiktok_transcript(
         (full_text, timestamped_text, detected_language) ou (None, None, None)
     """
     vid = video_id or extract_tiktok_video_id(url) or "unknown"
-    print(f"  🎵 [TIKTOK] Starting transcript extraction for {vid}...", flush=True)
+    logger.info(f"[TIKTOK] Starting transcript extraction for {vid}")
 
-    # Étape 1 : Télécharger l'audio
-    audio_data, audio_ext = await download_audio_ytdlp(
-        url=url,
-        source_name="TIKTOK",
-        timeout=120,  # TikTok vidéos courtes, pas besoin de 240s
-    )
-
-    if not audio_data:
-        print(f"  ❌ [TIKTOK] Failed to download audio for {vid}", flush=True)
+    # Circuit breaker check
+    if _circuit_breaker.is_open():
+        logger.error(f"[TIKTOK] Circuit breaker open, skipping transcript for {vid}")
         return None, None, None
 
-    # Étape 2 : Transcrire via Groq Whisper
-    full_text, timestamped, lang = await transcribe_audio_groq(
-        audio_data=audio_data,
-        audio_ext=audio_ext,
-        source_name="TIKTOK",
-    )
+    # ─── Phase 1 : yt-dlp standard ────────────────────────────────────────
+    audio_data, audio_ext = await _download_with_retry(url, label="phase1-standard")
 
-    if full_text:
-        print(f"  ✅ [TIKTOK] Transcript OK: {len(full_text)} chars, lang={lang}", flush=True)
-    else:
-        print(f"  ❌ [TIKTOK] Transcription failed for {vid}", flush=True)
+    if audio_data:
+        result = await _transcribe_safely(audio_data, audio_ext, vid, "phase1")
+        if result[0]:
+            _circuit_breaker.record_success()
+            return result
 
-    return full_text, timestamped, lang
+    # ─── Phase 2 : yt-dlp avec headers alternatifs ────────────────────────
+    for idx, headers in enumerate(ALT_HEADERS):
+        logger.info(f"[TIKTOK] Phase 2: trying alt-headers #{idx + 1} for {vid}")
+        audio_data, audio_ext = await _download_with_retry(
+            url, label=f"phase2-alt{idx + 1}", extra_args=_headers_to_args(headers)
+        )
+        if audio_data:
+            result = await _transcribe_safely(audio_data, audio_ext, vid, f"phase2-alt{idx + 1}")
+            if result[0]:
+                _circuit_breaker.record_success()
+                return result
+
+    # ─── Phase 3 : Retry avec exponential backoff ─────────────────────────
+    for retry in range(MAX_RETRIES):
+        backoff = BASE_BACKOFF_SEC * (2 ** retry)
+        logger.info(f"[TIKTOK] Phase 3: retry #{retry + 1} after {backoff}s for {vid}")
+        await asyncio.sleep(backoff)
+
+        audio_data, audio_ext = await _download_with_retry(url, label=f"phase3-retry{retry + 1}")
+        if audio_data:
+            result = await _transcribe_safely(audio_data, audio_ext, vid, f"phase3-retry{retry + 1}")
+            if result[0]:
+                _circuit_breaker.record_success()
+                return result
+
+    _circuit_breaker.record_failure()
+    logger.error(f"[TIKTOK] All phases failed for {vid}")
+    return None, None, None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔧 HELPERS INTERNES
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _headers_to_args(headers: Dict[str, str]) -> list:
+    """Convertit un dict de headers en arguments yt-dlp."""
+    args = []
+    for key, value in headers.items():
+        args.extend(["--add-header", f"{key}: {value}"])
+    return args
+
+
+async def _download_with_retry(
+    url: str,
+    label: str = "default",
+    extra_args: Optional[list] = None,
+    timeout: int = 120,
+) -> Tuple[Optional[bytes], Optional[str]]:
+    """Télécharge l'audio avec paramètres optionnels."""
+    try:
+        audio_data, audio_ext = await download_audio_ytdlp(
+            url=url,
+            source_name=f"TIKTOK-{label}",
+            timeout=timeout,
+            extra_args=extra_args,
+        )
+        return audio_data, audio_ext
+    except Exception as e:
+        logger.warning(f"[TIKTOK] Download failed ({label}): {e}")
+        return None, None
+
+
+async def _transcribe_safely(
+    audio_data: bytes,
+    audio_ext: str,
+    vid: str,
+    label: str,
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Transcrit de manière sécurisée avec logging."""
+    try:
+        full_text, timestamped, lang = await transcribe_audio_groq(
+            audio_data=audio_data,
+            audio_ext=audio_ext,
+            source_name=f"TIKTOK-{label}",
+        )
+        if full_text:
+            logger.info(f"[TIKTOK] Transcript OK ({label}): {len(full_text)} chars, lang={lang}, vid={vid}")
+        return full_text, timestamped, lang
+    except Exception as e:
+        logger.error(f"[TIKTOK] Transcription error ({label}): {e}")
+        return None, None, None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

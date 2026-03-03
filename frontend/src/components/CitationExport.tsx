@@ -29,6 +29,7 @@ interface VideoInfo {
   publishedDate?: string; // ISO date string
   duration?: number; // seconds
   url?: string;
+  platform?: 'youtube' | 'tiktok';
 }
 
 interface CitationExportProps {
@@ -163,36 +164,34 @@ const generateBibtexKey = (channel: string, year: string, title: string): string
 
 const generateCitation = (video: VideoInfo, format: CitationFormat, lang: string = 'fr'): string => {
   const { title, channel, videoId } = video;
-  const url = video.url || `https://www.youtube.com/watch?v=${videoId}`;
+  const isTikTok = video.platform === 'tiktok';
+  const platformName = isTikTok ? 'TikTok' : 'YouTube';
+  const videoType = isTikTok ? 'TikTok video' : 'Video';
+  const videoTypeFr = isTikTok ? 'Vidéo TikTok' : 'Vidéo YouTube';
+  const url = video.url || (isTikTok
+    ? `https://www.tiktok.com/video/${videoId}`
+    : `https://www.youtube.com/watch?v=${videoId}`);
   const date = formatDate(video.publishedDate, lang);
   const accessDateFr = getAccessDate('fr');
   const accessDateEn = getAccessDate('en');
 
   switch (format) {
     case 'iso690':
-      // Norme ISO 690 (standard européen) - Format pour ressources électroniques
-      // NOM, Prénom. Titre [en ligne]. Lieu : Éditeur, Date. Disponible sur : URL (consulté le DATE)
-      return `${channel.toUpperCase()}. ${title} [en ligne]. YouTube, ${date.fullFr}. Disponible sur : ${url} [consulté le ${accessDateFr}]`;
+      return `${channel.toUpperCase()}. ${title} [en ligne]. ${platformName}, ${date.fullFr}. Disponible sur : ${url} [consulté le ${accessDateFr}]`;
 
     case 'french':
-      // Style français universitaire simplifié
-      // NOM Prénom, « Titre », Site, date de publication, URL, consulté le DATE.
-      return `${channel}, « ${title} », YouTube, ${date.fullFr}, ${url}, consulté le ${accessDateFr}.`;
+      return `${channel}, « ${title} », ${platformName}, ${date.fullFr}, ${url}, consulté le ${accessDateFr}.`;
 
     case 'apa':
-      // APA 7th Edition format for online videos
-      return `${channel}. (${date.year}, ${date.month} ${date.day}). ${title} [Video]. YouTube. ${url}`;
+      return `${channel}. (${date.year}, ${date.month} ${date.day}). ${title} [${videoType}]. ${platformName}. ${url}`;
 
     case 'mla':
-      // MLA 9th Edition format
-      return `${channel}. "${title}." YouTube, ${date.day} ${date.month} ${date.year}, ${url}. Accessed ${accessDateEn}.`;
+      return `${channel}. "${title}." ${platformName}, ${date.day} ${date.month} ${date.year}, ${url}. Accessed ${accessDateEn}.`;
 
     case 'chicago':
-      // Chicago 17th Edition (Notes-Bibliography)
-      return `${channel}, "${title}," YouTube video, ${date.month} ${date.day}, ${date.year}, ${url}.`;
+      return `${channel}, "${title}," ${platformName} video, ${date.month} ${date.day}, ${date.year}, ${url}.`;
 
     case 'bibtex':
-      // BibTeX format for LaTeX
       const bibtexKey = generateBibtexKey(channel, date.year, title);
       return `@online{${bibtexKey},
   author    = {${sanitizeForBibtex(channel)}},
@@ -201,7 +200,7 @@ const generateCitation = (video: VideoInfo, format: CitationFormat, lang: string
   month     = {${date.month.toLowerCase().substring(0, 3)}},
   url       = {${url}},
   urldate   = {${date.iso}},
-  note      = {Vidéo YouTube}
+  note      = {${videoTypeFr}}
 }`;
 
     default:
@@ -487,13 +486,15 @@ export const CitationExport: React.FC<CitationExportProps> = ({
             {t.generatedBy} • {t.accessDate}: {getAccessDate()}
           </p>
           <a
-            href={`https://www.youtube.com/watch?v=${video.videoId}`}
+            href={video.platform === 'tiktok'
+              ? `https://www.tiktok.com/video/${video.videoId}`
+              : `https://www.youtube.com/watch?v=${video.videoId}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-accent-primary hover:underline flex items-center gap-1"
           >
             <ExternalLink className="w-3 h-3" />
-            YouTube
+            {video.platform === 'tiktok' ? 'TikTok' : 'YouTube'}
           </a>
         </div>
       </div>

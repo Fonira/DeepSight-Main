@@ -21,6 +21,8 @@ interface VideoPlayerProps {
   videoId: string;
   title: string;
   scrollY: SharedValue<number>;
+  platform?: 'youtube' | 'tiktok';
+  thumbnail?: string;
 }
 
 const EXPANDED_HEIGHT = 200;
@@ -31,8 +33,11 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
   videoId,
   title,
   scrollY,
+  platform = 'youtube',
+  thumbnail,
 }) => {
   const { colors } = useTheme();
+  const isTikTok = platform === 'tiktok';
 
   const animatedStyle = useAnimatedStyle(() => {
     const height = interpolate(
@@ -50,27 +55,38 @@ export const VideoPlayer: React.FC<VideoPlayerProps> = ({
     return { height, opacity };
   });
 
-  const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  const thumbnailUrl = isTikTok
+    ? (thumbnail || undefined)
+    : `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 
-  const openYouTube = useCallback(() => {
-    Linking.openURL(`https://www.youtube.com/watch?v=${videoId}`);
-  }, [videoId]);
+  const openVideo = useCallback(() => {
+    const url = isTikTok
+      ? `https://www.tiktok.com/video/${videoId}`
+      : `https://www.youtube.com/watch?v=${videoId}`;
+    Linking.openURL(url);
+  }, [videoId, isTikTok]);
 
   return (
     <Animated.View style={[styles.container, animatedStyle]}>
       <Pressable
-        onPress={openYouTube}
+        onPress={openVideo}
         style={[styles.pressable, { backgroundColor: colors.bgSecondary }]}
-        accessibilityLabel={`Regarder ${title} sur YouTube`}
+        accessibilityLabel={`Regarder ${title} sur ${isTikTok ? 'TikTok' : 'YouTube'}`}
         accessibilityRole="button"
       >
-        <Image
-          source={{ uri: thumbnailUrl }}
-          style={styles.thumbnail}
-          contentFit="cover"
-          placeholder={undefined}
-          transition={200}
-        />
+        {thumbnailUrl ? (
+          <Image
+            source={{ uri: thumbnailUrl }}
+            style={styles.thumbnail}
+            contentFit="cover"
+            placeholder={undefined}
+            transition={200}
+          />
+        ) : (
+          <View style={[styles.thumbnail, styles.placeholderBg]}>
+            <Ionicons name="musical-notes" size={40} color="#06b6d4" />
+          </View>
+        )}
         <View style={styles.playOverlay}>
           <View style={[styles.playButton, { backgroundColor: 'rgba(0,0,0,0.7)' }]}>
             <Ionicons name="play" size={32} color="#ffffff" />
@@ -96,6 +112,11 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: '100%',
     height: '100%',
+  },
+  placeholderBg: {
+    backgroundColor: 'rgba(6,182,212,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   playOverlay: {
     ...StyleSheet.absoluteFillObject,

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { User, Summary, RecentAnalysis, PlanInfo } from '../../types';
-import { extractVideoId, getThumbnailUrl } from '../../utils/youtube';
+import { extractVideoId, getThumbnailUrl, detectPlatform, type VideoPlatform } from '../../utils/video';
 import { addRecentAnalysis, getRecentAnalyses, getFreeAnalysisCount, incrementFreeAnalysisCount } from '../../utils/storage';
 import { WEBAPP_URL } from '../../utils/config';
 import { LogoutIcon, PlayIcon, ExternalLinkIcon } from './Icons';
@@ -74,13 +74,15 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
     }
   }, [isGuest]);
 
-  // Detect current YouTube video
+  // Detect current YouTube or TikTok video
   useEffect(() => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const url = tabs[0]?.url || '';
       const videoId = extractVideoId(url);
       if (videoId) {
-        setVideo({ url, videoId, title: tabs[0]?.title || 'YouTube Video' });
+        const platform = detectPlatform(url);
+        const fallbackTitle = platform === 'tiktok' ? 'TikTok Video' : 'YouTube Video';
+        setVideo({ url, videoId, title: tabs[0]?.title || fallbackTitle });
       }
     });
     if (!isGuest) loadRecentAnalyses();
@@ -297,29 +299,41 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
       {/* Content */}
       <div className="main-content">
         {/* Video status — card with thumbnail when detected, minimal when not */}
-        {video ? (
+        {video ? (() => {
+          const platform = detectPlatform(video.url);
+          const isTikTok = platform === 'tiktok';
+          const thumbSrc = isTikTok ? null : `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`;
+          const urlLabel = isTikTok ? `tiktok.com/video/${video.videoId}` : `youtube.com/watch?v=${video.videoId}`;
+          return (
           <div className="video-status-card">
-            <img
-              src={`https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`}
-              alt=""
-              className="video-thumbnail"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
+            {thumbSrc ? (
+              <img
+                src={thumbSrc}
+                alt=""
+                className="video-thumbnail"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            ) : (
+              <div className="video-thumbnail" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(6,182,212,0.1)' }}>
+                <span style={{ fontSize: 20 }}>🎵</span>
+              </div>
+            )}
             <div className="video-status-body">
               <span className="video-status-title">
                 {video.title.length > 52 ? video.title.substring(0, 52) + '\u2026' : video.title}
               </span>
-              <span className="video-status-url">youtube.com/watch?v={video.videoId}</span>
+              <span className="video-status-url">{urlLabel}</span>
             </div>
             <div className="video-live-dot" title="Vidéo détectée" />
           </div>
-        ) : (
+          );
+        })() : (
           <div className="video-status">
             <div className="video-status-icon">
               <PlayIcon size={16} />
             </div>
             <span className="video-status-text video-status-none">
-              Ouvre une vid&eacute;o YouTube pour l&apos;analyser
+              Ouvre une vidéo YouTube ou TikTok pour l&apos;analyser
             </span>
           </div>
         )}
@@ -488,7 +502,13 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                   rel="noreferrer"
                   className="recent-item"
                 >
-                  <img src={getThumbnailUrl(item.videoId)} alt="" loading="lazy" />
+                  {item.platform === 'tiktok' ? (
+                    <div style={{ width: 48, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(6,182,212,0.1)', borderRadius: 4, flexShrink: 0 }}>
+                      <span style={{ fontSize: 16 }}>🎵</span>
+                    </div>
+                  ) : (
+                    <img src={getThumbnailUrl(item.videoId, 'youtube') || ''} alt="" loading="lazy" />
+                  )}
                   <span className="recent-title">{item.title}</span>
                 </a>
               ))}

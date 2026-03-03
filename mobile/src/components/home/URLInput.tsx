@@ -39,7 +39,9 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
 
   const validation = validateYouTubeUrl(url);
   const videoId = validation.videoId;
-  const thumbnailUri = videoId
+  const platform = validation.platform || 'youtube';
+  const isTikTok = platform === 'tiktok';
+  const thumbnailUri = videoId && !isTikTok
     ? getYouTubeThumbnail(videoId, 'medium')
     : null;
 
@@ -120,7 +122,7 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
             backgroundColor: colors.glassBg,
             borderColor:
               validation.isValid
-                ? palette.indigo
+                ? (isTikTok ? '#06b6d4' : palette.indigo)
                 : url.length > 0 && !validation.isValid
                 ? colors.accentError
                 : colors.glassBorder,
@@ -137,7 +139,7 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
         <TextInput
           ref={inputRef}
           style={[styles.input, { color: colors.textPrimary }]}
-          placeholder="Colle un lien YouTube"
+          placeholder="Colle un lien YouTube ou TikTok"
           placeholderTextColor={colors.textMuted}
           value={url}
           onChangeText={handleChangeText}
@@ -147,7 +149,7 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
           returnKeyType="go"
           onSubmitEditing={canAnalyze ? handleAnalyze : undefined}
           onFocus={checkClipboard}
-          accessibilityLabel="Lien YouTube"
+          accessibilityLabel="Lien YouTube ou TikTok"
         />
 
         {/* Clipboard paste button */}
@@ -158,7 +160,7 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
               styles.pasteButton,
               { backgroundColor: colors.bgElevated },
             ]}
-            accessibilityLabel="Coller le lien YouTube du presse-papier"
+            accessibilityLabel="Coller le lien vidéo du presse-papier"
           >
             <Text style={[styles.pasteText, { color: palette.indigo }]}>
               Coller
@@ -203,7 +205,7 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
       </View>
 
       {/* Mini preview when URL is valid */}
-      {videoId && thumbnailUri && (
+      {videoId && (
         <View
           style={[
             styles.preview,
@@ -213,18 +215,35 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
             },
           ]}
         >
-          <Image
-            source={{ uri: thumbnailUri }}
-            style={styles.previewThumbnail}
-            contentFit="cover"
-            transition={200}
-          />
-          <Text
-            style={[styles.previewId, { color: colors.textTertiary }]}
-            numberOfLines={1}
-          >
-            {videoId}
-          </Text>
+          {thumbnailUri ? (
+            <Image
+              source={{ uri: thumbnailUri }}
+              style={styles.previewThumbnail}
+              contentFit="cover"
+              transition={200}
+            />
+          ) : (
+            <View style={[styles.previewThumbnail, styles.platformIconBox]}>
+              <Ionicons
+                name={isTikTok ? 'musical-notes' : 'logo-youtube'}
+                size={18}
+                color={isTikTok ? '#06b6d4' : '#FF0000'}
+              />
+            </View>
+          )}
+          <View style={styles.previewMeta}>
+            <View style={[styles.platformBadge, { backgroundColor: isTikTok ? 'rgba(6,182,212,0.15)' : 'rgba(255,0,0,0.10)' }]}>
+              <Text style={[styles.platformBadgeText, { color: isTikTok ? '#06b6d4' : '#FF0000' }]}>
+                {isTikTok ? '🎵 TikTok' : '▶ YouTube'}
+              </Text>
+            </View>
+            <Text
+              style={[styles.previewId, { color: colors.textTertiary }]}
+              numberOfLines={1}
+            >
+              {videoId}
+            </Text>
+          </View>
         </View>
       )}
 
@@ -312,11 +331,31 @@ const styles = StyleSheet.create({
     height: 36,
     borderRadius: borderRadius.sm,
   },
+  previewMeta: {
+    flex: 1,
+    marginLeft: sp.sm,
+    gap: 2,
+  },
+  platformBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  platformBadgeText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 10,
+  },
+  platformIconBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: borderRadius.sm,
+  },
   previewId: {
     flex: 1,
     fontFamily: fontFamily.mono,
     fontSize: fontSize.xs,
-    marginLeft: sp.sm,
   },
   error: {
     fontFamily: fontFamily.body,

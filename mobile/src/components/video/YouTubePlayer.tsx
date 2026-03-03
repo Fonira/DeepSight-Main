@@ -15,6 +15,8 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { formatDuration } from '../../utils/formatters';
 
+export type VideoPlatform = 'youtube' | 'tiktok';
+
 interface YouTubePlayerProps {
   videoId: string;
   title?: string;
@@ -24,6 +26,7 @@ interface YouTubePlayerProps {
   timestamp?: number;
   onTimestampChange?: (timestamp: number) => void;
   compact?: boolean;
+  platform?: VideoPlatform;
 }
 
 export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
@@ -35,37 +38,51 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   timestamp = 0,
   onTimestampChange,
   compact = false,
+  platform = 'youtube',
 }) => {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
 
-  const thumbnailUrl = thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-  const fallbackThumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  const isTikTok = platform === 'tiktok';
+
+  // Thumbnails : YouTube a un pattern standard, TikTok utilise le thumbnail du backend
+  const thumbnailUrl = isTikTok
+    ? (thumbnail || undefined)
+    : (thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`);
+  const fallbackThumbnailUrl = isTikTok
+    ? undefined
+    : `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 
   const handlePlay = async () => {
     setIsLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     try {
-      // Open YouTube with timestamp if provided
-      const timeParam = timestamp > 0 ? `&t=${Math.floor(timestamp)}` : '';
-      const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}${timeParam}`;
-
-      // Try to open in YouTube app first, fallback to browser
-      const youtubeAppUrl = `vnd.youtube://watch?v=${videoId}${timeParam}`;
-
-      const canOpenApp = await Linking.canOpenURL(youtubeAppUrl);
-      if (canOpenApp) {
-        await Linking.openURL(youtubeAppUrl);
+      if (isTikTok) {
+        // TikTok : ouvrir directement dans le navigateur/app
+        const tiktokUrl = `https://www.tiktok.com/video/${videoId}`;
+        await Linking.openURL(tiktokUrl);
       } else {
-        await Linking.openURL(youtubeUrl);
+        // YouTube : ouvrir avec timestamp, essayer l'app d'abord
+        const timeParam = timestamp > 0 ? `&t=${Math.floor(timestamp)}` : '';
+        const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}${timeParam}`;
+        const youtubeAppUrl = `vnd.youtube://watch?v=${videoId}${timeParam}`;
+
+        const canOpenApp = await Linking.canOpenURL(youtubeAppUrl);
+        if (canOpenApp) {
+          await Linking.openURL(youtubeAppUrl);
+        } else {
+          await Linking.openURL(youtubeUrl);
+        }
       }
     } catch (error) {
-      if (__DEV__) { console.error('Failed to open YouTube:', error); }
+      if (__DEV__) { console.error(`Failed to open ${platform}:`, error); }
       // Fallback to web URL
-      const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      await Linking.openURL(youtubeUrl);
+      const fallbackUrl = isTikTok
+        ? `https://www.tiktok.com/video/${videoId}`
+        : `https://www.youtube.com/watch?v=${videoId}`;
+      await Linking.openURL(fallbackUrl);
     } finally {
       setIsLoading(false);
     }
@@ -76,11 +93,18 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
     if (onTimestampChange) {
       onTimestampChange(ts);
     }
-    // Open at specific timestamp
-    const timeParam = `&t=${Math.floor(ts)}`;
-    const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}${timeParam}`;
-    Linking.openURL(youtubeUrl);
+    if (isTikTok) {
+      // TikTok ne supporte pas les timestamps
+      Linking.openURL(`https://www.tiktok.com/video/${videoId}`);
+    } else {
+      const timeParam = `&t=${Math.floor(ts)}`;
+      Linking.openURL(`https://www.youtube.com/watch?v=${videoId}${timeParam}`);
+    }
   };
+
+  const platformLabel = isTikTok ? 'TikTok' : 'YouTube';
+  const platformColor = isTikTok ? '#06b6d4' : '#FF0000';
+  const platformIcon = isTikTok ? 'musical-notes' as const : 'logo-youtube' as const;
 
   if (compact) {
     return (
@@ -155,9 +179,9 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
           </View>
         )}
 
-        {/* YouTube logo */}
+        {/* Platform logo */}
         <View style={styles.youtubeLogoContainer}>
-          <Ionicons name="logo-youtube" size={24} color="#FF0000" />
+          <Ionicons name={platformIcon} size={24} color={platformColor} />
         </View>
       </TouchableOpacity>
 
@@ -194,12 +218,15 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
           style={[styles.controlButton, { backgroundColor: colors.bgTertiary }]}
           onPress={() => {
             Haptics.selectionAsync();
-            Linking.openURL(`https://www.youtube.com/watch?v=${videoId}`);
+            const url = isTikTok
+              ? `https://www.tiktok.com/video/${videoId}`
+              : `https://www.youtube.com/watch?v=${videoId}`;
+            Linking.openURL(url);
           }}
         >
           <Ionicons name="open-outline" size={18} color={colors.textPrimary} />
           <Text style={[styles.controlText, { color: colors.textPrimary }]}>
-            YouTube
+            {platformLabel}
           </Text>
         </TouchableOpacity>
       </View>
@@ -211,21 +238,26 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
 interface TimestampLinkProps {
   timestamp: number;
   videoId: string;
+  platform?: VideoPlatform;
   children?: React.ReactNode;
 }
 
 export const TimestampLink: React.FC<TimestampLinkProps> = ({
   timestamp,
   videoId,
+  platform = 'youtube',
   children,
 }) => {
   const { colors } = useTheme();
 
   const handlePress = () => {
     Haptics.selectionAsync();
-    const timeParam = `&t=${Math.floor(timestamp)}`;
-    const youtubeUrl = `https://www.youtube.com/watch?v=${videoId}${timeParam}`;
-    Linking.openURL(youtubeUrl);
+    if (platform === 'tiktok') {
+      Linking.openURL(`https://www.tiktok.com/video/${videoId}`);
+    } else {
+      const timeParam = `&t=${Math.floor(timestamp)}`;
+      Linking.openURL(`https://www.youtube.com/watch?v=${videoId}${timeParam}`);
+    }
   };
 
   return (

@@ -32,6 +32,7 @@ import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from '../hooks/useTranslation';
 import { normalizePlanId } from '../config/planPrivileges';
 import { YouTubePlayer, YouTubePlayerRef } from "../components/YouTubePlayer";
+import { VideoPlayer, VideoPlayerRef } from "../components/VideoPlayer";
 import { createTimecodeMarkdownComponents, TimecodeInfo } from "../components/TimecodeRenderer";
 import { TournesolWidget, TournesolMini } from "../components/TournesolWidget";
 import { Sidebar } from "../components/layout/Sidebar";
@@ -177,7 +178,7 @@ export const DashboardPage: React.FC = () => {
   // Player YouTube
   const [playerVisible, setPlayerVisible] = useState(false);
   const [playerStartTime, setPlayerStartTime] = useState(0);
-  const playerRef = useRef<YouTubePlayerRef>(null);
+  const playerRef = useRef<VideoPlayerRef>(null);
 
   // 📍 Ref pour scroll automatique vers les résultats après analyse
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -972,9 +973,10 @@ export const DashboardPage: React.FC = () => {
                     <div className="w-full lg:w-96 flex-shrink-0 relative bg-bg-tertiary">
                       {playerVisible ? (
                         <div className="relative aspect-video">
-                          <YouTubePlayer
+                          <VideoPlayer
                             ref={playerRef}
                             videoId={selectedSummary.video_id}
+                            platform={selectedSummary.platform || 'youtube'}
                             initialTime={playerStartTime}
                             className="w-full h-full"
                           />

@@ -1,11 +1,12 @@
 import { WEBAPP_URL } from './utils/config';
-import { extractVideoId } from './utils/youtube';
+import { extractVideoId, detectCurrentPagePlatform, type VideoPlatform } from './utils/video';
 import { escapeHtml, markdownToSafeHtml, markdownToFullHtml, parseAnalysisToSummary } from './utils/sanitize';
 import type { KeyPoint } from './utils/sanitize';
 
 // ── State ──
 
 let currentVideoId: string | null = null;
+let currentPlatform: VideoPlatform | null = null;
 let injected = false;
 let card: HTMLDivElement | null = null;
 let injectionAttempts = 0;
@@ -16,6 +17,14 @@ const SIDEBAR_SELECTORS = [
   '#secondary-inner',
   '#secondary',
   'ytd-watch-next-secondary-results-renderer',
+];
+
+// TikTok: pas de sidebar classique → injection floating card
+const TIKTOK_ANCHOR_SELECTORS = [
+  '[class*="DivBrowserModeContainer"]',
+  '[class*="DivVideoDetailContainer"]',
+  '#app',
+  'body',
 ];
 
 const CATEGORY_ICON_MAP: Record<string, string> = {
@@ -29,6 +38,8 @@ const CATEGORY_ICON_MAP: Record<string, string> = {
 
 function isDarkTheme(): boolean {
   const html = document.documentElement;
+  // TikTok is always dark-themed
+  if (currentPlatform === 'tiktok') return true;
   return (
     html.getAttribute('dark') === 'true' ||
     html.hasAttribute('dark') ||
@@ -655,6 +666,14 @@ function findSidebar(): HTMLElement | null {
   return null;
 }
 
+function findTikTokAnchor(): HTMLElement | null {
+  for (const selector of TIKTOK_ANCHOR_SELECTORS) {
+    const el = document.querySelector(selector);
+    if (el instanceof HTMLElement) return el;
+  }
+  return null;
+}
+
 function injectCard(): void {
   if (injected) return;
   if (document.getElementById('deepsight-card')) { injected = true; return; }
@@ -662,22 +681,41 @@ function injectCard(): void {
   const videoId = extractVideoId(window.location.href);
   if (!videoId) return;
 
+  currentPlatform = detectCurrentPagePlatform();
   injectionAttempts++;
-  const sidebar = findSidebar();
 
-  if (sidebar) {
-    card = createCard();
-    if (sidebar.firstChild) {
-      sidebar.insertBefore(card, sidebar.firstChild);
-    } else {
-      sidebar.appendChild(card);
+  if (currentPlatform === 'tiktok') {
+    // TikTok: floating card (position fixed, bottom-right)
+    const anchor = findTikTokAnchor();
+    if (anchor) {
+      card = createCard();
+      card.classList.add('deepsight-card-floating');
+      card.style.cssText = 'position:fixed;bottom:20px;right:20px;width:360px;max-height:80vh;overflow-y:auto;z-index:99999;box-shadow:0 8px 32px rgba(0,0,0,0.5);border-radius:12px;';
+      document.body.appendChild(card);
+      injected = true;
+      currentVideoId = videoId;
+      initCard();
+    } else if (injectionAttempts < 50) {
+      const delay = Math.min(1000 * Math.pow(1.2, injectionAttempts), 5000);
+      setTimeout(injectCard, delay);
     }
-    injected = true;
-    currentVideoId = videoId;
-    initCard();
-  } else if (injectionAttempts < 50) {
-    const delay = Math.min(1000 * Math.pow(1.2, injectionAttempts), 5000);
-    setTimeout(injectCard, delay);
+  } else {
+    // YouTube: sidebar injection
+    const sidebar = findSidebar();
+    if (sidebar) {
+      card = createCard();
+      if (sidebar.firstChild) {
+        sidebar.insertBefore(card, sidebar.firstChild);
+      } else {
+        sidebar.appendChild(card);
+      }
+      injected = true;
+      currentVideoId = videoId;
+      initCard();
+    } else if (injectionAttempts < 50) {
+      const delay = Math.min(1000 * Math.pow(1.2, injectionAttempts), 5000);
+      setTimeout(injectCard, delay);
+    }
   }
 }
 
@@ -688,6 +726,7 @@ function onNavigate(): void {
   if (videoId !== currentVideoId) {
     injected = false;
     injectionAttempts = 0;
+    currentPlatform = detectCurrentPagePlatform();
     card?.remove();
     card = null;
     if (videoId) setTimeout(injectCard, 1000);

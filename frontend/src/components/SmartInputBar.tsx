@@ -319,13 +319,17 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   const isUrlMode = value.mode === 'url';
   const charCount = inputVal.length;
 
-  // Bordure dynamique pour le mode URL : neutre → vert (URL valide) → rouge (soumis + invalide)
+  // Bordure dynamique pour le mode URL : neutre → vert/cyan (URL valide) → rouge (soumis + invalide)
   const getDynamicBorderClasses = (): string => {
     if (!isUrlMode) {
       return `${config.borderColor} ${config.hoverBorder} ${config.focusBorder}`;
     }
-    const urlValid = isValidYouTubeUrl(inputVal);
+    const urlValid = isValidVideoUrl(inputVal);
     if (urlValid) {
+      // 🎵 Cyan pour TikTok, vert pour YouTube
+      if (isTikTokUrl(inputVal)) {
+        return 'border-cyan-500/40 hover:border-cyan-500/60 focus-within:border-cyan-500/70';
+      }
       return 'border-green-500/40 hover:border-green-500/60 focus-within:border-green-500/70';
     }
     if (hasAttemptedSubmit && inputVal.trim().length > 0) {
@@ -454,13 +458,25 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
         {/* Bottom Bar - Context Info */}
         <div className="flex items-center justify-between px-4 py-2 border-t border-border-subtle bg-bg-tertiary/30 text-xs">
 
-          {/* Left: Mode hint */}
+          {/* Left: Mode hint + platform badge */}
           <div className="flex items-center gap-2 text-text-muted">
             {autoDetected && (
               <>
                 <Wand2 className="w-3 h-3" />
                 <span>{language === 'fr' ? 'Détection auto' : 'Auto-detect'}</span>
               </>
+            )}
+
+            {/* 🎵 Platform badge quand URL valide */}
+            {isUrlMode && isValidVideoUrl(inputVal) && (
+              <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                isTikTokUrl(inputVal)
+                  ? 'bg-cyan-500/15 text-cyan-400'
+                  : 'bg-red-500/15 text-red-400'
+              }`}>
+                {isTikTokUrl(inputVal) ? '🎵 TikTok' : '▶ YouTube'}
+                {' — '}{language === 'fr' ? 'URL valide' : 'Valid URL'}
+              </span>
             )}
 
             {isSearchMode && (

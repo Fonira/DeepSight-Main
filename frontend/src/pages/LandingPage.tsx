@@ -329,16 +329,16 @@ const getFAQs = (language: string) => [
       ? 'Comment fonctionne Deep Sight ?'
       : 'How does Deep Sight work?',
     answer: language === 'fr'
-      ? 'Deep Sight extrait la transcription de votre vidéo YouTube, puis l\'analyse avec une IA française avancée. Le contenu est structuré en synthèse, points clés, arguments et contre-arguments, avec des marqueurs de certitude et une vérification méthodique des faits.'
-      : 'Deep Sight extracts the transcript from your YouTube video, then analyzes it with an advanced French AI. The content is structured into summaries, key points, arguments and counter-arguments, with certainty markers and methodical fact-checking.',
+      ? 'Deep Sight extrait la transcription de votre vidéo YouTube ou TikTok, puis l\'analyse avec une IA française avancée. Le contenu est structuré en synthèse, points clés, arguments et contre-arguments, avec des marqueurs de certitude et une vérification méthodique des faits.'
+      : 'Deep Sight extracts the transcript from your YouTube or TikTok video, then analyzes it with an advanced French AI. The content is structured into summaries, key points, arguments and counter-arguments, with certainty markers and methodical fact-checking.',
   },
   {
     question: language === 'fr'
       ? 'Quels types de vidéos sont supportés ?'
       : 'What types of videos are supported?',
     answer: language === 'fr'
-      ? 'Toute vidéo YouTube disposant de sous-titres (automatiques ou manuels) dans la plupart des langues. Les vidéos de conférences, cours, documentaires, interviews et podcasts donnent les meilleurs résultats. La durée maximale dépend de votre plan (10 min en gratuit, jusqu\'à 2h en Pro).'
-      : 'Any YouTube video with subtitles (automatic or manual) in most languages. Lectures, courses, documentaries, interviews and podcasts yield the best results. Maximum duration depends on your plan (10 min free, up to 2h on Pro).',
+      ? 'Toute vidéo YouTube ou TikTok disposant de sous-titres (automatiques ou manuels) dans la plupart des langues. Les vidéos de conférences, cours, documentaires, interviews et podcasts donnent les meilleurs résultats. TikTok jusqu\'à 10 min est supporté. La durée maximale dépend de votre plan (15 min en gratuit, jusqu\'à 4h en Pro).'
+      : 'Any YouTube or TikTok video with subtitles (automatic or manual) in most languages. Lectures, courses, documentaries, interviews and podcasts yield the best results. TikTok up to 10 min is supported. Maximum duration depends on your plan (15 min free, up to 4h on Pro).',
   },
   {
     question: language === 'fr'
@@ -366,6 +366,14 @@ const getFAQs = (language: string) => [
   },
   {
     question: language === 'fr'
+      ? 'Les TikToks sont-ils supportés ?'
+      : 'Are TikToks supported?',
+    answer: language === 'fr'
+      ? 'Oui ! Deep Sight analyse les vidéos TikTok en plus de YouTube. Collez simplement un lien TikTok et l\'analyse démarre automatiquement. Les TikToks jusqu\'à 10 minutes sont supportés, et consomment 50% moins de crédits que les vidéos YouTube (vidéos plus courtes = coût réduit).'
+      : 'Yes! Deep Sight analyzes TikTok videos in addition to YouTube. Simply paste a TikTok link and the analysis starts automatically. TikToks up to 10 minutes are supported, and use 50% fewer credits than YouTube videos (shorter videos = reduced cost).',
+  },
+  {
+    question: language === 'fr'
       ? 'Deep Sight fonctionne-t-il sur mobile ?'
       : 'Does Deep Sight work on mobile?',
     answer: language === 'fr'
@@ -381,7 +389,7 @@ const getFAQs = (language: string) => [
 const platforms = [
   { icon: Globe, label: { fr: 'Deep Sight Web', en: 'Deep Sight Web' } },
   { icon: Smartphone, label: { fr: 'App Mobile', en: 'Mobile App' } },
-  { icon: Puzzle, label: { fr: 'Extension navigateur intégrée dans YouTube', en: 'Browser extension integrated in YouTube' } },
+  { icon: Puzzle, label: { fr: 'Extension navigateur intégrée (YouTube & TikTok)', en: 'Browser extension (YouTube & TikTok)' } },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -408,8 +416,8 @@ const LandingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-bg-primary relative overflow-hidden">
       <SEO
-        title="Analyse YouTube IA"
-        description="Analysez et synthétisez vos vidéos YouTube avec l'IA française. Résumés intelligents, fact-checking méthodique, points clés, timestamps, et chat interactif."
+        title="Analyse YouTube & TikTok par IA"
+        description="Analysez et synthétisez vos vidéos YouTube et TikTok avec l'IA française. Résumés intelligents, fact-checking méthodique, points clés, timestamps, et chat interactif."
         path="/"
       />
       {/* Gradient mesh background */}
@@ -500,8 +508,8 @@ const LandingPage: React.FC = () => {
             className="text-base sm:text-lg text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed"
           >
             {language === 'fr'
-              ? 'Deep Sight extrait, structure et vérifie le contenu de vos vidéos YouTube. Synthèses pondérées, fact-checking sourcé, chat contextuel. L\'outil conçu pour ceux qui pensent avant de partager.'
-              : 'Deep Sight extracts, structures and verifies your YouTube video content. Weighted summaries, sourced fact-checking, contextual chat. The tool built for those who think before they share.'}
+              ? 'Deep Sight extrait, structure et vérifie le contenu de vos vidéos YouTube et TikTok. Synthèses pondérées, fact-checking sourcé, chat contextuel. L\'outil conçu pour ceux qui pensent avant de partager.'
+              : 'Deep Sight extracts, structures and verifies your YouTube and TikTok video content. Weighted summaries, sourced fact-checking, contextual chat. The tool built for those who think before they share.'}
           </motion.p>
 
           {/* CTAs */}
@@ -573,18 +581,38 @@ const LandingPage: React.FC = () => {
       <section className="py-10 sm:py-16 px-4 sm:px-6">
         <ScrollReveal className="max-w-3xl mx-auto text-center">
           <p className="text-xs sm:text-sm text-text-tertiary uppercase tracking-widest mb-6">
-            {language === 'fr' ? 'Notre technologie' : 'Our technology'}
+            {language === 'fr' ? 'Plateformes & technologie' : 'Platforms & technology'}
           </p>
-          <div className="flex items-center justify-center mb-4">
-            <img
-              src="/mistral-logo.svg"
-              alt="Mistral AI"
-              className="h-16 sm:h-24 md:h-28 w-auto object-contain"
-              style={{ filter: 'drop-shadow(0 0 30px rgba(139, 92, 246, 0.3))' }}
-            />
+          {/* Logos row: YouTube + TikTok + Mistral */}
+          <div className="flex items-center justify-center gap-8 sm:gap-12 mb-6">
+            <div className="flex flex-col items-center gap-2">
+              <img
+                src="/platforms/youtube-icon-white.png"
+                alt="YouTube"
+                className="h-10 sm:h-14 w-auto object-contain opacity-80"
+              />
+              <span className="text-[10px] text-text-muted">YouTube</span>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <img
+                src="/platforms/tiktok-note-white.svg"
+                alt="TikTok"
+                className="h-10 sm:h-14 w-auto object-contain opacity-80"
+              />
+              <span className="text-[10px] text-text-muted">TikTok</span>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <img
+                src="/mistral-logo.svg"
+                alt="Mistral AI"
+                className="h-10 sm:h-14 w-auto object-contain"
+                style={{ filter: 'drop-shadow(0 0 20px rgba(139, 92, 246, 0.3))' }}
+              />
+              <span className="text-[10px] text-text-muted">Mistral AI</span>
+            </div>
           </div>
           <p className="text-base sm:text-lg font-semibold bg-gradient-to-r from-accent-primary via-violet-400 to-cyan-400 bg-clip-text text-transparent">
-            {language === 'fr' ? 'Propulsé par Mistral AI' : 'Powered by Mistral AI'}
+            {language === 'fr' ? 'YouTube & TikTok — Propulsé par Mistral AI' : 'YouTube & TikTok — Powered by Mistral AI'}
           </p>
           <p className="text-xs text-text-tertiary mt-2 max-w-md mx-auto">
             {language === 'fr'
@@ -617,8 +645,8 @@ const LandingPage: React.FC = () => {
                   </p>
                   <p className="text-text-secondary text-sm leading-relaxed">
                     {language === 'fr'
-                      ? 'YouTube est la plus grande bibliothèque du monde, mais sans index, sans vérification et sans synthèse.'
-                      : 'YouTube is the world\'s largest library, but with no index, no verification and no synthesis.'}
+                      ? 'YouTube et TikTok sont les plus grandes bibliothèques vidéo du monde, mais sans index, sans vérification et sans synthèse.'
+                      : 'YouTube and TikTok are the world\'s largest video libraries, but with no index, no verification and no synthesis.'}
                   </p>
                 </div>
               </div>

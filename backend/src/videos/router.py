@@ -2378,6 +2378,7 @@ async def get_history(
     category: Optional[str] = None,
     search: Optional[str] = None,
     favorites_only: bool = False,
+    platform: Optional[str] = Query(None, description="Filtrer par plateforme: youtube, tiktok"),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session)
 ):
@@ -2391,7 +2392,21 @@ async def get_history(
         search=search,
         favorites_only=favorites_only
     )
-    
+
+    # 🎵 Filtrage par plateforme côté Python (pas de modification SQL requise)
+    if platform and platform in ("youtube", "tiktok"):
+        items = [item for item in items if getattr(item, "platform", "youtube") == platform]
+        total = len(items)
+
+    def _get_thumbnail(item) -> str:
+        """Retourne le thumbnail adapté à la plateforme."""
+        if item.thumbnail_url:
+            return item.thumbnail_url
+        item_platform = getattr(item, "platform", "youtube")
+        if item_platform == "youtube":
+            return f"https://img.youtube.com/vi/{item.video_id}/mqdefault.jpg"
+        return ""  # TikTok thumbnails viennent du backend lors de l'analyse
+
     return HistoryResponse(
         items=[
             SummaryListItem(
@@ -2400,13 +2415,14 @@ async def get_history(
                 video_title=item.video_title,
                 video_channel=item.video_channel or "Unknown",
                 video_duration=item.video_duration or 0,
-                thumbnail_url=item.thumbnail_url or f"https://img.youtube.com/vi/{item.video_id}/mqdefault.jpg",
+                thumbnail_url=_get_thumbnail(item),
                 category=item.category,
                 mode=item.mode,
                 word_count=item.word_count or 0,
                 reliability_score=item.reliability_score,
                 is_favorite=item.is_favorite,
-                created_at=item.created_at.isoformat() if item.created_at else None
+                created_at=item.created_at.isoformat() if item.created_at else None,
+                platform=getattr(item, "platform", "youtube"),
             )
             for item in items
         ],

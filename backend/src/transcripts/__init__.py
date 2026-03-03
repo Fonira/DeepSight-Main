@@ -16,6 +16,15 @@ from .ultra_resilient import (
     ExtractionMethod,
 )
 
+# 🎵 TikTok support
+from .tiktok import (
+    is_tiktok_url,
+    extract_tiktok_video_id,
+    get_tiktok_video_info,
+    get_tiktok_transcript,
+    detect_platform,
+)
+
 # Health monitoring
 from .monitor import (
     TranscriptHealthMonitor,
@@ -42,6 +51,12 @@ __all__ = [
     "extract_transcript_for_analysis",
     "TranscriptResult",
     "ExtractionMethod",
+    # 🎵 TikTok
+    "is_tiktok_url",
+    "extract_tiktok_video_id",
+    "get_tiktok_video_info",
+    "get_tiktok_transcript",
+    "detect_platform",
     # Health monitoring
     "TranscriptHealthMonitor",
     "health_monitor",

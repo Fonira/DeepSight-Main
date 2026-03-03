@@ -7,7 +7,7 @@ import {
   getStoredUser,
   addRecentAnalysis,
 } from './utils/storage';
-import { extractVideoId } from './utils/youtube';
+import { extractVideoId } from './utils/video';
 import type {
   ExtensionMessage,
   MessageResponse,

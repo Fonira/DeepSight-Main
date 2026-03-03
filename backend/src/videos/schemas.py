@@ -14,8 +14,8 @@ from datetime import datetime
 # ═══════════════════════════════════════════════════════════════════════════════
 
 class AnalyzeVideoRequest(BaseModel):
-    """Requête pour analyser une vidéo YouTube"""
-    url: str = Field(..., description="URL de la vidéo YouTube")
+    """Requête pour analyser une vidéo YouTube ou TikTok"""
+    url: str = Field(..., description="URL de la vidéo YouTube ou TikTok")
     mode: str = Field(default="standard", description="Mode d'analyse: accessible, standard, expert")
     category: Optional[str] = Field(default=None, description="Catégorie forcée (auto-détection si None)")
     lang: str = Field(default="fr", description="Langue de la synthèse: fr, en")
@@ -29,8 +29,9 @@ class AnalyzeVideoV2Request(BaseModel):
     🆕 v2.0: Requête d'analyse avec customization complète.
 
     Permet un contrôle fin de tous les paramètres d'analyse.
+    Supporte YouTube et TikTok.
     """
-    url: str = Field(..., description="URL de la vidéo YouTube")
+    url: str = Field(..., description="URL de la vidéo YouTube ou TikTok")
 
     # Mode et langue
     mode: str = Field(default="standard", description="Mode: accessible, standard, expert")
@@ -135,6 +136,7 @@ class VideoInfoResponse(BaseModel):
     duration: int  # En secondes
     thumbnail_url: str
     upload_date: Optional[str] = None
+    platform: str = Field(default="youtube", description="Plateforme source: youtube, tiktok")
 
 
 class EntitiesResponse(BaseModel):
@@ -162,7 +164,8 @@ class SummaryResponse(BaseModel):
     video_duration: int
     video_url: str
     thumbnail_url: str
-    
+    platform: str = Field(default="youtube", description="Plateforme source: youtube, tiktok")
+
     category: str
     category_confidence: Optional[float] = None
     lang: str
@@ -194,6 +197,7 @@ class SummaryListItem(BaseModel):
     video_channel: str
     video_duration: int
     thumbnail_url: str
+    platform: str = Field(default="youtube", description="Plateforme source: youtube, tiktok")
     category: str
     mode: str
     word_count: int
@@ -227,6 +231,7 @@ class TaskStatusResponse(BaseModel):
     message: Optional[str] = None
     result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
+    platform: Optional[str] = Field(default=None, description="Plateforme source: youtube, tiktok")
 
 
 class PlaylistAnalysisResponse(BaseModel):
@@ -304,10 +309,12 @@ class HybridAnalyzeRequest(BaseModel):
         """Détecte automatiquement le type d'entrée"""
         if self.input_type:
             return self.input_type
-        
-        # URL YouTube ?
+
+        # URL YouTube ou TikTok ?
         if self.url:
             if "youtube.com" in self.url or "youtu.be" in self.url:
+                return InputType.URL
+            if "tiktok.com" in self.url or "vm.tiktok.com" in self.url:
                 return InputType.URL
         
         # Texte brut ?
@@ -361,6 +368,7 @@ class VideoCandidateResponse(BaseModel):
     view_count: int = 0
     like_count: int = 0
     published_at: Optional[str] = None
+    platform: str = Field(default="youtube", description="Plateforme source: youtube, tiktok")
     
     # 🌻 Tournesol
     is_tournesol_pick: bool = False
@@ -804,10 +812,11 @@ class VideoMetadataEnriched(BaseModel):
 class AnalyzeRequestV2(BaseModel):
     """
     🆕 v2.1: Requête d'analyse avec TOUTES les options de personnalisation.
-    
+
     C'est la version la plus complète de l'API d'analyse.
+    Supporte YouTube et TikTok.
     """
-    url: str = Field(..., description="URL de la vidéo YouTube")
+    url: str = Field(..., description="URL de la vidéo YouTube ou TikTok")
     
     # Mode et langue
     mode: str = Field(default="standard", description="Mode: accessible, standard, expert")
