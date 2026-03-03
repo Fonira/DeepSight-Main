@@ -38,6 +38,14 @@ import { DeepSightSpinnerSmall } from './ui';
 // 📊 TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/** Détecte la plateforme — fallback sur video_id si le champ est absent */
+function resolvePlatform(item: { platform?: string; video_id?: string }): 'youtube' | 'tiktok' {
+  if (item.platform === 'tiktok') return 'tiktok';
+  const vid = item.video_id || '';
+  if (/^\d{15,}$/.test(vid)) return 'tiktok';
+  return 'youtube';
+}
+
 export interface SummaryItem {
   id: number;
   video_id: string;
@@ -190,7 +198,7 @@ const SummaryCard = memo<SummaryCardProps>(({
           
           {/* Platform badge */}
           <span className="absolute top-1 left-1 z-10">
-            {(item.platform === 'tiktok') ? (
+            {(resolvePlatform(item) === 'tiktok') ? (
               <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-5 h-5 drop-shadow-md" />
             ) : (
               <img src="/platforms/youtube-icon-red.png" alt="YouTube" className="w-5 h-5 drop-shadow-md" />
@@ -298,7 +306,7 @@ const SummaryCard = memo<SummaryCardProps>(({
                     className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
                   >
                     <ExternalLink className="w-4 h-4" />
-                    {item.platform === 'tiktok' ? 'TikTok' : 'YouTube'}
+                    {resolvePlatform(item) === 'tiktok' ? 'TikTok' : 'YouTube'}
                   </button>
                   <button
                     onClick={() => { onAction('share'); setMenuOpen(false); }}

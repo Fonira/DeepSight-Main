@@ -41,6 +41,29 @@ router = APIRouter(tags=["history"])
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🔍 DÉTECTION PLATEFORME (fallback pour anciennes entrées sans champ platform)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _resolve_platform_from_row(row) -> str:
+    """
+    Détecte la plateforme — fallback sur video_url/video_id
+    pour les anciennes entrées DB qui n'avaient pas le champ platform.
+    """
+    plat = getattr(row, "platform", None) or "youtube"
+    if plat == "tiktok":
+        return "tiktok"
+    # Fallback 1: vérifier video_url
+    video_url = getattr(row, "video_url", "") or ""
+    if "tiktok.com" in video_url or "vm.tiktok.com" in video_url:
+        return "tiktok"
+    # Fallback 2: video_id TikTok = numérique long (>15 digits)
+    vid = getattr(row, "video_id", "") or ""
+    if vid.isdigit() and len(vid) > 15:
+        return "tiktok"
+    return "youtube"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 📦 SCHEMAS
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -184,13 +207,12 @@ async def get_videos_history(
     items = result["items"]
     total = result["total"]
 
-    def _default_thumbnail(row) -> str:
+    def _default_thumbnail(row, plat: str) -> str:
         """Thumbnail par défaut selon la plateforme"""
         if row.thumbnail_url:
             return row.thumbnail_url
-        plat = getattr(row, "platform", "youtube")
         if plat == "tiktok":
-            return ""  # TikTok n'a pas de thumbnail par défaut via URL
+            return ""
         return f"https://img.youtube.com/vi/{row.video_id}/mqdefault.jpg"
 
     return VideoHistoryResponse(
@@ -201,7 +223,7 @@ async def get_videos_history(
                 video_title=row.video_title,
                 video_channel=row.video_channel or "Unknown",
                 video_duration=row.video_duration or 0,
-                thumbnail_url=_default_thumbnail(row),
+                thumbnail_url=_default_thumbnail(row, _resolve_platform_from_row(row)),
                 category=row.category,
                 mode=row.mode,
                 lang=row.lang,
@@ -209,7 +231,7 @@ async def get_videos_history(
                 reliability_score=row.reliability_score,
                 is_favorite=row.is_favorite or False,
                 has_transcript=row.has_transcript,
-                platform=getattr(row, "platform", "youtube"),
+                platform=_resolve_platform_from_row(row),
                 created_at=row.created_at.isoformat() if row.created_at else None
             )
             for row in items
@@ -235,7 +257,7 @@ async def get_video_detail(
     if not summary:
         raise HTTPException(status_code=404, detail="Video not found")
     
-    plat = getattr(summary, "platform", "youtube")
+    plat = _resolve_platform_from_row(summary)
     return {
         "id": summary.id,
         "video_id": summary.video_id,
@@ -357,7 +379,7 @@ async def get_playlist_detail(
                 video_title=v.video_title,
                 video_channel=v.video_channel or "Unknown",
                 video_duration=v.video_duration or 0,
-                thumbnail_url=v.thumbnail_url or (f"https://img.youtube.com/vi/{v.video_id}/mqdefault.jpg" if getattr(v, "platform", "youtube") == "youtube" else ""),
+                thumbnail_url=v.thumbnail_url or (f"https://img.youtube.com/vi/{v.video_id}/mqdefault.jpg" if _resolve_platform_from_row(v) == "youtube" else ""),
                 category=v.category,
                 mode=v.mode,
                 lang=v.lang,
@@ -365,7 +387,7 @@ async def get_playlist_detail(
                 reliability_score=v.reliability_score,
                 is_favorite=v.is_favorite or False,
                 has_transcript=bool(v.transcript_context),
-                platform=getattr(v, "platform", "youtube"),
+                platform=_resolve_platform_from_row(v),
                 created_at=v.created_at.isoformat() if v.created_at else None
             )
             for v in videos
@@ -390,7 +412,7 @@ async def get_playlist_video_detail(
     if not video:
         raise HTTPException(status_code=404, detail="Video not found in playlist")
     
-    vplat = getattr(video, "platform", "youtube")
+    vplat = _resolve_platform_from_row(video)
     return {
         "id": video.id,
         "video_id": video.video_id,
@@ -446,7 +468,7 @@ async def search_history(
                 video_title=v.video_title,
                 video_channel=v.video_channel or "Unknown",
                 video_duration=v.video_duration or 0,
-                thumbnail_url=v.thumbnail_url or (f"https://img.youtube.com/vi/{v.video_id}/mqdefault.jpg" if getattr(v, "platform", "youtube") == "youtube" else ""),
+                thumbnail_url=v.thumbnail_url or (f"https://img.youtube.com/vi/{v.video_id}/mqdefault.jpg" if _resolve_platform_from_row(v) == "youtube" else ""),
                 category=v.category,
                 mode=v.mode,
                 lang=v.lang,
@@ -454,7 +476,7 @@ async def search_history(
                 reliability_score=v.reliability_score,
                 is_favorite=v.is_favorite or False,
                 has_transcript=bool(v.transcript_context),
-                platform=getattr(v, "platform", "youtube"),
+                platform=_resolve_platform_from_row(v),
                 created_at=v.created_at.isoformat() if v.created_at else None
             )
             for v in results["videos"]

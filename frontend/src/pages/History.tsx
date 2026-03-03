@@ -55,6 +55,17 @@ const API_URL = BASE_API_URL.replace(/\/api\/?$/, '') + '/api';
 // 📦 TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
+/**
+ * Détecte la plateforme d'une vidéo — fallback sur video_id si le champ platform est absent.
+ * Les video_id TikTok sont numériques et longs (>15 digits), YouTube = 11 chars alphanumériques.
+ */
+function resolvePlatform(video: { platform?: string; video_id?: string }): 'youtube' | 'tiktok' {
+  if (video.platform === 'tiktok') return 'tiktok';
+  const vid = video.video_id || '';
+  if (/^\d{15,}$/.test(vid)) return 'tiktok';
+  return 'youtube';
+}
+
 interface VideoSummary {
   id: number;
   video_id: string;
@@ -1558,7 +1569,7 @@ const VideoCard: React.FC<{
             />
             {/* Platform badge */}
             <span className="absolute top-1 left-1 z-10">
-              {video.platform === 'tiktok' ? (
+              {resolvePlatform(video) === 'tiktok' ? (
                 <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-4 h-4 drop-shadow-md" />
               ) : (
                 <img src="/platforms/youtube-icon-red.png" alt="YouTube" className="w-4 h-4 drop-shadow-md" />
@@ -1621,7 +1632,7 @@ const VideoCard: React.FC<{
         />
         {/* Platform badge */}
         <span className="absolute top-2 left-2 z-10">
-          {video.platform === 'tiktok' ? (
+          {resolvePlatform(video) === 'tiktok' ? (
             <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-5 h-5 drop-shadow-md" />
           ) : (
             <img src="/platforms/youtube-icon-red.png" alt="YouTube" className="w-5 h-5 drop-shadow-md" />
