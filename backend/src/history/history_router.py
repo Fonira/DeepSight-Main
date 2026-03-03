@@ -15,6 +15,7 @@
 """
 
 import math
+import re
 from typing import Optional, List, Dict
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -48,18 +49,31 @@ def _resolve_platform_from_row(row) -> str:
     """
     Détecte la plateforme — fallback sur video_url/video_id
     pour les anciennes entrées DB qui n'avaient pas le champ platform.
+
+    Logique :
+    1. Champ `platform` en DB → source de vérité si != "youtube" (défaut)
+    2. `video_url` contient "tiktok.com" → TikTok
+    3. `video_id` n'est PAS un YouTube ID (11 chars alphanumériques) → TikTok
+       - YouTube IDs = exactement 11 chars [A-Za-z0-9_-]
+       - TikTok IDs = numériques longs (>15 digits) OU codes courts alphanumériques
     """
     plat = getattr(row, "platform", None) or "youtube"
     if plat == "tiktok":
         return "tiktok"
+
     # Fallback 1: vérifier video_url
     video_url = getattr(row, "video_url", "") or ""
-    if "tiktok.com" in video_url or "vm.tiktok.com" in video_url:
+    if "tiktok.com" in video_url:
         return "tiktok"
-    # Fallback 2: video_id TikTok = numérique long (>15 digits)
+
+    # Fallback 2: vérifier si video_id N'EST PAS un YouTube ID
+    # YouTube IDs = exactement 11 chars [A-Za-z0-9_-]
     vid = getattr(row, "video_id", "") or ""
-    if vid.isdigit() and len(vid) > 15:
-        return "tiktok"
+    if vid:
+        is_youtube_id = bool(re.match(r'^[A-Za-z0-9_-]{11}$', vid))
+        if not is_youtube_id:
+            return "tiktok"
+
     return "youtube"
 
 

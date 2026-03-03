@@ -37,6 +37,8 @@ HISTORY_LIST_COLUMNS = [
     Summary.reliability_score,
     Summary.is_favorite,
     Summary.playlist_id,
+    Summary.platform,       # 🎵 youtube | tiktok
+    Summary.video_url,      # 🔗 URL originale (fallback détection plateforme)
     Summary.created_at,
     # has_transcript calculé en SQL au lieu de charger tout le transcript_context
     case(

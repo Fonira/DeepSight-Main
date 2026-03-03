@@ -56,14 +56,17 @@ const API_URL = BASE_API_URL.replace(/\/api\/?$/, '') + '/api';
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /**
- * Détecte la plateforme d'une vidéo — fallback sur video_id si le champ platform est absent.
- * Les video_id TikTok sont numériques et longs (>15 digits), YouTube = 11 chars alphanumériques.
+ * Détecte la plateforme d'une vidéo.
+ * YouTube IDs = exactement 11 chars [A-Za-z0-9_-].
+ * Tout video_id qui ne matche pas ce pattern → TikTok.
  */
 function resolvePlatform(video: { platform?: string; video_id?: string }): 'youtube' | 'tiktok' {
   if (video.platform === 'tiktok') return 'tiktok';
   const vid = video.video_id || '';
-  if (/^\d{15,}$/.test(vid)) return 'tiktok';
-  return 'youtube';
+  if (!vid) return 'youtube';
+  // YouTube IDs = exactement 11 chars alphanumériques + _ + -
+  const isYouTubeId = /^[A-Za-z0-9_-]{11}$/.test(vid);
+  return isYouTubeId ? 'youtube' : 'tiktok';
 }
 
 interface VideoSummary {

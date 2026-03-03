@@ -38,12 +38,17 @@ import { DeepSightSpinnerSmall } from './ui';
 // 📊 TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** Détecte la plateforme — fallback sur video_id si le champ est absent */
+/**
+ * Détecte la plateforme.
+ * YouTube IDs = exactement 11 chars [A-Za-z0-9_-].
+ * Tout video_id qui ne matche pas → TikTok.
+ */
 function resolvePlatform(item: { platform?: string; video_id?: string }): 'youtube' | 'tiktok' {
   if (item.platform === 'tiktok') return 'tiktok';
   const vid = item.video_id || '';
-  if (/^\d{15,}$/.test(vid)) return 'tiktok';
-  return 'youtube';
+  if (!vid) return 'youtube';
+  const isYouTubeId = /^[A-Za-z0-9_-]{11}$/.test(vid);
+  return isYouTubeId ? 'youtube' : 'tiktok';
 }
 
 export interface SummaryItem {
