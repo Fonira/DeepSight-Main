@@ -402,9 +402,199 @@ async def get_tiktok_transcript(
                 _circuit_breaker.record_success()
                 return result
 
+    # ─── Phase 4 : Fallback téléchargement direct (sans yt-dlp) ──────────
+    logger.info(f"[TIKTOK] Phase 4: trying direct download fallbacks for {vid}")
+    audio_data, audio_ext = await _download_audio_direct(url, vid)
+    if audio_data:
+        result = await _transcribe_safely(audio_data, audio_ext, vid, "phase4-direct")
+        if result[0]:
+            _circuit_breaker.record_success()
+            return result
+
     _circuit_breaker.record_failure()
     logger.error(f"[TIKTOK] All phases failed for {vid}")
     return None, None, None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📥 TÉLÉCHARGEMENT AUDIO DIRECT (sans yt-dlp — Phase 4 fallback)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Services tiers pour obtenir les URLs média TikTok
+TIKTOK_DOWNLOAD_APIS = [
+    {
+        "name": "tikwm",
+        "url": "https://www.tikwm.com/api/",
+        "method": "POST",
+        "body_key": "url",
+        "extract": lambda data: (
+            data.get("data", {}).get("music_info", {}).get("play")
+            or data.get("data", {}).get("music")
+            or data.get("data", {}).get("play")
+        ),
+    },
+    {
+        "name": "tikwm-v2",
+        "url": "https://www.tikwm.com/api/",
+        "method": "POST",
+        "body_key": "url",
+        "extract": lambda data: data.get("data", {}).get("play"),
+    },
+]
+
+
+async def _download_audio_direct(
+    url: str,
+    video_id: str,
+) -> Tuple[Optional[bytes], str]:
+    """
+    🆕 Phase 4 : Télécharge l'audio TikTok SANS yt-dlp.
+
+    Utilise des APIs tierces (tikwm.com) pour obtenir un lien direct
+    vers la vidéo/audio, puis télécharge avec httpx.
+
+    Fallback ultime : télécharge la vidéo entière et extrait l'audio avec ffmpeg.
+    """
+    import tempfile
+    from pathlib import Path
+
+    # 1. Résoudre les URLs courtes
+    resolved_url = await _resolve_short_url(url)
+    target_url = resolved_url or url
+
+    # 2. Essayer les APIs de téléchargement
+    for api in TIKTOK_DOWNLOAD_APIS:
+        try:
+            media_url = await _get_media_url_from_api(target_url, api)
+            if not media_url:
+                continue
+
+            # Télécharger le média
+            audio_data = await _download_media_bytes(media_url, api["name"])
+            if not audio_data:
+                continue
+
+            # Si c'est une vidéo (mp4), extraire l'audio avec ffmpeg
+            if media_url.endswith(".mp4") or b"\x00\x00\x00" in audio_data[:10]:
+                logger.info(f"[TIKTOK] Converting video to audio with ffmpeg ({api['name']})")
+                audio_data, ext = await _extract_audio_ffmpeg(audio_data)
+                if audio_data:
+                    return audio_data, ext
+            else:
+                # C'est déjà de l'audio
+                logger.info(f"[TIKTOK] Direct audio downloaded: {len(audio_data)/1024:.0f}KB ({api['name']})")
+                return audio_data, ".mp3"
+
+        except Exception as e:
+            logger.warning(f"[TIKTOK] API {api['name']} failed: {e}")
+
+    logger.warning(f"[TIKTOK] All direct download fallbacks failed for {video_id}")
+    return None, ".mp3"
+
+
+async def _get_media_url_from_api(url: str, api_config: dict) -> Optional[str]:
+    """Obtient l'URL du média via une API tierce."""
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            if api_config["method"] == "POST":
+                resp = await client.post(
+                    api_config["url"],
+                    data={api_config["body_key"]: url},
+                    headers={
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        "Accept": "application/json",
+                    },
+                )
+            else:
+                resp = await client.get(
+                    api_config["url"],
+                    params={api_config["body_key"]: url},
+                    headers={"User-Agent": "Mozilla/5.0"},
+                )
+
+            if resp.status_code != 200:
+                logger.warning(f"[TIKTOK] API {api_config['name']} returned {resp.status_code}")
+                return None
+
+            data = resp.json()
+            media_url = api_config["extract"](data)
+
+            if media_url:
+                logger.info(f"[TIKTOK] Got media URL from {api_config['name']}: {media_url[:80]}...")
+                return media_url
+
+    except Exception as e:
+        logger.warning(f"[TIKTOK] API {api_config['name']} error: {e}")
+
+    return None
+
+
+async def _download_media_bytes(media_url: str, source: str) -> Optional[bytes]:
+    """Télécharge le contenu d'une URL média en bytes."""
+    try:
+        async with httpx.AsyncClient(
+            timeout=60.0,
+            follow_redirects=True,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Referer": "https://www.tiktok.com/",
+            },
+        ) as client:
+            resp = await client.get(media_url)
+            if resp.status_code == 200 and len(resp.content) > 1000:
+                logger.info(f"[TIKTOK] Downloaded {len(resp.content)/1024:.0f}KB from {source}")
+                return resp.content
+            else:
+                logger.warning(f"[TIKTOK] Media download failed: status={resp.status_code}, size={len(resp.content)}")
+    except Exception as e:
+        logger.warning(f"[TIKTOK] Media download error from {source}: {e}")
+    return None
+
+
+async def _extract_audio_ffmpeg(video_data: bytes) -> Tuple[Optional[bytes], str]:
+    """Extrait l'audio d'une vidéo MP4 via ffmpeg."""
+    import tempfile
+    from pathlib import Path
+
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp_in:
+            tmp_in.write(video_data)
+            tmp_in_path = tmp_in.name
+
+        tmp_out_path = tmp_in_path.replace(".mp4", ".mp3")
+
+        loop = asyncio.get_event_loop()
+
+        def _convert():
+            import subprocess
+            cmd = [
+                "ffmpeg", "-i", tmp_in_path,
+                "-vn",  # No video
+                "-b:a", "64k", "-ac", "1", "-ar", "16000",
+                "-y", tmp_out_path,
+            ]
+            result = subprocess.run(cmd, capture_output=True, timeout=60)
+            return result.returncode == 0
+
+        success = await asyncio.wait_for(
+            loop.run_in_executor(audio_executor, _convert),
+            timeout=60,
+        )
+
+        if success and Path(tmp_out_path).exists():
+            audio_bytes = Path(tmp_out_path).read_bytes()
+            logger.info(f"[TIKTOK] ffmpeg extracted audio: {len(audio_bytes)/1024:.0f}KB")
+            Path(tmp_in_path).unlink(missing_ok=True)
+            Path(tmp_out_path).unlink(missing_ok=True)
+            return audio_bytes, ".mp3"
+
+        Path(tmp_in_path).unlink(missing_ok=True)
+        Path(tmp_out_path).unlink(missing_ok=True)
+
+    except Exception as e:
+        logger.error(f"[TIKTOK] ffmpeg extraction failed: {e}")
+
+    return None, ".mp3"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
