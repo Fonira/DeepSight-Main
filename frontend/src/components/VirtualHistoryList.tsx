@@ -51,6 +51,7 @@ export interface SummaryItem {
   is_favorite?: boolean;
   mode?: string;
   lang?: string;
+  platform?: 'youtube' | 'tiktok';
 }
 
 interface VirtualHistoryListProps {
@@ -187,11 +188,20 @@ const SummaryCard = memo<SummaryCardProps>(({
             </div>
           )}
           
+          {/* Platform badge */}
+          <span className="absolute top-1 left-1 z-10">
+            {(item.platform === 'tiktok') ? (
+              <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-5 h-5 drop-shadow-md" />
+            ) : (
+              <img src="/platforms/youtube-icon-red.png" alt="YouTube" className="w-5 h-5 drop-shadow-md" />
+            )}
+          </span>
+
           {/* Play overlay */}
           <div className="absolute inset-0 bg-black/0 group-hover/thumb:bg-black/40 transition-colors flex items-center justify-center">
             <Play className="w-8 h-8 text-white opacity-0 group-hover/thumb:opacity-100 transition-opacity" />
           </div>
-          
+
           {/* Duration badge */}
           {item.video_duration && (
             <span className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/80 text-white text-xs rounded">
@@ -288,7 +298,7 @@ const SummaryCard = memo<SummaryCardProps>(({
                     className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
                   >
                     <ExternalLink className="w-4 h-4" />
-                    YouTube
+                    {item.platform === 'tiktok' ? 'TikTok' : 'YouTube'}
                   </button>
                   <button
                     onClick={() => { onAction('share'); setMenuOpen(false); }}

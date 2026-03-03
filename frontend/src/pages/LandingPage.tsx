@@ -587,17 +587,19 @@ const LandingPage: React.FC = () => {
           <div className="flex items-center justify-center gap-8 sm:gap-12 mb-6">
             <div className="flex flex-col items-center gap-2">
               <img
-                src="/platforms/youtube-icon-white.png"
+                src="/platforms/youtube-icon-red.png"
                 alt="YouTube"
-                className="h-10 sm:h-14 w-auto object-contain opacity-80"
+                className="h-10 sm:h-14 w-auto object-contain"
+                style={{ filter: 'drop-shadow(0 0 12px rgba(255, 0, 0, 0.3))' }}
               />
               <span className="text-[10px] text-text-muted">YouTube</span>
             </div>
             <div className="flex flex-col items-center gap-2">
               <img
-                src="/platforms/tiktok-note-white.svg"
+                src="/platforms/tiktok-note-color.svg"
                 alt="TikTok"
-                className="h-10 sm:h-14 w-auto object-contain opacity-80"
+                className="h-10 sm:h-14 w-auto object-contain"
+                style={{ filter: 'drop-shadow(0 0 12px rgba(37, 244, 238, 0.3))' }}
               />
               <span className="text-[10px] text-text-muted">TikTok</span>
             </div>

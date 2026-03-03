@@ -17,6 +17,7 @@ import subprocess
 import json
 import time
 import logging
+import httpx
 from typing import Optional, Dict, Any, Tuple
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -245,8 +246,96 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
         except Exception as e:
             logger.error(f"[TIKTOK] Info error ({attempt['label']}): {e}")
 
+    # ─── Phase 4 : Fallback oEmbed API (léger, pas de yt-dlp) ──────────
+    logger.info(f"[TIKTOK] yt-dlp failed, trying oEmbed fallback for: {url}")
+    oembed_info = await _get_info_via_oembed(url)
+    if oembed_info:
+        _circuit_breaker.record_success()
+        return oembed_info
+
     _circuit_breaker.record_failure()
     return None
+
+
+async def _resolve_short_url(url: str) -> Optional[str]:
+    """
+    Résout une URL courte TikTok (vm.tiktok.com, tiktok.com/t/)
+    vers l'URL canonique en suivant les redirections.
+    """
+    if not any(p in url for p in ["vm.tiktok.com", "/t/", "m.tiktok.com"]):
+        return url  # Déjà une URL longue
+
+    try:
+        async with httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=15.0,
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            }
+        ) as client:
+            resp = await client.head(url)
+            resolved = str(resp.url)
+            logger.info(f"[TIKTOK] Resolved short URL → {resolved}")
+            return resolved
+    except Exception as e:
+        logger.warning(f"[TIKTOK] Short URL resolution failed: {e}")
+        return None
+
+
+async def _get_info_via_oembed(url: str) -> Optional[Dict[str, Any]]:
+    """
+    Fallback via l'API oEmbed publique de TikTok.
+    https://www.tiktok.com/oembed?url=...
+
+    Retourne moins de métadonnées que yt-dlp mais c'est fiable et léger.
+    Pas besoin de yt-dlp, pas de blocage IP.
+    """
+    try:
+        # 1. Résoudre les URLs courtes
+        resolved_url = await _resolve_short_url(url)
+        if not resolved_url:
+            return None
+
+        # 2. Extraire le video_id depuis l'URL résolue
+        video_id = extract_tiktok_video_id(resolved_url) or extract_tiktok_video_id(url) or "unknown"
+
+        # 3. Appeler l'API oEmbed
+        oembed_url = f"https://www.tiktok.com/oembed?url={resolved_url}"
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(oembed_url)
+            if resp.status_code != 200:
+                logger.warning(f"[TIKTOK] oEmbed returned {resp.status_code}")
+                return None
+
+            data = resp.json()
+
+        title = data.get("title", "TikTok Video")[:500]
+        author = data.get("author_name", "Unknown")
+        thumbnail = data.get("thumbnail_url", "")
+
+        info = {
+            "video_id": video_id,
+            "title": title,
+            "channel": author,
+            "thumbnail_url": thumbnail,
+            "duration": 0,  # oEmbed ne fournit pas la durée
+            "upload_date": None,
+            "description": title,
+            "platform": "tiktok",
+            "like_count": 0,
+            "comment_count": 0,
+            "view_count": 0,
+            "tags": [],
+            "categories": ["Social Media"],
+        }
+
+        logger.info(f"[TIKTOK] oEmbed OK: \"{title[:50]}\" by {author}")
+        return info
+
+    except Exception as e:
+        logger.error(f"[TIKTOK] oEmbed fallback failed: {e}")
+        return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

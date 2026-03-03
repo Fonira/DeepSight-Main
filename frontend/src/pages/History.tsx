@@ -72,6 +72,7 @@ interface VideoSummary {
   created_at: string;
   summary_content?: string;
   transcript_context?: string;
+  platform?: 'youtube' | 'tiktok';
 }
 
 interface PlaylistSummary {
@@ -1555,6 +1556,14 @@ const VideoCard: React.FC<{
               category={video.category}
               className="w-full h-full object-cover"
             />
+            {/* Platform badge */}
+            <span className="absolute top-1 left-1 z-10">
+              {video.platform === 'tiktok' ? (
+                <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-4 h-4 drop-shadow-md" />
+              ) : (
+                <img src="/platforms/youtube-icon-red.png" alt="YouTube" className="w-4 h-4 drop-shadow-md" />
+              )}
+            </span>
             <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-white text-xs">
               {formatDuration(video.video_duration)}
             </div>
@@ -1610,6 +1619,14 @@ const VideoCard: React.FC<{
           category={video.category}
           className="w-full h-full object-cover"
         />
+        {/* Platform badge */}
+        <span className="absolute top-2 left-2 z-10">
+          {video.platform === 'tiktok' ? (
+            <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-5 h-5 drop-shadow-md" />
+          ) : (
+            <img src="/platforms/youtube-icon-red.png" alt="YouTube" className="w-5 h-5 drop-shadow-md" />
+          )}
+        </span>
         <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/70 text-white text-xs font-medium">
           {formatDuration(video.video_duration)}
         </div>
