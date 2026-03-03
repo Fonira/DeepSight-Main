@@ -58,8 +58,9 @@ class VideoSummaryItem(BaseModel):
     reliability_score: Optional[float]
     is_favorite: bool = False
     has_transcript: bool = False  # Pour savoir si le chat est disponible
+    platform: str = "youtube"  # 🎵 youtube | tiktok
     created_at: Optional[str]
-    
+
     class Config:
         from_attributes = True
 
@@ -183,6 +184,15 @@ async def get_videos_history(
     items = result["items"]
     total = result["total"]
 
+    def _default_thumbnail(row) -> str:
+        """Thumbnail par défaut selon la plateforme"""
+        if row.thumbnail_url:
+            return row.thumbnail_url
+        plat = getattr(row, "platform", "youtube")
+        if plat == "tiktok":
+            return ""  # TikTok n'a pas de thumbnail par défaut via URL
+        return f"https://img.youtube.com/vi/{row.video_id}/mqdefault.jpg"
+
     return VideoHistoryResponse(
         items=[
             VideoSummaryItem(
@@ -191,7 +201,7 @@ async def get_videos_history(
                 video_title=row.video_title,
                 video_channel=row.video_channel or "Unknown",
                 video_duration=row.video_duration or 0,
-                thumbnail_url=row.thumbnail_url or f"https://img.youtube.com/vi/{row.video_id}/mqdefault.jpg",
+                thumbnail_url=_default_thumbnail(row),
                 category=row.category,
                 mode=row.mode,
                 lang=row.lang,
@@ -199,6 +209,7 @@ async def get_videos_history(
                 reliability_score=row.reliability_score,
                 is_favorite=row.is_favorite or False,
                 has_transcript=row.has_transcript,
+                platform=getattr(row, "platform", "youtube"),
                 created_at=row.created_at.isoformat() if row.created_at else None
             )
             for row in items
@@ -224,6 +235,7 @@ async def get_video_detail(
     if not summary:
         raise HTTPException(status_code=404, detail="Video not found")
     
+    plat = getattr(summary, "platform", "youtube")
     return {
         "id": summary.id,
         "video_id": summary.video_id,
@@ -231,18 +243,19 @@ async def get_video_detail(
         "video_channel": summary.video_channel,
         "video_duration": summary.video_duration or 0,
         "video_url": summary.video_url,
-        "thumbnail_url": summary.thumbnail_url or f"https://img.youtube.com/vi/{summary.video_id}/mqdefault.jpg",
+        "thumbnail_url": summary.thumbnail_url or (f"https://img.youtube.com/vi/{summary.video_id}/mqdefault.jpg" if plat == "youtube" else ""),
         "category": summary.category,
         "mode": summary.mode,
         "lang": summary.lang,
         "summary_content": summary.summary_content,
-        "transcript_context": summary.transcript_context,  # Pour le chat
+        "transcript_context": summary.transcript_context,
         "word_count": summary.word_count or 0,
         "reliability_score": summary.reliability_score,
         "is_favorite": summary.is_favorite or False,
         "notes": summary.notes,
         "tags": summary.tags,
         "has_transcript": bool(summary.transcript_context),
+        "platform": plat,
         "created_at": summary.created_at.isoformat() if summary.created_at else None
     }
 
@@ -344,7 +357,7 @@ async def get_playlist_detail(
                 video_title=v.video_title,
                 video_channel=v.video_channel or "Unknown",
                 video_duration=v.video_duration or 0,
-                thumbnail_url=v.thumbnail_url or f"https://img.youtube.com/vi/{v.video_id}/mqdefault.jpg",
+                thumbnail_url=v.thumbnail_url or (f"https://img.youtube.com/vi/{v.video_id}/mqdefault.jpg" if getattr(v, "platform", "youtube") == "youtube" else ""),
                 category=v.category,
                 mode=v.mode,
                 lang=v.lang,
@@ -352,6 +365,7 @@ async def get_playlist_detail(
                 reliability_score=v.reliability_score,
                 is_favorite=v.is_favorite or False,
                 has_transcript=bool(v.transcript_context),
+                platform=getattr(v, "platform", "youtube"),
                 created_at=v.created_at.isoformat() if v.created_at else None
             )
             for v in videos
@@ -376,13 +390,14 @@ async def get_playlist_video_detail(
     if not video:
         raise HTTPException(status_code=404, detail="Video not found in playlist")
     
+    vplat = getattr(video, "platform", "youtube")
     return {
         "id": video.id,
         "video_id": video.video_id,
         "video_title": video.video_title,
         "video_channel": video.video_channel,
         "video_duration": video.video_duration or 0,
-        "thumbnail_url": video.thumbnail_url or f"https://img.youtube.com/vi/{video.video_id}/mqdefault.jpg",
+        "thumbnail_url": video.thumbnail_url or (f"https://img.youtube.com/vi/{video.video_id}/mqdefault.jpg" if vplat == "youtube" else ""),
         "category": video.category,
         "mode": video.mode,
         "lang": video.lang,
@@ -392,6 +407,7 @@ async def get_playlist_video_detail(
         "reliability_score": video.reliability_score,
         "playlist_position": video.playlist_position,
         "has_transcript": bool(video.transcript_context),
+        "platform": vplat,
         "created_at": video.created_at.isoformat() if video.created_at else None
     }
 
@@ -430,7 +446,7 @@ async def search_history(
                 video_title=v.video_title,
                 video_channel=v.video_channel or "Unknown",
                 video_duration=v.video_duration or 0,
-                thumbnail_url=v.thumbnail_url or f"https://img.youtube.com/vi/{v.video_id}/mqdefault.jpg",
+                thumbnail_url=v.thumbnail_url or (f"https://img.youtube.com/vi/{v.video_id}/mqdefault.jpg" if getattr(v, "platform", "youtube") == "youtube" else ""),
                 category=v.category,
                 mode=v.mode,
                 lang=v.lang,
@@ -438,6 +454,7 @@ async def search_history(
                 reliability_score=v.reliability_score,
                 is_favorite=v.is_favorite or False,
                 has_transcript=bool(v.transcript_context),
+                platform=getattr(v, "platform", "youtube"),
                 created_at=v.created_at.isoformat() if v.created_at else None
             )
             for v in results["videos"]
