@@ -214,6 +214,33 @@ export const Login: React.FC = () => {
             </div>
           </motion.div>
 
+          {/* Platform Logos — Big & Eye-catching */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="space-y-4"
+          >
+            <p className="text-text-muted text-xs uppercase tracking-widest font-medium">
+              {language === 'fr' ? 'Plateformes compatibles' : 'Compatible platforms'}
+            </p>
+            <div className="flex items-center gap-6">
+              <div className="group flex items-center gap-2.5 opacity-80 hover:opacity-100 transition-all duration-300 hover:scale-105">
+                <img src="/platforms/youtube-logo-white.png" alt="YouTube" className="h-7 drop-shadow-lg" />
+              </div>
+              <div className="w-px h-8 bg-white/10" />
+              <div className="group flex items-center gap-2.5 opacity-80 hover:opacity-100 transition-all duration-300 hover:scale-105">
+                <img src="/platforms/tiktok-logo-white.png" alt="TikTok" className="h-7 drop-shadow-lg" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 mt-3">
+              <span className="text-text-muted text-[10px] uppercase tracking-wider">
+                {language === 'fr' ? 'Propulsé par' : 'Powered by'}
+              </span>
+              <img src="/platforms/mistral-logo-white.svg" alt="Mistral AI" className="h-5 opacity-70" />
+            </div>
+          </motion.div>
+
           <p className="text-text-muted text-xs">{t.footer.copyright}</p>
         </div>
       </div>
@@ -232,12 +259,21 @@ export const Login: React.FC = () => {
           </div>
 
           {/* Logo above form */}
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-4">
             <img
               src="/deepsight-logo-cosmic.png"
               alt="Deep Sight"
               className="h-20 w-20 rounded-full object-cover mx-auto shadow-lg shadow-purple-500/30"
             />
+          </div>
+
+          {/* Platform logos under DeepSight logo */}
+          <div className="flex items-center justify-center gap-5 mb-5">
+            <img src="/platforms/youtube-icon-red.png" alt="YouTube" className="h-7 opacity-80 hover:opacity-100 transition-opacity" />
+            <div className="w-px h-5 bg-border-subtle" />
+            <img src="/platforms/tiktok-note-white.png" alt="TikTok" className="h-7 opacity-80 hover:opacity-100 transition-opacity" />
+            <div className="w-px h-5 bg-border-subtle" />
+            <img src="/platforms/mistral-logo-white.svg" alt="Mistral AI" className="h-5 opacity-60 hover:opacity-90 transition-opacity" />
           </div>
 
           {/* Title */}

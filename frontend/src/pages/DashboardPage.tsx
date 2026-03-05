@@ -715,14 +715,28 @@ export const DashboardPage: React.FC = () => {
 
             {/* Header - with top padding on mobile for hamburger button */}
             <header className="mb-6 lg:mb-8 pt-2 lg:pt-0">
-              <h1 className="font-semibold text-xl sm:text-2xl mb-2 text-text-primary">
-                {language === 'fr' ? 'Analyse vidéo' : 'Video Analysis'}
-              </h1>
-              <p className="text-text-secondary text-xs sm:text-sm">
-                {language === 'fr'
-                  ? 'URL YouTube, texte brut, ou recherche intelligente de vidéos.'
-                  : 'YouTube URL, raw text, or intelligent video search.'}
-              </p>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h1 className="font-semibold text-xl sm:text-2xl mb-2 text-text-primary">
+                    {language === 'fr' ? 'Analyse vidéo' : 'Video Analysis'}
+                  </h1>
+                  <p className="text-text-secondary text-xs sm:text-sm">
+                    {language === 'fr'
+                      ? 'URL YouTube, texte brut, ou recherche intelligente de vidéos.'
+                      : 'YouTube URL, raw text, or intelligent video search.'}
+                  </p>
+                </div>
+                {/* Platform logos */}
+                <div className="flex items-center gap-4 sm:gap-5">
+                  <img src="/platforms/youtube-logo-white.png" alt="YouTube" className="h-5 sm:h-6 opacity-60 hover:opacity-100 transition-all duration-300 hover:scale-110" />
+                  <div className="w-px h-5 bg-border-subtle" />
+                  <img src="/platforms/tiktok-logo-white.png" alt="TikTok" className="h-5 sm:h-6 opacity-60 hover:opacity-100 transition-all duration-300 hover:scale-110" />
+                  <div className="w-px h-5 bg-border-subtle" />
+                  <div className="flex items-center gap-1.5 opacity-50 hover:opacity-90 transition-all duration-300">
+                    <img src="/platforms/mistral-logo-white.svg" alt="Mistral AI" className="h-4 sm:h-5" />
+                  </div>
+                </div>
+              </div>
             </header>
 
             {/* 🆕 Smart Input Section */}
