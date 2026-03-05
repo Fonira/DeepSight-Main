@@ -100,7 +100,8 @@
     "resendCode": "Resend code",
     "backToLogin": "Back to login",
     "emailVerified": "Email verified!",
-    "accountActivated": "Your account has been activated successfully. You can now sign in."
+    "accountActivated": "Your account has been activated successfully. You can now sign in.",
+    "forgotPassword": "Forgot password?"
   },
   "dashboard": {
     "title": "Video Analysis",

@@ -98,6 +98,14 @@ export default function App() {
           new Promise((_, reject) => setTimeout(() => reject(new Error('Font load timeout')), 5000))
         ]);
 
+        // Initialize store review tracking
+        const { initStoreReview } = await import('./src/utils/storeReview');
+        initStoreReview().catch(() => {});
+
+        // Initialize analytics
+        const { analytics } = await import('./src/services/analytics');
+        analytics.initialize().catch(() => {});
+
         // Small delay for smoother experience
         await new Promise(resolve => setTimeout(resolve, 300));
       } catch (e) {

@@ -1,14 +1,10 @@
-import React, { forwardRef, useCallback, useMemo } from 'react';
+import React, { forwardRef, useCallback } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import BottomSheet, {
-  BottomSheetView,
-  BottomSheetBackdrop,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAnalysisStore } from '@/stores/analysisStore';
+import { SimpleBottomSheet, type SimpleBottomSheetRef } from '@/components/ui/SimpleBottomSheet';
 import type { AnalysisOptionsV2 } from '@/types/v2';
 import { palette } from '@/theme/colors';
 import { sp, borderRadius } from '@/theme/spacing';
@@ -76,13 +72,11 @@ interface OptionsSheetProps {
   onClose?: () => void;
 }
 
-export const OptionsSheet = forwardRef<BottomSheet, OptionsSheetProps>(
+export const OptionsSheet = forwardRef<SimpleBottomSheetRef, OptionsSheetProps>(
   ({ onClose }, ref) => {
     const { colors } = useTheme();
     const options = useAnalysisStore((s) => s.options);
     const setOptions = useAnalysisStore((s) => s.setOptions);
-
-    const snapPoints = useMemo(() => ['40%'], []);
 
     const handleModeSelect = useCallback(
       (mode: string) => {
@@ -100,39 +94,22 @@ export const OptionsSheet = forwardRef<BottomSheet, OptionsSheetProps>(
       [setOptions],
     );
 
-    const renderBackdrop = useCallback(
-      (props: BottomSheetBackdropProps) => (
-        <BottomSheetBackdrop
-          {...props}
-          disappearsOnIndex={-1}
-          appearsOnIndex={0}
-        />
-      ),
-      [],
-    );
-
     return (
-      <BottomSheet
+      <SimpleBottomSheet
         ref={ref}
-        index={-1}
-        snapPoints={snapPoints}
-        enablePanDownToClose
-        backdropComponent={renderBackdrop}
-        backgroundStyle={{
-          backgroundColor: colors.bgSecondary,
-          borderTopLeftRadius: borderRadius['2xl'],
-          borderTopRightRadius: borderRadius['2xl'],
-        }}
+        snapPoint="40%"
+        backgroundStyle={{ backgroundColor: colors.bgSecondary }}
         handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
+        onClose={onClose}
       >
-        <BottomSheetView style={styles.sheetContent}>
+        <View style={styles.sheetContent}>
           {/* Header */}
           <View style={styles.sheetHeader}>
             <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
               Options
             </Text>
             <Pressable
-              onPress={onClose}
+              onPress={() => (ref as React.RefObject<SimpleBottomSheetRef>)?.current?.close()}
               hitSlop={12}
               accessibilityLabel="Fermer"
             >
@@ -178,8 +155,8 @@ export const OptionsSheet = forwardRef<BottomSheet, OptionsSheetProps>(
               />
             ))}
           </View>
-        </BottomSheetView>
-      </BottomSheet>
+        </View>
+      </SimpleBottomSheet>
     );
   },
 );

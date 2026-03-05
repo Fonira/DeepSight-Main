@@ -139,8 +139,8 @@ async def notify_analysis_failed(
         from core.push_notifications import send_push
         await send_push(
             user_id=user_id,
-            title="Analysis Failed",
-            body=f'Could not analyze "{video_title[:50]}..."',
+            title="❌ Analyse échouée",
+            body=f'Impossible d\'analyser "{video_title[:50]}..."',
             data={"type": "analysis_failed", "screen": "Dashboard"},
         )
     except Exception as e:

@@ -36,6 +36,8 @@ _HISTORY_LIST_COLUMNS = [
     Summary.video_channel,
     Summary.video_duration,
     Summary.thumbnail_url,
+    Summary.video_url,
+    Summary.platform,
     Summary.category,
     Summary.mode,
     Summary.word_count,

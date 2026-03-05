@@ -26,6 +26,7 @@ export interface ParsedLink {
 export enum LinkType {
   ANALYSIS = 'analysis',
   YOUTUBE = 'youtube',
+  TIKTOK = 'tiktok',
   PLAYLIST = 'playlist',
   HISTORY = 'history',
   PAYMENT = 'payment',
@@ -43,6 +44,15 @@ const YOUTUBE_PATTERNS = [
   /(?:https?:\/\/)?(?:www\.)?youtube\.com\/v\/([a-zA-Z0-9_-]{11})/,
   /(?:https?:\/\/)?(?:m\.)?youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/,
   /(?:https?:\/\/)?(?:www\.)?youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+];
+
+// TikTok URL patterns (synced with formatters.ts)
+const TIKTOK_PATTERNS = [
+  /(?:https?:\/\/)?(?:www\.)?tiktok\.com\/@[\w.-]+\/video\/(\d+)/i,
+  /(?:https?:\/\/)?vm\.tiktok\.com\/([\w-]+)/i,
+  /(?:https?:\/\/)?m\.tiktok\.com\/v\/(\d+)/i,
+  /(?:https?:\/\/)?(?:www\.)?tiktok\.com\/t\/([\w-]+)/i,
+  /(?:https?:\/\/)?(?:www\.)?tiktok\.com\/video\/(\d+)/i,
 ];
 
 // YouTube playlist pattern
@@ -81,6 +91,26 @@ export function extractYouTubeVideoId(url: string): string | null {
     }
   }
   return null;
+}
+
+/**
+ * Extract TikTok video ID from URL
+ */
+export function extractTikTokVideoId(url: string): string | null {
+  for (const pattern of TIKTOK_PATTERNS) {
+    const match = url.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+  return null;
+}
+
+/**
+ * Check if a URL is a TikTok URL
+ */
+export function isTikTokUrl(url: string): boolean {
+  return TIKTOK_PATTERNS.some(pattern => pattern.test(url));
 }
 
 /**
@@ -153,6 +183,17 @@ export function parseDeepLink(url: string): ParsedLink {
       type: LinkType.YOUTUBE,
       route: 'Analysis',
       params: { videoUrl: buildYouTubeUrl(videoId), videoId },
+      originalUrl,
+    };
+  }
+
+  // Check for TikTok URLs
+  const tiktokId = extractTikTokVideoId(url);
+  if (tiktokId) {
+    return {
+      type: LinkType.TIKTOK,
+      route: 'Analysis',
+      params: { videoUrl: originalUrl, videoId: tiktokId, platform: 'tiktok' },
       originalUrl,
     };
   }
@@ -369,7 +410,9 @@ export const DeepLinking = {
   subscribeToDeepLinks,
   extractYouTubeVideoId,
   extractYouTubePlaylistId,
+  extractTikTokVideoId,
   isYouTubeUrl,
+  isTikTokUrl,
   buildYouTubeUrl,
   createAnalysisLink,
   createPlaylistLink,

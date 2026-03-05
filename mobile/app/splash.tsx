@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,12 @@ import {
 import { darkColors, palette } from '@/theme/colors';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { sp } from '@/theme/spacing';
+import { DoodleBackground } from '@/components/ui/DoodleBackground';
 
 export default function SplashScreen() {
   return (
     <View style={styles.container}>
+      <DoodleBackground variant="default" density="low" />
       <Text style={styles.logo}>DeepSight</Text>
       <ActivityIndicator
         size="large"

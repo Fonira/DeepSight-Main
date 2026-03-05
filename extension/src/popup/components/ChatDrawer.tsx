@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { ChatMessage, ChatOptions } from '../../types';
-import { escapeHtml, markdownToSafeHtml } from '../../utils/sanitize';
+import { escapeHtml, markdownToFullHtml } from '../../utils/sanitize';
 import { BackIcon, SendIcon } from './Icons';
 
 // ── [ask:] parser ──────────────────────────────────────────────────
@@ -298,9 +298,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ msg, onQuestionClick }) =
           {msg.web_search_used && (
             <div className="chat-web-badge">{'\u{1F310}'} Enrichi par le web</div>
           )}
-          <span
+          <div
+            className="chat-md-content"
             dangerouslySetInnerHTML={{
-              __html: markdownToSafeHtml(escapeHtml(parsed.text)),
+              __html: markdownToFullHtml(escapeHtml(parsed.text)),
             }}
           />
           {/* [ask:] question pills */}

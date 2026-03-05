@@ -8,6 +8,9 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
+// Expo Go doesn't support remote push notifications (SDK 53+)
+const IS_EXPO_GO = Constants.appOwnership === 'expo';
+
 // Notification types
 export type NotificationType =
   | 'analysis_complete'
@@ -65,8 +68,12 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 
 /**
  * Get push token for backend registration
+ * ⚠️ Not supported in Expo Go — requires a development build or production build
  */
 export async function getPushToken(): Promise<string | null> {
+  // Remote push tokens require a real build (not Expo Go)
+  if (IS_EXPO_GO) return null;
+
   try {
     const projectId = Constants.expoConfig?.extra?.eas?.projectId;
 
@@ -368,19 +375,20 @@ export async function getLastNotificationResponse(): Promise<Notifications.Notif
 
 /**
  * Initialize notification system
+ * In Expo Go: only local notifications are supported (no push token)
  */
 export async function initializeNotifications(): Promise<{
   permissionGranted: boolean;
   pushToken: string | null;
 }> {
-  // Setup channels (Android)
+  // Setup channels (Android) — safe in Expo Go
   await setupNotificationChannels();
 
-  // Request permissions
+  // Request permissions — safe in Expo Go
   const permissionGranted = await requestNotificationPermissions();
 
-  // Get push token
-  const pushToken = permissionGranted ? await getPushToken() : null;
+  // Push token — only in real builds
+  const pushToken = (permissionGranted && !IS_EXPO_GO) ? await getPushToken() : null;
 
   return { permissionGranted, pushToken };
 }

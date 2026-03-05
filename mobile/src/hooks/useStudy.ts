@@ -31,13 +31,26 @@ export function useStudy(summaryId: string) {
       const raw = response as any;
       // Backend renvoie { quiz: [...] } (QuizResponse model)
       const questions = raw.quiz || raw.questions || [];
-      return questions.map((q: any, i: number) => ({
-        id: `q-${i}`,
-        question: q.question || '',
-        options: q.options || q.choices || [],
-        correctIndex: q.correct_index ?? q.correctIndex ?? q.correct ?? 0,
-        explanation: q.explanation || '',
-      }));
+      return questions.map((q: any, i: number) => {
+        // Support both legacy single-answer and new multi-answer format from backend
+        const rawIndices: number[] | undefined =
+          q.correct_indices ?? q.correctIndices ?? q.correct_indexes;
+        const singleIndex: number =
+          q.correct_index ?? q.correctIndex ?? q.correct ?? 0;
+
+        const correctIndices: number[] = rawIndices && rawIndices.length > 0
+          ? rawIndices
+          : [singleIndex];
+
+        return {
+          id: `q-${i}`,
+          question: q.question || '',
+          options: q.options || q.choices || [],
+          correctIndex: correctIndices[0],
+          correctIndices,
+          explanation: q.explanation || '',
+        };
+      });
     } catch {
       return [];
     }

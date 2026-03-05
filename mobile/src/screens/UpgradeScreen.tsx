@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { analytics } from '../services/analytics';
 import {
   View,
   Text,
@@ -89,11 +90,13 @@ export const UpgradeScreen: React.FC = () => {
     if (planId === currentPlan) return;
     Haptics.selectionAsync();
     setSelectedPlan(planId);
+    analytics.track('upgrade_plan_selected', { plan: planId, current_plan: currentPlan });
   };
 
   const handleUpgrade = async () => {
     if (!selectedPlan) return;
 
+    analytics.track('upgrade_checkout_started', { plan: selectedPlan, current_plan: currentPlan });
     setIsLoading(true);
     try {
       // Get checkout URL from backend
@@ -276,7 +279,7 @@ export const UpgradeScreen: React.FC = () => {
 
       {/* Bottom CTA */}
       {selectedPlan && selectedPlan !== currentPlan && (
-        <View style={[styles.bottomCta, { backgroundColor: 'transparent', paddingBottom: insets.bottom + Spacing.md }]}>
+        <View style={[styles.bottomCta, { backgroundColor: colors.bgPrimary, paddingBottom: insets.bottom + Spacing.md }]}>
           {isDowngrade && (
             <Text style={[styles.downgradeWarning, { color: colors.accentWarning }]}>
               {isEn

@@ -23,7 +23,7 @@ import { historyApi } from '@/services/api';
 import { StatsCard } from '@/components/study/StatsCard';
 import { VideoStudyCard } from '@/components/study/VideoStudyCard';
 import { FlashcardDeck } from '@/components/study/FlashcardDeck';
-import { QuizGame } from '@/components/study/QuizGame';
+import { MultiAnswerQuiz } from '@/components/study/MultiAnswerQuiz';
 import { sp } from '@/theme/spacing';
 import { fontFamily, fontSize, textStyles } from '@/theme/typography';
 import { DoodleBackground } from '@/components/ui/DoodleBackground';
@@ -81,7 +81,7 @@ export default function StudyScreen() {
 
   if (showQuiz) {
     return (
-      <QuizGame
+      <MultiAnswerQuiz
         summaryId={showQuiz}
         onClose={() => setShowQuiz(null)}
       />
@@ -109,7 +109,7 @@ export default function StudyScreen() {
       >
         {/* Header */}
         <Text style={[styles.title, { color: colors.textPrimary }]}>
-          Réviser
+          Révisez & chattez
         </Text>
 
         {/* Stats */}
@@ -184,6 +184,18 @@ export default function StudyScreen() {
                     progress={progress[summary.id]}
                     onFlashcards={() => setShowFlashcards(summary.id)}
                     onQuiz={() => setShowQuiz(summary.id)}
+                    onAnalysis={() =>
+                      router.push({
+                        pathname: '/(tabs)/analysis/[id]',
+                        params: { id: summary.id, backTo: 'library', initialTab: '0' },
+                      } as any)
+                    }
+                    onChatIA={() =>
+                      router.push({
+                        pathname: '/(tabs)/analysis/[id]',
+                        params: { id: summary.id, backTo: 'library', initialTab: '1' },
+                      } as any)
+                    }
                     locked={isFree}
                     onLockedPress={handleLockedPress}
                   />

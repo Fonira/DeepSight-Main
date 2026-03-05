@@ -1,4 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
+// @ts-ignore — analytics is optional, never blocks rendering
+import { analytics } from '../services/analytics';
 import {
   View,
   Text,
@@ -26,6 +28,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { videoApi, historyApi } from '../services/api';
 import { Header, VideoCard, Card, Badge, Avatar, FreeTrialLimitModal, PlanBadge } from '../components';
+import { SectionHeader } from '../components/ui';
 import SmartInputBar from '../components/SmartInputBar';
 import { CustomizationPanel } from '../components/customization';
 import { VideoDiscoveryModal } from '../components/VideoDiscoveryModal';
@@ -177,12 +180,25 @@ export const DashboardScreen: React.FC = () => {
     }
 
     if (data.inputType === 'url' && !isValidYouTubeUrl(data.value)) {
-      Alert.alert(t.common.error, t.errors.invalidYoutubeUrl);
+      Alert.alert(
+        t.common.error,
+        language === 'fr'
+          ? 'URL invalide. Collez un lien YouTube ou TikTok valide.'
+          : 'Invalid URL. Paste a valid YouTube or TikTok link.'
+      );
       return;
     }
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsAnalyzing(true);
+
+    // Analytics: track analysis start
+    analytics.track('analysis_started', {
+      input_type: data.inputType,
+      category: data.category,
+      mode: data.mode,
+      deep_research: data.deepResearch || false,
+    });
 
     try {
       const analysisRequest: {
@@ -519,19 +535,13 @@ export const DashboardScreen: React.FC = () => {
         {/* Favorites Section */}
         {favorites.length > 0 && (
           <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.recentSection}>
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <Ionicons name="heart" size={18} color={colors.accentError} style={{ marginRight: sp.xs }} />
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                  {t.history.favorites || 'Favoris'}
-                </Text>
-              </View>
-              <Pressable onPress={() => navigation.navigate('History')}>
-                <Text style={[styles.seeAllText, { color: colors.accentPrimary }]}>
-                  {t.dashboard.viewAll}
-                </Text>
-              </Pressable>
-            </View>
+            <SectionHeader
+              title={t.history.favorites || 'Favoris'}
+              icon="heart"
+              iconColor={colors.accentError}
+              actionText={t.dashboard.viewAll}
+              onAction={() => navigation.navigate('History')}
+            />
 
             {favorites.map((analysis) => (
               <VideoCard
@@ -549,16 +559,11 @@ export const DashboardScreen: React.FC = () => {
         {/* Recent Analyses */}
         {recentAnalyses.length > 0 && (
           <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.recentSection}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                {t.dashboard.recentAnalyses}
-              </Text>
-              <Pressable onPress={() => navigation.navigate('History')}>
-                <Text style={[styles.seeAllText, { color: colors.accentPrimary }]}>
-                  {t.dashboard.viewAll}
-                </Text>
-              </Pressable>
-            </View>
+            <SectionHeader
+              title={t.dashboard.recentAnalyses}
+              actionText={t.dashboard.viewAll}
+              onAction={() => navigation.navigate('History')}
+            />
 
             {recentAnalyses.map((analysis) => (
               <VideoCard
@@ -575,9 +580,7 @@ export const DashboardScreen: React.FC = () => {
 
         {/* Quick Stats */}
         <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.statsSection}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-            {t.admin.statistics}
-          </Text>
+          <SectionHeader title={t.admin.statistics} icon="analytics-outline" />
           <View style={styles.statsGrid}>
             <Card variant="elevated" style={styles.statCard}>
               <View style={[styles.statIconWrap, { backgroundColor: `${colors.accentPrimary}15` }]}>

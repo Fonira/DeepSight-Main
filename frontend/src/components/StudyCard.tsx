@@ -125,6 +125,23 @@ export const StudyCard: React.FC<StudyCardProps> = ({
   const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
 
+  // ── Données défensives (évite les crashes si le backend retourne un format partiel) ──
+  const safeData = {
+    title: data?.title || 'Fiche de révision',
+    difficulty: data?.difficulty || 'intermediaire',
+    duration_to_study: data?.duration_to_study || '',
+    key_points: Array.isArray(data?.key_points) ? data.key_points : [],
+    definitions: Array.isArray(data?.definitions) ? data.definitions : [],
+    questions_answers: Array.isArray(data?.questions_answers) ? data.questions_answers : [],
+    quiz: Array.isArray(data?.quiz) ? data.quiz : [],
+    summary_sentence: data?.summary_sentence || '',
+    related_topics: Array.isArray(data?.related_topics) ? data.related_topics : [],
+    study_tips: Array.isArray(data?.study_tips) ? data.study_tips : [],
+    generated_at: data?.generated_at,
+    source_video: data?.source_video,
+    source_channel: data?.source_channel,
+  };
+
   const toggleSection = (section: string) => {
     setExpandedSections(prev => {
       const next = new Set(prev);
@@ -165,13 +182,13 @@ export const StudyCard: React.FC<StudyCardProps> = ({
 
   const calculateScore = () => {
     let correct = 0;
-    data.quiz.forEach((q, i) => {
+    safeData.quiz.forEach((q, i) => {
       if (quizAnswers[i] === q.correct_index) correct++;
     });
-    return { correct, total: data.quiz.length };
+    return { correct, total: safeData.quiz.length };
   };
 
-  const difficultyConfig = getDifficultyConfig(data.difficulty);
+  const difficultyConfig = getDifficultyConfig(safeData.difficulty);
 
   const texts = {
     fr: {
@@ -223,7 +240,7 @@ export const StudyCard: React.FC<StudyCardProps> = ({
           </span>
           <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-bg-secondary text-text-secondary">
             <Clock className="w-3 h-3" />
-            {data.duration_to_study}
+            {safeData.duration_to_study}
           </span>
         </div>
         {onExport && (
@@ -250,7 +267,7 @@ export const StudyCard: React.FC<StudyCardProps> = ({
       <div className="p-4 bg-gradient-to-r from-accent-primary/10 to-purple-500/10 rounded-xl border border-accent-primary/20">
         <p className="text-sm font-medium text-text-primary flex items-start gap-2">
           <Sparkles className="w-4 h-4 text-accent-primary flex-shrink-0 mt-0.5" />
-          <span><strong>{t.summary}:</strong> {data.summary_sentence}</span>
+          <span><strong>{t.summary}:</strong> {safeData.summary_sentence}</span>
         </p>
       </div>
 
@@ -258,12 +275,12 @@ export const StudyCard: React.FC<StudyCardProps> = ({
       <Section
         title={t.keyPoints}
         icon={<Target className="w-5 h-5" />}
-        count={data.key_points.length}
+        count={safeData.key_points.length}
         expanded={expandedSections.has('key_points')}
         onToggle={() => toggleSection('key_points')}
       >
         <div className="space-y-3">
-          {data.key_points.map((point, index) => {
+          {safeData.key_points.map((point, index) => {
             const importanceConfig = getImportanceConfig(point.importance);
             return (
               <div key={index} className={`p-3 rounded-lg ${importanceConfig.color}`}>
@@ -284,12 +301,12 @@ export const StudyCard: React.FC<StudyCardProps> = ({
       <Section
         title={t.definitions}
         icon={<BookOpen className="w-5 h-5" />}
-        count={data.definitions.length}
+        count={safeData.definitions.length}
         expanded={expandedSections.has('definitions')}
         onToggle={() => toggleSection('definitions')}
       >
         <div className="grid gap-3 sm:grid-cols-2">
-          {data.definitions.map((def, index) => (
+          {safeData.definitions.map((def, index) => (
             <div key={index} className="p-3 bg-bg-secondary rounded-lg">
               <p className="font-semibold text-accent-primary text-sm">{def.term}</p>
               <p className="text-sm text-text-secondary mt-1">{def.definition}</p>
@@ -307,12 +324,12 @@ export const StudyCard: React.FC<StudyCardProps> = ({
       <Section
         title={t.questionsAnswers}
         icon={<HelpCircle className="w-5 h-5" />}
-        count={data.questions_answers.length}
+        count={safeData.questions_answers.length}
         expanded={expandedSections.has('qa')}
         onToggle={() => toggleSection('qa')}
       >
         <div className="space-y-3">
-          {data.questions_answers.map((qa, index) => (
+          {safeData.questions_answers.map((qa, index) => (
             <div key={index} className="p-3 bg-bg-secondary rounded-lg">
               <div className="flex items-start justify-between gap-2">
                 <p className="font-medium text-text-primary text-sm">{qa.question}</p>
@@ -352,13 +369,13 @@ export const StudyCard: React.FC<StudyCardProps> = ({
       <Section
         title={t.quiz}
         icon={<Brain className="w-5 h-5" />}
-        count={data.quiz.length}
+        count={safeData.quiz.length}
         expanded={expandedSections.has('quiz')}
         onToggle={() => toggleSection('quiz')}
         badge={quizSubmitted ? `${t.score}: ${calculateScore().correct}/${calculateScore().total}` : undefined}
       >
         <div className="space-y-4">
-          {data.quiz.map((question, qIndex) => (
+          {safeData.quiz.map((question, qIndex) => (
             <div key={qIndex} className="p-4 bg-bg-secondary rounded-xl">
               <p className="font-medium text-text-primary mb-3">
                 {qIndex + 1}. {question.question}
@@ -414,7 +431,7 @@ export const StudyCard: React.FC<StudyCardProps> = ({
             {!quizSubmitted ? (
               <button
                 onClick={submitQuiz}
-                disabled={Object.keys(quizAnswers).length !== data.quiz.length}
+                disabled={Object.keys(quizAnswers).length !== safeData.quiz.length}
                 className="btn btn-primary"
               >
                 <Check className="w-4 h-4" />
@@ -431,14 +448,14 @@ export const StudyCard: React.FC<StudyCardProps> = ({
       </Section>
 
       {/* Study Tips */}
-      {data.study_tips?.length > 0 && (
+      {safeData.study_tips.length > 0 && (
         <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
           <h4 className="font-medium text-amber-800 dark:text-amber-300 mb-2 flex items-center gap-2">
             <Lightbulb className="w-4 h-4" />
             {t.studyTips}
           </h4>
           <ul className="space-y-1">
-            {data.study_tips.map((tip, index) => (
+            {safeData.study_tips.map((tip, index) => (
               <li key={index} className="text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2">
                 <span>•</span>
                 <span>{tip}</span>
@@ -449,10 +466,10 @@ export const StudyCard: React.FC<StudyCardProps> = ({
       )}
 
       {/* Related Topics */}
-      {data.related_topics?.length > 0 && (
+      {safeData.related_topics.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <span className="text-xs text-text-muted">{t.relatedTopics}:</span>
-          {data.related_topics.map((topic, index) => (
+          {safeData.related_topics.map((topic, index) => (
             <span key={index} className="px-2 py-1 text-xs rounded-full bg-bg-secondary text-text-secondary">
               {topic}
             </span>

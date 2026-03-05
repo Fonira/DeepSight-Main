@@ -3,13 +3,13 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   Alert,
   TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -20,6 +20,7 @@ import { authApi, ApiError } from '@/services/api';
 import { sp, borderRadius } from '@/theme/spacing';
 import { fontFamily, fontSize, textStyles } from '@/theme/typography';
 import { palette } from '@/theme/colors';
+import { DoodleBackground } from '@/components/ui/DoodleBackground';
 
 const CODE_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
@@ -145,6 +146,7 @@ export default function VerifyEmailScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <DoodleBackground variant="default" density="low" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.flex}

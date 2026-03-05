@@ -1,12 +1,6 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, Linking } from 'react-native';
+import React, { useState, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, Pressable, Alert, Linking, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import BottomSheet, {
-  BottomSheetView,
-  BottomSheetBackdrop,
-  BottomSheetTextInput,
-} from '@gorhom/bottom-sheet';
-import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -14,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { userApi, authApi, ApiError } from '@/services/api';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
+import { SimpleBottomSheet, type SimpleBottomSheetRef } from '@/components/ui/SimpleBottomSheet';
 import { sp, borderRadius } from '@/theme/spacing';
 import { fontFamily, fontSize } from '@/theme/typography';
 
@@ -24,7 +19,7 @@ export const AccountSection: React.FC = () => {
 
   // Sheet state
   const [activeSheet, setActiveSheet] = useState<'profile' | 'password' | 'delete' | null>(null);
-  const sheetRef = useRef<BottomSheet>(null);
+  const sheetRef = useRef<SimpleBottomSheetRef>(null);
 
   // Profile edit
   const [editUsername, setEditUsername] = useState(user?.username ?? '');
@@ -42,20 +37,6 @@ export const AccountSection: React.FC = () => {
   // Delete account
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
-
-  const snapPoints = useMemo(() => ['65%'], []);
-
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={0.5}
-      />
-    ),
-    [],
-  );
 
   const openSheet = (type: 'profile' | 'password' | 'delete') => {
     setActiveSheet(type);
@@ -218,18 +199,13 @@ export const AccountSection: React.FC = () => {
         })}
       </GlassCard>
 
-      <BottomSheet
+      <SimpleBottomSheet
         ref={sheetRef}
-        index={-1}
-        snapPoints={snapPoints}
-        enablePanDownToClose
-        backdropComponent={renderBackdrop}
+        snapPoint="65%"
         backgroundStyle={{ backgroundColor: colors.bgSecondary }}
         handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
-        keyboardBehavior="interactive"
-        keyboardBlurBehavior="restore"
       >
-        <BottomSheetView style={styles.sheetContent}>
+        <View style={styles.sheetContent}>
           {/* Modifier le profil */}
           {activeSheet === 'profile' && (
             <>
@@ -239,7 +215,7 @@ export const AccountSection: React.FC = () => {
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
                 Nom d'utilisateur
               </Text>
-              <BottomSheetTextInput
+              <TextInput
                 style={inputStyle}
                 value={editUsername}
                 onChangeText={setEditUsername}
@@ -250,7 +226,7 @@ export const AccountSection: React.FC = () => {
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
                 Email
               </Text>
-              <BottomSheetTextInput
+              <TextInput
                 style={[inputStyle, { opacity: 0.6 }]}
                 value={editEmail}
                 editable={false}
@@ -283,7 +259,7 @@ export const AccountSection: React.FC = () => {
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
                 Mot de passe actuel
               </Text>
-              <BottomSheetTextInput
+              <TextInput
                 style={inputStyle}
                 value={oldPassword}
                 onChangeText={setOldPassword}
@@ -294,7 +270,7 @@ export const AccountSection: React.FC = () => {
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
                 Nouveau mot de passe
               </Text>
-              <BottomSheetTextInput
+              <TextInput
                 style={inputStyle}
                 value={newPassword}
                 onChangeText={setNewPassword}
@@ -305,7 +281,7 @@ export const AccountSection: React.FC = () => {
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
                 Confirmer le mot de passe
               </Text>
-              <BottomSheetTextInput
+              <TextInput
                 style={inputStyle}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
@@ -337,7 +313,7 @@ export const AccountSection: React.FC = () => {
               <Text style={[styles.deleteWarning, { color: colors.textSecondary }]}>
                 Confirme en saisissant ton mot de passe. Cette action est irréversible.
               </Text>
-              <BottomSheetTextInput
+              <TextInput
                 style={inputStyle}
                 value={deletePassword}
                 onChangeText={setDeletePassword}
@@ -355,8 +331,8 @@ export const AccountSection: React.FC = () => {
               />
             </>
           )}
-        </BottomSheetView>
-      </BottomSheet>
+        </View>
+      </SimpleBottomSheet>
     </>
   );
 };

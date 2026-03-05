@@ -13,13 +13,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
+import Constants from 'expo-constants';
 import { Linking } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { Header } from '../components/Header';
-import { Card, Avatar, Badge, LanguageToggle, CreditDisplay, AnimatedToggle } from '../components/ui';
+import { Card, Avatar, Badge, LanguageToggle, CreditDisplay, AnimatedToggle, SectionHeader, AnimatedProgressBar } from '../components/ui';
 import { PlanBadge } from '../components/PlanBadge';
 import { sp, borderRadius } from '../theme/spacing';
 import { fontFamily, fontSize } from '../theme/typography';
@@ -181,9 +182,7 @@ export const ProfileScreen: React.FC = () => {
 
         {/* Account Section */}
         <Animated.View entering={FadeInDown.delay(100).duration(400)}>
-          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-            {t.settings.account}
-          </Text>
+          <SectionHeader title={t.settings.account} variant="uppercase" style={{ marginTop: sp.lg }} />
           <Card variant="elevated" style={styles.menuCard}>
             <MenuItem
               icon="person-outline"
@@ -207,9 +206,11 @@ export const ProfileScreen: React.FC = () => {
 
         {/* Subscription Section */}
         <Animated.View entering={FadeInDown.delay(150).duration(400)}>
-          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-            {language === 'fr' ? 'MON ABONNEMENT' : 'MY SUBSCRIPTION'}
-          </Text>
+          <SectionHeader
+            title={language === 'fr' ? 'MON ABONNEMENT' : 'MY SUBSCRIPTION'}
+            variant="uppercase"
+            style={{ marginTop: sp.lg }}
+          />
           <Card variant="elevated" style={styles.subscriptionCard}>
             <View style={styles.subscriptionHeader}>
               <PlanBadge
@@ -222,54 +223,28 @@ export const ProfileScreen: React.FC = () => {
               </Text>
             </View>
 
-            {/* Analyses progress bar */}
+            {/* Analyses progress bar — animated */}
             {limits.monthlyAnalyses !== -1 && (
-              <View style={styles.progressSection}>
-                <View style={styles.progressHeader}>
-                  <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
-                    {language === 'fr' ? 'Analyses' : 'Analyses'}
-                  </Text>
-                  <Text style={[styles.progressValue, { color: colors.textPrimary }]}>
-                    {usage.analyses_this_month}/{limits.monthlyAnalyses}
-                  </Text>
-                </View>
-                <View style={[styles.progressBarBg, { backgroundColor: colors.glassBg }]}>
-                  <View
-                    style={[
-                      styles.progressBarFill,
-                      {
-                        backgroundColor: planColor,
-                        width: `${Math.min((usage.analyses_this_month / limits.monthlyAnalyses) * 100, 100)}%`,
-                      },
-                    ]}
-                  />
-                </View>
-              </View>
+              <AnimatedProgressBar
+                label={language === 'fr' ? 'Analyses' : 'Analyses'}
+                value={usage.analyses_this_month}
+                max={limits.monthlyAnalyses}
+                gradientColors={[planColor, planColor]}
+                height={8}
+                animationDelay={200}
+              />
             )}
 
-            {/* Chat progress bar */}
+            {/* Chat progress bar — animated */}
             {limits.chatDailyLimit !== -1 && (
-              <View style={styles.progressSection}>
-                <View style={styles.progressHeader}>
-                  <Text style={[styles.progressLabel, { color: colors.textSecondary }]}>
-                    {language === 'fr' ? 'Chat (aujourd\'hui)' : 'Chat (today)'}
-                  </Text>
-                  <Text style={[styles.progressValue, { color: colors.textPrimary }]}>
-                    {usage.chat_messages_today}/{limits.chatDailyLimit}
-                  </Text>
-                </View>
-                <View style={[styles.progressBarBg, { backgroundColor: colors.glassBg }]}>
-                  <View
-                    style={[
-                      styles.progressBarFill,
-                      {
-                        backgroundColor: colors.accentTertiary,
-                        width: `${Math.min((usage.chat_messages_today / limits.chatDailyLimit) * 100, 100)}%`,
-                      },
-                    ]}
-                  />
-                </View>
-              </View>
+              <AnimatedProgressBar
+                label={language === 'fr' ? 'Chat (aujourd\'hui)' : 'Chat (today)'}
+                value={usage.chat_messages_today}
+                max={limits.chatDailyLimit}
+                gradientColors={[colors.accentTertiary, colors.accentSecondary]}
+                height={8}
+                animationDelay={400}
+              />
             )}
 
             {/* Manage subscription button */}
@@ -303,9 +278,7 @@ export const ProfileScreen: React.FC = () => {
 
         {/* Preferences Section */}
         <Animated.View entering={FadeInDown.delay(200).duration(400)}>
-          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-            {t.settings.preferences}
-          </Text>
+          <SectionHeader title={t.settings.preferences} variant="uppercase" style={{ marginTop: sp.lg }} />
           <Card variant="elevated" style={styles.menuCard}>
             <MenuItem
               icon="settings-outline"
@@ -356,9 +329,7 @@ export const ProfileScreen: React.FC = () => {
 
         {/* Support Section */}
         <Animated.View entering={FadeInDown.delay(300).duration(400)}>
-          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-            {t.settings.support}
-          </Text>
+          <SectionHeader title={t.settings.support} variant="uppercase" style={{ marginTop: sp.lg }} />
           <Card variant="elevated" style={styles.menuCard}>
             <MenuItem
               icon="help-circle-outline"
@@ -392,7 +363,7 @@ export const ProfileScreen: React.FC = () => {
 
         {/* App Version */}
         <Text style={[styles.version, { color: colors.textMuted }]}>
-          Deep Sight v1.0.0
+          Deep Sight v{Constants.expoConfig?.version || '1.0.0'}
         </Text>
       </ScrollView>
     </View>

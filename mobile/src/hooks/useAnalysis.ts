@@ -44,7 +44,7 @@ export function useAnalysis() {
               stopPolling();
               store.completeAnalysis();
               if (data.result) {
-                store.addSummary(data.result);
+                store.addSummary(data.result as unknown as import('../types').AnalysisSummary);
               }
             } else if (data.status === 'failed') {
               stopPolling();

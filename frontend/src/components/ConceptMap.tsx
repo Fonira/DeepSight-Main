@@ -91,10 +91,23 @@ export const ConceptMap: React.FC<ConceptMapProps> = ({
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<'map' | 'concepts' | 'path'>('map');
 
+  // ── Données défensives ──
+  const safeData = {
+    mermaid_code: data?.mermaid_code || '',
+    concepts: Array.isArray(data?.concepts) ? data.concepts : [],
+    hierarchy_depth: data?.hierarchy_depth || 0,
+    total_concepts: data?.total_concepts || 0,
+    learning_path: Array.isArray(data?.learning_path) ? data.learning_path : [],
+    generated_at: data?.generated_at,
+    source_video: data?.source_video,
+    requested_depth: data?.requested_depth,
+    with_details: data?.with_details,
+  };
+
   // Charger et rendre Mermaid
   useEffect(() => {
     const renderMermaid = async () => {
-      if (!containerRef.current || !data.mermaid_code) return;
+      if (!containerRef.current || !safeData.mermaid_code) return;
       
       setLoading(true);
       setError(null);
@@ -114,7 +127,7 @@ export const ConceptMap: React.FC<ConceptMapProps> = ({
         });
         
         // Nettoyer le code Mermaid
-        let cleanCode = data.mermaid_code.trim();
+        let cleanCode = safeData.mermaid_code.trim();
         
         // S'assurer qu'il commence par mindmap
         if (!cleanCode.startsWith('mindmap')) {
@@ -150,12 +163,12 @@ export const ConceptMap: React.FC<ConceptMapProps> = ({
     };
     
     renderMermaid();
-  }, [data.mermaid_code, zoom]);
+  }, [safeData.mermaid_code, zoom]);
 
   // Copier le code Mermaid
   const handleCopyCode = async () => {
     try {
-      await navigator.clipboard.writeText(data.mermaid_code);
+      await navigator.clipboard.writeText(safeData.mermaid_code);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -244,7 +257,7 @@ export const ConceptMap: React.FC<ConceptMapProps> = ({
         >
           <Layers className="w-4 h-4 inline mr-2" />
           {t.concepts}
-          <span className="ml-1 text-xs text-text-muted">({data.total_concepts})</span>
+          <span className="ml-1 text-xs text-text-muted">({safeData.total_concepts})</span>
         </button>
         <button
           onClick={() => setActiveTab('path')}
@@ -263,10 +276,10 @@ export const ConceptMap: React.FC<ConceptMapProps> = ({
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-4">
           <span className="text-text-muted">
-            {t.depth}: <strong className="text-text-primary">{data.hierarchy_depth}</strong>
+            {t.depth}: <strong className="text-text-primary">{safeData.hierarchy_depth}</strong>
           </span>
           <span className="text-text-muted">
-            <strong className="text-text-primary">{data.total_concepts}</strong> {t.totalConcepts}
+            <strong className="text-text-primary">{safeData.total_concepts}</strong> {t.totalConcepts}
           </span>
         </div>
         
@@ -334,7 +347,7 @@ export const ConceptMap: React.FC<ConceptMapProps> = ({
                 <p className="text-text-primary font-medium">{t.renderError}</p>
                 <p className="text-sm text-text-secondary mt-1">{error}</p>
                 <pre className="mt-4 p-3 bg-bg-tertiary rounded text-xs text-left overflow-auto max-h-40 max-w-md">
-                  {data.mermaid_code}
+                  {safeData.mermaid_code}
                 </pre>
               </div>
             </div>
@@ -351,7 +364,7 @@ export const ConceptMap: React.FC<ConceptMapProps> = ({
       {activeTab === 'concepts' && (
         <div className="bg-bg-secondary rounded-xl border border-border-subtle p-4 max-h-[500px] overflow-y-auto">
           <div className="space-y-3">
-            {data.concepts.map((concept, index) => {
+            {safeData.concepts.map((concept, index) => {
               const config = getConceptTypeConfig(concept.type);
               return (
                 <div 
@@ -398,12 +411,12 @@ export const ConceptMap: React.FC<ConceptMapProps> = ({
             <div className="absolute left-5 top-8 bottom-8 w-0.5 bg-gradient-to-b from-accent-primary via-purple-500 to-green-500" />
             
             <div className="space-y-4">
-              {data.learning_path.map((step, index) => (
+              {safeData.learning_path.map((step, index) => (
                 <div key={index} className="flex items-start gap-4 relative">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 z-10 ${
-                    index === 0 
-                      ? 'bg-accent-primary text-white' 
-                      : index === data.learning_path.length - 1
+                    index === 0
+                      ? 'bg-accent-primary text-white'
+                      : index === safeData.learning_path.length - 1
                         ? 'bg-green-500 text-white'
                         : 'bg-purple-500 text-white'
                   }`}>

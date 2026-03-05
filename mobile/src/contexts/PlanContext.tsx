@@ -75,7 +75,6 @@ const PLAN_FEATURES_MAP: Record<PlanType, PlanFeatures> = {
   student: buildPlanFeatures('student'),
   starter: buildPlanFeatures('starter'),
   pro: buildPlanFeatures('pro'),
-  team: buildPlanFeatures('team'),
 };
 
 // Usage stats interface
@@ -117,7 +116,7 @@ const PlanContext = createContext<PlanContextType | undefined>(undefined);
 
 // Get suggested upgrade plan
 function getSuggestedUpgrade(currentPlan: PlanType): PlanType | null {
-  const planOrder: PlanType[] = ['free', 'student', 'starter', 'pro', 'team'];
+  const planOrder: PlanType[] = ['free', 'student', 'starter', 'pro'];
   const currentIndex = planOrder.indexOf(currentPlan);
   if (currentIndex < planOrder.length - 1) {
     return planOrder[currentIndex + 1];

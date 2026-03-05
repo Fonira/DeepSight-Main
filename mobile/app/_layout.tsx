@@ -10,6 +10,7 @@ import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { ThemeProvider } from '../src/contexts/ThemeContext';
 import { createQueryClient } from '../src/utils/queryClient';
 import { darkColors } from '../src/theme/colors';
+import { useShareIntent } from '../src/hooks/useShareIntent';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -55,6 +56,9 @@ function RootNavigator() {
   const { isAuthenticated, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+
+  // Handle incoming shared URLs from TikTok, YouTube, etc.
+  useShareIntent();
 
   useEffect(() => {
     if (isLoading) return;

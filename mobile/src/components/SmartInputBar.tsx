@@ -162,6 +162,9 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
     if (
       trimmed.includes('youtube.com') ||
       trimmed.includes('youtu.be') ||
+      trimmed.includes('tiktok.com') ||
+      trimmed.includes('vm.tiktok') ||
+      trimmed.includes('m.tiktok') ||
       trimmed.startsWith('https://') ||
       trimmed.startsWith('http://')
     ) {
@@ -184,12 +187,12 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
       setUrlValidation(null);
     }
 
-    // Auto-detect mode for longer inputs
-    if (value.length > 50) {
-      const detected = detectInputType(value);
-      if (detected !== inputMode && detected !== 'search') {
-        setInputMode(detected);
-      }
+    // Auto-detect mode: switch to 'url' when a YouTube/TikTok link is pasted
+    const detected = detectInputType(value);
+    if (detected === 'url' && inputMode !== 'url') {
+      setInputMode('url');
+    } else if (value.length > 100 && detected === 'text' && inputMode !== 'text') {
+      setInputMode(detected);
     }
   }, [detectInputType, inputMode]);
 
@@ -437,8 +440,10 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
             { color: urlValidation.isValid ? colors.accentSuccess : colors.accentError }
           ]}>
             {urlValidation.isValid
-              ? (isEn ? 'Valid YouTube URL' : 'URL YouTube valide')
-              + (urlValidation.urlType === 'shorts' ? (isEn ? ' (Shorts)' : ' (Shorts)') : '')
+              ? urlValidation.platform === 'tiktok' || urlValidation.urlType === 'tiktok'
+                ? (isEn ? 'Valid TikTok URL' : 'URL TikTok valide')
+                : (isEn ? 'Valid YouTube URL' : 'URL YouTube valide')
+                  + (urlValidation.urlType === 'shorts' ? ' (Shorts)' : '')
               : (urlValidation.error || (isEn ? 'Invalid URL format' : 'Format d\'URL invalide'))
             }
           </Text>

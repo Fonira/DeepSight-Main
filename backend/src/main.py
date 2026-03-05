@@ -220,7 +220,15 @@ except ImportError as e:
     SHARE_ROUTER_AVAILABLE = False
     print(f"⚠️ Share router not available: {e}", flush=True)
 
-VERSION = "3.8.0"  # Phase 4: CSV/Excel export, Batch API, Health detailed
+# 📊 Analytics router (event tracking)
+try:
+    from analytics.router import router as analytics_router
+    ANALYTICS_ROUTER_AVAILABLE = True
+except ImportError as e:
+    ANALYTICS_ROUTER_AVAILABLE = False
+    print(f"⚠️ Analytics router not available: {e}", flush=True)
+
+VERSION = "3.8.1"  # Phase 4.1: Analytics, Store Review, Push i18n
 APP_NAME = "Deep Sight API"
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
 
@@ -604,6 +612,11 @@ if CONTACT_AVAILABLE:
 if SHARE_ROUTER_AVAILABLE:
     app.include_router(share_router, prefix="/api/share", tags=["Share"])
     print("🔗 Share router loaded (POST /api/share, GET /api/share/{token})", flush=True)
+
+# 📊 Analytics router
+if ANALYTICS_ROUTER_AVAILABLE:
+    app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])
+    print("📊 Analytics router loaded (POST /api/analytics/events, GET /api/analytics/summary)", flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE

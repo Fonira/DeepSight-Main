@@ -221,10 +221,18 @@ const _requestRaw = async <T>(
     // Handle other errors
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      // Handle Pydantic validation errors where detail is an array of objects
+      const detail = errorData.detail;
+      const errorMessage = errorData.message
+        || (Array.isArray(detail) ? detail.map((d: any) => d.msg || String(d)).join(', ') : detail)
+        || errorData.error
+        || 'Request failed';
+      const errorCode = errorData.code
+        || (Array.isArray(detail) ? 'VALIDATION_ERROR' : detail);
       throw new ApiError(
-        errorData.message || errorData.detail || errorData.error || 'Request failed',
+        errorMessage,
         response.status,
-        errorData.code || errorData.detail,
+        errorCode,
         errorData.detail
       );
     }
@@ -531,7 +539,21 @@ export const videoApi = {
   },
 
   async getStatus(taskId: string): Promise<AnalysisStatus> {
-    return request(`/api/videos/status/${taskId}`);
+    const raw = await request<Record<string, unknown>>(`/api/videos/status/${taskId}`);
+    // Normalize backend snake_case response to match AnalysisStatus interface
+    return {
+      task_id: (raw.task_id as string) || taskId,
+      taskId: (raw.task_id as string) || taskId,
+      status: (raw.status as AnalysisStatus['status']) || 'pending',
+      progress: (raw.progress as number) || 0,
+      message: raw.message as string | undefined,
+      result: raw.result as Record<string, unknown> | undefined,
+      error: raw.error as string | undefined,
+      // Extract summary_id from top-level OR from result dict
+      summary_id: (raw.summary_id as string)
+        || ((raw.result as Record<string, unknown>)?.summary_id as string)
+        || undefined,
+    };
   },
 
   async getSummary(summaryId: string): Promise<AnalysisSummary> {
@@ -601,7 +623,13 @@ export const videoApi = {
   },
 
   async factCheck(summaryId: string): Promise<{
-    freshness?: any;
+    freshness?: {
+      score: number;
+      label: string;
+      description?: string;
+      days_since_upload?: number;
+      last_updated?: string;
+    };
     fact_check_lite?: {
       overall_confidence: number;
       risk_summary: string;
@@ -891,6 +919,8 @@ export const historyApi = {
         category?: string;
         mode?: string;
         is_favorite: boolean;
+        platform?: string;
+        video_url?: string;
         created_at?: string;
       }>;
       total: number;
@@ -910,6 +940,8 @@ export const historyApi = {
       category: item.category || 'general',
       channel: item.video_channel,
       duration: item.video_duration,
+      platform: (item.platform as 'youtube' | 'tiktok') || 'youtube',
+      video_url: item.video_url,
       createdAt: item.created_at,
     }));
 
@@ -1140,21 +1172,40 @@ export const chatApi = {
     message: string,
     options?: { useWebSearch?: boolean; mode?: string }
   ): AsyncGenerator<string, void, unknown> {
-    const accessToken = await tokenStorage.getAccessToken();
+    // Use tokenManager for proactive refresh (not raw tokenStorage)
+    const accessToken = await tokenManager.getValidToken()
+      .catch(() => tokenStorage.getAccessToken());
 
-    const response = await fetch(`${API_BASE_URL}/api/chat/ask/stream`, {
+    const body = JSON.stringify({
+      summary_id: Number(summaryId),
+      question: message,
+      use_web_search: options?.useWebSearch ?? false,
+      mode: options?.mode || 'standard',
+    });
+
+    let response = await fetch(`${API_BASE_URL}/api/chat/ask/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
-      body: JSON.stringify({
-        summary_id: Number(summaryId),
-        question: message,
-        use_web_search: options?.useWebSearch ?? false,
-        mode: options?.mode || 'standard',
-      }),
+      body,
     });
+
+    // If 401, try refreshing token once and retry
+    if (response.status === 401) {
+      const refreshedToken = await tokenManager.getValidToken().catch(() => null);
+      if (refreshedToken) {
+        response = await fetch(`${API_BASE_URL}/api/chat/ask/stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${refreshedToken}`,
+          },
+          body,
+        });
+      }
+    }
 
     if (!response.ok) {
       throw new ApiError(

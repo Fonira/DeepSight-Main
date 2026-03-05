@@ -60,6 +60,8 @@ export interface VideoInfo {
   likeCount?: number;
 }
 
+export type VideoPlatform = 'youtube' | 'tiktok';
+
 export interface AnalysisSummary {
   id: string;
   videoId: string;
@@ -77,6 +79,8 @@ export interface AnalysisSummary {
   thumbnail?: string;
   channel?: string;
   duration?: number;
+  platform?: VideoPlatform;
+  video_url?: string;
 }
 
 export interface AnalysisRequest {
@@ -283,7 +287,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
 
   // Modal screens
-  Analysis: { videoUrl?: string; summaryId?: string; videoId?: string };
+  Analysis: { videoUrl?: string; summaryId?: string; videoId?: string; initialTab?: 'summary' | 'chat' | 'concepts' | 'tools' };
   VideoPlayer: { videoId: string; startTime?: number };
   Chat: { summaryId: string };
   StudyTools: { summaryId: string };

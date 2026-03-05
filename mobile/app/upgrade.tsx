@@ -19,6 +19,7 @@ import { billingApi, ApiError } from '@/services/api';
 import { PlanCard } from '@/components/upgrade/PlanCard';
 import { sp } from '@/theme/spacing';
 import { fontFamily, fontSize, textStyles } from '@/theme/typography';
+import { DoodleBackground } from '@/components/ui/DoodleBackground';
 
 const PLAN_LABELS: Record<string, string> = {
   free: 'Gratuit',
@@ -115,6 +116,7 @@ export default function UpgradeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+      <DoodleBackground variant="creative" density="low" />
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + sp.sm }]}>
         <Pressable

@@ -166,7 +166,7 @@ export const LoginScreen: React.FC = () => {
             </View>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(400).duration(500)}>
+          <Animated.View entering={FadeInDown.delay(150).duration(400)}>
             <Text style={[styles.title, { color: colors.textPrimary }]}>
               {t.auth.welcomeBack}
             </Text>
@@ -187,7 +187,7 @@ export const LoginScreen: React.FC = () => {
           )}
 
           {/* Form */}
-          <Animated.View entering={FadeInDown.delay(500).duration(500)} style={styles.form}>
+          <Animated.View entering={FadeInDown.delay(250).duration(400)} style={styles.form}>
             <Input
               label={t.auth.email}
               placeholder="email@example.com"
@@ -213,7 +213,7 @@ export const LoginScreen: React.FC = () => {
 
             <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotPassword}>
               <Text style={[styles.forgotPasswordText, { color: colors.accentPrimary }]}>
-                {t.settings.changePassword}
+                {t.auth.forgotPassword}
               </Text>
             </Pressable>
 
@@ -228,14 +228,14 @@ export const LoginScreen: React.FC = () => {
           </Animated.View>
 
           {/* Divider */}
-          <Animated.View entering={FadeInDown.delay(600).duration(500)} style={styles.divider}>
+          <Animated.View entering={FadeInDown.delay(350).duration(400)} style={styles.divider}>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
             <Text style={[styles.dividerText, { color: colors.textMuted }]}>{t.common.or}</Text>
             <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </Animated.View>
 
           {/* Google login */}
-          <Animated.View entering={FadeInDown.delay(700).duration(500)}>
+          <Animated.View entering={FadeInDown.delay(400).duration(400)}>
             <Button
               title={t.auth.loginWithGoogle}
               variant="outline"
@@ -247,7 +247,7 @@ export const LoginScreen: React.FC = () => {
           </Animated.View>
 
           {/* Register link */}
-          <Animated.View entering={FadeInDown.delay(800).duration(500)} style={styles.registerContainer}>
+          <Animated.View entering={FadeInDown.delay(450).duration(400)} style={styles.registerContainer}>
             <Text style={[styles.registerText, { color: colors.textSecondary }]}>
               {t.auth.noAccount}{' '}
             </Text>

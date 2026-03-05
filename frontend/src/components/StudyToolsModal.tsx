@@ -237,23 +237,31 @@ export const StudyToolsModal: React.FC<StudyToolsModalProps> = ({
       if (selectedTool === 'card') {
         const result = await generateStudyCard(summaryId, questionCount);
         setStudyCardData(result.study_card);
-        setCredits(result.credits_remaining);
+        if (result.credits_remaining !== undefined) setCredits(result.credits_remaining);
         setActiveResultTab('card');
       } else if (selectedTool === 'mindmap') {
         const result = await generateConceptMap(summaryId, depthLevel, withDetails);
         setConceptMapData(result.concept_map);
-        setCredits(result.credits_remaining);
+        if (result.credits_remaining !== undefined) setCredits(result.credits_remaining);
         setActiveResultTab('map');
       } else if (selectedTool === 'all') {
         const result = await generateAllMaterials(summaryId, questionCount, depthLevel, withDetails);
-        if (result.materials.study_card) {
-          setStudyCardData(result.materials.study_card);
+        const materials = result.materials || result;
+        if (materials.study_card) {
+          setStudyCardData(materials.study_card);
         }
-        if (result.materials.concept_map) {
-          setConceptMapData(result.materials.concept_map);
+        if (materials.concept_map) {
+          setConceptMapData(materials.concept_map);
         }
-        setCredits(result.credits_remaining);
-        setActiveResultTab('card');
+        if (result.credits_remaining !== undefined) setCredits(result.credits_remaining);
+        // Vérifier qu'au moins un résultat a été généré
+        if (!materials.study_card && !materials.concept_map) {
+          throw new Error(
+            materials.study_card_error || materials.concept_map_error ||
+            'Aucun contenu n\'a pu être généré. Veuillez réessayer.'
+          );
+        }
+        setActiveResultTab(materials.study_card ? 'card' : 'map');
       }
       setViewMode('results');
     } catch (err: any) {

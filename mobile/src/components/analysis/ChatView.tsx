@@ -23,10 +23,14 @@ import { fontFamily, fontSize, lineHeight } from '../../theme/typography';
 import { palette } from '../../theme/colors';
 import { useChat } from '../../hooks/useChat';
 import { ChatInput } from './ChatInput';
+import { ChatMarkdown } from './ChatMarkdown';
 import type { ChatMessage } from '../../types';
 
 interface ChatViewProps {
   summaryId: string;
+  /** Offset clavier (pixels entre le bas de la view et le bas de l'écran).
+   *  Mode normal ≈ 120 (header+vidéo+tabbar), fullscreen ≈ 88. */
+  keyboardOffset?: number;
 }
 
 const SUGGESTED_QUESTIONS = [
@@ -72,8 +76,8 @@ const TypingIndicator: React.FC = () => {
   );
 };
 
-export const ChatView: React.FC<ChatViewProps> = ({ summaryId }) => {
-  const { colors } = useTheme();
+export const ChatView: React.FC<ChatViewProps> = ({ summaryId, keyboardOffset = 120 }) => {
+  const { colors, isDark } = useTheme();
   const { messages, isLoading, sendMessage, loadHistory } = useChat(summaryId);
   const [inputText, setInputText] = useState('');
 
@@ -102,12 +106,20 @@ export const ChatView: React.FC<ChatViewProps> = ({ summaryId }) => {
           { backgroundColor: isUser ? palette.indigo : colors.bgCard, borderColor: isUser ? 'transparent' : colors.border },
         ]}
       >
-        <Text style={[styles.bubbleText, { color: isUser ? '#ffffff' : colors.textPrimary }]} selectable>
-          {item.content}
-        </Text>
+        {isUser ? (
+          <Text style={[styles.bubbleText, { color: '#ffffff' }]} selectable>
+            {item.content}
+          </Text>
+        ) : (
+          <ChatMarkdown
+            content={item.content}
+            textColor={colors.textPrimary}
+            isDark={isDark}
+          />
+        )}
       </View>
     );
-  }, [colors]);
+  }, [colors, isDark]);
 
   const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
   const quotaText = `${messages.filter((m) => m.role === 'user').length}/15 questions`;
@@ -130,7 +142,11 @@ export const ChatView: React.FC<ChatViewProps> = ({ summaryId }) => {
 
   if (messages.length === 0 && !isLoading) {
     return (
-      <View style={styles.container}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={keyboardOffset}
+      >
         <View style={styles.emptyState}>
           <Ionicons name="chatbubbles-outline" size={56} color={colors.textMuted} />
           <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
@@ -142,15 +158,15 @@ export const ChatView: React.FC<ChatViewProps> = ({ summaryId }) => {
         </View>
         <SuggestionsRow />
         <ChatInput inputText={inputText} setInputText={setInputText} onSend={handleSend} isLoading={isLoading} colors={colors} quotaText={quotaText} />
-      </View>
+      </KeyboardAvoidingView>
     );
   }
 
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={120}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={keyboardOffset}>
       {messages.length < 3 && <SuggestionsRow />}
       <FlatList
-        data={messages}
+        data={[...messages].reverse()}
         renderItem={renderMessage}
         keyExtractor={keyExtractor}
         inverted

@@ -10,6 +10,7 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
+import React from 'react';
 import NetInfo from '@react-native-community/netinfo';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -33,6 +34,8 @@ export interface RetryConfig {
   retryOnStatus: number[];
   /** Timeout for each attempt in milliseconds */
   timeoutMs: number;
+  /** Skip the Promise.race timeout (use when caller already handles its own AbortController timeout) */
+  skipTimeout?: boolean;
 }
 
 export interface RetryState {
@@ -287,13 +290,15 @@ export async function withRetry<T>(
         }
       }
 
-      // Execute with timeout
-      const result = await Promise.race([
-        fn(),
-        new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Request timeout')), config.timeoutMs);
-        }),
-      ]);
+      // Execute with timeout (skip if caller already manages its own AbortController)
+      const result = config.skipTimeout
+        ? await fn()
+        : await Promise.race([
+            fn(),
+            new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error('Request timeout')), config.timeoutMs);
+            }),
+          ]);
 
       // Success - record for circuit breaker
       if (circuitBreakerKey) {
@@ -402,9 +407,6 @@ export function useRetryState() {
   return { execute, state, isRetrying };
 }
 
-// Need to import React for the hook
-import React from 'react';
-
 /**
  * Wrapper simplifié pour utiliser RetryService avec un preset dans api.ts.
  * Usage: const data = await withRetryPreset(() => fetch(...), 'standard');
@@ -416,8 +418,27 @@ export async function withRetryPreset<T>(
 ): Promise<T> {
   return withRetry(fn, {
     ...RETRY_PRESETS[preset],
+    // api.ts already manages its own AbortController timeout per request,
+    // so skip the Promise.race timeout to avoid double-timeout race conditions
+    skipTimeout: true,
     circuitBreakerKey: context || 'api-call',
   });
+}
+
+/**
+ * Reset the circuit breaker for a specific key.
+ * Call this before retrying a known-good endpoint (e.g., after analysis completion
+ * with a fresh summaryId) so accumulated failures don't block the fetch.
+ */
+export function resetCircuitBreaker(key: string): void {
+  const breaker = circuitBreakers.get(key);
+  if (breaker) {
+    breaker.failures = 0;
+    breaker.isOpen = false;
+    if (__DEV__) {
+      console.log(`[RetryService] Circuit breaker reset for: ${key}`);
+    }
+  }
 }
 
 export const RetryService = {
@@ -427,6 +448,7 @@ export const RetryService = {
   useRetryState,
   RETRY_PRESETS,
   isCircuitOpen,
+  resetCircuitBreaker,
 };
 
 export default RetryService;

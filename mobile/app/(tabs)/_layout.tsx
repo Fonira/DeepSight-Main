@@ -1,7 +1,6 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { CustomTabBar } from './CustomTabBar';
-import { darkColors } from '@/theme/colors';
+import { CustomTabBar } from '@/components/navigation/CustomTabBar';
 
 export default function TabsLayout() {
   return (
@@ -36,6 +35,13 @@ export default function TabsLayout() {
           title: 'Profil',
         }}
       />
+      <Tabs.Screen
+        name="subscription"
+        options={{
+          title: 'Abonnement',
+        }}
+      />
+      {/* Routes cachées de la tab bar */}
       <Tabs.Screen
         name="analysis/[id]"
         options={{

@@ -4,6 +4,7 @@ import Constants from 'expo-constants';
 import { authApi, notificationsApi, ApiError } from '../services/api';
 import { tokenStorage, userStorage } from '../utils/storage';
 import { initializeNotifications, getPushToken } from '../services/notifications';
+import { analytics } from '../services/analytics';
 import {
   GOOGLE_CLIENT_ID,
   GOOGLE_IOS_CLIENT_ID,
@@ -70,6 +71,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Register push token with backend (non-blocking)
   const registerPushToken = useCallback(async () => {
+    // Push tokens not supported in Expo Go (SDK 53+)
+    if (isExpoGo) return;
     try {
       const { permissionGranted, pushToken } = await initializeNotifications();
       if (permissionGranted && pushToken) {
@@ -91,6 +94,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const response = await authApi.googleTokenLogin(googleAccessToken);
       setUser(response.user);
       await userStorage.setUser(response.user);
+      // Analytics: identify user + track google login
+      analytics.identify(String(response.user.id), response.user.plan);
+      analytics.track('login', { method: 'google' });
       // Register push token (non-blocking)
       registerPushToken();
     } catch (err) {
@@ -126,6 +132,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (!cancelled) {
           setUser(userData);
           await userStorage.setUser(userData).catch(() => {});
+          // Analytics: re-identify on session restore
+          analytics.identify(String(userData.id), userData.plan);
           // Register push token on session restore (non-blocking)
           registerPushToken();
         }
@@ -192,6 +200,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (__DEV__) { console.warn('[Auth] Failed to save user to storage:', storageError); }
         // Continue anyway - user is already in state
       }
+
+      // Analytics: identify user + track login
+      analytics.identify(String(response.user.id), response.user.plan);
+      analytics.track('login', { method: 'email' });
 
       // Register push token (non-blocking)
       registerPushToken();
@@ -260,7 +272,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [loginWithGoogleToken]);
 
   const register = useCallback(async (username: string, email: string, password: string) => {
     setIsLoading(true);
@@ -313,6 +325,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUser(null);
       await tokenStorage.clearTokens();
       await userStorage.clearUser();
+
+      // Analytics: track logout + reset identity
+      analytics.track('logout');
+      analytics.reset();
     } catch (cleanupError) {
       if (__DEV__) { console.warn('[Auth] Logout cleanup error:', cleanupError); }
       // Ensure user is still cleared even if storage fails

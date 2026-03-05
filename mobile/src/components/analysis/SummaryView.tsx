@@ -32,12 +32,12 @@ interface SummaryViewProps {
   onRetry?: () => void;
 }
 
-const EPISTEMIC_MARKERS: Record<string, { variant: 'success' | 'primary' | 'warning' | 'error'; label: string }> = {
-  '[SOLIDE]': { variant: 'success', label: 'SOLIDE' },
-  '[PLAUSIBLE]': { variant: 'primary', label: 'PLAUSIBLE' },
-  '[INCERTAIN]': { variant: 'warning', label: 'INCERTAIN' },
-  '[A VERIFIER]': { variant: 'error', label: 'A VERIFIER' },
-  '[À VÉRIFIER]': { variant: 'error', label: 'À VÉRIFIER' },
+const EPISTEMIC_MARKERS: Record<string, { variant: 'success' | 'primary' | 'warning' | 'error'; label: string; emoji: string }> = {
+  '[SOLIDE]': { variant: 'success', label: 'SOLIDE', emoji: '✅' },
+  '[PLAUSIBLE]': { variant: 'primary', label: 'PLAUSIBLE', emoji: '🔵' },
+  '[INCERTAIN]': { variant: 'warning', label: 'INCERTAIN', emoji: '🟡' },
+  '[A VERIFIER]': { variant: 'error', label: 'A VERIFIER', emoji: '🔴' },
+  '[À VÉRIFIER]': { variant: 'error', label: 'À VÉRIFIER', emoji: '🔴' },
 };
 
 const BlinkingCursor: React.FC = () => {
@@ -165,9 +165,10 @@ export const SummaryView: React.FC<SummaryViewProps> = ({
         <Text style={[styles.summaryText, { color: colors.textPrimary }]}>
           {parsedContent.map((segment, index) => {
             if (segment.type === 'badge') {
+              const marker = Object.values(EPISTEMIC_MARKERS).find(m => m.label === segment.value);
               return (
                 <View key={index} style={styles.inlineBadge}>
-                  <Badge label={segment.value} variant={segment.variant} size="sm" />
+                  <Badge label={`${marker?.emoji || ''} ${segment.value}`} variant={segment.variant} size="sm" />
                 </View>
               );
             }

@@ -110,9 +110,9 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
               status: 'completed' as const,
               progress: 100,
               message: 'Analyse terminée !',
-              result: status.result,
-              videoTitle: status.result?.title || videoTask.videoTitle,
-              thumbnail: status.result?.thumbnail || videoTask.thumbnail,
+              result: status.result as unknown as AnalysisSummary | undefined,
+              videoTitle: (status.result?.title as string) || videoTask.videoTitle,
+              thumbnail: (status.result?.thumbnail as string) || videoTask.thumbnail,
               completedAt: new Date(),
             };
           } else if (status.status === 'failed') {

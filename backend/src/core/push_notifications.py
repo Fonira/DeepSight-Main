@@ -129,8 +129,8 @@ async def send_analysis_complete_push(
     short_title = video_title[:60] + "..." if len(video_title) > 60 else video_title
     return await send_push(
         user_id=user_id,
-        title="Analysis Complete",
-        body=f'"{short_title}" is ready to view',
+        title="✅ Analyse terminée",
+        body=f'"{short_title}" est prête à consulter',
         data={
             "type": "analysis_complete",
             "summaryId": str(summary_id),
@@ -148,13 +148,13 @@ async def send_factcheck_complete_push(
 ) -> dict:
     """Push notification when fact-check is complete."""
     short_title = video_title[:60] + "..." if len(video_title) > 60 else video_title
-    body = f'Fact-check for "{short_title}" is ready'
+    body = f'Fact-check de "{short_title}" terminé'
     if reliability_score is not None:
         score_pct = int(reliability_score * 100)
-        body += f" — Reliability: {score_pct}%"
+        body += f" — Fiabilité : {score_pct}%"
     return await send_push(
         user_id=user_id,
-        title="Fact-Check Complete",
+        title="🔍 Fact-check terminé",
         body=body,
         data={
             "type": "factcheck_complete",

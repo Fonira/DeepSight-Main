@@ -13,9 +13,10 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { Image } from 'expo-image';
+import { ThumbnailImage } from '../ui/ThumbnailImage';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
+import { PlatformBadge, detectPlatformFromUrl } from '@/components/ui/PlatformBadge';
 import { sp, borderRadius } from '@/theme/spacing';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { springs } from '@/theme/animations';
@@ -52,9 +53,11 @@ export const AnalysisCard: React.FC<AnalysisCardProps> = ({
   const translateX = useSharedValue(0);
   const scale = useSharedValue(1);
 
-  const thumbnailUrl =
-    summary.thumbnail ||
-    `https://img.youtube.com/vi/${summary.videoId}/mqdefault.jpg`;
+  // Detect platform from data or URL heuristics
+  const platform = summary.platform || detectPlatformFromUrl(summary.video_url, summary.videoId);
+
+  // Thumbnail URL is now handled by ThumbnailImage with automatic fallbacks
+  const thumbnailUrl = summary.thumbnail || undefined;
 
   const subtitle = [summary.channel, formatDuration(summary.duration)]
     .filter(Boolean)
@@ -155,13 +158,23 @@ export const AnalysisCard: React.FC<AnalysisCardProps> = ({
             accessibilityLabel={`Analyse : ${summary.title}`}
             accessibilityRole="button"
           >
-            {/* Thumbnail */}
-            <Image
-              source={{ uri: thumbnailUrl }}
-              style={styles.thumbnail}
-              contentFit="cover"
-              transition={200}
-            />
+            {/* Thumbnail with platform badge */}
+            <View style={styles.thumbnailWrapper}>
+              <ThumbnailImage
+                uri={thumbnailUrl}
+                videoId={summary.videoId}
+                style={styles.thumbnail}
+              />
+              {/* Platform badge — overlay mode for visibility on thumbnails */}
+              <View style={styles.platformBadge}>
+                <PlatformBadge
+                  platform={platform}
+                  size="xs"
+                  showLabel={false}
+                  overlay
+                />
+              </View>
+            </View>
 
             {/* Text content */}
             <View style={styles.textContainer}>
@@ -233,11 +246,20 @@ const styles = StyleSheet.create({
     padding: sp.md,
     alignItems: 'center',
   },
+  thumbnailWrapper: {
+    position: 'relative',
+  },
   thumbnail: {
     width: 80,
     height: 60,
     borderRadius: borderRadius.sm,
     backgroundColor: '#1a1a25',
+  },
+  platformBadge: {
+    position: 'absolute',
+    top: 3,
+    left: 3,
+    zIndex: 2,
   },
   textContainer: {
     flex: 1,

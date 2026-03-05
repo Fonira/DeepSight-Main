@@ -17,7 +17,36 @@ import { useTheme } from '../../contexts/ThemeContext';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type DoodleVariant = 'default' | 'video' | 'academic' | 'analysis' | 'tech' | 'creative';
+/** Canonical internal variants */
+type DoodleVariantCanonical = 'default' | 'video' | 'academic' | 'analysis' | 'tech' | 'creative';
+
+/**
+ * All accepted variants — including semantic aliases per page:
+ * - 'home'    → 'default'   (abstract / général)
+ * - 'history' → 'video'     (vidéos, bibliothèque)
+ * - 'profile' → 'creative'  (utilisateur, créativité)
+ * - 'quiz'    → 'academic'  (révisions, étude)
+ */
+export type DoodleVariant =
+  | DoodleVariantCanonical
+  | 'home'
+  | 'history'
+  | 'profile'
+  | 'quiz';
+
+const VARIANT_ALIAS: Record<DoodleVariant, DoodleVariantCanonical> = {
+  default: 'default',
+  video: 'video',
+  academic: 'academic',
+  analysis: 'analysis',
+  tech: 'tech',
+  creative: 'creative',
+  // Semantic page aliases
+  home: 'default',
+  history: 'video',
+  profile: 'creative',
+  quiz: 'academic',
+};
 
 interface DoodleBackgroundProps {
   variant?: DoodleVariant;
@@ -150,12 +179,12 @@ const seededRandom = (seed: number): number => {
   return x - Math.floor(x);
 };
 
-const getIconPool = (variant: DoodleVariant): string[] => {
+const getIconPool = (variant: DoodleVariantCanonical): string[] => {
   const all = [
     ...ICONS_VIDEO, ...ICONS_STUDY, ...ICONS_TECH,
     ...ICONS_ANALYTICS, ...ICONS_AI, ...ICONS_CREATIVE, ...ICONS_ABSTRACT,
   ];
-  const emphasis: Record<DoodleVariant, string[]> = {
+  const emphasis: Record<DoodleVariantCanonical, string[]> = {
     default: [...ICONS_ABSTRACT, ...ICONS_ABSTRACT],
     video: [...ICONS_VIDEO, ...ICONS_VIDEO, ...ICONS_VIDEO],
     academic: [...ICONS_STUDY, ...ICONS_STUDY, ...ICONS_STUDY],
@@ -213,6 +242,9 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
   const { width, height } = useWindowDimensions();
   const { isDark } = useTheme();
 
+  // Resolve semantic alias to canonical variant
+  const canonicalVariant: DoodleVariantCanonical = VARIANT_ALIAS[variant] ?? 'default';
+
   const accentPrimary = isDark ? '#A78BFA' : '#8B5CF6';
   const accentSecondary = isDark ? '#818CF8' : '#6366F1';
   const colorPalette = isDark ? DARK_COLORS : LIGHT_COLORS;
@@ -220,7 +252,7 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
   const pickColor = (seed: number) =>
     colorPalette[Math.floor(seededRandom(seed) * colorPalette.length)];
 
-  const iconPool = useMemo(() => getIconPool(variant), [variant]);
+  const iconPool = useMemo(() => getIconPool(canonicalVariant), [canonicalVariant]);
 
   const tileDoodles = useMemo(() => {
     const items: DoodleItem[] = [];
@@ -235,7 +267,8 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
     const tileW = Math.max(width, 400);
     const tileH = Math.max(height, 800);
 
-    const vo = { default: 0, video: 1000, academic: 2000, analysis: 3000, tech: 4000, creative: 5000 }[variant];
+    const VARIANT_SEEDS: Record<DoodleVariantCanonical, number> = { default: 0, video: 1000, academic: 2000, analysis: 3000, tech: 4000, creative: 5000 };
+    const vo = VARIANT_SEEDS[canonicalVariant];
 
     // Layer 1: Deep Background (large, visible)
     const l1Count = Math.round(20 * mult);
@@ -360,7 +393,7 @@ export const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
     }
 
     return items;
-  }, [variant, isDark, iconPool, accentPrimary, accentSecondary, width, height, density, pickColor]);
+  }, [canonicalVariant, isDark, iconPool, accentPrimary, accentSecondary, width, height, density, pickColor]);
 
   // Background color for the gradient mask
   const bgColor = isDark ? '#0a0a0f' : '#f8fafc';

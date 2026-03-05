@@ -160,25 +160,38 @@ async def get_shared_analysis(
         thumbnail = shared.video_thumbnail or ""
         share_url = f"{FRONTEND_URL}/s/{share_token}"
 
+        # Escape HTML entities in dynamic content
+        safe_title = (title or "").replace('"', '&quot;').replace('<', '&lt;')
+        safe_verdict = (verdict or "").replace('"', '&quot;').replace('<', '&lt;')
+
         html = f"""<!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
     <meta charset="utf-8">
-    <title>DeepSight — {title}</title>
-    <meta property="og:title" content="DeepSight — Analyse de '{title}'" />
-    <meta property="og:description" content="{verdict}" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DeepSight — {safe_title}</title>
+    <!-- Open Graph -->
+    <meta property="og:title" content="DeepSight — Analyse de « {safe_title} »" />
+    <meta property="og:description" content="{safe_verdict}" />
     <meta property="og:image" content="{thumbnail}" />
     <meta property="og:url" content="{share_url}" />
     <meta property="og:type" content="article" />
-    <meta property="og:site_name" content="DeepSight" />
+    <meta property="og:site_name" content="DeepSight — Analyse IA de vidéos" />
+    <meta property="og:locale" content="fr_FR" />
+    <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="DeepSight — {title}" />
-    <meta name="twitter:description" content="{verdict}" />
+    <meta name="twitter:title" content="DeepSight — {safe_title}" />
+    <meta name="twitter:description" content="{safe_verdict}" />
     <meta name="twitter:image" content="{thumbnail}" />
+    <!-- iOS Smart App Banner -->
+    <meta name="apple-itunes-app" content="app-id=PENDING, app-argument=deepsight://analysis/{share_token}">
+    <!-- Android App Link (intent) -->
+    <link rel="alternate" href="android-app://com.deepsight.app/deepsight/analysis/{share_token}" />
+    <!-- Redirect to web app -->
     <meta http-equiv="refresh" content="0;url={share_url}" />
 </head>
 <body>
-    <p>Redirecting to <a href="{share_url}">{share_url}</a></p>
+    <p>Redirection vers <a href="{share_url}">DeepSight</a>...</p>
 </body>
 </html>"""
         return HTMLResponse(content=html)

@@ -5,14 +5,15 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { Badge } from './ui';
+import { ThumbnailImage } from './ui/ThumbnailImage';
+import { PlatformBadge, detectPlatformFromUrl } from './ui/PlatformBadge';
 import { BorderRadius, Spacing, Typography } from '../constants/theme';
 import { formatDuration, formatRelativeTime, truncateText } from '../utils/formatters';
-import type { AnalysisSummary, VideoInfo } from '../types';
+import type { AnalysisSummary, VideoInfo, VideoPlatform } from '../types';
 
 interface VideoCardProps {
   video: AnalysisSummary | VideoInfo;
@@ -35,21 +36,37 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
 }) => {
   const { colors } = useTheme();
 
-  // Handle both AnalysisSummary and VideoInfo types
-  const videoInfo = 'videoInfo' in video
-    ? video.videoInfo || {
-        id: video.id,
-        title: video.title || '',
+  // Determine if the video prop is an AnalysisSummary or a VideoInfo
+  // AnalysisSummary has 'title' at root level, VideoInfo has 'videoInfo' sub-object
+  const isAnalysisSummary = !('videoInfo' in video);
+
+  const analysisSummary: AnalysisSummary | null = isAnalysisSummary
+    ? (video as AnalysisSummary)
+    : null;
+
+  const videoInfo: VideoInfo = isAnalysisSummary
+    ? {
+        id: (video as AnalysisSummary).videoId || (video as AnalysisSummary).id,
+        title: (video as AnalysisSummary).title || '',
         description: '',
-        thumbnail: video.thumbnail || '',
-        channel: video.channel || '',
+        thumbnail: (video as AnalysisSummary).thumbnail || '',
+        channel: (video as AnalysisSummary).channel || '',
         channelId: '',
-        duration: video.duration || 0,
+        duration: (video as AnalysisSummary).duration || 0,
         publishedAt: '',
         viewCount: 0,
       }
-    : video;
-  const analysisSummary = 'videoInfo' in video ? video : null;
+    : (video as any).videoInfo || video;
+
+  // Detect platform from data or URL heuristics
+  const platform: VideoPlatform =
+    analysisSummary?.platform ||
+    detectPlatformFromUrl(analysisSummary?.video_url, analysisSummary?.videoId);
+
+  // DEBUG — supprimer après validation
+  if (__DEV__) {
+    console.log(`[VideoCard] "${videoInfo.title?.slice(0, 30)}" → platform=${platform}, raw=${analysisSummary?.platform}, url=${analysisSummary?.video_url?.slice(0, 40)}, isAS=${isAnalysisSummary}`);
+  }
 
   const handleFavoritePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -61,14 +78,21 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
       <TouchableOpacity
         style={[styles.compactContainer, { backgroundColor: colors.bgCard }]}
         onPress={onPress}
+        onLongPress={onLongPress}
+        delayLongPress={500}
         activeOpacity={0.7}
       >
-        <Image
-          source={{ uri: videoInfo.thumbnail }}
-          style={styles.compactThumbnail}
-          contentFit="cover"
-          transition={200}
-        />
+        <View style={styles.compactThumbnailWrap}>
+          <ThumbnailImage
+            uri={videoInfo.thumbnail}
+            videoId={videoInfo.id}
+            style={styles.compactThumbnail}
+          />
+          {/* Platform badge overlay compact (top-right) */}
+          <View style={styles.compactPlatformOverlay}>
+            <PlatformBadge platform={platform} size="xs" showLabel={false} overlay />
+          </View>
+        </View>
         <View style={styles.compactContent}>
           <Text
             style={[styles.compactTitle, { color: colors.textPrimary }]}
@@ -76,9 +100,23 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
           >
             {videoInfo.title}
           </Text>
-          <Text style={[styles.compactChannel, { color: colors.textTertiary }]}>
-            {videoInfo.channel}
-          </Text>
+          <View style={styles.compactFooter}>
+            <Text style={[styles.compactChannel, { color: colors.textTertiary }]} numberOfLines={1}>
+              {videoInfo.channel}
+            </Text>
+            {onFavoritePress && (
+              <TouchableOpacity
+                onPress={handleFavoritePress}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons
+                  name={isFavorite ? 'heart' : 'heart-outline'}
+                  size={16}
+                  color={isFavorite ? colors.accentError : colors.textTertiary}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -93,12 +131,15 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
       activeOpacity={0.7}
     >
       <View style={styles.thumbnailContainer}>
-        <Image
-          source={{ uri: videoInfo.thumbnail }}
+        <ThumbnailImage
+          uri={videoInfo.thumbnail}
+          videoId={videoInfo.id}
           style={styles.thumbnail}
-          contentFit="cover"
-          transition={200}
         />
+        {/* Platform badge overlay (top-right) */}
+        <View style={styles.platformOverlay}>
+          <PlatformBadge platform={platform} size="sm" showLabel={false} overlay />
+        </View>
         {typeof videoInfo.duration === 'number' && videoInfo.duration > 0 && (
           <View style={[styles.duration, { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
             <Text style={styles.durationText}>
@@ -137,11 +178,13 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
 
         <View style={styles.footer}>
           <View style={styles.badges}>
+            <PlatformBadge platform={platform} size="sm" showLabel />
             {showMode && analysisSummary?.mode && (
               <Badge
                 label={analysisSummary.mode}
                 variant="primary"
                 size="sm"
+                style={{ marginLeft: Spacing.xs }}
               />
             )}
             {analysisSummary?.category && (
@@ -187,6 +230,12 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: '100%',
     height: '100%',
+  },
+  platformOverlay: {
+    position: 'absolute',
+    top: Spacing.sm,
+    right: Spacing.sm,
+    zIndex: 2,
   },
   duration: {
     position: 'absolute',
@@ -252,15 +301,30 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
     padding: Spacing.sm,
   },
+  compactThumbnailWrap: {
+    position: 'relative',
+  },
   compactThumbnail: {
-    width: 120,
-    height: 68,
-    borderRadius: BorderRadius.sm,
+    width: 140,
+    height: 80,
+    borderRadius: BorderRadius.md,
+  },
+  compactPlatformOverlay: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    zIndex: 2,
   },
   compactContent: {
     flex: 1,
     marginLeft: Spacing.sm,
     justifyContent: 'center',
+  },
+  compactFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: Spacing.xs,
   },
   compactTitle: {
     fontSize: Typography.fontSize.sm,

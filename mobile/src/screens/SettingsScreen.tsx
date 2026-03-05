@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
+import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -25,6 +26,7 @@ import { fontFamily, fontSize } from '../theme/typography';
 import { ANALYSIS_MODES, AI_MODELS, LANGUAGES } from '../constants/config';
 import { userApi } from '../services/api';
 import { requestNotificationPermissions } from '../services/notifications';
+import { analytics } from '../services/analytics';
 
 interface SettingItemData {
   key: string;
@@ -126,6 +128,7 @@ export const SettingsScreen: React.FC = () => {
   const [notifyAnalysis, setNotifyAnalysis] = useState(true);
   const [notifyFactCheck, setNotifyFactCheck] = useState(true);
   const [notifyCredits, setNotifyCredits] = useState(true);
+  const [analyticsEnabled, setAnalyticsEnabled] = useState(true);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -150,6 +153,10 @@ export const SettingsScreen: React.FC = () => {
         if (savedNotifyAnalysis !== null) setNotifyAnalysis(savedNotifyAnalysis === 'true');
         if (savedNotifyFactCheck !== null) setNotifyFactCheck(savedNotifyFactCheck === 'true');
         if (savedNotifyCredits !== null) setNotifyCredits(savedNotifyCredits === 'true');
+
+        // Analytics opt-out (RGPD)
+        const analyticsOptedOut = await analytics.isOptedOut();
+        setAnalyticsEnabled(!analyticsOptedOut);
       } catch (error) {
         if (__DEV__) { console.error('Failed to load settings:', error); }
       }
@@ -241,8 +248,25 @@ export const SettingsScreen: React.FC = () => {
       {
         text: t.settings.clear || 'Clear',
         style: 'destructive',
-        onPress: () => {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onPress: async () => {
+          try {
+            // Get all AsyncStorage keys and remove cache-related ones
+            const allKeys = await AsyncStorage.getAllKeys();
+            const cacheKeys = allKeys.filter(
+              (key) =>
+                key.startsWith('@deepsight_cache') ||
+                key.startsWith('@deepsight_offline') ||
+                key.includes('history_cache') ||
+                key.includes('_cache_')
+            );
+            if (cacheKeys.length > 0) {
+              await AsyncStorage.multiRemove(cacheKeys);
+            }
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          } catch (error) {
+            if (__DEV__) { console.error('Failed to clear cache:', error); }
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+          }
         },
       },
     ]);
@@ -287,13 +311,14 @@ export const SettingsScreen: React.FC = () => {
     {
       title: t.settings.dataStorage || 'Data & Storage',
       data: [
+        { key: 'analytics', icon: 'analytics-outline', label: (t.settings as any).analyticsTracking || 'Usage analytics', subtitle: (t.settings as any).analyticsDesc || 'Help improve DeepSight', type: 'toggle', toggleValue: analyticsEnabled, onToggle: async (v: boolean) => { setAnalyticsEnabled(v); if (v) { await analytics.optIn(); } else { await analytics.optOut(); } } },
         { key: 'cache', icon: 'trash-outline', label: t.settings.clearCache, type: 'navigate', onPress: handleClearCache, destructive: true },
       ],
     },
     {
       title: t.settings.about,
       data: [
-        { key: 'version', icon: 'information-circle-outline', label: t.settings.version, value: '1.0.0', type: 'info' },
+        { key: 'version', icon: 'information-circle-outline', label: t.settings.version, value: Constants.expoConfig?.version || '1.0.0', type: 'info' },
       ],
     },
   ];
@@ -311,25 +336,22 @@ export const SettingsScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
         stickySectionHeadersEnabled={false}
         renderSectionHeader={({ section }) => (
-          <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
-            {section.title}
-          </Text>
-        )}
-        renderItem={({ item, index, section }) => (
-          <View style={index === 0 ? [styles.cardWrapper, { backgroundColor: colors.bgCard, borderColor: colors.border }] : undefined}>
-            {index === 0 && (
-              <View style={[styles.sectionCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
-                {section.data.map((sItem, sIndex) => (
-                  <SettingItem
-                    key={sItem.key}
-                    item={sItem}
-                    isLast={sIndex === section.data.length - 1}
-                  />
-                ))}
-              </View>
-            )}
+          <View>
+            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>
+              {section.title}
+            </Text>
+            <View style={[styles.sectionCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
+              {section.data.map((sItem, sIndex) => (
+                <SettingItem
+                  key={sItem.key}
+                  item={sItem}
+                  isLast={sIndex === section.data.length - 1}
+                />
+              ))}
+            </View>
           </View>
         )}
+        renderItem={() => null}
       />
     </View>
   );

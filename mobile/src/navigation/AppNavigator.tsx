@@ -16,6 +16,7 @@ import {
   LinkType,
 } from '../services/DeepLinking';
 import type { ParsedLink } from '../services/DeepLinking';
+import { useShareIntent } from '../hooks/useShareIntent';
 import {
   addNotificationReceivedListener,
   addNotificationResponseListener,
@@ -110,7 +111,7 @@ const MainStack: React.FC = () => {
       />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="Account" component={AccountScreen} />
-      <Stack.Screen name="Upgrade" component={UpgradeScreen} />
+      <Stack.Screen name="UpgradeModal" component={UpgradeScreen} />
       <Stack.Screen name="Usage" component={UsageScreen} />
       <Stack.Screen
         name="PaymentSuccess"
@@ -166,7 +167,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Analysis: 'analysis/:videoId',
       Settings: 'settings',
       Account: 'account',
-      Upgrade: 'upgrade',
+      UpgradeModal: 'upgrade',
       Usage: 'usage',
       PaymentSuccess: 'payment/success',
       PaymentCancel: 'payment/cancel',
@@ -183,11 +184,14 @@ const AUTH_REQUIRED_ROUTES = new Set([
   'Analysis', 'Settings', 'Account', 'Usage', 'StudyTools', 'PlaylistDetail',
 ]);
 
-// Handles incoming deep links with auth redirect
+// Handles incoming deep links, share intents, and push notifications
 const DeepLinkHandler: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { isAuthenticated } = useAuth();
   const pendingLink = useRef<ParsedLink | null>(null);
+
+  // 🔗 Handle share intents (TikTok/YouTube → DeepSight via Share button)
+  useShareIntent(navigation as any, isAuthenticated);
 
   const navigateToLink = useCallback(
     (parsed: ParsedLink) => {
@@ -254,7 +258,7 @@ const DeepLinkHandler: React.FC = () => {
       } else if (screen === 'Dashboard') {
         navigation.navigate('MainTabs' as any);
       } else if (screen === 'Upgrade') {
-        navigation.navigate('Upgrade' as any);
+        navigation.navigate('MainTabs', { screen: 'Upgrade' } as any);
       }
 
       clearBadge();

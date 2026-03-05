@@ -41,14 +41,17 @@ export function markdownToFullHtml(escaped: string): string {
       continue;
     }
 
-    // Headings
+    // Headings — with auto-emoji
     const headingMatch = line.match(/^(#{1,4})\s+(.+)$/);
     if (headingMatch) {
       if (inList) { htmlLines.push('</ul>'); inList = false; }
       if (inOrderedList) { htmlLines.push('</ol>'); inOrderedList = false; }
       const level = headingMatch[1].length;
-      const text = inlineFormat(headingMatch[2]);
-      htmlLines.push(`<h${level} class="ds-md-h${level}">${text}</h${level}>`);
+      const rawText = headingMatch[2];
+      const emoji = level <= 2 ? getHeaderEmoji(rawText) : '';
+      const text = inlineFormat(rawText);
+      const emojiPrefix = emoji ? `${emoji}&nbsp;&nbsp;` : '';
+      htmlLines.push(`<h${level} class="ds-md-h${level}">${emojiPrefix}${text}</h${level}>`);
       continue;
     }
 
@@ -99,7 +102,38 @@ export function markdownToFullHtml(escaped: string): string {
   return htmlLines.join('\n');
 }
 
-/** Inline formatting: bold, italic, inline code, links */
+// ── Section emojis (auto-detected from header text) ──
+
+const SECTION_EMOJIS: Record<string, string> = {
+  'résumé': '📝', 'summary': '📝', 'synthèse': '📝',
+  'introduction': '🎬', 'contexte': '🌍', 'context': '🌍',
+  'analyse': '🔬', 'analysis': '🔬',
+  'points clés': '🎯', 'key points': '🎯',
+  'points forts': '💪', 'strengths': '💪',
+  'points faibles': '⚠️', 'weaknesses': '⚠️', 'limites': '⚠️',
+  'conclusion': '🏁',
+  'recommandations': '💡', 'recommendations': '💡',
+  'sources': '📚', 'références': '📚', 'references': '📚',
+  'fact-check': '🔍', 'vérification': '🔍',
+  'arguments': '⚖️',
+  'méthodologie': '🧪', 'methodology': '🧪',
+  'données': '📊', 'data': '📊', 'statistiques': '📊',
+  'opinion': '💬', 'avis': '💬',
+  'biais': '🎭', 'bias': '🎭',
+  'nuances': '🎨', 'perspectives': '👁️',
+  'timeline': '📅', 'chronologie': '📅',
+  'définitions': '📖', 'glossaire': '📖',
+};
+
+function getHeaderEmoji(text: string): string {
+  const lower = text.toLowerCase().trim();
+  for (const [keyword, emoji] of Object.entries(SECTION_EMOJIS)) {
+    if (lower.includes(keyword)) return emoji;
+  }
+  return '📌';
+}
+
+/** Inline formatting: bold, italic, inline code, epistemic markers */
 function inlineFormat(text: string): string {
   return text
     // Inline code
@@ -108,11 +142,11 @@ function inlineFormat(text: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
     // Italic
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // Epistemic markers highlighting
-    .replace(/\b(SOLIDE|SOLID)\b/g, '<span class="ds-marker ds-marker-solid">$1</span>')
-    .replace(/\b(PLAUSIBLE)\b/g, '<span class="ds-marker ds-marker-plausible">$1</span>')
-    .replace(/\b(INCERTAIN|UNCERTAIN)\b/g, '<span class="ds-marker ds-marker-uncertain">$1</span>')
-    .replace(/\b(A VERIFIER|TO VERIFY|QUESTIONABLE|WEAK)\b/g, '<span class="ds-marker ds-marker-weak">$1</span>');
+    // Epistemic markers — with or without brackets [SOLIDE] or SOLIDE
+    .replace(/\[?(SOLIDE|SOLID)\]?/g, '<span class="ds-marker ds-marker-solid">✅ Établi</span>')
+    .replace(/\[?(PLAUSIBLE)\]?/g, '<span class="ds-marker ds-marker-plausible">🔵 Probable</span>')
+    .replace(/\[?(INCERTAIN|UNCERTAIN)\]?/g, '<span class="ds-marker ds-marker-uncertain">🟡 Incertain</span>')
+    .replace(/\[?(A VERIFIER|À VÉRIFIER|TO VERIFY|QUESTIONABLE|WEAK)\]?/g, '<span class="ds-marker ds-marker-weak">🔴 À vérifier</span>');
 }
 
 // ── Analysis Summary Parser ──

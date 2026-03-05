@@ -461,6 +461,28 @@ class PushToken(Base):
     )
 
 
+class AnalyticsEvent(Base):
+    """📊 Analytics events from mobile/web/extension clients"""
+    __tablename__ = "analytics_events"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    event_name = Column(String(100), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    session_id = Column(String(100), nullable=False)
+    platform = Column(String(20), default="mobile")  # mobile, web, extension
+    properties = Column(Text, nullable=True)  # JSON string
+    client_ip = Column(String(45), nullable=True)
+    event_timestamp = Column(DateTime, nullable=False, default=func.now())
+    created_at = Column(DateTime, default=func.now())
+
+    __table_args__ = (
+        Index('idx_analytics_event_name', 'event_name'),
+        Index('idx_analytics_user_id', 'user_id'),
+        Index('idx_analytics_timestamp', 'event_timestamp'),
+        Index('idx_analytics_platform', 'platform'),
+    )
+
+
 class AcademicPaper(Base):
     """
     📚 Academic papers linked to video analyses

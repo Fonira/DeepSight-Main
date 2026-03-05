@@ -5,12 +5,13 @@
 
 import React, { useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Image } from 'expo-image';
+import { ThumbnailImage } from '../ui/ThumbnailImage';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
+import { PlatformBadge, detectPlatformFromUrl } from '../ui/PlatformBadge';
 import { sp, borderRadius } from '../../theme/spacing';
 import { fontFamily, fontSize } from '../../theme/typography';
 import type { AnalysisSummary } from '../../types';
@@ -21,6 +22,8 @@ interface VideoStudyCardProps {
   progress?: StudyProgress;
   onFlashcards: () => void;
   onQuiz: () => void;
+  onAnalysis?: () => void;   // Ouvre l'analyse (onglet Résumé)
+  onChatIA?: () => void;     // Ouvre l'analyse (onglet Chat)
   locked?: boolean;
   onLockedPress?: () => void;
 }
@@ -42,12 +45,13 @@ export const VideoStudyCard: React.FC<VideoStudyCardProps> = ({
   progress,
   onFlashcards,
   onQuiz,
+  onAnalysis,
+  onChatIA,
   locked = false,
   onLockedPress,
 }) => {
   const { colors } = useTheme();
   const hasProgress = progress && (progress.quizTotal > 0 || progress.flashcardsTotal > 0);
-  const thumbnail = summary.thumbnail || `https://i.ytimg.com/vi/${summary.videoId}/hqdefault.jpg`;
 
   const handlePress = useCallback((action: () => void) => {
     if (locked) {
@@ -61,15 +65,19 @@ export const VideoStudyCard: React.FC<VideoStudyCardProps> = ({
 
   return (
     <Card variant="glass" padding="none" style={styles.card}>
-      {/* Thumbnail */}
-      <View style={styles.thumbnailContainer}>
-        <Image
-          source={{ uri: thumbnail }}
+      {/* Thumbnail — pressable → ouvre l'analyse */}
+      <Pressable
+        style={styles.thumbnailContainer}
+        onPress={() => handlePress(onAnalysis ?? (() => {}))}
+        accessibilityLabel={`Voir l'analyse de ${summary.title}`}
+        accessibilityRole="button"
+      >
+        <ThumbnailImage
+          uri={summary.thumbnail}
+          videoId={summary.videoId}
           style={styles.thumbnail}
-          contentFit="cover"
-          transition={200}
         />
-        {/* Badge */}
+        {/* Score badge */}
         <View style={styles.badgeContainer}>
           {hasProgress ? (
             <Badge {...getScoreBadge(progress)} size="sm" />
@@ -77,13 +85,28 @@ export const VideoStudyCard: React.FC<VideoStudyCardProps> = ({
             <Badge label="Nouveau" variant="primary" size="sm" />
           )}
         </View>
+        {/* Platform badge (YouTube/TikTok) */}
+        <View style={styles.platformBadgeContainer}>
+          <PlatformBadge
+            platform={summary.platform || detectPlatformFromUrl(summary.video_url, summary.videoId)}
+            size="sm"
+          />
+        </View>
+        {/* Play overlay — indique que c'est cliquable */}
+        {!locked && (
+          <View style={styles.playOverlay}>
+            <View style={styles.playCircle}>
+              <Ionicons name="eye-outline" size={16} color="#fff" />
+            </View>
+          </View>
+        )}
         {/* Lock overlay */}
         {locked && (
           <View style={[styles.lockOverlay, { backgroundColor: colors.overlay }]}>
             <Ionicons name="lock-closed" size={24} color={colors.textPrimary} />
           </View>
         )}
-      </View>
+      </Pressable>
 
       {/* Content */}
       <View style={styles.content}>
@@ -116,6 +139,18 @@ export const VideoStudyCard: React.FC<VideoStudyCardProps> = ({
             Quiz
           </Text>
         </Pressable>
+
+        {/* Chat IA — ouvre l'analyse sur l'onglet Chat */}
+        <Pressable
+          style={[styles.actionBtn, styles.chatBtn]}
+          onPress={() => handlePress(onChatIA ?? (() => {}))}
+          accessibilityLabel="Chat IA"
+        >
+          <Ionicons name="chatbubble-ellipses-outline" size={16} color="#8b5cf6" />
+          <Text style={[styles.actionText, { color: '#8b5cf6' }]}>
+            Chat IA
+          </Text>
+        </Pressable>
       </View>
     </Card>
   );
@@ -132,6 +167,19 @@ const styles = StyleSheet.create({
     borderTopRightRadius: borderRadius.lg,
     overflow: 'hidden',
   },
+  playOverlay: {
+    position: 'absolute',
+    top: sp.sm,
+    left: sp.sm,
+  },
+  playCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   thumbnail: {
     width: '100%',
     height: '100%',
@@ -140,6 +188,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: sp.sm,
     right: sp.sm,
+  },
+  platformBadgeContainer: {
+    position: 'absolute',
+    bottom: sp.sm,
+    left: sp.sm,
   },
   lockOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -167,6 +220,11 @@ const styles = StyleSheet.create({
   actionText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.xs,
+  },
+  chatBtn: {
+    backgroundColor: 'rgba(139, 92, 246, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.25)',
   },
 });
 

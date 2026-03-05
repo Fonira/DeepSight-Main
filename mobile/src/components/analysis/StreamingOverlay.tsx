@@ -111,6 +111,8 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
   const [displayProgress, setDisplayProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [failedError, setFailedError] = useState<string | null>(null);
+  const failCountRef = useRef(0);
 
   const startTimeRef = useRef(Date.now());
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -179,6 +181,9 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
 
         if (completedRef.current) return;
 
+        // Successful poll — reset failure counter
+        failCountRef.current = 0;
+
         // Update real progress from backend
         if (status.progress > realProgressRef.current) {
           realProgressRef.current = status.progress;
@@ -193,12 +198,55 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
           summaryIdRef.current = status.summary_id || summaryIdRef.current;
           handleComplete();
         } else if (status.status === 'failed') {
-          store.failAnalysis(status.error || 'Analyse échouée');
-          // Don't block — let fake progress handle graceful display
+          // On ne propage PAS l'échec au store immédiatement pour éviter que
+          // [id].tsx tente de fetcher avec le task_id (≠ summary_id) et affiche une erreur.
+          // On affiche l'erreur dans l'overlay après 3 échecs consécutifs.
+          failCountRef.current += 1;
+          if (failCountRef.current >= 3) {
+            setFailedError(status.error || 'L\'analyse a échoué. Veuillez réessayer.');
+            if (pollingRef.current) clearInterval(pollingRef.current);
+            if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
+          }
         }
-      } catch {
-        // Polling error — silently retry next cycle
-        if (__DEV__) console.warn('[Polling] Status check failed');
+      } catch (error: unknown) {
+        // Log detailed error info for debugging
+        if (__DEV__) {
+          const apiErr = error as { status?: number; code?: string; message?: string };
+          console.warn(
+            '[Polling] Status check failed:',
+            JSON.stringify({
+              status: apiErr.status,
+              code: apiErr.code,
+              message: apiErr.message ?? String(error),
+              taskId,
+            })
+          );
+        }
+
+        // If 401/session expired, don't count as poll failure — token refresh will handle it
+        const apiErr = error as { status?: number; code?: string };
+        if (apiErr.status === 401 || apiErr.code === 'SESSION_EXPIRED') {
+          return; // Let RetryService/token refresh handle it
+        }
+
+        // If 404, the task doesn't exist (server restarted or wrong user)
+        if (apiErr.status === 404) {
+          failCountRef.current += 1;
+          if (failCountRef.current >= 3) {
+            setFailedError('La tâche d\'analyse n\'a pas été trouvée. Le serveur a peut-être redémarré. Veuillez relancer l\'analyse.');
+            if (pollingRef.current) clearInterval(pollingRef.current);
+            if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
+          }
+          return;
+        }
+
+        // Network/timeout errors — silently retry next cycle (transient)
+        failCountRef.current += 1;
+        if (failCountRef.current >= 10) {
+          setFailedError('Connexion au serveur perdue. Vérifiez votre connexion internet et réessayez.');
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
+        }
       }
     };
 
@@ -251,6 +299,29 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
   const pulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseAnim.value }],
   }));
+
+  // ── Écran d'erreur définitif (après 3 sondages 'failed') ──────────────────
+  if (failedError) {
+    return (
+      <View style={[styles.overlay, { backgroundColor: colors.bgPrimary }]}>
+        <Ionicons name="alert-circle-outline" size={64} color={palette.red ?? '#ef4444'} />
+        <Text style={[styles.errorTitle, { color: colors.textPrimary }]}>
+          Analyse échouée
+        </Text>
+        <Text style={[styles.errorMessage, { color: colors.textSecondary }]}>
+          {failedError}
+        </Text>
+        <Pressable
+          onPress={onCancel}
+          style={[styles.cancelButton, { borderColor: colors.border, marginTop: sp['2xl'] }]}
+          accessibilityLabel="Retour"
+          accessibilityRole="button"
+        >
+          <Text style={[styles.cancelText, { color: colors.textTertiary }]}>Retour</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <Animated.View
@@ -421,6 +492,19 @@ const styles = StyleSheet.create({
   cancelText: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.sm,
+  },
+  errorTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.xl,
+    marginTop: sp.lg,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.sm,
+    textAlign: 'center',
+    marginTop: sp.sm,
+    lineHeight: fontSize.sm * 1.5,
   },
 });
 

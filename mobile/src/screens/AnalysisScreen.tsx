@@ -27,6 +27,9 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { videoApi, chatApi, studyApi, shareApi } from '../services/api';
 import { Header, Card, Badge, Button, YouTubePlayer, useToast, StreamingProgress, FreshnessIndicator, ReliabilityScore, DeepSightSpinner } from '../components';
+import { PlatformBadge, detectPlatformFromUrl } from '../components/ui/PlatformBadge';
+import { AnimatedTabBar, ActionButton } from '../components/ui';
+import type { TabItem } from '../components/ui';
 import { FlashcardsComponent, QuizComponent } from '../components/study';
 import type { QuizQuestion } from '../components/study';
 import { FactCheckButton } from '../components/factcheck';
@@ -49,6 +52,8 @@ import { usePlan } from '../hooks/usePlan';
 import { videoApi as videoApiService } from '../services/api';
 import { Spacing, Typography, BorderRadius } from '../constants/theme';
 import { formatDuration, formatDate } from '../utils/formatters';
+import { trackAnalysisComplete } from '../utils/storeReview';
+import { analytics } from '../services/analytics';
 import type { RootStackParamList, AnalysisSummary, ChatMessage } from '../types';
 
 type AnalysisNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Analysis'>;
@@ -73,9 +78,16 @@ export const AnalysisScreen: React.FC = () => {
   const userPlan = normalizePlanId(user?.plan);
   const { limits: planLimits, usage: planUsage } = usePlan();
 
-  const { summaryId, videoUrl } = route.params || {};
+  const { summaryId, videoUrl, initialTab } = route.params || {};
 
-  const [activeTab, setActiveTab] = useState<TabType>('summary');
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab || 'summary');
+  // Ref to always have the latest activeTab value (avoids stale closures in useEffect/navigation.replace)
+  const activeTabRef = useRef<TabType>(initialTab || 'summary');
+  // Keep ref in sync with state
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState<AnalysisSummary | null>(null);
   const [concepts, setConcepts] = useState<Array<{ name: string; definition: string }>>([]);
@@ -128,6 +140,8 @@ export const AnalysisScreen: React.FC = () => {
   const [showExpandedPlayer, setShowExpandedPlayer] = useState(false);
 
   // Dynamic keyboard offset measurement
+  // Use a ref to avoid re-renders on every layout change (e.g. when toggling expanded player)
+  const tabContentOffsetRef = useRef(200);
   const [tabContentOffset, setTabContentOffset] = useState(200);
 
   // Upgrade modal state
@@ -151,6 +165,16 @@ export const AnalysisScreen: React.FC = () => {
       setSummary(summaryData);
       setAnalysisProgress(100);
       setAnalysisStep(4);
+
+      // Track pour In-App Rating (déclenche après 3+ analyses)
+      trackAnalysisComplete().catch(() => {});
+
+      // Analytics: track analysis completion
+      analytics.track('analysis_completed', {
+        platform: summaryData.platform || 'youtube',
+        mode: summaryData.mode || 'standard',
+        word_count: summaryData.word_count || 0,
+      });
 
       // Load concepts
       try {
@@ -391,7 +415,9 @@ export const AnalysisScreen: React.FC = () => {
           || (status.result?.summary_id != null ? String(status.result.summary_id) : undefined);
         if (actualSummaryId) {
           // Use replace to prevent going back to the loading screen
-          navigation.replace('Analysis', { summaryId: actualSummaryId });
+          // Use activeTabRef.current to avoid stale closure — the user may have
+          // switched tabs while the analysis was completing
+          navigation.replace('Analysis', { summaryId: actualSummaryId, initialTab: activeTabRef.current });
         }
       } catch {
         // Silent fail - normal completion path or next poll cycle will handle it
@@ -600,6 +626,12 @@ export const AnalysisScreen: React.FC = () => {
         url: shareUrl || undefined, // iOS only
         title: `DeepSight \u2014 ${summary.title}`,
       });
+
+      // Analytics: track share
+      analytics.track('share_link_created', {
+        platform: summary.platform || 'youtube',
+        has_share_url: !!shareUrl,
+      });
     } catch { /* share cancelled or failed */ }
   };
 
@@ -762,7 +794,7 @@ export const AnalysisScreen: React.FC = () => {
   }
 
   // Tabs
-  const tabs: { id: TabType; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  const tabs: TabItem[] = [
     { id: 'chat', label: t.analysis.chat, icon: 'chatbubble-outline' },
     { id: 'summary', label: t.analysis.summary, icon: 'document-text-outline' },
     { id: 'concepts', label: t.analysis.concepts, icon: 'bulb-outline' },
@@ -818,51 +850,32 @@ export const AnalysisScreen: React.FC = () => {
             channel={summary.videoInfo?.channel}
             duration={summary.videoInfo?.duration}
             thumbnail={summary.videoInfo?.thumbnail}
+            platform={summary.platform || detectPlatformFromUrl(summary.video_url, summary.videoId)}
           />
         </View>
       )}
 
-      {/* Tabs */}
+      {/* Tabs — Animated sliding indicator */}
       <View
-        style={[styles.tabsContainer, { borderBottomColor: colors.border }]}
         onLayout={(e) => {
           const { y, height } = e.nativeEvent.layout;
-          setTabContentOffset(y + height);
+          const newOffset = y + height;
+          if (Math.abs(newOffset - tabContentOffsetRef.current) > 5) {
+            tabContentOffsetRef.current = newOffset;
+            setTabContentOffset(newOffset);
+          }
         }}
       >
-        {tabs.map((tab) => (
-          <TouchableOpacity
-            key={tab.id}
-            style={[
-              styles.tab,
-              activeTab === tab.id && { borderBottomColor: colors.accentPrimary },
-            ]}
-            onPress={() => {
-              Haptics.selectionAsync();
-              // Dismiss keyboard FIRST, then switch tab after a tick
-              // This gives iOS time to resign first responder before unmounting the TextInput
-              Keyboard.dismiss();
-              // Use requestAnimationFrame to let the dismiss propagate before unmount
-              requestAnimationFrame(() => {
-                setActiveTab(tab.id);
-              });
-            }}
-          >
-            <Ionicons
-              name={tab.icon}
-              size={20}
-              color={activeTab === tab.id ? colors.accentPrimary : colors.textTertiary}
-            />
-            <Text
-              style={[
-                styles.tabLabel,
-                { color: activeTab === tab.id ? colors.accentPrimary : colors.textTertiary },
-              ]}
-            >
-              {tab.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        <AnimatedTabBar
+          tabs={tabs}
+          activeTab={activeTab}
+          onTabPress={(tabId) => {
+            Keyboard.dismiss();
+            requestAnimationFrame(() => {
+              setActiveTab(tabId as TabType);
+            });
+          }}
+        />
       </View>
 
       {/* Tab Content */}
@@ -876,6 +889,11 @@ export const AnalysisScreen: React.FC = () => {
         >
           {/* Summary badges */}
           <View style={styles.badgesRow}>
+            <PlatformBadge
+              platform={summary?.platform || detectPlatformFromUrl(summary?.video_url, summary?.videoId)}
+              size="md"
+              showLabel
+            />
             <Badge label={summary?.mode || 'Standard'} variant="primary" />
             <Badge label={summary?.category || 'Général'} variant="default" />
             {summary?.language && (
@@ -912,20 +930,11 @@ export const AnalysisScreen: React.FC = () => {
             />
           </Card>
 
-          {/* Actions */}
+          {/* Actions — Animated buttons */}
           <View style={styles.actionsRow}>
-            <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.bgElevated }]} onPress={handleCopy}>
-              <Ionicons name="copy-outline" size={20} color={colors.accentPrimary} />
-              <Text style={[styles.actionLabel, { color: colors.textSecondary }]}>{t.common.copy}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.bgElevated }]} onPress={handleShare}>
-              <Ionicons name="share-outline" size={20} color={colors.accentPrimary} />
-              <Text style={[styles.actionLabel, { color: colors.textSecondary }]}>{t.common.share}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.actionButton, { backgroundColor: colors.bgElevated }]} onPress={handleOpenVideo}>
-              <Ionicons name="play-outline" size={20} color={colors.accentPrimary} />
-              <Text style={[styles.actionLabel, { color: colors.textSecondary }]}>{t.common.video}</Text>
-            </TouchableOpacity>
+            <ActionButton icon="copy-outline" label={t.common.copy} onPress={handleCopy} />
+            <ActionButton icon="share-outline" label={t.common.share} onPress={handleShare} />
+            <ActionButton icon="play-outline" label={t.common.video} onPress={handleOpenVideo} color={colors.accentSecondary} />
           </View>
 
           {/* Analysis date */}

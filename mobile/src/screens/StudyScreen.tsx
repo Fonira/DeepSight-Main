@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { analytics } from '../services/analytics';
 import {
   View,
   Text,
@@ -111,6 +112,7 @@ export const StudyScreen: React.FC = () => {
       }
 
       setState('studying');
+      analytics.track('study_content_generated', { mode: selectedMode, summary_id: summaryId });
       refreshUser(); // Refresh credits
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err: any) {

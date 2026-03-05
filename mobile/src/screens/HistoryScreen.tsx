@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { analytics } from '../services/analytics';
 import {
   View,
   Text,
@@ -128,6 +129,15 @@ export const HistoryScreen: React.FC = () => {
 
       const response = await historyApi.getHistory(pageNum, 20, filters);
 
+      // DEBUG — supprimer après validation badges
+      if (__DEV__) {
+        console.log(`[HistoryScreen] Loaded ${response.items.length} items, hasMore=${response.hasMore}`);
+        if (response.items.length > 0) {
+          const first = response.items[0];
+          console.log(`[HistoryScreen] First item: id=${first.id}, platform=${first.platform}, video_url=${first.video_url?.slice(0, 40)}, title=${first.title?.slice(0, 30)}`);
+        }
+      }
+
       if (reset || pageNum === 1) {
         setAnalyses(response.items);
         try {
@@ -197,6 +207,7 @@ export const HistoryScreen: React.FC = () => {
           item.id === summary.id ? { ...item, isFavorite } : item
         )
       );
+      analytics.track('favorite_toggled', { summary_id: summary.id, is_favorite: isFavorite });
     } catch (error) {
       if (__DEV__) { console.error('Failed to toggle favorite:', error); }
     }
@@ -216,6 +227,7 @@ export const HistoryScreen: React.FC = () => {
             try {
               await historyApi.deleteSummary(summary.id);
               setAnalyses((prev) => prev.filter((item) => item.id !== summary.id));
+              analytics.track('analysis_deleted', { summary_id: summary.id });
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } catch (error) {
               if (__DEV__) { console.error('Failed to delete summary:', error); }
@@ -303,7 +315,7 @@ export const HistoryScreen: React.FC = () => {
         />
       </View>
     ),
-    [viewMode]
+    [viewMode, handleVideoPress, handleFavoritePress, handleDeletePress]
   );
 
   const renderFooter = () => {

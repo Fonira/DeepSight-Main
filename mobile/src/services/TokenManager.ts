@@ -358,10 +358,4 @@ class TokenManager {
 // Export singleton instance
 export const tokenManager = new TokenManager();
 
-// Helper hook for session expiry handling
-export function useSessionExpiry(onExpired: () => void): void {
-  // This should be called in a useEffect
-  // The caller is responsible for managing the subscription
-}
-
 export default tokenManager;

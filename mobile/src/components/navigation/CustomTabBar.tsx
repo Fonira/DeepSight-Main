@@ -1,229 +1,201 @@
-/**
- * CustomTabBar - Premium animated tab bar
- * Features: animated indicator, spring animations, haptic feedback, blur background
- */
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable, Platform, LayoutChangeEvent } from 'react-native';
+import React, { useMemo } from 'react';
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  useWindowDimensions,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
-  interpolateColor,
 } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { useTheme } from '../../contexts/ThemeContext';
-import { sp, borderRadius } from '../../theme/spacing';
-import { fontFamily, fontSize } from '../../theme/typography';
-import { springs } from '../../theme/animations';
+import { Ionicons } from '@expo/vector-icons';
+import { darkColors, palette } from '@/theme/colors';
+import { sp } from '@/theme/spacing';
 
-interface TabConfig {
-  icon: keyof typeof Ionicons.glyphMap;
-  iconFocused: keyof typeof Ionicons.glyphMap;
-  label: string;
+interface TabBarIconProps {
+  name: keyof typeof Ionicons.glyphMap;
+  isFocused: boolean;
+  color: string;
 }
 
-const TAB_CONFIG: Record<string, TabConfig> = {
-  Dashboard: { icon: 'home-outline', iconFocused: 'home', label: 'Accueil' },
-  History: { icon: 'time-outline', iconFocused: 'time', label: 'Historique' },
-  Upgrade: { icon: 'diamond-outline', iconFocused: 'diamond', label: 'Plans' },
-  Profile: { icon: 'person-outline', iconFocused: 'person', label: 'Profil' },
-};
-
-const AnimatedIcon: React.FC<{
-  focused: boolean;
-  icon: keyof typeof Ionicons.glyphMap;
-  iconFocused: keyof typeof Ionicons.glyphMap;
-  color: string;
-}> = ({ focused, icon, iconFocused, color }) => {
-  const scale = useSharedValue(focused ? 1 : 0.9);
-
-  useEffect(() => {
-    scale.value = withSpring(focused ? 1.05 : 0.9, springs.scale);
-  }, [focused, scale]);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
+function TabBarIcon({ name, isFocused, color }: TabBarIconProps) {
   return (
-    <Animated.View style={animStyle}>
-      <Ionicons name={focused ? iconFocused : icon} size={20} color={color} />
-    </Animated.View>
+    <Ionicons
+      name={name}
+      size={24}
+      color={color}
+      style={{ opacity: isFocused ? 1 : 0.6 }}
+    />
   );
+}
+
+// Seules les routes avec une icône sont affichées dans la tab bar
+const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  index: 'home',
+  library: 'book',
+  study: 'school',
+  profile: 'settings-outline',
+  subscription: 'sparkles-outline',
 };
 
-export const CustomTabBar: React.FC<BottomTabBarProps> = ({
+interface CustomTabBarProps {
+  state: any;
+  descriptors: any;
+  navigation: any;
+}
+
+export function CustomTabBar({
   state,
   descriptors,
   navigation,
-}) => {
-  const { colors, isDark } = useTheme();
+}: CustomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
 
-  // Animated indicator position
-  const tabWidth = useSharedValue(0);
-  const indicatorX = useSharedValue(0);
-  const tabCount = state.routes.length;
+  // Filtrer : on n'affiche que les 4 routes principales
+  const visibleRoutes = useMemo(
+    () => state.routes.filter((route: any) => route.name in TAB_ICONS),
+    [state.routes],
+  );
 
-  useEffect(() => {
-    if (tabWidth.value > 0) {
-      indicatorX.value = withSpring(
-        state.index * (tabWidth.value / tabCount),
-        springs.slide,
-      );
-    }
-  }, [state.index, tabWidth, tabCount, indicatorX]);
+  const tabWidth = width / visibleRoutes.length;
 
-  const indicatorStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: indicatorX.value }],
-    width: tabWidth.value / tabCount,
+  // Index actif parmi les routes visibles uniquement
+  const activeVisibleIndex = useMemo(() => {
+    const activeRoute = state.routes[state.index];
+    return visibleRoutes.findIndex((r: any) => r.key === activeRoute?.key);
+  }, [state.index, state.routes, visibleRoutes]);
+
+  const indicatorPosition = useSharedValue(
+    Math.max(0, activeVisibleIndex) * tabWidth,
+  );
+
+  const indicatorAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: indicatorPosition.value }],
   }));
 
-  const handleLayout = (event: LayoutChangeEvent) => {
-    tabWidth.value = event.nativeEvent.layout.width;
-    indicatorX.value = state.index * (event.nativeEvent.layout.width / tabCount);
+  const handleTabPress = (visibleIndex: number, routeName: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const event = navigation.emit({
+      type: 'tabPress',
+      target: routeName,
+      canPreventDefault: true,
+    });
+
+    if (!event.defaultPrevented) {
+      navigation.navigate(routeName);
+    }
+
+    indicatorPosition.value = withSpring(visibleIndex * tabWidth, {
+      damping: 12,
+      mass: 1,
+      overshootClamping: false,
+    });
   };
 
-  const bottomPadding = insets.bottom > 0 ? insets.bottom : sp.sm;
+  // Sync indicator quand l'onglet actif change (ex: navigation programmatique)
+  React.useEffect(() => {
+    if (activeVisibleIndex >= 0) {
+      indicatorPosition.value = withSpring(activeVisibleIndex * tabWidth, {
+        damping: 12,
+        mass: 1,
+      });
+    }
+  }, [activeVisibleIndex, tabWidth, indicatorPosition]);
 
-  const tabBarContent = (
+  return (
     <View
       style={[
         styles.container,
-        {
-          paddingBottom: bottomPadding,
-          borderTopColor: colors.border,
-        },
+        { paddingBottom: Math.max(insets.bottom, sp.sm) },
       ]}
-      onLayout={handleLayout}
     >
-      {/* Animated indicator */}
-      <Animated.View
-        style={[
-          styles.indicator,
-          indicatorStyle,
-          { backgroundColor: colors.accentPrimary },
-        ]}
-      />
-
-      {state.routes.map((route, index) => {
-        const isFocused = state.index === index;
-        const config = TAB_CONFIG[route.name] || {
-          icon: 'help-outline' as const,
-          iconFocused: 'help' as const,
-          label: route.name,
-        };
-
-        return (
-          <Pressable
-            key={route.key}
-            onPress={() => {
-              Haptics.selectionAsync();
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-
-              if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(route.name);
-              }
-            }}
-            onLongPress={() => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              navigation.emit({
-                type: 'tabLongPress',
-                target: route.key,
-              });
-            }}
-            style={styles.tab}
-            accessibilityRole="button"
-            accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={config.label}
-          >
-            <AnimatedIcon
-              focused={isFocused}
-              icon={config.icon}
-              iconFocused={config.iconFocused}
-              color={isFocused ? colors.accentPrimary : colors.textMuted}
-            />
-            <Text
+      <BlurView intensity={85} style={styles.blurContainer}>
+        <View style={styles.tabBarContent}>
+          {/* Animated Indicator */}
+          {activeVisibleIndex >= 0 && (
+            <Animated.View
               style={[
-                styles.label,
-                {
-                  color: isFocused ? colors.accentPrimary : colors.textMuted,
-                  fontFamily: isFocused ? fontFamily.bodySemiBold : fontFamily.body,
-                },
+                styles.indicator,
+                { width: tabWidth },
+                indicatorAnimatedStyle,
               ]}
-              numberOfLines={1}
             >
-              {config.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+              <View style={styles.indicatorInner} />
+            </Animated.View>
+          )}
+
+          {/* Tab Items — seulement les routes visibles */}
+          {visibleRoutes.map((route: any, index: number) => {
+            const isFocused = activeVisibleIndex === index;
+            const iconName = TAB_ICONS[route.name];
+
+            return (
+              <TouchableOpacity
+                key={route.key}
+                activeOpacity={1}
+                style={[styles.tab, { width: tabWidth }]}
+                onPress={() => handleTabPress(index, route.name)}
+              >
+                <TabBarIcon
+                  name={iconName}
+                  isFocused={isFocused}
+                  color={
+                    isFocused
+                      ? palette.indigo
+                      : 'rgba(255, 255, 255, 0.4)'
+                  }
+                />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </BlurView>
     </View>
   );
-
-  // iOS gets blur background
-  if (Platform.OS === 'ios') {
-    return (
-      <View style={styles.wrapper}>
-        <BlurView
-          intensity={isDark ? 50 : 80}
-          tint={isDark ? 'dark' : 'light'}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(10,10,15,0.7)' : 'rgba(255,255,255,0.8)' }]} />
-        {tabBarContent}
-      </View>
-    );
-  }
-
-  // Android gets solid background
-  return (
-    <View style={[styles.wrapper, { backgroundColor: isDark ? colors.bgSecondary : colors.bgPrimary }]}>
-      {tabBarContent}
-    </View>
-  );
-};
+}
 
 const styles = StyleSheet.create({
-  wrapper: {
+  container: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
+    backgroundColor: darkColors.bgPrimary,
+    borderTopWidth: 1,
+    borderTopColor: darkColors.border,
   },
-  container: {
+  blurContainer: {
+    overflow: 'hidden',
+    backgroundColor: darkColors.bgPrimary,
+  },
+  tabBarContent: {
     flexDirection: 'row',
-    paddingTop: sp.sm,
     position: 'relative',
+    height: 60,
   },
   indicator: {
     position: 'absolute',
     top: 0,
-    height: 3,
-    borderBottomLeftRadius: 3,
-    borderBottomRightRadius: 3,
+    left: 0,
+    height: 4,
+    backgroundColor: palette.indigo,
+  },
+  indicatorInner: {
+    flex: 1,
+    backgroundColor: palette.indigo,
+    borderBottomLeftRadius: 2,
+    borderBottomRightRadius: 2,
   },
   tab: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: sp.sm,
-    gap: 2,
-  },
-  label: {
-    fontSize: fontSize['2xs'],
-    textAlign: 'center',
+    alignItems: 'center',
   },
 });
-
-export default CustomTabBar;

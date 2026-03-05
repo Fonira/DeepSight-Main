@@ -13,8 +13,9 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import BottomSheet from '@gorhom/bottom-sheet';
+import type { SimpleBottomSheetRef } from '@/components/ui/SimpleBottomSheet';
 import { router } from 'expo-router';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuthStore } from '@/stores/authStore';
@@ -31,6 +32,10 @@ import { sp, borderRadius } from '@/theme/spacing';
 import { palette } from '@/theme/colors';
 import { DoodleBackground } from '@/components/ui/DoodleBackground';
 
+// Platform logos HD
+const YOUTUBE_ICON = require('@/assets/platforms/youtube-icon-red.png');
+const TIKTOK_NOTE = require('@/assets/platforms/tiktok-note-white.png');
+
 type InputMode = 'search' | 'url';
 
 const TABS: { key: InputMode; label: string; icon: string }[] = [
@@ -42,7 +47,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const user = useAuthStore((s) => s.user);
-  const optionsRef = useRef<BottomSheet>(null);
+  const optionsRef = useRef<SimpleBottomSheetRef>(null);
 
   const [mode, setMode] = useState<InputMode>('search');
   const [recents, setRecents] = useState<AnalysisSummary[]>([]);
@@ -135,6 +140,36 @@ export default function HomeScreen() {
               size="md"
             />
           </Pressable>
+        </View>
+
+        {/* Platform Logos Banner */}
+        <View style={styles.platformBanner}>
+          <Text style={[styles.platformSubtitle, { color: colors.textTertiary }]}>
+            Analysez vos vidéos
+          </Text>
+          <View style={styles.platformLogos}>
+            <View style={styles.platformLogoItem}>
+              <Image
+                source={YOUTUBE_ICON}
+                style={styles.platformLogoYt}
+                contentFit="contain"
+              />
+              <Text style={[styles.platformLogoLabel, { color: colors.textSecondary }]}>
+                YouTube
+              </Text>
+            </View>
+            <View style={[styles.platformDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.platformLogoItem}>
+              <Image
+                source={TIKTOK_NOTE}
+                style={styles.platformLogoTt}
+                contentFit="contain"
+              />
+              <Text style={[styles.platformLogoLabel, { color: colors.textSecondary }]}>
+                TikTok
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Mode Tabs */}
@@ -267,5 +302,43 @@ const styles = StyleSheet.create({
   },
   sectionSpacing: {
     marginTop: sp.xl,
+  },
+  platformBanner: {
+    alignItems: 'center',
+    marginBottom: sp.lg,
+    gap: sp.sm,
+  },
+  platformSubtitle: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: fontSize.sm,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  platformLogos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sp.lg,
+  },
+  platformLogoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sp.sm,
+  },
+  platformLogoYt: {
+    width: 28,
+    height: 20,
+  },
+  platformLogoTt: {
+    width: 18,
+    height: 20,
+  },
+  platformLogoLabel: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.base,
+  },
+  platformDivider: {
+    width: 1,
+    height: 20,
+    opacity: 0.3,
   },
 });

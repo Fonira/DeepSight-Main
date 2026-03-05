@@ -1,11 +1,10 @@
-import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { SimpleBottomSheet, type SimpleBottomSheetRef } from '@/components/ui/SimpleBottomSheet';
 import { storage } from '@/utils/storage';
 import { STORAGE_KEYS } from '@/constants/config';
 import { sp, borderRadius } from '@/theme/spacing';
@@ -28,7 +27,7 @@ export const PreferencesSection: React.FC = () => {
   const [language, setLanguage] = useState('fr');
   const [activeSheet, setActiveSheet] = useState<'theme' | 'language' | null>(null);
 
-  const sheetRef = useRef<BottomSheet>(null);
+  const sheetRef = useRef<SimpleBottomSheetRef>(null);
 
   // Charger la langue depuis AsyncStorage
   useEffect(() => {
@@ -36,20 +35,6 @@ export const PreferencesSection: React.FC = () => {
       if (saved) setLanguage(saved);
     });
   }, []);
-
-  const snapPoints = useMemo(() => ['35%'], []);
-
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        disappearsOnIndex={-1}
-        appearsOnIndex={0}
-        opacity={0.5}
-      />
-    ),
-    [],
-  );
 
   const openSheet = (type: 'theme' | 'language') => {
     setActiveSheet(type);
@@ -102,16 +87,13 @@ export const PreferencesSection: React.FC = () => {
         {renderRow('Langue', languageLabel, () => openSheet('language'))}
       </GlassCard>
 
-      <BottomSheet
+      <SimpleBottomSheet
         ref={sheetRef}
-        index={-1}
-        snapPoints={snapPoints}
-        enablePanDownToClose
-        backdropComponent={renderBackdrop}
+        snapPoint="35%"
         backgroundStyle={{ backgroundColor: colors.bgSecondary }}
         handleIndicatorStyle={{ backgroundColor: colors.textMuted }}
       >
-        <BottomSheetView style={styles.sheetContent}>
+        <View style={styles.sheetContent}>
           <Text style={[styles.sheetTitle, { color: colors.textPrimary }]}>
             {activeSheet === 'theme' ? 'Thème' : 'Langue'}
           </Text>
@@ -163,8 +145,8 @@ export const PreferencesSection: React.FC = () => {
                 )}
               </Pressable>
             ))}
-        </BottomSheetView>
-      </BottomSheet>
+        </View>
+      </SimpleBottomSheet>
     </>
   );
 };
