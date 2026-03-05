@@ -2,6 +2,7 @@ import React, { useCallback, useRef } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -38,7 +39,7 @@ const slides: SlideData[] = [
   {
     icon: 'link-outline',
     iconColor: palette.blue,
-    title: 'Colle un lien YouTube',
+    title: 'Colle un lien YouTube ou TikTok',
     description: 'Copie-colle simplement le lien de ta vidéo et laisse DeepSight faire le reste.',
   },
   {
@@ -95,7 +96,7 @@ function SlideItem({ data, index, activeIndex }: { data: SlideData; index: numbe
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const activeIndex = useSharedValue(0);
   const pagerRef = useRef<PagerView>(null);
 
@@ -125,6 +126,32 @@ export default function WelcomeScreen() {
         <Text style={[styles.tagline, { color: colors.textTertiary }]}>
           Analyse vidéo par IA
         </Text>
+        {/* Platform logos */}
+        <View style={styles.platformRow}>
+          <Image
+            source={isDark
+              ? require('@/assets/platforms/youtube-logo-white.png')
+              : require('@/assets/platforms/youtube-logo-dark.png')
+            }
+            style={styles.platformYt}
+            resizeMode="contain"
+          />
+          <View style={[styles.platformSep, { backgroundColor: colors.border }]} />
+          <Image
+            source={isDark
+              ? require('@/assets/platforms/tiktok-logo-white.png')
+              : require('@/assets/platforms/tiktok-logo-black.png')
+            }
+            style={styles.platformTk}
+            resizeMode="contain"
+          />
+          <View style={[styles.platformSep, { backgroundColor: colors.border }]} />
+          <Image
+            source={require('@/assets/platforms/mistral-logo-white.png')}
+            style={[styles.platformMistral, !isDark && { tintColor: '#1a1a2e' }]}
+            resizeMode="contain"
+          />
+        </View>
       </View>
 
       {/* Pager */}
@@ -187,6 +214,31 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
     letterSpacing: 0.5,
+  },
+  platformRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: sp.lg,
+    marginTop: sp.xl,
+    opacity: 0.9,
+  },
+  platformYt: {
+    height: 30,
+    width: 130,
+  },
+  platformTk: {
+    height: 30,
+    width: 115,
+  },
+  platformMistral: {
+    height: 24,
+    width: 100,
+  },
+  platformSep: {
+    width: 1,
+    height: 20,
+    opacity: 0.3,
   },
   pager: {
     flex: 1,

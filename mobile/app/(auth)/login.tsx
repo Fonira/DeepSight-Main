@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   SafeAreaView,
   ScrollView,
@@ -35,7 +36,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { login: contextLogin, loginWithGoogleToken } = useAuth();
 
   const [email, setEmail] = useState('');
@@ -147,8 +148,35 @@ export default function LoginScreen() {
           {/* Header */}
           <Text style={[styles.title, { color: colors.textPrimary }]}>Connexion</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            Connectez-vous à votre compte DeepSight
+            Analysez vos vidéos YouTube & TikTok en profondeur
           </Text>
+
+          {/* Platform logos */}
+          <View style={styles.platformLogos}>
+            <Image
+              source={isDark
+                ? require('@/assets/platforms/youtube-logo-white.png')
+                : require('@/assets/platforms/youtube-logo-dark.png')
+              }
+              style={styles.platformLogoYt}
+              resizeMode="contain"
+            />
+            <View style={[styles.platformDivider, { backgroundColor: colors.border }]} />
+            <Image
+              source={isDark
+                ? require('@/assets/platforms/tiktok-logo-white.png')
+                : require('@/assets/platforms/tiktok-logo-black.png')
+              }
+              style={styles.platformLogoTk}
+              resizeMode="contain"
+            />
+            <View style={[styles.platformDivider, { backgroundColor: colors.border }]} />
+            <Image
+              source={require('@/assets/platforms/mistral-logo-white.png')}
+              style={[styles.platformLogoMistral, !isDark && { tintColor: '#1a1a2e' }]}
+              resizeMode="contain"
+            />
+          </View>
 
           {/* Form */}
           <View style={styles.form}>
@@ -263,6 +291,31 @@ const styles = StyleSheet.create({
   subtitle: {
     ...textStyles.bodyMd,
     marginBottom: sp['3xl'],
+  },
+  platformLogos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: sp.lg,
+    marginBottom: sp['3xl'],
+    opacity: 0.9,
+  },
+  platformLogoYt: {
+    height: 28,
+    width: 120,
+  },
+  platformLogoTk: {
+    height: 28,
+    width: 105,
+  },
+  platformLogoMistral: {
+    height: 22,
+    width: 95,
+  },
+  platformDivider: {
+    width: 1,
+    height: 20,
+    opacity: 0.3,
   },
   form: {
     gap: 0,
