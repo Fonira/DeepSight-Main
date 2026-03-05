@@ -166,7 +166,7 @@ export const Login: React.FC = () => {
     <div className="min-h-screen bg-bg-primary flex">
       <SEO
         title="Connexion"
-        description="Connectez-vous à Deep Sight pour analyser vos vidéos YouTube avec l'IA."
+        description="Connectez-vous à Deep Sight pour analyser vos vidéos YouTube et TikTok avec l'IA."
         path="/login"
       />
       {/* Left Panel — Branding (desktop) */}

@@ -10,7 +10,7 @@ interface SEOProps {
 
 const SITE_NAME = 'Deep Sight';
 const BASE_URL = 'https://www.deepsightsynthesis.com';
-const DEFAULT_DESCRIPTION = 'Analysez et synthétisez vos vidéos YouTube avec l\'IA. Résumés intelligents, points clés, timestamps, et chat interactif.';
+const DEFAULT_DESCRIPTION = 'Analysez et synthétisez vos vidéos YouTube et TikTok avec l\'IA. Résumés intelligents, points clés, timestamps, et chat interactif.';
 const DEFAULT_IMAGE = `${BASE_URL}/og-image.png`;
 
 export const SEO = ({

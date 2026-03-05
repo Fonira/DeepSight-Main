@@ -61,8 +61,8 @@ const MainTabs: React.FC = () => {
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="History" component={HistoryScreen} />
-      <Tab.Screen name="Upgrade" component={UpgradeScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Upgrade" component={UpgradeScreen} />
     </Tab.Navigator>
   );
 };

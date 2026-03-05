@@ -1246,8 +1246,8 @@ export const History: React.FC = () => {
                     </h2>
                     <p className="text-xs text-text-tertiary">
                       {language === 'fr'
-                        ? 'Analyses de vidéos YouTube uniques • Synthèses avec timestamps'
-                        : 'Single YouTube video analyses • Summaries with timestamps'}
+                        ? 'Analyses de vidéos YouTube & TikTok • Synthèses avec timestamps'
+                        : 'YouTube & TikTok video analyses • Summaries with timestamps'}
                     </p>
                   </div>
                 </div>
@@ -1261,7 +1261,7 @@ export const History: React.FC = () => {
                     {language === 'fr' ? 'Aucune vidéo analysée' : 'No videos analyzed'}
                   </h3>
                   <p className="text-text-secondary text-sm mb-4">
-                    {language === 'fr' ? 'Analysez votre première vidéo YouTube !' : 'Analyze your first YouTube video!'}
+                    {language === 'fr' ? 'Analysez votre première vidéo YouTube ou TikTok !' : 'Analyze your first YouTube or TikTok video!'}
                   </p>
                   <button onClick={() => navigate('/dashboard')} className="btn bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:opacity-90">
                     <Video className="w-4 h-4 mr-2" />

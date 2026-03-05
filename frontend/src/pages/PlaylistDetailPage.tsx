@@ -1159,7 +1159,7 @@ export const PlaylistDetailPage: React.FC = () => {
                 <div className="card p-6">
                   <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
                     <Hash className="w-5 h-5 text-cyan-400" />
-                    {language === 'fr' ? 'Chaînes YouTube' : 'YouTube Channels'}
+                    {language === 'fr' ? 'Chaînes YouTube / TikTok' : 'YouTube / TikTok Channels'}
                   </h3>
                   <div className="space-y-2">
                     {Object.entries(details.channels).sort((a, b) => b[1] - a[1]).map(([channel, count]) => (

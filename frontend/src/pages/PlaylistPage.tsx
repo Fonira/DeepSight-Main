@@ -461,8 +461,8 @@ export const PlaylistPage: React.FC = () => {
             </div>
             <p className="text-text-secondary">
               {language === 'fr'
-                ? 'Playlist YouTube ou recherche intelligente de vidéos'
-                : 'YouTube playlist or intelligent video search'}
+                ? 'Playlist YouTube / TikTok ou recherche intelligente de vidéos'
+                : 'YouTube / TikTok playlist or intelligent video search'}
             </p>
           </div>
 

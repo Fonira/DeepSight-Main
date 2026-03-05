@@ -26,7 +26,7 @@ interface FaqItem {
 
 const FAQ_ITEMS: FaqItem[] = [
   {
-    question: "Comment fonctionne l'analyse de vidéos YouTube ?",
+    question: "Comment fonctionne l'analyse de vidéos YouTube et TikTok ?",
     answer: "DeepSight utilise l'intelligence artificielle pour extraire la transcription de la vidéo, puis génère un résumé structuré avec des marqueurs épistémiques (Solide, Plausible, Incertain, À Vérifier). L'analyse inclut les concepts clés, un fact-checking et un chat contextuel pour poser des questions.",
     icon: Zap,
   },

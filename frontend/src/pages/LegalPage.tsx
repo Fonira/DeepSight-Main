@@ -236,7 +236,7 @@ const CGU: React.FC = () => (
           accessible à l'adresse <a href={LEGAL_INFO.website.url} className="text-amber-400 hover:underline">{LEGAL_INFO.website.url}</a>.
         </p>
         <p>
-          {LEGAL_INFO.website.name} est un service d'analyse de vidéos YouTube utilisant l'intelligence artificielle 
+          {LEGAL_INFO.website.name} est un service d'analyse de vidéos YouTube et TikTok utilisant l'intelligence artificielle 
           pour générer des synthèses, extraire des informations clés et permettre des interactions conversationnelles 
           avec le contenu analysé.
         </p>

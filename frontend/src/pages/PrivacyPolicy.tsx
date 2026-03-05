@@ -93,7 +93,7 @@ const PrivacyPolicy: React.FC = () => {
             <ul className="list-disc pl-6 space-y-1.5">
               <li><strong className="text-white">Donnees d'inscription</strong> : adresse email, nom (optionnel), mot de passe (hashe)</li>
               <li><strong className="text-white">Donnees d'authentification Google</strong> : email, nom, photo de profil (via OAuth 2.0)</li>
-              <li><strong className="text-white">Donnees d'utilisation</strong> : URLs YouTube analysees, historique d'analyses, messages de chat</li>
+              <li><strong className="text-white">Donnees d'utilisation</strong> : URLs YouTube et TikTok analysees, historique d'analyses, messages de chat</li>
               <li><strong className="text-white">Donnees de paiement</strong> : gerees exclusivement par Stripe Inc. (nous ne stockons pas vos informations bancaires)</li>
               <li><strong className="text-white">Donnees techniques</strong> : adresse IP (anonymisee), type de navigateur, plateforme (web/mobile/extension)</li>
             </ul>

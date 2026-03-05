@@ -523,7 +523,7 @@ export const PlaylistDetailScreen: React.FC = () => {
         {Object.keys(channels).length > 0 && (
           <View style={styles.statsSection}>
             <Text style={[styles.statsSectionTitle, { color: colors.textPrimary }]}>
-              <Ionicons name="people-outline" size={16} /> Chaînes YouTube
+              <Ionicons name="people-outline" size={16} /> Chaînes YouTube / TikTok
             </Text>
             {Object.entries(channels)
               .sort(([, a], [, b]) => b - a)

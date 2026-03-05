@@ -36,11 +36,10 @@ function TabBarIcon({ name, isFocused, color }: TabBarIconProps) {
 
 // Seules les routes avec une icône sont affichées dans la tab bar
 const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  index: 'home',
-  library: 'book',
-  study: 'school',
-  profile: 'settings-outline',
-  subscription: 'sparkles-outline',
+  Dashboard: 'home',
+  History: 'book',
+  Profile: 'settings-outline',
+  Upgrade: 'sparkles-outline',
 };
 
 interface CustomTabBarProps {

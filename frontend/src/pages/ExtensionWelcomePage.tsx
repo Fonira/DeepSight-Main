@@ -14,8 +14,8 @@ import { useAuth } from "../hooks/useAuth";
 const STEPS = [
   {
     icon: "🎬",
-    title: "Ouvrez une vidéo YouTube",
-    desc: "Naviguez sur n'importe quelle vidéo YouTube. DeepSight apparaît automatiquement dans la barre latérale.",
+    title: "Ouvrez une vidéo YouTube ou TikTok",
+    desc: "Naviguez sur n'importe quelle vidéo YouTube ou TikTok. DeepSight apparaît automatiquement dans la barre latérale.",
   },
   {
     icon: "🚀",
@@ -59,7 +59,7 @@ const ExtensionWelcomePage = () => {
     <>
       <SEO
         title="Extension installée — DeepSight"
-        description="Bienvenue ! L'extension Chrome DeepSight est installée. Découvrez comment analyser vos vidéos YouTube avec l'IA."
+        description="Bienvenue ! L'extension Chrome DeepSight est installée. Découvrez comment analyser vos vidéos YouTube et TikTok avec l'IA."
         path="/extension-welcome"
       />
 

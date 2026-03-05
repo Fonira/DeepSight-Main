@@ -56,14 +56,14 @@ const USER_GUIDE: { sections: Array<{ id: string; icon: LucideIcon; title: { fr:
       items: [
         {
           icon: Youtube,
-          title: { fr: 'Analyser une vidéo YouTube', en: 'Analyze a YouTube video' },
+          title: { fr: 'Analyser une vidéo YouTube ou TikTok', en: 'Analyze a YouTube or TikTok video' },
           description: {
-            fr: 'Collez simplement l\'URL d\'une vidéo YouTube dans la barre d\'analyse. Deep Sight extraira automatiquement la transcription et générera un résumé intelligent avec analyse sourcée et nuancée.',
-            en: 'Simply paste a YouTube video URL into the analysis bar. Deep Sight will automatically extract the transcript and generate a smart summary with source-verified, evidence-based analysis.'
+            fr: 'Collez simplement l\'URL d\'une vidéo YouTube ou TikTok dans la barre d\'analyse. Deep Sight extraira automatiquement la transcription et générera un résumé intelligent avec analyse sourcée et nuancée.',
+            en: 'Simply paste a YouTube or TikTok video URL into the analysis bar. Deep Sight will automatically extract the transcript and generate a smart summary with source-verified, evidence-based analysis.'
           },
           steps: {
-            fr: ['Copiez l\'URL de la vidéo YouTube', 'Collez-la dans la barre d\'analyse', 'Choisissez le mode d\'analyse (Accessible, Standard ou Expert)', 'Cliquez sur Analyser — la catégorie et le modèle IA sont détectés automatiquement'],
-            en: ['Copy the YouTube video URL', 'Paste it in the analysis bar', 'Choose the analysis mode (Accessible, Standard or Expert)', 'Click Analyze — the category and AI model are auto-detected']
+            fr: ['Copiez l\'URL de la vidéo YouTube ou TikTok', 'Collez-la dans la barre d\'analyse', 'Choisissez le mode d\'analyse (Accessible, Standard ou Expert)', 'Cliquez sur Analyser — la catégorie et le modèle IA sont détectés automatiquement'],
+            en: ['Copy the YouTube or TikTok video URL', 'Paste it in the analysis bar', 'Choose the analysis mode (Accessible, Standard or Expert)', 'Click Analyze — the category and AI model are auto-detected']
           }
         },
         {
@@ -524,8 +524,8 @@ export function UsageDashboard() {
                 </h3>
                 <p className="text-text-secondary max-w-md mx-auto">
                   {language === 'fr'
-                    ? 'Apprenez à utiliser toutes les fonctionnalités de Deep Sight pour analyser vos vidéos YouTube efficacement.'
-                    : 'Learn how to use all Deep Sight features to effectively analyze your YouTube videos.'}
+                    ? 'Apprenez à utiliser toutes les fonctionnalités de Deep Sight pour analyser vos vidéos YouTube et TikTok efficacement.'
+                    : 'Learn how to use all Deep Sight features to effectively analyze your YouTube and TikTok videos.'}
                 </p>
                 <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bg-tertiary text-text-tertiary text-sm">
                   <Clock className="w-4 h-4" />

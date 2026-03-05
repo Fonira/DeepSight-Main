@@ -81,7 +81,7 @@ const slides: OnboardingSlide[] = [
 // Default translations if not in i18n
 const defaultTranslations: Record<string, { title: string; desc: string }> = {
   'onboarding.slide1Title': { title: 'Analysez n\'importe quelle vidéo', desc: '' },
-  'onboarding.slide1Desc': { title: '', desc: 'Collez un lien YouTube et laissez l\'IA extraire les informations clés en quelques secondes.' },
+  'onboarding.slide1Desc': { title: '', desc: 'Collez un lien YouTube ou TikTok et laissez l\'IA extraire les informations clés en quelques secondes.' },
   'onboarding.slide2Title': { title: 'Des insights approfondis', desc: '' },
   'onboarding.slide2Desc': { title: '', desc: 'Obtenez des résumés, concepts clés, et analyses détaillées adaptés à votre domaine.' },
   'onboarding.slide3Title': { title: 'Discutez avec le contenu', desc: '' },

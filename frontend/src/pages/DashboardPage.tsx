@@ -722,8 +722,8 @@ export const DashboardPage: React.FC = () => {
                   </h1>
                   <p className="text-text-secondary text-xs sm:text-sm">
                     {language === 'fr'
-                      ? 'URL YouTube, texte brut, ou recherche intelligente de vidéos.'
-                      : 'YouTube URL, raw text, or intelligent video search.'}
+                      ? 'URL YouTube / TikTok, texte brut, ou recherche intelligente de vidéos.'
+                      : 'YouTube / TikTok URL, raw text, or intelligent video search.'}
                   </p>
                 </div>
                 {/* Platform logos */}
@@ -1284,8 +1284,8 @@ export const DashboardPage: React.FC = () => {
                 </h3>
                 <p className="text-text-secondary text-sm max-w-md mx-auto mb-6">
                   {language === 'fr'
-                    ? 'Collez une URL YouTube ci-dessus pour générer une analyse détaillée avec résumé, fact-checking et chat contextuel.'
-                    : 'Paste a YouTube URL above to generate a detailed analysis with summary, fact-checking and contextual chat.'}
+                    ? 'Collez une URL YouTube ou TikTok ci-dessus pour générer une analyse détaillée avec résumé, fact-checking et chat contextuel.'
+                    : 'Paste a YouTube or TikTok URL above to generate a detailed analysis with summary, fact-checking and contextual chat.'}
                 </p>
                 {/* Widget "Le Saviez-Vous" désormais global dans App.tsx (coin bas-droite) */}
               </div>

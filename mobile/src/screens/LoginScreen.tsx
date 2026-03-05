@@ -392,25 +392,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: sp.lg,
+    gap: sp.xl,
     marginBottom: sp.xl,
-    opacity: 0.75,
+    opacity: 0.9,
   },
   platformLogoYt: {
-    height: 22,
-    width: 100,
+    height: 32,
+    width: 140,
   },
   platformLogoTk: {
-    height: 22,
-    width: 90,
+    height: 32,
+    width: 120,
   },
   platformLogoMistral: {
-    height: 18,
-    width: 80,
+    height: 26,
+    width: 110,
   },
   platformDivider: {
     width: 1,
-    height: 18,
+    height: 24,
   },
 });
 

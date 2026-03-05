@@ -118,7 +118,7 @@ export const LandingScreen: React.FC = () => {
   const features = [
     {
       icon: 'videocam' as const,
-      title: 'Analyse YouTube',
+      title: 'Analyse YouTube & TikTok',
       description: 'Transformez n\'importe quelle vidéo en résumé intelligent',
     },
     {
@@ -399,21 +399,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.lg,
+    gap: Spacing.xl,
     marginTop: Spacing.xl,
-    opacity: 0.8,
+    opacity: 0.95,
   },
   platformYt: {
-    height: 24,
-    width: 110,
+    height: 34,
+    width: 150,
   },
   platformTk: {
-    height: 24,
-    width: 100,
+    height: 34,
+    width: 130,
   },
   platformSep: {
     width: 1,
-    height: 20,
+    height: 26,
   },
   poweredRow: {
     flexDirection: 'row',
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.sm,
     marginTop: Spacing.md,
-    opacity: 0.5,
+    opacity: 0.8,
   },
   poweredText: {
     fontSize: Typography.fontSize.xs,
@@ -430,8 +430,8 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   platformMistral: {
-    height: 18,
-    width: 80,
+    height: 26,
+    width: 110,
   },
 });
 

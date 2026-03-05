@@ -808,25 +808,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: sp.md,
+    gap: sp.lg,
     marginBottom: sp.lg,
-    opacity: 0.65,
+    opacity: 0.9,
   },
   bannerLogoYt: {
-    height: 18,
-    width: 82,
+    height: 28,
+    width: 120,
   },
   bannerLogoTk: {
-    height: 18,
-    width: 72,
+    height: 28,
+    width: 105,
   },
   bannerLogoMistral: {
-    height: 15,
-    width: 65,
+    height: 22,
+    width: 95,
   },
   bannerDivider: {
     width: 1,
-    height: 14,
+    height: 22,
   },
 });
 

@@ -228,7 +228,7 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({ onOptionsPress }) 
         <TextInput
           ref={inputRef}
           style={[styles.searchInput, { color: colors.textPrimary }]}
-          placeholder="Rechercher une vidéo YouTube..."
+          placeholder="Rechercher une vidéo YouTube / TikTok..."
           placeholderTextColor={colors.textMuted}
           value={query}
           onChangeText={(text) => {
@@ -239,7 +239,7 @@ export const YouTubeSearch: React.FC<YouTubeSearchProps> = ({ onOptionsPress }) 
           autoCorrect={false}
           returnKeyType="search"
           onSubmitEditing={handleSearch}
-          accessibilityLabel="Recherche YouTube"
+          accessibilityLabel="Recherche YouTube / TikTok"
         />
         {query.length > 0 && (
           <Pressable

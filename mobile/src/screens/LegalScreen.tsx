@@ -69,8 +69,8 @@ export const LegalScreen: React.FC = () => {
             </Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
               {language === 'fr'
-                ? 'DeepSight est une application innovante d\'analyse de vidéos YouTube propulsée par l\'intelligence artificielle.'
-                : 'DeepSight is an innovative YouTube video analysis application powered by artificial intelligence.'}
+                ? 'DeepSight est une application innovante d\'analyse de vidéos YouTube et TikTok propulsée par l\'intelligence artificielle.'
+                : 'DeepSight is an innovative YouTube & TikTok video analysis application powered by artificial intelligence.'}
             </Text>
 
             <Text style={[styles.sectionSubtitle, { color: colors.textPrimary }]}>
@@ -87,8 +87,8 @@ export const LegalScreen: React.FC = () => {
             </Text>
             <Text style={[styles.paragraph, { color: colors.textSecondary }]}>
               {language === 'fr'
-                ? '• Comment fonctionne DeepSight ?\nNous utilisons des modèles d\'IA avancés pour analyser le contenu des vidéos YouTube.\n\n• Quelles vidéos sont supportées ?\nToutes les vidéos YouTube publiques avec des sous-titres disponibles.\n\n• Mes données sont-elles sécurisées ?\nOui, nous utilisons un chiffrement de bout en bout et nous conformons au RGPD.'
-                : '• How does DeepSight work?\nWe use advanced AI models to analyze YouTube video content.\n\n• Which videos are supported?\nAll public YouTube videos with available subtitles.\n\n• Is my data secure?\nYes, we use end-to-end encryption and comply with GDPR.'}
+                ? '• Comment fonctionne DeepSight ?\nNous utilisons des modèles d\'IA avancés pour analyser le contenu des vidéos YouTube et TikTok.\n\n• Quelles vidéos sont supportées ?\nToutes les vidéos YouTube et TikTok publiques avec des sous-titres disponibles.\n\n• Mes données sont-elles sécurisées ?\nOui, nous utilisons un chiffrement de bout en bout et nous conformons au RGPD.'
+                : '• How does DeepSight work?\nWe use advanced AI models to analyze YouTube & TikTok video content.\n\n• Which videos are supported?\nAll public YouTube and TikTok videos with available subtitles.\n\n• Is my data secure?\nYes, we use end-to-end encryption and comply with GDPR.'}
             </Text>
 
             <Text style={[styles.sectionSubtitle, { color: colors.textPrimary }]}>

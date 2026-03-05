@@ -430,7 +430,7 @@ export const Settings: React.FC = () => {
                     </div>
                     <div>
                       <p className="font-medium text-text-primary">Deep Sight</p>
-                      <p className="text-sm text-text-tertiary">v6.2.0 • {tr('Analyse YouTube par IA', 'AI-powered YouTube analysis')}</p>
+                      <p className="text-sm text-text-tertiary">v6.2.0 • {tr('Analyse YouTube & TikTok par IA', 'AI-powered YouTube & TikTok analysis')}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 text-sm">

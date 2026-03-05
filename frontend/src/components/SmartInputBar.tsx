@@ -391,7 +391,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
                         <div className="flex-1 text-left">
                           <div className="text-sm font-medium">{modeConf.label[language]}</div>
                           <div className="text-xs opacity-70">
-                            {mode === 'url' && (language === 'fr' ? 'Vidéo ou playlist YouTube' : 'YouTube video or playlist')}
+                            {mode === 'url' && (language === 'fr' ? 'Vidéo YouTube, TikTok ou playlist' : 'YouTube, TikTok video or playlist')}
                             {mode === 'text' && (language === 'fr' ? 'Article, notes...' : 'Article, notes...')}
                             {mode === 'search' && (language === 'fr' ? 'Découverte intelligente 🆓' : 'Smart discovery 🆓')}
                           </div>
