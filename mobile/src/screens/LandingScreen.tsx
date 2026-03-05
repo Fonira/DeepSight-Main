@@ -176,6 +176,17 @@ export const LandingScreen: React.FC = () => {
               L'IA qui transforme les vidéos en savoir
             </Text>
           </Animated.View>
+
+          {/* Platform logos */}
+          <Animated.View entering={FadeInDown.delay(350).duration(500)} style={styles.platformRow}>
+            <Image source={require('../assets/platforms/youtube-logo-white.png')} style={styles.platformYt} resizeMode="contain" />
+            <View style={[styles.platformSep, { backgroundColor: colors.border }]} />
+            <Image source={require('../assets/platforms/tiktok-logo-white.png')} style={styles.platformTk} resizeMode="contain" />
+          </Animated.View>
+          <Animated.View entering={FadeInDown.delay(400).duration(500)} style={styles.poweredRow}>
+            <Text style={[styles.poweredText, { color: colors.textMuted }]}>Propulsé par</Text>
+            <Image source={require('../assets/platforms/mistral-logo-white.png')} style={styles.platformMistral} resizeMode="contain" />
+          </Animated.View>
         </View>
 
         {/* Features Section */}
@@ -383,6 +394,44 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
     textAlign: 'center',
+  },
+  platformRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.lg,
+    marginTop: Spacing.xl,
+    opacity: 0.8,
+  },
+  platformYt: {
+    height: 24,
+    width: 110,
+  },
+  platformTk: {
+    height: 24,
+    width: 100,
+  },
+  platformSep: {
+    width: 1,
+    height: 20,
+  },
+  poweredRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    marginTop: Spacing.md,
+    opacity: 0.5,
+  },
+  poweredText: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.body,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  platformMistral: {
+    height: 18,
+    width: 80,
   },
 });
 

@@ -166,6 +166,15 @@ export const LoginScreen: React.FC = () => {
             </View>
           </Animated.View>
 
+          {/* Platform logos */}
+          <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.platformLogos}>
+            <Image source={require('../assets/platforms/youtube-logo-white.png')} style={styles.platformLogoYt} resizeMode="contain" />
+            <View style={[styles.platformDivider, { backgroundColor: colors.border }]} />
+            <Image source={require('../assets/platforms/tiktok-logo-white.png')} style={styles.platformLogoTk} resizeMode="contain" />
+            <View style={[styles.platformDivider, { backgroundColor: colors.border }]} />
+            <Image source={require('../assets/platforms/mistral-logo-white.png')} style={styles.platformLogoMistral} resizeMode="contain" />
+          </Animated.View>
+
           <Animated.View entering={FadeInDown.delay(150).duration(400)}>
             <Text style={[styles.title, { color: colors.textPrimary }]}>
               {t.auth.welcomeBack}
@@ -378,6 +387,30 @@ const styles = StyleSheet.create({
   registerLink: {
     fontSize: fontSize.base,
     fontFamily: fontFamily.bodySemiBold,
+  },
+  platformLogos: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: sp.lg,
+    marginBottom: sp.xl,
+    opacity: 0.75,
+  },
+  platformLogoYt: {
+    height: 22,
+    width: 100,
+  },
+  platformLogoTk: {
+    height: 22,
+    width: 90,
+  },
+  platformLogoMistral: {
+    height: 18,
+    width: 80,
+  },
+  platformDivider: {
+    width: 1,
+    height: 18,
   },
 });
 

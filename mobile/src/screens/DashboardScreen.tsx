@@ -13,6 +13,7 @@ import {
   Platform,
   UIManager,
   Linking,
+  Image,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -467,6 +468,15 @@ export const DashboardScreen: React.FC = () => {
           </Card>
         </Animated.View>
 
+        {/* Platform logos banner */}
+        <Animated.View entering={FadeInDown.delay(50).duration(400)} style={styles.platformBanner}>
+          <Image source={require('../assets/platforms/youtube-logo-white.png')} style={styles.bannerLogoYt} resizeMode="contain" />
+          <View style={[styles.bannerDivider, { backgroundColor: colors.border }]} />
+          <Image source={require('../assets/platforms/tiktok-logo-white.png')} style={styles.bannerLogoTk} resizeMode="contain" />
+          <View style={[styles.bannerDivider, { backgroundColor: colors.border }]} />
+          <Image source={require('../assets/platforms/mistral-logo-white.png')} style={styles.bannerLogoMistral} resizeMode="contain" />
+        </Animated.View>
+
         {/* Analysis Input Section */}
         <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.analysisSection}>
           <View style={styles.sectionHeaderRow}>
@@ -793,6 +803,30 @@ const styles = StyleSheet.create({
     padding: 0,
     marginBottom: sp.md,
     overflow: 'hidden',
+  },
+  platformBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: sp.md,
+    marginBottom: sp.lg,
+    opacity: 0.65,
+  },
+  bannerLogoYt: {
+    height: 18,
+    width: 82,
+  },
+  bannerLogoTk: {
+    height: 18,
+    width: 72,
+  },
+  bannerLogoMistral: {
+    height: 15,
+    width: 65,
+  },
+  bannerDivider: {
+    width: 1,
+    height: 14,
   },
 });
 

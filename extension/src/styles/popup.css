@@ -552,6 +552,24 @@ body {
 .score-mid { color: var(--ds-warning); }
 .score-low { color: var(--ds-error); }
 
+/* Synthesis platform logos */
+.synthesis-platforms {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  opacity: 0.7;
+}
+.synthesis-platforms img {
+  object-fit: contain;
+}
+.synthesis-platform-sep {
+  width: 1px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .synthesis-verdict {
   padding: 12px 14px;
   border-radius: var(--ds-radius);
@@ -1565,6 +1583,25 @@ body {
   color: var(--ds-text-secondary);
   margin-bottom: 20px;
   letter-spacing: 0.2px;
+}
+
+/* Login platform logos */
+.login-platforms {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  opacity: 0.85;
+}
+.login-platform-logo {
+  object-fit: contain;
+  filter: brightness(1.1);
+}
+.login-platform-sep {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.15);
 }
 
 /* Login FR/EU badges */

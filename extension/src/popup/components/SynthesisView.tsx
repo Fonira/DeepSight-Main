@@ -203,6 +203,15 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId
         </div>
       </div>
 
+      {/* Platform logos */}
+      <div className="synthesis-platforms">
+        <img src={chrome.runtime.getURL('platforms/youtube-icon-red.png')} alt="YouTube" style={{ height: 16 }} />
+        <span className="synthesis-platform-sep" />
+        <img src={chrome.runtime.getURL('platforms/tiktok-note-white.png')} alt="TikTok" style={{ height: 14 }} />
+        <span className="synthesis-platform-sep" />
+        <img src={chrome.runtime.getURL('platforms/mistral-logo-white.png')} alt="Mistral AI" style={{ height: 12, opacity: 0.7 }} />
+      </div>
+
       {/* Verdict */}
       <div className="synthesis-verdict">
         <p>{parsed.verdict}</p>

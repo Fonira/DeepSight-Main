@@ -61,6 +61,30 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
       {/* Tagline — brand identity */}
       <p className="login-tagline">Ne regardez plus vos vidéos. Analysez-les.</p>
 
+      {/* Platform logos */}
+      <div className="login-platforms">
+        <img
+          src={chrome.runtime.getURL('platforms/youtube-icon-red.png')}
+          alt="YouTube"
+          className="login-platform-logo"
+          style={{ height: 20, width: 'auto' }}
+        />
+        <span className="login-platform-sep" />
+        <img
+          src={chrome.runtime.getURL('platforms/tiktok-note-white.png')}
+          alt="TikTok"
+          className="login-platform-logo"
+          style={{ height: 18, width: 'auto' }}
+        />
+        <span className="login-platform-sep" />
+        <img
+          src={chrome.runtime.getURL('platforms/mistral-logo-white.png')}
+          alt="Mistral AI"
+          className="login-platform-logo login-platform-mistral"
+          style={{ height: 15, width: 'auto', opacity: 0.7 }}
+        />
+      </div>
+
       {/* FR/EU trust badges */}
       <div className="login-badges">
         <span className="login-badge">
