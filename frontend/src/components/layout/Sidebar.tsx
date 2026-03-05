@@ -153,7 +153,7 @@ const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
   const planLabels: Record<string, string> = {
     free: language === 'fr' ? 'Gratuit' : 'Free',
     etudiant: 'Starter',
-    starter: language === 'fr' ? 'Étudiant' : 'Student',
+    starter: 'Standard',
     pro: 'Pro',
   };
 

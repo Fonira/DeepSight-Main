@@ -59,7 +59,7 @@ const PLANS_CONFIG: PlanConfig[] = [
     highlight: false,
     color: ['rgba(255,255,255,0.04)', 'rgba(255,255,255,0.02)'],
     features: [
-      '3 analyses / mois',
+      '5 analyses / mois',
       'Vidéos jusqu\'à 15 min',
       'Historique 60 jours',
       'Chat limité',
@@ -82,8 +82,8 @@ const PLANS_CONFIG: PlanConfig[] = [
     cta: 'Commencer',
   },
   {
-    id: 'starter',  // ID backend pour "Étudiant"
-    label: 'Étudiant',
+    id: 'starter',  // ID backend pour "Standard"
+    label: 'Standard',
     price: '5,99 €/mois',
     priceRaw: 5.99,
     highlight: true,
@@ -122,7 +122,7 @@ const PLANS_CONFIG: PlanConfig[] = [
 const PLAN_DISPLAY: Record<string, string> = {
   free: 'Gratuit',
   etudiant: 'Starter',
-  starter: 'Étudiant',
+  starter: 'Standard',
   pro: 'Pro',
 };
 

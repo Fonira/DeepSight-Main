@@ -814,7 +814,7 @@ export const UpgradePage: React.FC = () => {
     <div className="min-h-screen bg-bg-primary relative">
       <SEO
         title="Tarifs"
-        description="Découvrez les plans Deep Sight : Gratuit, Starter, Étudiant, Pro. Analysez vos vidéos YouTube et TikTok avec l'IA."
+        description="Découvrez les plans Deep Sight : Gratuit, Starter, Standard, Pro. Analysez vos vidéos YouTube et TikTok avec l'IA."
         path="/upgrade"
       />
       <DoodleBackground variant="creative" />
@@ -1083,6 +1083,29 @@ export const UpgradePage: React.FC = () => {
                   <p className="text-text-secondary">{lang === 'fr' ? 'Toutes cartes bancaires via Stripe. Paiements sécurisés.' : 'All cards via Stripe. Secure payments.'}</p>
                 </div>
               </div>
+            </motion.div>
+
+            {/* B2B / Sur-mesure */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="card p-4 sm:p-6 mb-6 sm:mb-8 border border-white/10 text-center"
+            >
+              <h3 className="font-bold text-base sm:text-lg text-text-primary mb-2">
+                {lang === 'fr' ? 'Besoin d\'une offre sur-mesure ?' : 'Need a custom plan?'}
+              </h3>
+              <p className="text-text-secondary text-xs sm:text-sm mb-4">
+                {lang === 'fr'
+                  ? 'Équipes, universités, entreprises — contactez-nous pour un plan adapté à vos besoins.'
+                  : 'Teams, universities, enterprises — contact us for a plan tailored to your needs.'}
+              </p>
+              <a
+                href="mailto:contact@deepsightsynthesis.com?subject=Offre%20sur-mesure%20DeepSight"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-text-primary text-sm font-medium transition-all"
+              >
+                {lang === 'fr' ? 'Contactez-nous' : 'Contact us'}
+              </a>
             </motion.div>
 
             {/* Contact */}

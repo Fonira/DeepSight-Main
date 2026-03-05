@@ -377,9 +377,9 @@
         "cta": "Choose Starter"
       },
       "starter": {
-        "name": "Student",
-        "description": "Ideal for students",
-        "cta": "Choose Student"
+        "name": "Standard",
+        "description": "For regular users",
+        "cta": "Choose Standard"
       },
       "pro": {
         "name": "Pro",

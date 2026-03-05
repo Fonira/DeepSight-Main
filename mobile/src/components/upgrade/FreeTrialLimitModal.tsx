@@ -2,11 +2,11 @@
  * FreeTrialLimitModal - Modal pour les utilisateurs gratuits approchant/atteignant la limite
  *
  * S'affiche:
- * - Après la 2ème analyse (warning): encourage à upgrade
- * - Après la 3ème analyse (blocked): bloque et propose l'upgrade
+ * - Après la 3ème analyse (warning): encourage à upgrade
+ * - Après la 5ème analyse (blocked): bloque et propose l'upgrade
  *
  * Éléments de conversion:
- * - Barre de progression (X/3 analyses)
+ * - Barre de progression (X/5 analyses)
  * - Affichage du temps économisé
  * - Bannière Pro trial (7 jours)
  * - Grille de bénéfices (4 items)
@@ -217,8 +217,8 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               {modalState === 'blocked'
                 ? (language === 'fr'
-                    ? 'Vous avez utilisé vos 3 analyses gratuites ce mois-ci.'
-                    : 'You\'ve used your 3 free analyses this month.')
+                    ? 'Vous avez utilisé vos 5 analyses gratuites ce mois-ci.'
+                    : 'You\'ve used your 5 free analyses this month.')
                 : (language === 'fr'
                     ? `Plus qu'${CONVERSION_TRIGGERS.freeAnalysisLimit - analysesUsed} analyse gratuite ce mois-ci.`
                     : `Only ${CONVERSION_TRIGGERS.freeAnalysisLimit - analysesUsed} free analysis left this month.`)}

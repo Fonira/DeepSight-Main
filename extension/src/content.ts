@@ -352,7 +352,7 @@ const PLAN_RANK: Record<string, number> = { free: 0, etudiant: 1, student: 1, st
 
 const PLAN_PRICE_LABEL: Record<string, string> = {
   etudiant: 'Starter 2,99\u20AC',
-  starter: '\u00C9tudiant 5,99\u20AC',
+  starter: 'Standard 5,99\u20AC',
   pro: 'Pro 12,99\u20AC',
 };
 

@@ -32,7 +32,7 @@ const FAQ_ITEMS: FaqItem[] = [
   },
   {
     question: "Quels sont les différents plans disponibles ?",
-    answer: "Nous proposons un plan Gratuit (3 analyses/mois), Starter (2.99€, 20 analyses), Étudiant (5.99€, 50 analyses) et Pro (12.99€, 200 analyses avec playlists et accès API). Chaque plan offre des fonctionnalités progressives.",
+    answer: "Nous proposons un plan Gratuit (5 analyses/mois), Starter (2.99€, 20 analyses), Standard (5.99€, 50 analyses) et Pro (12.99€, 200 analyses avec playlists et accès API). Chaque plan offre des fonctionnalités progressives.",
     icon: CreditCard,
   },
   {

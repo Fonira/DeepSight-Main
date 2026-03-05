@@ -7,6 +7,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -275,6 +276,26 @@ export const UpgradeScreen: React.FC = () => {
         </Text>
 
         {PLANS.map(renderPlanCard)}
+
+        {/* B2B / Sur-mesure */}
+        <Card style={{ padding: Spacing.lg, marginBottom: Spacing.xl, alignItems: 'center' as const }}>
+          <Text style={{ fontSize: Typography.fontSize.base, fontFamily: Typography.fontFamily.bodySemiBold, color: colors.textPrimary, marginBottom: Spacing.xs, textAlign: 'center' as const }}>
+            {isEn ? 'Need a custom plan?' : 'Besoin d\'une offre sur-mesure ?'}
+          </Text>
+          <Text style={{ fontSize: Typography.fontSize.sm, fontFamily: Typography.fontFamily.body, color: colors.textSecondary, textAlign: 'center' as const, marginBottom: Spacing.md }}>
+            {isEn
+              ? 'Teams, universities, enterprises — contact us.'
+              : 'Équipes, universités, entreprises — contactez-nous.'}
+          </Text>
+          <TouchableOpacity
+            onPress={() => Linking.openURL('mailto:contact@deepsightsynthesis.com?subject=Offre%20sur-mesure%20DeepSight')}
+            style={{ paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: colors.border }}
+          >
+            <Text style={{ fontSize: Typography.fontSize.sm, fontFamily: Typography.fontFamily.bodyMedium, color: colors.textPrimary }}>
+              {isEn ? 'Contact us' : 'Contactez-nous'}
+            </Text>
+          </TouchableOpacity>
+        </Card>
       </ScrollView>
 
       {/* Bottom CTA */}

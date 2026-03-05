@@ -74,8 +74,8 @@ PLANS: dict[str, dict[str, Any]] = {
         "badge": None,
         "popular": False,
         "limits": {
-            "monthly_credits": 150,
-            "monthly_analyses": 3,
+            "monthly_credits": 250,
+            "monthly_analyses": 5,
             "max_video_length_min": 15,
             "concurrent_analyses": 1,
             "priority_queue": False,
@@ -96,7 +96,7 @@ PLANS: dict[str, dict[str, Any]] = {
             "default_model": "mistral-small-latest",
         },
         "features_display": [
-            {"text": "3 analyses / mois", "icon": "📊"},
+            {"text": "5 analyses / mois", "icon": "📊"},
             {"text": "Vidéos jusqu'à 15 min", "icon": "⏱️"},
             {"text": "Chat IA (5 questions/vidéo)", "icon": "💬"},
             {"text": "Export texte", "icon": "📄"},
@@ -195,18 +195,18 @@ PLANS: dict[str, dict[str, Any]] = {
         },
     },
 
-    # ─── STARTER (affiché "Étudiant") ────────────────────────────────────
+    # ─── STARTER (affiché "Standard") ─────────────────────────────────────
     PlanId.STARTER: {
-        "name": "Étudiant",
-        "name_en": "Student",
-        "description": "Idéal pour les étudiants et l'apprentissage",
-        "description_en": "Perfect for students and learning",
+        "name": "Standard",
+        "name_en": "Standard",
+        "description": "Pour les utilisateurs réguliers et étudiants",
+        "description_en": "For regular users and students",
         "price_monthly_cents": 599,
         "stripe_price_id_test": None,
         "stripe_price_id_live": None,
-        "color": "#8B5CF6",
+        "color": "#3B82F6",
         "icon": "⭐",
-        "badge": {"text": "Étudiants", "color": "#10B981"},
+        "badge": {"text": "Populaire étudiants", "color": "#10B981"},
         "popular": False,
         "limits": {
             "monthly_credits": 3000,

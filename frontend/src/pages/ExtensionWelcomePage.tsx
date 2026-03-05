@@ -32,7 +32,7 @@ const STEPS = [
 const FEATURES = [
   { icon: "🧠", label: "Synthèse sourcée & nuancée", plan: "Gratuit" },
   { icon: "🃏", label: "Flashcards IA", plan: "Starter" },
-  { icon: "🌐", label: "Recherche web IA", plan: "Étudiant" },
+  { icon: "🌐", label: "Recherche web IA", plan: "Standard" },
   { icon: "📦", label: "Export PDF/DOCX", plan: "Pro" },
 ];
 

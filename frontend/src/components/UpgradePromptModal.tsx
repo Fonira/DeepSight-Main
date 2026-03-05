@@ -2,10 +2,10 @@
  * UpgradePromptModal v2.0 - Modal that appears when user reaches their limit
  * Encourages upgrade with clear value proposition
  *
- * Aligned with new pricing strategy:
- * - Free: 0€ - Maximum friction (3 analyses)
- * - Starter: 2.99€ - Essentials (was "Étudiant")
- * - Student: 5.99€ - Learning (was "Starter")
+ * Aligned with pricing strategy:
+ * - Free: 0€ - 5 analyses/mois
+ * - Starter: 2.99€ - Essentials
+ * - Standard: 5.99€ - Utilisateurs réguliers
  * - Pro: 12.99€ - Créateurs & Pros (POPULAIRE)
  */
 

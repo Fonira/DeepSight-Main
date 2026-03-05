@@ -30,12 +30,12 @@ type AnalysisPhase =
   | { phase: 'error'; message: string };
 
 // Plan display names — sync avec planPrivileges.ts (source de vérité)
-// ⚠️ SYNC avec planPrivileges.ts — noms swappés : etudiant→"Starter", starter→"Étudiant"
+// ⚠️ SYNC avec planPrivileges.ts — noms swappés : etudiant→"Starter", starter→"Standard"
 const PLAN_DISPLAY: Record<string, string> = {
   free: 'Gratuit',
   etudiant: 'Starter',
   student: 'Starter',    // alias rétrocompatibilité
-  starter: 'Étudiant',
+  starter: 'Standard',
   pro: 'Pro',
   equipe: 'Pro',         // legacy → redirige vers Pro
   team: 'Pro',           // legacy → redirige vers Pro
@@ -50,8 +50,8 @@ interface NextPlanHint {
 
 const NEXT_PLAN_HINT: Record<string, NextPlanHint> = {
   free: { label: 'Starter', feature: 'Flashcards + Cartes mentales', price: '2,99€' },
-  etudiant: { label: 'Étudiant', feature: 'Recherche web IA + 50 analyses', price: '5,99€' },
-  student: { label: 'Étudiant', feature: 'Recherche web IA + 50 analyses', price: '5,99€' },
+  etudiant: { label: 'Standard', feature: 'Recherche web IA + 50 analyses', price: '5,99€' },
+  student: { label: 'Standard', feature: 'Recherche web IA + 50 analyses', price: '5,99€' },
   starter: { label: 'Pro', feature: 'Playlists + Exports + Chat illimité', price: '12,99€' },
 };
 

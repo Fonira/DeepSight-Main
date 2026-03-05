@@ -357,8 +357,8 @@ export const StudyScreen: React.FC = () => {
             </Text>
             <Text style={[styles.lockDescription, { color: colors.textSecondary }]}>
               {language === 'fr'
-                ? `Les flashcards et quiz sont disponibles dès le plan Étudiant (${getPlanInfo('student').priceDisplay.fr}).`
-                : `Flashcards and quizzes are available from the Student plan (${getPlanInfo('student').priceDisplay.en}).`}
+                ? `Les flashcards et quiz sont disponibles dès le plan Starter (${getPlanInfo('student').priceDisplay.fr}).`
+                : `Flashcards and quizzes are available from the Starter plan (${getPlanInfo('student').priceDisplay.en}).`}
             </Text>
             <Button
               title={language === 'fr' ? 'Découvrir les plans' : 'View plans'}

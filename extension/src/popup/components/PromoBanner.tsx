@@ -30,33 +30,33 @@ const PROMOS_FREE: Promo[] = [
   },
   {
     id: 'free-quota',
-    text: 'Seulement 3 analyses/mois ? Passez à 20 avec Starter',
+    text: 'Seulement 5 analyses/mois ? Passez à 20 avec Starter',
     cta: 'Upgrade →',
     url: `${WEBAPP_URL}/upgrade`,
     gradient: 'linear-gradient(135deg, #f59e0b, #ef4444)',
   },
 ];
 
-// Promos for STARTER (etudiant) users → push toward Étudiant (5.99€)
+// Promos for STARTER (etudiant) users → push toward Standard (5.99€)
 const PROMOS_STARTER: Promo[] = [
   {
     id: 'starter-websearch',
-    text: 'Recherche web IA pour croiser les sources — plan Étudiant',
+    text: 'Recherche web IA pour croiser les sources — plan Standard',
     cta: 'Débloquer',
     url: `${WEBAPP_URL}/upgrade`,
     gradient: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
   },
   {
     id: 'starter-more',
-    text: '50 analyses/mois + vidéos 2h — Passez à Étudiant',
+    text: '50 analyses/mois + vidéos 2h — Passez à Standard',
     cta: 'Voir les plans',
     url: `${WEBAPP_URL}/upgrade`,
     gradient: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
   },
 ];
 
-// Promos for ÉTUDIANT (starter) users → push toward Pro (12.99€)
-const PROMOS_ETUDIANT: Promo[] = [
+// Promos for STANDARD (starter) users → push toward Pro (12.99€)
+const PROMOS_STANDARD: Promo[] = [
   {
     id: 'etudiant-playlists',
     text: 'Analysez des playlists entières — Passez à Pro',
@@ -97,7 +97,7 @@ function getPromosForPlan(planId?: string): Promo[] {
     case 'student':
       return PROMOS_STARTER;
     case 'starter':
-      return PROMOS_ETUDIANT;
+      return PROMOS_STANDARD;
     case 'pro':
       return PROMOS_PRO;
     default:

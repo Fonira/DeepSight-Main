@@ -1,10 +1,10 @@
 /**
  * FreeTrialLimitModal v2.0 - Modal shown after free analyses to encourage upgrade
- * Shows after user completes their analyses (warning at 2, block at 3)
+ * Shows after user completes their analyses (warning at 3, block at 5)
  *
- * Aligned with new pricing strategy:
- * - Maximum friction for free users (3 analyses/month)
- * - Student plan highlighted as best entry point (2.99€)
+ * Aligned with pricing strategy:
+ * - Maximum friction for free users (5 analyses/month)
+ * - Starter plan highlighted as best entry point (2.99€)
  * - Pro trial option available (7 days)
  */
 

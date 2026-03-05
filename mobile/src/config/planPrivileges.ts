@@ -4,11 +4,10 @@
  * SYNCHRONIZED WITH: frontend/src/config/planPrivileges.ts
  *
  * Strategy:
- * - Free: Maximum friction for conversion
- * - Student: Education-focused with study tools (2.99/mo)
- * - Starter: Individual power users (5.99/mo)
+ * - Free: Maximum friction for conversion (5 analyses/mois)
+ * - Student (Starter): Education-focused with study tools (2.99/mo)
+ * - Starter (Standard): Individual power users & students (5.99/mo)
  * - Pro: Creators & professionals (12.99/mo) - POPULAR
- * - Team: Enterprises & labs (29.99/mo)
  */
 
 export type PlanId = 'free' | 'student' | 'starter' | 'pro';
@@ -46,8 +45,8 @@ export type NumericPlanLimits = {
 // ⚠️ SYNCED WITH: frontend/src/config/planPrivileges.ts + backend plan_config.py
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   free: {
-    monthlyAnalyses: 3,
-    monthlyCredits: 150,
+    monthlyAnalyses: 5,
+    monthlyCredits: 250,
     maxVideoDuration: 900,        // 15 min max (synced w/ frontend)
     chatQuestionsPerVideo: 5,     // synced (was 3)
     chatDailyLimit: 10,
@@ -320,7 +319,7 @@ export const PLANS_INFO: PlanInfo[] = [
     gradient: ['#6B7280', '#4B5563'],
     order: 0,
     targetAudience: { fr: 'Curieux', en: 'Curious' },
-    killerFeature: { fr: '3 analyses gratuites', en: '3 free analyses' },
+    killerFeature: { fr: '5 analyses gratuites', en: '5 free analyses' },
   },
   {
     id: 'student',
@@ -328,7 +327,6 @@ export const PLANS_INFO: PlanInfo[] = [
     description: { fr: 'Pour réviser efficacement', en: 'For effective studying' },
     price: 299,
     priceDisplay: { fr: '2,99€/mois', en: '€2.99/mo' },
-    badge: { fr: 'Étudiants', en: 'Students' },
     color: '#10B981',
     icon: 'school-outline',
     gradient: ['#10B981', '#059669'],
@@ -338,16 +336,17 @@ export const PLANS_INFO: PlanInfo[] = [
   },
   {
     id: 'starter',
-    name: { fr: 'Étudiant', en: 'Student' },
+    name: { fr: 'Standard', en: 'Standard' },
     description: { fr: 'Pour les utilisateurs réguliers', en: 'For regular users' },
     price: 599,
     priceDisplay: { fr: '5,99€/mois', en: '€5.99/mo' },
+    badge: { fr: 'Populaire étudiants', en: 'Popular with students' },
     color: '#3B82F6',
     icon: 'flash-outline',
     gradient: ['#3B82F6', '#2563EB'],
     order: 2,
-    targetAudience: { fr: 'Particuliers', en: 'Individuals' },
-    killerFeature: { fr: '60 analyses/mois', en: '60 analyses/month' },
+    targetAudience: { fr: 'Particuliers & Étudiants', en: 'Individuals & Students' },
+    killerFeature: { fr: '50 analyses/mois', en: '50 analyses/month' },
   },
   {
     id: 'pro',
@@ -371,8 +370,8 @@ export const PLANS_INFO: PlanInfo[] = [
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const CONVERSION_TRIGGERS = {
-  freeAnalysisWarning: 2,
-  freeAnalysisLimit: 3,
+  freeAnalysisWarning: 3,
+  freeAnalysisLimit: 5,
   lowCreditsWarningPercent: 20,
   lowCreditsCriticalPercent: 5,
   showTimeSaved: true,

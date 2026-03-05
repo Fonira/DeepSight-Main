@@ -48,7 +48,7 @@ export interface PlanLimits {
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   free: {
-    monthlyAnalyses: 3,
+    monthlyAnalyses: 5,
     maxVideoLengthMin: 15,
     concurrentAnalyses: 1,
     priorityQueue: false,
@@ -224,14 +224,14 @@ export const PLANS_INFO: Record<PlanId, PlanInfo> = {
 
   starter: {
     id: 'starter',
-    name: 'Étudiant',
-    nameEn: 'Student',
-    description: 'YouTube & TikTok — Idéal pour les étudiants',
-    descriptionEn: 'YouTube & TikTok — Ideal for students',
+    name: 'Standard',
+    nameEn: 'Standard',
+    description: 'YouTube & TikTok — Pour les utilisateurs réguliers',
+    descriptionEn: 'YouTube & TikTok — For regular users',
     priceMonthly: 599,
     color: '#3B82F6',
-    icon: '🎓',
-    badge: { text: 'Étudiants', color: '#10B981' },
+    icon: '⭐',
+    badge: { text: 'Populaire étudiants', color: '#10B981' },
     popular: false,
   },
 
@@ -296,8 +296,8 @@ export function formatLimit(value: number, unit?: string): string {
 
 /** Paramètres de conversion free→paid */
 export const CONVERSION_TRIGGERS = {
-  freeAnalysisLimit: 3,
-  freeAnalysisWarning: 2,
+  freeAnalysisLimit: 5,
+  freeAnalysisWarning: 3,
   trialEnabled: true,
   trialDays: 7,
   trialPlan: 'pro' as PlanId,
@@ -363,7 +363,7 @@ export const TESTIMONIALS: Testimonial[] = [
       fr: 'Je crée des supports de cours à partir de documentaires en un clic.',
       en: 'I create course materials from documentaries in one click.',
     },
-    plan: 'starter',
+    plan: 'starter',  // Standard plan
   },
 ];
 

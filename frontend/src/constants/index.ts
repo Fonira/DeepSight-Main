@@ -267,8 +267,8 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
   },
   student: {
     id: "student",
-    name_fr: "Étudiant",
-    name_en: "Student",
+    name_fr: "Starter",
+    name_en: "Starter",
     icon: "🎓",
     color: "#10b981",
     price: 299,

@@ -249,7 +249,7 @@ export const MyAccount: React.FC = () => {
   const planConfig: Record<string, { label: string; color: string; bgColor: string; icon: string }> = {
     free: { label: tr('Gratuit', 'Free'), color: 'text-gray-400', bgColor: 'bg-gray-500/10', icon: '🆓' },
     etudiant: { label: 'Starter', color: 'text-blue-400', bgColor: 'bg-blue-500/10', icon: '⚡' },
-    starter: { label: tr('Étudiant', 'Student'), color: 'text-emerald-400', bgColor: 'bg-emerald-500/10', icon: '🎓' },
+    starter: { label: 'Standard', color: 'text-blue-400', bgColor: 'bg-blue-500/10', icon: '⭐' },
     pro: { label: 'Pro', color: 'text-violet-400', bgColor: 'bg-violet-500/10', icon: '⭐' },
   };
 

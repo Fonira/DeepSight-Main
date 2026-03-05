@@ -23,10 +23,10 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 // Plan limits
 const PLAN_LIMITS: Record<string, { monthlyCredits: number; monthlyAnalyses: number }> = {
-  free: { monthlyCredits: 150, monthlyAnalyses: 3 },
-  student: { monthlyCredits: 2000, monthlyAnalyses: 40 },
-  starter: { monthlyCredits: 3000, monthlyAnalyses: 60 },
-  pro: { monthlyCredits: 15000, monthlyAnalyses: 300 },
+  free: { monthlyCredits: 250, monthlyAnalyses: 5 },
+  student: { monthlyCredits: 2000, monthlyAnalyses: 20 },
+  starter: { monthlyCredits: 3000, monthlyAnalyses: 50 },
+  pro: { monthlyCredits: 15000, monthlyAnalyses: 200 },
 };
 
 interface CreditCounterProps {

@@ -206,10 +206,10 @@ const USER_GUIDE: { sections: Array<{ id: string; icon: LucideIcon; title: { fr:
           icon: FileText,
           title: { fr: 'Copier en Markdown', en: 'Copy as Markdown' },
           description: {
-            fr: 'Copiez le résumé au format Markdown pour l\'intégrer facilement dans vos notes (Notion, Obsidian, etc.). Disponible dès le plan Étudiant.',
-            en: 'Copy the summary in Markdown format to easily integrate it into your notes (Notion, Obsidian, etc.). Available from the Student plan.'
+            fr: 'Copiez le résumé au format Markdown pour l\'intégrer facilement dans vos notes (Notion, Obsidian, etc.). Disponible dès le plan Standard.',
+            en: 'Copy the summary in Markdown format to easily integrate it into your notes (Notion, Obsidian, etc.). Available from the Standard plan.'
           },
-          badge: { fr: 'Étudiant+', en: 'Student+' }
+          badge: { fr: 'Standard+', en: 'Standard+' }
         },
         {
           icon: Link2,

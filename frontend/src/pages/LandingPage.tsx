@@ -192,8 +192,8 @@ const PLANS: PlanConfig[] = [
     icon: GraduationCap,
     color: 'text-emerald-400',
     gradient: 'from-emerald-500 to-green-600',
-    badge: { fr: 'Étudiants', en: 'Students' },
-    badgeColor: 'bg-emerald-500',
+    badge: null,
+    badgeColor: undefined,
     features: [
       { text: { fr: `${PLAN_LIMITS.etudiant.monthlyAnalyses} analyses/mois`, en: `${PLAN_LIMITS.etudiant.monthlyAnalyses} analyses/month` }, included: true },
       { text: { fr: `Chat (${PLAN_LIMITS.etudiant.chatQuestionsPerVideo} q/vidéo)`, en: `Chat (${PLAN_LIMITS.etudiant.chatQuestionsPerVideo} q/video)` }, included: true },
@@ -211,6 +211,8 @@ const PLANS: PlanConfig[] = [
     icon: Star,
     color: 'text-blue-400',
     gradient: 'from-blue-500 to-blue-600',
+    badge: { fr: 'Populaire étudiants', en: 'Popular with students' },
+    badgeColor: 'bg-blue-500',
     features: [
       { text: { fr: `${PLAN_LIMITS.starter.monthlyAnalyses} analyses/mois`, en: `${PLAN_LIMITS.starter.monthlyAnalyses} analyses/month` }, included: true },
       { text: { fr: `Chat (${PLAN_LIMITS.starter.chatQuestionsPerVideo} q/vidéo)`, en: `Chat (${PLAN_LIMITS.starter.chatQuestionsPerVideo} q/video)` }, included: true },
@@ -930,6 +932,26 @@ const LandingPage: React.FC = () => {
                 : 'No commitment · Easy cancellation · Secure Stripe payment'}
             </p>
           </ScrollReveal>
+
+          {/* B2B Contact */}
+          <ScrollReveal delay={0.3} className="text-center mt-10">
+            <div className="inline-flex flex-col items-center gap-2 p-5 rounded-xl border border-border-subtle bg-bg-secondary/40 backdrop-blur-sm">
+              <p className="text-sm text-text-primary font-medium">
+                {language === 'fr' ? 'Besoin d\'une offre sur-mesure ?' : 'Need a custom plan?'}
+              </p>
+              <p className="text-xs text-text-secondary max-w-md">
+                {language === 'fr'
+                  ? 'Équipes, universités, entreprises — contactez-nous pour un plan adapté.'
+                  : 'Teams, universities, enterprises — contact us for a tailored plan.'}
+              </p>
+              <a
+                href="mailto:contact@deepsightsynthesis.com?subject=Offre%20sur-mesure%20DeepSight"
+                className="mt-1 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-text-primary text-xs font-medium transition-all"
+              >
+                {language === 'fr' ? 'Contactez-nous' : 'Contact us'}
+              </a>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 
@@ -972,8 +994,8 @@ const LandingPage: React.FC = () => {
               </h2>
               <p className="text-text-secondary text-sm sm:text-base mb-8 max-w-md mx-auto">
                 {language === 'fr'
-                  ? 'Rejoignez les chercheurs, journalistes et professionnels qui extraient le savoir de chaque vidéo avec Deep Sight. 3 analyses gratuites pour commencer.'
-                  : 'Join the researchers, journalists and professionals who extract knowledge from every video with Deep Sight. 3 free analyses to get started.'}
+                  ? 'Rejoignez les chercheurs, journalistes et professionnels qui extraient le savoir de chaque vidéo avec Deep Sight. 5 analyses gratuites pour commencer.'
+                  : 'Join the researchers, journalists and professionals who extract knowledge from every video with Deep Sight. 5 free analyses to get started.'}
               </p>
               <motion.button
                 onClick={() => navigate('/login')}

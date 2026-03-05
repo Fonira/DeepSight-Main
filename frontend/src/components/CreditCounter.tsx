@@ -2,10 +2,10 @@
  * CreditCounter v2.0 - Persistent credit counter with visual alerts
  * Shows remaining credits with color-coded urgency levels
  *
- * Aligned with new pricing strategy:
- * - Free: 150 credits, 3 analyses
- * - Etudiant: 2000 credits
- * - Starter: 3000 credits
+ * Aligned with pricing strategy:
+ * - Free: 250 credits, 5 analyses
+ * - Starter: 2000 credits
+ * - Standard: 3000 credits
  * - Pro: 15000 credits
  */
 
