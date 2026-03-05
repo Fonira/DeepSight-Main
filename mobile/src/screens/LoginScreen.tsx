@@ -168,11 +168,29 @@ export const LoginScreen: React.FC = () => {
 
           {/* Platform logos */}
           <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.platformLogos}>
-            <Image source={require('../assets/platforms/youtube-logo-white.png')} style={styles.platformLogoYt} resizeMode="contain" />
+            <Image
+              source={isDark
+                ? require('../assets/platforms/youtube-logo-white.png')
+                : require('../assets/platforms/youtube-logo-dark.png')
+              }
+              style={styles.platformLogoYt}
+              resizeMode="contain"
+            />
             <View style={[styles.platformDivider, { backgroundColor: colors.border }]} />
-            <Image source={require('../assets/platforms/tiktok-logo-white.png')} style={styles.platformLogoTk} resizeMode="contain" />
+            <Image
+              source={isDark
+                ? require('../assets/platforms/tiktok-logo-white.png')
+                : require('../assets/platforms/tiktok-logo-black.png')
+              }
+              style={styles.platformLogoTk}
+              resizeMode="contain"
+            />
             <View style={[styles.platformDivider, { backgroundColor: colors.border }]} />
-            <Image source={require('../assets/platforms/mistral-logo-white.png')} style={styles.platformLogoMistral} resizeMode="contain" />
+            <Image
+              source={require('../assets/platforms/mistral-logo-white.png')}
+              style={[styles.platformLogoMistral, !isDark && { tintColor: '#1a1a2e' }]}
+              resizeMode="contain"
+            />
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(150).duration(400)}>

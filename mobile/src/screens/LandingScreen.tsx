@@ -70,7 +70,7 @@ const FeatureCard: React.FC<FeatureCardProps> = ({ icon, title, description, del
 };
 
 export const LandingScreen: React.FC = () => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const navigation = useNavigation<LandingScreenNavigationProp>();
   const insets = useSafeAreaInsets();
   useScreenDoodleVariant('creative');
@@ -179,13 +179,31 @@ export const LandingScreen: React.FC = () => {
 
           {/* Platform logos */}
           <Animated.View entering={FadeInDown.delay(350).duration(500)} style={styles.platformRow}>
-            <Image source={require('../assets/platforms/youtube-logo-white.png')} style={styles.platformYt} resizeMode="contain" />
+            <Image
+              source={isDark
+                ? require('../assets/platforms/youtube-logo-white.png')
+                : require('../assets/platforms/youtube-logo-dark.png')
+              }
+              style={styles.platformYt}
+              resizeMode="contain"
+            />
             <View style={[styles.platformSep, { backgroundColor: colors.border }]} />
-            <Image source={require('../assets/platforms/tiktok-logo-white.png')} style={styles.platformTk} resizeMode="contain" />
+            <Image
+              source={isDark
+                ? require('../assets/platforms/tiktok-logo-white.png')
+                : require('../assets/platforms/tiktok-logo-black.png')
+              }
+              style={styles.platformTk}
+              resizeMode="contain"
+            />
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(400).duration(500)} style={styles.poweredRow}>
             <Text style={[styles.poweredText, { color: colors.textMuted }]}>Propulsé par</Text>
-            <Image source={require('../assets/platforms/mistral-logo-white.png')} style={styles.platformMistral} resizeMode="contain" />
+            <Image
+              source={require('../assets/platforms/mistral-logo-white.png')}
+              style={[styles.platformMistral, !isDark && { tintColor: '#1a1a2e' }]}
+              resizeMode="contain"
+            />
           </Animated.View>
         </View>
 

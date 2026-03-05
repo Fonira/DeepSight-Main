@@ -58,7 +58,7 @@ type DashboardNavigationProp = CompositeNavigationProp<
 >;
 
 export const DashboardScreen: React.FC = () => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { user, refreshUser } = useAuth();
   const { t, language } = useLanguage();
   const navigation = useNavigation<DashboardNavigationProp>();
@@ -470,11 +470,29 @@ export const DashboardScreen: React.FC = () => {
 
         {/* Platform logos banner */}
         <Animated.View entering={FadeInDown.delay(50).duration(400)} style={styles.platformBanner}>
-          <Image source={require('../assets/platforms/youtube-logo-white.png')} style={styles.bannerLogoYt} resizeMode="contain" />
+          <Image
+            source={isDark
+              ? require('../assets/platforms/youtube-logo-white.png')
+              : require('../assets/platforms/youtube-logo-dark.png')
+            }
+            style={styles.bannerLogoYt}
+            resizeMode="contain"
+          />
           <View style={[styles.bannerDivider, { backgroundColor: colors.border }]} />
-          <Image source={require('../assets/platforms/tiktok-logo-white.png')} style={styles.bannerLogoTk} resizeMode="contain" />
+          <Image
+            source={isDark
+              ? require('../assets/platforms/tiktok-logo-white.png')
+              : require('../assets/platforms/tiktok-logo-black.png')
+            }
+            style={styles.bannerLogoTk}
+            resizeMode="contain"
+          />
           <View style={[styles.bannerDivider, { backgroundColor: colors.border }]} />
-          <Image source={require('../assets/platforms/mistral-logo-white.png')} style={styles.bannerLogoMistral} resizeMode="contain" />
+          <Image
+            source={require('../assets/platforms/mistral-logo-white.png')}
+            style={[styles.bannerLogoMistral, !isDark && { tintColor: '#1a1a2e' }]}
+            resizeMode="contain"
+          />
         </Animated.View>
 
         {/* Analysis Input Section */}

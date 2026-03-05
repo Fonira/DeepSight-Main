@@ -14,7 +14,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { darkColors, palette } from '@/theme/colors';
+import { useTheme } from '@/contexts/ThemeContext';
+import { palette } from '@/theme/colors';
 import { sp } from '@/theme/spacing';
 
 interface TabBarIconProps {
@@ -55,6 +56,7 @@ export function CustomTabBar({
 }: CustomTabBarProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const { colors, isDark } = useTheme();
 
   // Filtrer : on n'affiche que les 4 routes principales
   const visibleRoutes = useMemo(
@@ -112,10 +114,14 @@ export function CustomTabBar({
     <View
       style={[
         styles.container,
-        { paddingBottom: Math.max(insets.bottom, sp.sm) },
+        {
+          paddingBottom: Math.max(insets.bottom, sp.sm),
+          backgroundColor: colors.bgPrimary,
+          borderTopColor: colors.border,
+        },
       ]}
     >
-      <BlurView intensity={85} style={styles.blurContainer}>
+      <BlurView intensity={isDark ? 85 : 50} tint={isDark ? 'dark' : 'light'} style={styles.blurContainer}>
         <View style={styles.tabBarContent}>
           {/* Animated Indicator */}
           {activeVisibleIndex >= 0 && (
@@ -148,7 +154,7 @@ export function CustomTabBar({
                   color={
                     isFocused
                       ? palette.indigo
-                      : 'rgba(255, 255, 255, 0.4)'
+                      : isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.35)'
                   }
                 />
               </TouchableOpacity>
@@ -166,13 +172,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: darkColors.bgPrimary,
     borderTopWidth: 1,
-    borderTopColor: darkColors.border,
   },
   blurContainer: {
     overflow: 'hidden',
-    backgroundColor: darkColors.bgPrimary,
   },
   tabBarContent: {
     flexDirection: 'row',
