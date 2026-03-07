@@ -81,9 +81,9 @@ const CATEGORY_DISPLAY: Record<string, { emoji: string; name: string }> = {
 };
 
 const MODES = [
-  { id: "accessible", name: "Accessible", desc: "Grand public" },
+  { id: "accessible", name: "Accessible", desc: "Langage simple" },
   { id: "standard", name: "Standard", desc: "Équilibré" },
-  { id: "expert", name: "Expert", desc: "Technique" },
+  { id: "expert", name: "Expert", desc: "Jargon pro" },
 ] as const;
 
 const formatDuration = (seconds: number): string => {

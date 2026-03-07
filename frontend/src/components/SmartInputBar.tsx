@@ -99,13 +99,13 @@ const MODE_CONFIG = {
   url: {
     icon: Link2,
     label: { fr: 'URL Vidéo', en: 'Video URL' },
-    bgColor: 'bg-red-500/10',
-    textColor: 'text-red-400',
+    bgColor: 'bg-emerald-500/10',
+    textColor: 'text-emerald-400',
     // Bordure dynamique gérée via getDynamicBorderClasses()
     borderColor: 'border-border-default',
     hoverBorder: 'hover:border-border-hover',
     focusBorder: 'focus-within:border-accent-primary/60',
-    gradient: 'from-red-500 to-rose-600',
+    gradient: 'from-emerald-500 to-green-600',
     placeholder: { fr: 'YouTube, TikTok... collez votre lien ici', en: 'YouTube, TikTok... paste your link here' },
   },
   text: {
@@ -472,7 +472,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
               <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                 isTikTokUrl(inputVal)
                   ? 'bg-cyan-500/15 text-cyan-400'
-                  : 'bg-red-500/15 text-red-400'
+                  : 'bg-emerald-500/15 text-emerald-400'
               }`}>
                 {isTikTokUrl(inputVal) ? '🎵 TikTok' : '▶ YouTube'}
                 {' — '}{language === 'fr' ? 'URL valide' : 'Valid URL'}

@@ -139,7 +139,7 @@ const ContactPage: React.FC = () => {
       <header className="sticky top-0 z-50 backdrop-blur-xl bg-bg-primary/80 border-b border-white/5">
         <div className="max-w-4xl mx-auto flex items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-3 group">
-            <img src="/logo.png" alt="DeepSight" className="w-8 h-8" />
+            <img src="/deepsight-logo-cosmic.png" alt="DeepSight" className="w-8 h-8 rounded-md" />
             <span className="text-lg font-bold text-text-primary">Deep Sight</span>
           </Link>
           <Link
