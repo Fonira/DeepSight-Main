@@ -485,8 +485,22 @@ const LandingPage: React.FC = () => {
     }
 
     setGuestLoading(true);
+
+    // Retry once on 502/503 (transient Railway timeouts)
+    const tryAnalyze = async (attempt: number): Promise<typeof guestResult> => {
+      try {
+        return await videoApi.analyzeGuest(url);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (attempt < 2 && (msg.includes('502') || msg.includes('503') || msg.includes('failed to respond'))) {
+          return tryAnalyze(attempt + 1);
+        }
+        throw err;
+      }
+    };
+
     try {
-      const result = await videoApi.analyzeGuest(url);
+      const result = await tryAnalyze(1);
       setGuestResult(result);
       setGuestUsed(true);
       try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
@@ -497,10 +511,11 @@ const LandingPage: React.FC = () => {
         setGuestUsed(true);
         try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
       } else {
-        // User-friendly error messages
-        setGuestError(language === 'fr'
-          ? 'Impossible d\'analyser cette vidéo. Vérifiez que le lien est correct et que la vidéo fait moins de 5 minutes.'
-          : 'Unable to analyze this video. Check that the link is valid and the video is under 5 minutes.');
+        // Show backend error if descriptive, otherwise generic fallback
+        const isDescriptive = msg.length > 10 && !msg.startsWith('HTTP ') && !msg.includes('failed to respond');
+        setGuestError(isDescriptive ? msg : (language === 'fr'
+          ? 'Erreur serveur temporaire. Réessayez dans quelques secondes.'
+          : 'Temporary server error. Please try again in a few seconds.'));
       }
     } finally {
       setGuestLoading(false);
