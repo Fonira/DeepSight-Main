@@ -1,12 +1,10 @@
 /**
  * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  🎨 CUSTOMIZATION PANEL v3.0 — Analyse Personnalisée Harmonisée                   ║
+ * ║  🎨 CUSTOMIZATION PANEL v4.0 — Refonte Focus + Ton + Longueur + Langue            ║
  * ╠════════════════════════════════════════════════════════════════════════════════════╣
- * ║  v3.0 — Harmonisation tri-plateforme (Web/Mobile/Extension)                        ║
- * ║  - L1: Style d'écriture (6 options) + Anti-IA toggle compact                      ║
- * ║  - L2 (collapsible "Plus"): Longueur cible + Instructions personnalisées          ║
- * ║  - Suppression: checkboxes (comments/metadata/intention)                           ║
- * ║  - Renommage: feminine → soft                                                     ║
+ * ║  Niveau 1 (visible): Focus, Ton, Longueur, Langue                                 ║
+ * ║  Niveau 2 (collapsible): Anti-IA, Instructions personnalisées                     ║
+ * ║  Chaque option a une description claire et brève                                   ║
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
@@ -18,19 +16,26 @@ import {
   Info,
   Sparkles,
   MessageSquare,
-  FileText,
   Target,
   Save,
   RotateCcw,
+  Pen,
+  Globe,
+  Ruler,
 } from 'lucide-react';
 import {
   AnalysisCustomization,
-  WritingStyle,
+  AnalysisFocus,
+  WritingTone,
   TargetLength,
-  WRITING_STYLE_CONFIG,
+  OutputLanguage,
+  ANALYSIS_FOCUS_CONFIG,
+  WRITING_TONE_CONFIG,
   TARGET_LENGTH_CONFIG,
+  OUTPUT_LANGUAGE_CONFIG,
   DEFAULT_CUSTOMIZATION,
   CUSTOMIZATION_STORAGE_KEY,
+  migrateCustomization,
 } from '../../types/analysis';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -38,26 +43,69 @@ import {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface CustomizationPanelProps {
-  /** Callback quand la customization change */
   onCustomizationChange: (customization: AnalysisCustomization) => void;
-  /** Valeurs initiales */
   initialCustomization?: Partial<AnalysisCustomization>;
-  /** Langue de l'interface */
   language?: 'fr' | 'en';
-  /** Désactiver le panel */
   disabled?: boolean;
-  /** Mode compact (inline) */
   compact?: boolean;
 }
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// 🔧 CONSTANTS
-// ═══════════════════════════════════════════════════════════════════════════════
 
 const MAX_PROMPT_LENGTH = 2000;
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🎨 CUSTOMIZATION PANEL COMPONENT
+// 🧱 SUB-COMPONENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** Label de section avec icône, titre et description */
+const SectionLabel: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}> = ({ icon, title, description }) => (
+  <div className="flex items-start gap-2.5 mb-3">
+    <div className="w-5 h-5 mt-0.5 text-accent-primary flex-shrink-0">{icon}</div>
+    <div>
+      <span className="text-sm font-medium text-text-primary">{title}</span>
+      <p className="text-xs text-text-muted mt-0.5">{description}</p>
+    </div>
+  </div>
+);
+
+/** Bouton de sélection avec emoji + label */
+const SelectionButton: React.FC<{
+  selected: boolean;
+  emoji: string;
+  label: string;
+  description?: string;
+  disabled?: boolean;
+  onClick: () => void;
+  size?: 'sm' | 'md';
+}> = ({ selected, emoji, label, description, disabled, onClick, size = 'md' }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    aria-pressed={selected}
+    className={`
+      flex flex-col items-center gap-1 rounded-xl border-2 transition-all
+      ${size === 'sm' ? 'p-2' : 'p-3'}
+      ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]'}
+      ${selected
+        ? 'border-accent-primary bg-accent-primary/10 text-accent-primary shadow-md'
+        : 'border-border-default bg-bg-tertiary text-text-secondary hover:border-border-hover hover:bg-bg-hover'
+      }
+    `}
+    title={description}
+  >
+    <span className={size === 'sm' ? 'text-lg' : 'text-xl'}>{emoji}</span>
+    <span className={`font-medium ${size === 'sm' ? 'text-[11px]' : 'text-xs sm:text-sm'}`}>
+      {label}
+    </span>
+  </button>
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎨 MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
@@ -67,20 +115,18 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   disabled = false,
   compact = false,
 }) => {
-  // Load from localStorage or use defaults
   const loadSavedCustomization = (): AnalysisCustomization => {
     try {
       const saved = localStorage.getItem(CUSTOMIZATION_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        // Migration: feminine → soft
-        if (parsed.writingStyle === 'feminine') {
-          parsed.writingStyle = 'soft';
+
+        // Détection v2/v3 → migration
+        if (parsed.writingStyle && !parsed.writingTone) {
+          const migrated = migrateCustomization(parsed);
+          return { ...migrated, ...initialCustomization };
         }
-        // Migration: supprimer les anciens champs
-        delete parsed.includeComments;
-        delete parsed.includeMetadata;
-        delete parsed.includeIntention;
+
         return { ...DEFAULT_CUSTOMIZATION, ...parsed, ...initialCustomization };
       }
     } catch {
@@ -93,16 +139,13 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   const [showMore, setShowMore] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
-  // Generate unique IDs for accessibility
   const baseId = useId();
 
-  // Translation helper
   const t = useCallback(
     (fr: string, en: string) => (language === 'fr' ? fr : en),
     [language]
   );
 
-  // Save to localStorage
   const saveToLocalStorage = useCallback((data: AnalysisCustomization) => {
     try {
       localStorage.setItem(CUSTOMIZATION_STORAGE_KEY, JSON.stringify(data));
@@ -113,7 +156,6 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
     }
   }, []);
 
-  // Update customization
   const updateCustomization = useCallback(
     (updates: Partial<AnalysisCustomization>) => {
       const newCustomization = { ...customization, ...updates };
@@ -124,74 +166,42 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
     [customization, onCustomizationChange, saveToLocalStorage]
   );
 
-  // Reset to defaults
   const resetToDefaults = useCallback(() => {
     setCustomization(DEFAULT_CUSTOMIZATION);
     onCustomizationChange(DEFAULT_CUSTOMIZATION);
     localStorage.removeItem(CUSTOMIZATION_STORAGE_KEY);
   }, [onCustomizationChange]);
 
-  // Notify parent on mount
   useEffect(() => {
     onCustomizationChange(customization);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🎨 COMPACT MODE (pour usage inline)
+  // COMPACT MODE
   // ═══════════════════════════════════════════════════════════════════════════
 
   if (compact) {
     return (
       <div className="flex flex-wrap items-center gap-3">
-        {/* Anti-AI Toggle Compact */}
-        <button
-          type="button"
-          onClick={() => updateCustomization({ antiAIDetection: !customization.antiAIDetection })}
-          disabled={disabled}
-          aria-pressed={customization.antiAIDetection}
-          className={`
-            flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm
-            transition-all duration-300 transform
-            ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-105 active:scale-95'}
-            ${
-              customization.antiAIDetection
-                ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/30'
-                : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover border border-border-default'
-            }
-          `}
-        >
-          {customization.antiAIDetection ? (
-            <ShieldCheck className="w-5 h-5" />
-          ) : (
-            <Shield className="w-5 h-5" />
-          )}
-          <span>{t('Anti-IA', 'Anti-AI')}</span>
-          {customization.antiAIDetection && (
-            <span className="ml-1 text-xs opacity-80">✓</span>
-          )}
-        </button>
-
-        {/* Style Quick Select */}
-        <select
-          value={customization.writingStyle}
-          onChange={(e) => updateCustomization({ writingStyle: e.target.value as WritingStyle })}
-          disabled={disabled}
-          className="bg-bg-tertiary border border-border-default rounded-lg px-3 py-2 text-sm text-text-primary cursor-pointer disabled:opacity-50"
-        >
-          {(Object.keys(WRITING_STYLE_CONFIG) as WritingStyle[]).map((style) => (
-            <option key={style} value={style}>
-              {WRITING_STYLE_CONFIG[style].emoji} {WRITING_STYLE_CONFIG[style].label[language]}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-1.5 px-3 py-2 bg-bg-tertiary border border-border-default rounded-lg text-sm text-text-secondary">
+          <span>{ANALYSIS_FOCUS_CONFIG[customization.analysisFocus].emoji}</span>
+          <span>{ANALYSIS_FOCUS_CONFIG[customization.analysisFocus].label[language]}</span>
+        </div>
+        <div className="flex items-center gap-1.5 px-3 py-2 bg-bg-tertiary border border-border-default rounded-lg text-sm text-text-secondary">
+          <span>{WRITING_TONE_CONFIG[customization.writingTone].emoji}</span>
+          <span>{WRITING_TONE_CONFIG[customization.writingTone].label[language]}</span>
+        </div>
+        {customization.antiAIDetection && (
+          <span className="px-3 py-2 bg-green-500/20 text-green-400 rounded-lg text-sm flex items-center gap-1.5">
+            <ShieldCheck className="w-4 h-4" /> Anti-IA
+          </span>
+        )}
       </div>
     );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // 🎨 FULL MODE — Structure harmonisée v3
-  // L1: Style + Anti-IA toggle compact
-  // L2 (collapsible): Longueur + Instructions
+  // FULL MODE v4
   // ═══════════════════════════════════════════════════════════════════════════
 
   return (
@@ -210,7 +220,6 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
             <Sparkles className="w-5 h-5 text-accent-primary" />
             {t('Personnalisation', 'Customization')}
           </h2>
-
           <div className="flex items-center gap-2">
             {isSaved && (
               <span className="text-xs text-green-500 flex items-center gap-1 animate-fade-in">
@@ -231,103 +240,157 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
         </div>
       </div>
 
-      <div className="p-4 sm:p-5 space-y-5">
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* L1: ✍️ STYLE D'ÉCRITURE — Visible directement */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        <div className="space-y-3">
-          <label className="flex items-center gap-2 text-sm font-medium text-text-primary">
-            <FileText className="w-4 h-4 text-accent-primary" />
-            {t("Style d'écriture", 'Writing Style')}
-          </label>
+      <div className="p-4 sm:p-5 space-y-6">
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* 🎯 FOCUS — Quel angle pour l'analyse ? */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        <div>
+          <SectionLabel
+            icon={<Target className="w-5 h-5" />}
+            title={t('Focus de l\'analyse', 'Analysis Focus')}
+            description={t(
+              'Quel type de résultat voulez-vous obtenir ?',
+              'What type of result do you want?'
+            )}
+          />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {(Object.keys(ANALYSIS_FOCUS_CONFIG) as AnalysisFocus[]).map((focus) => {
+              const config = ANALYSIS_FOCUS_CONFIG[focus];
+              return (
+                <SelectionButton
+                  key={focus}
+                  selected={customization.analysisFocus === focus}
+                  emoji={config.emoji}
+                  label={config.label[language]}
+                  description={config.description[language]}
+                  disabled={disabled}
+                  onClick={() => updateCustomization({ analysisFocus: focus })}
+                />
+              );
+            })}
+          </div>
+          {/* Description du focus sélectionné */}
+          <p className="text-xs text-text-muted text-center mt-2 px-2">
+            {ANALYSIS_FOCUS_CONFIG[customization.analysisFocus].description[language]}
+          </p>
+        </div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-            {(Object.keys(WRITING_STYLE_CONFIG) as WritingStyle[]).map((style) => {
-              const config = WRITING_STYLE_CONFIG[style];
-              const isSelected = customization.writingStyle === style;
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* ✍️ TON — Comment l'analyse est rédigée */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        <div>
+          <SectionLabel
+            icon={<Pen className="w-5 h-5" />}
+            title={t('Ton', 'Tone')}
+            description={t(
+              'Le style de rédaction de l\'analyse',
+              'The writing style of the analysis'
+            )}
+          />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {(Object.keys(WRITING_TONE_CONFIG) as WritingTone[]).map((tone) => {
+              const config = WRITING_TONE_CONFIG[tone];
+              return (
+                <SelectionButton
+                  key={tone}
+                  selected={customization.writingTone === tone}
+                  emoji={config.emoji}
+                  label={config.label[language]}
+                  description={config.description[language]}
+                  disabled={disabled}
+                  onClick={() => updateCustomization({ writingTone: tone })}
+                />
+              );
+            })}
+          </div>
+        </div>
 
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* 📏 LONGUEUR — Taille de l'analyse */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        <div>
+          <SectionLabel
+            icon={<Ruler className="w-5 h-5" />}
+            title={t('Longueur', 'Length')}
+            description={t(
+              'Combien de détails souhaitez-vous ?',
+              'How much detail do you want?'
+            )}
+          />
+          <div className="grid grid-cols-4 gap-2">
+            {(Object.keys(TARGET_LENGTH_CONFIG) as TargetLength[]).map((length) => {
+              const config = TARGET_LENGTH_CONFIG[length];
+              const isSelected = customization.targetLength === length;
               return (
                 <button
-                  key={style}
+                  key={length}
                   type="button"
-                  onClick={() => updateCustomization({ writingStyle: style })}
+                  onClick={() => updateCustomization({ targetLength: length })}
                   disabled={disabled}
                   aria-pressed={isSelected}
                   className={`
-                    flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all
+                    flex flex-col items-center gap-1 py-2.5 px-2 rounded-xl border-2 transition-all
                     ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]'}
-                    ${
-                      isSelected
-                        ? 'border-accent-primary bg-accent-primary/10 text-accent-primary shadow-md'
-                        : 'border-border-default bg-bg-tertiary text-text-secondary hover:border-border-hover hover:bg-bg-hover'
+                    ${isSelected
+                      ? 'border-accent-primary bg-accent-primary/10 text-accent-primary shadow-md'
+                      : 'border-border-default bg-bg-tertiary text-text-secondary hover:border-border-hover hover:bg-bg-hover'
                     }
                   `}
                 >
-                  <span className="text-xl">{config.emoji}</span>
                   <span className="text-xs sm:text-sm font-medium">
                     {config.label[language]}
+                  </span>
+                  <span className={`text-[10px] ${isSelected ? 'text-accent-primary/70' : 'text-text-muted'}`}>
+                    {config.wordRange[language]}
                   </span>
                 </button>
               );
             })}
           </div>
-
-          {/* Description du style sélectionné */}
-          <p className="text-xs text-text-muted text-center px-2">
-            {WRITING_STYLE_CONFIG[customization.writingStyle].description[language]}
-          </p>
         </div>
 
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* L1: 🛡️ ANTI-IA TOGGLE — Compact (pas le gros bouton) */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        <div className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary border border-border-default">
-          <div className="flex items-center gap-3">
-            <div className={`
-              w-9 h-9 rounded-lg flex items-center justify-center transition-all
-              ${customization.antiAIDetection
-                ? 'bg-green-500/20 text-green-400'
-                : 'bg-bg-hover text-text-muted'}
-            `}>
-              {customization.antiAIDetection ? (
-                <ShieldCheck className="w-5 h-5" />
-              ) : (
-                <Shield className="w-5 h-5" />
-              )}
-            </div>
-            <div>
-              <span className="text-sm font-medium text-text-primary">
-                {t('Anti-Détection IA', 'Anti-AI Detection')}
-              </span>
-              <p className="text-xs text-text-muted">
-                {t('Humanise le texte (GPTZero, Turnitin...)', 'Humanizes text (GPTZero, Turnitin...)')}
-              </p>
-            </div>
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* 🌐 LANGUE — Langue de sortie */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        <div>
+          <SectionLabel
+            icon={<Globe className="w-5 h-5" />}
+            title={t('Langue de l\'analyse', 'Analysis Language')}
+            description={t(
+              'Par défaut, la langue est détectée automatiquement',
+              'By default, the language is auto-detected'
+            )}
+          />
+          <div className="relative">
+            <select
+              value={customization.outputLanguage}
+              onChange={(e) => updateCustomization({ outputLanguage: e.target.value as OutputLanguage })}
+              disabled={disabled}
+              className={`
+                w-full appearance-none px-4 py-3 pr-10 rounded-xl
+                bg-bg-tertiary border-2 border-border-default
+                text-text-primary text-sm font-medium
+                focus:outline-none focus:ring-2 focus:ring-accent-primary/50 focus:border-accent-primary
+                transition-all cursor-pointer
+                disabled:opacity-50 disabled:cursor-not-allowed
+              `}
+            >
+              {(Object.keys(OUTPUT_LANGUAGE_CONFIG) as OutputLanguage[]).map((lang) => {
+                const config = OUTPUT_LANGUAGE_CONFIG[lang];
+                return (
+                  <option key={lang} value={lang}>
+                    {config.flag}  {config.label[language]}
+                  </option>
+                );
+              })}
+            </select>
+            <ChevronDown className="w-4 h-4 text-text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
-
-          {/* Toggle switch */}
-          <button
-            type="button"
-            role="switch"
-            aria-checked={customization.antiAIDetection}
-            onClick={() => updateCustomization({ antiAIDetection: !customization.antiAIDetection })}
-            disabled={disabled}
-            className={`
-              relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300
-              ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-              ${customization.antiAIDetection ? 'bg-green-500' : 'bg-gray-600'}
-            `}
-          >
-            <span className={`
-              inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300
-              ${customization.antiAIDetection ? 'translate-x-6' : 'translate-x-1'}
-            `} />
-          </button>
         </div>
 
-        {/* ═══════════════════════════════════════════════════════════════════ */}
-        {/* L2: ⚙️ PLUS D'OPTIONS — Collapsible */}
-        {/* ═══════════════════════════════════════════════════════════════════ */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
+        {/* ⚙️ PLUS D'OPTIONS — Collapsible */}
+        {/* ═══════════════════════════════════════════════════════════════ */}
         <div className="border-t border-border-subtle pt-4">
           <button
             type="button"
@@ -345,7 +408,6 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
             </div>
           </button>
 
-          {/* More Options Content */}
           <div
             id={`${baseId}-more`}
             className={`
@@ -354,52 +416,53 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
             `}
           >
             <div className="space-y-5">
-              {/* ───────────────────────────────────────────────────────── */}
-              {/* 📏 LONGUEUR CIBLE */}
-              {/* ───────────────────────────────────────────────────────── */}
-              <div className="space-y-3">
-                <label className="flex items-center gap-2 text-sm font-medium text-text-primary">
-                  <Target className="w-4 h-4 text-accent-primary" />
-                  {t('Longueur cible', 'Target Length')}
-                </label>
-
-                <div className="grid grid-cols-4 gap-2">
-                  {(Object.keys(TARGET_LENGTH_CONFIG) as TargetLength[]).map((length) => {
-                    const config = TARGET_LENGTH_CONFIG[length];
-                    const isSelected = customization.targetLength === length;
-
-                    return (
-                      <button
-                        key={length}
-                        type="button"
-                        onClick={() => updateCustomization({ targetLength: length })}
-                        disabled={disabled}
-                        aria-pressed={isSelected}
-                        className={`
-                          flex flex-col items-center gap-1 py-2.5 px-2 rounded-lg border transition-all
-                          ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                          ${
-                            isSelected
-                              ? 'border-accent-primary bg-accent-primary text-white shadow-md'
-                              : 'border-border-default bg-bg-tertiary text-text-secondary hover:border-border-hover hover:bg-bg-hover'
-                          }
-                        `}
-                      >
-                        <span className="text-xs sm:text-sm font-medium">
-                          {config.label[language]}
-                        </span>
-                        <span className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-text-muted'}`}>
-                          {config.wordRange[language]}
-                        </span>
-                      </button>
-                    );
-                  })}
+              {/* 🛡️ Anti-Détection IA */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary border border-border-default">
+                <div className="flex items-center gap-3">
+                  <div className={`
+                    w-9 h-9 rounded-lg flex items-center justify-center transition-all
+                    ${customization.antiAIDetection
+                      ? 'bg-green-500/20 text-green-400'
+                      : 'bg-bg-hover text-text-muted'}
+                  `}>
+                    {customization.antiAIDetection ? (
+                      <ShieldCheck className="w-5 h-5" />
+                    ) : (
+                      <Shield className="w-5 h-5" />
+                    )}
+                  </div>
+                  <div>
+                    <span className="text-sm font-medium text-text-primary">
+                      {t('Anti-Détection IA', 'Anti-AI Detection')}
+                    </span>
+                    <p className="text-xs text-text-muted">
+                      {t(
+                        'Rend le texte indétectable par GPTZero, Turnitin, etc.',
+                        'Makes text undetectable by GPTZero, Turnitin, etc.'
+                      )}
+                    </p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={customization.antiAIDetection}
+                  onClick={() => updateCustomization({ antiAIDetection: !customization.antiAIDetection })}
+                  disabled={disabled}
+                  className={`
+                    relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 flex-shrink-0
+                    ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                    ${customization.antiAIDetection ? 'bg-green-500' : 'bg-gray-600'}
+                  `}
+                >
+                  <span className={`
+                    inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300
+                    ${customization.antiAIDetection ? 'translate-x-6' : 'translate-x-1'}
+                  `} />
+                </button>
               </div>
 
-              {/* ───────────────────────────────────────────────────────── */}
-              {/* 📝 INSTRUCTIONS PERSONNALISÉES */}
-              {/* ───────────────────────────────────────────────────────── */}
+              {/* 📝 Instructions personnalisées */}
               <div className="space-y-2">
                 <label
                   htmlFor={`${baseId}-prompt`}
@@ -411,7 +474,12 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                     ({t('optionnel', 'optional')})
                   </span>
                 </label>
-
+                <p className="text-xs text-text-muted ml-6">
+                  {t(
+                    'Donnez des consignes spécifiques à l\'IA pour cette analyse',
+                    'Give specific instructions to the AI for this analysis'
+                  )}
+                </p>
                 <div className="relative">
                   <textarea
                     id={`${baseId}-prompt`}
@@ -422,8 +490,8 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                     }}
                     disabled={disabled}
                     placeholder={t(
-                      'Ex: "Concentre-toi sur les aspects pratiques" ou "Ajoute des exemples concrets"...',
-                      'E.g., "Focus on practical aspects" or "Add concrete examples"...'
+                      'Ex: "Concentre-toi sur les aspects pratiques" ou "Compare avec d\'autres théories"...',
+                      'E.g., "Focus on practical aspects" or "Compare with other theories"...'
                     )}
                     rows={3}
                     maxLength={MAX_PROMPT_LENGTH}

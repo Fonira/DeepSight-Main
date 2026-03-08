@@ -54,9 +54,9 @@ import { CreditAlert } from "../components/CreditAlert";
 import { AnalysisValueDisplay } from "../components/AnalysisValueDisplay";
 import { UpgradePromptModal } from "../components/UpgradePromptModal";
 import { FreeTrialLimitModal } from "../components/FreeTrialLimitModal";
-// 🎨 Customization Panel v2
+// 🎨 Customization Panel v4
 import { CustomizationPanel } from "../components/analysis/CustomizationPanel";
-import { AnalysisCustomization, DEFAULT_CUSTOMIZATION } from "../types/analysis";
+import { AnalysisCustomization, DEFAULT_CUSTOMIZATION, customizationToApiParams } from "../types/analysis";
 
 interface ChatMessage {
   id: string;
@@ -80,11 +80,7 @@ const CATEGORY_DISPLAY: Record<string, { emoji: string; name: string }> = {
   health: { emoji: '🏥', name: 'Santé' },
 };
 
-const MODES = [
-  { id: "accessible", name: "Accessible", desc: "Langage simple" },
-  { id: "standard", name: "Standard", desc: "Équilibré" },
-  { id: "expert", name: "Expert", desc: "Jargon pro" },
-] as const;
+// MODES supprimé — fusionné dans WritingTone (CustomizationPanel v4)
 
 const formatDuration = (seconds: number): string => {
   const h = Math.floor(seconds / 3600);
@@ -121,7 +117,7 @@ export const DashboardPage: React.FC = () => {
   const [loadingMessage, setLoadingMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [selectedSummary, setSelectedSummary] = useState<Summary | null>(null);
-  const [mode, setMode] = useState<string>("standard");
+  // mode dérivé de analysisCustomization.writingTone via customizationToApiParams
   
   // 🆕 États pour l'entrée intelligente
   const [smartInput, setSmartInput] = useState<SmartInputValue>({
@@ -395,19 +391,19 @@ export const DashboardPage: React.FC = () => {
         setVideoUrl(smartInput.url || '');
         setLoadingMessage(language === 'fr' ? "Démarrage de l'analyse..." : "Starting analysis...");
         
-        // 🎨 Utiliser l'API v2 avec personnalisation avancée
+        // 🎨 Utiliser l'API v2 avec personnalisation v4 (Focus + Ton + Langue)
+        const apiParams = customizationToApiParams(analysisCustomization, language as 'fr' | 'en');
         const response = await videoApi.analyzeV2(
           smartInput.url!,
           {
             category: 'auto',
-            mode,
+            mode: apiParams.mode,
             deepResearch: false, // 🔒 Désactivé — sera réactivé comme "Fact-checking web"
-            lang: language,
-            // Personnalisation v3
-            userPrompt: analysisCustomization.userPrompt || undefined,
-            antiAIDetection: analysisCustomization.antiAIDetection,
-            writingStyle: analysisCustomization.writingStyle,
-            targetLength: analysisCustomization.targetLength,
+            lang: apiParams.lang,
+            userPrompt: apiParams.user_prompt,
+            antiAIDetection: apiParams.anti_ai_detection,
+            writingStyle: apiParams.writing_style,
+            targetLength: apiParams.target_length,
           }
         );
         
@@ -437,13 +433,14 @@ export const DashboardPage: React.FC = () => {
       if (smartInput.mode === 'text') {
         setLoadingMessage(language === 'fr' ? "Analyse du texte..." : "Analyzing text...");
         
+        const textApiParams = customizationToApiParams(analysisCustomization, language as 'fr' | 'en');
         const response = await videoApi.analyzeHybrid({
           inputType: 'raw_text',
           rawText: smartInput.rawText!,
           textTitle: smartInput.textTitle,
           textSource: smartInput.textSource,
-          mode,
-          lang: language,
+          mode: textApiParams.mode,
+          lang: textApiParams.lang,
           deepResearch: false, // 🔒 Désactivé — sera réactivé comme "Fact-checking web"
         });
         
@@ -751,38 +748,10 @@ export const DashboardPage: React.FC = () => {
                 language={language as 'fr' | 'en'}
               />
 
-              {/* Options - Only show for non-search modes (search has its own options) */}
-              {smartInput.mode !== 'search' && (
-                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4 mt-4 pt-4 border-t border-border-subtle">
-                  {/* Mode - Full width on mobile */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                    <span className="text-xs text-text-tertiary uppercase tracking-wider font-medium">Mode</span>
-                    <div className="flex rounded-lg bg-bg-tertiary p-1 w-full sm:w-auto">
-                      {MODES.map((m) => (
-                        <button
-                          key={m.id}
-                          onClick={() => setMode(m.id)}
-                          className={`flex-1 sm:flex-none px-3 py-2 sm:py-1.5 rounded-md text-sm font-medium transition-all ${
-                            mode === m.id
-                              ? 'bg-bg-elevated text-text-primary shadow-sm'
-                              : 'text-text-tertiary hover:text-text-secondary'
-                          }`}
-                          title={m.desc}
-                        >
-                          {m.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 🔒 Deep Research désactivé — sera réactivé quand monétisé (Fact-checking web, plan Pro, ~30 crédits) */}
-
-                  {/* Quota */}
-                  {user && (
-                    <div className="sm:ml-auto text-xs text-text-tertiary text-center sm:text-right">
-                      {user.analysis_count}/{user.analysis_limit} {language === 'fr' ? 'analyses' : 'analyses'}
-                    </div>
-                  )}
+              {/* Quota (mode selector supprimé — fusionné dans Ton du CustomizationPanel v4) */}
+              {user && (
+                <div className="mt-3 pt-3 border-t border-border-subtle text-xs text-text-tertiary text-right">
+                  {user.analysis_count}/{user.analysis_limit} {language === 'fr' ? 'analyses' : 'analyses'}
                 </div>
               )}
               
@@ -820,9 +789,9 @@ export const DashboardPage: React.FC = () => {
                           )}
                         </span>
                         <span className="text-xs text-text-muted">
-                          {analysisCustomization.userPrompt 
+                          {analysisCustomization.userPrompt
                             ? (language === 'fr' ? 'Instructions personnalisées actives' : 'Custom instructions active')
-                            : (language === 'fr' ? 'Style, longueur, anti-détection IA...' : 'Style, length, anti-AI detection...')}
+                            : (language === 'fr' ? 'Focus, ton, longueur, langue...' : 'Focus, tone, length, language...')}
                         </span>
                       </div>
                     </div>
@@ -1041,7 +1010,7 @@ export const DashboardPage: React.FC = () => {
                           </span>
                         )}
                         <span className="badge">
-                          {selectedSummary.mode || mode}
+                          {selectedSummary.mode || 'standard'}
                         </span>
                         {selectedSummary.word_count && (
                           <span className="badge">
@@ -1078,6 +1047,31 @@ export const DashboardPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* 💬 Bandeau Chat IA — Interroger l'IA sur cette vidéo */}
+                {!chatOpen && (
+                  <button
+                    onClick={() => { setChatOpen(true); setChatMinimized(false); }}
+                    className="w-full card group cursor-pointer hover:border-accent-primary/50 transition-all duration-200"
+                  >
+                    <div className="flex items-center gap-4 p-4 sm:p-5">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0 group-hover:from-cyan-500/30 group-hover:to-blue-500/30 transition-all">
+                        <MessageCircle className="w-6 h-6 text-cyan-400" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <h4 className="text-sm font-semibold text-text-primary group-hover:text-accent-primary transition-colors">
+                          {language === 'fr' ? 'Interroger l\'IA sur cette vidéo' : 'Ask the AI about this video'}
+                        </h4>
+                        <p className="text-xs text-text-muted mt-0.5">
+                          {language === 'fr'
+                            ? 'Posez vos questions — l\'IA a analysé le contenu et peut faire des recherches complémentaires sur les sujets abordés'
+                            : 'Ask your questions — the AI has analyzed the content and can do complementary research on the topics covered'}
+                        </p>
+                      </div>
+                      <ChevronDown className="w-5 h-5 text-text-muted -rotate-90 group-hover:text-accent-primary transition-all" />
+                    </div>
+                  </button>
+                )}
 
                 {/* Tournesol Details (expandable) */}
                 {showTournesolDetails && (
@@ -1277,17 +1271,7 @@ export const DashboardPage: React.FC = () => {
         </div>
       </main>
 
-      {/* 💬 FAB Chat IA — Floating Action Button (bottom-right) */}
-      {selectedSummary && !loading && (
-        <button
-          className={`fab-chat-ia ${chatOpen ? 'fab-hidden' : ''} ${playlistDetected ? 'fab-violet' : 'fab-teal'}`}
-          onClick={() => { setChatOpen(true); setChatMinimized(false); }}
-          aria-label={language === 'fr' ? 'Ouvrir le chat IA' : 'Open AI chat'}
-        >
-          <MessageCircle size={20} />
-          <span>Chat IA</span>
-        </button>
-      )}
+      {/* FAB Chat IA supprimé — remplacé par bandeau sous la miniature */}
 
       {/* 🆕 Chat Panel - FloatingChatWindow (Draggable & Resizable) */}
       <FloatingChatWindow

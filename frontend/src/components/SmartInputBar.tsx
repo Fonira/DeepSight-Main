@@ -573,37 +573,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
             </>
           )}
 
-          {/* Search Mode: Language Selector */}
-          {isSearchMode && showLanguageSelector && (
-            <div className="flex flex-col gap-1">
-              <span className="text-[10px] text-text-muted flex items-center gap-1">
-                <Globe className="w-3 h-3" />
-                {language === 'fr' ? 'Langue de l\'analyse' : 'Analysis language'}
-              </span>
-              <div className="flex gap-1">
-                {SEARCH_LANGUAGES.map((lang) => {
-                  const isSelected = (value.searchLanguages || ['fr', 'en']).includes(lang.code);
-                  return (
-                    <button
-                      key={lang.code}
-                      type="button"
-                      onClick={() => toggleLanguage(lang.code)}
-                      className={`min-w-[44px] min-h-[44px] px-2 py-1 rounded-md text-sm transition-all ${
-                        isSelected
-                          ? 'bg-violet-500/20 text-violet-400 ring-1 ring-violet-500/50'
-                          : 'bg-bg-tertiary text-text-muted hover:text-text-secondary'
-                      }`}
-                      title={language === 'fr' ? `Langue de l'analyse : ${lang.name}` : `Analysis language: ${lang.name}`}
-                      aria-label={language === 'fr' ? `Analyser en ${lang.name}` : `Analyze in ${lang.name}`}
-                      aria-pressed={isSelected}
-                    >
-                      {lang.flag}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {/* Language selector supprimé — langue gérée dans CustomizationPanel v4 */}
         </div>
       )}
 
