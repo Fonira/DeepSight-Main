@@ -9,9 +9,10 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
+import { normalizePlanId } from '../config/planPrivileges';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
 import SmartInputBar, { SmartInputValue } from '../components/SmartInputBar';
@@ -193,8 +194,42 @@ export const PlaylistPage: React.FC = () => {
   const [maxVideos, setMaxVideos] = useState(10);
   const [mode, setMode] = useState<'accessible' | 'standard' | 'expert'>('accessible');
 
-  // User info - Pro/Team/Expert/Unlimited can use playlists
+  // User info
   const userCredits = user?.credits || 0;
+  const normalizedPlan = normalizePlanId(user?.plan);
+  const isPaidUser = normalizedPlan !== 'free';
+
+  // Plan-gate: redirect free users
+  if (!isPaidUser) {
+    return (
+      <div className="flex min-h-screen bg-bg-primary">
+        <DoodleBackground variant="video" />
+        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+        <main className="flex-1 overflow-x-hidden">
+          <div className="container max-w-lg mx-auto px-4 py-16 pb-20 lg:pb-8 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-violet-500/10 flex items-center justify-center mx-auto mb-6">
+              <Sparkles className="w-8 h-8 text-violet-400" />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-3">
+              {language === 'fr' ? 'Fonctionnalité réservée aux abonnés' : 'Subscribers only feature'}
+            </h2>
+            <p className="text-text-secondary text-sm sm:text-base mb-8 max-w-sm mx-auto">
+              {language === 'fr'
+                ? 'L\'analyse de playlists est disponible à partir du plan Starter. Passez à un plan payant pour débloquer cette fonctionnalité.'
+                : 'Playlist analysis is available from the Starter plan. Upgrade to a paid plan to unlock this feature.'}
+            </p>
+            <Link
+              to="/upgrade"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold hover:opacity-90 transition-opacity"
+            >
+              <Sparkles className="w-4 h-4" />
+              {language === 'fr' ? 'Voir les plans' : 'View plans'}
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   // ═══════════════════════════════════════════════════════════════════
   // ANIMATION DU POURCENTAGE
@@ -447,7 +482,7 @@ export const PlaylistPage: React.FC = () => {
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
       <main className="flex-1 overflow-x-hidden">
-        <div className="container max-w-4xl mx-auto px-4 py-8 pb-24 lg:pb-8">
+        <div className="container max-w-4xl mx-auto px-4 py-6 sm:py-8 pb-20 lg:pb-8">
 
           {/* HEADER */}
           <div className="text-center mb-8">
@@ -455,7 +490,7 @@ export const PlaylistPage: React.FC = () => {
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-text-primary">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-text-primary">
                 {language === 'fr' ? 'Playlists' : 'Playlists'}
               </h1>
             </div>

@@ -811,14 +811,14 @@ export const History: React.FC = () => {
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       
       <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
-        <div className="min-h-screen p-6 lg:p-8 pb-24 lg:pb-8">
+        <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
           <div className="max-w-6xl mx-auto">
             
             {/* Header */}
             <header className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h1 className="font-semibold text-2xl mb-2 text-text-primary">
+                  <h1 className="font-semibold text-xl sm:text-2xl mb-2 text-text-primary">
                     {language === 'fr' ? 'Historique' : 'History'}
                   </h1>
                   <p className="text-text-secondary text-sm">
@@ -847,14 +847,14 @@ export const History: React.FC = () => {
 
               {/* Stats */}
               {stats && (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
                   <div className="card p-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-lg bg-accent-primary-muted flex items-center justify-center">
                         <Video className="w-5 h-5 text-accent-primary" />
                       </div>
                       <div>
-                        <p className="text-2xl font-semibold font-semibold text-text-primary">{stats.total_videos}</p>
+                        <p className="text-lg sm:text-2xl font-semibold text-text-primary">{stats.total_videos}</p>
                         <p className="text-xs text-text-tertiary">{language === 'fr' ? 'Vidéos' : 'Videos'}</p>
                       </div>
                     </div>
@@ -865,7 +865,7 @@ export const History: React.FC = () => {
                         <Layers className="w-5 h-5 text-purple-600" />
                       </div>
                       <div>
-                        <p className="text-2xl font-semibold font-semibold text-text-primary">{stats.total_playlists}</p>
+                        <p className="text-lg sm:text-2xl font-semibold text-text-primary">{stats.total_playlists}</p>
                         <p className="text-xs text-text-tertiary">Playlists</p>
                       </div>
                     </div>
@@ -876,7 +876,7 @@ export const History: React.FC = () => {
                         <BarChart2 className="w-5 h-5 text-green-600" />
                       </div>
                       <div>
-                        <p className="text-2xl font-semibold font-semibold text-text-primary">
+                        <p className="text-lg sm:text-2xl font-semibold text-text-primary">
                           {(stats.total_words / 1000).toFixed(0)}k
                         </p>
                         <p className="text-xs text-text-tertiary">{language === 'fr' ? 'Mots' : 'Words'}</p>
@@ -889,7 +889,7 @@ export const History: React.FC = () => {
                         <Clock className="w-5 h-5 text-amber-600" />
                       </div>
                       <div>
-                        <p className="text-2xl font-semibold font-semibold text-text-primary">
+                        <p className="text-lg sm:text-2xl font-semibold text-text-primary">
                           {stats.total_duration_formatted || '0h'}
                         </p>
                         <p className="text-xs text-text-tertiary">{language === 'fr' ? 'Durée' : 'Duration'}</p>

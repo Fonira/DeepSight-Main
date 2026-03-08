@@ -426,8 +426,10 @@ export const LoadingWordGlobal: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false); // 🆕 Fermé par défaut
 
   // 🆕 Position draggable — guard window access for SSR/Safari safety
+  // Sur mobile, remonter au-dessus de la BottomNav (80px)
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
   const { position, isDragging, handleMouseDown } = useDraggable(
-    { x: (typeof window !== 'undefined' ? window.innerWidth : 1024) - 340, y: (typeof window !== 'undefined' ? window.innerHeight : 768) - 300 },
+    { x: (typeof window !== 'undefined' ? window.innerWidth : 1024) - 340, y: (typeof window !== 'undefined' ? window.innerHeight : 768) - (isMobile ? 380 : 300) },
     'loading-word-widget'
   );
 
@@ -479,7 +481,7 @@ export const LoadingWordGlobal: React.FC = () => {
       <>
         <button
           onClick={() => setIsVisible(true)}
-          className="fixed bottom-4 right-4 z-50 p-3.5 rounded-full shadow-xl hover:scale-110 active:scale-95 transition-transform"
+          className="fixed bottom-20 lg:bottom-4 right-4 z-30 p-3.5 rounded-full shadow-xl hover:scale-110 active:scale-95 transition-transform"
           title={didYouKnow}
           style={{
             background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)',

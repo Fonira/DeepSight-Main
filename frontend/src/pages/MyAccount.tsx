@@ -331,17 +331,17 @@ export const MyAccount: React.FC = () => {
         id="main-content"
         className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}
       >
-        <div className="min-h-screen p-6 lg:p-8 pb-24 lg:pb-8">
+        <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
           <div className="max-w-2xl mx-auto space-y-6">
 
             {/* Header */}
             <header className="mb-8">
               <div className="flex items-center gap-4">
-                <div className={`w-16 h-16 rounded-2xl ${currentPlan.bgColor} flex items-center justify-center ${currentPlan.color} text-2xl font-bold shadow-lg`}>
+                <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl ${currentPlan.bgColor} flex items-center justify-center ${currentPlan.color} text-xl sm:text-2xl font-bold shadow-lg`}>
                   {user?.email?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 <div>
-                  <h1 className="text-2xl font-semibold text-text-primary flex items-center gap-2">
+                  <h1 className="text-xl sm:text-2xl font-semibold text-text-primary flex items-center gap-2">
                     {tr('Mon compte', 'My Account')}
                   </h1>
                   <p className="text-text-secondary text-sm flex items-center gap-2 mt-1">
