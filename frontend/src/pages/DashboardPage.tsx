@@ -18,48 +18,37 @@ import { useNavigate } from "react-router-dom";
 import {
   ListVideo,
   Play, Video, ChevronDown, Clock, Timer,
-  Download, Sparkles, BookOpen, Shield,
-  ExternalLink, Copy, Check, MessageCircle, X,
+  Sparkles,
+  ExternalLink, MessageCircle, X,
   AlertCircle, Microscope,
-  FileText, FileDown, GraduationCap, Brain, Tags
 } from "lucide-react";
-import { DeepSightSpinner, DeepSightSpinnerMicro } from "../components/ui";
-import { EnrichedMarkdown } from "../components/EnrichedMarkdown";
-import { DeepResearchSources } from "../components/SummaryReader";
-import { ConceptsGlossary } from "../components/ConceptsGlossary";
+import { DeepSightSpinner } from "../components/ui";
 import { videoApi, chatApi, reliabilityApi, ApiError } from "../services/api";
 import type { Summary, TaskStatus, ChatQuota, DiscoveryResponse, VideoCandidate, ReliabilityResult, EnrichedConcept } from "../services/api";
 import { useAuth } from "../hooks/useAuth";
 import { useTranslation } from '../hooks/useTranslation';
 import { normalizePlanId } from '../config/planPrivileges';
-import { YouTubePlayer, YouTubePlayerRef } from "../components/YouTubePlayer";
 import { VideoPlayer, VideoPlayerRef } from "../components/VideoPlayer";
 import { createTimecodeMarkdownComponents, TimecodeInfo } from "../components/TimecodeRenderer";
 import { TournesolWidget, TournesolMini } from "../components/TournesolWidget";
 import { Sidebar } from "../components/layout/Sidebar";
 import { FloatingChatWindow } from "../components/FloatingChatWindow";
-import { CitationExport } from "../components/CitationExport";
-import { StudyToolsModal } from "../components/StudyToolsModal";
-import { KeywordsModal } from "../components/KeywordsModal";
 import DoodleBackground from '../components/DoodleBackground';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import SmartInputBar, { SmartInputValue } from "../components/SmartInputBar";
 import { TrendingSection } from "../components/TrendingSection";
-import { AcademicSourcesPanel } from "../components/academic";
 // LoadingWordWidget désormais global dans App.tsx
 import VideoDiscoveryModal from "../components/VideoDiscoveryModal";
 import { ThumbnailImage } from "../components/ThumbnailImage";
-// 🕐 Freshness & Fact-Check LITE
-import { FreshnessIndicator } from "../components/FreshnessIndicator";
-import { FactCheckLite } from "../components/FactCheckLite";
 // 💰 Monetization components
 import { CreditAlert } from "../components/CreditAlert";
-import { AnalysisValueDisplay } from "../components/AnalysisValueDisplay";
 import { UpgradePromptModal } from "../components/UpgradePromptModal";
 import { FreeTrialLimitModal } from "../components/FreeTrialLimitModal";
 // 🎨 Customization Panel v4
 import { CustomizationPanel } from "../components/analysis/CustomizationPanel";
 import { AnalysisCustomization, DEFAULT_CUSTOMIZATION, customizationToApiParams } from "../types/analysis";
+// 📊 AnalysisHub — Panel intelligent à onglets
+import { AnalysisHub } from "../components/AnalysisHub";
 
 interface ChatMessage {
   id: string;
@@ -148,13 +137,6 @@ export const DashboardPage: React.FC = () => {
   const [chatQuota, setChatQuota] = useState<ChatQuota | null>(null);
   const [wsQuota, setWsQuota] = useState<{ used: number; limit: number; remaining: number } | undefined>(undefined);
   
-  // États UI
-  const [copied, setCopied] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
-  const [showCitationModal, setShowCitationModal] = useState(false);
-  const [showStudyToolsModal, setShowStudyToolsModal] = useState(false);
-  const [showKeywordsModal, setShowKeywordsModal] = useState(false);
   // 💰 Monetization states
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeLimitType] = useState<'credits' | 'chat' | 'analysis'>('credits');
@@ -245,15 +227,6 @@ export const DashboardPage: React.FC = () => {
       setConceptsCategories({});
     } finally {
       setConceptsLoading(false);
-    }
-  };
-
-  // === Handler pour ouvrir le modal Mots-clés ===
-  
-  const handleOpenKeywordsModal = () => {
-    setShowKeywordsModal(true);
-    if (selectedSummary?.id) {
-      loadConcepts(selectedSummary.id);
     }
   };
 
@@ -682,41 +655,6 @@ export const DashboardPage: React.FC = () => {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
-
-  // === Export ===
-  
-  const handleExport = async (format: 'pdf' | 'md' | 'txt') => {
-    if (!selectedSummary?.id) return;
-    setExporting(true);
-    setShowExportMenu(false);
-
-    const formatMap: Record<string, 'pdf' | 'markdown' | 'text'> = { pdf: 'pdf', md: 'markdown', txt: 'text' };
-    try {
-      const blob = await videoApi.exportSummary(selectedSummary.id, formatMap[format]);
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      const ext = format === 'md' ? 'md' : format;
-      a.download = `${selectedSummary.video_title || 'analyse'}.${ext}`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Export error:', err);
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  // === Copy ===
-  
-  const handleCopy = async () => {
-    if (!selectedSummary?.summary_content) return;
-    try {
-      await navigator.clipboard.writeText(selectedSummary.summary_content);
-    } catch { /* clipboard API unavailable on some mobile browsers */ }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
@@ -1204,180 +1142,22 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* 🕐 Freshness & Fact-Check LITE Section */}
-                {(reliabilityData || reliabilityLoading) && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* Indicateur de fraîcheur */}
-                    {reliabilityLoading ? (
-                      <div className="animate-pulse bg-bg-tertiary rounded-xl h-32" />
-                    ) : reliabilityData?.freshness?.warning_level !== 'none' ? (
-                      <FreshnessIndicator
-                        summaryId={selectedSummary.id}
-                        videoTitle={selectedSummary.video_title}
-                        freshnessData={reliabilityData?.freshness}
-                        onRequestVerification={() => {
-                          setChatOpen(true);
-                          setChatMinimized(false);
-                          setChatInput(language === 'fr' 
-                            ? "Peux-tu vérifier si les informations de cette vidéo sont toujours à jour ?"
-                            : "Can you verify if the information in this video is still up to date?"
-                          );
-                        }}
-                      />
-                    ) : null}
-                    
-                    {/* Fact-Check LITE */}
-                    {reliabilityLoading ? (
-                      <div className="animate-pulse bg-bg-tertiary rounded-xl h-48" />
-                    ) : reliabilityData?.fact_check_lite ? (
-                      <FactCheckLite
-                        summaryId={selectedSummary.id}
-                        reliabilityData={reliabilityData}
-                        onUpgrade={() => {
-                          // Redirect to pricing or show upgrade modal
-                          window.open('/pricing', '_blank');
-                        }}
-                      />
-                    ) : null}
-                  </div>
-                )}
-
-                {/* Summary Content */}
-                <div className="card">
-                  {/* Panel header - responsive */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-5 border-b border-border-subtle">
-                    <h3 className="font-semibold text-text-primary flex items-center gap-2">
-                      <BookOpen className="w-5 h-5 text-accent-primary" />
-                      {language === 'fr' ? 'Analyse' : 'Analysis'}
-                    </h3>
-                    {/* Action buttons - scrollable on mobile */}
-                    <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0">
-                      {/* Copy */}
-                      <button
-                        onClick={handleCopy}
-                        className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
-                      >
-                        {copied ? <Check className="w-4 h-4 text-accent-success" /> : <Copy className="w-4 h-4" />}
-                        <span className="hidden sm:inline">{copied ? (language === 'fr' ? 'Copié' : 'Copied') : (language === 'fr' ? 'Copier' : 'Copy')}</span>
-                      </button>
-
-                      {/* 🎓 Citation académique */}
-                      <button
-                        onClick={() => setShowCitationModal(true)}
-                        className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
-                        title={language === 'fr' ? 'Générer une citation académique' : 'Generate academic citation'}
-                      >
-                        <GraduationCap className="w-4 h-4" />
-                        <span className="hidden sm:inline">{language === 'fr' ? 'Citer' : 'Cite'}</span>
-                      </button>
-
-                      {/* 📚 Outils d'étude (fiches + mindmap) */}
-                      <button
-                        onClick={() => setShowStudyToolsModal(true)}
-                        className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
-                        title={language === 'fr' ? 'Fiches de révision et arbre pédagogique' : 'Study cards and concept map'}
-                      >
-                        <Brain className="w-4 h-4" />
-                        <span className="hidden sm:inline">{language === 'fr' ? 'Réviser' : 'Study'}</span>
-                      </button>
-
-                      {/* 🏷️ Mots-clés */}
-                      <button
-                        onClick={handleOpenKeywordsModal}
-                        className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
-                        title={language === 'fr' ? 'Voir les mots-clés extraits' : 'View extracted keywords'}
-                      >
-                        <Tags className="w-4 h-4" />
-                        <span className="hidden sm:inline">{language === 'fr' ? 'Mots-clés' : 'Keywords'}</span>
-                      </button>
-
-                      {/* Export */}
-                      <div className="relative flex-shrink-0">
-                        <button
-                          onClick={() => setShowExportMenu(!showExportMenu)}
-                          className="btn btn-ghost text-xs min-h-[36px] sm:min-h-[32px]"
-                          disabled={exporting}
-                        >
-                          {exporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
-                          <span className="hidden sm:inline">Export</span>
-                          <ChevronDown className="w-3 h-3" />
-                        </button>
-                        {showExportMenu && (
-                          <div className="absolute right-0 top-full mt-1 w-40 bg-bg-elevated border border-border-default rounded-lg shadow-lg z-10 py-1">
-                            <button
-                              onClick={() => handleExport('pdf')}
-                              className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
-                            >
-                              <FileText className="w-4 h-4" /> PDF
-                            </button>
-                            <button
-                              onClick={() => handleExport('md')}
-                              className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
-                            >
-                              <FileDown className="w-4 h-4" /> Markdown
-                            </button>
-                            <button
-                              onClick={() => handleExport('txt')}
-                              className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
-                            >
-                              <FileText className="w-4 h-4" /> Texte
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Chat toggle — moved to FAB (see below) */}
-                    </div>
-                  </div>
-                  <div className="p-4 sm:p-5 prose max-w-none">
-                    <EnrichedMarkdown 
-                      language={language}
-                      onTimecodeClick={handleTimecodeClick}
-                      className="text-text-primary"
-                    >
-                      {selectedSummary.summary_content || ''}
-                    </EnrichedMarkdown>
-                    
-                    {/* 📚 Glossaire des concepts clés */}
-                    <div className="mt-6">
-                      <ConceptsGlossary
-                        summaryId={selectedSummary.id}
-                        language={language}
-                      />
-                    </div>
-
-                    {/* 🎓 Sources académiques */}
-                    <div className="mt-6 not-prose">
-                      <AcademicSourcesPanel
-                        summaryId={selectedSummary.id.toString()}
-                        userPlan={user?.plan || 'free'}
-                        onUpgrade={() => navigate('/pricing')}
-                        language={language as 'fr' | 'en'}
-                      />
-                    </div>
-
-                    {/* 🔬 Sources croisées — Deep Research */}
-                    {selectedSummary.deep_research && selectedSummary.enrichment_sources && (
-                      <div className="mt-6 not-prose">
-                        <DeepResearchSources
-                          enrichmentSources={selectedSummary.enrichment_sources}
-                          language={language as 'fr' | 'en'}
-                        />
-                      </div>
-                    )}
-
-                    {/* 💰 Analysis Value Display - Shows time saved */}
-                    <div className="mt-6 not-prose">
-                      <AnalysisValueDisplay
-                        videoDuration={selectedSummary.video_duration || 0}
-                        keyPointsCount={selectedSummary.summary_content?.split('##').length - 1 || 0}
-                        conceptsCount={concepts.length}
-                        showUpgradeCTA={user?.plan === 'free' || user?.plan === 'student'}
-                        compact={false}
-                      />
-                    </div>
-                  </div>
-                </div>
+                {/* 📊 AnalysisHub — Panel intelligent à onglets */}
+                <AnalysisHub
+                  selectedSummary={selectedSummary}
+                  reliabilityData={reliabilityData}
+                  reliabilityLoading={reliabilityLoading}
+                  user={user!}
+                  language={language as 'fr' | 'en'}
+                  concepts={concepts}
+                  onTimecodeClick={handleTimecodeClick}
+                  onOpenChat={(msg) => {
+                    setChatOpen(true);
+                    setChatMinimized(false);
+                    if (msg) setChatInput(msg);
+                  }}
+                  onNavigate={(path) => navigate(path)}
+                />
               </div>
             )}
 
@@ -1422,33 +1202,6 @@ export const DashboardPage: React.FC = () => {
         onUpgrade={() => navigate('/pricing')}
       />
 
-      {/* 🎓 Modal Citation Académique */}
-      {selectedSummary && (
-        <CitationExport
-          isOpen={showCitationModal}
-          onClose={() => setShowCitationModal(false)}
-          video={{
-            title: selectedSummary.video_title || 'Vidéo sans titre',
-            channel: selectedSummary.video_channel || 'Chaîne inconnue',
-            videoId: selectedSummary.video_id,
-            publishedDate: selectedSummary.created_at,
-            duration: selectedSummary.video_duration,
-          }}
-          language={language as 'fr' | 'en'}
-        />
-      )}
-
-      {/* 📚 Modal Outils d'étude (Fiches + Mindmap) */}
-      {selectedSummary && (
-        <StudyToolsModal
-          isOpen={showStudyToolsModal}
-          onClose={() => setShowStudyToolsModal(false)}
-          summaryId={selectedSummary.id}
-          videoTitle={selectedSummary.video_title || 'Vidéo'}
-          language={language as 'fr' | 'en'}
-        />
-      )}
-
       {/* 🔍 Modal Découverte Intelligente */}
       <VideoDiscoveryModal
         isOpen={showDiscoveryModal}
@@ -1459,21 +1212,6 @@ export const DashboardPage: React.FC = () => {
         userCredits={user?.credits || 0}
         language={language as 'fr' | 'en'}
       />
-
-      {/* 🏷️ Modal Mots-clés enrichis */}
-      {selectedSummary && (
-        <KeywordsModal
-          isOpen={showKeywordsModal}
-          onClose={() => setShowKeywordsModal(false)}
-          videoTitle={selectedSummary.video_title || 'Vidéo'}
-          tags={selectedSummary.tags ? selectedSummary.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []}
-          concepts={concepts}
-          loading={conceptsLoading}
-          language={language as 'fr' | 'en'}
-          provider={conceptsProvider}
-          categories={conceptsCategories}
-        />
-      )}
 
       {/* 💰 Credit Alert - Shows when credits are low */}
       <CreditAlert
