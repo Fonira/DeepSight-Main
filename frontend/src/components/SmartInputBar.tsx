@@ -404,7 +404,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
 
             {/* Mode Dropdown */}
             {showModeSelector && (
-              <div className="absolute top-full left-0 mt-2 w-56 bg-bg-elevated border border-border-default rounded-xl shadow-xl z-50 overflow-hidden">
+              <div className="absolute top-full left-0 mt-2 w-56 bg-bg-elevated border border-border-default rounded-xl shadow-xl z-[100] overflow-hidden">
                 <div className="p-2">
                   {MODE_ORDER.map((m) => {
                     const modeConf = MODE_CONFIG[m];
@@ -496,57 +496,28 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
           </button>
         </div>
 
-        {/* Bottom Bar - Context Info */}
-        <div className="flex items-center justify-between px-4 py-2 border-t border-border-subtle bg-bg-tertiary/30 text-xs">
-
-          {/* Left: Mode hint + platform badge */}
-          <div className="flex items-center gap-2 text-text-muted">
-            {autoDetected && (
-              <>
-                <Wand2 className="w-3 h-3" />
-                <span>{language === 'fr' ? 'Détection auto' : 'Auto-detect'}</span>
-              </>
-            )}
-
-            {/* 🎵 Platform badge quand URL valide */}
-            {isUrlMode && isValidVideoUrl(inputVal) && (
-              <span className={`ml-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                isTikTokUrl(inputVal)
-                  ? 'bg-cyan-500/15 text-cyan-400'
-                  : 'bg-emerald-500/15 text-emerald-400'
-              }`}>
-                {isTikTokUrl(inputVal) ? '🎵 TikTok' : '▶ YouTube'}
-                {' — '}{language === 'fr' ? 'URL valide' : 'Valid URL'}
-              </span>
-            )}
-
-            {isSearchMode && (
-              <span className={`ml-2 px-2 py-0.5 rounded-full ${config.bgColor} ${config.textColor}`}>
-                {language === 'fr' ? '🆓 Gratuit' : '🆓 Free'}
-              </span>
-            )}
+        {/* Bottom Bar - Minimal context (credits only) */}
+        {(creditCost > 0 || (isTextMode && charCount > 0)) && (
+          <div className="flex items-center justify-end px-4 py-1.5 border-t border-border-subtle text-xs">
+            <div className="flex items-center gap-3 text-text-muted">
+              {isTextMode && charCount > 0 && (
+                <span className={textTooShort ? 'text-amber-400' : ''}>
+                  {charCount.toLocaleString()}/{TEXT_MIN_CHARS} {language === 'fr' ? 'car. min' : 'min chars'}
+                  {textTooShort && (
+                    <span className="ml-1">
+                      ({language === 'fr' ? `encore ${TEXT_MIN_CHARS - charCount}` : `${TEXT_MIN_CHARS - charCount} more`})
+                    </span>
+                  )}
+                </span>
+              )}
+              {creditCost > 0 && (
+                <span className={hasEnoughCredits ? '' : 'text-red-400'}>
+                  {creditCost} crédit{creditCost > 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
           </div>
-
-          {/* Right: Stats */}
-          <div className="flex items-center gap-3 text-text-muted">
-            {isTextMode && charCount > 0 && (
-              <span className={textTooShort ? 'text-amber-400' : ''}>
-                {charCount.toLocaleString()}/{TEXT_MIN_CHARS} {language === 'fr' ? 'car. min' : 'min chars'}
-                {textTooShort && (
-                  <span className="ml-1">
-                    ({language === 'fr' ? `encore ${TEXT_MIN_CHARS - charCount}` : `${TEXT_MIN_CHARS - charCount} more`})
-                  </span>
-                )}
-              </span>
-            )}
-
-            {creditCost > 0 && (
-              <span className={hasEnoughCredits ? '' : 'text-red-400'}>
-                {creditCost} crédit{creditCost > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Expanded Options */}
