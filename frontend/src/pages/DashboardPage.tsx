@@ -42,6 +42,7 @@ import { CitationExport } from "../components/CitationExport";
 import { StudyToolsModal } from "../components/StudyToolsModal";
 import { KeywordsModal } from "../components/KeywordsModal";
 import DoodleBackground from '../components/DoodleBackground';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import SmartInputBar, { SmartInputValue } from "../components/SmartInputBar";
 import { AcademicSourcesPanel } from "../components/academic";
 // LoadingWordWidget désormais global dans App.tsx
@@ -678,7 +679,7 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
-      <DoodleBackground variant="analysis" />
+      <ErrorBoundary fallback={null}><DoodleBackground variant="analysis" /></ErrorBoundary>
       {/* Sidebar hidden on mobile - using DashboardLayout's hamburger menu */}
       <div className="hidden lg:block">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />

@@ -63,15 +63,42 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
-// 🔄 Force Service Worker update — purge stale caches that cause chunk loading crashes
+// 🔄 Nuclear cache cleanup — purge ALL stale caches to prevent chunk mismatch crashes
+// This runs once per deploy (tracked by BUILD_VERSION in sessionStorage)
+declare const __BUILD_TIMESTAMP__: string;
+const BUILD_VERSION = __BUILD_TIMESTAMP__;
+try {
+  const cachedVersion = sessionStorage.getItem('ds_build_ver');
+  if (cachedVersion !== BUILD_VERSION) {
+    sessionStorage.setItem('ds_build_ver', BUILD_VERSION);
+    // Purge ALL browser caches (SW-managed and others)
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        keys.forEach((key) => caches.delete(key));
+      });
+    }
+    // Unregister ALL service workers to force fresh fetch
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((reg) => reg.unregister());
+      });
+    }
+    // If this is NOT the first visit (cachedVersion exists but differs), force reload
+    if (cachedVersion) {
+      window.location.reload();
+    }
+  }
+} catch {
+  // sessionStorage unavailable — skip versioning
+}
+
+// 🔄 Force Service Worker update for any remaining SWs
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then((registrations) => {
     for (const reg of registrations) {
-      // Force the waiting SW to activate immediately
       if (reg.waiting) {
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
       }
-      // Check for updates
       reg.update().catch(() => {});
     }
   });

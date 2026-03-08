@@ -6,6 +6,11 @@ export default defineConfig({
   plugins: [
     react(),
   ],
+
+  // Inject build timestamp for cache-busting detection
+  define: {
+    __BUILD_TIMESTAMP__: JSON.stringify(Date.now().toString()),
+  },
   
   build: {
     // Génère des sourcemaps pour le debugging

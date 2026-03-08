@@ -197,14 +197,22 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
   const { isDark } = useTheme();
 
   // 📱 Désactiver sur mobile (< 1024px) et pour prefers-reduced-motion
-  const [isMobileOrReduced, setIsMobileOrReduced] = useState(false);
+  // ⚠️ Synchronous check to avoid first-render crash on mobile (React Error #300)
+  const [isMobileOrReduced, setIsMobileOrReduced] = useState(() => {
+    try {
+      const isMobile = window.innerWidth < 1024;
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      return isMobile || prefersReduced;
+    } catch {
+      return true; // Safe default: disable on error
+    }
+  });
   useEffect(() => {
     const checkShouldDisable = () => {
       const isMobile = window.innerWidth < 1024;
       const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       setIsMobileOrReduced(isMobile || prefersReduced);
     };
-    checkShouldDisable();
     window.addEventListener('resize', checkShouldDisable);
     return () => window.removeEventListener('resize', checkShouldDisable);
   }, []);
