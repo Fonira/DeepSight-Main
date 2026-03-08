@@ -1,10 +1,9 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
   useWindowDimensions,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
@@ -15,9 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { palette } from '@/theme/colors';
 import { sp } from '@/theme/spacing';
 
@@ -62,29 +59,8 @@ export function CustomTabBar({
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { colors, isDark } = useTheme();
-  const { logout } = useAuth();
-  const router = useRouter();
 
-  const handleLogout = useCallback(() => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-    Alert.alert(
-      'Se déconnecter',
-      'Es-tu sûr de vouloir te déconnecter ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Déconnexion',
-          style: 'destructive',
-          onPress: async () => {
-            await logout();
-            router.replace('/(auth)');
-          },
-        },
-      ],
-    );
-  }, [logout, router]);
-
-  // Filtrer : on n'affiche que les 4 routes principales
+  // Filtrer : on n'affiche que les 5 routes principales
   const visibleRoutes = useMemo(
     () => state.routes.filter((route: any) => route.name in TAB_ICONS),
     [state.routes],
@@ -185,18 +161,6 @@ export function CustomTabBar({
             );
           })}
 
-          {/* Bouton déconnexion */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={styles.logoutTab}
-            onPress={handleLogout}
-          >
-            <Ionicons
-              name="log-out-outline"
-              size={22}
-              color={isDark ? 'rgba(239, 68, 68, 0.6)' : 'rgba(220, 38, 38, 0.5)'}
-            />
-          </TouchableOpacity>
         </View>
         {/* Safe area spacer — inside BlurView so blur covers the bottom edge */}
         <View style={{ height: insets.bottom }} />
@@ -236,11 +200,6 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoutTab: {
-    width: 44,
     justifyContent: 'center',
     alignItems: 'center',
   },

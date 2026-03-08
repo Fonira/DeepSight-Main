@@ -6,6 +6,7 @@ import {
   RefreshControl,
   StyleSheet,
   Pressable,
+  Alert,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -18,7 +19,9 @@ import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
+import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '@/stores/authStore';
+import { useAuth } from '@/contexts/AuthContext';
 import { historyApi } from '@/services/api';
 import { Avatar } from '@/components/ui/Avatar';
 import { YouTubeSearch } from '@/components/home/YouTubeSearch';
@@ -47,6 +50,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const user = useAuthStore((s) => s.user);
+  const { logout } = useAuth();
   const optionsRef = useRef<SimpleBottomSheetRef>(null);
 
   const [mode, setMode] = useState<InputMode>('search');
@@ -131,14 +135,28 @@ export default function HomeScreen() {
             DeepSight
           </Text>
           <Pressable
-            onPress={() => router.push('/(tabs)/profile')}
-            accessibilityLabel="Profil"
+            onPress={() => {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              Alert.alert(
+                'Se déconnecter',
+                'Es-tu sûr de vouloir te déconnecter ?',
+                [
+                  { text: 'Annuler', style: 'cancel' },
+                  {
+                    text: 'Déconnexion',
+                    style: 'destructive',
+                    onPress: async () => {
+                      await logout();
+                      router.replace('/(auth)');
+                    },
+                  },
+                ],
+              );
+            }}
+            accessibilityLabel="Se déconnecter"
+            hitSlop={8}
           >
-            <Avatar
-              uri={user?.avatar_url}
-              name={user?.username}
-              size="md"
-            />
+            <Ionicons name="log-out-outline" size={24} color={colors.accentError} />
           </Pressable>
         </View>
 

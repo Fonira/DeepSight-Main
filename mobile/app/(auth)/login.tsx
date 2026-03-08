@@ -145,13 +145,22 @@ export default function LoginScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
           </Pressable>
 
+          {/* Logo DeepSight */}
+          <View style={styles.logoSection}>
+            <Image
+              source={require('@/assets/images/icon.png')}
+              style={styles.appLogo}
+              resizeMode="contain"
+            />
+          </View>
+
           {/* Header */}
           <Text style={[styles.title, { color: colors.textPrimary }]}>Connexion</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Analysez vos vidéos YouTube & TikTok en profondeur
           </Text>
 
-          {/* Platform logos */}
+          {/* Platform logos — YouTube & TikTok prominent */}
           <View style={styles.platformLogos}>
             <Image
               source={isDark
@@ -170,10 +179,13 @@ export default function LoginScreen() {
               style={styles.platformLogoTk}
               resizeMode="contain"
             />
-            <View style={[styles.platformDivider, { backgroundColor: colors.border }]} />
+          </View>
+          {/* Mistral — separate row, smaller */}
+          <View style={styles.poweredRow}>
+            <Text style={[styles.poweredText, { color: colors.textMuted }]}>Propulsé par</Text>
             <Image
               source={require('@/assets/platforms/mistral-logo-white.png')}
-              style={[styles.platformLogoMistral, !isDark && { tintColor: '#1a1a2e' }]}
+              style={[styles.mistralLogo, !isDark && { tintColor: '#1a1a2e' }]}
               resizeMode="contain"
             />
           </View>
@@ -282,7 +294,16 @@ const styles = StyleSheet.create({
     paddingVertical: sp.xl,
   },
   backButton: {
-    marginBottom: sp['3xl'],
+    marginBottom: sp.lg,
+  },
+  logoSection: {
+    alignItems: 'center',
+    marginBottom: sp.xl,
+  },
+  appLogo: {
+    width: 80,
+    height: 80,
+    borderRadius: borderRadius.xl,
   },
   title: {
     ...textStyles.displaySm,
@@ -297,8 +318,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: sp.lg,
-    marginBottom: sp['3xl'],
+    marginBottom: sp.lg,
     opacity: 0.9,
+  },
+  poweredRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: sp.sm,
+    marginBottom: sp.xl,
+    opacity: 0.5,
+  },
+  poweredText: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  mistralLogo: {
+    height: 20,
+    width: 80,
   },
   platformLogoYt: {
     height: 28,
@@ -307,10 +346,6 @@ const styles = StyleSheet.create({
   platformLogoTk: {
     height: 28,
     width: 105,
-  },
-  platformLogoMistral: {
-    height: 22,
-    width: 95,
   },
   platformDivider: {
     width: 1,
