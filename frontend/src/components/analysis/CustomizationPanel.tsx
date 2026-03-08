@@ -1,10 +1,10 @@
 /**
  * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  🎨 CUSTOMIZATION PANEL v4.0 — Refonte Focus + Ton + Longueur + Langue            ║
+ * ║  🎨 CUSTOMIZATION PANEL v5.0 — Design Premium Glassmorphism                       ║
  * ╠════════════════════════════════════════════════════════════════════════════════════╣
- * ║  Niveau 1 (visible): Focus, Ton, Longueur, Langue                                 ║
- * ║  Niveau 2 (collapsible): Anti-IA, Instructions personnalisées                     ║
- * ║  Chaque option a une description claire et brève                                   ║
+ * ║  Design: pill selectors, glassmorphism, gradients subtils, animations fluides      ║
+ * ║  L1: Focus (pills) + Ton (pills) + Longueur (slider-like) + Langue (inline)       ║
+ * ║  L2: Anti-IA toggle + Instructions custom                                         ║
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
@@ -13,15 +13,10 @@ import {
   Shield,
   ShieldCheck,
   ChevronDown,
-  Info,
   Sparkles,
   MessageSquare,
-  Target,
-  Save,
   RotateCcw,
-  Pen,
   Globe,
-  Ruler,
 } from 'lucide-react';
 import {
   AnalysisCustomization,
@@ -39,8 +34,6 @@ import {
 } from '../../types/analysis';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📊 TYPES
-// ═══════════════════════════════════════════════════════════════════════════════
 
 interface CustomizationPanelProps {
   onCustomizationChange: (customization: AnalysisCustomization) => void;
@@ -53,56 +46,54 @@ interface CustomizationPanelProps {
 const MAX_PROMPT_LENGTH = 2000;
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🧱 SUB-COMPONENTS
+// 🎨 PILL SELECTOR — Composant réutilisable
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** Label de section avec icône, titre et description */
-const SectionLabel: React.FC<{
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}> = ({ icon, title, description }) => (
-  <div className="flex items-start gap-2.5 mb-3">
-    <div className="w-5 h-5 mt-0.5 text-accent-primary flex-shrink-0">{icon}</div>
-    <div>
-      <span className="text-sm font-medium text-text-primary">{title}</span>
-      <p className="text-xs text-text-muted mt-0.5">{description}</p>
-    </div>
-  </div>
-);
-
-/** Bouton de sélection avec emoji + label */
-const SelectionButton: React.FC<{
-  selected: boolean;
-  emoji: string;
-  label: string;
-  description?: string;
+function PillSelector<T extends string>({
+  options,
+  value,
+  onChange,
+  disabled,
+  language,
+  variant = 'default',
+}: {
+  options: { key: T; emoji: string; label: { fr: string; en: string }; description?: { fr: string; en: string } }[];
+  value: T;
+  onChange: (v: T) => void;
   disabled?: boolean;
-  onClick: () => void;
-  size?: 'sm' | 'md';
-}> = ({ selected, emoji, label, description, disabled, onClick, size = 'md' }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    aria-pressed={selected}
-    className={`
-      flex flex-col items-center gap-1 rounded-xl border-2 transition-all
-      ${size === 'sm' ? 'p-2' : 'p-3'}
-      ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]'}
-      ${selected
-        ? 'border-accent-primary bg-accent-primary/10 text-accent-primary shadow-md'
-        : 'border-border-default bg-bg-tertiary text-text-secondary hover:border-border-hover hover:bg-bg-hover'
-      }
-    `}
-    title={description}
-  >
-    <span className={size === 'sm' ? 'text-lg' : 'text-xl'}>{emoji}</span>
-    <span className={`font-medium ${size === 'sm' ? 'text-[11px]' : 'text-xs sm:text-sm'}`}>
-      {label}
-    </span>
-  </button>
-);
+  language: 'fr' | 'en';
+  variant?: 'default' | 'compact';
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((opt) => {
+        const isSelected = value === opt.key;
+        return (
+          <button
+            key={opt.key}
+            type="button"
+            onClick={() => onChange(opt.key)}
+            disabled={disabled}
+            aria-pressed={isSelected}
+            title={opt.description?.[language]}
+            className={`
+              inline-flex items-center gap-1.5 rounded-full transition-all duration-200
+              ${variant === 'compact' ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm'}
+              ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+              ${isSelected
+                ? 'bg-white/[0.12] text-white ring-1 ring-white/20 shadow-lg shadow-white/5'
+                : 'bg-white/[0.04] text-white/50 hover:bg-white/[0.08] hover:text-white/70'
+              }
+            `}
+          >
+            <span>{opt.emoji}</span>
+            <span className="font-medium">{opt.label[language]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎨 MAIN COMPONENT
@@ -120,40 +111,24 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
       const saved = localStorage.getItem(CUSTOMIZATION_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-
-        // Détection v2/v3 → migration
         if (parsed.writingStyle && !parsed.writingTone) {
           const migrated = migrateCustomization(parsed);
           return { ...migrated, ...initialCustomization };
         }
-
         return { ...DEFAULT_CUSTOMIZATION, ...parsed, ...initialCustomization };
       }
-    } catch {
-      /* localStorage read failed */
-    }
+    } catch { /* */ }
     return { ...DEFAULT_CUSTOMIZATION, ...initialCustomization };
   };
 
   const [customization, setCustomization] = useState<AnalysisCustomization>(loadSavedCustomization);
   const [showMore, setShowMore] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
 
   const baseId = useId();
-
-  const t = useCallback(
-    (fr: string, en: string) => (language === 'fr' ? fr : en),
-    [language]
-  );
+  const t = useCallback((fr: string, en: string) => (language === 'fr' ? fr : en), [language]);
 
   const saveToLocalStorage = useCallback((data: AnalysisCustomization) => {
-    try {
-      localStorage.setItem(CUSTOMIZATION_STORAGE_KEY, JSON.stringify(data));
-      setIsSaved(true);
-      setTimeout(() => setIsSaved(false), 2000);
-    } catch {
-      /* localStorage write failed */
-    }
+    try { localStorage.setItem(CUSTOMIZATION_STORAGE_KEY, JSON.stringify(data)); } catch { /* */ }
   }, []);
 
   const updateCustomization = useCallback(
@@ -176,24 +151,38 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
     onCustomizationChange(customization);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── Prepare pill options ───
+  const focusOptions = (Object.keys(ANALYSIS_FOCUS_CONFIG) as AnalysisFocus[]).map((k) => ({
+    key: k,
+    ...ANALYSIS_FOCUS_CONFIG[k],
+  }));
+  const toneOptions = (Object.keys(WRITING_TONE_CONFIG) as WritingTone[]).map((k) => ({
+    key: k,
+    ...WRITING_TONE_CONFIG[k],
+  }));
+  const lengthOptions = (Object.keys(TARGET_LENGTH_CONFIG) as TargetLength[]).map((k) => ({
+    key: k,
+    emoji: k === 'short' ? '📄' : k === 'medium' ? '📑' : k === 'long' ? '📚' : '✨',
+    label: TARGET_LENGTH_CONFIG[k].label,
+    description: { fr: TARGET_LENGTH_CONFIG[k].wordRange.fr, en: TARGET_LENGTH_CONFIG[k].wordRange.en },
+  }));
+
   // ═══════════════════════════════════════════════════════════════════════════
   // COMPACT MODE
   // ═══════════════════════════════════════════════════════════════════════════
 
   if (compact) {
     return (
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1.5 px-3 py-2 bg-bg-tertiary border border-border-default rounded-lg text-sm text-text-secondary">
-          <span>{ANALYSIS_FOCUS_CONFIG[customization.analysisFocus].emoji}</span>
-          <span>{ANALYSIS_FOCUS_CONFIG[customization.analysisFocus].label[language]}</span>
-        </div>
-        <div className="flex items-center gap-1.5 px-3 py-2 bg-bg-tertiary border border-border-default rounded-lg text-sm text-text-secondary">
-          <span>{WRITING_TONE_CONFIG[customization.writingTone].emoji}</span>
-          <span>{WRITING_TONE_CONFIG[customization.writingTone].label[language]}</span>
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-white/[0.06] text-white/60 rounded-full text-xs">
+          {ANALYSIS_FOCUS_CONFIG[customization.analysisFocus].emoji} {ANALYSIS_FOCUS_CONFIG[customization.analysisFocus].label[language]}
+        </span>
+        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-white/[0.06] text-white/60 rounded-full text-xs">
+          {WRITING_TONE_CONFIG[customization.writingTone].emoji} {WRITING_TONE_CONFIG[customization.writingTone].label[language]}
+        </span>
         {customization.antiAIDetection && (
-          <span className="px-3 py-2 bg-green-500/20 text-green-400 rounded-lg text-sm flex items-center gap-1.5">
-            <ShieldCheck className="w-4 h-4" /> Anti-IA
+          <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-emerald-500/15 text-emerald-400 rounded-full text-xs">
+            <ShieldCheck className="w-3 h-3" /> Anti-IA
           </span>
         )}
       </div>
@@ -201,245 +190,165 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // FULL MODE v4
+  // FULL MODE v5 — Premium glassmorphism design
   // ═══════════════════════════════════════════════════════════════════════════
 
   return (
     <div
-      className="bg-bg-secondary border border-border-default rounded-2xl overflow-hidden"
+      className="relative rounded-2xl overflow-hidden"
       role="group"
       aria-labelledby={`${baseId}-title`}
+      style={{
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255,255,255,0.06)',
+      }}
     >
-      {/* Header */}
-      <div className="px-4 sm:px-5 py-4 border-b border-border-subtle bg-bg-tertiary/50">
-        <div className="flex items-center justify-between">
-          <h2
-            id={`${baseId}-title`}
-            className="text-base sm:text-lg font-semibold text-text-primary flex items-center gap-2"
-          >
-            <Sparkles className="w-5 h-5 text-accent-primary" />
-            {t('Personnalisation', 'Customization')}
-          </h2>
-          <div className="flex items-center gap-2">
-            {isSaved && (
-              <span className="text-xs text-green-500 flex items-center gap-1 animate-fade-in">
-                <Save className="w-3 h-3" />
-                {t('Sauvegardé', 'Saved')}
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={resetToDefaults}
-              disabled={disabled}
-              className="text-xs text-text-muted hover:text-text-secondary flex items-center gap-1 transition-colors"
-              title={t('Réinitialiser', 'Reset')}
-            >
-              <RotateCcw className="w-3 h-3" />
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Gradient accent top line */}
+      <div
+        className="absolute top-0 left-0 right-0 h-px"
+        style={{ background: 'linear-gradient(90deg, transparent, rgba(99,102,241,0.4), rgba(6,182,212,0.4), transparent)' }}
+      />
 
-      <div className="p-4 sm:p-5 space-y-6">
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* 🎯 FOCUS — Quel angle pour l'analyse ? */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        <div>
-          <SectionLabel
-            icon={<Target className="w-5 h-5" />}
-            title={t('Focus de l\'analyse', 'Analysis Focus')}
-            description={t(
-              'Quel type de résultat voulez-vous obtenir ?',
-              'What type of result do you want?'
-            )}
-          />
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {(Object.keys(ANALYSIS_FOCUS_CONFIG) as AnalysisFocus[]).map((focus) => {
-              const config = ANALYSIS_FOCUS_CONFIG[focus];
-              return (
-                <SelectionButton
-                  key={focus}
-                  selected={customization.analysisFocus === focus}
-                  emoji={config.emoji}
-                  label={config.label[language]}
-                  description={config.description[language]}
-                  disabled={disabled}
-                  onClick={() => updateCustomization({ analysisFocus: focus })}
-                />
-              );
-            })}
+      <div className="p-5 sm:p-6 space-y-5">
+        {/* ─── Header Row ─── */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-indigo-400" />
+            <span className="text-sm font-semibold text-white/80">
+              {t('Paramètres', 'Settings')}
+            </span>
           </div>
-          {/* Description du focus sélectionné */}
-          <p className="text-xs text-text-muted text-center mt-2 px-2">
+          <button
+            type="button"
+            onClick={resetToDefaults}
+            disabled={disabled}
+            className="text-[11px] text-white/30 hover:text-white/60 flex items-center gap-1 transition-colors"
+            title={t('Réinitialiser', 'Reset')}
+          >
+            <RotateCcw className="w-3 h-3" />
+            {t('Reset', 'Reset')}
+          </button>
+        </div>
+
+        {/* ─── FOCUS ─── */}
+        <div className="space-y-2.5">
+          <div className="flex items-baseline gap-2">
+            <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+              {t('Focus', 'Focus')}
+            </span>
+            <span className="text-[11px] text-white/30">
+              {t('— Quel résultat voulez-vous ?', '— What result do you want?')}
+            </span>
+          </div>
+          <PillSelector
+            options={focusOptions}
+            value={customization.analysisFocus}
+            onChange={(v) => updateCustomization({ analysisFocus: v })}
+            disabled={disabled}
+            language={language}
+          />
+          <p className="text-[11px] text-white/25 pl-1">
             {ANALYSIS_FOCUS_CONFIG[customization.analysisFocus].description[language]}
           </p>
         </div>
 
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* ✍️ TON — Comment l'analyse est rédigée */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        <div>
-          <SectionLabel
-            icon={<Pen className="w-5 h-5" />}
-            title={t('Ton', 'Tone')}
-            description={t(
-              'Le style de rédaction de l\'analyse',
-              'The writing style of the analysis'
-            )}
-          />
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {(Object.keys(WRITING_TONE_CONFIG) as WritingTone[]).map((tone) => {
-              const config = WRITING_TONE_CONFIG[tone];
-              return (
-                <SelectionButton
-                  key={tone}
-                  selected={customization.writingTone === tone}
-                  emoji={config.emoji}
-                  label={config.label[language]}
-                  description={config.description[language]}
-                  disabled={disabled}
-                  onClick={() => updateCustomization({ writingTone: tone })}
-                />
-              );
-            })}
+        {/* ─── TON ─── */}
+        <div className="space-y-2.5">
+          <div className="flex items-baseline gap-2">
+            <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+              {t('Ton', 'Tone')}
+            </span>
+            <span className="text-[11px] text-white/30">
+              {t('— Style de rédaction', '— Writing style')}
+            </span>
           </div>
+          <PillSelector
+            options={toneOptions}
+            value={customization.writingTone}
+            onChange={(v) => updateCustomization({ writingTone: v })}
+            disabled={disabled}
+            language={language}
+          />
         </div>
 
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* 📏 LONGUEUR — Taille de l'analyse */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        <div>
-          <SectionLabel
-            icon={<Ruler className="w-5 h-5" />}
-            title={t('Longueur', 'Length')}
-            description={t(
-              'Combien de détails souhaitez-vous ?',
-              'How much detail do you want?'
-            )}
-          />
-          <div className="grid grid-cols-4 gap-2">
-            {(Object.keys(TARGET_LENGTH_CONFIG) as TargetLength[]).map((length) => {
-              const config = TARGET_LENGTH_CONFIG[length];
-              const isSelected = customization.targetLength === length;
-              return (
-                <button
-                  key={length}
-                  type="button"
-                  onClick={() => updateCustomization({ targetLength: length })}
-                  disabled={disabled}
-                  aria-pressed={isSelected}
-                  className={`
-                    flex flex-col items-center gap-1 py-2.5 px-2 rounded-xl border-2 transition-all
-                    ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]'}
-                    ${isSelected
-                      ? 'border-accent-primary bg-accent-primary/10 text-accent-primary shadow-md'
-                      : 'border-border-default bg-bg-tertiary text-text-secondary hover:border-border-hover hover:bg-bg-hover'
-                    }
-                  `}
-                >
-                  <span className="text-xs sm:text-sm font-medium">
-                    {config.label[language]}
-                  </span>
-                  <span className={`text-[10px] ${isSelected ? 'text-accent-primary/70' : 'text-text-muted'}`}>
-                    {config.wordRange[language]}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* 🌐 LANGUE — Langue de sortie */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        <div>
-          <SectionLabel
-            icon={<Globe className="w-5 h-5" />}
-            title={t('Langue de l\'analyse', 'Analysis Language')}
-            description={t(
-              'Par défaut, la langue est détectée automatiquement',
-              'By default, the language is auto-detected'
-            )}
-          />
-          <div className="relative">
-            <select
-              value={customization.outputLanguage}
-              onChange={(e) => updateCustomization({ outputLanguage: e.target.value as OutputLanguage })}
+        {/* ─── LONGUEUR + LANGUE (inline row) ─── */}
+        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+          {/* Longueur */}
+          <div className="flex-1 space-y-2.5">
+            <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+              {t('Longueur', 'Length')}
+            </span>
+            <PillSelector
+              options={lengthOptions}
+              value={customization.targetLength}
+              onChange={(v) => updateCustomization({ targetLength: v })}
               disabled={disabled}
-              className={`
-                w-full appearance-none px-4 py-3 pr-10 rounded-xl
-                bg-bg-tertiary border-2 border-border-default
-                text-text-primary text-sm font-medium
-                focus:outline-none focus:ring-2 focus:ring-accent-primary/50 focus:border-accent-primary
-                transition-all cursor-pointer
-                disabled:opacity-50 disabled:cursor-not-allowed
-              `}
-            >
-              {(Object.keys(OUTPUT_LANGUAGE_CONFIG) as OutputLanguage[]).map((lang) => {
-                const config = OUTPUT_LANGUAGE_CONFIG[lang];
-                return (
-                  <option key={lang} value={lang}>
-                    {config.flag}  {config.label[language]}
-                  </option>
-                );
-              })}
-            </select>
-            <ChevronDown className="w-4 h-4 text-text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              language={language}
+              variant="compact"
+            />
+          </div>
+
+          {/* Langue */}
+          <div className="sm:w-48 space-y-2.5">
+            <span className="text-xs font-semibold text-white/60 uppercase tracking-wider flex items-center gap-1.5">
+              <Globe className="w-3 h-3" />
+              {t('Langue', 'Language')}
+            </span>
+            <div className="relative">
+              <select
+                value={customization.outputLanguage}
+                onChange={(e) => updateCustomization({ outputLanguage: e.target.value as OutputLanguage })}
+                disabled={disabled}
+                className="w-full appearance-none px-3 py-2 pr-8 rounded-full text-xs font-medium
+                  bg-white/[0.06] text-white/70 border border-white/[0.08]
+                  focus:outline-none focus:ring-1 focus:ring-indigo-500/40
+                  transition-all cursor-pointer disabled:opacity-40"
+              >
+                {(Object.keys(OUTPUT_LANGUAGE_CONFIG) as OutputLanguage[]).map((lang) => {
+                  const config = OUTPUT_LANGUAGE_CONFIG[lang];
+                  return (
+                    <option key={lang} value={lang} className="bg-[#1a1a2e] text-white">
+                      {config.flag}  {config.label[language]}
+                    </option>
+                  );
+                })}
+              </select>
+              <ChevronDown className="w-3.5 h-3.5 text-white/30 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
           </div>
         </div>
 
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* ⚙️ PLUS D'OPTIONS — Collapsible */}
-        {/* ═══════════════════════════════════════════════════════════════ */}
-        <div className="border-t border-border-subtle pt-4">
+        {/* ─── MORE OPTIONS ─── */}
+        <div className="pt-3 border-t border-white/[0.05]">
           <button
             type="button"
             onClick={() => setShowMore(!showMore)}
-            className="flex items-center justify-between w-full text-sm text-text-secondary hover:text-text-primary transition-colors py-1 group"
+            className="flex items-center gap-2 text-xs text-white/30 hover:text-white/50 transition-colors py-1"
             aria-expanded={showMore}
             aria-controls={`${baseId}-more`}
           >
-            <span className="font-medium flex items-center gap-2">
-              <Info className="w-4 h-4" />
-              {t("Plus d'options", 'More Options')}
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showMore ? 'rotate-180' : ''}`} />
+            <span className="font-medium">
+              {t("Plus d'options", 'More options')}
             </span>
-            <div className={`transform transition-transform duration-200 ${showMore ? 'rotate-180' : ''}`}>
-              <ChevronDown className="w-5 h-5" />
-            </div>
           </button>
 
           <div
             id={`${baseId}-more`}
-            className={`
-              overflow-hidden transition-all duration-300 ease-in-out
-              ${showMore ? 'max-h-[500px] opacity-100 mt-4' : 'max-h-0 opacity-0'}
-            `}
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${showMore ? 'max-h-[400px] opacity-100 mt-4' : 'max-h-0 opacity-0'}`}
           >
-            <div className="space-y-5">
-              {/* 🛡️ Anti-Détection IA */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-bg-tertiary border border-border-default">
+            <div className="space-y-4">
+              {/* Anti-IA */}
+              <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
                 <div className="flex items-center gap-3">
-                  <div className={`
-                    w-9 h-9 rounded-lg flex items-center justify-center transition-all
-                    ${customization.antiAIDetection
-                      ? 'bg-green-500/20 text-green-400'
-                      : 'bg-bg-hover text-text-muted'}
-                  `}>
-                    {customization.antiAIDetection ? (
-                      <ShieldCheck className="w-5 h-5" />
-                    ) : (
-                      <Shield className="w-5 h-5" />
-                    )}
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${customization.antiAIDetection ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.05] text-white/25'}`}>
+                    {customization.antiAIDetection ? <ShieldCheck className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
                   </div>
                   <div>
-                    <span className="text-sm font-medium text-text-primary">
-                      {t('Anti-Détection IA', 'Anti-AI Detection')}
-                    </span>
-                    <p className="text-xs text-text-muted">
-                      {t(
-                        'Rend le texte indétectable par GPTZero, Turnitin, etc.',
-                        'Makes text undetectable by GPTZero, Turnitin, etc.'
-                      )}
+                    <span className="text-sm font-medium text-white/70">Anti-Détection IA</span>
+                    <p className="text-[11px] text-white/30">
+                      {t('Indétectable par GPTZero, Turnitin...', 'Undetectable by GPTZero, Turnitin...')}
                     </p>
                   </div>
                 </div>
@@ -449,71 +358,51 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                   aria-checked={customization.antiAIDetection}
                   onClick={() => updateCustomization({ antiAIDetection: !customization.antiAIDetection })}
                   disabled={disabled}
-                  className={`
-                    relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-300 flex-shrink-0
-                    ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-                    ${customization.antiAIDetection ? 'bg-green-500' : 'bg-gray-600'}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 flex-shrink-0
+                    ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+                    ${customization.antiAIDetection ? 'bg-emerald-500/80' : 'bg-white/10'}
                   `}
                 >
-                  <span className={`
-                    inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300
+                  <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200
                     ${customization.antiAIDetection ? 'translate-x-6' : 'translate-x-1'}
                   `} />
                 </button>
               </div>
 
-              {/* 📝 Instructions personnalisées */}
+              {/* Instructions personnalisées */}
               <div className="space-y-2">
                 <label
                   htmlFor={`${baseId}-prompt`}
-                  className="flex items-center gap-2 text-sm font-medium text-text-primary"
+                  className="flex items-center gap-2 text-xs font-semibold text-white/50 uppercase tracking-wider"
                 >
-                  <MessageSquare className="w-4 h-4 text-accent-primary" />
-                  {t('Instructions personnalisées', 'Custom Instructions')}
-                  <span className="text-text-muted font-normal">
+                  <MessageSquare className="w-3 h-3" />
+                  {t('Instructions personnalisées', 'Custom instructions')}
+                  <span className="font-normal normal-case text-white/25">
                     ({t('optionnel', 'optional')})
                   </span>
                 </label>
-                <p className="text-xs text-text-muted ml-6">
-                  {t(
-                    'Donnez des consignes spécifiques à l\'IA pour cette analyse',
-                    'Give specific instructions to the AI for this analysis'
-                  )}
-                </p>
                 <div className="relative">
                   <textarea
                     id={`${baseId}-prompt`}
                     value={customization.userPrompt}
-                    onChange={(e) => {
-                      const value = e.target.value.slice(0, MAX_PROMPT_LENGTH);
-                      updateCustomization({ userPrompt: value });
-                    }}
+                    onChange={(e) => updateCustomization({ userPrompt: e.target.value.slice(0, MAX_PROMPT_LENGTH) })}
                     disabled={disabled}
                     placeholder={t(
-                      'Ex: "Concentre-toi sur les aspects pratiques" ou "Compare avec d\'autres théories"...',
-                      'E.g., "Focus on practical aspects" or "Compare with other theories"...'
+                      '"Concentre-toi sur les aspects pratiques" ou "Compare avec d\'autres théories"...',
+                      '"Focus on practical aspects" or "Compare with other theories"...'
                     )}
-                    rows={3}
+                    rows={2}
                     maxLength={MAX_PROMPT_LENGTH}
-                    className={`
-                      w-full px-4 py-3 rounded-xl
-                      bg-bg-tertiary border border-border-default
-                      text-text-primary placeholder-text-muted
-                      focus:outline-none focus:ring-2 focus:ring-accent-primary/50 focus:border-accent-primary
-                      resize-none transition-all duration-200
-                      disabled:opacity-50 disabled:cursor-not-allowed
-                    `}
-                    aria-describedby={`${baseId}-prompt-count`}
+                    className="w-full px-4 py-3 rounded-xl text-sm
+                      bg-white/[0.03] border border-white/[0.06] text-white/80 placeholder-white/20
+                      focus:outline-none focus:ring-1 focus:ring-indigo-500/30 focus:border-indigo-500/20
+                      resize-none transition-all disabled:opacity-40"
                   />
-                  <span
-                    id={`${baseId}-prompt-count`}
-                    className={`
-                      absolute bottom-2 right-3 text-xs
-                      ${customization.userPrompt.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-orange-500' : 'text-text-muted'}
-                    `}
-                  >
-                    {customization.userPrompt.length}/{MAX_PROMPT_LENGTH}
-                  </span>
+                  {customization.userPrompt.length > 0 && (
+                    <span className={`absolute bottom-2 right-3 text-[10px] ${customization.userPrompt.length > MAX_PROMPT_LENGTH * 0.9 ? 'text-orange-400' : 'text-white/20'}`}>
+                      {customization.userPrompt.length}/{MAX_PROMPT_LENGTH}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

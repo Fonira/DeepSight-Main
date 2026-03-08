@@ -1048,27 +1048,40 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 💬 Bandeau Chat IA — Interroger l'IA sur cette vidéo */}
+                {/* 💬 Bandeau Chat IA — Design glassmorphism premium */}
                 {!chatOpen && (
                   <button
                     onClick={() => { setChatOpen(true); setChatMinimized(false); }}
-                    className="w-full card group cursor-pointer hover:border-accent-primary/50 transition-all duration-200"
+                    className="w-full group cursor-pointer relative rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.005]"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(6,182,212,0.08) 0%, rgba(99,102,241,0.08) 50%, rgba(139,92,246,0.08) 100%)',
+                      border: '1px solid rgba(6,182,212,0.15)',
+                    }}
                   >
-                    <div className="flex items-center gap-4 p-4 sm:p-5">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20 flex items-center justify-center flex-shrink-0 group-hover:from-cyan-500/30 group-hover:to-blue-500/30 transition-all">
-                        <MessageCircle className="w-6 h-6 text-cyan-400" />
+                    {/* Gradient accent line */}
+                    <div className="absolute top-0 left-0 right-0 h-px opacity-60 group-hover:opacity-100 transition-opacity"
+                      style={{ background: 'linear-gradient(90deg, transparent, #06b6d4, #6366f1, #8b5cf6, transparent)' }} />
+                    <div className="flex items-center gap-4 px-5 py-4">
+                      <div className="relative flex-shrink-0">
+                        <div className="w-11 h-11 rounded-xl flex items-center justify-center"
+                          style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.15), rgba(99,102,241,0.15))' }}>
+                          <MessageCircle className="w-5 h-5 text-cyan-400 group-hover:text-cyan-300 transition-colors" />
+                        </div>
+                        <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
                       </div>
-                      <div className="flex-1 text-left">
-                        <h4 className="text-sm font-semibold text-text-primary group-hover:text-accent-primary transition-colors">
-                          {language === 'fr' ? 'Interroger l\'IA sur cette vidéo' : 'Ask the AI about this video'}
-                        </h4>
-                        <p className="text-xs text-text-muted mt-0.5">
+                      <div className="flex-1 text-left min-w-0">
+                        <span className="text-sm font-semibold text-white/90 group-hover:text-white transition-colors">
+                          {language === 'fr' ? 'Poser une question à l\'IA' : 'Ask the AI a question'}
+                        </span>
+                        <p className="text-xs text-white/40 mt-0.5 leading-relaxed">
                           {language === 'fr'
-                            ? 'Posez vos questions — l\'IA a analysé le contenu et peut faire des recherches complémentaires sur les sujets abordés'
-                            : 'Ask your questions — the AI has analyzed the content and can do complementary research on the topics covered'}
+                            ? 'L\'IA a analysé cette vidéo et peut approfondir n\'importe quel sujet abordé'
+                            : 'The AI analyzed this video and can dig deeper into any topic covered'}
                         </p>
                       </div>
-                      <ChevronDown className="w-5 h-5 text-text-muted -rotate-90 group-hover:text-accent-primary transition-all" />
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/[0.06] flex items-center justify-center group-hover:bg-white/[0.1] transition-all">
+                        <ChevronDown className="w-4 h-4 text-white/40 -rotate-90 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
+                      </div>
                     </div>
                   </button>
                 )}
