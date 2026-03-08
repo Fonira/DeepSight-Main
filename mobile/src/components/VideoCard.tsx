@@ -88,10 +88,12 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
             videoId={videoInfo.id}
             style={styles.compactThumbnail}
           />
-          {/* Platform badge overlay compact (top-right) */}
-          <View style={styles.compactPlatformOverlay}>
-            <PlatformBadge platform={platform} size="xs" showLabel={false} overlay />
-          </View>
+          {/* Platform badge overlay compact (top-right, hidden for text imports) */}
+          {platform !== 'text' && (
+            <View style={styles.compactPlatformOverlay}>
+              <PlatformBadge platform={platform} size="xs" showLabel={false} overlay />
+            </View>
+          )}
         </View>
         <View style={styles.compactContent}>
           <Text
@@ -136,10 +138,12 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
           videoId={videoInfo.id}
           style={styles.thumbnail}
         />
-        {/* Platform badge overlay (top-right) */}
-        <View style={styles.platformOverlay}>
-          <PlatformBadge platform={platform} size="sm" showLabel={false} overlay />
-        </View>
+        {/* Platform badge overlay (top-right, hidden for text imports) */}
+        {platform !== 'text' && (
+          <View style={styles.platformOverlay}>
+            <PlatformBadge platform={platform} size="sm" showLabel={false} overlay />
+          </View>
+        )}
         {typeof videoInfo.duration === 'number' && videoInfo.duration > 0 && (
           <View style={[styles.duration, { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
             <Text style={styles.durationText}>
@@ -178,7 +182,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
 
         <View style={styles.footer}>
           <View style={styles.badges}>
-            <PlatformBadge platform={platform} size="sm" showLabel />
+            {platform !== 'text' && <PlatformBadge platform={platform} size="sm" showLabel />}
             {showMode && analysisSummary?.mode && (
               <Badge
                 label={analysisSummary.mode}

@@ -60,7 +60,7 @@ export interface VideoInfo {
   likeCount?: number;
 }
 
-export type VideoPlatform = 'youtube' | 'tiktok';
+export type VideoPlatform = 'youtube' | 'tiktok' | 'text';
 
 export interface AnalysisSummary {
   id: string;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { BorderRadius, Typography } from '../../constants/theme';
 import type { VideoPlatform } from '../../types';
 
@@ -36,6 +37,12 @@ const PLATFORM_CONFIG: Record<string, {
     bgColor: 'rgba(37, 244, 238, 0.15)',
     borderColor: 'rgba(37, 244, 238, 0.30)',
   },
+  text: {
+    label: 'Texte',
+    color: '#9ca3af',
+    bgColor: 'rgba(156, 163, 175, 0.15)',
+    borderColor: 'rgba(156, 163, 175, 0.30)',
+  },
 };
 
 // Image sizes tuned per badge size — YouTube is wider (16:11 ratio), TikTok is square-ish
@@ -58,12 +65,14 @@ export const PlatformBadge: React.FC<PlatformBadgeProps> = ({
   const backgroundColor = overlay ? 'rgba(0, 0, 0, 0.75)' : config.bgColor;
   const borderColor = overlay ? 'rgba(255, 255, 255, 0.20)' : config.borderColor;
 
-  // Pick the right image source
+  // Pick the right image source or icon
   const isYoutube = platform === 'youtube';
+  const isText = platform === 'text';
   const imageSource = isYoutube
     ? YOUTUBE_ICON_RED
     : (overlay ? TIKTOK_NOTE_WHITE : TIKTOK_NOTE_COLOR);
   const imgSize = isYoutube ? s.yt : s.tt;
+  const iconSize = Math.max(imgSize.w, imgSize.h);
 
   return (
     <View
@@ -78,11 +87,19 @@ export const PlatformBadge: React.FC<PlatformBadgeProps> = ({
         style,
       ]}
     >
-      <Image
-        source={imageSource}
-        style={{ width: imgSize.w, height: imgSize.h }}
-        contentFit="contain"
-      />
+      {isText ? (
+        <Ionicons
+          name="document-text-outline"
+          size={iconSize}
+          color={overlay ? '#FFFFFF' : config.color}
+        />
+      ) : (
+        <Image
+          source={imageSource}
+          style={{ width: imgSize.w, height: imgSize.h }}
+          contentFit="contain"
+        />
+      )}
       {showLabel && (
         <Text
           style={[
@@ -107,6 +124,8 @@ export const PlatformBadge: React.FC<PlatformBadgeProps> = ({
 export const detectPlatformFromUrl = (url?: string, videoId?: string): VideoPlatform => {
   if (!url && !videoId) return 'youtube';
   const text = url || videoId || '';
+  // Texte collé / import manuel
+  if (text.startsWith('text://') || text.startsWith('txt_')) return 'text';
   if (
     text.includes('tiktok.com') ||
     text.includes('vm.tiktok') ||

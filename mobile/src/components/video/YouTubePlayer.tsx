@@ -15,7 +15,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { BorderRadius, Spacing, Typography } from '../../constants/theme';
 import { formatDuration } from '../../utils/formatters';
 
-export type VideoPlatform = 'youtube' | 'tiktok';
+export type VideoPlatform = 'youtube' | 'tiktok' | 'text';
 
 interface YouTubePlayerProps {
   videoId: string;

@@ -1973,7 +1973,8 @@ async def _analyze_video_background_v6(
                 entities_extracted=entities,
                 reliability_score=reliability,
                 # 🆕 Métadonnées d'enrichissement
-                enrichment_data=enrichment_metadata
+                enrichment_data=enrichment_metadata,
+                platform=platform,
             )
             
             print(f"💾 Summary saved: id={summary_id}", flush=True)
@@ -3235,6 +3236,7 @@ async def _analyze_raw_text_background(
                 entities_extracted=entities,
                 reliability_score=reliability,
                 transcript_context=text[:50000],
+                platform="text",
             )
             
             await session.commit()

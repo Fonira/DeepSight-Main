@@ -177,25 +177,25 @@ export const LandingScreen: React.FC = () => {
             </Text>
           </Animated.View>
 
-          {/* Platform logos */}
+          {/* Platform logos — YouTube & TikTok prominent, Mistral smaller */}
           <Animated.View entering={FadeInDown.delay(350).duration(500)} style={styles.platformRow}>
-            <Image
-              source={isDark
-                ? require('../assets/platforms/youtube-logo-white.png')
-                : require('../assets/platforms/youtube-logo-dark.png')
-              }
-              style={styles.platformYt}
-              resizeMode="contain"
-            />
+            <View style={styles.platformBadge}>
+              <Image
+                source={require('../assets/platforms/youtube-icon-red.png')}
+                style={styles.platformIconYt}
+                resizeMode="contain"
+              />
+              <Text style={styles.platformLabelYt}>YouTube</Text>
+            </View>
             <View style={[styles.platformSep, { backgroundColor: colors.border }]} />
-            <Image
-              source={isDark
-                ? require('../assets/platforms/tiktok-logo-white.png')
-                : require('../assets/platforms/tiktok-logo-black.png')
-              }
-              style={styles.platformTk}
-              resizeMode="contain"
-            />
+            <View style={styles.platformBadge}>
+              <Image
+                source={require('../assets/platforms/tiktok-note-color.png')}
+                style={styles.platformIconTk}
+                resizeMode="contain"
+              />
+              <Text style={styles.platformLabelTk}>TikTok</Text>
+            </View>
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(400).duration(500)} style={styles.poweredRow}>
             <Text style={[styles.poweredText, { color: colors.textMuted }]}>Propulsé par</Text>
@@ -303,10 +303,10 @@ const styles = StyleSheet.create({
   },
   logoGlow: {
     position: 'absolute',
-    width: 160,
-    height: 160,
-    top: -40,
-    left: -40,
+    width: 180,
+    height: 180,
+    top: -30,
+    left: -30,
   },
   glowGradient: {
     width: '100%',
@@ -314,8 +314,8 @@ const styles = StyleSheet.create({
     borderRadius: 80,
   },
   logoImage: {
-    width: 100,
-    height: 100,
+    width: 120,
+    height: 120,
     borderRadius: BorderRadius.xl,
   },
   titleContainer: {
@@ -417,21 +417,35 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.xl,
+    gap: Spacing.xxl,
     marginTop: Spacing.xl,
-    opacity: 0.95,
   },
-  platformYt: {
-    height: 34,
-    width: 150,
+  platformBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
   },
-  platformTk: {
-    height: 34,
-    width: 130,
+  platformIconYt: {
+    width: 32,
+    height: 32,
+  },
+  platformLabelYt: {
+    fontSize: Typography.fontSize.lg,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    color: '#FF0000',
+  },
+  platformIconTk: {
+    width: 28,
+    height: 28,
+  },
+  platformLabelTk: {
+    fontSize: Typography.fontSize.lg,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    color: '#69C9D0',
   },
   platformSep: {
     width: 1,
-    height: 26,
+    height: 28,
   },
   poweredRow: {
     flexDirection: 'row',
@@ -439,7 +453,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: Spacing.sm,
     marginTop: Spacing.md,
-    opacity: 0.8,
+    opacity: 0.6,
   },
   poweredText: {
     fontSize: Typography.fontSize.xs,
@@ -448,8 +462,8 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   platformMistral: {
-    height: 26,
-    width: 110,
+    height: 22,
+    width: 90,
   },
 });
 

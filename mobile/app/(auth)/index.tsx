@@ -26,7 +26,7 @@ import { palette } from '@/theme/colors';
 import { springs } from '@/theme/animations';
 import { DoodleBackground } from '@/components/ui/DoodleBackground';
 
-const NUM_SLIDES = 3;
+const NUM_SLIDES = 4;
 
 interface SlideData {
   icon: keyof typeof Ionicons.glyphMap;
@@ -37,7 +37,7 @@ interface SlideData {
 
 const slides: SlideData[] = [
   {
-    icon: 'link-outline',
+    icon: 'logo-deepsight' as any,   // replaced by logo image in SlideItem
     iconColor: palette.blue,
     title: 'Colle un lien YouTube ou TikTok',
     description: 'Copie-colle simplement le lien de ta vidéo et laisse DeepSight faire le reste.',
@@ -45,14 +45,20 @@ const slides: SlideData[] = [
   {
     icon: 'sparkles-outline',
     iconColor: palette.violet,
-    title: "L'IA analyse pour toi",
-    description: 'Résumés intelligents, vérification des faits et analyse épistémique en quelques secondes.',
+    title: "L'IA comprend et vérifie",
+    description: 'Résumés sourcés, vérification des faits et analyse critique. DeepSight ne répète pas, il vérifie.',
   },
   {
     icon: 'book-outline',
     iconColor: palette.cyan,
-    title: 'Révise avec des flashcards',
+    title: 'Révise efficacement',
     description: 'Quiz, cartes mentales et flashcards générés automatiquement pour mieux retenir.',
+  },
+  {
+    icon: 'chatbubbles-outline',
+    iconColor: palette.indigo,
+    title: 'Discute avec le contenu',
+    description: 'Pose des questions sur la vidéo et obtiens des réponses précises avec références. Ton assistant d\'étude personnel.',
   },
 ];
 
@@ -83,10 +89,20 @@ function SlideItem({ data, index, activeIndex }: { data: SlideData; index: numbe
     };
   });
 
+  const isFirstSlide = index === 0;
+
   return (
     <View style={styles.slide}>
       <Animated.View style={[styles.iconContainer, { backgroundColor: `${data.iconColor}15` }, iconAnimatedStyle]}>
-        <Ionicons name={data.icon} size={48} color={data.iconColor} />
+        {isFirstSlide ? (
+          <Image
+            source={require('@/assets/images/icon.png')}
+            style={styles.logoIcon}
+            resizeMode="contain"
+          />
+        ) : (
+          <Ionicons name={data.icon} size={48} color={data.iconColor} />
+        )}
       </Animated.View>
       <Text style={[styles.slideTitle, { color: colors.textPrimary }]}>{data.title}</Text>
       <Text style={[styles.slideDescription, { color: colors.textSecondary }]}>{data.description}</Text>
@@ -126,29 +142,32 @@ export default function WelcomeScreen() {
         <Text style={[styles.tagline, { color: colors.textTertiary }]}>
           Analyse vidéo par IA
         </Text>
-        {/* Platform logos */}
+        {/* Platform logos — YouTube & TikTok prominent */}
         <View style={styles.platformRow}>
-          <Image
-            source={isDark
-              ? require('@/assets/platforms/youtube-logo-white.png')
-              : require('@/assets/platforms/youtube-logo-dark.png')
-            }
-            style={styles.platformYt}
-            resizeMode="contain"
-          />
+          <View style={styles.platformBadge}>
+            <Image
+              source={require('@/assets/platforms/youtube-icon-red.png')}
+              style={styles.platformIconYt}
+              resizeMode="contain"
+            />
+            <Text style={styles.platformLabelYt}>YouTube</Text>
+          </View>
           <View style={[styles.platformSep, { backgroundColor: colors.border }]} />
-          <Image
-            source={isDark
-              ? require('@/assets/platforms/tiktok-logo-white.png')
-              : require('@/assets/platforms/tiktok-logo-black.png')
-            }
-            style={styles.platformTk}
-            resizeMode="contain"
-          />
-          <View style={[styles.platformSep, { backgroundColor: colors.border }]} />
+          <View style={styles.platformBadge}>
+            <Image
+              source={require('@/assets/platforms/tiktok-note-color.png')}
+              style={styles.platformIconTk}
+              resizeMode="contain"
+            />
+            <Text style={styles.platformLabelTk}>TikTok</Text>
+          </View>
+        </View>
+        {/* Mistral — smaller, separate row */}
+        <View style={styles.poweredRow}>
+          <Text style={[styles.poweredText, { color: colors.textMuted }]}>Propulsé par</Text>
           <Image
             source={require('@/assets/platforms/mistral-logo-white.png')}
-            style={[styles.platformMistral, !isDark && { tintColor: '#1a1a2e' }]}
+            style={[styles.mistralLogo, !isDark && { tintColor: '#1a1a2e' }]}
             resizeMode="contain"
           />
         </View>
@@ -219,26 +238,54 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: sp.lg,
+    gap: sp['2xl'],
     marginTop: sp.xl,
-    opacity: 0.9,
   },
-  platformYt: {
+  platformBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sp.sm,
+  },
+  platformIconYt: {
+    width: 30,
     height: 30,
-    width: 130,
   },
-  platformTk: {
-    height: 30,
-    width: 115,
+  platformLabelYt: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.lg,
+    color: '#FF0000',
   },
-  platformMistral: {
-    height: 24,
-    width: 100,
+  platformIconTk: {
+    width: 26,
+    height: 26,
+  },
+  platformLabelTk: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.lg,
+    color: '#69C9D0',
   },
   platformSep: {
     width: 1,
-    height: 20,
+    height: 24,
     opacity: 0.3,
+  },
+  poweredRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: sp.sm,
+    marginTop: sp.md,
+    opacity: 0.5,
+  },
+  poweredText: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  mistralLogo: {
+    height: 20,
+    width: 80,
   },
   pager: {
     flex: 1,
@@ -256,6 +303,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: sp['3xl'],
+  },
+  logoIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: borderRadius.xl,
   },
   slideTitle: {
     ...textStyles.headingLg,
