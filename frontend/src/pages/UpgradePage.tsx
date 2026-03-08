@@ -821,7 +821,7 @@ export const UpgradePage: React.FC = () => {
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
       <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
-        <div className="min-h-screen p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8">
+        <div className="min-h-screen p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 pb-24 lg:pb-8">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <header className="text-center mb-8 sm:mb-10">

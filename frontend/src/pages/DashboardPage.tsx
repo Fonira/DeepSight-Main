@@ -728,7 +728,7 @@ export const DashboardPage: React.FC = () => {
 
       {/* Main content - responsive margin */}
       <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
-        <div className="min-h-screen p-4 sm:p-6 lg:p-8">
+        <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8">
           <div className="max-w-5xl mx-auto">
 
             {/* Header - with top padding on mobile for hamburger button */}

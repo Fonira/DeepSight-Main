@@ -811,7 +811,7 @@ export const History: React.FC = () => {
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       
       <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
-        <div className="min-h-screen p-6 lg:p-8">
+        <div className="min-h-screen p-6 lg:p-8 pb-24 lg:pb-8">
           <div className="max-w-6xl mx-auto">
             
             {/* Header */}

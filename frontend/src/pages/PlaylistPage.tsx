@@ -447,7 +447,7 @@ export const PlaylistPage: React.FC = () => {
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
       <main className="flex-1 overflow-x-hidden">
-        <div className="container max-w-4xl mx-auto px-4 py-8">
+        <div className="container max-w-4xl mx-auto px-4 py-8 pb-24 lg:pb-8">
 
           {/* HEADER */}
           <div className="text-center mb-8">

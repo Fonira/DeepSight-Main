@@ -25,6 +25,7 @@ import { ErrorBoundary as RouteErrorBoundary } from "./components/ErrorBoundary"
 import { CrispChat } from "./components/CrispChat";
 import { CookieBanner } from "./components/CookieBanner";
 import { UpgradeModal } from "./components/UpgradeModal";
+import { BottomNav } from "./components/layout/BottomNav";
 import { analytics } from "./services/analytics";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -379,7 +380,12 @@ const HomeRoute = () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const ProtectedLayout = () => {
-  return <Outlet />;
+  return (
+    <>
+      <Outlet />
+      <BottomNav />
+    </>
+  );
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════

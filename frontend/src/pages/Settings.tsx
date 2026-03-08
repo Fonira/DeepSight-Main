@@ -168,9 +168,9 @@ export const Settings: React.FC = () => {
         id="main-content"
         className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}
       >
-        <div className="min-h-screen p-6 lg:p-8">
+        <div className="min-h-screen p-6 lg:p-8 pb-24 lg:pb-8">
           <div className="max-w-2xl mx-auto space-y-6">
-            
+
             {/* Header */}
             <header className="mb-8">
               <h1 className="text-2xl font-semibold mb-2 flex items-center gap-3 text-text-primary">
