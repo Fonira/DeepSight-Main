@@ -213,7 +213,7 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
   const [isMaximized, setIsMaximized] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showQuotaTooltip, setShowQuotaTooltip] = useState(false);
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 768 : false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -223,8 +223,8 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
     return () => window.removeEventListener('resize', handler);
   }, []);
 
-  const defaultPos = useMemo(() => isMobile ? { x: 0, y: 0 } : { x: Math.max(0, window.innerWidth - 620), y: 100 }, [isMobile]);
-  const defaultSize = useMemo(() => isMobile ? { width: window.innerWidth, height: window.innerHeight } : { width: 580, height: 650 }, [isMobile]);
+  const defaultPos = useMemo(() => isMobile ? { x: 0, y: 0 } : { x: Math.max(0, (typeof window !== 'undefined' ? window.innerWidth : 1280) - 620), y: 100 }, [isMobile]);
+  const defaultSize = useMemo(() => isMobile ? { width: typeof window !== 'undefined' ? window.innerWidth : 375, height: typeof window !== 'undefined' ? window.innerHeight : 812 } : { width: 580, height: 650 }, [isMobile]);
 
   const { position, setPosition, isDragging, handleMouseDown } = useDraggable(defaultPos, storageKey);
   const { size, setSize, isResizing, handleResizeStart } = useResizable(

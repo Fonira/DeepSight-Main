@@ -269,7 +269,7 @@ export const Login: React.FC = () => {
 
           {/* Platform logos under DeepSight logo */}
           <div className="flex items-center justify-center gap-5 mb-5">
-            <img src="/platforms/youtube-icon-red.png" alt="YouTube" className="h-7 opacity-80 hover:opacity-100 transition-opacity" />
+            <img src="/platforms/youtube-icon-red.svg" alt="YouTube" className="h-7 opacity-80 hover:opacity-100 transition-opacity" />
             <div className="w-px h-5 bg-border-subtle" />
             <img src="/platforms/tiktok-note-white.png" alt="TikTok" className="h-7 opacity-80 hover:opacity-100 transition-opacity" />
             <div className="w-px h-5 bg-border-subtle" />

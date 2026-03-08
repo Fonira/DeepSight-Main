@@ -206,7 +206,7 @@ const SummaryCard = memo<SummaryCardProps>(({
             {(resolvePlatform(item) === 'tiktok') ? (
               <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-5 h-5 drop-shadow-md" />
             ) : (
-              <img src="/platforms/youtube-icon-red.png" alt="YouTube" className="w-5 h-5 drop-shadow-md" />
+              <img src="/platforms/youtube-icon-red.svg" alt="YouTube" className="w-5 h-5 drop-shadow-md" />
             )}
           </span>
 

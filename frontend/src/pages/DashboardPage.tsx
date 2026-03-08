@@ -669,7 +669,9 @@ export const DashboardPage: React.FC = () => {
   
   const handleCopy = async () => {
     if (!selectedSummary?.summary_content) return;
-    await navigator.clipboard.writeText(selectedSummary.summary_content);
+    try {
+      await navigator.clipboard.writeText(selectedSummary.summary_content);
+    } catch { /* clipboard API unavailable on some mobile browsers */ }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

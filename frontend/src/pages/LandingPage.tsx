@@ -589,7 +589,7 @@ const LandingPage: React.FC = () => {
           <div className="flex items-center justify-center gap-8 sm:gap-12 mb-6">
             <div className="flex flex-col items-center gap-2">
               <img
-                src="/platforms/youtube-icon-red.png"
+                src="/platforms/youtube-icon-red.svg"
                 alt="YouTube"
                 className="h-10 sm:h-14 w-auto object-contain"
                 style={{ filter: 'drop-shadow(0 0 12px rgba(255, 0, 0, 0.3))' }}

@@ -502,7 +502,7 @@ const useResizable = (
 // =============================================================================
 
 function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(window.innerWidth < MOBILE_BREAKPOINT);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < MOBILE_BREAKPOINT : false);
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
     window.addEventListener('resize', handler);
@@ -638,7 +638,7 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
     return null;
   };
 
-  const defaultPosition = { x: window.innerWidth - 460, y: window.innerHeight - 720 };
+  const defaultPosition = { x: (typeof window !== 'undefined' ? window.innerWidth : 1280) - 460, y: (typeof window !== 'undefined' ? window.innerHeight : 900) - 720 };
   const defaultSize = { width: 420, height: 680 };
   const storedLayout = getStoredLayout();
 
