@@ -940,9 +940,15 @@ export const historyApi = {
       category: item.category || 'general',
       channel: item.video_channel,
       duration: item.video_duration,
-      platform: item.video_url
-        ? ((item.platform as 'youtube' | 'tiktok' | 'text') || (item.video_url.includes('tiktok') ? 'tiktok' : 'youtube'))
-        : 'text',
+      platform: item.platform
+        ? (item.platform as 'youtube' | 'tiktok' | 'text')
+        : item.video_url
+          ? (item.video_url.includes('tiktok') ? 'tiktok' : 'youtube')
+          : (item.video_id && /^\d{15,}$/.test(item.video_id))
+            ? 'tiktok'
+            : (item.video_id && item.video_channel && item.video_channel !== 'Import manuel')
+              ? 'youtube'
+              : 'text',
       video_url: item.video_url,
       createdAt: item.created_at,
     }));
