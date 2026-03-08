@@ -8,7 +8,7 @@
  * - Label "Langue de l'analyse" visible au-dessus des drapeaux
  */
 
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Link2, FileText, Search, ChevronDown,
@@ -380,10 +380,33 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   const creditCost = value.mode === 'search' ? 0 : 1;
   const hasEnoughCredits = creditCost === 0 || userCredits >= creditCost;
 
+  // ═══════════════════════════════════════════════════════════════════
+  // 📐 Dropdown position — recalculée dynamiquement via portal
+  // ═══════════════════════════════════════════════════════════════════
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+
+  const updateDropdownPos = useCallback(() => {
+    const btn = modeSelectorRef.current?.querySelector('button');
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    setDropdownPos({ top: rect.bottom + 8, left: rect.left });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!showModeSelector) return;
+    updateDropdownPos();
+    window.addEventListener('scroll', updateDropdownPos, true);
+    window.addEventListener('resize', updateDropdownPos);
+    return () => {
+      window.removeEventListener('scroll', updateDropdownPos, true);
+      window.removeEventListener('resize', updateDropdownPos);
+    };
+  }, [showModeSelector, updateDropdownPos]);
+
   return (
     <div className="space-y-3">
       {/* Main Input Area */}
-      <div className={`relative rounded-xl border-2 transition-all duration-300 bg-bg-secondary ${getDynamicBorderClasses()}`} style={{ isolation: 'auto' }}>
+      <div className={`relative rounded-xl border-2 transition-all duration-300 bg-bg-secondary ${getDynamicBorderClasses()}`}>
 
         {/* Mode Badge + Input */}
         <div className="flex items-start gap-3 p-4">
@@ -403,25 +426,15 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
               <ChevronDown className={`w-3 h-3 transition-transform ${showModeSelector ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* Mode Dropdown — Portal pour éviter tout problème de stacking context */}
+            {/* Mode Dropdown — Portal fixe positionné dynamiquement */}
             {showModeSelector && createPortal(
-              <div
-                className="fixed w-56 bg-bg-elevated border border-border-default rounded-xl shadow-2xl overflow-hidden"
-                style={{
-                  zIndex: 9999,
-                  top: (() => {
-                    const btn = modeSelectorRef.current?.querySelector('button');
-                    if (!btn) return 0;
-                    const rect = btn.getBoundingClientRect();
-                    return rect.bottom + 8;
-                  })(),
-                  left: (() => {
-                    const btn = modeSelectorRef.current?.querySelector('button');
-                    if (!btn) return 0;
-                    return btn.getBoundingClientRect().left;
-                  })(),
-                }}
-              >
+              <>
+                {/* Backdrop invisible pour fermer au clic extérieur */}
+                <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setShowModeSelector(false)} />
+                <div
+                  className="fixed w-56 bg-bg-elevated border border-border-default rounded-xl shadow-2xl overflow-hidden"
+                  style={{ zIndex: 9999, top: dropdownPos.top, left: dropdownPos.left }}
+                >
                 <div className="p-2">
                   {MODE_ORDER.map((m) => {
                     const modeConf = MODE_CONFIG[m];
@@ -467,7 +480,8 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
                     <Wand2 className="w-3 h-3 text-text-muted" />
                   </label>
                 </div>
-              </div>,
+              </div>
+              </>,
               document.body
             )}
           </div>

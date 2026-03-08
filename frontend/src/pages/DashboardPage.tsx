@@ -737,7 +737,7 @@ export const DashboardPage: React.FC = () => {
             </header>
 
             {/* 🆕 Smart Input Section */}
-            <div className="card p-4 sm:p-6 mb-4 sm:mb-6 overflow-visible relative z-10">
+            <div className="card p-4 sm:p-6 mb-4 sm:mb-6">
               <SmartInputBar
                 value={smartInput}
                 onChange={setSmartInput}
