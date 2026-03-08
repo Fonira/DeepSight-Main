@@ -1865,8 +1865,9 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
                 if DB_CACHE_AVAILABLE:
                     try:
                         await save_transcript_to_cache(video_id, simple, timestamped, lang, platform="youtube", extraction_method=name)
-                    except Exception:
-                        pass
+                        print(f"🗄️ DB Cache SAVED for {video_id}", flush=True)
+                    except Exception as e:
+                        print(f"⚠️ DB Cache save error for {video_id}: {e}", flush=True)
                 return simple, timestamped, lang
 
     # ═══════════════════════════════════════════════════════════════════════════════
@@ -1908,8 +1909,9 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
                     if DB_CACHE_AVAILABLE:
                         try:
                             await save_transcript_to_cache(video_id, simple, timestamped, lang, platform="youtube", extraction_method=name)
-                        except Exception:
-                            pass
+                            print(f"🗄️ DB Cache SAVED for {video_id}", flush=True)
+                        except Exception as e:
+                            print(f"⚠️ DB Cache save error for {video_id}: {e}", flush=True)
                     return simple, timestamped, lang
             except Exception as e:
                 print(f"  ⚠️ [{name}] Attempt {attempt + 1} failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
@@ -1965,8 +1967,9 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
                 if DB_CACHE_AVAILABLE:
                     try:
                         await save_transcript_to_cache(video_id, simple, result_ts, lang, platform="youtube", extraction_method=name)
-                    except Exception:
-                        pass
+                        print(f"🗄️ DB Cache SAVED for {video_id}", flush=True)
+                    except Exception as e:
+                        print(f"⚠️ DB Cache save error for {video_id}: {e}", flush=True)
                 return simple, result_ts, lang
         except Exception as e:
             print(f"  ⚠️ [{name}] Failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
