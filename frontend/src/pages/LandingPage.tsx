@@ -486,42 +486,74 @@ const LandingPage: React.FC = () => {
 
     setGuestLoading(true);
 
-    // Direct fetch for full diagnostic control
     const API = 'https://deep-sight-backend-v3-production.up.railway.app';
     const fetchUrl = `${API}/api/videos/analyze/guest`;
+    const maxRetries = 2;
 
     try {
-      const resp = await fetch(fetchUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
-      });
-
-      if (!resp.ok) {
-        let detail = `HTTP ${resp.status}`;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
-          const data = await resp.json();
-          detail = data.detail || data.message || detail;
-        } catch { /* non-JSON response */ }
+          const resp = await fetch(fetchUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url }),
+          });
 
-        if (resp.status === 429 || (typeof detail === 'string' && detail.includes('essai gratuit'))) {
-          setGuestError(language === 'fr' ? 'Vous avez déjà utilisé votre essai gratuit.' : 'You already used your free trial.');
+          // Retry on 502/503 (Railway cold start)
+          if ((resp.status === 502 || resp.status === 503) && attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
+          }
+
+          if (!resp.ok) {
+            let detail = '';
+            try {
+              const data = await resp.json();
+              detail = data.detail || data.message || '';
+            } catch { /* non-JSON */ }
+
+            // Rate limit / already used
+            if (resp.status === 429 || (typeof detail === 'string' && detail.includes('essai gratuit'))) {
+              setGuestError(language === 'fr' ? 'Vous avez déjà utilisé votre essai gratuit.' : 'You already used your free trial.');
+              setGuestUsed(true);
+              try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
+            }
+            // Transcript unavailable (common for Shorts)
+            else if (typeof detail === 'string' && (detail.includes('transcription') || detail.includes('transcript'))) {
+              setGuestError(language === 'fr'
+                ? 'Cette vidéo n\'a pas de sous-titres disponibles. Essayez une autre vidéo (les Shorts n\'ont souvent pas de sous-titres).'
+                : 'This video has no available subtitles. Try another video (Shorts often lack subtitles).');
+            }
+            // Video too long
+            else if (typeof detail === 'string' && (detail.includes('5 min') || detail.includes('durée'))) {
+              setGuestError(language === 'fr'
+                ? 'La vidéo dépasse 5 minutes. L\'essai gratuit est limité aux vidéos courtes.'
+                : 'Video exceeds 5 minutes. Free trial is limited to short videos.');
+            }
+            // Other backend error
+            else {
+              setGuestError(language === 'fr'
+                ? 'Impossible d\'analyser cette vidéo. Vérifiez le lien et réessayez.'
+                : 'Unable to analyze this video. Check the link and try again.');
+            }
+            return;
+          }
+
+          const result = await resp.json();
+          setGuestResult(result);
           setGuestUsed(true);
           try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
-        } else {
-          setGuestError(`[${resp.status}] ${typeof detail === 'string' ? detail : JSON.stringify(detail)}`);
+          return;
+        } catch {
+          if (attempt < maxRetries) {
+            await new Promise(r => setTimeout(r, 2000));
+            continue;
+          }
+          setGuestError(language === 'fr'
+            ? 'Erreur réseau. Vérifiez votre connexion et réessayez.'
+            : 'Network error. Check your connection and try again.');
         }
-        return;
       }
-
-      const result = await resp.json();
-      setGuestResult(result);
-      setGuestUsed(true);
-      try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
-    } catch (err: unknown) {
-      // Network error — fetch itself failed
-      const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-      setGuestError(`[NETWORK] ${msg} | URL: ${fetchUrl}`);
     } finally {
       setGuestLoading(false);
     }
