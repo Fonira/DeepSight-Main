@@ -54,9 +54,11 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
     >
       <div 
         className="relative"
-        style={{ 
-          width: config.container, 
+        style={{
+          width: config.container,
           height: config.container,
+          borderRadius: '50%',
+          overflow: 'hidden',
         }}
       >
         {/* Flammes cosmiques - FIXES */}
@@ -68,6 +70,8 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
             maskImage: `radial-gradient(circle at center, transparent 0%, transparent 38%, rgba(0,0,0,0.4) 45%, black 52%, black 100%)`,
             WebkitMaskImage: `radial-gradient(circle at center, transparent 0%, transparent 38%, rgba(0,0,0,0.4) 45%, black 52%, black 100%)`,
             zIndex: 1,
+            mixBlendMode: 'screen',
+            borderRadius: '50%',
           }}
         />
         
