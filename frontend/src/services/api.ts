@@ -628,10 +628,10 @@ export const authApi = {
   /**
    * Redirige vers Google OAuth
    * Utilisé par useAuth.loginWithGoogle()
+   * Redirection directe (pas de fetch cross-origin) pour compatibilité Safari mobile
    */
   async loginWithGoogle(): Promise<void> {
-    const { auth_url } = await request<{ auth_url: string }>('/api/auth/google/login', { skipAuth: true });
-    window.location.href = auth_url;
+    window.location.href = `${API_URL}/api/auth/google/login?redirect=true`;
   },
 
   async googleCallback(code: string, state?: string): Promise<TokenResponse> {

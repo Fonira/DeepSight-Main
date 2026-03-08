@@ -158,10 +158,11 @@ const MindMapInner: React.FC<MindMapProps> = ({
         img.onload = () => {
           canvas.width = img.width * 2;
           canvas.height = img.height * 2;
-          ctx?.scale(2, 2);
-          ctx!.fillStyle = '#1f2937';
-          ctx?.fillRect(0, 0, canvas.width, canvas.height);
-          ctx?.drawImage(img, 0, 0);
+          if (!ctx) return;
+          ctx.scale(2, 2);
+          ctx.fillStyle = '#1f2937';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
           
           const pngUrl = canvas.toDataURL('image/png');
           const link = document.createElement('a');

@@ -4,7 +4,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, Response
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
@@ -426,17 +426,24 @@ async def update_preferences(
 # 🔐 GOOGLE OAUTH
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@router.get("/google/login", response_model=AuthUrlResponse)
-async def google_login():
-    """Retourne l'URL d'authentification Google"""
+@router.get("/google/login")
+async def google_login(redirect: bool = Query(default=False)):
+    """Retourne l'URL d'authentification Google ou redirige directement"""
     if not GOOGLE_OAUTH_CONFIG.get("ENABLED"):
+        if redirect:
+            return RedirectResponse(url=f"{FRONTEND_URL}/login?error=oauth_disabled")
         raise HTTPException(status_code=400, detail="Google OAuth non activé")
-    
+
     auth_url = get_google_auth_url()
-    
+
     if not auth_url:
+        if redirect:
+            return RedirectResponse(url=f"{FRONTEND_URL}/login?error=oauth_config")
         raise HTTPException(status_code=500, detail="Erreur configuration OAuth")
-    
+
+    if redirect:
+        return RedirectResponse(url=auth_url, status_code=302)
+
     return AuthUrlResponse(auth_url=auth_url)
 
 

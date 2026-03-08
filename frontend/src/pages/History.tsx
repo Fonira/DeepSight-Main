@@ -1575,7 +1575,7 @@ const VideoCard: React.FC<{
               {resolvePlatform(video) === 'tiktok' ? (
                 <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-4 h-4 drop-shadow-md" />
               ) : (
-                <img src="/platforms/youtube-icon-red.png" alt="YouTube" className="w-4 h-4 drop-shadow-md" />
+                <img src="/platforms/youtube-icon-red.svg" alt="YouTube" className="w-4 h-4 drop-shadow-md" />
               )}
             </span>
             <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-white text-xs">
@@ -1638,7 +1638,7 @@ const VideoCard: React.FC<{
           {resolvePlatform(video) === 'tiktok' ? (
             <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-5 h-5 drop-shadow-md" />
           ) : (
-            <img src="/platforms/youtube-icon-red.png" alt="YouTube" className="w-5 h-5 drop-shadow-md" />
+            <img src="/platforms/youtube-icon-red.svg" alt="YouTube" className="w-5 h-5 drop-shadow-md" />
           )}
         </span>
         <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/70 text-white text-xs font-medium">
