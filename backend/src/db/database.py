@@ -544,6 +544,12 @@ class TranscriptCache(Base):
     char_count = Column(Integer, default=0)
     extraction_method = Column(String(50))
     chunk_count = Column(Integer, default=1)
+    # Video metadata (enrichment for trending & discovery)
+    video_title = Column(String(500))
+    video_channel = Column(String(255))
+    thumbnail_url = Column(Text)
+    video_duration = Column(Integer)  # seconds
+    category = Column(String(50))
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
@@ -580,6 +586,27 @@ class TranscriptCacheChunk(Base):
     __table_args__ = (
         UniqueConstraint('cache_id', 'chunk_index', name='uix_cache_chunk_index'),
         Index('idx_transcript_cache_chunks_cache', 'cache_id'),
+    )
+
+
+class TranscriptEmbedding(Base):
+    """
+    🔍 Vector embeddings for semantic search.
+    Stored as JSON text (no pgvector) for Railway compatibility.
+    """
+    __tablename__ = "transcript_embeddings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    video_id = Column(String(100), ForeignKey("transcript_cache.video_id", ondelete="CASCADE"), nullable=False, index=True)
+    chunk_index = Column(Integer, nullable=False, default=0)
+    embedding_json = Column(Text, nullable=False)  # JSON array of 1024 floats
+    text_preview = Column(String(500))
+    token_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint('video_id', 'chunk_index', name='uix_embedding_video_chunk'),
+        Index('idx_transcript_embeddings_video', 'video_id'),
     )
 
 
@@ -734,6 +761,26 @@ async def run_schema_migrations():
         )
         """,
         "CREATE INDEX IF NOT EXISTS idx_transcript_cache_chunks_cache ON transcript_cache_chunks(cache_id)",
+        # 🔍 TranscriptCache metadata enrichment (Mar 2026)
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS video_title VARCHAR(500)",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS video_channel VARCHAR(255)",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS thumbnail_url TEXT",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS video_duration INTEGER",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS category VARCHAR(50)",
+        # 🔍 TranscriptEmbedding for semantic search (Mar 2026)
+        """
+        CREATE TABLE IF NOT EXISTS transcript_embeddings (
+            id SERIAL PRIMARY KEY,
+            video_id VARCHAR(100) NOT NULL REFERENCES transcript_cache(video_id) ON DELETE CASCADE,
+            chunk_index INTEGER NOT NULL DEFAULT 0,
+            embedding_json TEXT NOT NULL,
+            text_preview VARCHAR(500),
+            token_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT NOW(),
+            UNIQUE(video_id, chunk_index)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_transcript_embeddings_video ON transcript_embeddings(video_id)",
     ]
     async with engine.begin() as conn:
         for sql in migrations:

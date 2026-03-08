@@ -228,6 +228,22 @@ except ImportError as e:
     ANALYTICS_ROUTER_AVAILABLE = False
     print(f"⚠️ Analytics router not available: {e}", flush=True)
 
+# 🔥 Trending router (most-analyzed videos)
+try:
+    from trending.router import router as trending_router
+    TRENDING_ROUTER_AVAILABLE = True
+except ImportError as e:
+    TRENDING_ROUTER_AVAILABLE = False
+    print(f"⚠️ Trending router not available: {e}", flush=True)
+
+# 🔍 Search router (semantic search)
+try:
+    from search.router import router as search_router
+    SEARCH_ROUTER_AVAILABLE = True
+except ImportError as e:
+    SEARCH_ROUTER_AVAILABLE = False
+    print(f"⚠️ Search router not available: {e}", flush=True)
+
 VERSION = "3.8.1"  # Phase 4.1: Analytics, Store Review, Push i18n
 APP_NAME = "Deep Sight API"
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
@@ -617,6 +633,16 @@ if SHARE_ROUTER_AVAILABLE:
 if ANALYTICS_ROUTER_AVAILABLE:
     app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])
     print("📊 Analytics router loaded (POST /api/analytics/events, GET /api/analytics/summary)", flush=True)
+
+# 🔥 Trending router (most-analyzed videos, public)
+if TRENDING_ROUTER_AVAILABLE:
+    app.include_router(trending_router, prefix="/api/trending", tags=["Trending"])
+    print("🔥 Trending router loaded (GET /api/trending)", flush=True)
+
+# 🔍 Search router (semantic search via Mistral embeddings)
+if SEARCH_ROUTER_AVAILABLE:
+    app.include_router(search_router, prefix="/api/search", tags=["Search"])
+    print("🔍 Search router loaded (POST /api/search/semantic)", flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE
