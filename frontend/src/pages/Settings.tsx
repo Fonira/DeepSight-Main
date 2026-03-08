@@ -13,8 +13,8 @@ import { Sidebar } from '../components/layout/Sidebar';
 import {
   Settings as SettingsIcon, Globe, Moon, Sun, Bell, BellOff,
   Keyboard, Info, Check, RotateCcw,
-  Sparkles, BookOpen, Monitor, Zap, Download,
-  ExternalLink, Palette, SlidersHorizontal, Layout
+  Sparkles, BookOpen, Monitor, Download,
+  ExternalLink, Palette, SlidersHorizontal
 } from 'lucide-react';
 import { ThemeToggle } from '../components/ThemeToggle';
 import DoodleBackground from '../components/DoodleBackground';
@@ -91,12 +91,6 @@ export const Settings: React.FC = () => {
     setSaved('all');
     setTimeout(() => setSaved(null), 1500);
   }, []);
-
-  // Appliquer le mode compact au body
-  useEffect(() => {
-    document.body.classList.toggle('compact-mode', preferences.compactView);
-    document.body.classList.toggle('reduce-motion', preferences.reduceMotion);
-  }, [preferences.compactView, preferences.reduceMotion]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 🎨 Toggle Component
@@ -246,31 +240,6 @@ export const Settings: React.FC = () => {
                   </div>
                 </SettingRow>
 
-                {/* Vue compacte */}
-                <SettingRow
-                  icon={Layout}
-                  title={tr('Vue compacte', 'Compact view')}
-                  description={tr('Réduire les espacements', 'Reduce spacing')}
-                >
-                  <Toggle
-                    enabled={preferences.compactView}
-                    onToggle={() => savePreference('compactView', !preferences.compactView)}
-                    saved={saved === 'compactView'}
-                  />
-                </SettingRow>
-
-                {/* Réduire les animations */}
-                <SettingRow
-                  icon={Zap}
-                  title={tr('Réduire les animations', 'Reduce motion')}
-                  description={tr('Pour une expérience plus calme', 'For a calmer experience')}
-                >
-                  <Toggle
-                    enabled={preferences.reduceMotion}
-                    onToggle={() => savePreference('reduceMotion', !preferences.reduceMotion)}
-                    saved={saved === 'reduceMotion'}
-                  />
-                </SettingRow>
               </div>
             </section>
 
