@@ -25,7 +25,7 @@ from db.database import (
     ChatMessage, ChatQuota, Summary, User, WebSearchUsage,
     PlaylistAnalysis, TaskStatus, CreditTransaction
 )
-from core.config import get_mistral_key, get_perplexity_key, PLAN_LIMITS
+from core.config import get_mistral_key, get_perplexity_key, PLAN_LIMITS, R2_CONFIG
 
 
 # Colonnes légères pour la liste d'historique (exclut summary_content, transcript_context, etc.)
@@ -199,7 +199,18 @@ async def save_summary(
 
         if extracted_tags:
             print(f"🏷️ [save_summary] Fallback extracted {len(extracted_tags)} keywords: {extracted_tags[:5]}...")
-    
+
+    # 📤 Upload thumbnail to R2 if enabled
+    if R2_CONFIG["ENABLED"] and platform != "text" and thumbnail_url:
+        try:
+            from storage.thumbnails import store_thumbnail_r2
+            r2_url = await store_thumbnail_r2(video_id, thumbnail_url, platform)
+            if r2_url:
+                thumbnail_url = r2_url
+                print(f"📤 [save_summary] Thumbnail uploaded to R2: {r2_url}")
+        except Exception as e:
+            logger.warning(f"R2 thumbnail upload failed for {video_id}: {e}")
+
     summary = Summary(
         user_id=user_id,
         video_id=video_id,

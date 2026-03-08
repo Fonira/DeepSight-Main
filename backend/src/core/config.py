@@ -122,6 +122,14 @@ class _DeepSightSettings(BaseSettings):
     BACKUP_CRON_MINUTE: int = 0
     BACKUP_RETENTION_DAYS: int = 30
 
+    # -- R2 Thumbnail Storage --
+    R2_ACCOUNT_ID: str = ""
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_BUCKET_NAME: str = "deepsight-thumbnails"
+    R2_PUBLIC_DOMAIN: str = ""
+    R2_ENABLED: bool = False
+
     # -- Transcript --
     YTDLP_COOKIES_PATH: str = ""
 
@@ -478,6 +486,19 @@ BACKUP_CONFIG = {
     "CRON_HOUR": _settings.BACKUP_CRON_HOUR,
     "CRON_MINUTE": _settings.BACKUP_CRON_MINUTE,
     "RETENTION_DAYS": _settings.BACKUP_RETENTION_DAYS,
+}
+
+# =============================================================================
+# R2 THUMBNAIL STORAGE
+# =============================================================================
+
+R2_CONFIG = {
+    "ACCOUNT_ID": _settings.R2_ACCOUNT_ID,
+    "ACCESS_KEY_ID": _settings.R2_ACCESS_KEY_ID,
+    "SECRET_ACCESS_KEY": _settings.R2_SECRET_ACCESS_KEY,
+    "BUCKET": _settings.R2_BUCKET_NAME,
+    "PUBLIC_DOMAIN": _settings.R2_PUBLIC_DOMAIN,
+    "ENABLED": _settings.R2_ENABLED,
 }
 
 # =============================================================================
