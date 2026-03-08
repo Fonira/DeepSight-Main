@@ -423,19 +423,57 @@ const LandingPage: React.FC = () => {
   });
   const guestInputRef = useRef<HTMLInputElement>(null);
 
+  // Extract URL from clipboard text (YouTube mobile sometimes includes title + URL)
+  const extractUrlFromText = (text: string): string => {
+    const urlMatch = text.match(/https?:\/\/[^\s<>"']+/);
+    return urlMatch ? urlMatch[0] : text.trim();
+  };
+
+  const isValidVideoUrl = (url: string): boolean => {
+    return /(?:youtube\.com\/|youtu\.be\/|tiktok\.com\/)/.test(url);
+  };
+
   const handleGuestPaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      if (text) setGuestUrl(text.trim());
-    } catch { /* clipboard denied */ }
+      if (text) {
+        const url = extractUrlFromText(text);
+        setGuestUrl(url);
+        setGuestError(null);
+      }
+    } catch {
+      // Clipboard API denied on mobile — focus input so user can paste manually
+      guestInputRef.current?.focus();
+    }
+  };
+
+  // Handle native paste event (long-press paste on mobile)
+  const handleInputPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData('text');
+    if (text) {
+      e.preventDefault();
+      const url = extractUrlFromText(text);
+      setGuestUrl(url);
+      setGuestError(null);
+    }
   };
 
   const handleGuestAnalyze = async () => {
-    if (!guestUrl.trim() || guestLoading) return;
+    const url = guestUrl.trim();
+    if (!url || guestLoading) return;
     setGuestError(null);
+
+    // Validate URL format before calling API
+    if (!isValidVideoUrl(url)) {
+      setGuestError(language === 'fr'
+        ? 'Collez un lien YouTube ou TikTok valide (ex: https://youtu.be/xxx)'
+        : 'Paste a valid YouTube or TikTok link (e.g., https://youtu.be/xxx)');
+      return;
+    }
+
     setGuestLoading(true);
     try {
-      const result = await videoApi.analyzeGuest(guestUrl.trim());
+      const result = await videoApi.analyzeGuest(url);
       setGuestResult(result);
       setGuestUsed(true);
       try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
@@ -446,7 +484,10 @@ const LandingPage: React.FC = () => {
         setGuestUsed(true);
         try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
       } else {
-        setGuestError(msg);
+        // User-friendly error messages
+        setGuestError(language === 'fr'
+          ? 'Impossible d\'analyser cette vidéo. Vérifiez que le lien est correct et que la vidéo fait moins de 5 minutes.'
+          : 'Unable to analyze this video. Check that the link is valid and the video is under 5 minutes.');
       }
     } finally {
       setGuestLoading(false);
@@ -596,6 +637,7 @@ const LandingPage: React.FC = () => {
                     type="url"
                     value={guestUrl}
                     onChange={(e) => setGuestUrl(e.target.value)}
+                    onPaste={handleInputPaste}
                     onKeyDown={(e) => e.key === 'Enter' && handleGuestAnalyze()}
                     placeholder={language === 'fr' ? 'Collez un lien YouTube Short ou TikTok' : 'Paste a YouTube Short or TikTok link'}
                     className="flex-1 min-w-0 px-4 py-3 rounded-lg bg-surface-secondary/60 border border-border-subtle text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:border-accent-primary/40 transition-all"
