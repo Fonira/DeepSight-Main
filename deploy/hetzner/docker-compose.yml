@@ -1,0 +1,90 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# DeepSight Production Stack — Hetzner VPS
+# Usage: docker compose up -d
+# ═══════════════════════════════════════════════════════════════════════════════
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - deepsight
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      - PORT=8080
+      - ENV=production
+      - DATABASE_URL=postgresql+asyncpg://deepsight:${DB_PASSWORD}@postgres:5432/deepsight
+      - REDIS_URL=redis://redis:6379/0
+      - DB_POOL_SIZE=20
+      - DB_MAX_OVERFLOW=10
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - deepsight
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: deepsight
+      POSTGRES_USER: deepsight
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U deepsight"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - deepsight
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - deepsight
+
+networks:
+  deepsight:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
