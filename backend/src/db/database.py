@@ -212,6 +212,11 @@ class Summary(Base):
     # Timestamp
     created_at = Column(DateTime, default=func.now())
 
+    # 🔬 Deep Research (Mar 2026)
+    deep_research = Column(Boolean, default=False, server_default="false")
+    enrichment_sources = Column(Text, nullable=True)   # JSON: [{title, url, snippet}]
+    enrichment_data = Column(Text, nullable=True)       # JSON: {level, sources, enriched_at}
+
     # Hierarchical Digest Pipeline (Feb 2026)
     full_digest = Column(Text, nullable=True)  # Assembled full digest from chunk digests (~6-10K chars)
 

@@ -29,6 +29,7 @@ class EnrichmentLevel(Enum):
     NONE = "none"      # Free/Starter: Pas d'enrichissement
     FULL = "full"      # Pro: Enrichissement standard
     DEEP = "deep"      # Expert: Analyse exhaustive
+    DEEP_RESEARCH = "deep_research"  # Pro+: Brave massif + Perplexity sonar-pro croisé
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -57,6 +58,14 @@ ENRICHMENT_CONFIG = {
         "max_tokens": 2500,
         "features": ["context", "recent_news", "fact_check", "expert_opinions", "counter_arguments"],
         "model": "sonar-pro"
+    },
+    EnrichmentLevel.DEEP_RESEARCH: {
+        "enabled": True,
+        "max_queries": 1,
+        "max_sources": 10,
+        "max_tokens": 3000,
+        "model": "sonar-pro",
+        "features": ["context", "recent_news", "fact_check", "expert_opinions", "counter_arguments", "source_cross_check"],
     }
 }
 
@@ -880,7 +889,8 @@ def get_enrichment_badge(level: EnrichmentLevel, lang: str = "fr") -> str:
     badges = {
         EnrichmentLevel.NONE: "",
         EnrichmentLevel.FULL: "🌐 Enrichi Web" if lang == "fr" else "🌐 Web Enriched",
-        EnrichmentLevel.DEEP: "🔬 Analyse Approfondie" if lang == "fr" else "🔬 Deep Analysis"
+        EnrichmentLevel.DEEP: "🔬 Analyse Approfondie" if lang == "fr" else "🔬 Deep Analysis",
+        EnrichmentLevel.DEEP_RESEARCH: "🔬🦁 Recherche Croisée" if lang == "fr" else "🔬🦁 Cross-Referenced Research",
     }
     return badges.get(level, "")
 
@@ -989,3 +999,90 @@ If original response is correct, confirm it. Otherwise, correct with real facts.
             enriched_response = f"{enriched_response}\n\n{sources_text}"
     
     return enriched_response, result.sources, level
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔬 DEEP RESEARCH: Synthèse croisée Brave + Perplexity sonar-pro
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def get_deep_research_context(
+    video_title: str,
+    video_channel: str,
+    transcript_excerpt: str,
+    brave_results_text: str,
+    brave_sources: "List[Dict[str, str]]",
+    lang: str = "fr"
+) -> "Tuple[Optional[str], List[Dict[str, str]]]": 
+    api_key = get_perplexity_key()
+    if not api_key:
+        print("❌ [DEEP_RESEARCH] No Perplexity API key", flush=True)
+        return None, brave_sources
+
+    brave_context = brave_results_text[:4000] if brave_results_text else ""
+    sources_summary = ""
+    if brave_sources:
+        sources_summary = chr(10).join(
+            f"- {s.get(chr(39) + 'title' + chr(39), 'Source')}: {s.get(chr(39) + 'snippet' + chr(39), '')[:150]}"
+            for s in brave_sources[:20]
+        )
+
+    if lang == "fr":
+        prompt = f"""Tu es un expert en recherche et fact-checking. Tu reçois le transcript d'une vidéo YouTube ET des résultats Brave Search.
+
+📺 Vidéo: {video_title}
+📺 Chaîne: {video_channel}
+
+📝 EXTRAIT DU TRANSCRIPT:
+{transcript_excerpt[:3000]}
+
+🦁 RÉSULTATS BRAVE SEARCH:
+{brave_context}
+
+📚 SOURCES:
+{sources_summary}
+
+🎯 MISSION: Analyse croisée. Vérifie les affirmations, identifie contradictions, ajoute contexte manquant, données actualisées, contre-arguments, note fiabilité /10.
+
+📋 FORMAT:
+## 🔍 Vérification Croisée
+## ✅ Faits Confirmés  
+## ⚠️ Points Contestés
+## 📊 Données Actualisées
+## ⚖️ Perspectives Alternatives
+## 📈 Score de Fiabilité: X/10
+
+Factuel, sources citées. Max 800 mots."""
+    else:
+        prompt = f"""You are a research and fact-checking expert. Cross-reference YouTube video transcript with Brave Search results.
+
+📺 Video: {video_title} | Channel: {video_channel}
+📝 TRANSCRIPT: {transcript_excerpt[:3000]}
+🦁 BRAVE RESULTS: {brave_context}
+📚 SOURCES: {sources_summary}
+
+🎯 Verify claims, find contradictions, add context, update data, counter-arguments, reliability /10. Max 800 words."""
+
+    print(f"🔬 [DEEP_RESEARCH] Calling Perplexity sonar-pro...", flush=True)
+    result = await call_perplexity(prompt, EnrichmentLevel.DEEP_RESEARCH)
+
+    if not result.success:
+        print(f"⚠️ [DEEP_RESEARCH] Failed: {result.error}", flush=True)
+        return None, brave_sources
+
+    all_sources = list(brave_sources) if brave_sources else []
+    seen_urls = {s.get("url", "") for s in all_sources}
+    for ps in result.sources:
+        if ps.get("url", "") not in seen_urls:
+            all_sources.append(ps)
+            seen_urls.add(ps.get("url", ""))
+
+    context_text = (
+        "═══ 🔬🦁 RECHERCHE CROISÉE APPROFONDIE ═══" + chr(10)
+        + f"Synthèse de {len(all_sources)} sources web croisées." + chr(10) * 2
+        + f"{result.content}" + chr(10) * 2
+        + f"📚 {len(all_sources)} sources analysées et croisées."
+    )
+
+    print(f"✅ [DEEP_RESEARCH] Done: {len(result.content)} chars, {len(all_sources)} sources", flush=True)
+    return context_text, all_sources

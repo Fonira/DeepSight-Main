@@ -259,3 +259,117 @@ async def get_brave_factcheck_context(
     print(f"✅ [BRAVE] {success_count}/{len(queries)} queries OK — {len(all_sources)} unique sources", flush=True)
     
     return context_text, all_sources
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔬 DEEP RESEARCH: Recherche massive (5 queries × 8 résultats)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def generate_deep_research_queries(
+    video_title: str,
+    video_channel: str,
+    transcript_excerpt: str,
+    lang: str = "fr"
+) -> "List[str]":
+    queries = []
+    clean_title = re.sub(r'[#\[\](){}|]', '', video_title).strip()
+
+    # 1. Faits et vérification
+    queries.append(f"{clean_title} fact check verification 2025 2026")
+
+    # 2. Entités nommées
+    tech_patterns = [
+        r'\b(GPT[-\s]?\d[\w.]*)', r'\b(Claude\s+\d[\w.]*)',
+        r'\b(Gemini[\s\w.]*)', r'\b(Mistral[\s\w.-]*)',
+        r'\b(OpenAI)', r'\b(Anthropic)', r'\b(Google\s+(?:AI|DeepMind))',
+        r'\b(Meta\s+AI)', r'\b(Tesla)', r'\b(SpaceX)',
+    ]
+    found_entities = set()
+    for pattern in tech_patterns:
+        matches = re.findall(pattern, transcript_excerpt[:3000], re.IGNORECASE)
+        found_entities.update(m.strip() for m in matches if len(m.strip()) > 2)
+    if found_entities:
+        entities_str = " ".join(list(found_entities)[:4])
+        queries.append(f"{entities_str} latest news 2025 2026")
+    else:
+        queries.append(f'"{video_channel}" {clean_title[:40]} analysis')
+
+    # 3. Critiques et contre-arguments
+    queries.append(f"{clean_title} criticism debate controversy")
+
+    # 4. Contexte historique
+    queries.append(f"{clean_title} background context explained")
+
+    # 5. Actualités récentes
+    queries.append(f"{clean_title} latest update news today")
+
+    return queries[:5]
+
+
+async def get_brave_deep_research_context(
+    video_title: str,
+    video_channel: str,
+    transcript: str,
+    lang: str = "fr"
+) -> "Tuple[Optional[str], List[Dict[str, str]]]":
+    """🔬 Deep Research: 5 requêtes × 8 résultats = ~40 sources."""
+    api_key = get_brave_key()
+    if not api_key:
+        print("⏭️ [BRAVE DEEP] Skipped — no API key", flush=True)
+        return None, []
+
+    queries = generate_deep_research_queries(
+        video_title=video_title,
+        video_channel=video_channel,
+        transcript_excerpt=transcript[:3000],
+        lang=lang,
+    )
+
+    if not queries:
+        return None, []
+
+    print(f"🦁🔬 [BRAVE DEEP] Running {len(queries)} deep research queries (8 results each)...", flush=True)
+
+    import asyncio
+    results: "List[BraveSearchResult]" = await asyncio.gather(
+        *[_call_brave_api(q, count=8) for q in queries],
+        return_exceptions=True,
+    )
+
+    all_sources = []
+    context_parts = []
+    seen_urls = set()
+    categories = ["🔍 Vérification", "👤 Entités", "⚖️ Critiques", "📖 Contexte", "📰 Actualités"]
+
+    for i, r in enumerate(results):
+        cat = categories[i] if i < len(categories) else f"🔎 Recherche {i+1}"
+        if isinstance(r, Exception):
+            print(f"⚠️ [BRAVE DEEP] Query {i+1} error: {r}", flush=True)
+            continue
+        if not r.success:
+            print(f"⚠️ [BRAVE DEEP] Query failed: {r.error}", flush=True)
+            continue
+
+        context_parts.append(f"{cat}: \"{r.query}\"\n{r.snippets}")
+
+        for src in r.sources:
+            if src["url"] not in seen_urls:
+                seen_urls.add(src["url"])
+                src["category"] = cat
+                all_sources.append(src)
+
+    if not context_parts:
+        print("⚠️ [BRAVE DEEP] No usable results", flush=True)
+        return None, []
+
+    context_text = (
+        "═══ 🦁🔬 BRAVE DEEP RESEARCH ═══\n"
+        + f"{len(all_sources)} sources collectées via {len(queries)} requêtes.\n\n"
+        + "\n\n".join(context_parts)
+    )
+
+    success_count = sum(1 for r in results if isinstance(r, BraveSearchResult) and r.success)
+    print(f"✅ [BRAVE DEEP] {success_count}/{len(queries)} queries OK — {len(all_sources)} unique sources", flush=True)
+
+    return context_text, all_sources

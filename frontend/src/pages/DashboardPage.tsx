@@ -20,11 +20,12 @@ import {
   Play, Video, ChevronDown, Clock, Timer,
   Download, Sparkles, BookOpen, Shield,
   ExternalLink, Copy, Check, MessageCircle, X,
-  AlertCircle,
+  AlertCircle, Microscope,
   FileText, FileDown, GraduationCap, Brain, Tags
 } from "lucide-react";
 import { DeepSightSpinner, DeepSightSpinnerMicro } from "../components/ui";
 import { EnrichedMarkdown } from "../components/EnrichedMarkdown";
+import { DeepResearchSources } from "../components/SummaryReader";
 import { ConceptsGlossary } from "../components/ConceptsGlossary";
 import { videoApi, chatApi, reliabilityApi, ApiError } from "../services/api";
 import type { Summary, TaskStatus, ChatQuota, DiscoveryResponse, VideoCandidate, ReliabilityResult, EnrichedConcept } from "../services/api";
@@ -127,8 +128,8 @@ export const DashboardPage: React.FC = () => {
   const [discoveryResult, setDiscoveryResult] = useState<DiscoveryResponse | null>(null);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   
-  // 🔒 Deep Research désactivé côté UI — backend l'accepte toujours pour quand on le réactivera
-  // Sera réactivé comme "Fact-checking web" pour le plan Pro (~30 crédits/usage)
+  // 🔬 Deep Research — toggle pour Pro+
+  const [deepResearch, setDeepResearch] = useState(false);
   
   // 🎨 État pour la personnalisation avancée v2
   const [analysisCustomization, setAnalysisCustomization] = useState<AnalysisCustomization>(DEFAULT_CUSTOMIZATION);
@@ -193,6 +194,7 @@ export const DashboardPage: React.FC = () => {
   const isProUser = normalizedPlan === 'pro';
   // Note: isStarterPlus réservé pour futures fonctionnalités
   const isExpertUser = normalizedPlan === 'pro'; // Pro est le plan le plus élevé
+  const canDeepResearch = ['pro', 'expert', 'admin', 'unlimited'].includes(normalizedPlan);
   
   // SUGGESTED_QUESTIONS disponible pour le chat: language === 'fr' ? SUGGESTED_QUESTIONS_FR : SUGGESTED_QUESTIONS_EN
 
@@ -398,7 +400,7 @@ export const DashboardPage: React.FC = () => {
           {
             category: 'auto',
             mode: apiParams.mode,
-            deepResearch: false, // 🔒 Désactivé — sera réactivé comme "Fact-checking web"
+            deepResearch,
             lang: apiParams.lang,
             userPrompt: apiParams.user_prompt,
             antiAIDetection: apiParams.anti_ai_detection,
@@ -441,7 +443,7 @@ export const DashboardPage: React.FC = () => {
           textSource: smartInput.textSource,
           mode: textApiParams.mode,
           lang: textApiParams.lang,
-          deepResearch: false, // 🔒 Désactivé — sera réactivé comme "Fact-checking web"
+          deepResearch,
         });
         
         if (response.task_id) {
@@ -480,7 +482,7 @@ export const DashboardPage: React.FC = () => {
         {
           category: 'auto',
           mode,
-          deepResearch: false, // 🔒 Désactivé — sera réactivé comme "Fact-checking web"
+          deepResearch,
           lang: language,
           // Personnalisation v3
           userPrompt: analysisCustomization.userPrompt || undefined,
@@ -810,6 +812,59 @@ export const DashboardPage: React.FC = () => {
                   />
                 </div>
             </div>
+
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            {/* 🔬 DEEP RESEARCH TOGGLE — Pro+ only */}
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            {canDeepResearch && (
+              <div className="card p-4 mb-4 sm:mb-6 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`
+                      w-10 h-10 rounded-lg flex items-center justify-center transition-all
+                      ${deepResearch
+                        ? 'bg-purple-500/20 text-purple-400'
+                        : 'bg-bg-tertiary text-text-muted'}
+                    `}>
+                      <Microscope className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-text-primary flex items-center gap-2">
+                        {language === 'fr' ? 'Recherche approfondie' : 'Deep Research'}
+                        {deepResearch && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400 font-semibold">
+                            +50 {language === 'fr' ? 'crédits' : 'credits'}
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-xs text-text-muted block mt-0.5">
+                        {language === 'fr'
+                          ? 'Croise 40+ sources web pour vérifier et enrichir l\'analyse'
+                          : 'Cross-references 40+ web sources to verify and enrich analysis'}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDeepResearch(!deepResearch)}
+                    disabled={loading}
+                    className={`
+                      relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500/50
+                      ${deepResearch ? 'bg-purple-500' : 'bg-bg-tertiary border border-border-default'}
+                      ${loading ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                    `}
+                    role="switch"
+                    aria-checked={deepResearch}
+                    aria-label={language === 'fr' ? 'Recherche approfondie' : 'Deep Research'}
+                  >
+                    <span className={`
+                      inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200
+                      ${deepResearch ? 'translate-x-6' : 'translate-x-1'}
+                    `} />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* ═══════════════════════════════════════════════════════════════ */}
             {/* 🆕 Loading State AMÉLIORÉ — Avec estimation de temps */}
@@ -1245,6 +1300,16 @@ export const DashboardPage: React.FC = () => {
                         language={language as 'fr' | 'en'}
                       />
                     </div>
+
+                    {/* 🔬 Sources croisées — Deep Research */}
+                    {selectedSummary.deep_research && selectedSummary.enrichment_sources && (
+                      <div className="mt-6 not-prose">
+                        <DeepResearchSources
+                          enrichmentSources={selectedSummary.enrichment_sources}
+                          language={language as 'fr' | 'en'}
+                        />
+                      </div>
+                    )}
 
                     {/* 💰 Analysis Value Display - Shows time saved */}
                     <div className="mt-6 not-prose">

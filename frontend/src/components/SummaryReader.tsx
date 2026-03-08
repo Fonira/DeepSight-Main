@@ -10,7 +10,7 @@ import React, { useState, useMemo } from 'react';
 import {
   BookOpen, Clock, Tag, ChevronDown, ChevronRight, Play,
   Lightbulb, Users, Building2, Shield, Copy, Check,
-  ExternalLink
+  ExternalLink, Globe
 } from 'lucide-react';
 import { EnrichedMarkdown } from './EnrichedMarkdown';
 import { ThumbnailImage } from './ThumbnailImage';
@@ -46,6 +46,9 @@ interface SummaryReaderProps {
     reliability_score?: number;
     entities?: Record<string, string[]>;
     created_at: string;
+    // 🔬 Deep Research
+    deep_research?: boolean;
+    enrichment_sources?: string;  // JSON string
   };
   language?: 'fr' | 'en';
   onTimestampClick?: (seconds: number) => void;
@@ -584,6 +587,79 @@ const Section: React.FC<SectionProps> = ({
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🔬 SOURCES CROISÉES — Affiché quand deep_research = true
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface EnrichmentSource {
+  title: string;
+  url: string;
+  snippet: string;
+  category?: string;
+}
+
+export const DeepResearchSources: React.FC<{
+  enrichmentSources?: string;
+  language?: 'fr' | 'en';
+}> = ({ enrichmentSources, language = 'fr' }) => {
+  const sources: EnrichmentSource[] = useMemo(() => {
+    if (!enrichmentSources) return [];
+    try {
+      return JSON.parse(enrichmentSources);
+    } catch {
+      return [];
+    }
+  }, [enrichmentSources]);
+
+  if (sources.length === 0) return null;
+
+  return (
+    <div
+      className="mt-6 rounded-xl overflow-hidden"
+      style={{
+        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(6, 182, 212, 0.05))',
+        border: '1px solid rgba(139, 92, 246, 0.15)',
+      }}
+    >
+      <div className="px-5 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(139, 92, 246, 0.1)' }}>
+        <Globe className="w-5 h-5 text-purple-400" />
+        <span className="text-sm font-bold text-purple-300 uppercase tracking-wider">
+          {language === 'fr' ? `Sources croisées (${sources.length})` : `Cross-referenced Sources (${sources.length})`}
+        </span>
+        <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-semibold">
+          🔬 Deep Research
+        </span>
+      </div>
+      <div className="p-4 space-y-2 max-h-[400px] overflow-y-auto">
+        {sources.map((src, i) => (
+          <a
+            key={i}
+            href={src.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block p-3 rounded-lg transition-all hover:bg-white/5 group"
+            style={{ border: '1px solid rgba(255,255,255,0.05)' }}
+          >
+            <div className="flex items-start gap-2">
+              <span className="text-xs text-purple-400/60 font-mono mt-0.5">{i + 1}.</span>
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium text-purple-200 group-hover:text-purple-100 line-clamp-1">
+                  {src.title || src.url}
+                </span>
+                {src.snippet && (
+                  <p className="text-xs text-[#e8dcc4]/50 mt-1 line-clamp-2">{src.snippet}</p>
+                )}
+                <span className="text-[10px] text-[#e8dcc4]/30 mt-1 block truncate">{src.url}</span>
+              </div>
+              <ExternalLink className="w-3.5 h-3.5 text-purple-400/40 group-hover:text-purple-400 flex-shrink-0 mt-0.5" />
+            </div>
+          </a>
+        ))}
+      </div>
     </div>
   );
 };

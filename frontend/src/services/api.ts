@@ -101,6 +101,11 @@ export interface Summary {
   like_count?: number;
   publish_date?: string;
   concepts?: Concept[];
+
+  // 🔬 Deep Research (Mar 2026)
+  deep_research?: boolean;
+  enrichment_sources?: string;  // JSON string: [{title, url, snippet}]
+  enrichment_data?: string;     // JSON string: {level, sources, enriched_at}
 }
 
 export interface TranscriptSegment {

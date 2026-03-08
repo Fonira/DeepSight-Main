@@ -229,6 +229,14 @@ async def save_summary(
     if enrichment_data and hasattr(summary, 'enrichment_data'):
         summary.enrichment_data = json.dumps(enrichment_data)
     
+    # 🔬 Deep Research: stocker le flag et les sources
+    if enrichment_data and hasattr(summary, 'deep_research'):
+        summary.deep_research = enrichment_data.get('deep_research', False)
+    if enrichment_data and hasattr(summary, 'enrichment_sources'):
+        sources_list = enrichment_data.get('sources', [])
+        if sources_list:
+            summary.enrichment_sources = json.dumps(sources_list[:50], ensure_ascii=False)
+    
     session.add(summary)
 
     # Mettre à jour les stats utilisateur

@@ -55,6 +55,23 @@ except ImportError as e:
     async def get_brave_factcheck_context(*args, **kwargs):
         return None, []
 
+# 🔬 Deep Research imports
+try:
+    from videos.brave_search import get_brave_deep_research_context
+    BRAVE_DEEP_RESEARCH_AVAILABLE = True
+except ImportError:
+    BRAVE_DEEP_RESEARCH_AVAILABLE = False
+    async def get_brave_deep_research_context(*args, **kwargs):
+        return None, []
+
+try:
+    from videos.web_enrichment import get_deep_research_context
+    DEEP_RESEARCH_AVAILABLE = True
+except ImportError:
+    DEEP_RESEARCH_AVAILABLE = False
+    async def get_deep_research_context(*args, **kwargs):
+        return None, []
+
 # Import conditionnel de httpx pour le streaming
 try:
     import httpx
@@ -373,6 +390,7 @@ async def analysis_stream_generator(
     web_enrich: bool,
     db: AsyncSession,
     user: Optional[User],
+    deep_research: bool = False,
 ) -> AsyncGenerator[str, None]:
     """
     Générateur principal pour le streaming d'analyse.
@@ -454,24 +472,85 @@ async def analysis_stream_generator(
             return
         
         # ═══════════════════════════════════════════════════════════════════════
-        # 🌐 WEB ENRICHMENT PRÉ-ANALYSE (Perplexity)
+        # 🌐 WEB ENRICHMENT PRÉ-ANALYSE
         # ═══════════════════════════════════════════════════════════════════════
         web_context = None
         should_enrich = False
+        enrichment_sources_list = []
         
-        if web_enrich and WEB_ENRICHMENT_AVAILABLE:
+        # Déterminer le plan utilisateur
+        user_plan = "free"
+        if user:
+            user_plan = getattr(user, 'plan', 'free') or 'free'
+        
+        # ─────────────────────────────────────────────────────────────────
+        # 🔬 PATH A: DEEP RESEARCH (Brave massif + Perplexity sonar-pro)
+        # ─────────────────────────────────────────────────────────────────
+        if deep_research and user_plan in ('pro', 'expert', 'admin', 'unlimited'):
+            print(f"🔬 [DEEP RESEARCH] Pipeline activé pour plan={user_plan}", flush=True)
             try:
-                # Déterminer le plan utilisateur
-                user_plan = "free"
-                if user:
-                    user_plan = getattr(user, 'plan', 'free') or 'free'
+                # Étape 1: Brave Search massif (5 queries × 8 résultats)
+                yield format_sse_event(StreamEventType.PROGRESS, {
+                    "step": "deep_research_start",
+                    "message": "🔬 Recherche approfondie en cours...",
+                    "progress": 33,
+                })
                 
-                # Toujours enrichir pour les plans payants, 
-                # mais aussi en mode "auto" pour tous les utilisateurs
-                # sur les sujets tech/science qui évoluent vite
+                brave_text, brave_sources = None, []
+                if BRAVE_DEEP_RESEARCH_AVAILABLE:
+                    brave_text, brave_sources = await get_brave_deep_research_context(
+                        video_title=metadata.get("title", ""),
+                        video_channel=metadata.get("channel", ""),
+                        transcript=transcript,
+                        lang=lang,
+                    )
+                
+                if brave_text and brave_sources:
+                    yield format_sse_event(StreamEventType.PROGRESS, {
+                        "step": "deep_research_brave_done",
+                        "message": f"✅ {len(brave_sources)} sources collectées, synthèse en cours...",
+                        "progress": 38,
+                    })
+                    
+                    # Étape 2: Perplexity sonar-pro croise les résultats
+                    if DEEP_RESEARCH_AVAILABLE:
+                        dr_context, dr_sources = await get_deep_research_context(
+                            video_title=metadata.get("title", ""),
+                            video_channel=metadata.get("channel", ""),
+                            transcript_excerpt=transcript[:5000],
+                            brave_results_text=brave_text,
+                            brave_sources=brave_sources,
+                            lang=lang,
+                        )
+                        
+                        if dr_context:
+                            web_context = dr_context
+                            enrichment_sources_list = dr_sources
+                            yield format_sse_event(StreamEventType.PROGRESS, {
+                                "step": "deep_research_complete",
+                                "message": f"✅ Analyse croisée terminée — {len(dr_sources)} sources",
+                                "progress": 45,
+                            })
+                        else:
+                            # Fallback: utiliser le contexte Brave brut
+                            web_context = brave_text
+                            enrichment_sources_list = brave_sources
+                    else:
+                        web_context = brave_text
+                        enrichment_sources_list = brave_sources
+                else:
+                    print("⚠️ [DEEP RESEARCH] Brave returned nothing, fallback to standard", flush=True)
+                    
+            except Exception as e:
+                print(f"⚠️ [DEEP RESEARCH] Error (non-blocking): {e}", flush=True)
+        
+        # ─────────────────────────────────────────────────────────────────
+        # 🌐 PATH B: STANDARD (Perplexity sonar + Brave fact-check)
+        # ─────────────────────────────────────────────────────────────────
+        if web_context is None and web_enrich and WEB_ENRICHMENT_AVAILABLE:
+            try:
                 should_enrich = user_plan in ('pro', 'expert', 'admin')
                 
-                # 🆕 Enrichissement auto même pour free/starter sur sujets à risque
                 if not should_enrich:
                     fast_changing_keywords = [
                         'ai', 'gpt', 'claude', 'llm', 'model', 'opus', 'sonnet',
@@ -484,7 +563,7 @@ async def analysis_stream_generator(
                     for kw in fast_changing_keywords:
                         if kw in title_lower or kw in transcript_start:
                             should_enrich = True
-                            print(f"🌐 [AUTO-ENRICH] Keyword '{kw}' detected → auto web enrichment", flush=True)
+                            print(f"🌐 [AUTO-ENRICH] Keyword '{kw}' detected", flush=True)
                             break
                 
                 if should_enrich:
@@ -497,7 +576,7 @@ async def analysis_stream_generator(
                     web_text, sources, level = await get_pre_analysis_context(
                         video_title=metadata.get("title", ""),
                         video_channel=metadata.get("channel", ""),
-                        category="technology",  # TODO: detect from metadata
+                        category="technology",
                         transcript=transcript,
                         plan=user_plan if user_plan in ('pro', 'expert', 'admin') else 'pro',
                         lang=lang,
@@ -505,70 +584,59 @@ async def analysis_stream_generator(
                     
                     if web_text:
                         web_context = web_text
-                        print(f"✅ [WEB-ENRICH] Got {len(web_context)} chars, {len(sources)} sources", flush=True)
-                        
+                        enrichment_sources_list = sources
                         yield format_sse_event(StreamEventType.PROGRESS, {
                             "step": "web_enrichment_complete",
                             "message": f"✅ {len(sources)} sources web trouvées",
                             "progress": 40,
                             "sources_count": len(sources),
                         })
-                    else:
-                        print(f"⚠️ [WEB-ENRICH] No context returned", flush=True)
                         
             except Exception as e:
                 print(f"⚠️ [WEB-ENRICH] Error (non-blocking): {e}", flush=True)
-                # Non-blocking: on continue sans enrichissement
         
-        # ═══════════════════════════════════════════════════════════════════════
-        # 🦁 BRAVE SEARCH — Fact-checking complémentaire (toujours si dispo)
-        # ═══════════════════════════════════════════════════════════════════════
+        # 🦁 Brave fact-check standard (si pas de deep research)
         brave_context = None
-        # Brave s'active si should_enrich OU si keywords détectés indépendamment
-        brave_should_run = should_enrich
-        if not brave_should_run and BRAVE_SEARCH_AVAILABLE:
-            fast_kw = ['ai', 'gpt', 'claude', 'llm', 'opus', 'sonnet', 'gemini', 'mistral',
-                        'crypto', 'bitcoin', 'election', 'version', 'release', 'update']
-            title_lower = metadata.get("title", "").lower()
-            transcript_start = transcript[:500].lower()
-            brave_should_run = any(kw in title_lower or kw in transcript_start for kw in fast_kw)
-        
-        if BRAVE_SEARCH_AVAILABLE and brave_should_run:
-            try:
-                yield format_sse_event(StreamEventType.PROGRESS, {
-                    "step": "brave_factcheck",
-                    "message": "🦁 Vérification croisée Brave Search...",
-                    "progress": 42,
-                })
-                
-                brave_text, brave_sources = await get_brave_factcheck_context(
-                    video_title=metadata.get("title", ""),
-                    video_channel=metadata.get("channel", ""),
-                    transcript=transcript,
-                    lang=lang,
-                )
-                
-                if brave_text:
-                    brave_context = brave_text
-                    print(f"✅ [BRAVE] Got {len(brave_context)} chars, {len(brave_sources)} sources", flush=True)
-                    
+        if not deep_research and BRAVE_SEARCH_AVAILABLE:
+            brave_should_run = should_enrich
+            if not brave_should_run:
+                fast_kw = ['ai', 'gpt', 'claude', 'llm', 'opus', 'sonnet', 'gemini', 'mistral',
+                            'crypto', 'bitcoin', 'election', 'version', 'release', 'update']
+                title_lower = metadata.get("title", "").lower()
+                transcript_start = transcript[:500].lower()
+                brave_should_run = any(kw in title_lower or kw in transcript_start for kw in fast_kw)
+            
+            if brave_should_run:
+                try:
                     yield format_sse_event(StreamEventType.PROGRESS, {
-                        "step": "brave_factcheck_complete",
-                        "message": f"✅ {len(brave_sources)} sources Brave vérifiées",
-                        "progress": 45,
-                        "brave_sources_count": len(brave_sources),
+                        "step": "brave_factcheck",
+                        "message": "🦁 Vérification croisée Brave Search...",
+                        "progress": 42,
                     })
-                else:
-                    print(f"⚠️ [BRAVE] No results returned", flush=True)
                     
-            except Exception as e:
-                print(f"⚠️ [BRAVE] Error (non-blocking): {e}", flush=True)
-        
-        # Fusionner les contextes web (Perplexity + Brave)
-        if brave_context and web_context:
-            web_context = web_context + "\n\n" + brave_context
-        elif brave_context:
-            web_context = brave_context
+                    brave_text, brave_sources = await get_brave_factcheck_context(
+                        video_title=metadata.get("title", ""),
+                        video_channel=metadata.get("channel", ""),
+                        transcript=transcript,
+                        lang=lang,
+                    )
+                    
+                    if brave_text:
+                        brave_context = brave_text
+                        yield format_sse_event(StreamEventType.PROGRESS, {
+                            "step": "brave_factcheck_complete",
+                            "message": f"✅ {len(brave_sources)} sources Brave vérifiées",
+                            "progress": 45,
+                        })
+                        
+                except Exception as e:
+                    print(f"⚠️ [BRAVE] Error (non-blocking): {e}", flush=True)
+            
+            # Fusionner Perplexity + Brave
+            if brave_context and web_context:
+                web_context = web_context + "\n\n" + brave_context
+            elif brave_context:
+                web_context = brave_context
         
         session.progress = 40
         
@@ -629,6 +697,7 @@ async def analysis_stream_generator(
         summary_id = None
         
         if user:
+            import json as _json
             summary = Summary(
                 user_id=user.id,
                 video_id=video_id,
@@ -636,12 +705,23 @@ async def analysis_stream_generator(
                 video_channel=metadata.get("channel", ""),
                 thumbnail_url=metadata.get("thumbnail", ""),
                 summary_content=full_text,
-                transcript_context=transcript[:40000],  # 🆕 v3.1: Augmenté pour chat et vidéos longues
+                transcript_context=transcript[:40000],
                 lang=lang,
                 mode=mode,
                 model_used=model,
                 word_count=len(full_text.split()),
             )
+            # 🔬 Deep Research: stocker les données enrichies
+            if hasattr(summary, 'deep_research'):
+                summary.deep_research = deep_research
+            if hasattr(summary, 'enrichment_sources') and enrichment_sources_list:
+                summary.enrichment_sources = _json.dumps(enrichment_sources_list[:50], ensure_ascii=False)
+            if hasattr(summary, 'enrichment_data'):
+                summary.enrichment_data = _json.dumps({
+                    "deep_research": deep_research,
+                    "sources_count": len(enrichment_sources_list),
+                    "web_enriched": web_context is not None,
+                })
             
             db.add(summary)
             await db.commit()
@@ -701,6 +781,7 @@ async def stream_analysis(
     lang: str = Query("fr", regex="^(fr|en)$"),
     model: str = Query("mistral-small-latest"),
     web_enrich: bool = Query(False),
+    deep_research: bool = Query(False),
     token: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_session),
     user: Optional[User] = Depends(get_current_user_optional),
@@ -749,6 +830,7 @@ async def stream_analysis(
                 web_enrich=web_enrich,
                 db=db,
                 user=user,
+                deep_research=deep_research,
             ):
                 # Check if client disconnected
                 if await request.is_disconnected():

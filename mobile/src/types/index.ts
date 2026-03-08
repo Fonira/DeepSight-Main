@@ -81,6 +81,10 @@ export interface AnalysisSummary {
   duration?: number;
   platform?: VideoPlatform;
   video_url?: string;
+  // 🔬 Deep Research (Mar 2026)
+  deep_research?: boolean;
+  enrichment_sources?: string;  // JSON string: [{title, url, snippet}]
+  enrichment_data?: string;     // JSON string
 }
 
 export interface AnalysisRequest {
