@@ -8,7 +8,8 @@
  * - Label "Langue de l'analyse" visible au-dessus des drapeaux
  */
 
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Link2, FileText, Search, ChevronDown,
   Globe, Sparkles, Info, ArrowRight, Wand2, Play
@@ -382,7 +383,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   return (
     <div className="space-y-3">
       {/* Main Input Area */}
-      <div className={`relative rounded-xl border-2 transition-all duration-300 bg-bg-secondary/50 backdrop-blur-sm ${getDynamicBorderClasses()}`}>
+      <div className={`relative rounded-xl border-2 transition-all duration-300 bg-bg-secondary ${getDynamicBorderClasses()}`} style={{ isolation: 'auto' }}>
 
         {/* Mode Badge + Input */}
         <div className="flex items-start gap-3 p-4">
@@ -402,9 +403,25 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
               <ChevronDown className={`w-3 h-3 transition-transform ${showModeSelector ? 'rotate-180' : ''}`} />
             </button>
 
-            {/* Mode Dropdown */}
-            {showModeSelector && (
-              <div className="absolute top-full left-0 mt-2 w-56 bg-bg-elevated border border-border-default rounded-xl shadow-xl z-[100] overflow-hidden">
+            {/* Mode Dropdown — Portal pour éviter tout problème de stacking context */}
+            {showModeSelector && createPortal(
+              <div
+                className="fixed w-56 bg-bg-elevated border border-border-default rounded-xl shadow-2xl overflow-hidden"
+                style={{
+                  zIndex: 9999,
+                  top: (() => {
+                    const btn = modeSelectorRef.current?.querySelector('button');
+                    if (!btn) return 0;
+                    const rect = btn.getBoundingClientRect();
+                    return rect.bottom + 8;
+                  })(),
+                  left: (() => {
+                    const btn = modeSelectorRef.current?.querySelector('button');
+                    if (!btn) return 0;
+                    return btn.getBoundingClientRect().left;
+                  })(),
+                }}
+              >
                 <div className="p-2">
                   {MODE_ORDER.map((m) => {
                     const modeConf = MODE_CONFIG[m];
@@ -450,7 +467,8 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
                     <Wand2 className="w-3 h-3 text-text-muted" />
                   </label>
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
 

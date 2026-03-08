@@ -347,8 +347,11 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                   </div>
                   <div>
                     <span className="text-sm font-medium text-white/70">Anti-Détection IA</span>
-                    <p className="text-[11px] text-white/30">
-                      {t('Indétectable par GPTZero, Turnitin...', 'Undetectable by GPTZero, Turnitin...')}
+                    <p className="text-[11px] text-white/30 max-w-[280px]">
+                      {t(
+                        'Rédige de façon naturelle pour passer les détecteurs (GPTZero, Turnitin, Compilatio). Idéal pour réutiliser le texte dans vos travaux.',
+                        'Writes naturally to bypass AI detectors (GPTZero, Turnitin, Compilatio). Ideal for reusing text in your assignments.'
+                      )}
                     </p>
                   </div>
                 </div>
