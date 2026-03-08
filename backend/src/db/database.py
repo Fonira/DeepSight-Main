@@ -550,6 +550,19 @@ class TranscriptCache(Base):
     thumbnail_url = Column(Text)
     video_duration = Column(Integer)  # seconds
     category = Column(String(50))
+    # Extended metadata (enriched via yt-dlp post-cache)
+    view_count = Column(Integer)
+    like_count = Column(Integer)
+    comment_count = Column(Integer)
+    upload_date = Column(String(20))          # YYYYMMDD
+    description = Column(Text)                # truncated 2000 chars
+    tags_json = Column(Text)                  # JSON array
+    language = Column(String(10))             # video language (≠ transcript lang)
+    channel_id = Column(String(100))
+    channel_url = Column(Text)
+    channel_follower_count = Column(Integer)  # subscribers
+    metadata_json = Column(Text)              # raw yt-dlp dump (sans formats/thumbnails)
+    metadata_enriched_at = Column(DateTime)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
@@ -767,6 +780,19 @@ async def run_schema_migrations():
         "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS thumbnail_url TEXT",
         "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS video_duration INTEGER",
         "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS category VARCHAR(50)",
+        # 🔍 TranscriptCache extended metadata enrichment (Mar 2026)
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS view_count INTEGER",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS like_count INTEGER",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS comment_count INTEGER",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS upload_date VARCHAR(20)",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS description TEXT",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS tags_json TEXT",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS language VARCHAR(10)",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS channel_id VARCHAR(100)",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS channel_url TEXT",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS channel_follower_count INTEGER",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS metadata_json TEXT",
+        "ALTER TABLE transcript_cache ADD COLUMN IF NOT EXISTS metadata_enriched_at TIMESTAMP",
         # 🔍 TranscriptEmbedding for semantic search (Mar 2026)
         """
         CREATE TABLE IF NOT EXISTS transcript_embeddings (

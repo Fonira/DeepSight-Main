@@ -27,6 +27,8 @@ class TrendingVideo(BaseModel):
     thumbnail_url: Optional[str] = None
     category: Optional[str] = None
     duration: Optional[int] = None
+    view_count: Optional[int] = None
+    upload_date: Optional[str] = None
     analysis_count: int
     unique_users: int
     avg_reliability_score: Optional[float] = None
@@ -79,7 +81,10 @@ async def get_trending(
                 func.count(func.distinct(Summary.user_id)).label("unique_users"),
                 func.avg(Summary.reliability_score).label("avg_reliability"),
                 func.max(Summary.created_at).label("latest_at"),
+                func.max(TranscriptCache.view_count).label("cache_view_count"),
+                func.max(TranscriptCache.upload_date).label("cache_upload_date"),
             )
+            .outerjoin(TranscriptCache, Summary.video_id == TranscriptCache.video_id)
             .where(Summary.video_id.isnot(None))
             .where(Summary.video_title.isnot(None))
         )
@@ -118,6 +123,8 @@ async def get_trending(
             thumbnail_url=thumb,
             category=row.category,
             duration=row.duration,
+            view_count=row.cache_view_count,
+            upload_date=row.cache_upload_date,
             analysis_count=row.analysis_count,
             unique_users=row.unique_users,
             avg_reliability_score=round(row.avg_reliability, 1) if row.avg_reliability else None,

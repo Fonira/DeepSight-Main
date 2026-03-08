@@ -11,6 +11,7 @@
 +---------------------------------------------------------------------+
 """
 
+import json
 import logging
 from typing import Optional, Tuple
 
@@ -113,7 +114,15 @@ async def check_transcript_cached(video_id: str) -> Optional[dict]:
                 "thumbnail_url": entry.thumbnail_url,
                 "video_duration": entry.video_duration,
                 "category": entry.category,
-                "cached_at": entry.cached_at.isoformat() if entry.cached_at else None,
+                "cached_at": entry.created_at.isoformat() if entry.created_at else None,
+                # Extended metadata
+                "view_count": entry.view_count,
+                "like_count": entry.like_count,
+                "description": entry.description,
+                "tags": json.loads(entry.tags_json) if entry.tags_json else None,
+                "channel_id": entry.channel_id,
+                "channel_follower_count": entry.channel_follower_count,
+                "is_enriched": entry.metadata_enriched_at is not None,
             }
     except Exception as e:
         logger.warning(f"[DB-CACHE] Check error for {video_id}: {e}")
@@ -268,6 +277,16 @@ async def save_transcript_to_cache(
                 pass  # Search module not available
             except Exception as emb_err:
                 logger.warning(f"[DB-CACHE] Embedding trigger failed for {video_id}: {emb_err}")
+
+            # Trigger metadata enrichment (non-blocking)
+            try:
+                import asyncio
+                from transcripts.metadata_service import enrich_metadata
+                asyncio.create_task(enrich_metadata(video_id, platform))
+            except ImportError:
+                pass  # Metadata service not available
+            except Exception as meta_err:
+                logger.warning(f"[DB-CACHE] Metadata trigger failed for {video_id}: {meta_err}")
 
             return True
 
