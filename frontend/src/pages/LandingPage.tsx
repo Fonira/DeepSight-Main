@@ -486,34 +486,42 @@ const LandingPage: React.FC = () => {
 
     setGuestLoading(true);
 
-    // Retry once on 502/503 (transient Railway timeouts)
-    const tryAnalyze = async (attempt: number): Promise<typeof guestResult> => {
-      try {
-        return await videoApi.analyzeGuest(url);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (attempt < 2 && (msg.includes('502') || msg.includes('503') || msg.includes('failed to respond'))) {
-          return tryAnalyze(attempt + 1);
-        }
-        throw err;
-      }
-    };
+    // Direct fetch for full diagnostic control
+    const API = 'https://deep-sight-backend-v3-production.up.railway.app';
+    const fetchUrl = `${API}/api/videos/analyze/guest`;
 
     try {
-      const result = await tryAnalyze(1);
+      const resp = await fetch(fetchUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+
+      if (!resp.ok) {
+        let detail = `HTTP ${resp.status}`;
+        try {
+          const data = await resp.json();
+          detail = data.detail || data.message || detail;
+        } catch { /* non-JSON response */ }
+
+        if (resp.status === 429 || (typeof detail === 'string' && detail.includes('essai gratuit'))) {
+          setGuestError(language === 'fr' ? 'Vous avez déjà utilisé votre essai gratuit.' : 'You already used your free trial.');
+          setGuestUsed(true);
+          try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
+        } else {
+          setGuestError(`[${resp.status}] ${typeof detail === 'string' ? detail : JSON.stringify(detail)}`);
+        }
+        return;
+      }
+
+      const result = await resp.json();
       setGuestResult(result);
       setGuestUsed(true);
       try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('429') || msg.includes('essai gratuit') || msg.includes('free trial')) {
-        setGuestError(language === 'fr' ? 'Vous avez déjà utilisé votre essai gratuit.' : 'You already used your free trial.');
-        setGuestUsed(true);
-        try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
-      } else {
-        // Show the actual error for diagnosis + user-friendly context
-        setGuestError(msg || 'Unknown error');
-      }
+      // Network error — fetch itself failed
+      const msg = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+      setGuestError(`[NETWORK] ${msg} | URL: ${fetchUrl}`);
     } finally {
       setGuestLoading(false);
     }
