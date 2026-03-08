@@ -529,6 +529,60 @@ class AcademicPaper(Base):
     )
 
 
+class TranscriptCache(Base):
+    """
+    💾 Cache persistant de transcripts (cross-user, L2 après Redis)
+    Un seul transcript par video_id, partagé entre tous les utilisateurs.
+    Le contenu est stocké dans TranscriptCacheChunk (1+ chunks).
+    """
+    __tablename__ = "transcript_cache"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    video_id = Column(String(100), unique=True, nullable=False, index=True)
+    platform = Column(String(20), nullable=False, default="youtube")
+    lang = Column(String(10))
+    char_count = Column(Integer, default=0)
+    extraction_method = Column(String(50))
+    chunk_count = Column(Integer, default=1)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Relation vers les chunks
+    chunks = relationship(
+        "TranscriptCacheChunk",
+        back_populates="cache_entry",
+        cascade="all, delete-orphan",
+        order_by="TranscriptCacheChunk.chunk_index",
+    )
+
+    __table_args__ = (
+        Index('idx_transcript_cache_video', 'video_id'),
+        Index('idx_transcript_cache_platform', 'platform'),
+    )
+
+
+class TranscriptCacheChunk(Base):
+    """
+    📦 Chunk de transcript pour le cache persistant.
+    YouTube long (3h30+) → plusieurs chunks de ~500K chars.
+    TikTok (max 15min) → toujours 1 seul chunk.
+    """
+    __tablename__ = "transcript_cache_chunks"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    cache_id = Column(Integer, ForeignKey("transcript_cache.id", ondelete="CASCADE"), nullable=False)
+    chunk_index = Column(Integer, nullable=False, default=0)
+    transcript_simple = Column(Text)
+    transcript_timestamped = Column(Text)
+
+    cache_entry = relationship("TranscriptCache", back_populates="chunks")
+
+    __table_args__ = (
+        UniqueConstraint('cache_id', 'chunk_index', name='uix_cache_chunk_index'),
+        Index('idx_transcript_cache_chunks_cache', 'cache_id'),
+    )
+
+
 class SharedAnalysis(Base):
     """Table des analyses partagées (liens publics)"""
     __tablename__ = "shared_analyses"
@@ -653,6 +707,33 @@ async def run_schema_migrations():
         )
         """,
         "CREATE INDEX IF NOT EXISTS ix_video_chunks_summary_id ON video_chunks(summary_id)",
+        # 💾 TranscriptCache — persistent L2 cache (Mar 2026)
+        """
+        CREATE TABLE IF NOT EXISTS transcript_cache (
+            id SERIAL PRIMARY KEY,
+            video_id VARCHAR(100) UNIQUE NOT NULL,
+            platform VARCHAR(20) NOT NULL DEFAULT 'youtube',
+            lang VARCHAR(10),
+            char_count INTEGER DEFAULT 0,
+            extraction_method VARCHAR(50),
+            chunk_count INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_transcript_cache_video ON transcript_cache(video_id)",
+        "CREATE INDEX IF NOT EXISTS idx_transcript_cache_platform ON transcript_cache(platform)",
+        """
+        CREATE TABLE IF NOT EXISTS transcript_cache_chunks (
+            id SERIAL PRIMARY KEY,
+            cache_id INTEGER NOT NULL REFERENCES transcript_cache(id) ON DELETE CASCADE,
+            chunk_index INTEGER NOT NULL DEFAULT 0,
+            transcript_simple TEXT,
+            transcript_timestamped TEXT,
+            UNIQUE(cache_id, chunk_index)
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_transcript_cache_chunks_cache ON transcript_cache_chunks(cache_id)",
     ]
     async with engine.begin() as conn:
         for sql in migrations:
@@ -738,13 +819,15 @@ async def create_admin_if_not_exists():
     
     async with async_session_maker() as session:
         # Vérifier si l'admin existe
+        # scalars().first() au lieu de scalar_one_or_none() pour éviter
+        # "Multiple rows found" si username ET email matchent des users différents
         result = await session.execute(
             select(User).where(
-                (User.username == ADMIN_CONFIG["ADMIN_USERNAME"]) | 
+                (User.username == ADMIN_CONFIG["ADMIN_USERNAME"]) |
                 (User.email == ADMIN_CONFIG["ADMIN_EMAIL"])
-            )
+            ).order_by(User.id)
         )
-        existing = result.scalar_one_or_none()
+        existing = result.scalars().first()
         
         correct_hash = hash_password(ADMIN_CONFIG["ADMIN_PASSWORD"])
         

@@ -31,6 +31,22 @@ from transcripts.audio_utils import (
 
 logger = logging.getLogger(__name__)
 
+# 💾 Redis Cache L1
+try:
+    from core.cache import cache_service, make_cache_key
+    CACHE_AVAILABLE = True
+except ImportError:
+    CACHE_AVAILABLE = False
+    logger.warning("[TIKTOK] Redis cache not available")
+
+# 💾 DB Cache L2 (persistent, cross-user)
+try:
+    from transcripts.cache_db import get_cached_transcript, save_transcript_to_cache
+    DB_CACHE_AVAILABLE = True
+except ImportError:
+    DB_CACHE_AVAILABLE = False
+    logger.warning("[TIKTOK] DB cache not available")
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -347,11 +363,14 @@ async def get_tiktok_transcript(
     video_id: Optional[str] = None
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
-    🆕 v2.0: Pipeline multi-fallback de transcription TikTok.
+    🆕 v2.1: Pipeline multi-fallback de transcription TikTok.
+    + Cache Redis L1 + DB L2 persistent (cross-user).
 
+    Phase 0: Cache check (Redis L1 → DB L2)
     Phase 1: yt-dlp standard → Groq Whisper
     Phase 2: yt-dlp avec headers alternatifs → Groq Whisper
     Phase 3: Retry avec exponential backoff
+    Phase 4: Fallback téléchargement direct
 
     Args:
         url: URL TikTok complète
@@ -368,6 +387,58 @@ async def get_tiktok_transcript(
         logger.error(f"[TIKTOK] Circuit breaker open, skipping transcript for {vid}")
         return None, None, None
 
+    # ─── Phase 0 : Cache check (Redis L1 → DB L2) ─────────────────────────
+    if CACHE_AVAILABLE:
+        try:
+            cache_key = make_cache_key("transcript", f"tiktok_{vid}")
+            cached = await cache_service.get(cache_key)
+            if cached and isinstance(cached, dict):
+                logger.info(f"[TIKTOK] Redis Cache HIT for {vid}")
+                return cached.get("simple"), cached.get("timestamped"), cached.get("lang")
+            else:
+                logger.info(f"[TIKTOK] Redis Cache MISS for {vid}")
+        except Exception as e:
+            logger.warning(f"[TIKTOK] Redis cache error: {e}")
+
+    if DB_CACHE_AVAILABLE:
+        try:
+            db_cached = await get_cached_transcript(f"tiktok_{vid}")
+            if db_cached:
+                simple, timestamped, lang = db_cached
+                logger.info(f"[TIKTOK] DB Cache HIT for {vid} ({len(simple)} chars)")
+                # Populate Redis L1
+                if CACHE_AVAILABLE:
+                    try:
+                        cache_key = make_cache_key("transcript", f"tiktok_{vid}")
+                        await cache_service.set(cache_key, {"simple": simple, "timestamped": timestamped, "lang": lang})
+                    except Exception:
+                        pass
+                return simple, timestamped, lang
+            else:
+                logger.info(f"[TIKTOK] DB Cache MISS for {vid}")
+        except Exception as e:
+            logger.warning(f"[TIKTOK] DB cache error: {e}")
+
+    # Helper to cache result after successful extraction
+    async def _cache_result(result: Tuple, method: str):
+        simple, timestamped, lang = result
+        if not simple:
+            return
+        # Redis L1
+        if CACHE_AVAILABLE:
+            try:
+                cache_key = make_cache_key("transcript", f"tiktok_{vid}")
+                await cache_service.set(cache_key, {"simple": simple, "timestamped": timestamped, "lang": lang})
+                logger.info(f"[TIKTOK] Redis cached for {vid}")
+            except Exception:
+                pass
+        # DB L2
+        if DB_CACHE_AVAILABLE:
+            try:
+                await save_transcript_to_cache(f"tiktok_{vid}", simple, timestamped, lang, platform="tiktok", extraction_method=method)
+            except Exception:
+                pass
+
     # ─── Phase 1 : yt-dlp standard ────────────────────────────────────────
     audio_data, audio_ext = await _download_with_retry(url, label="phase1-standard")
 
@@ -375,6 +446,7 @@ async def get_tiktok_transcript(
         result = await _transcribe_safely(audio_data, audio_ext, vid, "phase1")
         if result[0]:
             _circuit_breaker.record_success()
+            await _cache_result(result, "tiktok-phase1-ytdlp")
             return result
 
     # ─── Phase 2 : yt-dlp avec headers alternatifs ────────────────────────
@@ -387,6 +459,7 @@ async def get_tiktok_transcript(
             result = await _transcribe_safely(audio_data, audio_ext, vid, f"phase2-alt{idx + 1}")
             if result[0]:
                 _circuit_breaker.record_success()
+                await _cache_result(result, f"tiktok-phase2-alt{idx + 1}")
                 return result
 
     # ─── Phase 3 : Retry avec exponential backoff ─────────────────────────
@@ -400,6 +473,7 @@ async def get_tiktok_transcript(
             result = await _transcribe_safely(audio_data, audio_ext, vid, f"phase3-retry{retry + 1}")
             if result[0]:
                 _circuit_breaker.record_success()
+                await _cache_result(result, f"tiktok-phase3-retry{retry + 1}")
                 return result
 
     # ─── Phase 4 : Fallback téléchargement direct (sans yt-dlp) ──────────
@@ -409,6 +483,7 @@ async def get_tiktok_transcript(
         result = await _transcribe_safely(audio_data, audio_ext, vid, "phase4-direct")
         if result[0]:
             _circuit_breaker.record_success()
+            await _cache_result(result, "tiktok-phase4-direct")
             return result
 
     _circuit_breaker.record_failure()

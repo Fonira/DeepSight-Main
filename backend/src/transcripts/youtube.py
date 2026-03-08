@@ -62,6 +62,14 @@ except ImportError:
     CACHE_AVAILABLE = False
     print("⚠️ [YOUTUBE] Cache not available, transcripts won't be cached", flush=True)
 
+# 💾 DB Cache L2 (persistent, cross-user)
+try:
+    from transcripts.cache_db import get_cached_transcript, save_transcript_to_cache
+    DB_CACHE_AVAILABLE = True
+except ImportError:
+    DB_CACHE_AVAILABLE = False
+    print("⚠️ [YOUTUBE] DB cache not available", flush=True)
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 CONFIGURATION
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1773,6 +1781,29 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
             print(f"⚠️ Cache error (continuing without cache): {e}", flush=True)
 
     # ═══════════════════════════════════════════════════════════════════════════════
+    # DB CACHE L2: Vérifie le cache persistant (cross-user)
+    # ═══════════════════════════════════════════════════════════════════════════════
+    if DB_CACHE_AVAILABLE:
+        try:
+            db_cached = await get_cached_transcript(video_id)
+            if db_cached:
+                simple, timestamped, lang = db_cached
+                print(f"🗄️ DB Cache HIT for {video_id} ({len(simple)} chars)", flush=True)
+                print(f"{'='*70}", flush=True)
+                # Populate Redis L1 for faster subsequent access
+                if CACHE_AVAILABLE:
+                    try:
+                        cache_key = make_cache_key("transcript", video_id)
+                        await cache_service.set(cache_key, {"simple": simple, "timestamped": timestamped, "lang": lang})
+                    except Exception:
+                        pass
+                return simple, timestamped, lang
+            else:
+                print(f"🗄️ DB Cache MISS for {video_id}", flush=True)
+        except Exception as e:
+            print(f"⚠️ DB Cache error (continuing): {e}", flush=True)
+
+    # ═══════════════════════════════════════════════════════════════════════════════
     # PHASE 1: Méthodes texte EN PARALLÈLE (rapide)
     # ═══════════════════════════════════════════════════════════════════════════════
     print(f"", flush=True)
@@ -1806,7 +1837,7 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
                         cb.record_success()
                         return (name, simple, timestamped, lang)
                 except Exception as e:
-                    print(f"  ⚠️ [{name}] Attempt {attempt + 1} failed: {str(e)[:50]}", flush=True)
+                    print(f"  ⚠️ [{name}] Attempt {attempt + 1} failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
                 if attempt == 0:
                     await asyncio.sleep(calculate_backoff(attempt))
             cb.record_failure()
@@ -1828,6 +1859,12 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
                         cache_key = make_cache_key("transcript", video_id)
                         await cache_service.set(cache_key, {"simple": simple, "timestamped": timestamped, "lang": lang})
                         print(f"💾 Transcript cached: {cache_key}", flush=True)
+                    except Exception:
+                        pass
+                # DB Cache L2
+                if DB_CACHE_AVAILABLE:
+                    try:
+                        await save_transcript_to_cache(video_id, simple, timestamped, lang, platform="youtube", extraction_method=name)
                     except Exception:
                         pass
                 return simple, timestamped, lang
@@ -1867,9 +1904,15 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
                             print(f"💾 Transcript cached: {cache_key}", flush=True)
                         except Exception:
                             pass
+                    # DB Cache L2
+                    if DB_CACHE_AVAILABLE:
+                        try:
+                            await save_transcript_to_cache(video_id, simple, timestamped, lang, platform="youtube", extraction_method=name)
+                        except Exception:
+                            pass
                     return simple, timestamped, lang
             except Exception as e:
-                print(f"  ⚠️ [{name}] Attempt {attempt + 1} failed: {str(e)[:50]}", flush=True)
+                print(f"  ⚠️ [{name}] Attempt {attempt + 1} failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
             if attempt == 0:
                 await asyncio.sleep(calculate_backoff(attempt))
         cb.record_failure()
@@ -1918,16 +1961,27 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
                         print(f"💾 Transcript cached: {cache_key}", flush=True)
                     except Exception:
                         pass
+                # DB Cache L2
+                if DB_CACHE_AVAILABLE:
+                    try:
+                        await save_transcript_to_cache(video_id, simple, result_ts, lang, platform="youtube", extraction_method=name)
+                    except Exception:
+                        pass
                 return simple, result_ts, lang
         except Exception as e:
-            print(f"  ⚠️ [{name}] Failed: {str(e)[:100]}", flush=True)
+            print(f"  ⚠️ [{name}] Failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
         cb.record_failure()
 
     # ═══════════════════════════════════════════════════════════════════════════════
-    # ÉCHEC TOTAL
+    # ÉCHEC TOTAL — Log détaillé pour diagnostic
     # ═══════════════════════════════════════════════════════════════════════════════
     print(f"", flush=True)
     print(f"❌ FAILED: All 10 methods failed for {video_id}", flush=True)
+    # Log l'état des circuit breakers pour diagnostic
+    for cb_name in ["supadata", "ytapi", "invidious", "piped", "ytdlp", "ytdlp_auto", "whisper", "openai_whisper", "deepgram", "assemblyai"]:
+        cb = get_circuit_breaker(cb_name)
+        if cb.state != CircuitState.CLOSED:
+            print(f"  🔌 [{cb_name}] circuit={cb.state.value} failures={cb.failures}", flush=True)
     print(f"{'='*70}", flush=True)
     return None, None, None
 

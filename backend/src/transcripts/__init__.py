@@ -25,6 +25,12 @@ from .tiktok import (
     detect_platform,
 )
 
+# 💾 DB Cache L2 (persistent, cross-user)
+from .cache_db import (
+    get_cached_transcript,
+    save_transcript_to_cache,
+)
+
 # Health monitoring
 from .monitor import (
     TranscriptHealthMonitor,
@@ -57,6 +63,9 @@ __all__ = [
     "get_tiktok_video_info",
     "get_tiktok_transcript",
     "detect_platform",
+    # 💾 DB Cache L2
+    "get_cached_transcript",
+    "save_transcript_to_cache",
     # Health monitoring
     "TranscriptHealthMonitor",
     "health_monitor",
