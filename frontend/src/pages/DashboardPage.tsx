@@ -127,6 +127,7 @@ export const DashboardPage: React.FC = () => {
   });
   const [discoveryResult, setDiscoveryResult] = useState<DiscoveryResponse | null>(null);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
+  const [selectedVideoTitle, setSelectedVideoTitle] = useState<string | null>(null);
   
   // 🔬 Deep Research — toggle pour Pro+
   const [deepResearch, setDeepResearch] = useState(false);
@@ -366,6 +367,7 @@ export const DashboardPage: React.FC = () => {
     setLoadingProgress(0);
     setChatMessages([]);
     setChatOpen(false);
+    setSelectedVideoTitle(null);
 
     try {
       // === MODE SEARCH: Découverte intelligente ===
@@ -465,53 +467,26 @@ export const DashboardPage: React.FC = () => {
   };
   
   // Handler pour sélection depuis la modal de découverte
-  const handleSelectDiscoveredVideo = async (video: VideoCandidate) => {
+  // → Peuple l'URL dans le SmartInput et laisse l'utilisateur configurer les options avant de lancer l'analyse
+  const handleSelectDiscoveredVideo = (video: VideoCandidate) => {
+    const url = `https://www.youtube.com/watch?v=${video.video_id}`;
+
+    // 1. Fermer la modal
     setShowDiscoveryModal(false);
-    setLoading(true);
-    setError(null);
-    setLoadingProgress(0);
-    setLoadingMessage(language === 'fr' ? `Analyse de "${video.title}"...` : `Analyzing "${video.title}"...`);
-    
-    const url = `https://youtube.com/watch?v=${video.video_id}`;
+
+    // 2. Peupler le SmartInput en mode URL avec la vidéo sélectionnée
+    setSmartInput({
+      mode: 'url',
+      url,
+    });
     setVideoUrl(url);
-    
-    try {
-      // 🎨 Utiliser l'API v2 avec personnalisation v4 (même logique que mode URL)
-      const apiParams = customizationToApiParams(analysisCustomization, language as 'fr' | 'en');
-      const response = await videoApi.analyzeV2(
-        url,
-        {
-          category: 'auto',
-          mode: apiParams.mode,
-          deepResearch,
-          lang: apiParams.lang,
-          userPrompt: apiParams.user_prompt,
-          antiAIDetection: apiParams.anti_ai_detection,
-          writingStyle: apiParams.writing_style,
-          targetLength: apiParams.target_length,
-        }
-      );
-      
-      if (response.status === "completed" && response.result?.summary_id) {
-        setLoadingProgress(90);
-        const fullSummary = await videoApi.getSummary(response.result.summary_id);
-        setSelectedSummary(fullSummary);
-        scrollToResults();
-        setPlayerVisible(false);
-        setLoadingProgress(100);
-        await refreshUser(true);
-      } else if (response.task_id) {
-        pollingRef.current = true;
-        await pollTaskStatus(response.task_id);
-      }
-    } catch (err) {
-      const message = err instanceof ApiError ? err.message : 
-        (language === 'fr' ? "Erreur lors de l'analyse" : "Analysis error");
-      setError(message);
-    } finally {
-      setLoading(false);
-      pollingRef.current = false;
-    }
+
+    // 3. Ouvrir le panneau de personnalisation pour que l'utilisateur puisse configurer
+    setShowCustomizationPanel(true);
+
+    // 4. Reset des erreurs précédentes & afficher le titre sélectionné
+    setError(null);
+    setSelectedVideoTitle(video.title);
   };
 
   const pollTaskStatus = async (taskId: string) => {
@@ -757,6 +732,42 @@ export const DashboardPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            {/* 🎬 SELECTED VIDEO BANNER — Après sélection depuis Recherche YouTube */}
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            {selectedVideoTitle && smartInput.mode === 'url' && smartInput.url && !loading && !selectedSummary && (
+              <div className="card p-4 mb-4 sm:mb-6 animate-fadeIn border-accent-primary/30 bg-accent-primary/5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-accent-primary/20 flex items-center justify-center flex-shrink-0">
+                      <Video className="w-4 h-4 text-accent-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-text-primary truncate">
+                        {selectedVideoTitle}
+                      </p>
+                      <p className="text-xs text-accent-primary">
+                        {language === 'fr'
+                          ? 'Configurez vos options ci-dessous puis lancez l\'analyse'
+                          : 'Configure your options below then start the analysis'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedVideoTitle(null);
+                      setSmartInput({ mode: 'search', searchLanguages: ['fr', 'en'] });
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-bg-hover text-text-muted hover:text-text-primary transition-colors flex-shrink-0"
+                    title={language === 'fr' ? 'Annuler la sélection' : 'Cancel selection'}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* ═══════════════════════════════════════════════════════════════ */}
             {/* 🎨 CUSTOMIZATION PANEL — Card SÉPARÉE pour éviter chevauchement dropdown */}

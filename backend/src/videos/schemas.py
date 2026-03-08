@@ -43,8 +43,14 @@ class AnalyzeVideoV2Request(BaseModel):
     # Catégorie
     category: Optional[str] = Field(default=None, description="Catégorie forcée (None = auto-détection)")
 
-    # 🆕 Options de customization
+    # 🆕 Options de customization (objet complet)
     customization: Optional[Dict[str, Any]] = Field(default=None, description="Options de customization avancées")
+
+    # 🆕 Champs de personnalisation top-level (envoyés par le frontend v4)
+    user_prompt: Optional[str] = Field(default=None, description="Instructions personnalisées de l'utilisateur", max_length=2000)
+    anti_ai_detection: bool = Field(default=False, description="Activer les techniques anti-détection IA")
+    writing_style: Optional[str] = Field(default=None, description="Style d'écriture: default, human, academic, casual")
+    target_length: Optional[str] = Field(default=None, description="Longueur cible: short, medium, long, auto")
 
     # Options d'analyse
     deep_research: bool = Field(default=False, description="Recherche web approfondie (Pro/Expert)")

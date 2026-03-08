@@ -931,9 +931,34 @@ async def analyze_video_v2_1(
     if model not in allowed_models:
         model = allowed_models[0]
 
-    # Options de customization
-    customization = request.customization or AnalysisCustomization()
-    
+    # Options de customization — merge top-level fields du frontend v4
+    # Mapping frontend writing_style → backend WritingStyle enum
+    _FRONTEND_STYLE_MAP = {
+        "default": "neutral",
+        "human": "conversational",
+        "academic": "academic",
+        "casual": "conversational",
+        "humorous": "creative",
+        "soft": "pedagogical",
+    }
+
+    if request.customization:
+        customization = AnalysisCustomization(**request.customization)
+    else:
+        # Construire depuis les champs top-level envoyés par le frontend
+        custom_kwargs: dict = {}
+        if request.user_prompt:
+            custom_kwargs["user_prompt"] = request.user_prompt
+        if request.anti_ai_detection:
+            custom_kwargs["anti_ai_detection"] = request.anti_ai_detection
+        if request.writing_style:
+            mapped_style = _FRONTEND_STYLE_MAP.get(request.writing_style, request.writing_style)
+            try:
+                custom_kwargs["writing_style"] = WritingStyle(mapped_style)
+            except ValueError:
+                pass  # Style inconnu, garder le défaut
+        customization = AnalysisCustomization(**custom_kwargs)
+
     # Vérifier les permissions pour fonctionnalités avancées
     is_premium = current_user.plan in ["pro", "expert", "unlimited"]
     
