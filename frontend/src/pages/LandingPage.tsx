@@ -511,11 +511,8 @@ const LandingPage: React.FC = () => {
         setGuestUsed(true);
         try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
       } else {
-        // Show backend error if descriptive, otherwise generic fallback
-        const isDescriptive = msg.length > 10 && !msg.startsWith('HTTP ') && !msg.includes('failed to respond');
-        setGuestError(isDescriptive ? msg : (language === 'fr'
-          ? 'Erreur serveur temporaire. Réessayez dans quelques secondes.'
-          : 'Temporary server error. Please try again in a few seconds.'));
+        // Show the actual error for diagnosis + user-friendly context
+        setGuestError(msg || 'Unknown error');
       }
     } finally {
       setGuestLoading(false);
