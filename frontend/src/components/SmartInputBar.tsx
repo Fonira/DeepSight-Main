@@ -11,9 +11,44 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Link2, FileText, Search, ChevronDown,
-  Globe, Sparkles, Info, ArrowRight, Wand2
+  Globe, Sparkles, Info, ArrowRight, Wand2, Play
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from './ui';
+
+// ═══════════════════════════════════════════════════════════════════
+// 🎬 PLATFORM ICONS — YouTube & TikTok inline SVGs
+// ═══════════════════════════════════════════════════════════════════
+
+const YouTubeIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M23.5 6.19a3.02 3.02 0 0 0-2.12-2.14C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.38.55A3.02 3.02 0 0 0 .5 6.19C0 8.07 0 12 0 12s0 3.93.5 5.81a3.02 3.02 0 0 0 2.12 2.14c1.88.55 9.38.55 9.38.55s7.5 0 9.38-.55a3.02 3.02 0 0 0 2.12-2.14C24 15.93 24 12 24 12s0-3.93-.5-5.81zM9.55 15.57V8.43L15.82 12l-6.27 3.57z"/>
+  </svg>
+);
+
+const TikTokIcon: React.FC<{ className?: string }> = ({ className = 'w-4 h-4' }) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.88-2.88 2.89 2.89 0 0 1 2.88-2.88c.28 0 .56.04.82.11v-3.5a6.37 6.37 0 0 0-.82-.05A6.34 6.34 0 0 0 3.15 15.2a6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.34-6.34V8.98a8.24 8.24 0 0 0 4.83 1.56V7.09a4.84 4.84 0 0 1-1.07-.4z"/>
+  </svg>
+);
+
+/** Renders the correct icon for a given mode */
+const ModeIconRenderer: React.FC<{ mode: InputMode; className?: string }> = ({ mode, className = 'w-4 h-4' }) => {
+  switch (mode) {
+    case 'search':
+      return <YouTubeIcon className={className} />;
+    case 'url':
+      return (
+        <span className="flex items-center gap-0.5">
+          <YouTubeIcon className={className} />
+          <TikTokIcon className={className} />
+        </span>
+      );
+    case 'text':
+      return <FileText className={className} />;
+    default:
+      return <Search className={className} />;
+  }
+};
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -86,18 +121,18 @@ const MODE_ORDER: InputMode[] = ['search', 'url', 'text'];
 
 const MODE_CONFIG = {
   search: {
-    icon: Search,
-    label: { fr: '🔍 Recherche', en: '🔍 Search' },
-    bgColor: 'bg-violet-500/10',
-    textColor: 'text-violet-400',
+    icon: null, // Custom YouTube icon rendered inline
+    label: { fr: 'Recherche YouTube', en: 'YouTube Search' },
+    bgColor: 'bg-red-500/10',
+    textColor: 'text-red-400',
     borderColor: 'border-violet-500/30',
     hoverBorder: 'hover:border-violet-500/50',
     focusBorder: 'focus-within:border-violet-500/60',
-    gradient: 'from-violet-500 to-purple-600',
+    gradient: 'from-red-600 to-red-500',
     placeholder: { fr: 'Recherchez un sujet: "IA", "climat", "économie"...', en: 'Search a topic: "AI", "climate", "economy"...' },
   },
   url: {
-    icon: Link2,
+    icon: null, // Custom YouTube+TikTok icons rendered inline
     label: { fr: 'URL Vidéo', en: 'Video URL' },
     bgColor: 'bg-emerald-500/10',
     textColor: 'text-emerald-400',
@@ -197,7 +232,6 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   const modeSelectorRef = useRef<HTMLDivElement>(null);
 
   const config = MODE_CONFIG[value.mode];
-  const ModeIcon = config.icon;
 
   // Auto-resize textarea
   useEffect(() => {
@@ -361,7 +395,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
               className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${config.bgColor} ${config.textColor} hover:opacity-80`}
               disabled={disabled}
             >
-              <ModeIcon className="w-4 h-4" />
+              <ModeIconRenderer mode={value.mode} className="w-4 h-4" />
               <span className="text-sm font-medium hidden sm:inline">
                 {config.label[language]}
               </span>
@@ -372,28 +406,27 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
             {showModeSelector && (
               <div className="absolute top-full left-0 mt-2 w-56 bg-bg-elevated border border-border-default rounded-xl shadow-xl z-50 overflow-hidden">
                 <div className="p-2">
-                  {MODE_ORDER.map((mode) => {
-                    const modeConf = MODE_CONFIG[mode];
-                    const Icon = modeConf.icon;
-                    const isActive = value.mode === mode;
+                  {MODE_ORDER.map((m) => {
+                    const modeConf = MODE_CONFIG[m];
+                    const isActive = value.mode === m;
 
                     return (
                       <button
-                        key={mode}
-                        onClick={() => selectMode(mode)}
+                        key={m}
+                        onClick={() => selectMode(m)}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                           isActive
                             ? `${modeConf.bgColor} ${modeConf.textColor}`
                             : 'hover:bg-bg-tertiary text-text-secondary hover:text-text-primary'
                         }`}
                       >
-                        <Icon className="w-4 h-4" />
+                        <ModeIconRenderer mode={m} className="w-4 h-4" />
                         <div className="flex-1 text-left">
                           <div className="text-sm font-medium">{modeConf.label[language]}</div>
                           <div className="text-xs opacity-70">
-                            {mode === 'url' && (language === 'fr' ? 'Vidéo YouTube, TikTok ou playlist' : 'YouTube, TikTok video or playlist')}
-                            {mode === 'text' && (language === 'fr' ? 'Article, notes...' : 'Article, notes...')}
-                            {mode === 'search' && (language === 'fr' ? 'Découverte intelligente 🆓' : 'Smart discovery 🆓')}
+                            {m === 'url' && (language === 'fr' ? 'Vidéo YouTube, TikTok ou playlist' : 'YouTube, TikTok video or playlist')}
+                            {m === 'text' && (language === 'fr' ? 'Article, notes...' : 'Article, notes...')}
+                            {m === 'search' && (language === 'fr' ? 'Trouvez des vidéos par sujet 🆓' : 'Find videos by topic 🆓')}
                           </div>
                         </div>
                         {isActive && <Sparkles className="w-4 h-4" />}
@@ -436,21 +469,29 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
             />
           </div>
 
-          {/* Submit Button */}
+          {/* Submit Button — Visible & Explicit */}
           <button
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit || !hasEnoughCredits}
-            className={`flex items-center justify-center w-12 h-12 rounded-xl transition-all ${
+            className={`flex items-center justify-center gap-2 px-5 h-12 rounded-xl transition-all duration-200 font-semibold text-sm whitespace-nowrap ${
               canSubmit && hasEnoughCredits
-                ? `bg-gradient-to-r ${config.gradient} text-white shadow-lg hover:shadow-xl hover:scale-105`
+                ? `bg-gradient-to-r ${config.gradient} text-white shadow-lg shadow-accent-primary/20 hover:shadow-xl hover:scale-[1.03] active:scale-[0.97]`
                 : 'bg-bg-tertiary text-text-muted cursor-not-allowed'
             }`}
           >
             {loading ? (
               <DeepSightSpinnerMicro />
             ) : (
-              <ArrowRight className="w-5 h-5" />
+              <>
+                <Play className="w-4 h-4 fill-current" />
+                <span className="hidden sm:inline">
+                  {isSearchMode
+                    ? (language === 'fr' ? 'Rechercher' : 'Search')
+                    : (language === 'fr' ? 'Analyser' : 'Analyze')
+                  }
+                </span>
+              </>
             )}
           </button>
         </div>
