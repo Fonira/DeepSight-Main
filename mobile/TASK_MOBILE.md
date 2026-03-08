@@ -4,7 +4,7 @@
 
 ## CONTEXT
 DeepSight mobile app (Expo SDK 54, React Native 0.81.5, TypeScript).
-Backend: https://deep-sight-backend-v3-production.up.railway.app
+Backend: https://api.deepsightsynthesis.com
 
 ## EXISTING API CLIENT (src/services/api.ts)
 All API modules are already implemented:

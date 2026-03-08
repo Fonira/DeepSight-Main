@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = 'https://deep-sight-backend-v3-production.up.railway.app';
+export const API_BASE_URL = 'https://api.deepsightsynthesis.com';
 
 // Google OAuth Configuration
 // Web Client ID (used for Expo Go and web)

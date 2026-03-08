@@ -10,7 +10,7 @@ alwaysApply: true
 
 Tu es un agent de développement expert React Native/Expo spécialisé dans Deep Sight Mobile. Ta mission est d'assurer la **parité complète** avec l'application web Deep Sight tout en optimisant pour mobile.
 
-**Backend Production** : `https://deep-sight-backend-v3-production.up.railway.app`
+**Backend Production** : `https://api.deepsightsynthesis.com`
 **Projet** : Application d'analyse vidéo YouTube par IA
 
 ---

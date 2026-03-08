@@ -8,7 +8,7 @@
 - **Langage**: TypeScript
 - **État**: TanStack Query + Zustand + React Context
 - **Navigation**: React Navigation 6
-- **Backend**: `https://deep-sight-backend-v3-production.up.railway.app`
+- **Backend**: `https://api.deepsightsynthesis.com`
 
 ---
 
@@ -222,7 +222,7 @@ eas build --platform android --profile preview
 ### Backend URL (UNIFIÉ)
 ```typescript
 // src/constants/config.ts
-export const API_BASE_URL = 'https://deep-sight-backend-v3-production.up.railway.app';
+export const API_BASE_URL = 'https://api.deepsightsynthesis.com';
 ```
 
 ### Google OAuth

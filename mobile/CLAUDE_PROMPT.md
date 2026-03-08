@@ -1,6 +1,6 @@
 Tu es le Senior Tech Lead du projet DeepSight Mobile (Expo SDK 54 / React Native 0.81.5 / TypeScript).
 
-Backend API: https://deep-sight-backend-v3-production.up.railway.app/api
+Backend API: https://api.deepsightsynthesis.com/api
 
 ## TA MISSION
 Complete les 5 features manquantes de l'app mobile, dans cet ordre:

@@ -44,7 +44,7 @@ The app requires an internet connection to:
 • Sync user history and preferences
 
 BACKEND API
-All requests go to: https://deep-sight-backend-v3-production.up.railway.app
+All requests go to: https://api.deepsightsynthesis.com
 Authentication: JWT bearer tokens (access + refresh tokens)
 
 THIRD-PARTY SERVICES
