@@ -131,8 +131,8 @@ export const DashboardPage: React.FC = () => {
   const [discoveryResult, setDiscoveryResult] = useState<DiscoveryResponse | null>(null);
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   
-  // 🆕 État pour recherche approfondie (Expert uniquement)
-  const [deepResearchEnabled, setDeepResearchEnabled] = useState(false);
+  // 🔒 Deep Research désactivé côté UI — backend l'accepte toujours pour quand on le réactivera
+  // Sera réactivé comme "Fact-checking web" pour le plan Pro (~30 crédits/usage)
   
   // 🎨 État pour la personnalisation avancée v2
   const [analysisCustomization, setAnalysisCustomization] = useState<AnalysisCustomization>(DEFAULT_CUSTOMIZATION);
@@ -401,7 +401,7 @@ export const DashboardPage: React.FC = () => {
           {
             category: 'auto',
             mode,
-            deepResearch: isExpertUser && deepResearchEnabled,
+            deepResearch: false, // 🔒 Désactivé — sera réactivé comme "Fact-checking web"
             lang: language,
             // Personnalisation v3
             userPrompt: analysisCustomization.userPrompt || undefined,
@@ -444,7 +444,7 @@ export const DashboardPage: React.FC = () => {
           textSource: smartInput.textSource,
           mode,
           lang: language,
-          deepResearch: isExpertUser && deepResearchEnabled,
+          deepResearch: false, // 🔒 Désactivé — sera réactivé comme "Fact-checking web"
         });
         
         if (response.task_id) {
@@ -483,7 +483,7 @@ export const DashboardPage: React.FC = () => {
         {
           category: 'auto',
           mode,
-          deepResearch: isExpertUser && deepResearchEnabled,
+          deepResearch: false, // 🔒 Désactivé — sera réactivé comme "Fact-checking web"
           lang: language,
           // Personnalisation v3
           userPrompt: analysisCustomization.userPrompt || undefined,
@@ -775,23 +775,7 @@ export const DashboardPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Option recherche approfondie (Expert uniquement) */}
-                  {isExpertUser && (
-                    <div className="flex items-center gap-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <div
-                          className={`relative w-10 h-5 rounded-full transition-all ${deepResearchEnabled ? 'bg-purple-500' : 'bg-gray-600'}`}
-                          onClick={() => setDeepResearchEnabled(!deepResearchEnabled)}
-                        >
-                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${deepResearchEnabled ? 'left-5' : 'left-0.5'}`} />
-                        </div>
-                        <span className="text-xs text-text-secondary flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 text-purple-400" />
-                          {language === 'fr' ? 'Recherche approfondie' : 'Deep research'}
-                        </span>
-                      </label>
-                    </div>
-                  )}
+                  {/* 🔒 Deep Research désactivé — sera réactivé quand monétisé (Fact-checking web, plan Pro, ~30 crédits) */}
 
                   {/* Quota */}
                   {user && (
@@ -805,8 +789,8 @@ export const DashboardPage: React.FC = () => {
               {/* ═══════════════════════════════════════════════════════════════ */}
               {/* 🎨 CUSTOMIZATION PANEL v2 — Personnalisation Avancée */}
               {/* ═══════════════════════════════════════════════════════════════ */}
-              {smartInput.mode !== 'search' && (
-                <div className="mt-4 pt-4 border-t border-border-subtle">
+              {/* CustomizationPanel visible pour TOUS les modes (url, text, search) */}
+              <div className="mt-4 pt-4 border-t border-border-subtle">
                   {/* Toggle button to show/hide panel */}
                   <button
                     type="button"
@@ -858,7 +842,7 @@ export const DashboardPage: React.FC = () => {
                     />
                   </div>
                 </div>
-              )}
+              </div>
             </div>
 
             {/* ═══════════════════════════════════════════════════════════════ */}
