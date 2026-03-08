@@ -58,6 +58,13 @@ export const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Support ?tab=register from landing page CTA
+  useEffect(() => {
+    if (searchParams.get('tab') === 'register') {
+      setIsRegister(true);
+    }
+  }, [searchParams]);
+
   // OAuth error from URL
   useEffect(() => {
     const oauthError = searchParams.get('error');

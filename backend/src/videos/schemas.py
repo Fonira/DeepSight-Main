@@ -13,6 +13,24 @@ from datetime import datetime
 # 📥 REQUÊTES (Input)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+class GuestAnalyzeRequest(BaseModel):
+    """Requête pour analyse demo guest (sans authentification)"""
+    url: str = Field(..., description="URL de la vidéo YouTube")
+
+
+class GuestAnalyzeResponse(BaseModel):
+    """Réponse de l'analyse guest (éphémère, non sauvegardée)"""
+    video_title: str
+    video_channel: str
+    video_duration: int
+    thumbnail_url: str
+    summary_content: str
+    category: str
+    word_count: int
+    mode: str = "accessible"
+    lang: str = "fr"
+
+
 class AnalyzeVideoRequest(BaseModel):
     """Requête pour analyser une vidéo YouTube ou TikTok"""
     url: str = Field(..., description="URL de la vidéo YouTube ou TikTok")

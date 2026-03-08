@@ -725,7 +725,32 @@ export const authApi = {
 // 📹 VIDEO API
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// 🆓 Guest demo analysis result
+interface GuestAnalysisResult {
+  video_title: string;
+  video_channel: string;
+  video_duration: number;
+  thumbnail_url: string;
+  summary_content: string;
+  category: string;
+  word_count: number;
+  mode: string;
+  lang: string;
+}
+
 export const videoApi = {
+  /**
+   * 🆓 Analyse guest (sans authentification) — 1 essai par visiteur
+   */
+  async analyzeGuest(url: string): Promise<GuestAnalysisResult> {
+    return request('/api/videos/analyze/guest', {
+      method: 'POST',
+      body: { url },
+      skipAuth: true,
+      timeout: 90000,
+    });
+  },
+
   /**
    * 🎬 Analyse une vidéo YouTube
    * @param url - URL YouTube

@@ -16,7 +16,7 @@ import math
 from uuid import uuid4
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, UploadFile, File, Form, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_session, User
@@ -38,7 +38,8 @@ except ImportError:
 from .schemas import (
     AnalyzeVideoRequest, AnalyzePlaylistRequest, UpdateSummaryRequest,
     SummaryResponse, SummaryListItem, HistoryResponse, CategoryResponse,
-    TaskStatusResponse, VideoInfoResponse, ExtensionSummaryResponse
+    TaskStatusResponse, VideoInfoResponse, ExtensionSummaryResponse,
+    GuestAnalyzeRequest, GuestAnalyzeResponse
 )
 from .summary_extractor import extract_extension_summary
 from .service import (
@@ -127,6 +128,10 @@ router = APIRouter()
 # Store en mémoire pour les tâches (en production: Redis)
 _task_store: Dict[str, Dict[str, Any]] = {}
 
+# 🆓 Guest demo rate limiting (1 analyse/IP/24h)
+_guest_usage: Dict[str, float] = {}  # IP → timestamp
+MAX_VIDEO_DURATION_GUEST = 300  # 5 minutes
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 💾 CHECK CACHE — Public endpoint
@@ -145,6 +150,119 @@ async def check_video_cache(video_id: str):
         return {"cached": False, "video_id": video_id}
     except ImportError:
         return {"cached": False, "video_id": video_id, "error": "Cache module not available"}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🆓 GUEST DEMO — Analyse express sans authentification
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/analyze/guest", response_model=GuestAnalyzeResponse)
+async def analyze_video_guest(
+    request: GuestAnalyzeRequest,
+    raw_request: Request,
+):
+    """
+    Analyse express pour visiteurs non connectés.
+    - YouTube uniquement, vidéos < 5 min
+    - 1 analyse par IP toutes les 24h
+    - Mode accessible, résumé court
+    - Aucune sauvegarde en DB
+    """
+    import time
+
+    # 1. Rate-limit par IP
+    client_ip = raw_request.headers.get("x-forwarded-for", raw_request.client.host if raw_request.client else "unknown")
+    if "," in client_ip:
+        client_ip = client_ip.split(",")[0].strip()
+
+    now = time.time()
+    last_used = _guest_usage.get(client_ip, 0)
+    if now - last_used < 86400:  # 24h
+        raise HTTPException(
+            status_code=429,
+            detail="Vous avez déjà utilisé votre essai gratuit. Créez un compte pour continuer !"
+        )
+
+    # 2. Valider URL YouTube uniquement
+    url = request.url.strip()
+    if is_tiktok_url(url):
+        raise HTTPException(status_code=400, detail="L'essai gratuit est limité aux vidéos YouTube.")
+
+    video_id = extract_video_id(url)
+    if not video_id:
+        raise HTTPException(status_code=400, detail="URL YouTube invalide.")
+
+    # 3. Récupérer info vidéo + vérifier durée
+    try:
+        video_info = await get_video_info(video_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Impossible de récupérer les informations de la vidéo.")
+
+    duration = video_info.get("duration", 0)
+    if duration > MAX_VIDEO_DURATION_GUEST:
+        raise HTTPException(
+            status_code=400,
+            detail=f"L'essai gratuit est limité aux vidéos de moins de 5 minutes. Cette vidéo dure {duration // 60}:{duration % 60:02d}."
+        )
+
+    # 4. Récupérer transcript
+    try:
+        transcript_result = await get_transcript_with_timestamps(video_id)
+        if isinstance(transcript_result, tuple):
+            transcript_text = transcript_result[0]
+        else:
+            transcript_text = transcript_result
+    except Exception:
+        raise HTTPException(status_code=400, detail="Impossible de récupérer la transcription de la vidéo.")
+
+    if not transcript_text or len(transcript_text.strip()) < 50:
+        raise HTTPException(status_code=400, detail="La transcription de cette vidéo est trop courte ou indisponible.")
+
+    # 5. Détecter catégorie
+    try:
+        category = await detect_category(transcript_text[:2000])
+    except Exception:
+        category = "general"
+
+    # 6. Générer résumé court en mode accessible
+    try:
+        summary = await generate_summary(
+            transcript=transcript_text,
+            mode="accessible",
+            category=category,
+            lang="fr",
+            video_title=video_info.get("title", ""),
+            video_channel=video_info.get("channel", ""),
+            target_length="short",
+        )
+    except Exception:
+        raise HTTPException(status_code=500, detail="Erreur lors de la génération du résumé.")
+
+    if not summary:
+        raise HTTPException(status_code=500, detail="Le résumé n'a pas pu être généré.")
+
+    # 7. Marquer IP comme utilisée
+    _guest_usage[client_ip] = now
+
+    # 8. Cleanup vieilles entrées (éviter fuite mémoire)
+    expired = [ip for ip, ts in _guest_usage.items() if now - ts > 86400]
+    for ip in expired:
+        del _guest_usage[ip]
+
+    word_count = len(summary.split())
+    thumbnail_url = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
+
+    return GuestAnalyzeResponse(
+        video_title=video_info.get("title", "Vidéo YouTube"),
+        video_channel=video_info.get("channel", ""),
+        video_duration=duration,
+        thumbnail_url=thumbnail_url,
+        summary_content=summary,
+        category=category,
+        word_count=word_count,
+        mode="accessible",
+        lang="fr",
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

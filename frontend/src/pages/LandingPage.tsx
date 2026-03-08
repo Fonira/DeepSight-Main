@@ -3,7 +3,7 @@
  * Inspired by Linear/Vercel — gradient mesh hero, scroll animations, glassmorphism
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useInView, AnimatePresence } from "framer-motion";
 import {
@@ -12,11 +12,13 @@ import {
   Zap, ChevronRight, Users, GraduationCap, Newspaper,
   Star, Crown, ListVideo, Briefcase,
   AlertTriangle, Lightbulb,
-  Globe, Smartphone, Puzzle
+  Globe, Smartphone, Puzzle,
+  Clipboard, Loader2, ExternalLink, Lock
 } from "lucide-react";
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
 import { SEO } from "../components/SEO";
+import { videoApi } from "../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ANIMATION HELPERS
@@ -408,6 +410,49 @@ const LandingPage: React.FC = () => {
   const audiences = getAudiences(language);
   const faqs = getFAQs(language);
 
+  // Guest demo state
+  const [guestUrl, setGuestUrl] = useState('');
+  const [guestLoading, setGuestLoading] = useState(false);
+  const [guestResult, setGuestResult] = useState<{
+    video_title: string; video_channel: string; video_duration: number;
+    thumbnail_url: string; summary_content: string; category: string; word_count: number;
+  } | null>(null);
+  const [guestError, setGuestError] = useState<string | null>(null);
+  const [guestUsed, setGuestUsed] = useState(() => {
+    try { return localStorage.getItem('ds_guest_demo_used') === 'true'; } catch { return false; }
+  });
+  const guestInputRef = useRef<HTMLInputElement>(null);
+
+  const handleGuestPaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) setGuestUrl(text.trim());
+    } catch { /* clipboard denied */ }
+  };
+
+  const handleGuestAnalyze = async () => {
+    if (!guestUrl.trim() || guestLoading) return;
+    setGuestError(null);
+    setGuestLoading(true);
+    try {
+      const result = await videoApi.analyzeGuest(guestUrl.trim());
+      setGuestResult(result);
+      setGuestUsed(true);
+      try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('429')) {
+        setGuestError(language === 'fr' ? 'Vous avez déjà utilisé votre essai gratuit.' : 'You already used your free trial.');
+        setGuestUsed(true);
+        try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
+      } else {
+        setGuestError(msg);
+      }
+    } finally {
+      setGuestLoading(false);
+    }
+  };
+
   // Redirect if logged in
   useEffect(() => {
     if (!isLoading && user) {
@@ -434,22 +479,20 @@ const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <Logo />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => navigate('/login')}
-              className="text-sm text-text-secondary hover:text-text-primary transition-colors hidden sm:block"
+              className="text-sm text-text-secondary hover:text-text-primary transition-colors"
             >
-              {language === 'fr' ? 'Connexion' : 'Sign in'}
+              {language === 'fr' ? 'Se connecter' : 'Sign in'}
             </button>
             <motion.button
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/login?tab=register')}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <span className="hidden sm:inline">{language === 'fr' ? 'Commencer' : 'Get Started'}</span>
-              <span className="sm:hidden">{language === 'fr' ? 'Essayer' : 'Start'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              {language === 'fr' ? 'Créer un compte' : 'Sign up'}
             </motion.button>
           </div>
         </div>
@@ -514,29 +557,178 @@ const LandingPage: React.FC = () => {
               : 'Deep Sight extracts, structures and verifies your YouTube and TikTok video content. Weighted summaries, sourced fact-checking, contextual chat. The tool built for those who think before they share.'}
           </motion.p>
 
-          {/* CTAs */}
+          {/* Guest Demo Input / CTA */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease, delay: 0.4 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-16"
+            className="mb-16 max-w-xl mx-auto"
           >
-            <motion.button
-              onClick={() => navigate('/login')}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3 rounded-lg bg-accent-primary text-white font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              {language === 'fr' ? 'Analyser une vidéo gratuitement' : 'Analyze a video for free'}
-              <ArrowRight className="w-4 h-4" />
-            </motion.button>
-            <a
-              href="#features"
-              className="text-text-secondary hover:text-text-primary transition-colors flex items-center gap-1.5 text-sm"
-            >
-              {language === 'fr' ? 'Découvrir les fonctionnalités' : 'Discover features'}
-              <ChevronRight className="w-3.5 h-3.5" />
-            </a>
+            {guestUsed && !guestResult ? (
+              /* Already used — CTA to register */
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-sm text-text-tertiary">
+                  {language === 'fr' ? 'Créez un compte gratuit pour analyser vos vidéos' : 'Create a free account to analyze your videos'}
+                </p>
+                <motion.button
+                  onClick={() => navigate('/login?tab=register')}
+                  className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-lg bg-accent-primary text-white font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {language === 'fr' ? 'Créer un compte gratuit' : 'Create a free account'}
+                  <ArrowRight className="w-4 h-4" />
+                </motion.button>
+              </div>
+            ) : !guestResult ? (
+              /* Input inline */
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleGuestPaste}
+                    className="flex-shrink-0 p-3 rounded-lg bg-surface-secondary/60 border border-border-subtle hover:bg-surface-secondary transition-colors"
+                    title={language === 'fr' ? 'Coller' : 'Paste'}
+                  >
+                    <Clipboard className="w-4 h-4 text-text-tertiary" />
+                  </button>
+                  <input
+                    ref={guestInputRef}
+                    type="url"
+                    value={guestUrl}
+                    onChange={(e) => setGuestUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleGuestAnalyze()}
+                    placeholder={language === 'fr' ? 'Collez un lien YouTube (< 5 min)' : 'Paste a YouTube link (< 5 min)'}
+                    className="flex-1 min-w-0 px-4 py-3 rounded-lg bg-surface-secondary/60 border border-border-subtle text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:border-accent-primary/40 transition-all"
+                    disabled={guestLoading}
+                  />
+                  <motion.button
+                    onClick={handleGuestAnalyze}
+                    disabled={!guestUrl.trim() || guestLoading}
+                    className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                    whileHover={!guestLoading ? { scale: 1.02 } : {}}
+                    whileTap={!guestLoading ? { scale: 0.98 } : {}}
+                  >
+                    {guestLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        {language === 'fr' ? 'Analyser' : 'Analyze'}
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </motion.button>
+                </div>
+
+                {/* Helper text + YouTube/TikTok links */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-1">
+                  <p className="text-xs text-text-muted">
+                    {language === 'fr' ? 'Essai gratuit — une analyse offerte, vidéos YouTube < 5 min' : 'Free trial — one analysis, YouTube videos < 5 min'}
+                  </p>
+                  <div className="flex items-center gap-3 text-xs text-text-tertiary">
+                    <span>{language === 'fr' ? "Pas d'idée ?" : 'No idea?'}</span>
+                    <a
+                      href="https://youtube.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      <span>▶</span> YouTube <ExternalLink className="w-3 h-3" />
+                    </a>
+                    <a
+                      href="https://tiktok.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors"
+                    >
+                      <span>♪</span> TikTok <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Error */}
+                <AnimatePresence>
+                  {guestError && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="text-sm text-red-400 text-center"
+                    >
+                      {guestError}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : null}
+
+            {/* Guest Result */}
+            <AnimatePresence>
+              {guestResult && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, ease }}
+                  className="mt-6 text-left"
+                >
+                  {/* Video card */}
+                  <div className="rounded-xl bg-surface-secondary/60 border border-border-subtle overflow-hidden">
+                    <div className="flex gap-4 p-4">
+                      <img
+                        src={guestResult.thumbnail_url}
+                        alt={guestResult.video_title}
+                        className="w-28 h-20 sm:w-36 sm:h-24 rounded-lg object-cover flex-shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-semibold text-text-primary line-clamp-2">{guestResult.video_title}</h3>
+                        <p className="text-xs text-text-tertiary mt-1">{guestResult.video_channel}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-accent-primary/10 text-accent-primary">
+                            {Math.floor(guestResult.video_duration / 60)}:{(guestResult.video_duration % 60).toString().padStart(2, '0')}
+                          </span>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400">
+                            {guestResult.category}
+                          </span>
+                          <span className="text-xs text-text-muted">{guestResult.word_count} {language === 'fr' ? 'mots' : 'words'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Summary */}
+                    <div className="px-4 pb-4">
+                      <div className="prose prose-sm prose-invert max-w-none text-text-secondary text-sm leading-relaxed whitespace-pre-line">
+                        {guestResult.summary_content}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Teaser + CTA */}
+                  <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-accent-primary/10 via-violet-500/10 to-cyan-500/10 border border-accent-primary/20">
+                    <div className="flex items-start gap-3">
+                      <Lock className="w-5 h-5 text-accent-primary flex-shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-text-primary mb-1">
+                          {language === 'fr' ? 'Débloquez toutes les fonctionnalités' : 'Unlock all features'}
+                        </p>
+                        <p className="text-xs text-text-tertiary mb-3">
+                          {language === 'fr'
+                            ? 'Fact-checking sourcé, chat IA contextuel, flashcards, cartes mentales, export PDF, vidéos longues...'
+                            : 'Sourced fact-checking, contextual AI chat, flashcards, mind maps, PDF export, long videos...'}
+                        </p>
+                        <motion.button
+                          onClick={() => navigate('/login?tab=register')}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          {language === 'fr' ? 'Créer un compte pour sauvegarder' : 'Create an account to save'}
+                          <ArrowRight className="w-4 h-4" />
+                        </motion.button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {/* Platforms */}

@@ -10,7 +10,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   FileText, Search, BookOpen,
-  Sparkles, Info, Wand2, Play
+  Sparkles, Info, Wand2, Play, Clipboard, ExternalLink
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from './ui';
 
@@ -438,6 +438,24 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
             <ModeIconRenderer mode={value.mode} className="w-4 h-4" />
           </div>
 
+          {/* Paste button — visible when input is empty */}
+          {!inputVal && (
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const text = await navigator.clipboard.readText();
+                  if (text) handleInputChange(text.trim());
+                } catch { /* clipboard denied */ }
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg shrink-0 bg-surface-secondary/60 hover:bg-surface-secondary border border-border-subtle text-text-tertiary hover:text-text-secondary transition-colors text-xs"
+              title={language === 'fr' ? 'Coller' : 'Paste'}
+            >
+              <Clipboard className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{language === 'fr' ? 'Coller' : 'Paste'}</span>
+            </button>
+          )}
+
           {/* Input Area */}
           <div className="flex-1 min-w-0">
             <textarea
@@ -543,6 +561,27 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
           </span>
         </div>
       )}
+
+      {/* YouTube / TikTok browse links */}
+      <div className="flex items-center gap-3 px-1 text-xs text-text-muted">
+        <span>{language === 'fr' ? 'Parcourir' : 'Browse'}</span>
+        <a
+          href="https://youtube.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-red-400/70 hover:text-red-400 transition-colors"
+        >
+          <YouTubeIcon className="w-3.5 h-3.5" /> YouTube <ExternalLink className="w-3 h-3" />
+        </a>
+        <a
+          href="https://tiktok.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-text-tertiary hover:text-text-secondary transition-colors"
+        >
+          <TikTokIcon className="w-3.5 h-3.5" /> TikTok <ExternalLink className="w-3 h-3" />
+        </a>
+      </div>
     </div>
   );
 };

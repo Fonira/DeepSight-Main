@@ -8,10 +8,12 @@ import {
   StyleSheet,
   Animated,
   Keyboard,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import * as ExpoClipboard from 'expo-clipboard';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Colors, Spacing, BorderRadius, Typography } from '../constants/theme';
@@ -420,9 +422,27 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
           autoCorrect={inputMode === 'text'}
           keyboardType={inputMode === 'url' ? 'url' : 'default'}
         />
-        {inputValue.length > 0 && (
+        {inputValue.length > 0 ? (
           <TouchableOpacity onPress={() => { setInputValue(''); setUrlValidation(null); }} style={styles.clearButton}>
             <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={async () => {
+              try {
+                const text = await ExpoClipboard.getStringAsync();
+                if (text) {
+                  Haptics.selectionAsync();
+                  handleInputChange(text.trim());
+                }
+              } catch { /* clipboard denied */ }
+            }}
+            style={styles.pasteButton}
+          >
+            <Ionicons name="clipboard-outline" size={18} color={colors.accentPrimary} />
+            <Text style={[styles.pasteButtonText, { color: colors.accentPrimary }]}>
+              {isEn ? 'Paste' : 'Coller'}
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -449,6 +469,27 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
           </Text>
         </View>
       )}
+
+      {/* YouTube / TikTok browse links */}
+      <View style={styles.browseLinksRow}>
+        <Text style={[styles.browseLabel, { color: colors.textMuted }]}>
+          {isEn ? 'Browse' : 'Parcourir'}
+        </Text>
+        <TouchableOpacity
+          onPress={() => Linking.openURL('https://youtube.com')}
+          style={styles.browseLink}
+        >
+          <Ionicons name="logo-youtube" size={16} color="#FF0000" />
+          <Text style={[styles.browseLinkText, { color: colors.textSecondary }]}>YouTube</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => Linking.openURL('https://tiktok.com')}
+          style={styles.browseLink}
+        >
+          <Ionicons name="logo-tiktok" size={16} color={colors.textSecondary} />
+          <Text style={[styles.browseLinkText, { color: colors.textSecondary }]}>TikTok</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Category Selector */}
       <View style={styles.selectorSection}>
@@ -795,6 +836,36 @@ const styles = StyleSheet.create({
   },
   clearButton: {
     padding: Spacing.sm,
+  },
+  pasteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.sm,
+  },
+  pasteButtonText: {
+    fontFamily: Typography.fontFamily.bodyMedium,
+    fontSize: Typography.fontSize.xs,
+  },
+  browseLinksRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+    paddingHorizontal: Spacing.xs,
+  },
+  browseLabel: {
+    fontFamily: Typography.fontFamily.body,
+    fontSize: Typography.fontSize.xs,
+  },
+  browseLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  browseLinkText: {
+    fontFamily: Typography.fontFamily.body,
+    fontSize: Typography.fontSize.xs,
   },
   validationIndicator: {
     flexDirection: 'row',
