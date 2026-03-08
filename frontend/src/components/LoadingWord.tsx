@@ -481,7 +481,7 @@ export const LoadingWordGlobal: React.FC = () => {
       <>
         <button
           onClick={() => setIsVisible(true)}
-          className="fixed bottom-20 lg:bottom-4 right-4 z-30 p-3.5 rounded-full shadow-xl hover:scale-110 active:scale-95 transition-transform"
+          className="fixed bottom-28 lg:bottom-4 right-4 z-30 p-3.5 rounded-full shadow-xl hover:scale-110 active:scale-95 transition-transform"
           title={didYouKnow}
           style={{
             background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)',
