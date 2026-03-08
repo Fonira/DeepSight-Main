@@ -445,8 +445,14 @@ async def analyze_video_v2(
         print(f"🔒 [v2] Credits reserved: {credit_cost} for task {task_id[:12]}", flush=True)
 
     # Préparer les options de customization
+    # 🆕 v5.2: Map frontend target_length → backend summary_length
+    effective_summary_length = request.summary_length  # legacy default
+    if request.target_length:
+        _tl_map = {"short": "short", "medium": "standard", "long": "detailed", "auto": "standard"}
+        effective_summary_length = _tl_map.get(request.target_length, "standard")
+
     customization_options = {
-        "summary_length": request.summary_length,
+        "summary_length": effective_summary_length,
         "highlight_key_points": request.highlight_key_points,
         "generate_toc": request.generate_toc,
         "include_entities": request.include_entities,
@@ -689,6 +695,7 @@ async def _analyze_video_background_v2(
                     web_context=full_context,
                     video_id=video_id,
                     force_refresh=force_refresh,
+                    target_length=options.get("summary_length", "standard"),
                 )
 
             if not summary_content:
@@ -1066,7 +1073,7 @@ async def analyze_video_v2_1(
 
     # Préparer les options complètes
     full_options = {
-        "summary_length": request.summary_length,
+        "summary_length": request.summary_length,  # v2.1 uses summary_length directly
         "highlight_key_points": request.highlight_key_points,
         "generate_toc": request.generate_toc,
         "include_entities": request.include_entities,
@@ -1418,6 +1425,7 @@ async def _analyze_video_background_v2_1(
                     web_context=full_context,
                     video_id=video_id,
                     force_refresh=force_refresh,
+                    target_length=options.get("summary_length", "standard"),
                 )
 
             if not summary_content:
@@ -1873,11 +1881,11 @@ async def _analyze_video_background_v6(
                     _task_store[task_id]["message"] = "🧠 Génération du résumé enrichi avec l'IA..."
                 else:
                     _task_store[task_id]["message"] = "🧠 Génération du résumé avec l'IA..."
-                
+
                 print(f"🧠 Generating summary with {model}...", flush=True)
                 if web_context:
                     print(f"🌐 [v5.0] Including {len(web_context)} chars of web context in Mistral prompt", flush=True)
-                
+
                 summary_content = await generate_summary(
                     title=video_info["title"],
                     transcript=transcript_to_analyze,

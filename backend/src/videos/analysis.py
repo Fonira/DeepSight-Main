@@ -980,11 +980,13 @@ def build_analysis_prompt(
     duration: int = 0,
     channel: str = "",
     description: str = "",
-    platform: str = "youtube"
+    platform: str = "youtube",
+    target_length: str = "standard"
 ) -> Tuple[str, str]:
     """
     Construit le prompt système et utilisateur pour l'analyse.
     🆕 v3.1: Limite de transcription dynamique pour vidéos longues.
+    🆕 v5.2: target_length (short/standard/detailed) ajuste min/max words + tokens.
     Retourne: (system_prompt, user_prompt)
     """
     epistemic_rules = EPISTEMIC_RULES_FR if lang == "fr" else EPISTEMIC_RULES_EN
@@ -998,17 +1000,32 @@ def build_analysis_prompt(
     cat_info = CATEGORIES.get(category, CATEGORIES["general"])
     min_words, max_words = cat_info["min_words"], cat_info["max_words"]
 
+    # 🆕 v5.2: Ajustements selon target_length (PRIORITAIRE)
+    length_multipliers = {
+        "short": (0.25, 0.3),      # Court: 250-1050 mots pour general
+        "standard": (1.0, 1.0),    # Moyen: valeurs par défaut
+        "detailed": (1.5, 1.8),    # Long: 1500-6300 mots pour general
+    }
+    len_min_mult, len_max_mult = length_multipliers.get(target_length, (1.0, 1.0))
+    min_words = int(min_words * len_min_mult)
+    max_words = int(max_words * len_max_mult)
+
     # Ajustements selon le mode
     if mode == "accessible":
         min_words, max_words = int(min_words * 0.7), int(max_words * 0.75)
     elif mode == "expert":
         min_words, max_words = int(min_words * 1.8), int(max_words * 2.0)
-    
+
     # Ajustements selon la durée
     if duration > 3600:
         min_words, max_words = int(min_words * 1.3), int(max_words * 1.3)
     if duration > 7200:
         min_words, max_words = int(min_words * 1.5), int(max_words * 1.5)
+
+    # 🆕 v5.2: Plancher/plafond absolus pour "short"
+    if target_length == "short":
+        max_words = min(max_words, 600)
+        min_words = min(min_words, 200)
     
     if lang == "fr":
         system_prompt = f"""Tu es Deep Sight, expert en analyse critique et synthèse de contenu vidéo.
@@ -1149,6 +1166,7 @@ async def generate_summary(
     video_id: str = None,     # 🆕 v3.1: Pour le cache
     force_refresh: bool = False,  # 🆕 v3.1: Forcer la ré-génération
     platform: str = "youtube",  # 🎵 TikTok support
+    target_length: str = "standard",  # 🆕 v5.2: short/standard/detailed
 ) -> Optional[str]:
     """
     Génère un résumé avec Mistral AI.
@@ -1187,7 +1205,8 @@ async def generate_summary(
         duration=duration,
         channel=channel,
         description=description,
-        platform=platform
+        platform=platform,
+        target_length=target_length
     )
     
     # 🆕 v3.0: Injecter le contexte web dans le prompt utilisateur
@@ -1211,11 +1230,20 @@ async def generate_summary(
         user_prompt = user_prompt + web_context_formatted
     
     # 🆕 v3.1: Tokens dynamiques selon mode ET durée de la vidéo
+    # 🆕 v5.2: Ajusté par target_length
     base_tokens = {
         "accessible": 2500,
         "standard": 5000,
         "expert": 10000
     }.get(mode, 5000)
+
+    # Ajuster les tokens selon la longueur demandée
+    length_token_multiplier = {
+        "short": 0.35,
+        "standard": 1.0,
+        "detailed": 1.5,
+    }.get(target_length, 1.0)
+    base_tokens = int(base_tokens * length_token_multiplier)
 
     # Augmenter les tokens pour les vidéos longues
     if duration > 1800:  # > 30 min
@@ -1226,13 +1254,17 @@ async def generate_summary(
     if duration > 7200:
         base_tokens = int(base_tokens * 1.3)
 
-    # Limites maximales par mode
+    # Limites maximales par mode (ajustées par longueur)
     max_token_limits = {
         "accessible": 4000,
         "standard": 12000,
         "expert": 20000
     }
-    max_tokens = min(base_tokens, max_token_limits.get(mode, 12000))
+    max_limit = max_token_limits.get(mode, 12000)
+    # 🆕 v5.2: Plafonner les tokens pour "short" (max ~800 mots = ~1200 tokens)
+    if target_length == "short":
+        max_limit = min(max_limit, 2000)
+    max_tokens = min(base_tokens, max_limit)
 
     # Augmenter si contexte web (plus de contenu à analyser)
     if web_context:
