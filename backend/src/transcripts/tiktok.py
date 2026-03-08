@@ -1,13 +1,14 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
-║  🎵 TIKTOK v2.0 — Extraction de transcripts TikTok multi-fallback                ║
+║  🎵 TIKTOK v3.0 — Supadata prioritaire + multi-fallback STT                       ║
 ║                                                                                    ║
-║  Pipeline multi-phase (inspiré du système YouTube ultra-résilient):               ║
+║  Pipeline multi-phase:                                                             ║
+║  Phase 0.5: Supadata API (PRIORITAIRE — texte natif ou STT côté serveur)          ║
 ║  Phase 1: yt-dlp standard → Groq Whisper                                          ║
 ║  Phase 2: yt-dlp avec headers alternatifs → Groq Whisper                          ║
 ║  Phase 3: yt-dlp avec retry exponentiel → Groq Whisper                            ║
 ║                                                                                    ║
-║  + Circuit breaker + exponential backoff + meilleure gestion d'erreurs            ║
+║  + Supadata metadata en priorité + Circuit breaker + exponential backoff          ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -28,6 +29,7 @@ from transcripts.audio_utils import (
     compress_audio,
     executor as audio_executor,
 )
+from core.config import get_supadata_key
 
 logger = logging.getLogger(__name__)
 
@@ -157,8 +159,8 @@ def extract_tiktok_video_id(url: str) -> Optional[str]:
 
 async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
     """
-    Récupère les métadonnées d'une vidéo TikTok via yt-dlp --dump-json.
-    🆕 v2.0: Retry avec headers alternatifs + meilleure gestion d'erreurs.
+    Récupère les métadonnées d'une vidéo TikTok.
+    🆕 v3.0: Supadata metadata en priorité, puis yt-dlp, puis oEmbed.
 
     Retourne un dict compatible avec le format get_video_info() de youtube.py:
     {
@@ -174,10 +176,48 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
     """
     logger.info(f"[TIKTOK] Getting video info for: {url}")
 
+    # ─── Supadata metadata (PRIORITAIRE) ─────────────────────────────────
+    supadata_key = get_supadata_key()
+    if supadata_key:
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(
+                    "https://api.supadata.ai/v1/metadata",
+                    params={"url": url},
+                    headers={"x-api-key": supadata_key},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    vid = data.get("id", extract_tiktok_video_id(url) or "unknown")
+                    duration = data.get("duration", 0) or 0
+                    logger.info(f"[TIKTOK] Supadata metadata OK: {data.get('title', '')[:50]} ({duration}s)")
+                    return {
+                        "video_id": str(vid),
+                        "title": (data.get("title", "TikTok Video") or "TikTok Video")[:500],
+                        "channel": data.get("channel", data.get("author", "Unknown")),
+                        "thumbnail_url": data.get("thumbnail", ""),
+                        "duration": duration,
+                        "upload_date": data.get("uploadDate"),
+                        "description": (data.get("description", "") or "")[:2000],
+                        "platform": "tiktok",
+                        "like_count": data.get("likeCount", 0),
+                        "comment_count": data.get("commentCount", 0),
+                        "view_count": data.get("viewCount", 0),
+                        "tags": data.get("tags", []),
+                        "categories": ["Social Media"],
+                    }
+                else:
+                    logger.warning(f"[TIKTOK] Supadata metadata error {resp.status_code}")
+        except Exception as e:
+            logger.warning(f"[TIKTOK] Supadata metadata exception: {e}")
+
+    # ─── yt-dlp (fallback) ─────────────────────────────────────────────────
     # Circuit breaker check
     if _circuit_breaker.is_open():
-        logger.error("[TIKTOK] Circuit breaker is open, skipping info request")
-        return None
+        logger.error("[TIKTOK] Circuit breaker is open, skipping yt-dlp info")
+        # Try oEmbed as last resort
+        oembed_info = await _get_info_via_oembed(url)
+        return oembed_info
 
     attempts = [
         {"headers": None, "label": "standard"},
@@ -355,6 +395,76 @@ async def _get_info_via_oembed(url: str) -> Optional[Dict[str, Any]]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🥇 SUPADATA API — PRIORITAIRE (texte natif ou STT côté Supadata)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def _get_transcript_supadata_tiktok(
+    url: str,
+    video_id: str,
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    Récupère le transcript TikTok via l'API unifiée Supadata.
+    Endpoint: GET https://api.supadata.ai/v1/transcript?url=...
+    Supadata gère nativement TikTok (captions + fallback STT côté serveur).
+    """
+    api_key = get_supadata_key()
+    if not api_key:
+        logger.info("[TIKTOK] Supadata skipped: no API key")
+        return None, None, None
+
+    logger.info(f"[TIKTOK] Supadata: trying for {video_id}")
+
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.get(
+                "https://api.supadata.ai/v1/transcript",
+                params={"url": url},
+                headers={"x-api-key": api_key},
+            )
+
+            if resp.status_code == 200:
+                data = resp.json()
+
+                # Format: {"content": "...", "lang": "en", ...}
+                content = data.get("content", "")
+                lang = data.get("lang", "fr")
+
+                if content and len(content.strip()) >= 20:
+                    logger.info(f"[TIKTOK] Supadata SUCCESS: {len(content)} chars")
+                    return content.strip(), content.strip(), lang
+
+            elif resp.status_code == 202:
+                # Async job — poll for result
+                job_id = resp.json().get("jobId")
+                if job_id:
+                    logger.info(f"[TIKTOK] Supadata async job: {job_id}")
+                    for _ in range(12):  # 60s max (12 * 5s)
+                        await asyncio.sleep(5)
+                        poll_resp = await client.get(
+                            f"https://api.supadata.ai/v1/transcript/{job_id}",
+                            headers={"x-api-key": api_key},
+                        )
+                        if poll_resp.status_code == 200:
+                            poll_data = poll_resp.json()
+                            content = poll_data.get("content", "")
+                            lang = poll_data.get("lang", "fr")
+                            if content and len(content.strip()) >= 20:
+                                logger.info(f"[TIKTOK] Supadata async SUCCESS: {len(content)} chars")
+                                return content.strip(), content.strip(), lang
+                        elif poll_resp.status_code == 202:
+                            continue  # Still processing
+                        else:
+                            break
+            else:
+                logger.warning(f"[TIKTOK] Supadata error: {resp.status_code}")
+
+    except Exception as e:
+        logger.error(f"[TIKTOK] Supadata exception: {e}")
+
+    return None, None, None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 🎙️ TRANSCRIPTION COMPLÈTE
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -439,6 +549,17 @@ async def get_tiktok_transcript(
                 print(f"🗄️ DB Cache SAVED for tiktok_{vid}", flush=True)
             except Exception as e:
                 print(f"⚠️ DB Cache save error for tiktok_{vid}: {e}", flush=True)
+
+    # ─── Phase 0.5 : Supadata API (PRIORITAIRE) ──────────────────────────
+    logger.info(f"[TIKTOK] Phase 0.5: Supadata API (priority) for {vid}")
+    try:
+        supadata_result = await _get_transcript_supadata_tiktok(url, vid)
+        if supadata_result[0]:
+            _circuit_breaker.record_success()
+            await _cache_result(supadata_result, "tiktok-supadata")
+            return supadata_result
+    except Exception as e:
+        logger.warning(f"[TIKTOK] Supadata failed: {e}")
 
     # ─── Phase 1 : yt-dlp standard ────────────────────────────────────────
     audio_data, audio_ext = await _download_with_retry(url, label="phase1-standard")

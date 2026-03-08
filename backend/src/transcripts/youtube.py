@@ -1,35 +1,36 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
-║  📺 YOUTUBE SERVICE v6.0 — ULTRA-RESILIENT TRANSCRIPT EXTRACTION                   ║
+║  📺 YOUTUBE SERVICE v7.0 — SUPADATA PRIORITAIRE + STT SHORTS ONLY                  ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
-║  🆕 v6.0: FIABILITÉ MAXIMALE + PERFORMANCE                                         ║
+║  🆕 v7.0: SUPADATA EN PRIORITÉ + STT RÉSERVÉ AUX SHORTS                           ║
+║  • 🥇 Supadata API en PRIORITÉ (seul, avant tout le reste)                        ║
 ║  • 🔄 User-agents rotatifs (anti-détection)                                        ║
 ║  • 🛡️ Options anti-bot renforcées pour yt-dlp (mweb, retries, sleep)              ║
 ║  • 🌐 Invidious (10 instances) + Piped (8 instances)                               ║
-║  • 🎙️ 4 services audio: Groq Whisper, OpenAI Whisper, Deepgram, AssemblyAI        ║
-║  • ⚡ Phase 1 en PARALLÈLE (4 méthodes texte simultanées)                          ║
+║  • 🎙️ STT (Groq/OpenAI/Deepgram/AssemblyAI) — SHORTS UNIQUEMENT                  ║
 ║  • 🔌 Circuit Breaker (skip méthodes cassées)                                      ║
 ║  • 📈 Exponential Backoff (retries intelligents)                                   ║
 ║  • 🏥 Instance Health Manager (évite instances mortes)                             ║
 ║  • 🌍 Support 12+ langues (fr, en, es, de, pt, it, nl, ru, ja, ko, zh, ar)        ║
-║  • ⏱️ Timeouts augmentés pour connexions lentes                                    ║
 ║                                                                                    ║
-║  ARCHITECTURE (10 méthodes en 3 phases):                                           ║
-║  ┌─ Phase 1: Texte EN PARALLÈLE (rapide) ─────────────────────────────────────────┐║
-║  │  1. Supadata API (stable, payant)                                              │║
+║  ARCHITECTURE (10 méthodes en 4 phases):                                           ║
+║  ┌─ Phase 0: Supadata API EN PRIORITÉ (seul) ─────────────────────────────────────┐║
+║  │  1. Supadata API (stable, payant, toujours essayé en premier)                  │║
+║  └────────────────────────────────────────────────────────────────────────────────┘║
+║  ┌─ Phase 1: Texte EN PARALLÈLE (si Supadata échoue) ────────────────────────────┐║
 ║  │  2. youtube-transcript-api (gratuit, rapide)                                   │║
 ║  │  3. Invidious API (10 instances, contourne blocage)                            │║
-║  │  4. Piped API (8 instances, alternative Invidious)  [NOUVEAU]                  │║
+║  │  4. Piped API (8 instances, alternative Invidious)                             │║
 ║  └────────────────────────────────────────────────────────────────────────────────┘║
 ║  ┌─ Phase 2: yt-dlp (séquentiel, plus lent) ──────────────────────────────────────┐║
 ║  │  5. yt-dlp manual subtitles (avec anti-bot)                                    │║
 ║  │  6. yt-dlp auto-captions (avec anti-bot)                                       │║
 ║  └────────────────────────────────────────────────────────────────────────────────┘║
-║  ┌─ Phase 3: Audio transcription (dernier recours) ───────────────────────────────┐║
+║  ┌─ Phase 3: Audio STT (SHORTS UNIQUEMENT — dernier recours) ────────────────────┐║
 ║  │  7. Groq Whisper (rapide, gratuit jusqu'à 25MB)                                │║
-║  │  8. OpenAI Whisper (fallback si Groq échoue)  [NOUVEAU]                        │║
+║  │  8. OpenAI Whisper (fallback si Groq échoue)                                   │║
 ║  │  9. Deepgram Nova-2 (ultra-rapide)                                             │║
-║  │  10. AssemblyAI (premium, très fiable)  [NOUVEAU]                              │║
+║  │  10. AssemblyAI (premium, très fiable)                                         │║
 ║  └────────────────────────────────────────────────────────────────────────────────┘║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
@@ -369,11 +370,48 @@ def extract_playlist_id(url: str) -> Optional[str]:
 
 async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
     """
-    Récupère les infos via Invidious puis yt-dlp en fallback.
-    🆕 v4.2: Multiple instances Invidious + meilleur logging
+    Récupère les infos via Supadata (prioritaire) puis Invidious puis yt-dlp.
+    🆕 v7.0: Supadata metadata en priorité
     """
     print(f"📺 [VIDEO INFO] Getting info for: {video_id}", flush=True)
-    
+
+    # ─── Supadata metadata (PRIORITAIRE) ─────────────────────────────────
+    supadata_key = get_supadata_key()
+    if supadata_key:
+        try:
+            yt_url = f"https://www.youtube.com/watch?v={video_id}"
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.get(
+                    "https://api.supadata.ai/v1/metadata",
+                    params={"url": yt_url},
+                    headers={"x-api-key": supadata_key},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    duration = data.get("duration", 0) or 0
+                    if duration > 0:
+                        print(f"  ✅ [SUPADATA] Metadata OK - Duration: {duration}s", flush=True)
+                        return {
+                            "video_id": video_id,
+                            "title": data.get("title", "Unknown"),
+                            "channel": data.get("channel", data.get("author", "Unknown")),
+                            "thumbnail_url": data.get("thumbnail", f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"),
+                            "duration": duration,
+                            "upload_date": data.get("uploadDate"),
+                            "description": (data.get("description", "") or "")[:2000],
+                            "tags": data.get("tags", []),
+                            "categories": [],
+                            "view_count": data.get("viewCount"),
+                            "like_count": data.get("likeCount"),
+                        }
+                    else:
+                        print(f"  ⚠️ [SUPADATA] Metadata OK but no duration", flush=True)
+                else:
+                    print(f"  ⚠️ [SUPADATA] Metadata error {resp.status_code}", flush=True)
+        except Exception as e:
+            print(f"  ⚠️ [SUPADATA] Metadata exception: {str(e)[:100]}", flush=True)
+
+    # ─── Invidious (fallback) ─────────────────────────────────────────────
     # Essayer plusieurs instances Invidious
     for instance in INVIDIOUS_INSTANCES[:5]:  # Essayer 5 instances
         try:
@@ -618,25 +656,25 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
     if not api_key:
         print(f"  ⏭️ [SUPADATA] Skipped: No API key", flush=True)
         return None, None, None
-    
+
     print(f"  🥇 [SUPADATA] Trying...", flush=True)
-    
+
     try:
         async with httpx.AsyncClient() as client:
-            # Plus de langues pour maximiser les chances
+            # ─── Méthode 1 : Endpoint YouTube-specific (segments + timestamps) ───
             for lang in ["fr", "en", "es", "de", "pt", "it", None]:
                 params = {"videoId": video_id}
                 if lang:
                     params["lang"] = lang
-                
+
                 try:
                     response = await client.get(
                         "https://api.supadata.ai/v1/youtube/transcript",
                         params=params,
-                        headers={"Authorization": f"Bearer {api_key}"},
+                        headers={"x-api-key": api_key},
                         timeout=TIMEOUTS["supadata"]
                     )
-                    
+
                     if response.status_code == 200:
                         data = response.json()
                         segments = []
@@ -645,14 +683,14 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
                         elif isinstance(data, dict):
                             segments = data.get("segments", data.get("transcript", []))
                             if isinstance(segments, str):
-                                print(f"  ✅ [SUPADATA] Success: {len(segments)} chars", flush=True)
+                                print(f"  ✅ [SUPADATA] YT-specific success: {len(segments)} chars", flush=True)
                                 return segments, segments, lang or "fr"
-                        
+
                         if segments:
                             simple_parts = []
                             timestamped_parts = []
                             last_ts = -30
-                            
+
                             for seg in segments:
                                 text = seg.get("text", "").strip()
                                 start = seg.get("start", seg.get("offset", 0))
@@ -665,27 +703,74 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
                                     last_ts = start
                                 else:
                                     timestamped_parts.append(f" {text}")
-                            
+
                             simple = " ".join(simple_parts)
                             timestamped = "".join(timestamped_parts).strip()
-                            
+
                             if simple:
-                                print(f"  ✅ [SUPADATA] Success: {len(simple)} chars", flush=True)
+                                print(f"  ✅ [SUPADATA] YT-specific success: {len(simple)} chars", flush=True)
                                 return simple, timestamped, lang or "fr"
-                    
+
                     elif response.status_code == 404:
                         continue
                     else:
-                        print(f"  ⚠️ [SUPADATA] Error {response.status_code}", flush=True)
+                        print(f"  ⚠️ [SUPADATA] YT-specific error {response.status_code}", flush=True)
                         break
-                        
+
                 except httpx.TimeoutException:
-                    print(f"  ⚠️ [SUPADATA] Timeout", flush=True)
+                    print(f"  ⚠️ [SUPADATA] YT-specific timeout", flush=True)
                     break
-    
+
+            # ─── Méthode 2 : Endpoint unifié (fallback — supporte STT côté Supadata) ───
+            print(f"  🔄 [SUPADATA] Trying unified endpoint (with AI fallback)...", flush=True)
+            try:
+                url = f"https://www.youtube.com/watch?v={video_id}"
+                response = await client.get(
+                    "https://api.supadata.ai/v1/transcript",
+                    params={"url": url},
+                    headers={"x-api-key": api_key},
+                    timeout=60
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    content = data.get("content", "")
+                    detected_lang = data.get("lang", "fr")
+                    if content and len(content.strip()) >= 20:
+                        print(f"  ✅ [SUPADATA] Unified success: {len(content)} chars", flush=True)
+                        return content.strip(), content.strip(), detected_lang
+
+                elif response.status_code == 202:
+                    # Async job — poll
+                    job_id = response.json().get("jobId")
+                    if job_id:
+                        print(f"  ⏳ [SUPADATA] Async job {job_id}, polling...", flush=True)
+                        for _ in range(12):  # 60s max
+                            await asyncio.sleep(5)
+                            poll = await client.get(
+                                f"https://api.supadata.ai/v1/transcript/{job_id}",
+                                headers={"x-api-key": api_key},
+                            )
+                            if poll.status_code == 200:
+                                pd = poll.json()
+                                content = pd.get("content", "")
+                                detected_lang = pd.get("lang", "fr")
+                                if content and len(content.strip()) >= 20:
+                                    print(f"  ✅ [SUPADATA] Async success: {len(content)} chars", flush=True)
+                                    return content.strip(), content.strip(), detected_lang
+                            elif poll.status_code == 202:
+                                continue
+                            else:
+                                break
+                else:
+                    print(f"  ⚠️ [SUPADATA] Unified error {response.status_code}", flush=True)
+
+            except httpx.TimeoutException:
+                print(f"  ⚠️ [SUPADATA] Unified timeout", flush=True)
+
     except Exception as e:
         print(f"  ⚠️ [SUPADATA] Exception: {e}", flush=True)
-    
+
     return None, None, None
 
 
@@ -1742,14 +1827,16 @@ async def _compress_audio(audio_data: bytes, audio_ext: str, source_name: str = 
 # 🎯 FONCTION PRINCIPALE — 10 MÉTHODES EN 3 PHASES (PARALLÈLE + SÉQUENTIEL)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None, is_short: bool = False) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
-    🎯 FONCTION PRINCIPALE v6.0 - 10 méthodes en 3 phases
+    🎯 FONCTION PRINCIPALE v7.0 - Supadata PRIORITAIRE + STT Shorts only
     Retourne: (transcript_simple, transcript_timestamped, lang)
 
     Architecture:
-    ┌─ Phase 1: Texte EN PARALLÈLE (rapide) ─────────────────────────────────────────┐
-    │  1. Supadata API (stable, payant)                                              │
+    ┌─ Phase 0: Supadata API EN PRIORITÉ (seul, rapide, payant) ───────────────────┐
+    │  1. Supadata API (stable, payant) — TOUJOURS essayé en premier                │
+    └────────────────────────────────────────────────────────────────────────────────┘
+    ┌─ Phase 1: Texte EN PARALLÈLE (si Supadata échoue) ──────────────────────────────┐
     │  2. youtube-transcript-api (gratuit, rapide)                                   │
     │  3. Invidious API (10 instances, contourne blocage)                            │
     │  4. Piped API (8 instances, alternative Invidious)                             │
@@ -1758,7 +1845,7 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
     │  5. yt-dlp manual subtitles (avec anti-bot)                                    │
     │  6. yt-dlp auto-captions (avec anti-bot)                                       │
     └────────────────────────────────────────────────────────────────────────────────┘
-    ┌─ Phase 3: Audio transcription (dernier recours) ───────────────────────────────┐
+    ┌─ Phase 3: Audio STT (SHORTS UNIQUEMENT — dernier recours) ───────────────────┐
     │  7. Groq Whisper (rapide, gratuit jusqu'à 25MB)                                │
     │  8. OpenAI Whisper (fallback si Groq échoue)                                   │
     │  9. Deepgram Nova-2 (ultra-rapide)                                             │
@@ -1767,7 +1854,7 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
     """
     print(f"", flush=True)
     print(f"{'='*70}", flush=True)
-    print(f"🔍 TRANSCRIPT EXTRACTION v6.0 for {video_id}", flush=True)
+    print(f"🔍 TRANSCRIPT EXTRACTION v7.0 for {video_id} (is_short={is_short})", flush=True)
     print(f"{'='*70}", flush=True)
 
     # ═══════════════════════════════════════════════════════════════════════════════
@@ -1809,15 +1896,57 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
         except Exception as e:
             print(f"⚠️ DB Cache error (continuing): {e}", flush=True)
 
+    # Helper pour cacher un résultat réussi (évite la duplication de code)
+    async def _cache_success(vid: str, simple: str, timestamped: str, lang: str, method_name: str):
+        if CACHE_AVAILABLE:
+            try:
+                ck = make_cache_key("transcript", vid)
+                await cache_service.set(ck, {"simple": simple, "timestamped": timestamped, "lang": lang})
+                print(f"💾 Transcript cached: {ck}", flush=True)
+            except Exception:
+                pass
+        if DB_CACHE_AVAILABLE:
+            try:
+                await save_transcript_to_cache(vid, simple, timestamped, lang, platform="youtube", extraction_method=method_name, thumbnail_url=f"https://img.youtube.com/vi/{vid}/mqdefault.jpg")
+                print(f"🗄️ DB Cache SAVED for {vid}", flush=True)
+            except Exception as e:
+                print(f"⚠️ DB Cache save error for {vid}: {e}", flush=True)
+
     # ═══════════════════════════════════════════════════════════════════════════════
-    # PHASE 1: Méthodes texte EN PARALLÈLE (rapide)
+    # PHASE 0: Supadata API EN PRIORITÉ (seul, le plus fiable)
     # ═══════════════════════════════════════════════════════════════════════════════
     print(f"", flush=True)
-    print(f"📋 PHASE 1: Text methods (PARALLEL)", flush=True)
+    print(f"🥇 PHASE 0: Supadata API (PRIORITY)", flush=True)
+    print(f"─" * 50, flush=True)
+
+    supadata_cb = get_circuit_breaker("supadata")
+    if supadata_cb.can_execute():
+        for attempt in range(2):
+            try:
+                simple, timestamped, lang = await get_transcript_supadata(video_id, supadata_key)
+                if simple and timestamped:
+                    supadata_cb.record_success()
+                    print(f"✅ SUCCESS with Supadata API (Phase 0 - Priority)", flush=True)
+                    print(f"{'='*70}", flush=True)
+                    await _cache_success(video_id, simple, timestamped, lang, "Supadata API")
+                    return simple, timestamped, lang
+            except Exception as e:
+                print(f"  ⚠️ [Supadata] Attempt {attempt + 1} failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
+            if attempt == 0:
+                await asyncio.sleep(calculate_backoff(attempt))
+        supadata_cb.record_failure()
+        print(f"  ❌ [Supadata] Failed — falling back to Phase 1", flush=True)
+    else:
+        print(f"  ⏭️ [Supadata] Skipped (circuit OPEN)", flush=True)
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # PHASE 1: Méthodes texte EN PARALLÈLE (sans Supadata)
+    # ═══════════════════════════════════════════════════════════════════════════════
+    print(f"", flush=True)
+    print(f"📋 PHASE 1: Text methods (PARALLEL — sans Supadata)", flush=True)
     print(f"─" * 50, flush=True)
 
     phase1_methods = [
-        ("Supadata API", "supadata", lambda: get_transcript_supadata(video_id, supadata_key)),
         ("youtube-transcript-api", "ytapi", lambda: get_transcript_ytapi(video_id)),
         ("Invidious API", "invidious", lambda: get_transcript_invidious(video_id)),
         ("Piped API", "piped", lambda: get_transcript_piped(video_id)),
@@ -1859,21 +1988,7 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
                 print(f"", flush=True)
                 print(f"✅ SUCCESS with {name} (Phase 1 - Parallel)", flush=True)
                 print(f"{'='*70}", flush=True)
-                # Cache the transcript
-                if CACHE_AVAILABLE:
-                    try:
-                        cache_key = make_cache_key("transcript", video_id)
-                        await cache_service.set(cache_key, {"simple": simple, "timestamped": timestamped, "lang": lang})
-                        print(f"💾 Transcript cached: {cache_key}", flush=True)
-                    except Exception:
-                        pass
-                # DB Cache L2
-                if DB_CACHE_AVAILABLE:
-                    try:
-                        await save_transcript_to_cache(video_id, simple, timestamped, lang, platform="youtube", extraction_method=name, thumbnail_url=f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg")
-                        print(f"🗄️ DB Cache SAVED for {video_id}", flush=True)
-                    except Exception as e:
-                        print(f"⚠️ DB Cache save error for {video_id}: {e}", flush=True)
+                await _cache_success(video_id, simple, timestamped, lang, name)
                 return simple, timestamped, lang
 
     # ═══════════════════════════════════════════════════════════════════════════════
@@ -1900,24 +2015,9 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
                 simple, timestamped, lang = await method()
                 if simple and timestamped:
                     cb.record_success()
-                    print(f"", flush=True)
                     print(f"✅ SUCCESS with {name} (Phase 2)", flush=True)
                     print(f"{'='*70}", flush=True)
-                    # Cache the transcript
-                    if CACHE_AVAILABLE:
-                        try:
-                            cache_key = make_cache_key("transcript", video_id)
-                            await cache_service.set(cache_key, {"simple": simple, "timestamped": timestamped, "lang": lang})
-                            print(f"💾 Transcript cached: {cache_key}", flush=True)
-                        except Exception:
-                            pass
-                    # DB Cache L2
-                    if DB_CACHE_AVAILABLE:
-                        try:
-                            await save_transcript_to_cache(video_id, simple, timestamped, lang, platform="youtube", extraction_method=name, thumbnail_url=f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg")
-                            print(f"🗄️ DB Cache SAVED for {video_id}", flush=True)
-                        except Exception as e:
-                            print(f"⚠️ DB Cache save error for {video_id}: {e}", flush=True)
+                    await _cache_success(video_id, simple, timestamped, lang, name)
                     return simple, timestamped, lang
             except Exception as e:
                 print(f"  ⚠️ [{name}] Attempt {attempt + 1} failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
@@ -1926,66 +2026,56 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
         cb.record_failure()
 
     # ═══════════════════════════════════════════════════════════════════════════════
-    # PHASE 3: Audio transcription (dernier recours - toujours fonctionne)
+    # PHASE 3: Audio STT (SHORTS UNIQUEMENT — dernier recours)
     # ═══════════════════════════════════════════════════════════════════════════════
-    print(f"", flush=True)
-    print(f"📋 PHASE 3: Audio transcription (LAST RESORT)", flush=True)
-    print(f"─" * 50, flush=True)
+    if not is_short:
+        print(f"", flush=True)
+        print(f"⏭️ PHASE 3: SKIPPED (not a Short — STT réservé aux Shorts et TikTok)", flush=True)
+        print(f"─" * 50, flush=True)
+    else:
+        print(f"", flush=True)
+        print(f"📋 PHASE 3: Audio STT (SHORT detected — last resort)", flush=True)
+        print(f"─" * 50, flush=True)
 
-    # Télécharger l'audio une seule fois pour tous les services
-    print(f"  🎵 Downloading audio for transcription...", flush=True)
-    audio_data, audio_ext = await _download_audio_for_transcription(video_id)
+        # Télécharger l'audio une seule fois pour tous les services
+        print(f"  🎵 Downloading audio for transcription...", flush=True)
+        audio_data, audio_ext = await _download_audio_for_transcription(video_id)
 
-    if not audio_data:
-        print(f"  ❌ Failed to download audio - trying services anyway", flush=True)
+        if not audio_data:
+            print(f"  ❌ Failed to download audio - trying services anyway", flush=True)
 
-    phase3_methods = [
-        ("Groq Whisper", "whisper", lambda: get_transcript_whisper(video_id)),
-        ("OpenAI Whisper", "openai_whisper", lambda: get_transcript_openai_whisper(video_id, audio_data, audio_ext)),
-        ("Deepgram Nova-2", "deepgram", lambda: get_transcript_deepgram(video_id)),
-        ("AssemblyAI", "assemblyai", lambda: get_transcript_assemblyai(video_id, audio_data, audio_ext)),
-    ]
+        phase3_methods = [
+            ("Groq Whisper", "whisper", lambda: get_transcript_whisper(video_id)),
+            ("OpenAI Whisper", "openai_whisper", lambda: get_transcript_openai_whisper(video_id, audio_data, audio_ext)),
+            ("Deepgram Nova-2", "deepgram", lambda: get_transcript_deepgram(video_id)),
+            ("AssemblyAI", "assemblyai", lambda: get_transcript_assemblyai(video_id, audio_data, audio_ext)),
+        ]
 
-    for name, cb_name, method in phase3_methods:
-        cb = get_circuit_breaker(cb_name)
-        if not cb.can_execute():
-            print(f"  ⏭️ [{name}] Skipped (circuit OPEN)", flush=True)
-            continue
+        for name, cb_name, method in phase3_methods:
+            cb = get_circuit_breaker(cb_name)
+            if not cb.can_execute():
+                print(f"  ⏭️ [{name}] Skipped (circuit OPEN)", flush=True)
+                continue
 
-        print(f"  🎙️ [{name}] Trying...", flush=True)
-        try:
-            simple, timestamped, lang = await method()
-            if simple:
-                cb.record_success()
-                print(f"", flush=True)
-                print(f"✅ SUCCESS with {name} (Phase 3 - Audio)", flush=True)
-                print(f"{'='*70}", flush=True)
-                result_ts = timestamped or simple
-                # Cache the transcript
-                if CACHE_AVAILABLE:
-                    try:
-                        cache_key = make_cache_key("transcript", video_id)
-                        await cache_service.set(cache_key, {"simple": simple, "timestamped": result_ts, "lang": lang})
-                        print(f"💾 Transcript cached: {cache_key}", flush=True)
-                    except Exception:
-                        pass
-                # DB Cache L2
-                if DB_CACHE_AVAILABLE:
-                    try:
-                        await save_transcript_to_cache(video_id, simple, result_ts, lang, platform="youtube", extraction_method=name, thumbnail_url=f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg")
-                        print(f"🗄️ DB Cache SAVED for {video_id}", flush=True)
-                    except Exception as e:
-                        print(f"⚠️ DB Cache save error for {video_id}: {e}", flush=True)
-                return simple, result_ts, lang
-        except Exception as e:
-            print(f"  ⚠️ [{name}] Failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
-        cb.record_failure()
+            print(f"  🎙️ [{name}] Trying...", flush=True)
+            try:
+                simple, timestamped, lang = await method()
+                if simple:
+                    cb.record_success()
+                    print(f"✅ SUCCESS with {name} (Phase 3 - Audio STT)", flush=True)
+                    print(f"{'='*70}", flush=True)
+                    result_ts = timestamped or simple
+                    await _cache_success(video_id, simple, result_ts, lang, name)
+                    return simple, result_ts, lang
+            except Exception as e:
+                print(f"  ⚠️ [{name}] Failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
+            cb.record_failure()
 
     # ═══════════════════════════════════════════════════════════════════════════════
     # ÉCHEC TOTAL — Log détaillé pour diagnostic
     # ═══════════════════════════════════════════════════════════════════════════════
     print(f"", flush=True)
-    print(f"❌ FAILED: All 10 methods failed for {video_id}", flush=True)
+    print(f"❌ FAILED: All methods failed for {video_id} (is_short={is_short})", flush=True)
     # Log l'état des circuit breakers pour diagnostic
     for cb_name in ["supadata", "ytapi", "invidious", "piped", "ytdlp", "ytdlp_auto", "whisper", "openai_whisper", "deepgram", "assemblyai"]:
         cb = get_circuit_breaker(cb_name)
