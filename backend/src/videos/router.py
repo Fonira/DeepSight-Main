@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, U
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import get_session, User
-from auth.dependencies import get_current_user, get_verified_user, require_plan, check_daily_limit, require_feature
+from auth.dependencies import get_current_user, get_verified_user, require_plan, check_daily_limit, require_feature, get_current_admin
 from core.config import PLAN_LIMITS, CATEGORIES
 
 # Import du système de sécurité
@@ -255,12 +255,13 @@ async def analyze_video_guest(
     # 5. Générer résumé court en mode accessible
     try:
         summary = await generate_summary(
+            title=video_info.get("title", ""),
             transcript=transcript_text,
-            mode="accessible",
             category=category,
             lang="fr",
-            video_title=video_info.get("title", ""),
-            video_channel=video_info.get("channel", video_info.get("author", "")),
+            mode="accessible",
+            channel=video_info.get("channel", video_info.get("author", "")),
+            platform=platform,
             target_length="short",
         )
     except Exception:
@@ -3623,3 +3624,21 @@ async def get_video_freshness(
     }
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔧 ADMIN — Backfill metadata for cached transcripts
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/admin/backfill-metadata")
+async def admin_backfill_metadata(
+    limit: int = Query(50, ge=1, le=500),
+    platform: Optional[str] = Query(None, pattern="^(youtube|tiktok)$"),
+    admin: User = Depends(get_current_admin),
+):
+    """
+    Admin endpoint — backfill metadata for cached transcripts
+    that haven't been enriched yet.
+    """
+    from transcripts.metadata_service import backfill_missing_metadata
+
+    result = await backfill_missing_metadata(limit=limit, platform=platform)
+    return {"status": "ok", **result}
