@@ -429,8 +429,22 @@ const LandingPage: React.FC = () => {
     return urlMatch ? urlMatch[0] : text.trim();
   };
 
-  const isValidVideoUrl = (url: string): boolean => {
-    return /(?:youtube\.com\/|youtu\.be\/|tiktok\.com\/)/.test(url);
+  const getUrlValidationError = (url: string): string | null => {
+    // Detect homepage-only URLs (user copied the page URL, not a video link)
+    if (/^https?:\/\/(www\.)?(youtube\.com|m\.youtube\.com)\/?(\?.*)?$/.test(url) ||
+        /^https?:\/\/(www\.)?(youtube\.com|m\.youtube\.com)\/shorts\/?(\?.*)?$/.test(url) ||
+        /^https?:\/\/(www\.)?tiktok\.com\/?(\?.*)?$/.test(url)) {
+      return language === 'fr'
+        ? 'C\'est l\'URL de la page YouTube, pas d\'une vidéo. Ouvrez un Short, appuyez sur "Partager" puis "Copier le lien".'
+        : 'This is the YouTube page URL, not a video. Open a Short, tap "Share" then "Copy link".';
+    }
+    // Check it's at least a YouTube/TikTok domain with a path
+    if (!/(?:youtube\.com\/.+|youtu\.be\/.+|tiktok\.com\/.+)/.test(url)) {
+      return language === 'fr'
+        ? 'Collez un lien YouTube ou TikTok valide (ex: https://youtu.be/xxx)'
+        : 'Paste a valid YouTube or TikTok link (e.g., https://youtu.be/xxx)';
+    }
+    return null;
   };
 
   const handleGuestPaste = async () => {
@@ -464,10 +478,9 @@ const LandingPage: React.FC = () => {
     setGuestError(null);
 
     // Validate URL format before calling API
-    if (!isValidVideoUrl(url)) {
-      setGuestError(language === 'fr'
-        ? 'Collez un lien YouTube ou TikTok valide (ex: https://youtu.be/xxx)'
-        : 'Paste a valid YouTube or TikTok link (e.g., https://youtu.be/xxx)');
+    const validationError = getUrlValidationError(url);
+    if (validationError) {
+      setGuestError(validationError);
       return;
     }
 
@@ -665,8 +678,8 @@ const LandingPage: React.FC = () => {
                 <div className="flex flex-col items-center gap-2 px-1">
                   <p className="text-xs text-text-muted text-center">
                     {language === 'fr'
-                      ? 'Choisissez un Short ou un TikTok, partagez-le, copiez le lien puis collez-le ici'
-                      : 'Pick a Short or TikTok, share it, copy the link and paste it here'}
+                      ? 'Dans l\'app YouTube/TikTok : ouvrez une vidéo \u2192 Partager \u2192 Copier le lien \u2192 collez ici'
+                      : 'In the YouTube/TikTok app: open a video \u2192 Share \u2192 Copy link \u2192 paste here'}
                   </p>
                   <div className="flex items-center gap-3">
                     <a
