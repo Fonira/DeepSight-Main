@@ -383,13 +383,15 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   // ═══════════════════════════════════════════════════════════════════
   // 📐 Dropdown position — recalculée dynamiquement via portal
   // ═══════════════════════════════════════════════════════════════════
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+  const [dropdownPos, setDropdownPos] = useState({ bottom: 0, left: 0 });
 
   const updateDropdownPos = useCallback(() => {
     const btn = modeSelectorRef.current?.querySelector('button');
     if (!btn) return;
     const rect = btn.getBoundingClientRect();
-    setDropdownPos({ top: rect.bottom + 8, left: rect.left });
+    // Ouvre vers le HAUT pour ne jamais cacher le contenu en dessous
+    const bottomFromViewport = window.innerHeight - rect.top + 8;
+    setDropdownPos({ bottom: bottomFromViewport, left: rect.left });
   }, []);
 
   useLayoutEffect(() => {
@@ -433,7 +435,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
                 <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setShowModeSelector(false)} />
                 <div
                   className="fixed w-56 bg-bg-elevated border border-border-default rounded-xl shadow-2xl overflow-hidden"
-                  style={{ zIndex: 9999, top: dropdownPos.top, left: dropdownPos.left }}
+                  style={{ zIndex: 9999, bottom: dropdownPos.bottom, left: dropdownPos.left }}
                 >
                 <div className="p-2">
                   {MODE_ORDER.map((m) => {
