@@ -1852,6 +1852,101 @@ export const shareApi = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🔥 TRENDING API — Public (no auth)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface TrendingVideo {
+  video_id: string;
+  title: string;
+  channel: string;
+  thumbnail_url: string | null;
+  category: string | null;
+  duration: number | null;
+  analysis_count: number;
+  unique_users: number;
+  avg_reliability_score: number | null;
+  latest_analyzed_at: string;
+  is_cached: boolean;
+}
+
+export interface TrendingResponse {
+  videos: TrendingVideo[];
+  period: string;
+  total_cached_videos: number;
+  generated_at: string;
+}
+
+export const trendingApi = {
+  async getTrending(
+    period: '7d' | '30d' | 'all' = '30d',
+    category?: string,
+    limit: number = 20,
+  ): Promise<TrendingResponse> {
+    const params = new URLSearchParams({ period, limit: String(limit) });
+    if (category) params.set('category', category);
+    return request(`/api/trending?${params}`, { skipAuth: true });
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🔍 SEARCH API — Semantic search (auth required)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface SemanticSearchResult {
+  video_id: string;
+  score: number;
+  text_preview: string;
+  video_title: string;
+  video_channel: string;
+  thumbnail_url: string | null;
+  category: string | null;
+}
+
+export interface SemanticSearchResponse {
+  results: SemanticSearchResult[];
+  query: string;
+  total_results: number;
+  searched_at: string;
+}
+
+export const searchApi = {
+  async semanticSearch(
+    query: string,
+    limit: number = 10,
+    category?: string,
+  ): Promise<SemanticSearchResponse> {
+    return request('/api/search/semantic', {
+      method: 'POST',
+      body: JSON.stringify({ query, limit, category }),
+    });
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 💾 VIDEO CACHE API — Public check
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface VideoCacheInfo {
+  cached: boolean;
+  video_id: string;
+  platform?: string;
+  lang?: string;
+  char_count?: number;
+  video_title?: string;
+  video_channel?: string;
+  thumbnail_url?: string;
+  video_duration?: number;
+  category?: string;
+  cached_at?: string;
+}
+
+export const videoCacheApi = {
+  async checkCache(videoId: string): Promise<VideoCacheInfo> {
+    return request(`/api/videos/check-cache/${videoId}`, { skipAuth: true });
+  },
+};
+
 // Export par défaut
 export default {
   auth: authApi,
@@ -1869,4 +1964,7 @@ export default {
   contact: contactApi,
   status: statusApi,
   share: shareApi,
+  trending: trendingApi,
+  search: searchApi,
+  videoCache: videoCacheApi,
 };

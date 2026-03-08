@@ -44,6 +44,7 @@ import { KeywordsModal } from "../components/KeywordsModal";
 import DoodleBackground from '../components/DoodleBackground';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import SmartInputBar, { SmartInputValue } from "../components/SmartInputBar";
+import { TrendingSection } from "../components/TrendingSection";
 import { AcademicSourcesPanel } from "../components/academic";
 // LoadingWordWidget désormais global dans App.tsx
 import VideoDiscoveryModal from "../components/VideoDiscoveryModal";
@@ -326,6 +327,7 @@ export const DashboardPage: React.FC = () => {
     if (smartInput.mode === 'url' && !smartInput.url?.trim()) return;
     if (smartInput.mode === 'text' && !smartInput.rawText?.trim()) return;
     if (smartInput.mode === 'search' && !smartInput.searchQuery?.trim()) return;
+    if (smartInput.mode === 'library' && !smartInput.libraryQuery?.trim()) return;
 
     // Validation URL côté client — supporte YouTube + TikTok
     if (smartInput.mode === 'url' && smartInput.url?.trim()) {
@@ -371,6 +373,45 @@ export const DashboardPage: React.FC = () => {
     setSelectedVideoTitle(null);
 
     try {
+      // === MODE LIBRARY: Recherche sémantique ===
+      if (smartInput.mode === 'library') {
+        setLoadingMessage(language === 'fr' ? "Recherche dans la bibliothèque..." : "Searching library...");
+
+        const { searchApi } = await import('../services/api');
+        const searchResult = await searchApi.semanticSearch(smartInput.libraryQuery!, 20);
+
+        if (searchResult.results.length > 0) {
+          // Convert to VideoCandidate format for the discovery modal
+          const candidates: VideoCandidate[] = searchResult.results.map((r, idx) => ({
+            video_id: r.video_id,
+            title: r.video_title,
+            channel: r.video_channel,
+            thumbnail_url: r.thumbnail_url || `https://img.youtube.com/vi/${r.video_id}/mqdefault.jpg`,
+            url: `https://www.youtube.com/watch?v=${r.video_id}`,
+            quality_score: Math.round(r.score * 100),
+            relevance_score: Math.round(r.score * 100),
+            view_count: 0,
+            duration_seconds: 0,
+            published_at: '',
+            language: '',
+            description: r.text_preview,
+          }));
+          setDiscoveryResult({
+            query: smartInput.libraryQuery!,
+            videos: candidates,
+            total_found: searchResult.total_results,
+            search_metadata: { source: 'library', languages: [] },
+          } as DiscoveryResponse);
+          setShowDiscoveryModal(true);
+        } else {
+          setError(language === 'fr'
+            ? "Aucun résultat trouvé dans la bibliothèque."
+            : "No results found in the library.");
+        }
+        setLoading(false);
+        return;
+      }
+
       // === MODE SEARCH: Découverte intelligente ===
       if (smartInput.mode === 'search') {
         setLoadingMessage(language === 'fr' ? "Recherche intelligente..." : "Smart search...");
@@ -1340,21 +1381,19 @@ export const DashboardPage: React.FC = () => {
               </div>
             )}
 
-            {/* Empty State */}
+            {/* Empty State → Trending Section */}
             {!selectedSummary && !loading && (
-              <div className="card p-12 text-center animate-fadeIn">
-                <div className="w-20 h-20 rounded-2xl bg-bg-tertiary flex items-center justify-center mx-auto mb-6">
-                  <Video className="w-10 h-10 text-text-muted" />
-                </div>
-                <h3 className="text-lg font-semibold text-text-primary mb-2">
-                  {language === 'fr' ? 'Prêt à analyser' : 'Ready to analyze'}
-                </h3>
-                <p className="text-text-secondary text-sm max-w-md mx-auto mb-6">
-                  {language === 'fr'
-                    ? 'Collez une URL YouTube ou TikTok ci-dessus pour générer une analyse détaillée avec résumé, fact-checking et chat contextuel.'
-                    : 'Paste a YouTube or TikTok URL above to generate a detailed analysis with summary, fact-checking and contextual chat.'}
-                </p>
-                {/* Widget "Le Saviez-Vous" désormais global dans App.tsx (coin bas-droite) */}
+              <div className="animate-fadeIn">
+                <TrendingSection
+                  language={language as 'fr' | 'en'}
+                  onVideoSelect={(videoId) => {
+                    setSmartInput({
+                      mode: 'url',
+                      url: `https://www.youtube.com/watch?v=${videoId}`,
+                      searchLanguages: smartInput.searchLanguages || ['fr', 'en'],
+                    });
+                  }}
+                />
               </div>
             )}
           </div>

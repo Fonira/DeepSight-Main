@@ -9,7 +9,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  FileText, Search,
+  FileText, Search, BookOpen,
   Sparkles, Info, Wand2, Play
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from './ui';
@@ -44,6 +44,8 @@ const ModeIconRenderer: React.FC<{ mode: InputMode; className?: string }> = ({ m
       );
     case 'text':
       return <FileText className={className} />;
+    case 'library':
+      return <BookOpen className={className} />;
     default:
       return <Search className={className} />;
   }
@@ -53,7 +55,7 @@ const ModeIconRenderer: React.FC<{ mode: InputMode; className?: string }> = ({ m
 // TYPES
 // ═══════════════════════════════════════════════════════════════════
 
-export type InputMode = 'url' | 'text' | 'search';
+export type InputMode = 'url' | 'text' | 'search' | 'library';
 
 export interface SmartInputValue {
   mode: InputMode;
@@ -63,6 +65,7 @@ export interface SmartInputValue {
   textSource?: string;
   searchQuery?: string;
   searchLanguages?: string[];
+  libraryQuery?: string;
 }
 
 interface SmartInputBarProps {
@@ -116,7 +119,7 @@ const SEARCH_LANGUAGES = [
 ];
 
 // Ordre des modes dans le dropdown (search en premier)
-const MODE_ORDER: InputMode[] = ['search', 'url', 'text'];
+const MODE_ORDER: InputMode[] = ['search', 'url', 'text', 'library'];
 
 const MODE_CONFIG = {
   search: {
@@ -152,6 +155,17 @@ const MODE_CONFIG = {
     focusBorder: 'focus-within:border-blue-500/60',
     gradient: 'from-blue-500 to-cyan-600',
     placeholder: { fr: 'Collez votre texte ici (min. 100 caractères)', en: 'Paste your text here (min. 100 characters)' },
+  },
+  library: {
+    icon: BookOpen,
+    label: { fr: 'Bibliothèque', en: 'Library' },
+    bgColor: 'bg-violet-500/10',
+    textColor: 'text-violet-400',
+    borderColor: 'border-violet-500/30',
+    hoverBorder: 'hover:border-violet-500/50',
+    focusBorder: 'focus-within:border-violet-500/60',
+    gradient: 'from-violet-500 to-purple-600',
+    placeholder: { fr: 'Rechercher dans les analyses DeepSight...', en: 'Search across DeepSight analyses...' },
   },
 };
 
@@ -190,6 +204,7 @@ const getInputValue = (value: SmartInputValue): string => {
     case 'url': return value.url || '';
     case 'text': return value.rawText || '';
     case 'search': return value.searchQuery || '';
+    case 'library': return value.libraryQuery || '';
     default: return '';
   }
 };
@@ -276,6 +291,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
         case 'url': newValue.url = text; break;
         case 'text': newValue.rawText = text; break;
         case 'search': newValue.searchQuery = text; break;
+        case 'library': newValue.libraryQuery = text; break;
       }
       onChange(newValue);
     }
@@ -299,6 +315,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
         newValue.textSource = value.textSource;
         break;
       case 'search': newValue.searchQuery = currentText; break;
+      case 'library': newValue.libraryQuery = currentText; break;
     }
 
     onChange(newValue);

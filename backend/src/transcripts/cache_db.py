@@ -89,6 +89,37 @@ async def get_cached_transcript(
 # WRITE
 # -----------------------------------------------------------------------
 
+async def check_transcript_cached(video_id: str) -> Optional[dict]:
+    """
+    Check if a transcript is cached and return metadata (without full text).
+    Used by /api/videos/check-cache/{video_id}.
+    """
+    try:
+        async with async_session_maker() as session:
+            result = await session.execute(
+                select(TranscriptCache).where(TranscriptCache.video_id == video_id)
+            )
+            entry = result.scalar_one_or_none()
+            if not entry:
+                return None
+            return {
+                "video_id": entry.video_id,
+                "platform": entry.platform,
+                "lang": entry.lang,
+                "char_count": entry.char_count,
+                "chunk_count": entry.chunk_count,
+                "video_title": entry.video_title,
+                "video_channel": entry.video_channel,
+                "thumbnail_url": entry.thumbnail_url,
+                "video_duration": entry.video_duration,
+                "category": entry.category,
+                "cached_at": entry.cached_at.isoformat() if entry.cached_at else None,
+            }
+    except Exception as e:
+        logger.warning(f"[DB-CACHE] Check error for {video_id}: {e}")
+        return None
+
+
 async def save_transcript_to_cache(
     video_id: str,
     simple: str,
@@ -96,6 +127,11 @@ async def save_transcript_to_cache(
     lang: Optional[str],
     platform: str = "youtube",
     extraction_method: Optional[str] = None,
+    video_title: Optional[str] = None,
+    video_channel: Optional[str] = None,
+    thumbnail_url: Optional[str] = None,
+    video_duration: Optional[int] = None,
+    category: Optional[str] = None,
 ) -> bool:
     """
     Save (upsert) a transcript to the DB cache.
@@ -119,10 +155,31 @@ async def save_transcript_to_cache(
 
             # Upsert: keep the longer transcript
             if existing and existing.char_count >= len(simple):
-                logger.info(
-                    f"[DB-CACHE] SKIP save for {video_id} "
-                    f"(existing {existing.char_count} chars >= new {len(simple)} chars)"
-                )
+                # Still update metadata if missing
+                updated = False
+                if video_title and not existing.video_title:
+                    existing.video_title = video_title
+                    updated = True
+                if video_channel and not existing.video_channel:
+                    existing.video_channel = video_channel
+                    updated = True
+                if thumbnail_url and not existing.thumbnail_url:
+                    existing.thumbnail_url = thumbnail_url
+                    updated = True
+                if video_duration and not existing.video_duration:
+                    existing.video_duration = video_duration
+                    updated = True
+                if category and not existing.category:
+                    existing.category = category
+                    updated = True
+                if updated:
+                    await session.commit()
+                    logger.info(f"[DB-CACHE] Metadata updated for {video_id}")
+                else:
+                    logger.info(
+                        f"[DB-CACHE] SKIP save for {video_id} "
+                        f"(existing {existing.char_count} chars >= new {len(simple)} chars)"
+                    )
                 return True
 
             # Split into chunks
@@ -142,6 +199,16 @@ async def save_transcript_to_cache(
                 existing.char_count = len(simple)
                 existing.extraction_method = extraction_method
                 existing.chunk_count = chunk_count
+                if video_title:
+                    existing.video_title = video_title
+                if video_channel:
+                    existing.video_channel = video_channel
+                if thumbnail_url:
+                    existing.thumbnail_url = thumbnail_url
+                if video_duration:
+                    existing.video_duration = video_duration
+                if category:
+                    existing.category = category
 
                 # Delete old chunks and insert new ones
                 await session.execute(
@@ -167,6 +234,11 @@ async def save_transcript_to_cache(
                     char_count=len(simple),
                     extraction_method=extraction_method,
                     chunk_count=chunk_count,
+                    video_title=video_title,
+                    video_channel=video_channel,
+                    thumbnail_url=thumbnail_url,
+                    video_duration=video_duration,
+                    category=category,
                 )
                 session.add(entry)
                 await session.flush()  # Get entry.id
@@ -186,6 +258,17 @@ async def save_transcript_to_cache(
                 f"({len(simple)} chars, {chunk_count} chunk(s), "
                 f"platform={platform}, method={extraction_method})"
             )
+
+            # Trigger embedding generation (non-blocking)
+            try:
+                import asyncio
+                from search.embedding_service import embed_transcript
+                asyncio.create_task(embed_transcript(video_id))
+            except ImportError:
+                pass  # Search module not available
+            except Exception as emb_err:
+                logger.warning(f"[DB-CACHE] Embedding trigger failed for {video_id}: {emb_err}")
+
             return True
 
     except Exception as e:

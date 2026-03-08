@@ -129,6 +129,25 @@ _task_store: Dict[str, Dict[str, Any]] = {}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 💾 CHECK CACHE — Public endpoint
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/check-cache/{video_id}")
+async def check_video_cache(video_id: str):
+    """
+    Public endpoint — check if a video transcript is cached and return metadata.
+    """
+    try:
+        from transcripts.cache_db import check_transcript_cached
+        result = await check_transcript_cached(video_id)
+        if result:
+            return {"cached": True, **result}
+        return {"cached": False, "video_id": video_id}
+    except ImportError:
+        return {"cached": False, "video_id": video_id, "error": "Cache module not available"}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 🎬 ANALYSE VIDÉO
 # ═══════════════════════════════════════════════════════════════════════════════
 
