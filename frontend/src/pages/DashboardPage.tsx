@@ -476,19 +476,19 @@ export const DashboardPage: React.FC = () => {
     setVideoUrl(url);
     
     try {
-      // 🎨 Utiliser l'API v2 avec personnalisation pour les vidéos découvertes
+      // 🎨 Utiliser l'API v2 avec personnalisation v4 (même logique que mode URL)
+      const apiParams = customizationToApiParams(analysisCustomization, language as 'fr' | 'en');
       const response = await videoApi.analyzeV2(
         url,
         {
           category: 'auto',
-          mode,
+          mode: apiParams.mode,
           deepResearch,
-          lang: language,
-          // Personnalisation v3
-          userPrompt: analysisCustomization.userPrompt || undefined,
-          antiAIDetection: analysisCustomization.antiAIDetection,
-          writingStyle: analysisCustomization.writingStyle,
-          targetLength: analysisCustomization.targetLength,
+          lang: apiParams.lang,
+          userPrompt: apiParams.user_prompt,
+          antiAIDetection: apiParams.anti_ai_detection,
+          writingStyle: apiParams.writing_style,
+          targetLength: apiParams.target_length,
         }
       );
       
