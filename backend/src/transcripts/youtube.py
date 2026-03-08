@@ -338,6 +338,8 @@ def extract_video_id(url: str) -> Optional[str]:
     patterns = [
         r'(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/v/)([a-zA-Z0-9_-]{11})',
         r'youtube\.com/shorts/([a-zA-Z0-9_-]{11})',
+        r'youtube\.com/live/([a-zA-Z0-9_-]{11})',
+        r'music\.youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})',
         r'^([a-zA-Z0-9_-]{11})$'
     ]
     for pattern in patterns:
@@ -484,6 +486,10 @@ async def get_video_info_ytdlp(video_id: str) -> Optional[Dict[str, Any]]:
                 "categories": data.get("categories", []),  # Catégories YouTube natives
                 "like_count": data.get("like_count"),
                 "comment_count": data.get("comment_count"),
+                "channel_id": data.get("channel_id"),
+                "channel_url": data.get("channel_url", data.get("uploader_url")),
+                "channel_follower_count": data.get("channel_follower_count"),
+                "language": data.get("language"),
             }
     except Exception as e:
         print(f"⚠️ yt-dlp info error: {e}", flush=True)
