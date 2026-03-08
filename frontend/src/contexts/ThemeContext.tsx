@@ -31,8 +31,12 @@ const TRANSITION_CLASS = 'theme-transitioning';
  * Détecte la préférence système
  */
 const getSystemTheme = (): ResolvedTheme => {
-  if (typeof window === 'undefined') return 'dark';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  try {
+    if (typeof window === 'undefined') return 'dark';
+    return window.matchMedia?.('(prefers-color-scheme: dark)')?.matches ? 'dark' : 'light';
+  } catch {
+    return 'dark';
+  }
 };
 
 /**
@@ -48,11 +52,13 @@ const resolveTheme = (theme: Theme): ResolvedTheme => {
 export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Initialisation depuis localStorage ou préférence système
   const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === 'undefined') return 'dark';
-    const saved = localStorage.getItem(STORAGE_KEY) as Theme | null;
-    if (saved && ['light', 'dark', 'system'].includes(saved)) {
-      return saved;
-    }
+    try {
+      if (typeof window === 'undefined') return 'dark';
+      const saved = localStorage.getItem(STORAGE_KEY) as Theme | null;
+      if (saved && ['light', 'dark', 'system'].includes(saved)) {
+        return saved;
+      }
+    } catch { /* Safari private mode */ }
     // Par défaut: dark mode (design académique)
     return 'dark';
   });
@@ -69,10 +75,14 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     // Écouter les changements de préférence système
     if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handler = () => updateResolvedTheme();
-      mediaQuery.addEventListener('change', handler);
-      return () => mediaQuery.removeEventListener('change', handler);
+      try {
+        const mediaQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
+        if (mediaQuery) {
+          const handler = () => updateResolvedTheme();
+          mediaQuery.addEventListener('change', handler);
+          return () => mediaQuery.removeEventListener('change', handler);
+        }
+      } catch { /* matchMedia unavailable */ }
     }
   }, [theme]);
 
@@ -106,7 +116,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
     
     // Persister le choix
-    localStorage.setItem(STORAGE_KEY, theme);
+    try { localStorage.setItem(STORAGE_KEY, theme); } catch { /* Safari private */ }
     
     // Retirer la classe de transition après l'animation
     const timer = setTimeout(() => {

@@ -344,24 +344,28 @@ export interface HistoryResponse {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function getAccessToken(): string | null {
-  return localStorage.getItem(TOKEN_KEYS.ACCESS);
+  try { return localStorage.getItem(TOKEN_KEYS.ACCESS); } catch { return null; }
 }
 
 export function getRefreshToken(): string | null {
-  return localStorage.getItem(TOKEN_KEYS.REFRESH);
+  try { return localStorage.getItem(TOKEN_KEYS.REFRESH); } catch { return null; }
 }
 
 export function setTokens(accessToken: string, refreshToken: string): void {
-  localStorage.setItem(TOKEN_KEYS.ACCESS, accessToken);
-  if (refreshToken) {
-    localStorage.setItem(TOKEN_KEYS.REFRESH, refreshToken);
-  }
+  try {
+    localStorage.setItem(TOKEN_KEYS.ACCESS, accessToken);
+    if (refreshToken) {
+      localStorage.setItem(TOKEN_KEYS.REFRESH, refreshToken);
+    }
+  } catch { /* Safari private mode */ }
 }
 
 export function clearTokens(): void {
-  localStorage.removeItem(TOKEN_KEYS.ACCESS);
-  localStorage.removeItem(TOKEN_KEYS.REFRESH);
-  localStorage.removeItem('cached_user');
+  try {
+    localStorage.removeItem(TOKEN_KEYS.ACCESS);
+    localStorage.removeItem(TOKEN_KEYS.REFRESH);
+    localStorage.removeItem('cached_user');
+  } catch { /* Safari private mode */ }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -444,7 +444,7 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
     >
       {/* Header */}
       <div
-        className="grid gap-2 p-4 bg-bg-secondary border-b border-border-primary min-w-[900px]"
+        className="grid gap-2 p-4 bg-bg-secondary border-b border-border-primary"
         style={{ gridTemplateColumns: `1.5fr repeat(${plans.length}, 1fr)` }}
       >
         <div className="font-semibold text-text-secondary text-sm">
@@ -477,7 +477,7 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
 
       {/* Categories */}
       {categories.map((cat) => (
-        <div key={cat.name} className="border-b border-border-primary last:border-b-0 min-w-[900px]">
+        <div key={cat.name} className="border-b border-border-primary last:border-b-0">
           <button
             onClick={() => toggleCategory(cat.name)}
             className="w-full p-3 bg-bg-tertiary/50 hover:bg-bg-tertiary transition-colors flex items-center gap-2"
@@ -526,7 +526,7 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
 
       {/* CTA Row */}
       <div
-        className="grid gap-2 p-4 bg-bg-secondary min-w-[900px]"
+        className="grid gap-2 p-4 bg-bg-secondary"
         style={{ gridTemplateColumns: `1.5fr repeat(${plans.length}, 1fr)` }}
       >
         <div />

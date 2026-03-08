@@ -731,10 +731,10 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
     animation: 'chatSlideInMobile 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
   } : isMaximized ? {
     position: 'fixed',
-    top: '20px',
-    left: '20px',
-    width: 'calc(100vw - 40px)',
-    height: 'calc(100vh - 40px)',
+    top: 'max(20px, env(safe-area-inset-top, 20px))',
+    left: 'max(20px, env(safe-area-inset-left, 20px))',
+    width: 'calc(100vw - max(40px, env(safe-area-inset-left, 20px) + env(safe-area-inset-right, 20px)))',
+    height: 'calc(100vh - max(40px, env(safe-area-inset-top, 20px) + env(safe-area-inset-bottom, 20px)))',
     zIndex: 9999,
     animation: hasAnimated ? undefined : 'chatSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
   } : {

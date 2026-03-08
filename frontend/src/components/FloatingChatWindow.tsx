@@ -14,7 +14,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   MessageSquare, X, Send, Globe, Bot, User,
   Minimize2, Maximize2, Move, Copy, Check,
@@ -139,7 +139,7 @@ const useDraggable = (initialPos: Position, storageKey: string) => {
     };
     const handleUp = () => {
       setIsDragging(false);
-      localStorage.setItem(`${storageKey}-pos`, JSON.stringify(position));
+      try { localStorage.setItem(`${storageKey}-pos`, JSON.stringify(position)); } catch { /* */ }
     };
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleUp);
@@ -185,7 +185,7 @@ const useResizable = (initialSize: Size, minSize: Size, maxSize: Size, storageKe
     };
     const handleUp = () => {
       setIsResizing(null);
-      localStorage.setItem(`${storageKey}-size`, JSON.stringify(size));
+      try { localStorage.setItem(`${storageKey}-size`, JSON.stringify(size)); } catch { /* */ }
     };
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleUp);
@@ -213,11 +213,18 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
   const [isMaximized, setIsMaximized] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showQuotaTooltip, setShowQuotaTooltip] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const defaultPos = { x: window.innerWidth - 620, y: 100 };
-  const defaultSize = { width: 580, height: 650 };
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
+
+  const defaultPos = useMemo(() => isMobile ? { x: 0, y: 0 } : { x: Math.max(0, window.innerWidth - 620), y: 100 }, [isMobile]);
+  const defaultSize = useMemo(() => isMobile ? { width: window.innerWidth, height: window.innerHeight } : { width: 580, height: 650 }, [isMobile]);
 
   const { position, setPosition, isDragging, handleMouseDown } = useDraggable(defaultPos, storageKey);
   const { size, setSize, isResizing, handleResizeStart } = useResizable(
@@ -359,7 +366,12 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
     <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 99999 }}>
       <div
         className="pointer-events-auto flex flex-col fcw-panel-enter"
-        style={{
+        style={isMobile ? {
+          position: 'fixed',
+          inset: 0,
+          overflow: 'hidden',
+          background: 'var(--bg-secondary, #12121a)',
+        } : {
           position: 'absolute',
           top: position.y,
           left: position.x,
@@ -372,8 +384,8 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
           transition: isDragging || isResizing ? 'none' : 'width 0.2s, height 0.2s',
         }}
       >
-        {/* Resize Handles */}
-        {!isMinimized && (
+        {/* Resize Handles (desktop only) */}
+        {!isMobile && !isMinimized && (
           <>
             <div onMouseDown={(e) => handleResizeStart('se', e)} className="absolute right-0 bottom-0 w-4 h-4 cursor-se-resize z-50" />
             <div onMouseDown={(e) => handleResizeStart('s', e)} className="absolute left-4 right-4 bottom-0 h-2 cursor-s-resize z-50" />
@@ -383,19 +395,19 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
 
         {/* ─── Header (style CorpusChat) ─── */}
         <div
-          onMouseDown={handleMouseDown}
-          onDoubleClick={handleDoubleClick}
+          onMouseDown={!isMobile ? handleMouseDown : undefined}
+          onDoubleClick={!isMobile ? handleDoubleClick : undefined}
           className="p-4 border-b border-border-subtle flex items-center justify-between flex-shrink-0 select-none"
-          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+          style={{ cursor: isMobile ? 'default' : isDragging ? 'grabbing' : 'grab' }}
         >
           <div className="flex items-center gap-2">
-            <Move className="w-3.5 h-3.5 text-text-muted opacity-40" />
+            {!isMobile && <Move className="w-3.5 h-3.5 text-text-muted opacity-40" />}
             <Bot className="w-5 h-5 text-accent-primary" />
             <span className="font-semibold text-text-primary">
               {t.headerTitle}
             </span>
             {subtitle && !isMinimized && (
-              <span className="text-xs text-text-muted truncate max-w-[200px]">— {subtitle}</span>
+              <span className="text-xs text-text-muted truncate max-w-[120px] sm:max-w-[200px]">— {subtitle}</span>
             )}
           </div>
           <div className="flex items-center gap-1">

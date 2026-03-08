@@ -499,14 +499,14 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
                 value={value.textTitle || ''}
                 onChange={(e) => onChange({ ...value, textTitle: e.target.value })}
                 placeholder={language === 'fr' ? 'Titre (optionnel)' : 'Title (optional)'}
-                className="flex-1 min-w-[150px] px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:border-blue-500/50 focus:outline-none"
+                className="flex-1 min-w-0 sm:min-w-[150px] px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:border-blue-500/50 focus:outline-none"
               />
               <input
                 type="text"
                 value={value.textSource || ''}
                 onChange={(e) => onChange({ ...value, textSource: e.target.value })}
                 placeholder={language === 'fr' ? 'Source (optionnel)' : 'Source (optional)'}
-                className="flex-1 min-w-[150px] px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:border-blue-500/50 focus:outline-none"
+                className="flex-1 min-w-0 sm:min-w-[150px] px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:border-blue-500/50 focus:outline-none"
               />
             </>
           )}

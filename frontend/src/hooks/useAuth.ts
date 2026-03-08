@@ -72,14 +72,16 @@ function getCachedUser(): User | null {
 }
 
 function setCachedUser(user: User | null): void {
-  if (user) {
-    localStorage.setItem(LOCAL_USER_KEY, JSON.stringify({
-      user,
-      timestamp: Date.now()
-    }));
-  } else {
-    localStorage.removeItem(LOCAL_USER_KEY);
-  }
+  try {
+    if (user) {
+      localStorage.setItem(LOCAL_USER_KEY, JSON.stringify({
+        user,
+        timestamp: Date.now()
+      }));
+    } else {
+      localStorage.removeItem(LOCAL_USER_KEY);
+    }
+  } catch { /* Safari private mode */ }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -201,7 +203,7 @@ export function useAuth(): UseAuthReturn {
       lastRefreshRef.current = 0;
       refreshInProgressRef.current = false;
       setCachedUser(null);
-      localStorage.removeItem(LOCAL_USER_KEY);
+      try { localStorage.removeItem(LOCAL_USER_KEY); } catch { /* */ }
     }
     
     // Check debounce seulement si pas force

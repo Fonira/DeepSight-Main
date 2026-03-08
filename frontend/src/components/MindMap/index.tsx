@@ -297,8 +297,7 @@ const MindMapInner: React.FC<MindMapProps> = ({
       {activeTab === 'map' && (
         <div 
           ref={reactFlowWrapper}
-          className="relative bg-gray-900 rounded-xl border border-border-subtle overflow-hidden"
-          style={{ height: '500px' }}
+          className="relative bg-gray-900 rounded-xl border border-border-subtle overflow-hidden h-[300px] sm:h-[400px] lg:h-[500px]"
         >
           <ReactFlow
             nodes={nodes}

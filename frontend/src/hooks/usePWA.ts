@@ -72,11 +72,17 @@ export function usePWA(): PWAState & PWAActions {
   }, []);
 
   // Vérifier si l'app est en mode standalone (installée)
-  const isInstalled = typeof window !== 'undefined' && (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as any).standalone === true ||
-    document.referrer.includes('android-app://')
-  );
+  const isInstalled = (() => {
+    try {
+      return typeof window !== 'undefined' && (
+        window.matchMedia?.('(display-mode: standalone)')?.matches ||
+        (window.navigator as any).standalone === true ||
+        document.referrer.includes('android-app://')
+      );
+    } catch {
+      return false;
+    }
+  })();
 
   const platform = detectPlatform();
 
@@ -161,7 +167,7 @@ export function usePWA(): PWAState & PWAActions {
       } else {
         setInstallDismissed(true);
         // Sauvegarder en localStorage pour ne pas redemander trop souvent
-        localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+        try { localStorage.setItem('pwa-install-dismissed', Date.now().toString()); } catch { /* */ }
         return false;
       }
     } catch (error) {
@@ -188,15 +194,17 @@ export function usePWA(): PWAState & PWAActions {
 
   // Vérifier si l'utilisateur a déjà refusé récemment
   useEffect(() => {
-    const dismissedAt = localStorage.getItem('pwa-install-dismissed');
-    if (dismissedAt) {
-      const daysSinceDismissed = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
-      if (daysSinceDismissed < 7) {
-        setInstallDismissed(true);
-      } else {
-        localStorage.removeItem('pwa-install-dismissed');
+    try {
+      const dismissedAt = localStorage.getItem('pwa-install-dismissed');
+      if (dismissedAt) {
+        const daysSinceDismissed = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
+        if (daysSinceDismissed < 7) {
+          setInstallDismissed(true);
+        } else {
+          localStorage.removeItem('pwa-install-dismissed');
+        }
       }
-    }
+    } catch { /* Safari private mode */ }
   }, []);
 
   return {

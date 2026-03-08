@@ -501,7 +501,7 @@ export const TournesolWidget: React.FC<TournesolWidgetProps> = ({
       {showInfoPopup && (
         <div 
           ref={popupRef}
-          className="absolute top-full mt-3 left-0 z-50 w-[420px] rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
+          className="absolute top-full mt-3 left-0 z-50 w-[calc(100vw-2rem)] sm:w-[420px] rounded-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200"
           style={{
             background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(10, 15, 30, 0.98) 100%)',
             border: '1px solid rgba(255, 215, 0, 0.3)',
