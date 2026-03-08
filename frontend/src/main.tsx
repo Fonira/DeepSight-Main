@@ -63,6 +63,20 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
+// 🔄 Force Service Worker update — purge stale caches that cause chunk loading crashes
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const reg of registrations) {
+      // Force the waiting SW to activate immediately
+      if (reg.waiting) {
+        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+      // Check for updates
+      reg.update().catch(() => {});
+    }
+  });
+}
+
 // Composant de fallback en cas d'erreur critique
 const ErrorFallback = () => (
   <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">

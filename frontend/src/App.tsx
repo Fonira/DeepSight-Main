@@ -502,7 +502,7 @@ const AppRoutes = () => {
                   }
                 >
                   <Route path="/dashboard" element={
-                    <RouteErrorBoundary variant="full" componentName="DashboardPage">
+                    <RouteErrorBoundary variant="full" componentName="DashboardPage" showDetails>
                       <Suspense fallback={<PageSkeleton variant="dashboard" />}>
                         <DashboardPage />
                       </Suspense>

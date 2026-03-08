@@ -428,7 +428,7 @@ export const LoadingWordGlobal: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
+  const [isVisible, setIsVisible] = useState(false); // 🆕 Fermé par défaut
 
   // 🆕 Position draggable — guard window access for SSR/Safari safety
   const { position, isDragging, handleMouseDown } = useDraggable(
@@ -481,13 +481,26 @@ export const LoadingWordGlobal: React.FC = () => {
 
   if (!isVisible) {
     return (
-      <button
-        onClick={() => setIsVisible(true)}
-        className="fixed bottom-4 right-4 z-50 bg-accent-primary text-white p-3 rounded-full shadow-lg hover:bg-accent-hover transition-colors"
-        title={didYouKnow}
-      >
-        💡
-      </button>
+      <>
+        <button
+          onClick={() => setIsVisible(true)}
+          className="fixed bottom-4 right-4 z-50 p-3.5 rounded-full shadow-xl hover:scale-110 active:scale-95 transition-transform"
+          title={didYouKnow}
+          style={{
+            background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)',
+            animation: 'widget-glow 2s ease-in-out infinite',
+            boxShadow: '0 0 20px rgba(6, 182, 212, 0.5), 0 0 40px rgba(139, 92, 246, 0.3)',
+          }}
+        >
+          <span className="text-lg filter drop-shadow-lg">💡</span>
+        </button>
+        <style>{`
+          @keyframes widget-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(6, 182, 212, 0.5), 0 0 40px rgba(139, 92, 246, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(6, 182, 212, 0.8), 0 0 60px rgba(139, 92, 246, 0.5), 0 0 80px rgba(6, 182, 212, 0.2); }
+          }
+        `}</style>
+      </>
     );
   }
 
