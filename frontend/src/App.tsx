@@ -15,7 +15,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation }
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./hooks/useAuth";
 import { AuthProvider } from "./contexts/AuthContext";
-import { ThemeProvider } from "./contexts/ThemeContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { LoadingWordProvider } from "./contexts/LoadingWordContext";
 import { PrivateRoute } from "./components/PrivateRoute";
@@ -351,11 +350,10 @@ const AppRoutes = () => {
   const auth = useAuth();
 
   return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <LoadingWordProvider>
-          <AuthProvider value={auth}>
-            <Router>
+    <LanguageProvider>
+      <LoadingWordProvider>
+        <AuthProvider value={auth}>
+          <Router>
             {/* ♿ Skip Link pour l'accessibilité */}
             <SkipLink targetId="main-content" />
             
@@ -578,7 +576,6 @@ const AppRoutes = () => {
           </AuthProvider>
         </LoadingWordProvider>
       </LanguageProvider>
-    </ThemeProvider>
   );
 };
 

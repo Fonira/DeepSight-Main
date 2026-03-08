@@ -44,7 +44,9 @@ function getStoredConsent(): CookiePreferences | null {
 }
 
 function storeConsent(prefs: CookiePreferences): void {
-  localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(prefs));
+  try {
+    localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(prefs));
+  } catch { /* Safari private mode */ }
 }
 
 /** Vérifie si l'utilisateur a donné son consentement analytics */

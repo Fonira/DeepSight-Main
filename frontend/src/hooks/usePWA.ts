@@ -189,7 +189,7 @@ export function usePWA(): PWAState & PWAActions {
   // Réinitialiser l'état dismissed
   const resetDismissed = useCallback(() => {
     setInstallDismissed(false);
-    localStorage.removeItem('pwa-install-dismissed');
+    try { localStorage.removeItem('pwa-install-dismissed'); } catch { /* Safari private */ }
   }, []);
 
   // Vérifier si l'utilisateur a déjà refusé récemment
