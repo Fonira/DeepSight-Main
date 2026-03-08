@@ -51,6 +51,8 @@ interface LoadingWordContextType {
   isLoading: boolean;
   error: string | null;
   refreshWord: () => void;
+  nextWord: () => void;
+  injectConcepts: (concepts: { term: string; definition: string; short_definition?: string; category?: string; wiki_url?: string; summary_id?: number; video_title?: string }[]) => void;
   startTimer: () => void;
   stopTimer: () => void;
   isTimerActive: boolean;
@@ -295,6 +297,53 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, [fetchWord]);
 
   /**
+   * 🆕 Mot suivant INSTANTANÉ — pas de réseau, pioche dans le cache local
+   */
+  const nextWord = useCallback(() => {
+    if (historyKeywordsCache.length > 0) {
+      useHistoryWord();
+    } else {
+      useLocalFallback();
+    }
+  }, [useHistoryWord, useLocalFallback]);
+
+  /**
+   * 🆕 Injecte des concepts enrichis (depuis ConceptsGlossary/KeywordsModal)
+   * Ces concepts deviennent prioritaires dans la rotation
+   */
+  const injectConcepts = useCallback((concepts: { term: string; definition: string; short_definition?: string; category?: string; wiki_url?: string; summary_id?: number; video_title?: string }[]) => {
+    if (!concepts || concepts.length === 0) return;
+
+    const newKeywords: HistoryKeyword[] = concepts.map(c => ({
+      term: c.term,
+      summary_id: c.summary_id || 0,
+      video_title: c.video_title || null,
+      video_id: null,
+      category: c.category || 'concept',
+      created_at: new Date().toISOString(),
+      definition: c.definition,
+      short_definition: c.short_definition || (c.definition.length > 80 ? c.definition.slice(0, 77) + '...' : c.definition),
+      wiki_url: c.wiki_url || null,
+      confidence: 'high',
+    }));
+
+    // Injecter en tête du cache (prioritaires)
+    const existingTerms = new Set(historyKeywordsCache.map(k => k.term.toLowerCase()));
+    const fresh = newKeywords.filter(k => !existingTerms.has(k.term.toLowerCase()));
+    historyKeywordsCache = [...fresh, ...historyKeywordsCache];
+    lastFetchTime = Date.now(); // Reset cache timer
+
+    // Afficher immédiatement un des nouveaux concepts
+    if (fresh.length > 0) {
+      const picked = fresh[Math.floor(Math.random() * fresh.length)];
+      const word = convertHistoryKeyword(picked);
+      setCurrentWord(word);
+      displayedWords.add(word.term.toLowerCase());
+      if (isMountedRef.current) setHasHistory(true);
+    }
+  }, []);
+
+  /**
    * Démarre le timer de rafraîchissement automatique
    */
   const startTimer = useCallback(() => {
@@ -356,6 +405,8 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         isLoading,
         error,
         refreshWord,
+        nextWord,
+        injectConcepts,
         startTimer,
         stopTimer,
         isTimerActive,

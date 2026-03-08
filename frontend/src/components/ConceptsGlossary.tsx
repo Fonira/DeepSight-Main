@@ -14,6 +14,7 @@ import React, { useState, useEffect, memo } from 'react';
 import { BookOpen, ChevronDown, ChevronUp, User, Building2, Cpu, Lightbulb, HelpCircle, RefreshCw, ExternalLink } from 'lucide-react';
 import { DeepSightSpinnerMicro, DeepSightSpinnerSmall } from './ui';
 import { videoApi } from '../services/api';
+import { useLoadingWord } from '../contexts/LoadingWordContext';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 TYPES
@@ -98,6 +99,7 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = memo(({
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const { injectConcepts } = useLoadingWord();
 
   // Charger les concepts quand on expand (via api.ts avec gestion auth/refresh)
   const loadConcepts = async () => {
@@ -108,8 +110,20 @@ export const ConceptsGlossary: React.FC<ConceptsGlossaryProps> = memo(({
 
     try {
       const data = await videoApi.getConcepts(summaryId);
-      setConcepts(data.concepts || []);
+      const loadedConcepts = data.concepts || [];
+      setConcepts(loadedConcepts);
       setHasLoaded(true);
+
+      // Injecter dans le widget "Le saviez-vous?" pour enrichir la rotation
+      if (loadedConcepts.length > 0) {
+        injectConcepts(loadedConcepts.map(c => ({
+          term: c.term,
+          definition: c.definition,
+          category: c.category,
+          wiki_url: c.wiki_url || undefined,
+          summary_id: summaryId,
+        })));
+      }
     } catch (err: unknown) {
       console.error('Error loading concepts:', err);
       const message = err instanceof Error ? err.message : '';

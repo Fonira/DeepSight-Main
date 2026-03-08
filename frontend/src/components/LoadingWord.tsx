@@ -134,7 +134,7 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
   showCategory = true,
 }) => {
   const navigate = useNavigate();
-  const { currentWord, isLoading, refreshWord } = useLoadingWord();
+  const { currentWord, isLoading, nextWord } = useLoadingWord();
   const { language } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
@@ -149,7 +149,7 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
         setDisplayedWord(currentWord);
         setIsExpanded(false);
         setIsVisible(true);
-      }, 300);
+      }, 200);
       return () => clearTimeout(timeout);
     } else if (currentWord && !displayedWord) {
       setDisplayedWord(currentWord);
@@ -305,14 +305,10 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
               </a>
             )}
 
-            {/* Refresh button */}
+            {/* Refresh button — instant, no network */}
             <button
-              onClick={refreshWord}
-              disabled={isLoading}
-              className={`
-                text-text-tertiary hover:text-accent-primary transition-colors
-                ${isLoading ? 'animate-spin' : ''}
-              `}
+              onClick={nextWord}
+              className="text-text-tertiary hover:text-accent-primary transition-colors active:scale-90"
               title={language === 'fr' ? 'Nouveau mot' : 'New word'}
             >
               🔄
@@ -333,7 +329,7 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
 
 export const LoadingWordCompact: React.FC<{ className?: string }> = ({ className = '' }) => {
   const navigate = useNavigate();
-  const { currentWord, refreshWord, isLoading } = useLoadingWord();
+  const { currentWord, nextWord, isLoading } = useLoadingWord();
   const { language } = useLanguage();
 
   if (!currentWord) {
@@ -360,9 +356,8 @@ export const LoadingWordCompact: React.FC<{ className?: string }> = ({ className
           💡 {didYouKnow}
         </p>
         <button
-          onClick={refreshWord}
-          disabled={isLoading}
-          className={`text-xs text-text-tertiary hover:text-accent-primary ${isLoading ? 'animate-spin' : ''}`}
+          onClick={nextWord}
+          className="text-xs text-text-tertiary hover:text-accent-primary active:scale-90 transition-transform"
         >
           🔄
         </button>
@@ -423,7 +418,7 @@ const extractSourceName = (url: string): string => {
 
 export const LoadingWordGlobal: React.FC = () => {
   const navigate = useNavigate();
-  const { currentWord, refreshWord, isLoading } = useLoadingWord();
+  const { currentWord, nextWord, isLoading } = useLoadingWord();
   const { language } = useLanguage();
   const { isAuthenticated } = useAuth();
   const [isMinimized, setIsMinimized] = useState(false);
@@ -535,10 +530,9 @@ export const LoadingWordGlobal: React.FC = () => {
         </span>
         <div className="flex items-center gap-0.5">
           <button
-            onClick={(e) => { e.stopPropagation(); refreshWord(); }}
-            disabled={isLoading}
-            className={`p-1.5 rounded text-text-tertiary hover:text-accent-primary hover:bg-accent-primary/10 transition-colors ${isLoading ? 'animate-spin' : ''}`}
-            title={language === 'fr' ? 'Nouveau mot' : 'New word'}
+            onClick={(e) => { e.stopPropagation(); nextWord(); }}
+            className="p-1.5 rounded text-text-tertiary hover:text-accent-primary hover:bg-accent-primary/10 active:scale-90 transition-all"
+            title={language === 'fr' ? 'Suivant' : 'Next'}
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
