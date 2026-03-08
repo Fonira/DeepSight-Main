@@ -628,9 +628,21 @@ export const authApi = {
   /**
    * Redirige vers Google OAuth
    * Utilisé par useAuth.loginWithGoogle()
-   * Redirection directe (pas de fetch cross-origin) pour compatibilité Safari mobile
+   * Stratégie: fetch auth_url puis redirect côté client
+   * Fallback: navigation directe vers Railway si fetch échoue (Safari ITP)
    */
   async loginWithGoogle(): Promise<void> {
+    try {
+      // Fetch auth URL from API then redirect client-side
+      // Works even when proxy (api.deepsightsynthesis.com/Caddy) strips query params
+      const data = await request<{ auth_url: string }>('/api/auth/google/login', { skipAuth: true });
+      if (data?.auth_url) {
+        window.location.href = data.auth_url;
+        return;
+      }
+    } catch {
+      // Fallback: direct navigation with ?redirect=true (Safari cross-origin fetch blocked)
+    }
     window.location.href = `${API_URL}/api/auth/google/login?redirect=true`;
   },
 
