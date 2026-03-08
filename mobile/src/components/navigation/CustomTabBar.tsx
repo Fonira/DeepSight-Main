@@ -42,9 +42,10 @@ function TabBarIcon({ name, isFocused, color }: TabBarIconProps) {
 // Les clés DOIVENT correspondre aux noms de fichiers dans app/(tabs)/
 const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   index: 'home',
-  library: 'book',
-  profile: 'settings-outline',
+  library: 'time-outline',
+  study: 'school-outline',
   subscription: 'sparkles-outline',
+  profile: 'settings-outline',
 };
 
 interface CustomTabBarProps {
@@ -140,8 +141,6 @@ export function CustomTabBar({
       style={[
         styles.container,
         {
-          paddingBottom: insets.bottom,
-          backgroundColor: colors.bgPrimary,
           borderTopColor: colors.border,
         },
       ]}
@@ -199,6 +198,8 @@ export function CustomTabBar({
             />
           </TouchableOpacity>
         </View>
+        {/* Safe area spacer — inside BlurView so blur covers the bottom edge */}
+        <View style={{ height: insets.bottom }} />
       </BlurView>
     </View>
   );
