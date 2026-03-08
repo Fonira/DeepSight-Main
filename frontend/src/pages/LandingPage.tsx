@@ -506,7 +506,7 @@ const LandingPage: React.FC = () => {
       try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('429')) {
+      if (msg.includes('429') || msg.includes('essai gratuit') || msg.includes('free trial')) {
         setGuestError(language === 'fr' ? 'Vous avez déjà utilisé votre essai gratuit.' : 'You already used your free trial.');
         setGuestUsed(true);
         try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}

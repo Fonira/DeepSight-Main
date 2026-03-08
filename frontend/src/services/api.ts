@@ -412,6 +412,7 @@ interface RequestOptions {
   body?: Record<string, unknown> | FormData;
   headers?: Record<string, string>;
   skipAuth?: boolean;
+  skipCredentials?: boolean;
   timeout?: number;
 }
 
@@ -424,6 +425,7 @@ async function request<T>(
     body,
     headers = {},
     skipAuth = false,
+    skipCredentials = false,
     timeout = 30000,
   } = options;
 
@@ -451,7 +453,7 @@ async function request<T>(
       headers: requestHeaders,
       body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
-      credentials: 'include',
+      credentials: skipCredentials ? 'omit' : 'include',
     });
 
     clearTimeout(timeoutId);
@@ -750,6 +752,7 @@ export const videoApi = {
       method: 'POST',
       body: { url },
       skipAuth: true,
+      skipCredentials: true,
       timeout: 90000,
     });
   },
