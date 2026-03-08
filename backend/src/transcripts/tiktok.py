@@ -854,8 +854,12 @@ async def _transcribe_safely(
 def detect_platform(url: str) -> str:
     """
     Détecte la plateforme d'une URL.
-    Retourne "tiktok" ou "youtube" (défaut).
+    Retourne "tiktok", "text" ou "youtube" (défaut).
     """
+    if not url:
+        return "youtube"
+    if url.startswith("text://") or url.startswith("txt_"):
+        return "text"
     if is_tiktok_url(url):
         return "tiktok"
     return "youtube"

@@ -119,6 +119,25 @@ export const PlatformBadge: React.FC<PlatformBadgeProps> = ({
 };
 
 /**
+ * Résout la plateforme correcte en combinant la valeur backend + heuristiques.
+ * Corrige les anciens enregistrements DB qui ont platform="youtube" par défaut
+ * alors qu'ils sont en réalité des imports texte (videoId commence par "txt_").
+ */
+export const resolvePlatform = (
+  backendPlatform?: string,
+  videoUrl?: string,
+  videoId?: string,
+): VideoPlatform => {
+  // Text detection by videoId takes priority (handles old DB entries with wrong default)
+  if (videoId?.startsWith('txt_')) return 'text';
+  // Trust backend platform if explicitly set to non-default values
+  if (backendPlatform === 'text') return 'text';
+  if (backendPlatform === 'tiktok') return 'tiktok';
+  // Fallback to URL/videoId heuristics
+  return detectPlatformFromUrl(videoUrl, videoId);
+};
+
+/**
  * Détecte la plateforme à partir de l'URL ou du videoId
  */
 export const detectPlatformFromUrl = (url?: string, videoId?: string): VideoPlatform => {

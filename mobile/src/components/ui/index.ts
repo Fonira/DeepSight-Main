@@ -11,7 +11,7 @@ export { Toast, ToastProvider, useToast } from './Toast';
 export type { ToastType, ToastProps } from './Toast';
 export { Skeleton, VideoCardSkeleton, AnalysisSkeleton } from './Skeleton';
 export { AnimatedToggle } from './AnimatedToggle';
-export { PlatformBadge, detectPlatformFromUrl } from './PlatformBadge';
+export { PlatformBadge, resolvePlatform, detectPlatformFromUrl } from './PlatformBadge';
 export { AnimatedTabBar } from './AnimatedTabBar';
 export type { TabItem } from './AnimatedTabBar';
 export { SectionHeader } from './SectionHeader';

@@ -27,7 +27,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { videoApi, chatApi, studyApi, shareApi } from '../services/api';
 import { Header, Card, Badge, Button, YouTubePlayer, useToast, StreamingProgress, FreshnessIndicator, ReliabilityScore, DeepSightSpinner } from '../components';
-import { PlatformBadge, detectPlatformFromUrl } from '../components/ui/PlatformBadge';
+import { PlatformBadge, resolvePlatform } from '../components/ui/PlatformBadge';
 import { AnimatedTabBar, ActionButton } from '../components/ui';
 import type { TabItem } from '../components/ui';
 import { FlashcardsComponent, QuizComponent } from '../components/study';
@@ -850,7 +850,7 @@ export const AnalysisScreen: React.FC = () => {
             channel={summary.videoInfo?.channel}
             duration={summary.videoInfo?.duration}
             thumbnail={summary.videoInfo?.thumbnail}
-            platform={summary.platform || detectPlatformFromUrl(summary.video_url, summary.videoId)}
+            platform={resolvePlatform(summary.platform, summary.video_url, summary.videoId)}
           />
         </View>
       )}
@@ -890,7 +890,7 @@ export const AnalysisScreen: React.FC = () => {
           {/* Summary badges */}
           <View style={styles.badgesRow}>
             <PlatformBadge
-              platform={summary?.platform || detectPlatformFromUrl(summary?.video_url, summary?.videoId)}
+              platform={resolvePlatform(summary?.platform, summary?.video_url, summary?.videoId)}
               size="md"
               showLabel
             />

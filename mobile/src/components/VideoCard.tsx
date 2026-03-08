@@ -10,7 +10,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { Badge } from './ui';
 import { ThumbnailImage } from './ui/ThumbnailImage';
-import { PlatformBadge, detectPlatformFromUrl } from './ui/PlatformBadge';
+import { PlatformBadge, resolvePlatform } from './ui/PlatformBadge';
 import { BorderRadius, Spacing, Typography } from '../constants/theme';
 import { formatDuration, formatRelativeTime, truncateText } from '../utils/formatters';
 import type { AnalysisSummary, VideoInfo, VideoPlatform } from '../types';
@@ -58,10 +58,12 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
       }
     : (video as any).videoInfo || video;
 
-  // Detect platform from data or URL heuristics
-  const platform: VideoPlatform =
-    analysisSummary?.platform ||
-    detectPlatformFromUrl(analysisSummary?.video_url, analysisSummary?.videoId);
+  // Detect platform — resolvePlatform handles old DB entries with wrong defaults
+  const platform: VideoPlatform = resolvePlatform(
+    analysisSummary?.platform,
+    analysisSummary?.video_url,
+    analysisSummary?.videoId,
+  );
 
   // DEBUG — supprimer après validation
   if (__DEV__) {

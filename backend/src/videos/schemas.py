@@ -161,7 +161,7 @@ class VideoInfoResponse(BaseModel):
     duration: int  # En secondes
     thumbnail_url: str
     upload_date: Optional[str] = None
-    platform: str = Field(default="youtube", description="Plateforme source: youtube, tiktok")
+    platform: str = Field(default="youtube", description="Plateforme source: youtube, tiktok, text")
 
 
 class EntitiesResponse(BaseModel):
@@ -189,7 +189,7 @@ class SummaryResponse(BaseModel):
     video_duration: int
     video_url: str
     thumbnail_url: str
-    platform: str = Field(default="youtube", description="Plateforme source: youtube, tiktok")
+    platform: str = Field(default="youtube", description="Plateforme source: youtube, tiktok, text")
 
     category: str
     category_confidence: Optional[float] = None
@@ -222,7 +222,7 @@ class SummaryListItem(BaseModel):
     video_channel: str
     video_duration: int
     thumbnail_url: str
-    platform: str = Field(default="youtube", description="Plateforme source: youtube, tiktok")
+    platform: str = Field(default="youtube", description="Plateforme source: youtube, tiktok, text")
     category: str
     mode: str
     word_count: int
@@ -256,7 +256,7 @@ class TaskStatusResponse(BaseModel):
     message: Optional[str] = None
     result: Optional[Dict[str, Any]] = None
     error: Optional[str] = None
-    platform: Optional[str] = Field(default=None, description="Plateforme source: youtube, tiktok")
+    platform: Optional[str] = Field(default=None, description="Plateforme source: youtube, tiktok, text")
 
 
 class PlaylistAnalysisResponse(BaseModel):
@@ -393,7 +393,7 @@ class VideoCandidateResponse(BaseModel):
     view_count: int = 0
     like_count: int = 0
     published_at: Optional[str] = None
-    platform: str = Field(default="youtube", description="Plateforme source: youtube, tiktok")
+    platform: str = Field(default="youtube", description="Plateforme source: youtube, tiktok, text")
     
     # 🌻 Tournesol
     is_tournesol_pick: bool = False

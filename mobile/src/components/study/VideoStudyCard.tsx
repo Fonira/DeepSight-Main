@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
-import { PlatformBadge, detectPlatformFromUrl } from '../ui/PlatformBadge';
+import { PlatformBadge, resolvePlatform } from '../ui/PlatformBadge';
 import { sp, borderRadius } from '../../theme/spacing';
 import { fontFamily, fontSize } from '../../theme/typography';
 import type { AnalysisSummary } from '../../types';
@@ -88,7 +88,7 @@ export const VideoStudyCard: React.FC<VideoStudyCardProps> = ({
         {/* Platform badge — icon only, overlay */}
         <View style={styles.platformBadgeContainer}>
           <PlatformBadge
-            platform={summary.platform || detectPlatformFromUrl(summary.video_url, summary.videoId)}
+            platform={resolvePlatform(summary.platform, summary.video_url, summary.videoId)}
             size="xs"
             showLabel={false}
             overlay

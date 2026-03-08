@@ -16,7 +16,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { ThumbnailImage } from '../ui/ThumbnailImage';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
-import { PlatformBadge, detectPlatformFromUrl } from '@/components/ui/PlatformBadge';
+import { PlatformBadge, resolvePlatform } from '@/components/ui/PlatformBadge';
 import { sp, borderRadius } from '@/theme/spacing';
 import { fontFamily, fontSize } from '@/theme/typography';
 import { springs } from '@/theme/animations';
@@ -53,8 +53,8 @@ export const AnalysisCard: React.FC<AnalysisCardProps> = ({
   const translateX = useSharedValue(0);
   const scale = useSharedValue(1);
 
-  // Detect platform from data or URL heuristics
-  const platform = summary.platform || detectPlatformFromUrl(summary.video_url, summary.videoId);
+  // Detect platform — resolvePlatform handles old DB entries with wrong defaults
+  const platform = resolvePlatform(summary.platform, summary.video_url, summary.videoId);
 
   // Thumbnail URL is now handled by ThumbnailImage with automatic fallbacks
   const thumbnailUrl = summary.thumbnail || undefined;
