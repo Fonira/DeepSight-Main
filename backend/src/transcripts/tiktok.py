@@ -436,8 +436,9 @@ async def get_tiktok_transcript(
         if DB_CACHE_AVAILABLE:
             try:
                 await save_transcript_to_cache(f"tiktok_{vid}", simple, timestamped, lang, platform="tiktok", extraction_method=method)
-            except Exception:
-                pass
+                print(f"🗄️ DB Cache SAVED for tiktok_{vid}", flush=True)
+            except Exception as e:
+                print(f"⚠️ DB Cache save error for tiktok_{vid}: {e}", flush=True)
 
     # ─── Phase 1 : yt-dlp standard ────────────────────────────────────────
     audio_data, audio_ext = await _download_with_retry(url, label="phase1-standard")
