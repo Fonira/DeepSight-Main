@@ -165,17 +165,15 @@ export const AnalysisCard: React.FC<AnalysisCardProps> = ({
                 videoId={summary.videoId}
                 style={styles.thumbnail}
               />
-              {/* Platform badge — overlay mode for visibility on thumbnails (hidden for text imports) */}
-              {platform !== 'text' && (
-                <View style={styles.platformBadge}>
-                  <PlatformBadge
-                    platform={platform}
-                    size="xs"
-                    showLabel={false}
-                    overlay
-                  />
-                </View>
-              )}
+              {/* Platform badge — overlay mode for visibility on thumbnails */}
+              <View style={styles.platformBadge}>
+                <PlatformBadge
+                  platform={platform}
+                  size="xs"
+                  showLabel={false}
+                  overlay
+                />
+              </View>
             </View>
 
             {/* Text content */}

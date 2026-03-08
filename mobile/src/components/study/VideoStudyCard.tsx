@@ -85,11 +85,13 @@ export const VideoStudyCard: React.FC<VideoStudyCardProps> = ({
             <Badge label="Nouveau" variant="primary" size="sm" />
           )}
         </View>
-        {/* Platform badge (YouTube/TikTok) */}
+        {/* Platform badge — icon only, overlay */}
         <View style={styles.platformBadgeContainer}>
           <PlatformBadge
             platform={summary.platform || detectPlatformFromUrl(summary.video_url, summary.videoId)}
-            size="sm"
+            size="xs"
+            showLabel={false}
+            overlay
           />
         </View>
         {/* Play overlay — indique que c'est cliquable */}
