@@ -286,6 +286,25 @@ class VideoChunk(Base):
     summary = relationship("Summary", back_populates="chunks")
 
 
+class VideoComparison(Base):
+    """Table des comparaisons entre deux vidéos (VS Mode)"""
+    __tablename__ = "video_comparisons"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    summary_a_id = Column(Integer, ForeignKey("summaries.id", ondelete="CASCADE"), nullable=False)
+    summary_b_id = Column(Integer, ForeignKey("summaries.id", ondelete="CASCADE"), nullable=False)
+    comparison_json = Column(Text, nullable=False)
+    lang = Column(String(5), default="fr")
+    model_used = Column(String(50))
+    credits_used = Column(Integer, default=0)
+    created_at = Column(DateTime, default=func.now())
+
+    __table_args__ = (
+        Index('idx_comparisons_user', 'user_id'),
+    )
+
+
 class PlaylistAnalysis(Base):
     """Table des analyses de playlists"""
     __tablename__ = "playlist_analyses"
@@ -807,6 +826,21 @@ async def run_schema_migrations():
         )
         """,
         "CREATE INDEX IF NOT EXISTS idx_transcript_embeddings_video ON transcript_embeddings(video_id)",
+        # 🆚 VideoComparison table (Mar 2026)
+        """
+        CREATE TABLE IF NOT EXISTS video_comparisons (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            summary_a_id INTEGER NOT NULL REFERENCES summaries(id) ON DELETE CASCADE,
+            summary_b_id INTEGER NOT NULL REFERENCES summaries(id) ON DELETE CASCADE,
+            comparison_json TEXT NOT NULL,
+            lang VARCHAR(5) DEFAULT 'fr',
+            model_used VARCHAR(50),
+            credits_used INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_comparisons_user ON video_comparisons(user_id)",
     ]
     async with engine.begin() as conn:
         for sql in migrations:

@@ -244,6 +244,14 @@ except ImportError as e:
     SEARCH_ROUTER_AVAILABLE = False
     print(f"⚠️ Search router not available: {e}", flush=True)
 
+# 🆚 Comparison router (Video VS Mode)
+try:
+    from comparison.router import router as comparison_router
+    COMPARISON_ROUTER_AVAILABLE = True
+except ImportError as e:
+    COMPARISON_ROUTER_AVAILABLE = False
+    print(f"⚠️ Comparison router not available: {e}", flush=True)
+
 VERSION = "3.8.1"  # Phase 4.1: Analytics, Store Review, Push i18n
 APP_NAME = "Deep Sight API"
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
@@ -643,6 +651,11 @@ if TRENDING_ROUTER_AVAILABLE:
 if SEARCH_ROUTER_AVAILABLE:
     app.include_router(search_router, prefix="/api/search", tags=["Search"])
     print("🔍 Search router loaded (POST /api/search/semantic)", flush=True)
+
+# 🆚 Comparison router (Video VS Mode)
+if COMPARISON_ROUTER_AVAILABLE:
+    app.include_router(comparison_router, prefix="/api/comparison", tags=["Comparison"])
+    print("🆚 Comparison router loaded (POST /api/comparison/compare)", flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE
