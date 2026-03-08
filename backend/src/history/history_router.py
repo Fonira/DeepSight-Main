@@ -58,11 +58,16 @@ def _resolve_platform_from_row(row) -> str:
        - TikTok IDs = numériques longs (>15 digits) OU codes courts alphanumériques
     """
     plat = getattr(row, "platform", None) or "youtube"
+    # Source de vérité si le champ est explicitement défini
+    if plat == "text":
+        return "text"
     if plat == "tiktok":
         return "tiktok"
 
     # Fallback 1: vérifier video_url
     video_url = getattr(row, "video_url", "") or ""
+    if video_url.startswith("text://"):
+        return "text"
     if "tiktok.com" in video_url:
         return "tiktok"
 
@@ -70,6 +75,8 @@ def _resolve_platform_from_row(row) -> str:
     # YouTube IDs = exactement 11 chars [A-Za-z0-9_-]
     vid = getattr(row, "video_id", "") or ""
     if vid:
+        if vid.startswith("txt_"):
+            return "text"
         is_youtube_id = bool(re.match(r'^[A-Za-z0-9_-]{11}$', vid))
         if not is_youtube_id:
             return "tiktok"

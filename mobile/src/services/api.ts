@@ -942,13 +942,13 @@ export const historyApi = {
       duration: item.video_duration,
       platform: item.platform
         ? (item.platform as 'youtube' | 'tiktok' | 'text')
-        : item.video_url
-          ? (item.video_url.includes('tiktok') ? 'tiktok' : 'youtube')
-          : (item.video_id && /^\d{15,}$/.test(item.video_id))
+        : item.video_url?.startsWith('text://')
+          ? 'text'
+          : item.video_url?.includes('tiktok')
             ? 'tiktok'
-            : (item.video_id && item.video_channel && item.video_channel !== 'Import manuel')
-              ? 'youtube'
-              : 'text',
+            : item.video_id?.startsWith('txt_')
+              ? 'text'
+              : 'youtube',
       video_url: item.video_url,
       createdAt: item.created_at,
     }));
