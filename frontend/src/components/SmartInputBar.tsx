@@ -1,18 +1,16 @@
 /**
- * 🔮 SMART INPUT BAR v4.2 - UX FIXES
+ * 🔮 SMART INPUT BAR v4.3 - INLINE TABS
  * Barre d'entrée ultra-intelligente avec détection automatique
  *
- * ✨ FIX v4.2:
+ * ✨ FIX v4.3:
+ * - Remplacement du dropdown par des tabs inline (plus de chevauchement)
  * - Bordure URL : neutre par défaut, rouge seulement après submit invalide, verte si URL YouTube valide
- * - Tooltip descriptif sur le sélecteur de langues
- * - Label "Langue de l'analyse" visible au-dessus des drapeaux
  */
 
-import React, { useState, useCallback, useEffect, useRef, useMemo, useLayoutEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  Link2, FileText, Search, ChevronDown,
-  Globe, Sparkles, Info, ArrowRight, Wand2, Play
+  FileText, Search,
+  Sparkles, Info, Wand2, Play
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from './ui';
 
@@ -225,12 +223,10 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   language = 'fr',
   showLanguageSelector = true,
 }) => {
-  const [showModeSelector, setShowModeSelector] = useState(false);
   const [autoDetected, setAutoDetected] = useState(true);
   // État de soumission : la bordure rouge n'apparaît qu'après une tentative invalide
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const modeSelectorRef = useRef<HTMLDivElement>(null);
 
   const config = MODE_CONFIG[value.mode];
 
@@ -243,16 +239,6 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
     }
   }, [value]);
 
-  // Close mode selector on outside click
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (modeSelectorRef.current && !modeSelectorRef.current.contains(e.target as Node)) {
-        setShowModeSelector(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Handle input change with auto-detection
   const handleInputChange = useCallback((text: string) => {
@@ -298,7 +284,6 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   // Manual mode selection
   const selectMode = useCallback((mode: InputMode) => {
     setAutoDetected(false);
-    setShowModeSelector(false);
 
     const currentText = getInputValue(value);
     const newValue: SmartInputValue = {
@@ -380,110 +365,60 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   const creditCost = value.mode === 'search' ? 0 : 1;
   const hasEnoughCredits = creditCost === 0 || userCredits >= creditCost;
 
-  // ═══════════════════════════════════════════════════════════════════
-  // 📐 Dropdown position — recalculée dynamiquement via portal
-  // ═══════════════════════════════════════════════════════════════════
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
-
-  const updateDropdownPos = useCallback(() => {
-    const btn = modeSelectorRef.current?.querySelector('button');
-    if (!btn) return;
-    const rect = btn.getBoundingClientRect();
-    setDropdownPos({ top: rect.bottom + 8, left: rect.left });
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!showModeSelector) return;
-    updateDropdownPos();
-    window.addEventListener('scroll', updateDropdownPos, true);
-    window.addEventListener('resize', updateDropdownPos);
-    return () => {
-      window.removeEventListener('scroll', updateDropdownPos, true);
-      window.removeEventListener('resize', updateDropdownPos);
-    };
-  }, [showModeSelector, updateDropdownPos]);
-
   return (
     <div className="space-y-3">
+      {/* ═══ Mode Tabs — Inline, pas de dropdown ═══ */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {MODE_ORDER.map((m) => {
+          const modeConf = MODE_CONFIG[m];
+          const isActive = value.mode === m;
+
+          return (
+            <button
+              key={m}
+              type="button"
+              onClick={() => selectMode(m)}
+              disabled={disabled}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                isActive
+                  ? `${modeConf.bgColor} ${modeConf.textColor} ring-1 ring-current/20`
+                  : 'bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover'
+              }`}
+            >
+              <ModeIconRenderer mode={m} className="w-4 h-4" />
+              <span className="hidden sm:inline">{modeConf.label[language]}</span>
+              <span className="sm:hidden">
+                {m === 'search' && 'Recherche'}
+                {m === 'url' && 'URL'}
+                {m === 'text' && 'Texte'}
+              </span>
+            </button>
+          );
+        })}
+
+        {/* Auto-detect toggle */}
+        <label className="flex items-center gap-1.5 ml-auto cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={autoDetected}
+            onChange={(e) => setAutoDetected(e.target.checked)}
+            className="rounded border-border-default text-accent-primary focus:ring-accent-primary w-3.5 h-3.5"
+          />
+          <span className="text-xs text-text-muted hidden sm:inline">
+            {language === 'fr' ? 'Détection auto' : 'Auto-detect'}
+          </span>
+          <Wand2 className="w-3 h-3 text-text-muted" />
+        </label>
+      </div>
+
       {/* Main Input Area */}
       <div className={`relative rounded-xl border-2 transition-all duration-300 bg-bg-secondary ${getDynamicBorderClasses()}`}>
 
-        {/* Mode Badge + Input */}
+        {/* Input */}
         <div className="flex items-start gap-3 p-4">
-
-          {/* Mode Selector */}
-          <div className="relative" ref={modeSelectorRef}>
-            <button
-              type="button"
-              onClick={() => setShowModeSelector(!showModeSelector)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${config.bgColor} ${config.textColor} hover:opacity-80`}
-              disabled={disabled}
-            >
-              <ModeIconRenderer mode={value.mode} className="w-4 h-4" />
-              <span className="text-sm font-medium hidden sm:inline">
-                {config.label[language]}
-              </span>
-              <ChevronDown className={`w-3 h-3 transition-transform ${showModeSelector ? 'rotate-180' : ''}`} />
-            </button>
-
-            {/* Mode Dropdown — Portal fixe positionné dynamiquement */}
-            {showModeSelector && createPortal(
-              <>
-                {/* Backdrop invisible pour fermer au clic extérieur */}
-                <div className="fixed inset-0" style={{ zIndex: 9998 }} onClick={() => setShowModeSelector(false)} />
-                <div
-                  className="fixed w-56 bg-bg-elevated border border-border-default rounded-xl shadow-2xl overflow-hidden"
-                  style={{ zIndex: 9999, top: dropdownPos.top, left: dropdownPos.left }}
-                >
-                <div className="p-2">
-                  {MODE_ORDER.map((m) => {
-                    const modeConf = MODE_CONFIG[m];
-                    const isActive = value.mode === m;
-
-                    return (
-                      <button
-                        key={m}
-                        onClick={() => selectMode(m)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                          isActive
-                            ? `${modeConf.bgColor} ${modeConf.textColor}`
-                            : 'hover:bg-bg-tertiary text-text-secondary hover:text-text-primary'
-                        }`}
-                      >
-                        <ModeIconRenderer mode={m} className="w-4 h-4" />
-                        <div className="flex-1 text-left">
-                          <div className="text-sm font-medium">{modeConf.label[language]}</div>
-                          <div className="text-xs opacity-70">
-                            {m === 'url' && (language === 'fr' ? 'Vidéo YouTube, TikTok ou playlist' : 'YouTube, TikTok video or playlist')}
-                            {m === 'text' && (language === 'fr' ? 'Article, notes...' : 'Article, notes...')}
-                            {m === 'search' && (language === 'fr' ? 'Trouvez des vidéos par sujet 🆓' : 'Find videos by topic 🆓')}
-                          </div>
-                        </div>
-                        {isActive && <Sparkles className="w-4 h-4" />}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Auto-detect toggle */}
-                <div className="border-t border-border-subtle px-3 py-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={autoDetected}
-                      onChange={(e) => setAutoDetected(e.target.checked)}
-                      className="rounded border-border-default text-accent-primary focus:ring-accent-primary"
-                    />
-                    <span className="text-xs text-text-secondary">
-                      {language === 'fr' ? 'Détection auto' : 'Auto-detect'}
-                    </span>
-                    <Wand2 className="w-3 h-3 text-text-muted" />
-                  </label>
-                </div>
-              </div>
-              </>,
-              document.body
-            )}
+          {/* Active mode badge (compact) */}
+          <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg shrink-0 ${config.bgColor} ${config.textColor}`}>
+            <ModeIconRenderer mode={value.mode} className="w-4 h-4" />
           </div>
 
           {/* Input Area */}
