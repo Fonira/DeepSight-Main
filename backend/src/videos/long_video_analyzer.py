@@ -696,7 +696,9 @@ async def synthesize_chunk_analyses(
     mode: str,
     model: str = "mistral-large-latest",  # Utiliser un modèle plus puissant pour la synthèse
     api_key: str = None,
-    web_context: str = None
+    web_context: str = None,
+    upload_date: str = "",
+    view_count: int = 0
 ) -> Optional[str]:
     """
     Fusionne les analyses de chunks en une synthèse finale cohérente.
@@ -746,9 +748,21 @@ async def synthesize_chunk_analyses(
     minutes = (video_duration % 3600) // 60
     duration_str = f"{hours}h{minutes:02d}" if hours > 0 else f"{minutes} min"
     
+    # Contextualisation temporelle pour vidéos longues
+    temporal_context = ""
+    if upload_date:
+        from videos.analysis import _format_video_age, _format_view_count
+        readable_date, human_age, age_days = _format_video_age(upload_date)
+        if readable_date:
+            temporal_context = f"\n📅 Publiée le {readable_date} ({human_age})."
+            if view_count:
+                temporal_context += f" 👁️ {_format_view_count(view_count)} vues."
+            if age_days > 365:
+                temporal_context += "\n⚠️ Vidéo de plus d'un an : signale les données chiffrées/stats potentiellement obsolètes."
+
     system_prompt = f"""Tu es un expert en synthèse de contenus longs.
 
-MISSION: Créer une synthèse FINALE et COHÉRENTE d'une vidéo de {duration_str}.
+MISSION: Créer une synthèse FINALE et COHÉRENTE d'une vidéo de {duration_str}.{temporal_context}
 
 Tu as reçu les analyses de {len(analyses)} segments de cette vidéo.
 Tu dois les FUSIONNER en une synthèse unique, structurée et fluide.
@@ -873,7 +887,9 @@ async def analyze_long_video(
     model: str = "mistral-small-latest",
     web_context: str = None,
     progress_callback = None,
-    transcript_timestamped: str = None  # 🆕 v3.0: Transcript avec vrais timestamps
+    transcript_timestamped: str = None,  # 🆕 v3.0: Transcript avec vrais timestamps
+    upload_date: str = "",   # 📅 Contextualisation temporelle
+    view_count: int = 0
 ) -> Optional[str]:
     """
     🎬 Analyse COMPLÈTE d'une vidéo longue avec GARANTIE de traitement intégral.
@@ -996,7 +1012,9 @@ async def analyze_long_video(
         lang=lang,
         mode=mode,
         model=synthesis_model,
-        web_context=web_context
+        web_context=web_context,
+        upload_date=upload_date,
+        view_count=view_count
     )
     
     # ═══════════════════════════════════════════════════════════════════════

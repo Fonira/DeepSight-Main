@@ -19,6 +19,60 @@ try:
 except ImportError:
     CACHE_AVAILABLE = False
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📅 CONTEXTUALISATION TEMPORELLE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _format_video_age(upload_date: str) -> Tuple[Optional[str], Optional[str], int]:
+    """
+    Convertit YYYYMMDD → (date_lisible, age_humain, age_days).
+    Utilisé par analysis.py, web_enrichment.py, chat/service.py.
+    """
+    if not upload_date or len(upload_date) < 8:
+        return None, None, 0
+
+    try:
+        dt = datetime.strptime(upload_date[:8], "%Y%m%d")
+        now = datetime.now()
+        delta = now - dt
+        age_days = delta.days
+
+        months_fr = [
+            "janvier", "février", "mars", "avril", "mai", "juin",
+            "juillet", "août", "septembre", "octobre", "novembre", "décembre"
+        ]
+        readable_date = f"{dt.day} {months_fr[dt.month - 1]} {dt.year}"
+
+        if age_days < 0:
+            human_age = "date future"
+        elif age_days < 7:
+            human_age = f"il y a {age_days} jour{'s' if age_days > 1 else ''}"
+        elif age_days < 30:
+            weeks = age_days // 7
+            human_age = f"il y a {weeks} semaine{'s' if weeks > 1 else ''}"
+        elif age_days < 365:
+            months = age_days // 30
+            human_age = f"il y a {months} mois"
+        else:
+            years = age_days // 365
+            human_age = f"il y a {years} an{'s' if years > 1 else ''}"
+
+        return readable_date, human_age, age_days
+    except (ValueError, IndexError):
+        return None, None, 0
+
+
+def _format_view_count(count: Optional[int]) -> str:
+    """Formate un nombre de vues en format lisible (1.2M, 45K, etc.)"""
+    if not count or count <= 0:
+        return ""
+    if count >= 1_000_000:
+        return f"{count / 1_000_000:.1f}M"
+    elif count >= 1_000:
+        return f"{count / 1_000:.0f}K"
+    return str(count)
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📋 RÈGLES ÉPISTÉMIQUES (Raisonnement Critique Sourcé)
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -981,7 +1035,11 @@ def build_analysis_prompt(
     channel: str = "",
     description: str = "",
     platform: str = "youtube",
-    target_length: str = "standard"
+    target_length: str = "standard",
+    upload_date: str = "",
+    view_count: int = 0,
+    like_count: int = 0,
+    channel_follower_count: int = 0
 ) -> Tuple[str, str]:
     """
     Construit le prompt système et utilisateur pour l'analyse.
@@ -1027,6 +1085,58 @@ def build_analysis_prompt(
         max_words = min(max_words, 600)
         min_words = min(min_words, 200)
     
+    # Construire le bloc de contextualisation temporelle
+    temporal_rule_fr = ""
+    temporal_rule_en = ""
+    metadata_block_fr = ""
+    metadata_block_en = ""
+
+    readable_date, human_age, age_days = _format_video_age(upload_date)
+    if readable_date:
+        # Règle temporelle pour le system prompt
+        temporal_rule_fr = f"""
+═══════════════════════════════════════════════════════════════════════════════
+📅 CONTEXTUALISATION TEMPORELLE — OBLIGATOIRE
+═══════════════════════════════════════════════════════════════════════════════
+Cette vidéo a été publiée le {readable_date} ({human_age}).
+• Si vidéo > 6 mois : signale les informations potentiellement obsolètes
+• Si vidéo > 2 ans : marque [⚠️ POTENTIELLEMENT OBSOLÈTE] les données chiffrées/stats dans les domaines à évolution rapide (tech, science, politique, finance, santé)
+• Corrèle date × vues × abonnés pour évaluer la crédibilité et la portée
+• Les faits historiques restent valides indépendamment de la date
+"""
+        temporal_rule_en = f"""
+═══════════════════════════════════════════════════════════════════════════════
+📅 TEMPORAL CONTEXTUALIZATION — MANDATORY
+═══════════════════════════════════════════════════════════════════════════════
+This video was published on {readable_date} ({human_age}).
+• If video > 6 months: flag potentially outdated information
+• If video > 2 years: mark [⚠️ POTENTIALLY OUTDATED] numerical data/stats in fast-evolving fields (tech, science, politics, finance, health)
+• Correlate date × views × subscribers to assess credibility and reach
+• Historical facts remain valid regardless of date
+"""
+
+        # Bloc metadata pour le user prompt
+        views_str = _format_view_count(view_count) if view_count else ""
+        likes_str = _format_view_count(like_count) if like_count else ""
+        subs_str = _format_view_count(channel_follower_count) if channel_follower_count else ""
+
+        meta_parts_fr = [f"📅 PUBLIÉ LE : {readable_date} ({human_age})"]
+        meta_parts_en = [f"📅 PUBLISHED: {readable_date} ({human_age})"]
+        stats_parts = []
+        if views_str:
+            stats_parts.append(f"👁️ {views_str} vues")
+        if likes_str:
+            stats_parts.append(f"👍 {likes_str} likes")
+        if subs_str:
+            stats_parts.append(f"👤 {subs_str} abonnés")
+        if stats_parts:
+            stats_line = "  |  ".join(stats_parts)
+            meta_parts_fr.append(stats_line)
+            meta_parts_en.append(stats_line.replace("vues", "views").replace("abonnés", "subscribers"))
+
+        metadata_block_fr = "\n".join(meta_parts_fr)
+        metadata_block_en = "\n".join(meta_parts_en)
+
     if lang == "fr":
         system_prompt = f"""Tu es Deep Sight, expert en analyse critique et synthèse de contenu vidéo.
 
@@ -1041,7 +1151,7 @@ def build_analysis_prompt(
 {mode_instructions}
 
 {category_instructions}
-
+{temporal_rule_fr}
 ═══════════════════════════════════════════════════════════════════════════════
 ⏱️ TIMECODES CLIQUABLES — MINIMUM 3-5 DANS CHAQUE RÉSUMÉ !
 ═══════════════════════════════════════════════════════════════════════════════
@@ -1085,6 +1195,7 @@ C'est une fonctionnalité ESSENTIELLE de Deep Sight. Sans [[concepts]], la répo
 ⏱️ DURÉE : {duration // 60} minutes
 📁 CATÉGORIE : {category}
 🎬 PLATEFORME : {platform_label}
+{metadata_block_fr}
 
 📝 TRANSCRIPTION :
 {transcript[:transcript_limit]}
@@ -1097,7 +1208,7 @@ Génère une synthèse {mode} complète avec timecodes."""
 {epistemic_rules}
 
 {mode_instructions}
-
+{temporal_rule_en}
 ═══════════════════════════════════════════════════════════════════════════════
 MANDATORY CLICKABLE TIMECODES — MINIMUM 3-5 IN EACH SUMMARY!
 ═══════════════════════════════════════════════════════════════════════════════
@@ -1138,6 +1249,7 @@ RESPOND ENTIRELY IN ENGLISH.
 ⏱️ DURATION: {duration // 60} minutes
 📁 CATEGORY: {category}
 🎬 PLATFORM: {platform_label}
+{metadata_block_en}
 
 📝 TRANSCRIPT:
 {transcript[:transcript_limit]}
@@ -1167,6 +1279,10 @@ async def generate_summary(
     force_refresh: bool = False,  # 🆕 v3.1: Forcer la ré-génération
     platform: str = "youtube",  # 🎵 TikTok support
     target_length: str = "standard",  # 🆕 v5.2: short/standard/detailed
+    upload_date: str = "",        # 📅 Contextualisation temporelle
+    view_count: int = 0,
+    like_count: int = 0,
+    channel_follower_count: int = 0,
 ) -> Optional[str]:
     """
     Génère un résumé avec Mistral AI.
@@ -1206,7 +1322,11 @@ async def generate_summary(
         channel=channel,
         description=description,
         platform=platform,
-        target_length=target_length
+        target_length=target_length,
+        upload_date=upload_date,
+        view_count=view_count,
+        like_count=like_count,
+        channel_follower_count=channel_follower_count
     )
     
     # 🆕 v3.0: Injecter le contexte web dans le prompt utilisateur

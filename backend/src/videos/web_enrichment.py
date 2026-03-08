@@ -357,6 +357,28 @@ def needs_web_search_for_chat(question: str, video_title: str = "", video_date: 
         if pattern in question_lower:
             return True, f"update_request:{pattern}"
     
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 📅 VIDÉO ANCIENNE + SUJET ÉVOLUTIF → recherche automatique
+    # ═══════════════════════════════════════════════════════════════════════════
+    if video_date:
+        from videos.analysis import _format_video_age
+        _, _, age_days = _format_video_age(video_date)
+
+        if age_days > 0:
+            # Catégories à évolution rapide
+            FAST_EVOLVING_KEYWORDS = [
+                "tech", "science", "politi", "financ", "santé", "health",
+                "économi", "econom", "crypto", "ia", "ai", "climat", "climate",
+                "médecin", "medic", "cyber", "startup", "législat", "regulat"
+            ]
+            title_lower = video_title.lower()
+            is_fast_evolving = any(kw in title_lower or kw in question_lower for kw in FAST_EVOLVING_KEYWORDS)
+
+            if age_days > 730:  # > 2 ans
+                return True, f"old_video:{age_days}d_always_recommend"
+            elif age_days > 180 and is_fast_evolving:  # > 6 mois + sujet évolutif
+                return True, f"old_video:{age_days}d_fast_evolving_topic"
+
     # Par défaut: pas besoin de recherche web
     return False, "no_trigger_detected"
 
@@ -371,20 +393,31 @@ def build_pre_analysis_prompt(
     video_channel: str,
     category: str,
     transcript_excerpt: str,
-    lang: str = "fr"
+    lang: str = "fr",
+    upload_date: str = ""
 ) -> str:
     """
     🆕 v3.0: Construit le prompt pour enrichir AVANT l'analyse Mistral.
     Le but est de fournir du contexte actuel à Mistral.
     """
     
+    # Construire le contexte temporel pour Perplexity
+    from videos.analysis import _format_video_age
+    temporal_hint_fr = ""
+    temporal_hint_en = ""
+    if upload_date:
+        readable_date, human_age, age_days = _format_video_age(upload_date)
+        if readable_date:
+            temporal_hint_fr = f"\n📅 Vidéo publiée le {readable_date} ({human_age}). Vérifie si les informations ont évolué depuis."
+            temporal_hint_en = f"\n📅 Video published on {readable_date} ({human_age}). Check if information has changed since then."
+
     if level == EnrichmentLevel.FULL:
         if lang == "fr":
             return f"""Tu es un assistant de recherche. Une vidéo YouTube va être analysée et tu dois fournir du CONTEXTE ACTUEL pour enrichir l'analyse.
 
 📺 Vidéo: {video_title}
 📺 Chaîne: {video_channel}
-📁 Catégorie: {category}
+📁 Catégorie: {category}{temporal_hint_fr}
 
 📝 Extrait du contenu:
 {transcript_excerpt[:2000]}
@@ -412,7 +445,7 @@ Réponds en français, sois factuel et cite tes sources. Max 400 mots."""
 
 📺 Video: {video_title}
 📺 Channel: {video_channel}
-📁 Category: {category}
+📁 Category: {category}{temporal_hint_en}
 
 📝 Content excerpt:
 {transcript_excerpt[:2000]}
@@ -441,7 +474,7 @@ Be factual and cite your sources. Max 400 words."""
 
 📺 Vidéo: {video_title}
 📺 Chaîne: {video_channel}
-📁 Catégorie: {category}
+📁 Catégorie: {category}{temporal_hint_fr}
 
 📝 Extrait du contenu:
 {transcript_excerpt[:3000]}
@@ -479,7 +512,7 @@ Réponds en français, sois exhaustif mais structuré. Max 700 mots."""
 
 📺 Video: {video_title}
 📺 Channel: {video_channel}
-📁 Category: {category}
+📁 Category: {category}{temporal_hint_en}
 
 📝 Content excerpt:
 {transcript_excerpt[:3000]}
@@ -727,7 +760,8 @@ async def get_pre_analysis_context(
     category: str,
     transcript: str,
     plan: str,
-    lang: str = "fr"
+    lang: str = "fr",
+    upload_date: str = ""
 ) -> Tuple[Optional[str], List[Dict[str, str]], EnrichmentLevel]:
     """
     🆕 v3.0: Récupère le contexte web AVANT l'analyse Mistral.
@@ -756,7 +790,8 @@ async def get_pre_analysis_context(
         video_channel=video_channel,
         category=category,
         transcript_excerpt=transcript[:3000],
-        lang=lang
+        lang=lang,
+        upload_date=upload_date
     )
     
     if not prompt:
@@ -779,24 +814,25 @@ async def enrich_chat_if_needed(
     video_title: str,
     video_context: str,
     plan: str,
-    lang: str = "fr"
+    lang: str = "fr",
+    video_date: str = ""
 ) -> Tuple[Optional[str], List[Dict[str, str]], bool]:
     """
     🆕 v3.0: Enrichit une réponse chat SI la question le nécessite.
-    
+
     Détecte automatiquement si la question nécessite des infos post-cutoff.
-    
+
     Returns:
         Tuple[enrichment_text, sources, was_enriched]
     """
     level = get_enrichment_level(plan)
-    
+
     # Seuls Pro et Expert ont l'enrichissement
     if level == EnrichmentLevel.NONE:
         return None, [], False
-    
+
     # Détecter si la question nécessite une recherche web
-    needs_search, reason = needs_web_search_for_chat(question, video_title)
+    needs_search, reason = needs_web_search_for_chat(question, video_title, video_date=video_date)
     
     if not needs_search:
         print(f"⏭️ [CHAT ENRICHMENT] Not needed: {reason}", flush=True)

@@ -778,7 +778,8 @@ async def _analyze_video_background_v2(
                         category=category,
                         transcript=transcript,
                         plan=user_plan,
-                        lang=lang
+                        lang=lang,
+                        upload_date=video_info.get("upload_date", "")
                     )
                 except Exception as e:
                     print(f"⚠️ [v2.0] Web enrichment failed: {e}", flush=True)
@@ -844,7 +845,9 @@ async def _analyze_video_background_v2(
                     model=model,
                     web_context=full_context,
                     progress_callback=update_progress,
-                    transcript_timestamped=transcript_timestamped
+                    transcript_timestamped=transcript_timestamped,
+                    upload_date=video_info.get("upload_date", ""),
+                    view_count=video_info.get("view_count") or 0
                 )
             else:
                 summary_content = await generate_summary(
@@ -861,6 +864,10 @@ async def _analyze_video_background_v2(
                     video_id=video_id,
                     force_refresh=force_refresh,
                     target_length=options.get("summary_length", "standard"),
+                    upload_date=video_info.get("upload_date", ""),
+                    view_count=video_info.get("view_count") or 0,
+                    like_count=video_info.get("like_count") or 0,
+                    channel_follower_count=video_info.get("channel_follower_count") or 0,
                 )
 
             if not summary_content:
@@ -1487,7 +1494,8 @@ async def _analyze_video_background_v2_1(
                         category=category,
                         transcript=transcript,
                         plan=user_plan,
-                        lang=lang
+                        lang=lang,
+                        upload_date=video_info.get("upload_date", "")
                     )
                 except Exception as e:
                     print(f"⚠️ [v2.1] Web enrichment failed: {e}", flush=True)
@@ -1574,7 +1582,9 @@ async def _analyze_video_background_v2_1(
                     model=model,
                     web_context=full_context,
                     progress_callback=update_progress,
-                    transcript_timestamped=transcript_timestamped
+                    transcript_timestamped=transcript_timestamped,
+                    upload_date=video_info.get("upload_date", ""),
+                    view_count=video_info.get("view_count") or 0
                 )
             else:
                 summary_content = await generate_summary(
@@ -1591,6 +1601,10 @@ async def _analyze_video_background_v2_1(
                     video_id=video_id,
                     force_refresh=force_refresh,
                     target_length=options.get("summary_length", "standard"),
+                    upload_date=video_info.get("upload_date", ""),
+                    view_count=video_info.get("view_count") or 0,
+                    like_count=video_info.get("like_count") or 0,
+                    channel_follower_count=video_info.get("channel_follower_count") or 0,
                 )
 
             if not summary_content:
@@ -1958,7 +1972,8 @@ async def _analyze_video_background_v6(
                         category=category,
                         transcript=transcript,
                         plan=user_plan,
-                        lang=lang
+                        lang=lang,
+                        upload_date=video_info.get("upload_date", "")
                     )
                     
                     if web_context:
@@ -2037,6 +2052,10 @@ async def _analyze_video_background_v6(
                         description=video_info.get("description", "") + "\n\n⚠️ NOTE: Cette vidéo est très longue. Seule la première partie a été analysée.",
                         web_context=web_context,
                         video_id=video_id,
+                        upload_date=video_info.get("upload_date", ""),
+                        view_count=video_info.get("view_count") or 0,
+                        like_count=video_info.get("like_count") or 0,
+                        channel_follower_count=video_info.get("channel_follower_count") or 0,
                     )
             else:
                 # ════════════════════════════════════════════════════════════
@@ -2063,6 +2082,10 @@ async def _analyze_video_background_v6(
                     description=video_info.get("description", ""),
                     web_context=web_context,
                     video_id=video_id,
+                    upload_date=video_info.get("upload_date", ""),
+                    view_count=video_info.get("view_count") or 0,
+                    like_count=video_info.get("like_count") or 0,
+                    channel_follower_count=video_info.get("channel_follower_count") or 0,
                 )
 
             if not summary_content:

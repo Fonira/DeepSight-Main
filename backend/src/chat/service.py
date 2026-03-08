@@ -625,10 +625,28 @@ Structure:
     
     response_guide = response_guide_fr if lang == "fr" else response_guide_en
     
+    # Construire le contexte temporel pour le chat
+    temporal_chat_context = ""
+    if video_upload_date:
+        from videos.analysis import _format_video_age
+        readable_date, human_age, age_days = _format_video_age(video_upload_date)
+        if readable_date:
+            temporal_chat_context_fr = f"\n📅 Publiée le {readable_date} ({human_age})."
+            temporal_chat_context_en = f"\n📅 Published on {readable_date} ({human_age})."
+            if age_days > 180:
+                temporal_chat_context_fr += "\n⚠️ Prends en compte l'ancienneté de cette vidéo. Si le contenu a plus de 6 mois, signale les informations qui ont pu évoluer."
+                temporal_chat_context_en += "\n⚠️ Consider the age of this video. If content is over 6 months old, flag information that may have changed."
+        else:
+            temporal_chat_context_fr = ""
+            temporal_chat_context_en = ""
+    else:
+        temporal_chat_context_fr = ""
+        temporal_chat_context_en = ""
+
     if lang == "fr":
         system_prompt = f"""Tu es l'assistant IA de DeepSight, un expert en analyse de contenu vidéo. Tu réponds de manière naturelle et conversationnelle, comme un ami intelligent.
 
-📺 Vidéo : {video_title}
+📺 Vidéo : {video_title}{temporal_chat_context_fr}
 
 RÈGLES DE RÉPONSE :
 - Sois CONCIS par défaut : 2-4 phrases pour les questions simples
@@ -677,7 +695,7 @@ Question : {question}"""
     else:
         system_prompt = f"""You are DeepSight's AI assistant, an expert in video content analysis. You respond naturally and conversationally, like a smart friend.
 
-📺 Video: {video_title}
+📺 Video: {video_title}{temporal_chat_context_en}
 
 RESPONSE RULES:
 - Be CONCISE by default: 2-4 sentences for simple questions
@@ -735,7 +753,8 @@ async def generate_chat_response(
     mode: str = "standard",
     lang: str = "fr",
     model: str = "mistral-small-latest",
-    api_key: str = None
+    api_key: str = None,
+    video_upload_date: str = ""
 ) -> Optional[str]:
     """Génère une réponse de chat intelligente et adaptée avec Mistral"""
     api_key = api_key or get_mistral_key()
@@ -903,7 +922,8 @@ async def generate_chat_response_v4(
     mode: str = "standard",
     lang: str = "fr",
     model: str = "mistral-small-latest",
-    web_search_requested: bool = False
+    web_search_requested: bool = False,
+    video_upload_date: str = ""
 ) -> Tuple[str, List[Dict[str, str]], bool]:
     """
     🆕 v5.0: Génère une réponse chat avec FACT-CHECKING INTELLIGENT.
@@ -944,7 +964,8 @@ async def generate_chat_response_v4(
         chat_history=chat_history,
         mode=mode,
         lang=lang,
-        model=model
+        model=model,
+        video_upload_date=video_upload_date
     )
     
     if not base_response:
@@ -1335,7 +1356,8 @@ async def process_chat_message_v4(
         mode=mode,
         lang=summary.lang or "fr",
         model=model,
-        web_search_requested=web_search
+        web_search_requested=web_search,
+        video_upload_date=summary.video_upload_date or ""
     )
     
     # 7. Déterminer le niveau d'enrichissement AVANT de sauvegarder
