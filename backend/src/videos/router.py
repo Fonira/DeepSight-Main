@@ -128,8 +128,9 @@ router = APIRouter()
 # Store en mémoire pour les tâches (en production: Redis)
 _task_store: Dict[str, Dict[str, Any]] = {}
 
-# 🆓 Guest demo rate limiting (1 analyse/IP/24h)
-_guest_usage: Dict[str, float] = {}  # IP → timestamp
+# 🆓 Guest demo rate limiting (3 analyses/IP/24h)
+_guest_usage: Dict[str, list] = {}  # IP → list of timestamps
+MAX_GUEST_ANALYSES = 3
 MAX_VIDEO_DURATION_GUEST = 300  # 5 minutes
 
 
@@ -164,23 +165,27 @@ async def analyze_video_guest(
     """
     Analyse express pour visiteurs non connectés.
     - YouTube ET TikTok, vidéos < 5 min
-    - 1 analyse par IP toutes les 24h
+    - 3 analyses par IP par 24h
     - Mode accessible, résumé court
     - Aucune sauvegarde en DB
     """
     import time
 
-    # 1. Rate-limit par IP
+    # 1. Rate-limit par IP (3 analyses / 24h)
     client_ip = raw_request.headers.get("x-forwarded-for", raw_request.client.host if raw_request.client else "unknown")
     if "," in client_ip:
         client_ip = client_ip.split(",")[0].strip()
 
     now = time.time()
-    last_used = _guest_usage.get(client_ip, 0)
-    if now - last_used < 86400:  # 24h
+    # Nettoyer les timestamps > 24h pour cette IP
+    ip_timestamps = _guest_usage.get(client_ip, [])
+    ip_timestamps = [ts for ts in ip_timestamps if now - ts < 86400]
+    _guest_usage[client_ip] = ip_timestamps
+
+    if len(ip_timestamps) >= MAX_GUEST_ANALYSES:
         raise HTTPException(
             status_code=429,
-            detail="Vous avez déjà utilisé votre essai gratuit. Créez un compte pour continuer !"
+            detail="Vous avez utilisé vos 3 analyses gratuites. Créez un compte pour continuer !"
         )
 
     # 2. Détecter plateforme et valider URL
@@ -274,10 +279,11 @@ async def analyze_video_guest(
         raise HTTPException(status_code=500, detail="Le résumé n'a pas pu être généré.")
 
     # 6. Marquer IP comme utilisée
-    _guest_usage[client_ip] = now
+    _guest_usage[client_ip].append(now)
+    remaining = MAX_GUEST_ANALYSES - len(_guest_usage[client_ip])
 
     # 7. Cleanup vieilles entrées (éviter fuite mémoire)
-    expired = [ip for ip, ts in _guest_usage.items() if now - ts > 86400]
+    expired = [ip for ip, timestamps in _guest_usage.items() if all(now - ts > 86400 for ts in timestamps)]
     for ip in expired:
         del _guest_usage[ip]
 
@@ -293,6 +299,7 @@ async def analyze_video_guest(
         word_count=word_count,
         mode="accessible",
         lang="fr",
+        remaining_analyses=max(0, remaining),
     )
 
 

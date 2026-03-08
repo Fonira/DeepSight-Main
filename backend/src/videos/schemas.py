@@ -29,6 +29,7 @@ class GuestAnalyzeResponse(BaseModel):
     word_count: int
     mode: str = "accessible"
     lang: str = "fr"
+    remaining_analyses: int = 0
 
 
 class AnalyzeVideoRequest(BaseModel):

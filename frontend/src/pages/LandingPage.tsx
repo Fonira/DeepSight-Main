@@ -411,6 +411,7 @@ const LandingPage: React.FC = () => {
   const faqs = getFAQs(language);
 
   // Guest demo state
+  const MAX_GUEST_ANALYSES = 3;
   const [guestUrl, setGuestUrl] = useState('');
   const [guestLoading, setGuestLoading] = useState(false);
   const [guestResult, setGuestResult] = useState<{
@@ -418,9 +419,11 @@ const LandingPage: React.FC = () => {
     thumbnail_url: string; summary_content: string; category: string; word_count: number;
   } | null>(null);
   const [guestError, setGuestError] = useState<string | null>(null);
-  const [guestUsed, setGuestUsed] = useState(() => {
-    try { return localStorage.getItem('ds_guest_demo_used') === 'true'; } catch { return false; }
+  const [guestCount, setGuestCount] = useState(() => {
+    try { return parseInt(localStorage.getItem('ds_guest_count') || '0', 10); } catch { return 0; }
   });
+  const [guestRemaining, setGuestRemaining] = useState(() => MAX_GUEST_ANALYSES - (parseInt(localStorage.getItem('ds_guest_count') || '0', 10) || 0));
+  const guestExhausted = guestRemaining <= 0;
   const guestInputRef = useRef<HTMLInputElement>(null);
 
   // Extract URL from clipboard text (YouTube mobile sometimes includes title + URL)
@@ -474,7 +477,7 @@ const LandingPage: React.FC = () => {
 
   const handleGuestAnalyze = async () => {
     const url = guestUrl.trim();
-    if (!url || guestLoading) return;
+    if (!url || guestLoading || guestExhausted) return;
     setGuestError(null);
 
     // Validate URL format before calling API
@@ -513,10 +516,9 @@ const LandingPage: React.FC = () => {
             } catch { /* non-JSON */ }
 
             // Rate limit / already used
-            if (resp.status === 429 || (typeof detail === 'string' && detail.includes('essai gratuit'))) {
-              setGuestError(language === 'fr' ? 'Vous avez déjà utilisé votre essai gratuit.' : 'You already used your free trial.');
-              setGuestUsed(true);
-              try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
+            if (resp.status === 429 || (typeof detail === 'string' && (detail.includes('analyses gratuites') || detail.includes('essai gratuit')))) {
+              setGuestRemaining(0);
+              try { localStorage.setItem('ds_guest_count', String(MAX_GUEST_ANALYSES)); } catch {}
             }
             // Transcript unavailable (common for Shorts)
             else if (typeof detail === 'string' && (detail.includes('transcription') || detail.includes('transcript'))) {
@@ -541,8 +543,11 @@ const LandingPage: React.FC = () => {
 
           const result = await resp.json();
           setGuestResult(result);
-          setGuestUsed(true);
-          try { localStorage.setItem('ds_guest_demo_used', 'true'); } catch {}
+          const newCount = guestCount + 1;
+          setGuestCount(newCount);
+          const remaining = result.remaining_analyses ?? (MAX_GUEST_ANALYSES - newCount);
+          setGuestRemaining(remaining);
+          try { localStorage.setItem('ds_guest_count', String(newCount)); } catch {}
           return;
         } catch {
           if (attempt < maxRetries) {
@@ -670,11 +675,11 @@ const LandingPage: React.FC = () => {
             transition={{ duration: 0.6, ease, delay: 0.4 }}
             className="mb-16 max-w-xl mx-auto"
           >
-            {guestUsed && !guestResult ? (
-              /* Already used — CTA to register */
+            {guestExhausted && !guestResult ? (
+              /* All analyses used — CTA to register */
               <div className="flex flex-col items-center gap-3">
                 <p className="text-sm text-text-tertiary">
-                  {language === 'fr' ? 'Créez un compte gratuit pour analyser vos vidéos' : 'Create a free account to analyze your videos'}
+                  {language === 'fr' ? 'Vous avez utilisé vos 3 analyses gratuites' : 'You\'ve used your 3 free analyses'}
                 </p>
                 <motion.button
                   onClick={() => navigate('/login?tab=register')}
@@ -685,8 +690,11 @@ const LandingPage: React.FC = () => {
                   {language === 'fr' ? 'Créer un compte gratuit' : 'Create a free account'}
                   <ArrowRight className="w-4 h-4" />
                 </motion.button>
+                <p className="text-xs text-text-muted">
+                  {language === 'fr' ? '3 analyses/mois gratuites avec un compte' : '3 free analyses/month with an account'}
+                </p>
               </div>
-            ) : !guestResult ? (
+            ) : !guestResult || (!guestExhausted && guestResult) ? (
               /* Input inline */
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -726,12 +734,12 @@ const LandingPage: React.FC = () => {
                   </motion.button>
                 </div>
 
-                {/* Helper text + Shorts/TikTok guidance */}
+                {/* Helper text + remaining + Shorts/TikTok guidance */}
                 <div className="flex flex-col items-center gap-2 px-1">
                   <p className="text-xs text-text-muted text-center">
                     {language === 'fr'
-                      ? 'Dans l\'app YouTube/TikTok : ouvrez une vidéo \u2192 Partager \u2192 Copier le lien \u2192 collez ici'
-                      : 'In the YouTube/TikTok app: open a video \u2192 Share \u2192 Copy link \u2192 paste here'}
+                      ? `Essai gratuit \u2014 ${guestRemaining} analyse${guestRemaining > 1 ? 's' : ''} restante${guestRemaining > 1 ? 's' : ''}, vid\u00e9os de 5 min max`
+                      : `Free trial \u2014 ${guestRemaining} analysis${guestRemaining > 1 ? 'es' : ''} remaining, 5 min max videos`}
                   </p>
                   <div className="flex items-center gap-3">
                     <a
@@ -809,31 +817,73 @@ const LandingPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Teaser + CTA */}
-                  <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-accent-primary/10 via-violet-500/10 to-cyan-500/10 border border-accent-primary/20">
-                    <div className="flex items-start gap-3">
-                      <Lock className="w-5 h-5 text-accent-primary flex-shrink-0 mt-0.5" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-text-primary mb-1">
-                          {language === 'fr' ? 'Débloquez toutes les fonctionnalités' : 'Unlock all features'}
-                        </p>
-                        <p className="text-xs text-text-tertiary mb-3">
-                          {language === 'fr'
-                            ? 'Fact-checking sourcé, chat IA contextuel, flashcards, cartes mentales, export PDF, vidéos longues...'
-                            : 'Sourced fact-checking, contextual AI chat, flashcards, mind maps, PDF export, long videos...'}
-                        </p>
+                  {/* Remaining counter or CTA */}
+                  {guestExhausted ? (
+                    /* Limit reached — strong CTA */
+                    <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-accent-primary/10 via-violet-500/10 to-cyan-500/10 border border-accent-primary/20">
+                      <div className="flex items-start gap-3">
+                        <Lock className="w-5 h-5 text-accent-primary flex-shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-text-primary mb-1">
+                            {language === 'fr' ? 'Vos 3 analyses gratuites sont épuisées' : 'Your 3 free analyses are used up'}
+                          </p>
+                          <p className="text-xs text-text-tertiary mb-3">
+                            {language === 'fr'
+                              ? 'Créez un compte gratuit pour sauvegarder cette analyse et continuer. Accédez au fact-checking sourcé, chat IA, flashcards, cartes mentales, export PDF...'
+                              : 'Create a free account to save this analysis and continue. Access sourced fact-checking, AI chat, flashcards, mind maps, PDF export...'}
+                          </p>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <motion.button
+                              onClick={() => navigate('/login?tab=register')}
+                              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors"
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                            >
+                              {language === 'fr' ? 'Créer un compte gratuit' : 'Create a free account'}
+                              <ArrowRight className="w-4 h-4" />
+                            </motion.button>
+                            <motion.button
+                              onClick={() => navigate('/upgrade')}
+                              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-violet-500/20 border border-violet-500/30 text-violet-300 text-sm font-medium hover:bg-violet-500/30 transition-colors"
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                            >
+                              <Crown className="w-4 h-4" />
+                              {language === 'fr' ? 'Voir les plans' : 'View plans'}
+                            </motion.button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Still has analyses left — show remaining + try another */
+                    <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-surface-secondary/40 border border-border-subtle">
+                      <p className="text-xs text-text-tertiary">
+                        {language === 'fr'
+                          ? `${guestRemaining} analyse${guestRemaining > 1 ? 's' : ''} gratuite${guestRemaining > 1 ? 's' : ''} restante${guestRemaining > 1 ? 's' : ''}`
+                          : `${guestRemaining} free analysis${guestRemaining > 1 ? 'es' : ''} remaining`}
+                      </p>
+                      <div className="flex gap-2">
                         <motion.button
-                          onClick={() => navigate('/login?tab=register')}
-                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors"
+                          onClick={() => { setGuestResult(null); setGuestUrl(''); setGuestError(null); }}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-secondary border border-border-subtle text-text-secondary text-xs font-medium hover:bg-surface-tertiary transition-colors"
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
-                          {language === 'fr' ? 'Créer un compte pour sauvegarder' : 'Create an account to save'}
-                          <ArrowRight className="w-4 h-4" />
+                          {language === 'fr' ? 'Analyser une autre vidéo' : 'Analyze another video'}
+                        </motion.button>
+                        <motion.button
+                          onClick={() => navigate('/login?tab=register')}
+                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-accent-primary/10 border border-accent-primary/20 text-accent-primary text-xs font-medium hover:bg-accent-primary/20 transition-colors"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          {language === 'fr' ? 'Créer un compte' : 'Sign up'}
+                          <ArrowRight className="w-3 h-3" />
                         </motion.button>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
