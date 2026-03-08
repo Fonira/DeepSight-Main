@@ -597,7 +597,7 @@ const LandingPage: React.FC = () => {
                     value={guestUrl}
                     onChange={(e) => setGuestUrl(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleGuestAnalyze()}
-                    placeholder={language === 'fr' ? 'Collez un lien YouTube (< 5 min)' : 'Paste a YouTube link (< 5 min)'}
+                    placeholder={language === 'fr' ? 'Collez un lien YouTube Short ou TikTok' : 'Paste a YouTube Short or TikTok link'}
                     className="flex-1 min-w-0 px-4 py-3 rounded-lg bg-surface-secondary/60 border border-border-subtle text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:border-accent-primary/40 transition-all"
                     disabled={guestLoading}
                   />
@@ -619,26 +619,27 @@ const LandingPage: React.FC = () => {
                   </motion.button>
                 </div>
 
-                {/* Helper text + YouTube/TikTok links */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-1">
-                  <p className="text-xs text-text-muted">
-                    {language === 'fr' ? 'Essai gratuit — une analyse offerte, vidéos YouTube < 5 min' : 'Free trial — one analysis, YouTube videos < 5 min'}
+                {/* Helper text + Shorts/TikTok guidance */}
+                <div className="flex flex-col items-center gap-2 px-1">
+                  <p className="text-xs text-text-muted text-center">
+                    {language === 'fr'
+                      ? 'Choisissez un Short ou un TikTok, partagez-le, copiez le lien puis collez-le ici'
+                      : 'Pick a Short or TikTok, share it, copy the link and paste it here'}
                   </p>
-                  <div className="flex items-center gap-3 text-xs text-text-tertiary">
-                    <span>{language === 'fr' ? "Pas d'idée ?" : 'No idea?'}</span>
+                  <div className="flex items-center gap-3">
                     <a
-                      href="https://youtube.com"
+                      href="https://youtube.com/shorts"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-colors text-xs font-medium"
                     >
-                      <span>▶</span> YouTube <ExternalLink className="w-3 h-3" />
+                      <span>▶</span> YouTube Shorts <ExternalLink className="w-3 h-3" />
                     </a>
                     <a
                       href="https://tiktok.com"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 transition-colors text-xs font-medium"
                     >
                       <span>♪</span> TikTok <ExternalLink className="w-3 h-3" />
                     </a>
