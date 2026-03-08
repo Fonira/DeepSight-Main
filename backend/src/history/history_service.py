@@ -11,12 +11,14 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import asyncio
 import re
 import time
 from collections import Counter
 from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy import select, func, or_, and_, desc, case
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import load_only
 
 from core.logging import logger
 from db.database import Summary, PlaylistAnalysis, User
@@ -403,23 +405,38 @@ async def search_history_semantic(
     
     # Recherche dans les vidéos
     if include_videos:
-        video_query = select(Summary).where(Summary.user_id == user_id)
+        video_query = (
+            select(Summary)
+            .options(load_only(
+                Summary.id, Summary.video_id, Summary.video_title,
+                Summary.summary_content, Summary.category,
+                Summary.video_channel, Summary.created_at,
+                Summary.video_duration, Summary.thumbnail_url,
+                Summary.platform, Summary.video_url,
+                Summary.video_upload_date, Summary.word_count,
+                Summary.is_favorite, Summary.playlist_id,
+                Summary.mode, Summary.lang, Summary.reliability_score,
+            ))
+            .where(Summary.user_id == user_id)
+            .order_by(Summary.created_at.desc())
+            .limit(500)
+        )
         video_result = await session.execute(video_query)
         all_videos = video_result.scalars().all()
-        
+
         scored_videos = []
         for video in all_videos:
-            # Combiner titre + résumé + transcription pour le scoring
-            content = f"{video.video_title or ''} {video.summary_content or ''} {video.transcript_context or ''}"
+            # Scoring sur titre + résumé (transcript_context exclu — trop lourd, peu utile pour la pertinence)
+            content = f"{video.video_title or ''} {video.summary_content or ''}"
             score = calculate_relevance_score(content, search_keywords)
-            
+
             if score >= min_score:
                 scored_videos.append({
                     "item": video,
                     "score": score,
                     "type": "video"
                 })
-        
+
         # Trier par score et limiter
         scored_videos.sort(key=lambda x: x["score"], reverse=True)
         results["videos"] = scored_videos[:limit]
@@ -464,46 +481,40 @@ async def get_history_stats(
 ) -> Dict[str, Any]:
     """
     Récupère les statistiques de l'historique.
+    Optimisé: 5 requêtes en parallèle via asyncio.gather().
     """
-    # Vidéos simples (hors playlists)
-    video_count = await session.execute(
-        select(func.count(Summary.id)).where(
-            Summary.user_id == user_id,
-            or_(Summary.playlist_id == None, Summary.playlist_id == "")
-        )
+    vc, pc, wc, dc, cc = await asyncio.gather(
+        session.execute(
+            select(func.count(Summary.id)).where(
+                Summary.user_id == user_id,
+                or_(Summary.playlist_id == None, Summary.playlist_id == "")
+            )
+        ),
+        session.execute(
+            select(func.count(PlaylistAnalysis.id)).where(
+                PlaylistAnalysis.user_id == user_id,
+                PlaylistAnalysis.status == "completed"
+            )
+        ),
+        session.execute(
+            select(func.sum(Summary.word_count)).where(Summary.user_id == user_id)
+        ),
+        session.execute(
+            select(func.sum(Summary.video_duration)).where(Summary.user_id == user_id)
+        ),
+        session.execute(
+            select(Summary.category, func.count(Summary.id)).where(
+                Summary.user_id == user_id
+            ).group_by(Summary.category)
+        ),
     )
-    
-    # Playlists complétées
-    playlist_count = await session.execute(
-        select(func.count(PlaylistAnalysis.id)).where(
-            PlaylistAnalysis.user_id == user_id,
-            PlaylistAnalysis.status == "completed"
-        )
-    )
-    
-    # Total mots générés
-    total_words = await session.execute(
-        select(func.sum(Summary.word_count)).where(Summary.user_id == user_id)
-    )
-    
-    # Total durée vidéos
-    total_duration = await session.execute(
-        select(func.sum(Summary.video_duration)).where(Summary.user_id == user_id)
-    )
-    
-    # Catégories
-    categories = await session.execute(
-        select(Summary.category, func.count(Summary.id)).where(
-            Summary.user_id == user_id
-        ).group_by(Summary.category)
-    )
-    
+
     return {
-        "total_videos": video_count.scalar() or 0,
-        "total_playlists": playlist_count.scalar() or 0,
-        "total_words": total_words.scalar() or 0,
-        "total_duration_seconds": total_duration.scalar() or 0,
-        "categories": dict(categories.all())
+        "total_videos": vc.scalar() or 0,
+        "total_playlists": pc.scalar() or 0,
+        "total_words": wc.scalar() or 0,
+        "total_duration_seconds": dc.scalar() or 0,
+        "categories": dict(cc.all())
     }
 
 
