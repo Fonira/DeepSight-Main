@@ -57,14 +57,14 @@ const API_URL = BASE_API_URL.replace(/\/api\/?$/, '') + '/api';
 
 /**
  * Détecte la plateforme d'une vidéo.
- * YouTube IDs = exactement 11 chars [A-Za-z0-9_-].
- * Tout video_id qui ne matche pas ce pattern → TikTok.
+ * Priorité : champ platform > heuristiques URL/ID
  */
-function resolvePlatform(video: { platform?: string; video_id?: string }): 'youtube' | 'tiktok' {
+function resolvePlatform(video: { platform?: string; video_id?: string }): 'youtube' | 'tiktok' | 'text' {
+  if (video.platform === 'text') return 'text';
   if (video.platform === 'tiktok') return 'tiktok';
   const vid = video.video_id || '';
   if (!vid) return 'youtube';
-  // YouTube IDs = exactement 11 chars alphanumériques + _ + -
+  if (vid.startsWith('txt_')) return 'text';
   const isYouTubeId = /^[A-Za-z0-9_-]{11}$/.test(vid);
   return isYouTubeId ? 'youtube' : 'tiktok';
 }
@@ -86,7 +86,7 @@ interface VideoSummary {
   created_at: string;
   summary_content?: string;
   transcript_context?: string;
-  platform?: 'youtube' | 'tiktok';
+  platform?: 'youtube' | 'tiktok' | 'text';
 }
 
 interface PlaylistSummary {
@@ -1574,6 +1574,10 @@ const VideoCard: React.FC<{
             <span className="absolute top-1 left-1 z-10">
               {resolvePlatform(video) === 'tiktok' ? (
                 <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-4 h-4 drop-shadow-md" />
+              ) : resolvePlatform(video) === 'text' ? (
+                <span className="flex items-center justify-center w-4 h-4 rounded bg-gray-500/60 backdrop-blur-sm">
+                  <FileText className="w-3 h-3 text-white" />
+                </span>
               ) : (
                 <img src="/platforms/youtube-icon-red.svg" alt="YouTube" className="w-4 h-4 drop-shadow-md" />
               )}
@@ -1637,6 +1641,10 @@ const VideoCard: React.FC<{
         <span className="absolute top-2 left-2 z-10">
           {resolvePlatform(video) === 'tiktok' ? (
             <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-5 h-5 drop-shadow-md" />
+          ) : resolvePlatform(video) === 'text' ? (
+            <span className="flex items-center justify-center w-5 h-5 rounded bg-gray-500/60 backdrop-blur-sm">
+              <FileText className="w-3.5 h-3.5 text-white" />
+            </span>
           ) : (
             <img src="/platforms/youtube-icon-red.svg" alt="YouTube" className="w-5 h-5 drop-shadow-md" />
           )}

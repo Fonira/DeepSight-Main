@@ -86,8 +86,8 @@ export interface Summary {
   created_at: string;
   updated_at?: string;
 
-  // 🎵 Platform (YouTube or TikTok)
-  platform?: 'youtube' | 'tiktok';
+  // 🎵 Platform (YouTube, TikTok or Text)
+  platform?: 'youtube' | 'tiktok' | 'text';
 
   // Optional/legacy fields for compatibility
   channel_id?: string;
@@ -154,7 +154,7 @@ export interface TaskStatus {
   status: 'pending' | 'processing' | 'completed' | 'failed';
   progress?: number;
   message?: string;
-  platform?: 'youtube' | 'tiktok';
+  platform?: 'youtube' | 'tiktok' | 'text';
   result?: {
     summary_id?: number;
     summary?: Summary;
@@ -163,7 +163,7 @@ export interface TaskStatus {
 }
 
 // 🎵 Platform detection helper
-export type VideoPlatform = 'youtube' | 'tiktok';
+export type VideoPlatform = 'youtube' | 'tiktok' | 'text';
 
 const TIKTOK_URL_PATTERNS = [
   /tiktok\.com\/@[\w.-]+\/video\/\d+/i,
@@ -175,11 +175,14 @@ const TIKTOK_URL_PATTERNS = [
 
 export function getPlatformFromUrl(url: string): VideoPlatform {
   if (!url) return 'youtube';
+  if (url.startsWith('text://') || url.startsWith('txt_')) return 'text';
   return TIKTOK_URL_PATTERNS.some(p => p.test(url.trim())) ? 'tiktok' : 'youtube';
 }
 
 export function getPlatformLabel(platform?: VideoPlatform): string {
-  return platform === 'tiktok' ? 'TikTok' : 'YouTube';
+  if (platform === 'tiktok') return 'TikTok';
+  if (platform === 'text') return 'Texte';
+  return 'YouTube';
 }
 
 export function getVideoUrl(videoId: string, platform?: VideoPlatform): string {

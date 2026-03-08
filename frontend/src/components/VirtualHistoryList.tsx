@@ -40,13 +40,14 @@ import { DeepSightSpinnerSmall } from './ui';
 
 /**
  * Détecte la plateforme.
- * YouTube IDs = exactement 11 chars [A-Za-z0-9_-].
- * Tout video_id qui ne matche pas → TikTok.
+ * Priorité : champ platform > heuristiques URL/ID
  */
-function resolvePlatform(item: { platform?: string; video_id?: string }): 'youtube' | 'tiktok' {
+function resolvePlatform(item: { platform?: string; video_id?: string }): 'youtube' | 'tiktok' | 'text' {
+  if (item.platform === 'text') return 'text';
   if (item.platform === 'tiktok') return 'tiktok';
   const vid = item.video_id || '';
   if (!vid) return 'youtube';
+  if (vid.startsWith('txt_')) return 'text';
   const isYouTubeId = /^[A-Za-z0-9_-]{11}$/.test(vid);
   return isYouTubeId ? 'youtube' : 'tiktok';
 }
@@ -64,7 +65,7 @@ export interface SummaryItem {
   is_favorite?: boolean;
   mode?: string;
   lang?: string;
-  platform?: 'youtube' | 'tiktok';
+  platform?: 'youtube' | 'tiktok' | 'text';
 }
 
 interface VirtualHistoryListProps {
@@ -203,8 +204,12 @@ const SummaryCard = memo<SummaryCardProps>(({
           
           {/* Platform badge */}
           <span className="absolute top-1 left-1 z-10">
-            {(resolvePlatform(item) === 'tiktok') ? (
+            {resolvePlatform(item) === 'tiktok' ? (
               <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-5 h-5 drop-shadow-md" />
+            ) : resolvePlatform(item) === 'text' ? (
+              <span className="flex items-center justify-center w-5 h-5 rounded bg-gray-500/60 backdrop-blur-sm">
+                <FileText className="w-3.5 h-3.5 text-white" />
+              </span>
             ) : (
               <img src="/platforms/youtube-icon-red.svg" alt="YouTube" className="w-5 h-5 drop-shadow-md" />
             )}
