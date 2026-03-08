@@ -748,68 +748,66 @@ export const DashboardPage: React.FC = () => {
                 language={language as 'fr' | 'en'}
               />
 
-              {/* Quota (mode selector supprimé — fusionné dans Ton du CustomizationPanel v4) */}
+              {/* Quota */}
               {user && (
                 <div className="mt-3 pt-3 border-t border-border-subtle text-xs text-text-tertiary text-right">
                   {user.analysis_count}/{user.analysis_limit} {language === 'fr' ? 'analyses' : 'analyses'}
                 </div>
               )}
-              
-              {/* ═══════════════════════════════════════════════════════════════ */}
-              {/* 🎨 CUSTOMIZATION PANEL v2 — Personnalisation Avancée */}
-              {/* ═══════════════════════════════════════════════════════════════ */}
-              {/* CustomizationPanel visible pour TOUS les modes (url, text, search) */}
-              <div className="mt-4 pt-4 border-t border-border-subtle">
-                  {/* Toggle button to show/hide panel */}
-                  <button
-                    type="button"
-                    onClick={() => setShowCustomizationPanel(!showCustomizationPanel)}
-                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-bg-tertiary hover:bg-bg-hover border border-border-default transition-all group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`
-                        w-10 h-10 rounded-lg flex items-center justify-center transition-all
-                        ${analysisCustomization.antiAIDetection 
-                          ? 'bg-green-500/20 text-green-400' 
-                          : 'bg-accent-primary/10 text-accent-primary'}
-                      `}>
-                        {analysisCustomization.antiAIDetection ? (
-                          <Shield className="w-5 h-5" />
-                        ) : (
-                          <Sparkles className="w-5 h-5" />
-                        )}
-                      </div>
-                      <div className="text-left">
-                        <span className="text-sm font-medium text-text-primary flex items-center gap-2">
-                          {language === 'fr' ? 'Personnalisation avancée' : 'Advanced Customization'}
-                          {analysisCustomization.antiAIDetection && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 font-semibold">
-                              Anti-IA ✓
-                            </span>
-                          )}
-                        </span>
-                        <span className="text-xs text-text-muted">
-                          {analysisCustomization.userPrompt
-                            ? (language === 'fr' ? 'Instructions personnalisées actives' : 'Custom instructions active')
-                            : (language === 'fr' ? 'Focus, ton, longueur, langue...' : 'Focus, tone, length, language...')}
-                        </span>
-                      </div>
+            </div>
+
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            {/* 🎨 CUSTOMIZATION PANEL — Card SÉPARÉE pour éviter chevauchement dropdown */}
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            <div className="card p-4 sm:p-6 mb-4 sm:mb-6">
+                <button
+                  type="button"
+                  onClick={() => setShowCustomizationPanel(!showCustomizationPanel)}
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-bg-tertiary hover:bg-bg-hover border border-border-default transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`
+                      w-10 h-10 rounded-lg flex items-center justify-center transition-all
+                      ${analysisCustomization.antiAIDetection
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'bg-accent-primary/10 text-accent-primary'}
+                    `}>
+                      {analysisCustomization.antiAIDetection ? (
+                        <Shield className="w-5 h-5" />
+                      ) : (
+                        <Sparkles className="w-5 h-5" />
+                      )}
                     </div>
-                    <ChevronDown className={`w-5 h-5 text-text-muted transition-transform duration-200 ${showCustomizationPanel ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  {/* Expandable panel */}
-                  <div className={`
-                    overflow-hidden transition-all duration-300 ease-in-out
-                    ${showCustomizationPanel ? 'max-h-[800px] opacity-100 mt-4' : 'max-h-0 opacity-0'}
-                  `}>
-                    <CustomizationPanel
-                      onCustomizationChange={setAnalysisCustomization}
-                      initialCustomization={analysisCustomization}
-                      language={language as 'fr' | 'en'}
-                      disabled={loading}
-                    />
+                    <div className="text-left">
+                      <span className="text-sm font-medium text-text-primary flex items-center gap-2">
+                        {language === 'fr' ? 'Personnalisation avancée' : 'Advanced Customization'}
+                        {analysisCustomization.antiAIDetection && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 font-semibold">
+                            Anti-IA ✓
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-xs text-text-muted">
+                        {analysisCustomization.userPrompt
+                          ? (language === 'fr' ? 'Instructions personnalisées actives' : 'Custom instructions active')
+                          : (language === 'fr' ? 'Focus, ton, longueur, langue...' : 'Focus, tone, length, language...')}
+                      </span>
+                    </div>
                   </div>
+                  <ChevronDown className={`w-5 h-5 text-text-muted transition-transform duration-200 ${showCustomizationPanel ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Expandable panel */}
+                <div className={`
+                  overflow-hidden transition-all duration-300 ease-in-out
+                  ${showCustomizationPanel ? 'max-h-[800px] opacity-100 mt-4' : 'max-h-0 opacity-0'}
+                `}>
+                  <CustomizationPanel
+                    onCustomizationChange={setAnalysisCustomization}
+                    initialCustomization={analysisCustomization}
+                    language={language as 'fr' | 'en'}
+                    disabled={loading}
+                  />
                 </div>
             </div>
 
