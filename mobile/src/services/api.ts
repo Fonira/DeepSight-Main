@@ -940,7 +940,7 @@ export const historyApi = {
       category: item.category || 'general',
       channel: item.video_channel,
       duration: item.video_duration,
-      platform: (item.platform as 'youtube' | 'tiktok' | 'text') || 'youtube',
+      platform: (item.platform as 'youtube' | 'tiktok' | 'text') || (item.video_url ? (item.video_url.includes('tiktok') ? 'tiktok' : 'youtube') : 'text'),
       video_url: item.video_url,
       createdAt: item.created_at,
     }));

@@ -122,7 +122,7 @@ export const PlatformBadge: React.FC<PlatformBadgeProps> = ({
  * Détecte la plateforme à partir de l'URL ou du videoId
  */
 export const detectPlatformFromUrl = (url?: string, videoId?: string): VideoPlatform => {
-  if (!url && !videoId) return 'youtube';
+  if (!url && !videoId) return 'text';
   const text = url || videoId || '';
   // Texte collé / import manuel
   if (text.startsWith('text://') || text.startsWith('txt_')) return 'text';
@@ -133,8 +133,16 @@ export const detectPlatformFromUrl = (url?: string, videoId?: string): VideoPlat
   ) {
     return 'tiktok';
   }
-  // Les video IDs TikTok sont des longs nombres (>15 chiffres)
-  if (/^\d{15,}$/.test(text)) return 'tiktok';
+  // Les video IDs TikTok sont des longs nombres (>15 chiffres) — seulement si une URL TikTok existe
+  if (url && url.includes('tiktok') && /^\d{15,}$/.test(videoId || '')) return 'tiktok';
+  if (
+    text.includes('youtube.com') ||
+    text.includes('youtu.be')
+  ) {
+    return 'youtube';
+  }
+  // Pas d'URL reconnaissable → probablement du texte collé
+  if (!url) return 'text';
   return 'youtube';
 };
 

@@ -140,7 +140,7 @@ export function CustomTabBar({
       style={[
         styles.container,
         {
-          paddingBottom: Math.max(insets.bottom, sp.sm),
+          paddingBottom: insets.bottom,
           backgroundColor: colors.bgPrimary,
           borderTopColor: colors.border,
         },
