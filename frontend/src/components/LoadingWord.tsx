@@ -51,7 +51,7 @@ const useDraggable = (initialPos: Position, storageKey: string) => {
     };
     const handleUp = () => {
       setIsDragging(false);
-      localStorage.setItem(`${storageKey}-pos`, JSON.stringify(position));
+      try { localStorage.setItem(`${storageKey}-pos`, JSON.stringify(position)); } catch { /* Safari private */ }
     };
     document.addEventListener('mousemove', handleMove);
     document.addEventListener('mouseup', handleUp);
@@ -430,9 +430,9 @@ export const LoadingWordGlobal: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
 
-  // 🆕 Position draggable
+  // 🆕 Position draggable — guard window access for SSR/Safari safety
   const { position, isDragging, handleMouseDown } = useDraggable(
-    { x: window.innerWidth - 340, y: window.innerHeight - 300 },
+    { x: (typeof window !== 'undefined' ? window.innerWidth : 1024) - 340, y: (typeof window !== 'undefined' ? window.innerHeight : 768) - 300 },
     'loading-word-widget'
   );
 

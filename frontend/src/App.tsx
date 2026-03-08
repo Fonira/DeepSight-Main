@@ -206,37 +206,75 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 📦 LAZY LOADED PAGES
+// 📦 LAZY LOADED PAGES — avec retry automatique pour éviter les crashes
+//    après déploiement (chunks obsolètes sur Safari/mobile)
 // ═══════════════════════════════════════════════════════════════════════════════
 
+function lazyWithRetry(importFn: () => Promise<any>) {
+  return lazy(() =>
+    importFn().catch((error: any) => {
+      // Chunk loading failure after deployment — reload page once
+      const isChunkError =
+        error?.message?.includes('Failed to fetch dynamically imported module') ||
+        error?.message?.includes('Loading chunk') ||
+        error?.message?.includes('Loading CSS chunk') ||
+        error?.message?.includes('Unable to preload CSS') ||
+        error?.name === 'ChunkLoadError' ||
+        error?.message?.includes('error loading dynamically imported module');
+
+      if (isChunkError) {
+        const RELOAD_KEY = 'chunk_reload_ts';
+        try {
+          const lastReload = sessionStorage.getItem(RELOAD_KEY);
+          const now = Date.now();
+          // Only auto-reload once per 30 seconds to prevent infinite loop
+          if (!lastReload || now - parseInt(lastReload) > 30000) {
+            sessionStorage.setItem(RELOAD_KEY, now.toString());
+            window.location.reload();
+            return new Promise(() => {}); // Never resolves — page is reloading
+          }
+        } catch {
+          // sessionStorage unavailable (Safari private) — try reload once via URL param
+          if (!window.location.search.includes('_cr=1')) {
+            const sep = window.location.search ? '&' : '?';
+            window.location.href = window.location.href + sep + '_cr=1';
+            return new Promise(() => {});
+          }
+        }
+      }
+      throw error;
+    })
+  );
+}
+
 // Pages publiques
-const LandingPage = lazy(() => import("./pages/LandingPage"));
-const Login = lazy(() => import("./pages/Login"));
-const AuthCallback = lazy(() => import("./pages/AuthCallback"));
-const LegalPage = lazy(() => import("./pages/LegalPage"));
-const LegalCGU = lazy(() => import("./pages/LegalCGU"));
-const LegalCGV = lazy(() => import("./pages/LegalCGV"));
-const PaymentSuccess = lazy(() => import("./pages/PaymentSuccess"));
-const PaymentCancel = lazy(() => import("./pages/PaymentCancel"));
-const StatusPage = lazy(() => import("./pages/StatusPage"));
-const ContactPage = lazy(() => import("./pages/ContactPage"));
-const SharedAnalysisPage = lazy(() => import("./pages/SharedAnalysisPage"));
+const LandingPage = lazyWithRetry(() => import("./pages/LandingPage"));
+const Login = lazyWithRetry(() => import("./pages/Login"));
+const AuthCallback = lazyWithRetry(() => import("./pages/AuthCallback"));
+const LegalPage = lazyWithRetry(() => import("./pages/LegalPage"));
+const LegalCGU = lazyWithRetry(() => import("./pages/LegalCGU"));
+const LegalCGV = lazyWithRetry(() => import("./pages/LegalCGV"));
+const PaymentSuccess = lazyWithRetry(() => import("./pages/PaymentSuccess"));
+const PaymentCancel = lazyWithRetry(() => import("./pages/PaymentCancel"));
+const StatusPage = lazyWithRetry(() => import("./pages/StatusPage"));
+const ContactPage = lazyWithRetry(() => import("./pages/ContactPage"));
+const SharedAnalysisPage = lazyWithRetry(() => import("./pages/SharedAnalysisPage"));
 
 // Pages protégées
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
-const PlaylistPage = lazy(() => import("./pages/PlaylistPage"));
-const PlaylistDetailPage = lazy(() => import("./pages/PlaylistDetailPage"));
-const History = lazy(() => import("./pages/History"));
-const UpgradePage = lazy(() => import("./pages/UpgradePage"));
-const Settings = lazy(() => import("./pages/Settings"));
-const MyAccount = lazy(() => import("./pages/MyAccount"));
-const AdminPage = lazy(() => import("./pages/AdminPage"));
-const UsageDashboard = lazy(() => import("./pages/UsageDashboard"));
-const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
-const StudyPage = lazy(() => import("./pages/StudyPage"));
-const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
-const ExtensionWelcomePage = lazy(() => import("./pages/ExtensionWelcomePage"));
-const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const DashboardPage = lazyWithRetry(() => import("./pages/DashboardPage"));
+const PlaylistPage = lazyWithRetry(() => import("./pages/PlaylistPage"));
+const PlaylistDetailPage = lazyWithRetry(() => import("./pages/PlaylistDetailPage"));
+const History = lazyWithRetry(() => import("./pages/History"));
+const UpgradePage = lazyWithRetry(() => import("./pages/UpgradePage"));
+const Settings = lazyWithRetry(() => import("./pages/Settings"));
+const MyAccount = lazyWithRetry(() => import("./pages/MyAccount"));
+const AdminPage = lazyWithRetry(() => import("./pages/AdminPage"));
+const UsageDashboard = lazyWithRetry(() => import("./pages/UsageDashboard"));
+const AnalyticsPage = lazyWithRetry(() => import("./pages/AnalyticsPage"));
+const StudyPage = lazyWithRetry(() => import("./pages/StudyPage"));
+const NotFoundPage = lazyWithRetry(() => import("./pages/NotFoundPage"));
+const ExtensionWelcomePage = lazyWithRetry(() => import("./pages/ExtensionWelcomePage"));
+const PrivacyPolicy = lazyWithRetry(() => import("./pages/PrivacyPolicy"));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔮 PREFETCH CONFIGURATION
@@ -328,9 +366,11 @@ const HomeRoute = () => {
   }
 
   return user ? <Navigate to="/dashboard" replace /> : (
-    <Suspense fallback={<PageSkeleton variant="full" />}>
-      <LandingPage />
-    </Suspense>
+    <RouteErrorBoundary variant="full" componentName="LandingPage">
+      <Suspense fallback={<PageSkeleton variant="full" />}>
+        <LandingPage />
+      </Suspense>
+    </RouteErrorBoundary>
   );
 };
 
@@ -564,14 +604,20 @@ const AppRoutes = () => {
             
             <CrispChat />
 
-            {/* 🔒 Modal upgrade global (403/429 interceptor) */}
-            <UpgradeModal />
+            {/* 🔒 Modal upgrade global (403/429 interceptor) — wrapped to prevent crash */}
+            <ErrorBoundary fallback={null}>
+              <UpgradeModal />
+            </ErrorBoundary>
 
-            {/* 🧠 Widget "Le Saviez-Vous" global - visible sur toutes les pages */}
-            <LoadingWordGlobal />
+            {/* 🧠 Widget "Le Saviez-Vous" global — wrapped to prevent crash */}
+            <ErrorBoundary fallback={null}>
+              <LoadingWordGlobal />
+            </ErrorBoundary>
 
-            {/* 🍪 RGPD: Cookie consent banner */}
-            <CookieBanner />
+            {/* 🍪 RGPD: Cookie consent banner — wrapped to prevent crash */}
+            <ErrorBoundary fallback={null}>
+              <CookieBanner />
+            </ErrorBoundary>
             </Router>
           </AuthProvider>
         </LoadingWordProvider>

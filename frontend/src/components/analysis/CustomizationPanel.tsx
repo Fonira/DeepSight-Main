@@ -144,7 +144,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   const resetToDefaults = useCallback(() => {
     setCustomization(DEFAULT_CUSTOMIZATION);
     onCustomizationChange(DEFAULT_CUSTOMIZATION);
-    localStorage.removeItem(CUSTOMIZATION_STORAGE_KEY);
+    try { localStorage.removeItem(CUSTOMIZATION_STORAGE_KEY); } catch { /* Safari private */ }
   }, [onCustomizationChange]);
 
   useEffect(() => {

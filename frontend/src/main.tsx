@@ -16,6 +16,53 @@ document.addEventListener('mousedown', () => {
   document.body.classList.remove('user-is-tabbing');
 });
 
+// 🛡️ Global handler for chunk loading errors (post-deployment cache issues)
+// Safari reports these as "Load failed" instead of "Failed to fetch"
+window.addEventListener('error', (event) => {
+  const msg = event.message || '';
+  if (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('error loading dynamically imported module') ||
+    msg.includes('Loading chunk') ||
+    msg.includes('Loading CSS chunk')
+  ) {
+    const RELOAD_KEY = 'chunk_reload_ts';
+    try {
+      const lastReload = sessionStorage.getItem(RELOAD_KEY);
+      const now = Date.now();
+      if (!lastReload || now - parseInt(lastReload) > 30000) {
+        sessionStorage.setItem(RELOAD_KEY, now.toString());
+        window.location.reload();
+      }
+    } catch {
+      // sessionStorage unavailable
+    }
+  }
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  const msg = event.reason?.message || String(event.reason) || '';
+  if (
+    msg.includes('Failed to fetch dynamically imported module') ||
+    msg.includes('error loading dynamically imported module') ||
+    msg.includes('Loading chunk') ||
+    msg.includes('Loading CSS chunk') ||
+    msg.includes('Load failed') // Safari-specific
+  ) {
+    const RELOAD_KEY = 'chunk_reload_ts';
+    try {
+      const lastReload = sessionStorage.getItem(RELOAD_KEY);
+      const now = Date.now();
+      if (!lastReload || now - parseInt(lastReload) > 30000) {
+        sessionStorage.setItem(RELOAD_KEY, now.toString());
+        window.location.reload();
+      }
+    } catch {
+      // sessionStorage unavailable
+    }
+  }
+});
+
 // Composant de fallback en cas d'erreur critique
 const ErrorFallback = () => (
   <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">

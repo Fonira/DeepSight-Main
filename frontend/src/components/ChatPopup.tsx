@@ -644,14 +644,14 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
 
   const { position, setPosition, isDragging, handleMouseDown } = useDraggable(
     storedLayout?.position || defaultPosition,
-    (pos) => { localStorage.setItem(`${storageKey}-layout`, JSON.stringify({ position: pos, size })); }
+    (pos) => { try { localStorage.setItem(`${storageKey}-layout`, JSON.stringify({ position: pos, size })); } catch { /* Safari private */ } }
   );
 
   const { size, setSize, isResizing, handleResizeStart } = useResizable(
     storedLayout?.size || defaultSize,
     { width: 320, height: 400 },
     { width: 800, height: 900 },
-    (newSize) => { localStorage.setItem(`${storageKey}-layout`, JSON.stringify({ position, size: newSize })); }
+    (newSize) => { try { localStorage.setItem(`${storageKey}-layout`, JSON.stringify({ position, size: newSize })); } catch { /* Safari private */ } }
   );
 
   // Auto-scroll to bottom

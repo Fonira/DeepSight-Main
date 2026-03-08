@@ -1,4 +1,4 @@
-const CACHE_NAME = 'deepsight-v1';
+const CACHE_NAME = 'deepsight-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -7,7 +7,7 @@ const STATIC_ASSETS = [
   '/icons/icon-512x512.png',
 ];
 
-// Install — cache static shell
+// Install — cache static shell + purge old caches immediately
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -15,7 +15,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate — clean old caches
+// Activate — clean ALL old caches to prevent stale chunks
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
@@ -25,16 +25,20 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch — network-first for API, cache-first for static assets
+// Fetch strategy:
+// - Navigation: network-first (always get fresh HTML)
+// - JS/CSS (hashed by Vite): network-first to prevent stale chunk crashes
+// - Images/fonts: cache-first (safe, content-addressed)
+// - API: passthrough (no caching)
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET and cross-origin API calls
+  // Skip non-GET and API calls
   if (request.method !== 'GET') return;
   if (url.pathname.startsWith('/api/')) return;
 
-  // For navigation requests — network first, fallback to cache
+  // Navigation requests — network first, fallback to cached shell
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).catch(() => caches.match('/'))
@@ -42,18 +46,35 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For static assets — cache first, then network
-  if (STATIC_ASSETS.includes(url.pathname) || url.pathname.match(/\.(js|css|png|jpg|svg|ico|woff2?)$/)) {
+  // JS/CSS files — NETWORK FIRST (critical: Vite uses content hashes,
+  // serving stale chunks causes "Failed to fetch dynamically imported module" crashes)
+  if (url.pathname.match(/\.(js|css)$/)) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        const fetchPromise = fetch(request).then((response) => {
+      fetch(request)
+        .then((response) => {
           if (response.ok) {
             const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }
           return response;
-        }).catch(() => cached);
-        return cached || fetchPromise;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || Response.error()))
+    );
+    return;
+  }
+
+  // Images, fonts, icons — cache first (safe, immutable content)
+  if (url.pathname.match(/\.(png|jpg|jpeg|gif|svg|ico|woff2?|ttf|eot)$/)) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
+          return response;
+        });
       })
     );
     return;
