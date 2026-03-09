@@ -56,7 +56,11 @@
     "logout": "Sign out",
     "login": "Sign in",
     "usage": "Usage",
-    "newAnalysis": "New analysis"
+    "newAnalysis": "New analysis",
+    "studySection": "Study & AI",
+    "chat": "AI Chat",
+    "study": "Study",
+    "didYouKnow": "Did You Know"
   },
   "auth": {
     "login": "Sign in",

@@ -273,6 +273,8 @@ const AdminPage = lazyWithRetry(() => import("./pages/AdminPage"));
 const UsageDashboard = lazyWithRetry(() => import("./pages/UsageDashboard"));
 const AnalyticsPage = lazyWithRetry(() => import("./pages/AnalyticsPage"));
 const StudyPage = lazyWithRetry(() => import("./pages/StudyPage"));
+const StudyHubPage = lazyWithRetry(() => import("./pages/StudyHubPage"));
+const ChatPage = lazyWithRetry(() => import("./pages/ChatPage"));
 const NotFoundPage = lazyWithRetry(() => import("./pages/NotFoundPage"));
 const ExtensionWelcomePage = lazyWithRetry(() => import("./pages/ExtensionWelcomePage"));
 const PrivacyPolicy = lazyWithRetry(() => import("./pages/PrivacyPolicy"));
@@ -284,7 +286,7 @@ const PrivacyPolicy = lazyWithRetry(() => import("./pages/PrivacyPolicy"));
 const PREFETCH_MAP: Record<string, string[]> = {
   '/': ['/dashboard', '/login'],
   '/login': ['/dashboard'],
-  '/dashboard': ['/history', '/settings', '/playlists', '/analytics'],
+  '/dashboard': ['/history', '/settings', '/playlists', '/analytics', '/chat', '/study'],
   '/history': ['/dashboard', '/analytics'],
   '/settings': ['/account'],
   '/playlists': ['/dashboard', '/playlist'],
@@ -304,6 +306,8 @@ const PAGE_LOADERS: Record<string, () => Promise<any>> = {
   '/upgrade': () => import("./pages/UpgradePage"),
   '/payment/success': () => import("./pages/PaymentSuccess"),
   '/analytics': () => import("./pages/AnalyticsPage"),
+  '/chat': () => import("./pages/ChatPage"),
+  '/study': () => import("./pages/StudyHubPage"),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -583,6 +587,22 @@ const AppRoutes = () => {
                     </RouteErrorBoundary>
                   } />
                   
+                  <Route path="/chat" element={
+                    <RouteErrorBoundary variant="full" componentName="ChatPage">
+                      <Suspense fallback={<PageSkeleton variant="full" />}>
+                        <ChatPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  } />
+
+                  <Route path="/study" element={
+                    <RouteErrorBoundary variant="full" componentName="StudyHubPage">
+                      <Suspense fallback={<PageSkeleton variant="dashboard" />}>
+                        <StudyHubPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  } />
+
                   <Route path="/study/:summaryId" element={
                     <Suspense fallback={<PageSkeleton variant="dashboard" />}>
                       <StudyPage />

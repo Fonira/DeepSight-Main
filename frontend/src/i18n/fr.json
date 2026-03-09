@@ -56,7 +56,11 @@
     "logout": "Déconnexion",
     "login": "Connexion",
     "usage": "Utilisation",
-    "newAnalysis": "Nouvelle analyse"
+    "newAnalysis": "Nouvelle analyse",
+    "studySection": "Révision & IA",
+    "chat": "Chat IA",
+    "study": "Révision",
+    "didYouKnow": "Le Saviez-Vous"
   },
   "auth": {
     "login": "Connexion",

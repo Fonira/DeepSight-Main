@@ -418,12 +418,17 @@ const extractSourceName = (url: string): string => {
 
 export const LoadingWordGlobal: React.FC = () => {
   const navigate = useNavigate();
-  const { currentWord, nextWord, isLoading } = useLoadingWord();
+  const { currentWord, nextWord, isLoading, isWidgetVisible, toggleWidget } = useLoadingWord();
   const { language } = useLanguage();
   const { isAuthenticated } = useAuth();
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isVisible, setIsVisible] = useState(false); // 🆕 Fermé par défaut
+
+  // 🔧 Utiliser le contexte partagé pour la visibilité (accessible depuis la sidebar)
+  const isVisible = isWidgetVisible;
+  const setIsVisible = (val: boolean) => {
+    if (val !== isWidgetVisible) toggleWidget();
+  };
 
   // 🆕 Position draggable — guard window access for SSR/Safari safety
   // Sur mobile, remonter au-dessus de la BottomNav (80px)
@@ -438,44 +443,10 @@ export const LoadingWordGlobal: React.FC = () => {
     return null;
   }
 
-  if (!currentWord) {
-    return null;
-  }
-
   const didYouKnow = language === 'fr' ? 'Le saviez-vous ?' : 'Did you know?';
-  const isClickable = currentWord.source === 'history' && currentWord.summaryId;
-  const hasFullDefinition = currentWord.definition && currentWord.definition.length > 80;
 
-  // 🆕 Déterminer la source à afficher (Wikipedia en priorité, sinon générer un lien de recherche)
-  const getSourceInfo = () => {
-    // Si wikiUrl existe (mots locaux), l'utiliser directement
-    if (currentWord.wikiUrl) {
-      return {
-        url: currentWord.wikiUrl,
-        name: extractSourceName(currentWord.wikiUrl)
-      };
-    }
-
-    // Pour les mots de l'historique sans wikiUrl, générer un lien Wikipedia
-    // Utiliser le terme pour créer une URL de recherche Wikipedia
-    const wikiLang = language === 'fr' ? 'fr' : 'en';
-    const searchUrl = `https://${wikiLang}.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(currentWord.term)}`;
-    return {
-      url: searchUrl,
-      name: 'Wikipedia'
-    };
-  };
-
-  const sourceInfo = getSourceInfo();
-  const sourceUrl = sourceInfo.url;
-  const sourceName = sourceInfo.name;
-
-  const handleClick = () => {
-    if (isClickable && currentWord.summaryId) {
-      navigate(`/dashboard?id=${currentWord.summaryId}`);
-    }
-  };
-
+  // 🔧 FIX: Le bouton flottant doit TOUJOURS être visible, même si currentWord est null
+  // (pendant le fetch initial async ou sur timeout réseau)
   if (!isVisible) {
     return (
       <>
@@ -500,6 +471,81 @@ export const LoadingWordGlobal: React.FC = () => {
       </>
     );
   }
+
+  // Si le widget est ouvert mais pas encore de mot chargé → afficher un état de chargement
+  if (!currentWord) {
+    return (
+      <div
+        className={`
+          fixed z-50
+          bg-bg-secondary/95 backdrop-blur-md rounded-xl border border-accent-primary/30
+          shadow-2xl shadow-accent-primary/10
+          w-72 sm:w-80
+          overflow-hidden
+        `}
+        style={{
+          left: position.x,
+          top: position.y,
+        }}
+      >
+        {/* Header */}
+        <div
+          className="flex items-center justify-between px-3 py-2 border-b border-accent-primary/10 bg-bg-secondary/50 cursor-grab select-none"
+          onMouseDown={handleMouseDown}
+        >
+          <span className="text-xs font-medium text-accent-primary flex items-center gap-1.5">
+            <Move className="w-3 h-3 opacity-50" />
+            💡 {didYouKnow}
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); setIsVisible(false); }}
+            className="p-1.5 rounded text-text-tertiary hover:text-red-400 hover:bg-red-400/10 transition-colors"
+            title={language === 'fr' ? 'Fermer' : 'Close'}
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        {/* Loading state */}
+        <div className="p-4 flex items-center justify-center">
+          <div className="flex items-center gap-2 text-xs text-text-tertiary">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            <span>{language === 'fr' ? 'Chargement...' : 'Loading...'}</span>
+          </div>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-accent-primary via-accent-secondary to-accent-primary opacity-50 rounded-b-xl" />
+      </div>
+    );
+  }
+
+  const isClickable = currentWord.source === 'history' && currentWord.summaryId;
+  const hasFullDefinition = currentWord.definition && currentWord.definition.length > 80;
+
+  // Déterminer la source à afficher (Wikipedia en priorité, sinon générer un lien de recherche)
+  const getSourceInfo = () => {
+    if (currentWord.wikiUrl) {
+      return {
+        url: currentWord.wikiUrl,
+        name: extractSourceName(currentWord.wikiUrl)
+      };
+    }
+
+    const wikiLang = language === 'fr' ? 'fr' : 'en';
+    const searchUrl = `https://${wikiLang}.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(currentWord.term)}`;
+    return {
+      url: searchUrl,
+      name: 'Wikipedia'
+    };
+  };
+
+  const sourceInfo = getSourceInfo();
+  const sourceUrl = sourceInfo.url;
+  const sourceName = sourceInfo.name;
+
+  const handleClick = () => {
+    if (isClickable && currentWord.summaryId) {
+      navigate(`/dashboard?id=${currentWord.summaryId}`);
+    }
+  };
 
   return (
     <div

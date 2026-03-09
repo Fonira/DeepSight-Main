@@ -57,6 +57,9 @@ interface LoadingWordContextType {
   stopTimer: () => void;
   isTimerActive: boolean;
   hasHistory: boolean;
+  /** Toggle le widget flottant "Le Saviez-Vous" (pour intégration sidebar) */
+  isWidgetVisible: boolean;
+  toggleWidget: () => void;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -147,6 +150,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [error, setError] = useState<string | null>(null);
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [hasHistory, setHasHistory] = useState(false);
+  const [isWidgetVisible, setIsWidgetVisible] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
@@ -344,6 +348,13 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, []);
 
   /**
+   * Toggle la visibilité du widget flottant (pour intégration sidebar)
+   */
+  const toggleWidget = useCallback(() => {
+    setIsWidgetVisible(prev => !prev);
+  }, []);
+
+  /**
    * Démarre le timer de rafraîchissement automatique
    */
   const startTimer = useCallback(() => {
@@ -411,6 +422,8 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         stopTimer,
         isTimerActive,
         hasHistory,
+        isWidgetVisible,
+        toggleWidget,
       }}
     >
       {children}

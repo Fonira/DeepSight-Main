@@ -13,7 +13,8 @@ import {
   FolderOpen,
   Clock,
   User,
-  CreditCard
+  CreditCard,
+  GraduationCap,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { normalizePlanId } from '../../config/planPrivileges';
@@ -29,8 +30,8 @@ interface NavItem {
 const navItems: NavItem[] = [
   { path: '/dashboard', icon: <Home className="w-5 h-5" />, label: 'Accueil' },
   { path: '/history', icon: <Clock className="w-5 h-5" />, label: 'Historique' },
+  { path: '/study', icon: <GraduationCap className="w-5 h-5" />, label: 'Révision', requiresPro: true },
   { path: '/playlists', icon: <FolderOpen className="w-5 h-5" />, label: 'Playlists', requiresPro: true },
-  { path: '/upgrade', icon: <CreditCard className="w-5 h-5" />, label: 'Mon plan' },
   { path: '/settings', icon: <User className="w-5 h-5" />, label: 'Profil' },
 ];
 
