@@ -1,9 +1,9 @@
 /**
- * 🧠 STUDY HUB PAGE — Hub de révision centralisé
+ * 🧠 STUDY HUB PAGE v2.0 — Hub de révision centralisé
  *
  * Accessible depuis la sidebar → /study (sans summaryId)
  * Liste les analyses récentes avec accès direct aux flashcards/quiz.
- * Redirige vers /study/:summaryId pour la session d'étude.
+ * Intègre Sidebar + DoodleBackground + même design que DashboardPage.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -20,11 +20,16 @@ import {
   Loader2,
   AlertCircle,
   Video,
+  Layers,
+  Zap,
 } from 'lucide-react';
 import { videoApi, Summary } from '../services/api';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
 import { normalizePlanId } from '../config/planPrivileges';
+import { Sidebar } from '../components/layout/Sidebar';
+import DoodleBackground from '../components/DoodleBackground';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 STUDY HUB PAGE
@@ -38,6 +43,7 @@ const StudyHubPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const plan = normalizePlanId(user?.plan);
   const canStudy = plan !== 'free';
@@ -58,7 +64,9 @@ const StudyHubPage: React.FC = () => {
     upgradeDesc: 'Les flashcards et quiz sont disponibles à partir du plan Starter.',
     upgrade: 'Voir les plans',
     creditCost: '1 crédit par génération',
-    ago: 'il y a',
+    studyModes: 'Modes d\'étude disponibles',
+    flashcardsDesc: 'Mémorisez les concepts clés avec des cartes recto-verso',
+    quizDesc: 'Testez vos connaissances avec des QCM interactifs',
   } : {
     title: 'Study',
     subtitle: 'Review your analyses with interactive flashcards and quizzes',
@@ -74,7 +82,9 @@ const StudyHubPage: React.FC = () => {
     upgradeDesc: 'Flashcards and quizzes are available from the Starter plan.',
     upgrade: 'View plans',
     creditCost: '1 credit per generation',
-    ago: 'ago',
+    studyModes: 'Available study modes',
+    flashcardsDesc: 'Memorize key concepts with flip cards',
+    quizDesc: 'Test your knowledge with interactive quizzes',
   };
 
   useEffect(() => {
@@ -122,169 +132,215 @@ const StudyHubPage: React.FC = () => {
   // ── Upgrade CTA pour les utilisateurs gratuits ──
   if (!canStudy) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md text-center"
-        >
-          <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center">
-            <GraduationCap className="w-8 h-8 text-accent-primary" />
+      <div className="min-h-screen bg-bg-primary relative">
+        <ErrorBoundary fallback={null}><DoodleBackground variant="academic" /></ErrorBoundary>
+        <div className="hidden lg:block">
+          <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+        </div>
+        <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'}`}>
+          <div className="min-h-screen flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-md text-center"
+            >
+              <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center">
+                <GraduationCap className="w-8 h-8 text-accent-primary" />
+              </div>
+              <h1 className="text-2xl font-bold text-text-primary mb-3">{texts.upgradeTitle}</h1>
+              <p className="text-text-secondary mb-6">{texts.upgradeDesc}</p>
+              <button
+                onClick={() => navigate('/upgrade')}
+                className="px-6 py-3 rounded-xl bg-accent-primary text-white font-medium hover:bg-accent-primary-hover transition-colors"
+              >
+                {texts.upgrade}
+              </button>
+            </motion.div>
           </div>
-          <h1 className="text-2xl font-bold text-text-primary mb-3">{texts.upgradeTitle}</h1>
-          <p className="text-text-secondary mb-6">{texts.upgradeDesc}</p>
-          <button
-            onClick={() => navigate('/upgrade')}
-            className="px-6 py-3 rounded-xl bg-accent-primary text-white font-medium hover:bg-accent-primary-hover transition-colors"
-          >
-            {texts.upgrade}
-          </button>
-        </motion.div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-      >
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center">
-            <GraduationCap className="w-5 h-5 text-accent-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-text-primary">{texts.title}</h1>
-            <p className="text-sm text-text-secondary">{texts.subtitle}</p>
-          </div>
-        </div>
-      </motion.div>
+    <div className="min-h-screen bg-bg-primary relative">
+      <ErrorBoundary fallback={null}><DoodleBackground variant="academic" /></ErrorBoundary>
 
-      {/* Search */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={texts.searchPlaceholder}
-          className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-bg-secondary border border-border-subtle text-text-primary placeholder-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary/50 transition-all"
-        />
+      {/* Sidebar desktop */}
+      <div className="hidden lg:block">
+        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
       </div>
 
-      {/* Credit info */}
-      <div className="flex items-center gap-2 mb-6 px-3 py-2 rounded-lg bg-accent-primary/5 border border-accent-primary/10">
-        <Sparkles className="w-3.5 h-3.5 text-accent-primary" />
-        <span className="text-xs text-text-secondary">{texts.creditCost}</span>
-        {user?.credits !== undefined && (
-          <span className="text-xs font-medium text-accent-primary ml-auto">
-            {user.credits.toLocaleString()} {language === 'fr' ? 'crédits restants' : 'credits left'}
-          </span>
-        )}
-      </div>
+      {/* Main content */}
+      <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'}`}>
+        <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
+          <div className="max-w-5xl mx-auto">
 
-      {/* Loading */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 text-accent-primary animate-spin" />
-        </div>
-      )}
+            {/* Header — avec pt-2 pour le hamburger mobile */}
+            <motion.header
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8 pt-2 lg:pt-0"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center">
+                  <GraduationCap className="w-5 h-5 text-accent-primary" />
+                </div>
+                <div>
+                  <h1 className="text-xl sm:text-2xl font-bold text-text-primary">{texts.title}</h1>
+                  <p className="text-xs sm:text-sm text-text-secondary">{texts.subtitle}</p>
+                </div>
+              </div>
+            </motion.header>
 
-      {/* Error */}
-      {error && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 mb-6">
-          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-          <p className="text-sm text-red-300">{error}</p>
-        </div>
-      )}
+            {/* Study modes cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-bg-secondary/60 backdrop-blur-sm border border-border-subtle">
+                <div className="w-9 h-9 rounded-lg bg-violet-500/10 flex items-center justify-center flex-shrink-0">
+                  <Layers className="w-4.5 h-4.5 text-violet-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-text-primary">{texts.flashcards}</p>
+                  <p className="text-xs text-text-tertiary">{texts.flashcardsDesc}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-bg-secondary/60 backdrop-blur-sm border border-border-subtle">
+                <div className="w-9 h-9 rounded-lg bg-cyan-500/10 flex items-center justify-center flex-shrink-0">
+                  <Zap className="w-4.5 h-4.5 text-cyan-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-text-primary">{texts.quiz}</p>
+                  <p className="text-xs text-text-tertiary">{texts.quizDesc}</p>
+                </div>
+              </div>
+            </div>
 
-      {/* Empty state */}
-      {!isLoading && !error && filteredAnalyses.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-center py-16"
-        >
-          <BookOpen className="w-12 h-12 text-text-muted mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-text-primary mb-2">{texts.noAnalyses}</h3>
-          <p className="text-sm text-text-secondary mb-6">{texts.noAnalysesDesc}</p>
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="px-5 py-2.5 rounded-xl bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors"
-          >
-            {texts.startAnalysis}
-          </button>
-        </motion.div>
-      )}
+            {/* Search */}
+            <div className="relative mb-6">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={texts.searchPlaceholder}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-bg-secondary/80 backdrop-blur-sm border border-border-subtle text-text-primary placeholder-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary/30 focus:border-accent-primary/50 transition-all"
+              />
+            </div>
 
-      {/* Analyses grid */}
-      {!isLoading && filteredAnalyses.length > 0 && (
-        <>
-          <h2 className="text-sm font-medium text-text-tertiary uppercase tracking-wider mb-4">
-            {texts.recentAnalyses} ({filteredAnalyses.length})
-          </h2>
-          <div className="grid gap-3">
-            {filteredAnalyses.map((analysis, index) => (
+            {/* Credit info */}
+            <div className="flex items-center gap-2 mb-6 px-3 py-2 rounded-lg bg-accent-primary/5 border border-accent-primary/10 backdrop-blur-sm">
+              <Sparkles className="w-3.5 h-3.5 text-accent-primary" />
+              <span className="text-xs text-text-secondary">{texts.creditCost}</span>
+              {user?.credits !== undefined && (
+                <span className="text-xs font-medium text-accent-primary ml-auto">
+                  {user.credits.toLocaleString()} {language === 'fr' ? 'crédits restants' : 'credits left'}
+                </span>
+              )}
+            </div>
+
+            {/* Loading */}
+            {isLoading && (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-6 h-6 text-accent-primary animate-spin" />
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 mb-6 backdrop-blur-sm">
+                <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                <p className="text-sm text-red-300">{error}</p>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {!isLoading && !error && filteredAnalyses.length === 0 && (
               <motion.div
-                key={analysis.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
-                className="group flex items-center gap-4 p-4 rounded-xl bg-bg-secondary/80 border border-border-subtle hover:border-accent-primary/30 hover:bg-bg-secondary transition-all cursor-pointer"
-                onClick={() => handleStudy(analysis.id)}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center py-16"
               >
-                {/* Thumbnail */}
-                <div className="w-20 h-14 rounded-lg overflow-hidden bg-bg-tertiary flex-shrink-0 relative">
-                  {analysis.thumbnail_url ? (
-                    <img
-                      src={analysis.thumbnail_url}
-                      alt=""
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Video className="w-5 h-5 text-text-muted" />
-                    </div>
-                  )}
-                </div>
-
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-sm font-medium text-text-primary truncate group-hover:text-accent-primary transition-colors">
-                    {analysis.video_title}
-                  </h3>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-xs text-text-tertiary truncate">
-                      {analysis.video_channel}
-                    </span>
-                    <span className="text-xs text-text-muted flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {getRelativeTime(analysis.created_at)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Study button */}
+                <BookOpen className="w-12 h-12 text-text-muted mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-text-primary mb-2">{texts.noAnalyses}</h3>
+                <p className="text-sm text-text-secondary mb-6">{texts.noAnalysesDesc}</p>
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleStudy(analysis.id);
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary/10 text-accent-primary text-xs font-medium hover:bg-accent-primary/20 transition-colors flex-shrink-0"
+                  onClick={() => navigate('/dashboard')}
+                  className="px-5 py-2.5 rounded-xl bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors"
                 >
-                  <Brain className="w-3.5 h-3.5" />
-                  {texts.study}
-                  <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  {texts.startAnalysis}
                 </button>
               </motion.div>
-            ))}
+            )}
+
+            {/* Analyses grid */}
+            {!isLoading && filteredAnalyses.length > 0 && (
+              <>
+                <h2 className="text-sm font-medium text-text-tertiary uppercase tracking-wider mb-4">
+                  {texts.recentAnalyses} ({filteredAnalyses.length})
+                </h2>
+                <div className="grid gap-3">
+                  {filteredAnalyses.map((analysis, index) => (
+                    <motion.div
+                      key={analysis.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                      className="group flex items-center gap-4 p-4 rounded-xl bg-bg-secondary/60 backdrop-blur-sm border border-border-subtle hover:border-accent-primary/30 hover:bg-bg-secondary/90 transition-all cursor-pointer"
+                      onClick={() => handleStudy(analysis.id)}
+                    >
+                      {/* Thumbnail */}
+                      <div className="w-20 h-14 rounded-lg overflow-hidden bg-bg-tertiary flex-shrink-0 relative">
+                        {analysis.thumbnail_url ? (
+                          <img
+                            src={analysis.thumbnail_url}
+                            alt=""
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Video className="w-5 h-5 text-text-muted" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-sm font-medium text-text-primary truncate group-hover:text-accent-primary transition-colors">
+                          {analysis.video_title}
+                        </h3>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-xs text-text-tertiary truncate">
+                            {analysis.video_channel}
+                          </span>
+                          <span className="text-xs text-text-muted flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {getRelativeTime(analysis.created_at)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Study button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStudy(analysis.id);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary/10 text-accent-primary text-xs font-medium hover:bg-accent-primary/20 transition-colors flex-shrink-0"
+                      >
+                        <Brain className="w-3.5 h-3.5" />
+                        {texts.study}
+                        <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    </motion.div>
+                  ))}
+                </div>
+              </>
+            )}
+
           </div>
-        </>
-      )}
+        </div>
+      </main>
     </div>
   );
 };

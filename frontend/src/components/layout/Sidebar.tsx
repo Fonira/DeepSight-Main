@@ -23,14 +23,12 @@ import {
   User,
   MessageSquare,
   GraduationCap,
-  Lightbulb,
   Brain
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
 import { PlanBadge } from "../PlanBadge";
 import { normalizePlanId } from "../../config/planPrivileges";
-import { useLoadingWord } from "../../contexts/LoadingWordContext";
 
 // === Logo ===
 const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({ collapsed, onClick }) => {
@@ -158,56 +156,6 @@ const SectionLabel: React.FC<{ label: string; icon?: React.ElementType; collapse
         {label}
       </span>
     </div>
-  );
-};
-
-// === Nav Action (button, pas un lien) ===
-interface NavActionProps {
-  icon: React.ElementType;
-  label: string;
-  collapsed?: boolean;
-  onClick: () => void;
-  active?: boolean;
-  badge?: string;
-}
-
-const NavAction: React.FC<NavActionProps> = ({ icon: Icon, label, collapsed, onClick, active, badge }) => {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-md transition-all text-[0.8125rem] font-medium relative w-full text-left
-        ${active
-          ? 'bg-accent-primary-muted text-accent-primary-hover'
-          : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
-        }`}
-      title={collapsed ? label : undefined}
-    >
-      {active && (
-        <motion.div
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-4 bg-accent-primary rounded-r-full"
-          transition={{ type: "spring", stiffness: 350, damping: 30 }}
-        />
-      )}
-      <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-      <AnimatePresence>
-        {!collapsed && (
-          <motion.div
-            initial={{ opacity: 0, width: 0 }}
-            animate={{ opacity: 1, width: 'auto' }}
-            exit={{ opacity: 0, width: 0 }}
-            transition={{ duration: 0.15 }}
-            className="flex items-center flex-1 min-w-0 gap-2"
-          >
-            <span className="flex-1 truncate">{label}</span>
-            {badge && (
-              <span className="px-1.5 py-0.5 rounded-full text-[0.625rem] font-medium bg-accent-secondary-muted text-accent-secondary">
-                {badge}
-              </span>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </button>
   );
 };
 
@@ -356,19 +304,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const hasPaidPlan = normalizePlanId(user?.plan) !== 'free';
   const ADMIN_EMAIL = "maximeleparc3@gmail.com";
   const isUserAdmin = user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
-  const { isWidgetVisible, toggleWidget } = useLoadingWord();
-
   const handleLogoClick = () => {
     navigate('/dashboard');
     onMobileClose?.();
   };
 
   const handleNavClick = () => {
-    onMobileClose?.();
-  };
-
-  const handleToggleDidYouKnow = () => {
-    toggleWidget();
     onMobileClose?.();
   };
 
@@ -432,13 +373,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <SectionLabel label={t.nav.studySection} icon={Brain} collapsed={collapsed} />
           <NavItem to="/chat" icon={MessageSquare} label={t.nav.chat} collapsed={collapsed} />
           <NavItem to="/study" icon={GraduationCap} label={t.nav.study} collapsed={collapsed} badge={hasPaidPlan ? undefined : (language === 'fr' ? 'Starter+' : 'Starter+')} />
-          <NavAction
-            icon={Lightbulb}
-            label={t.nav.didYouKnow}
-            collapsed={collapsed}
-            onClick={handleToggleDidYouKnow}
-            active={isWidgetVisible}
-          />
 
           {/* ── Compte ── */}
           <SectionLabel label={language === 'fr' ? 'Compte' : 'Account'} collapsed={collapsed} />
