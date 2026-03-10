@@ -227,8 +227,8 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
             src={chrome.runtime.getURL('assets/deepsight-logo-cosmic.png')}
             alt=""
             className="main-header-logo"
-            width={24}
-            height={24}
+            width={20}
+            height={20}
           />
           {isGuest ? (
             <h1>Deep Sight</h1>
