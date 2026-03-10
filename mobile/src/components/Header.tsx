@@ -70,16 +70,34 @@ export const Header: React.FC<HeaderProps> = ({
     };
   });
 
+  // Compact header: reduce padding on scroll
+  const animatedContainerStyle = useAnimatedStyle(() => {
+    if (!scrollY) return {};
+    return {
+      paddingBottom: interpolate(scrollY.value, [0, 100], [sp.md, sp.xs], 'clamp'),
+    };
+  });
+
+  // Compact header: shrink logo on scroll
+  const animatedLogoStyle = useAnimatedStyle(() => {
+    if (!scrollY) return {};
+    const s = interpolate(scrollY.value, [0, 100], [1, 0.85], 'clamp');
+    return {
+      transform: [{ scale: s }],
+    };
+  });
+
   const allRightActions = rightActions || (rightAction ? [rightAction] : []);
 
   const headerContent = (
-    <View
+    <Animated.View
       style={[
         styles.container,
         {
           paddingTop: insets.top + sp.sm,
           borderBottomColor: transparent ? 'transparent' : colors.border,
         },
+        scrollY ? animatedContainerStyle : undefined,
       ]}
     >
       <View style={styles.leftSection}>
@@ -97,6 +115,7 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         {showLogo && (
+          <Animated.View style={scrollY ? animatedLogoStyle : undefined}>
           <Pressable
             onPress={() => (navigation as any).navigate('MainTabs', { screen: 'Dashboard' })}
             style={styles.logoContainer}
@@ -111,6 +130,7 @@ export const Header: React.FC<HeaderProps> = ({
               <Text style={[styles.logoText, { color: colors.textPrimary }]}>Sight</Text>
             </View>
           </Pressable>
+          </Animated.View>
         )}
 
         {title && !showLogo && (
@@ -144,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({
           ))}
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 
   // Use blur background

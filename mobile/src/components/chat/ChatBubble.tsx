@@ -12,11 +12,33 @@
 
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Spacing, Typography, BorderRadius } from '../../constants/theme';
+
+// SVG tail for iMessage-style bubbles
+const BubbleTail: React.FC<{ color: string; side: 'left' | 'right' }> = ({ color, side }) => {
+  // Left tail (assistant) or right tail (user)
+  const d =
+    side === 'left'
+      ? 'M12 0 C12 0 12 8 0 12 C8 12 12 12 12 12 Z'
+      : 'M0 0 C0 0 0 8 12 12 C4 12 0 12 0 12 Z';
+  return (
+    <Svg
+      width={12}
+      height={12}
+      style={[
+        styles.tail,
+        side === 'left' ? styles.tailLeft : styles.tailRight,
+      ]}
+    >
+      <Path d={d} fill={color} />
+    </Svg>
+  );
+};
 
 // ── Parse [ask:Question] from content ──────────────────────────────
 export interface ParsedContent {
@@ -103,6 +125,11 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
         </View>
       )}
 
+      <View style={styles.bubbleWrapper}>
+        <BubbleTail
+          color={isUser ? bubbleBg : colors.bgSecondary}
+          side={isUser ? 'right' : 'left'}
+        />
       <View
         style={[
           styles.bubble,
@@ -165,6 +192,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({
           </Text>
         )}
       </View>
+      </View>
     </Animated.View>
   );
 };
@@ -192,10 +220,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   bubble: {
-    maxWidth: '78%',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm + 2,
     borderRadius: BorderRadius.lg,
+  },
+  bubbleWrapper: {
+    position: 'relative',
+    maxWidth: '78%',
+  },
+  tail: {
+    position: 'absolute',
+    bottom: 0,
+  },
+  tailLeft: {
+    left: -8,
+  },
+  tailRight: {
+    right: -8,
   },
   bubbleUser: {
     borderBottomRightRadius: 4,
