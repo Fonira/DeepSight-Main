@@ -15,7 +15,7 @@ import {
   Linking,
   Image,
 } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -403,10 +403,10 @@ export const DashboardScreen: React.FC = () => {
         }
       >
         {/* Welcome Section */}
-        <Animated.View entering={FadeInDown.duration(400)} style={styles.welcomeSection}>
+        <Animated.View entering={FadeInUp.delay(0).springify().damping(12)} style={styles.welcomeSection}>
           <View style={styles.welcomeHeader}>
             <View>
-              <Text style={[styles.welcomeText, { color: colors.textSecondary }]}>
+              <Text style={styles.welcomeLabel}>
                 {t.auth.welcomeBack}
               </Text>
               <Text style={[styles.userName, { color: colors.textPrimary }]}>
@@ -431,10 +431,10 @@ export const DashboardScreen: React.FC = () => {
             </Pressable>
           </View>
 
-          {/* Credits Card */}
-          <Card variant="elevated" style={styles.creditsCard}>
+          {/* Credits Card — 3-stop gradient */}
+          <View style={styles.creditsCardWrap}>
             <LinearGradient
-              colors={[...gradients.primary]}
+              colors={['#3b82f6', '#6366f1', '#8b5cf6']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.creditsGradient}
@@ -465,11 +465,11 @@ export const DashboardScreen: React.FC = () => {
                 </Pressable>
               )}
             </LinearGradient>
-          </Card>
+          </View>
         </Animated.View>
 
         {/* Platform logos banner */}
-        <Animated.View entering={FadeInDown.delay(50).duration(400)} style={styles.platformBanner}>
+        <Animated.View entering={FadeInUp.delay(100).springify().damping(12)} style={styles.platformBanner}>
           <Image
             source={isDark
               ? require('../assets/platforms/youtube-logo-white.png')
@@ -496,7 +496,7 @@ export const DashboardScreen: React.FC = () => {
         </Animated.View>
 
         {/* Analysis Input Section */}
-        <Animated.View entering={FadeInDown.delay(100).duration(400)} style={styles.analysisSection}>
+        <Animated.View entering={FadeInUp.delay(200).springify().damping(12)} style={styles.analysisSection}>
           <View style={styles.sectionHeaderRow}>
             <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
               {t.dashboard.title}
@@ -562,7 +562,7 @@ export const DashboardScreen: React.FC = () => {
 
         {/* Favorites Section */}
         {favorites.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(200).duration(400)} style={styles.recentSection}>
+          <Animated.View entering={FadeInUp.delay(400).springify().damping(12)} style={styles.recentSection}>
             <SectionHeader
               title={t.history.favorites || 'Favoris'}
               icon="heart"
@@ -586,7 +586,7 @@ export const DashboardScreen: React.FC = () => {
 
         {/* Recent Analyses */}
         {recentAnalyses.length > 0 && (
-          <Animated.View entering={FadeInDown.delay(300).duration(400)} style={styles.recentSection}>
+          <Animated.View entering={FadeInUp.delay(500).springify().damping(12)} style={styles.recentSection}>
             <SectionHeader
               title={t.dashboard.recentAnalyses}
               actionText={t.dashboard.viewAll}
@@ -607,12 +607,12 @@ export const DashboardScreen: React.FC = () => {
         )}
 
         {/* Quick Stats */}
-        <Animated.View entering={FadeInDown.delay(400).duration(400)} style={styles.statsSection}>
+        <Animated.View entering={FadeInUp.delay(600).springify().damping(12)} style={styles.statsSection}>
           <SectionHeader title={t.admin.statistics} icon="analytics-outline" />
           <View style={styles.statsGrid}>
-            <Card variant="elevated" style={styles.statCard}>
+            <View style={styles.statCard}>
               <View style={[styles.statIconWrap, { backgroundColor: `${colors.accentPrimary}15` }]}>
-                <Ionicons name="videocam" size={22} color={colors.accentPrimary} />
+                <Ionicons name="videocam" size={28} color={colors.accentPrimary} />
               </View>
               <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                 {user?.total_videos || 0}
@@ -620,10 +620,10 @@ export const DashboardScreen: React.FC = () => {
               <Text style={[styles.statLabel, { color: colors.textMuted }]}>
                 {t.admin.videosAnalyzed}
               </Text>
-            </Card>
-            <Card variant="elevated" style={styles.statCard}>
+            </View>
+            <View style={styles.statCard}>
               <View style={[styles.statIconWrap, { backgroundColor: `${colors.accentSecondary}15` }]}>
-                <Ionicons name="document-text" size={22} color={colors.accentSecondary} />
+                <Ionicons name="document-text" size={28} color={colors.accentSecondary} />
               </View>
               <Text style={[styles.statValue, { color: colors.textPrimary }]}>
                 {user?.total_words ? `${Math.round(user.total_words / 1000)}k` : '0'}
@@ -631,7 +631,7 @@ export const DashboardScreen: React.FC = () => {
               <Text style={[styles.statLabel, { color: colors.textMuted }]}>
                 {t.admin.wordsGenerated}
               </Text>
-            </Card>
+            </View>
           </View>
         </Animated.View>
       </ScrollView>
@@ -681,21 +681,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: sp.lg,
   },
-  welcomeText: {
-    fontSize: fontSize.base,
-    fontFamily: fontFamily.body,
+  welcomeLabel: {
+    fontSize: 13,
+    fontFamily: fontFamily.bodyMedium,
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    color: 'rgba(255,255,255,0.5)',
+    marginBottom: 4,
   },
   userName: {
-    fontSize: fontSize['2xl'],
+    fontSize: 30,
+    fontWeight: '700',
     fontFamily: fontFamily.bodySemiBold,
   },
-  creditsCard: {
-    padding: 0,
+  creditsCardWrap: {
+    borderRadius: 16,
     overflow: 'hidden',
   },
   creditsGradient: {
-    padding: sp.lg,
-    borderRadius: borderRadius.lg,
+    padding: 20,
+    borderRadius: 16,
   },
   creditsContent: {
     flexDirection: 'row',
@@ -703,14 +708,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   creditsLabel: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: fontSize.sm,
-    fontFamily: fontFamily.body,
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
+    fontFamily: fontFamily.bodyMedium,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
     marginBottom: sp.xs,
   },
   creditsValue: {
     color: '#FFFFFF',
-    fontSize: fontSize['3xl'],
+    fontSize: 32,
+    fontWeight: '700',
     fontFamily: fontFamily.bodySemiBold,
   },
   planBadge: {
@@ -722,15 +730,16 @@ const styles = StyleSheet.create({
     marginTop: sp.md,
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: sp.md,
-    paddingVertical: sp.sm,
-    borderRadius: borderRadius.full,
+    paddingHorizontal: sp.lg,
+    paddingVertical: 10,
+    borderRadius: 14,
   },
   upgradeText: {
     color: '#FFFFFF',
-    fontSize: fontSize.sm,
-    fontFamily: fontFamily.bodyMedium,
-    marginRight: sp.xs,
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: fontFamily.bodySemiBold,
+    marginRight: sp.sm,
   },
   analysisSection: {
     marginBottom: sp.xl,
@@ -774,23 +783,28 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     alignItems: 'center',
-    padding: sp.lg,
+    padding: sp.xl,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   statIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: borderRadius.md,
+    width: 52,
+    height: 52,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: sp.sm,
+    marginBottom: sp.md,
   },
   statValue: {
-    fontSize: fontSize['2xl'],
+    fontSize: 28,
+    fontWeight: '700',
     fontFamily: fontFamily.bodySemiBold,
     marginTop: sp.xs,
   },
   statLabel: {
-    fontSize: fontSize.xs,
+    fontSize: fontSize.sm,
     fontFamily: fontFamily.body,
     marginTop: sp.xs,
     textAlign: 'center',
@@ -828,7 +842,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: sp.lg,
     marginBottom: sp.lg,
-    opacity: 0.9,
+    opacity: 0.5,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    paddingVertical: sp.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   bannerLogoYt: {
     height: 28,

@@ -22,6 +22,7 @@ import type { RouteProp } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
@@ -809,26 +810,37 @@ export const AnalysisScreen: React.FC = () => {
         rightAction={{ icon: 'share-outline', onPress: handleShare }}
       />
 
-      {/* Video Header */}
+      {/* Video Header — Full-width immersive thumbnail */}
       {summary && !showExpandedPlayer && (
         <TouchableOpacity
           onPress={() => setShowExpandedPlayer(true)}
-          style={styles.videoHeader}
+          activeOpacity={0.9}
+          style={styles.videoHeaderNew}
         >
           <Image
             source={{ uri: summary.videoInfo?.thumbnail }}
-            style={styles.thumbnail}
+            style={styles.thumbnailFullWidth}
             contentFit="cover"
           />
-          <View style={styles.videoInfo}>
-            <Text style={[styles.videoTitle, { color: colors.textPrimary }]} numberOfLines={2}>
+          <LinearGradient
+            colors={['transparent', 'rgba(10,10,15,0.8)', 'rgba(10,10,15,1)']}
+            style={styles.thumbnailGradient}
+          />
+          {/* Play button */}
+          <View style={styles.playButtonOverlay}>
+            <View style={styles.playButtonCircle}>
+              <Text style={styles.playButtonIcon}>{'\u25B6'}</Text>
+            </View>
+          </View>
+          {/* Video info over gradient */}
+          <View style={styles.videoInfoOverlay}>
+            <Text style={styles.videoTitleOverlay} numberOfLines={2}>
               {summary.title}
             </Text>
-            <Text style={[styles.videoMeta, { color: colors.textTertiary }]}>
+            <Text style={styles.videoMetaOverlay}>
               {summary.videoInfo?.channel} • {formatDuration(summary.videoInfo?.duration || 0)}
             </Text>
           </View>
-          <Ionicons name="play-circle" size={32} color={colors.accentPrimary} />
         </TouchableOpacity>
       )}
 
@@ -930,8 +942,8 @@ export const AnalysisScreen: React.FC = () => {
             />
           </Card>
 
-          {/* Actions — Animated buttons */}
-          <View style={styles.actionsRow}>
+          {/* Actions — Glassmorphism container */}
+          <View style={styles.actionsRowGlass}>
             <ActionButton icon="copy-outline" label={t.common.copy} onPress={handleCopy} />
             <ActionButton icon="share-outline" label={t.common.share} onPress={handleShare} />
             <ActionButton icon="play-outline" label={t.common.video} onPress={handleOpenVideo} color={colors.accentSecondary} />
@@ -1084,7 +1096,14 @@ export const AnalysisScreen: React.FC = () => {
         >
           {concepts.length > 0 ? (
             concepts.map((concept, index) => (
-              <Card key={`concept-${index}-${concept.name}`} variant="elevated" style={styles.conceptCard}>
+              <Card key={`concept-${index}-${concept.name}`} variant="elevated" style={[
+                styles.conceptCard,
+                {
+                  borderLeftWidth: 4,
+                  borderLeftColor: index % 3 === 0 ? '#3b82f6' : index % 3 === 1 ? '#8b5cf6' : '#06b6d4',
+                  backgroundColor: 'rgba(255,255,255,0.04)',
+                },
+              ]}>
                 <View style={styles.conceptHeader}>
                   <Text style={[styles.conceptName, { color: colors.accentPrimary, flex: 1 }]}>
                     {concept.name}
@@ -1426,6 +1445,63 @@ const styles = StyleSheet.create({
   retryButton: {
     marginTop: Spacing.lg,
   },
+  videoHeaderNew: {
+    position: 'relative',
+    width: '100%',
+    height: 180,
+  },
+  thumbnailFullWidth: {
+    width: '100%',
+    height: 180,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+  },
+  thumbnailGradient: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 120,
+  },
+  playButtonOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playButtonCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playButtonIcon: {
+    fontSize: 24,
+    color: '#ffffff',
+    marginLeft: 4,
+  },
+  videoInfoOverlay: {
+    position: 'absolute',
+    bottom: 12,
+    left: 16,
+    right: 16,
+  },
+  videoTitleOverlay: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: 4,
+  },
+  videoMetaOverlay: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+  },
   videoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1517,6 +1593,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginVertical: Spacing.md,
+  },
+  actionsRowGlass: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginVertical: Spacing.md,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 12,
   },
   actionButton: {
     alignItems: 'center',
