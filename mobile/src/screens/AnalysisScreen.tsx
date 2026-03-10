@@ -516,12 +516,12 @@ export const AnalysisScreen: React.FC = () => {
           : 'Too many requests. Please wait a moment.';
       } else if (err?.code === 'TIMEOUT') {
         errorMessage = language === 'fr'
-          ? 'La réponse a pris trop de temps. Réessayez.'
-          : 'Response took too long. Please try again.';
+          ? 'Ça prend plus de temps que prévu — réessayez.'
+          : 'Taking longer than expected — try again.';
       } else if (err?.code === 'NETWORK_ERROR') {
         errorMessage = language === 'fr'
-          ? 'Erreur réseau. Vérifiez votre connexion.'
-          : 'Network error. Check your connection.';
+          ? 'Connexion perdue — on réessaie dans un instant'
+          : 'Connection lost — retrying shortly';
       }
       Alert.alert(t.common.error, errorMessage);
       // Remove the user message on error

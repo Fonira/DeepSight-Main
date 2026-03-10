@@ -422,6 +422,83 @@ export const EmptyStudyIllustration: React.FC<IllustrationProps> = ({
   );
 };
 
+// Network error illustration - wifi crossed with retry hint
+export const NetworkErrorIllustration: React.FC<IllustrationProps> = ({
+  size = 200,
+  primaryColor = Colors.accentPrimary,
+  secondaryColor = Colors.accentSecondary,
+}) => {
+  const pulse = useSharedValue(0.6);
+
+  useEffect(() => {
+    pulse.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.6, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1,
+      true,
+    );
+  }, []);
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 200 200">
+      <Defs>
+        <LinearGradient id="wifiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <Stop offset="0%" stopColor="#ef4444" />
+          <Stop offset="100%" stopColor="#f97316" />
+        </LinearGradient>
+      </Defs>
+
+      <Circle cx="100" cy="100" r="80" fill="#ef444410" />
+
+      {/* WiFi arcs */}
+      <Path
+        d="M60 80 Q100 50 140 80"
+        stroke={`${primaryColor}30`}
+        strokeWidth="4"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <Path
+        d="M72 95 Q100 72 128 95"
+        stroke={`${primaryColor}40`}
+        strokeWidth="4"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <Path
+        d="M84 108 Q100 92 116 108"
+        stroke={`${primaryColor}50`}
+        strokeWidth="4"
+        fill="none"
+        strokeLinecap="round"
+      />
+      <Circle cx="100" cy="120" r="6" fill={primaryColor} opacity={0.6} />
+
+      {/* Cross (wifi barré) */}
+      <Path
+        d="M65 65 L135 135"
+        stroke="url(#wifiGrad)"
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
+
+      {/* Retry arrow hint */}
+      <G transform="translate(100, 155)">
+        <Path
+          d="M-10 0 A 12 12 0 1 1 10 0"
+          stroke={secondaryColor}
+          strokeWidth="2.5"
+          fill="none"
+          strokeLinecap="round"
+        />
+        <Path d="M8 -5 L10 0 L5 0" fill={secondaryColor} />
+      </G>
+    </Svg>
+  );
+};
+
 // Onboarding illustrations
 export const OnboardingAnalyzeIllustration: React.FC<IllustrationProps> = ({
   size = 250,

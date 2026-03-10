@@ -1,8 +1,9 @@
 /**
  * CollapsibleSection — Smooth animated expand/collapse
  *
- * Uses Reanimated 3 height animation (not LayoutAnimation).
+ * Uses Reanimated 3 height animation with spring physics (not LayoutAnimation).
  * Measures content height, then animates between 0 and measured height.
+ * Chevron rotates smoothly on toggle.
  */
 
 import React, { useState, useCallback } from 'react';
@@ -10,15 +11,14 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withTiming,
-  Easing,
-  runOnUI,
+  withSpring,
+  interpolate,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { useTheme } from '../contexts/ThemeContext';
-import { sp, borderRadius } from '../theme/spacing';
-import { fontFamily, fontSize } from '../theme/typography';
+import { useTheme } from '@/contexts/ThemeContext';
+import { sp, borderRadius } from '@/theme/spacing';
+import { fontFamily, fontSize } from '@/theme/typography';
 
 interface CollapsibleSectionProps {
   title: string;
@@ -27,9 +27,12 @@ interface CollapsibleSectionProps {
   defaultOpen?: boolean;
 }
 
-const ANIM_CONFIG = {
-  duration: 250,
-  easing: Easing.bezier(0.4, 0, 0.2, 1),
+/** Spring config: snappy but smooth, slight bounce */
+const SPRING_CONFIG = {
+  damping: 18,
+  stiffness: 160,
+  mass: 0.8,
+  overshootClamping: false,
 };
 
 export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
@@ -39,10 +42,8 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   defaultOpen = true,
 }) => {
   const { colors } = useTheme();
-  const [isOpen, setIsOpen] = useState(defaultOpen);
   const [contentHeight, setContentHeight] = useState(0);
-  const height = useSharedValue(defaultOpen ? 1 : 0);
-  const rotation = useSharedValue(defaultOpen ? 1 : 0);
+  const progress = useSharedValue(defaultOpen ? 1 : 0);
 
   const onLayout = useCallback(
     (e: { nativeEvent: { layout: { height: number } } }) => {
@@ -56,28 +57,38 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
 
   const toggle = useCallback(() => {
     Haptics.selectionAsync();
-    const next = !isOpen;
-    setIsOpen(next);
-    height.value = withTiming(next ? 1 : 0, ANIM_CONFIG);
-    rotation.value = withTiming(next ? 1 : 0, ANIM_CONFIG);
-  }, [isOpen, height, rotation]);
+    const next = progress.value < 0.5 ? 1 : 0;
+    progress.value = withSpring(next, SPRING_CONFIG);
+  }, [progress]);
 
-  const animatedContentStyle = useAnimatedStyle(() => ({
-    height: contentHeight > 0 ? height.value * contentHeight : undefined,
-    opacity: height.value,
-  }));
+  const animatedContentStyle = useAnimatedStyle(() => {
+    if (contentHeight === 0) {
+      return { opacity: progress.value };
+    }
+    return {
+      height: interpolate(progress.value, [0, 1], [0, contentHeight]),
+      opacity: interpolate(progress.value, [0, 0.3, 1], [0, 0.5, 1]),
+      overflow: 'hidden' as const,
+    };
+  });
 
   const animatedChevronStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value * 180}deg` }],
+    transform: [
+      { rotate: `${interpolate(progress.value, [0, 1], [0, 180])}deg` },
+    ],
   }));
 
   return (
     <View style={[styles.container, { borderColor: colors.border }]}>
       <Pressable
         onPress={toggle}
-        style={styles.header}
+        style={({ pressed }) => [
+          styles.header,
+          pressed && { opacity: 0.7 },
+        ]}
         accessibilityRole="button"
-        accessibilityLabel={`${title}, ${isOpen ? 'ouvert' : 'fermé'}`}
+        accessibilityLabel={`${title}, ${progress.value > 0.5 ? 'ouvert' : 'fermé'}`}
+        accessibilityHint="Appuyez pour ouvrir ou fermer la section"
       >
         <View style={styles.headerLeft}>
           {icon && (
@@ -88,16 +99,19 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
               style={styles.icon}
             />
           )}
-          <Text style={[styles.title, { color: colors.textPrimary }]}>
+          <Text
+            style={[styles.title, { color: colors.textPrimary }]}
+            numberOfLines={1}
+          >
             {title}
           </Text>
         </View>
-        <Animated.View style={animatedChevronStyle}>
+        <Animated.View style={[styles.chevronWrapper, animatedChevronStyle]}>
           <Ionicons name="chevron-up" size={18} color={colors.textTertiary} />
         </Animated.View>
       </Pressable>
 
-      <Animated.View style={[styles.content, animatedContentStyle, { overflow: 'hidden' }]}>
+      <Animated.View style={animatedContentStyle}>
         <View
           onLayout={contentHeight === 0 ? onLayout : undefined}
           style={styles.contentInner}
@@ -125,6 +139,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    marginRight: sp.sm,
   },
   icon: {
     marginRight: sp.sm,
@@ -132,8 +147,15 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fontFamily.bodySemiBold,
     fontSize: fontSize.base,
+    flexShrink: 1,
   },
-  content: {},
+  chevronWrapper: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: borderRadius.sm,
+  },
   contentInner: {
     paddingBottom: sp.md,
   },

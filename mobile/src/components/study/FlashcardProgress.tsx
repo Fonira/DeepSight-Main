@@ -3,34 +3,40 @@
  *
  * Replaces flat progress bars with a smooth animated ring.
  * Uses Reanimated 3 to animate strokeDashoffset on an SVG circle.
+ * Supports count labels (e.g., "3/10") or percentage display.
  */
 
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import Animated, {
   useSharedValue,
   useAnimatedProps,
   withTiming,
+  withSpring,
   Easing,
+  useAnimatedStyle,
+  interpolateColor,
 } from 'react-native-reanimated';
-import { useTheme } from '@/contexts/ThemeContext';
-import { palette } from '@/theme/colors';
-import { fontFamily, fontSize } from '@/theme/typography';
+import { useTheme } from '../../contexts/ThemeContext';
+import { palette } from '../../theme/colors';
+import { fontFamily, fontSize } from '../../theme/typography';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 interface FlashcardProgressProps {
-  /** 0–1 progress value */
+  /** 0-1 progress value */
   progress: number;
   /** Ring diameter in px */
   size?: number;
   /** Ring stroke width */
   strokeWidth?: number;
-  /** Show percentage text in center */
+  /** Show text label in center */
   showLabel?: boolean;
-  /** Custom label (overrides default percentage) */
+  /** Custom label (overrides default percentage). Use for count format e.g. "3/10" */
   label?: string;
+  /** Active stroke color (defaults to indigo, shifts toward green at 100%) */
+  strokeColor?: string;
 }
 
 export const FlashcardProgress: React.FC<FlashcardProgressProps> = ({
@@ -39,6 +45,7 @@ export const FlashcardProgress: React.FC<FlashcardProgressProps> = ({
   strokeWidth = 5,
   showLabel = true,
   label,
+  strokeColor,
 }) => {
   const { colors } = useTheme();
   const animatedProgress = useSharedValue(0);
@@ -46,6 +53,9 @@ export const FlashcardProgress: React.FC<FlashcardProgressProps> = ({
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const center = size / 2;
+
+  // Scale font based on ring size so count labels like "3/10" fit comfortably
+  const labelFontSize = Math.max(10, Math.round(size * 0.2));
 
   useEffect(() => {
     animatedProgress.value = withTiming(Math.min(1, Math.max(0, progress)), {
@@ -58,10 +68,35 @@ export const FlashcardProgress: React.FC<FlashcardProgressProps> = ({
     strokeDashoffset: circumference * (1 - animatedProgress.value),
   }));
 
+  // Gentle pulse when progress reaches 100%
+  const pulseScale = useSharedValue(1);
+  useEffect(() => {
+    if (progress >= 1) {
+      pulseScale.value = withSpring(1.08, { damping: 8, stiffness: 200 }, () => {
+        pulseScale.value = withSpring(1, { damping: 12, stiffness: 150 });
+      });
+    }
+  }, [progress, pulseScale]);
+
+  const containerAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
+
+  // Color shifts from indigo toward green as progress completes
+  const labelAnimStyle = useAnimatedStyle(() => {
+    const color = interpolateColor(
+      animatedProgress.value,
+      [0, 0.8, 1],
+      [colors.textPrimary, colors.textPrimary, palette.green]
+    );
+    return { color };
+  });
+
   const displayLabel = label ?? `${Math.round(progress * 100)}%`;
+  const activeStroke = strokeColor ?? palette.indigo;
 
   return (
-    <View style={[styles.container, { width: size, height: size }]}>
+    <Animated.View style={[styles.container, { width: size, height: size }, containerAnimStyle]}>
       <Svg width={size} height={size}>
         {/* Background track */}
         <Circle
@@ -77,7 +112,7 @@ export const FlashcardProgress: React.FC<FlashcardProgressProps> = ({
           cx={center}
           cy={center}
           r={radius}
-          stroke={palette.indigo}
+          stroke={activeStroke}
           strokeWidth={strokeWidth}
           fill="none"
           strokeLinecap="round"
@@ -89,12 +124,18 @@ export const FlashcardProgress: React.FC<FlashcardProgressProps> = ({
       </Svg>
       {showLabel && (
         <View style={styles.labelContainer}>
-          <Text style={[styles.label, { color: colors.textPrimary }]}>
+          <Animated.Text
+            style={[
+              styles.label,
+              { fontSize: labelFontSize },
+              labelAnimStyle,
+            ]}
+          >
             {displayLabel}
-          </Text>
+          </Animated.Text>
         </View>
       )}
-    </View>
+    </Animated.View>
   );
 };
 
@@ -110,7 +151,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize.xs,
   },
 });
 

@@ -26,6 +26,11 @@ import { videoApi } from "../services/api";
 
 const ease = [0.4, 0, 0.2, 1] as const;
 
+const floatAnimation = {
+  y: [0, -6, 0],
+  transition: { duration: 3, ease: "easeInOut", repeat: Infinity },
+};
+
 const ScrollReveal: React.FC<{
   children: React.ReactNode;
   className?: string;
@@ -213,6 +218,7 @@ const PLANS: PlanConfig[] = [
     icon: Star,
     color: 'text-blue-400',
     gradient: 'from-blue-500 to-blue-600',
+    recommended: true,
     badge: { fr: 'Populaire étudiants', en: 'Popular with students' },
     badgeColor: 'bg-blue-500',
     features: [
@@ -720,6 +726,7 @@ const LandingPage: React.FC = () => {
                     onClick={handleGuestAnalyze}
                     disabled={!guestUrl.trim() || guestLoading}
                     className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                    animate={!guestLoading && !guestUrl.trim() ? floatAnimation : {}}
                     whileHover={!guestLoading ? { scale: 1.02 } : {}}
                     whileTap={!guestLoading ? { scale: 0.98 } : {}}
                   >
@@ -1176,7 +1183,7 @@ const LandingPage: React.FC = () => {
                       isPopular
                         ? 'border-violet-500/40 bg-violet-500/[0.06] shadow-lg shadow-violet-500/10'
                         : isRecommended
-                        ? 'border-amber-500/40 bg-amber-500/[0.06] shadow-lg shadow-amber-500/10'
+                        ? 'border-blue-500/40 bg-blue-500/[0.06] shadow-lg shadow-blue-500/10 scale-[1.02] ring-1 ring-blue-500/20'
                         : hasBadge
                         ? 'border-emerald-500/30 bg-emerald-500/[0.04]'
                         : 'border-border-subtle bg-bg-secondary/40 hover:border-border-default'

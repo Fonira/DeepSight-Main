@@ -1,34 +1,43 @@
 /**
  * VideoQuote — Styled blockquote for video citations
  *
- * Design: indigo 3px left border + subtle surface bg + quote icon
+ * Design: indigo (#6366f1) 3px left border + subtle surface background
+ * + guillemets icon (French-style quotation marks).
  * Used to display notable quotes from video transcripts.
  */
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInLeft } from 'react-native-reanimated';
-import { useTheme } from '../contexts/ThemeContext';
-import { palette } from '../theme/colors';
-import { sp, borderRadius } from '../theme/spacing';
-import { fontFamily, fontSize } from '../theme/typography';
+import { useTheme } from '@/contexts/ThemeContext';
+import { palette } from '@/theme/colors';
+import { sp, borderRadius } from '@/theme/spacing';
+import { fontFamily, fontSize, lineHeight } from '@/theme/typography';
 
 interface VideoQuoteProps {
   /** The quoted text */
   text: string;
   /** Optional timestamp label (e.g. "2:34") */
   timestamp?: string;
+  /** Optional speaker / source attribution */
+  speaker?: string;
   /** Animation delay index */
   index?: number;
 }
 
+const INDIGO = palette.indigo;
+/** Slightly transparent indigo for backgrounds */
+const INDIGO_BG_DARK = `${INDIGO}12`;
+const INDIGO_BG_LIGHT = `${INDIGO}0A`;
+const INDIGO_MUTED = `${INDIGO}60`;
+
 export const VideoQuote: React.FC<VideoQuoteProps> = ({
   text,
   timestamp,
+  speaker,
   index = 0,
 }) => {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   return (
     <Animated.View
@@ -36,17 +45,13 @@ export const VideoQuote: React.FC<VideoQuoteProps> = ({
       style={[
         styles.container,
         {
-          backgroundColor: `${palette.indigo}08`,
-          borderLeftColor: palette.indigo,
+          backgroundColor: isDark ? INDIGO_BG_DARK : INDIGO_BG_LIGHT,
+          borderLeftColor: INDIGO,
         },
       ]}
     >
-      <Ionicons
-        name="chatbubble-outline"
-        size={14}
-        color={`${palette.indigo}80`}
-        style={styles.quoteIcon}
-      />
+      {/* Guillemets icon */}
+      <Text style={[styles.guillemets, { color: INDIGO_MUTED }]}>{'\u00AB'}</Text>
 
       <View style={styles.content}>
         <Text
@@ -58,12 +63,30 @@ export const VideoQuote: React.FC<VideoQuoteProps> = ({
           {text}
         </Text>
 
-        {timestamp && (
-          <Text style={[styles.timestamp, { color: colors.textTertiary }]}>
-            {timestamp}
-          </Text>
+        {/* Footer: speaker and/or timestamp */}
+        {(speaker || timestamp) && (
+          <View style={styles.footer}>
+            {speaker && (
+              <Text style={[styles.speaker, { color: INDIGO_MUTED }]}>
+                {speaker}
+              </Text>
+            )}
+            {speaker && timestamp && (
+              <Text style={[styles.separator, { color: colors.textMuted }]}>
+                {' \u2022 '}
+              </Text>
+            )}
+            {timestamp && (
+              <Text style={[styles.timestamp, { color: colors.textTertiary }]}>
+                {timestamp}
+              </Text>
+            )}
+          </View>
         )}
       </View>
+
+      {/* Closing guillemets at bottom-right for visual balance */}
+      <Text style={[styles.guillemetsClose, { color: INDIGO_MUTED }]}>{'\u00BB'}</Text>
     </Animated.View>
   );
 };
@@ -73,13 +96,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderLeftWidth: 3,
     borderRadius: borderRadius.sm,
-    paddingHorizontal: sp.md,
-    paddingVertical: sp.sm,
-    marginVertical: sp.xs,
+    paddingLeft: sp.md,
+    paddingRight: sp.lg,
+    paddingVertical: sp.md,
+    marginVertical: sp.sm,
+    position: 'relative',
   },
-  quoteIcon: {
+  guillemets: {
+    fontFamily: fontFamily.display,
+    fontSize: fontSize['2xl'],
+    lineHeight: fontSize['2xl'] * lineHeight.tight,
     marginRight: sp.sm,
-    marginTop: 2,
+    marginTop: -2,
+    opacity: 0.8,
+  },
+  guillemetsClose: {
+    fontFamily: fontFamily.display,
+    fontSize: fontSize.lg,
+    lineHeight: fontSize.lg * lineHeight.tight,
+    alignSelf: 'flex-end',
+    marginLeft: sp.xs,
+    marginBottom: -2,
+    opacity: 0.5,
   },
   content: {
     flex: 1,
@@ -88,13 +126,24 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.body,
     fontSize: fontSize.sm,
     fontStyle: 'italic',
-    lineHeight: fontSize.sm * 1.5,
+    lineHeight: fontSize.sm * lineHeight.relaxed,
   },
-  timestamp: {
+  footer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: sp.sm,
+  },
+  speaker: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: fontSize.xs,
+  },
+  separator: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.xs,
-    marginTop: sp.xs,
-    alignSelf: 'flex-end',
+  },
+  timestamp: {
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.xs,
   },
 });
 

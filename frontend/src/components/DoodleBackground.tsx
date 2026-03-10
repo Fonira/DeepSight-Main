@@ -133,7 +133,7 @@ const ICONS_ABSTRACT = [
   'M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42', // Sun rays
 ];
 
-// Small decorative fills
+// Small decorative fills + geometric mixed-media elements
 const SHAPES_DECORATIVE = [
   'M12 10a2 2 0 100 4 2 2 0 000-4z',                       // Dot
   'M12 5v14M5 12h14',                                      // Cross
@@ -143,6 +143,14 @@ const SHAPES_DECORATIVE = [
   'M12 2l3 6 6 1-4 4 1 7-6-3-6 3 1-7-4-4 6-1z',          // Star small
   'M2 12l5-5 5 5 5-5 5 5',                                // Zigzag
   'M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 0h6v6h-6z',   // 4 squares
+  // Mixed-media geometric elements
+  'M4 4h2v2H4zM10 4h2v2h-2zM16 4h2v2h-2zM4 10h2v2H4zM10 10h2v2h-2zM16 10h2v2h-2zM4 16h2v2H4zM10 16h2v2h-2zM16 16h2v2h-2z', // 3×3 dot grid
+  'M2 12h20M12 2v20',                                      // Crosshair line
+  'M4 4l16 16M4 20L20 4',                                  // Diagonal cross
+  'M6 6h12v12H6z',                                         // Square outline
+  'M4 12a8 8 0 0116 0',                                    // Half circle arc
+  'M2 22L12 2l10 20',                                      // Triangle large
+  'M3 8h4M3 12h4M3 16h4M17 8h4M17 12h4M17 16h4',          // Parallel dashes
 ];
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -223,8 +231,8 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
   const accentSecondary = isDark ? '#818CF8' : '#6366F1';
 
   // Rich multi-color palettes for both modes
-  const darkColors = ['#A78BFA', '#818CF8', '#F472B6', '#FBBF24', '#34D399', '#60A5FA', '#F87171', '#C084FC', '#A5B4FC', '#E5E7EB', '#D1D5DB', '#9CA3AF'];
-  const lightColors = ['#8B5CF6', '#6366F1', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#A855F7', '#4F46E5', '#374151', '#6B7280', '#0EA5E9'];
+  const darkColors = ['#A78BFA', '#818CF8', '#F472B6', '#FBBF24', '#34D399', '#60A5FA', '#F87171', '#C084FC', '#A5B4FC', '#E5E7EB', '#D1D5DB', '#9CA3AF', '#E2E8F0', '#FDE68A'];
+  const lightColors = ['#8B5CF6', '#6366F1', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#A855F7', '#4F46E5', '#374151', '#6B7280', '#0EA5E9', '#94A3B8', '#D97706'];
   const palette = isDark ? darkColors : lightColors;
   const pickColor = (seed: number) =>
     palette[Math.floor(seededRandom(seed) * palette.length)];

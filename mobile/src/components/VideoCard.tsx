@@ -1,10 +1,16 @@
-import React, { memo } from 'react';
+import React, { memo, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  interpolate,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
@@ -27,6 +33,14 @@ interface VideoCardProps {
   hero?: boolean;
 }
 
+// Epistemic confidence badge
+const EPISTEMIC_BADGE: Record<string, { label: string; bg: string; text: string }> = {
+  high: { label: 'SOLIDE', bg: 'rgba(34,197,94,0.15)', text: '#4ade80' },
+  medium: { label: 'PLAUSIBLE', bg: 'rgba(59,130,246,0.15)', text: '#60a5fa' },
+  low: { label: 'INCERTAIN', bg: 'rgba(245,158,11,0.15)', text: '#fbbf24' },
+  risky: { label: 'À VÉRIFIER', bg: 'rgba(239,68,68,0.15)', text: '#f87171' },
+};
+
 const VideoCardComponent: React.FC<VideoCardProps> = ({
   video,
   onPress,
@@ -38,6 +52,22 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
   hero = false,
 }) => {
   const { colors } = useTheme();
+  const pressScale = useSharedValue(1);
+
+  const handlePressIn = useCallback(() => {
+    pressScale.value = withSpring(0.97, { damping: 15, stiffness: 400, mass: 0.5 });
+  }, [pressScale]);
+
+  const handlePressOut = useCallback(() => {
+    pressScale.value = withSpring(1, { damping: 12, stiffness: 300, mass: 0.5 });
+  }, [pressScale]);
+
+  const pressAnimStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: pressScale.value },
+      { translateY: interpolate(pressScale.value, [0.97, 1], [2, 0], 'clamp') },
+    ],
+  }));
 
   // Determine if the video prop is an AnalysisSummary or a VideoInfo
   // AnalysisSummary has 'title' at root level, VideoInfo has 'videoInfo' sub-object
@@ -76,15 +106,23 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
     onFavoritePress?.();
   };
 
+  // Epistemic confidence from analysis data (optional backend fields)
+  const rawSummary = analysisSummary as unknown as Record<string, unknown> | null;
+  const confidence = (rawSummary?.confidence_level as string | undefined)
+    || (rawSummary?.epistemic_level as string | undefined);
+  const epistemicBadge = confidence ? EPISTEMIC_BADGE[confidence] : null;
+
   // Hero card: large thumbnail + prominent layout for first item
   if (hero) {
     return (
-      <TouchableOpacity
+      <Animated.View style={pressAnimStyle}>
+      <Pressable
         style={[styles.heroContainer, { backgroundColor: colors.bgCard }]}
         onPress={onPress}
         onLongPress={onLongPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         delayLongPress={500}
-        activeOpacity={0.85}
       >
         <View style={styles.heroThumbnailContainer}>
           <ThumbnailImage
@@ -113,7 +151,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
               {videoInfo.title}
             </Text>
             {onFavoritePress && (
-              <TouchableOpacity
+              <Pressable
                 onPress={handleFavoritePress}
                 style={styles.favoriteButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -123,7 +161,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
                   size={22}
                   color={isFavorite ? colors.accentError : colors.textTertiary}
                 />
-              </TouchableOpacity>
+              </Pressable>
             )}
           </View>
 
@@ -149,19 +187,29 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
               </Text>
             )}
           </View>
+          {epistemicBadge && (
+            <View style={[styles.epistemicBadge, { backgroundColor: epistemicBadge.bg }]}>
+              <Text style={[styles.epistemicText, { color: epistemicBadge.text }]}>
+                {epistemicBadge.label}
+              </Text>
+            </View>
+          )}
         </View>
-      </TouchableOpacity>
+      </Pressable>
+      </Animated.View>
     );
   }
 
   if (compact) {
     return (
-      <TouchableOpacity
+      <Animated.View style={pressAnimStyle}>
+      <Pressable
         style={[styles.compactContainer, { backgroundColor: colors.bgCard }]}
         onPress={onPress}
         onLongPress={onLongPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         delayLongPress={500}
-        activeOpacity={0.7}
       >
         <View style={styles.compactThumbnailWrap}>
           <ThumbnailImage
@@ -186,7 +234,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
               {videoInfo.channel}
             </Text>
             {onFavoritePress && (
-              <TouchableOpacity
+              <Pressable
                 onPress={handleFavoritePress}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
@@ -195,21 +243,24 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
                   size={16}
                   color={isFavorite ? colors.accentError : colors.textTertiary}
                 />
-              </TouchableOpacity>
+              </Pressable>
             )}
           </View>
         </View>
-      </TouchableOpacity>
+      </Pressable>
+      </Animated.View>
     );
   }
 
   return (
-    <TouchableOpacity
+    <Animated.View style={pressAnimStyle}>
+    <Pressable
       style={[styles.container, { backgroundColor: colors.bgCard }]}
       onPress={onPress}
       onLongPress={onLongPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       delayLongPress={500}
-      activeOpacity={0.7}
     >
       <View style={styles.thumbnailContainer}>
         <ThumbnailImage
@@ -239,7 +290,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
             {videoInfo.title}
           </Text>
           {onFavoritePress && (
-            <TouchableOpacity
+            <Pressable
               onPress={handleFavoritePress}
               style={styles.favoriteButton}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -249,7 +300,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
                 size={22}
                 color={isFavorite ? colors.accentError : colors.textTertiary}
               />
-            </TouchableOpacity>
+            </Pressable>
           )}
         </View>
 
@@ -293,8 +344,16 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
             {truncateText(analysisSummary.content.replace(/[#*`]/g, ''), 150)}
           </Text>
         )}
+        {epistemicBadge && (
+          <View style={[styles.epistemicBadge, { backgroundColor: epistemicBadge.bg }]}>
+            <Text style={[styles.epistemicText, { color: epistemicBadge.text }]}>
+              {epistemicBadge.label}
+            </Text>
+          </View>
+        )}
       </View>
-    </TouchableOpacity>
+    </Pressable>
+    </Animated.View>
   );
 };
 
@@ -440,6 +499,18 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.body,
     marginTop: Spacing.xs,
+  },
+  epistemicBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 9999,
+    marginTop: Spacing.sm,
+  },
+  epistemicText: {
+    fontSize: 10,
+    fontFamily: Typography.fontFamily.bodyMedium,
+    letterSpacing: 0.5,
   },
 });
 

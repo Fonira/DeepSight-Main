@@ -17,26 +17,35 @@ import Animated, {
   withDelay,
   FadeIn,
   FadeOut,
-  type SharedValue,
 } from 'react-native-reanimated';
 import { useTheme } from '../../contexts/ThemeContext';
 import { sp, borderRadius } from '../../theme/spacing';
 import { palette } from '../../theme/colors';
 
-const BOUNCE_HEIGHT = -6;
-const SPRING_CONFIG = { damping: 8, stiffness: 200, mass: 0.4 };
+/**
+ * Spring-driven bouncing dot.
+ *
+ * Each dot bounces vertically with a snappy spring that overshoots slightly
+ * on the way up, giving a playful rubber-ball feel. A subtle scale pulse
+ * and opacity shift accompany the bounce for depth.
+ */
+const BOUNCE_HEIGHT = -8;
+const SPRING_UP = { damping: 6, stiffness: 260, mass: 0.35 };
+const SPRING_DOWN = { damping: 10, stiffness: 180, mass: 0.35 };
+const STAGGER_MS = 150;
 
 const BouncyDot: React.FC<{ delay: number; color: string }> = ({ delay, color }) => {
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
+  const opacity = useSharedValue(0.5);
 
   useEffect(() => {
     translateY.value = withDelay(
       delay,
       withRepeat(
         withSequence(
-          withSpring(BOUNCE_HEIGHT, SPRING_CONFIG),
-          withSpring(0, SPRING_CONFIG),
+          withSpring(BOUNCE_HEIGHT, SPRING_UP),
+          withSpring(0, SPRING_DOWN),
         ),
         -1,
         false,
@@ -46,17 +55,29 @@ const BouncyDot: React.FC<{ delay: number; color: string }> = ({ delay, color })
       delay,
       withRepeat(
         withSequence(
-          withSpring(1.2, SPRING_CONFIG),
-          withSpring(1, SPRING_CONFIG),
+          withSpring(1.25, SPRING_UP),
+          withSpring(1, SPRING_DOWN),
         ),
         -1,
         false,
       ),
     );
-  }, [translateY, scale, delay]);
+    opacity.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withSpring(1, SPRING_UP),
+          withSpring(0.5, SPRING_DOWN),
+        ),
+        -1,
+        false,
+      ),
+    );
+  }, [translateY, scale, opacity, delay]);
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }, { scale: scale.value }],
+    opacity: opacity.value,
   }));
 
   return (
@@ -88,8 +109,8 @@ export const TypingIndicator: React.FC = () => {
         ]}
       >
         <BouncyDot delay={0} color={palette.indigo} />
-        <BouncyDot delay={120} color={palette.violet} />
-        <BouncyDot delay={240} color={palette.indigo} />
+        <BouncyDot delay={STAGGER_MS} color={palette.violet} />
+        <BouncyDot delay={STAGGER_MS * 2} color={palette.indigo} />
       </View>
     </Animated.View>
   );

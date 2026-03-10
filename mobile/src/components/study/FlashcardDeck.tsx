@@ -27,6 +27,7 @@ import { sp, borderRadius } from '../../theme/spacing';
 import { fontFamily, fontSize } from '../../theme/typography';
 import { springs, duration } from '../../theme/animations';
 import { MicroConfetti } from './MicroConfetti';
+import { FlashcardProgress } from './FlashcardProgress';
 import type { Flashcard } from '../../types/v2';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -134,17 +135,26 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
       [-15, 0, 15],
       Extrapolation.CLAMP
     );
+    // Scale down slightly at midpoint of flip for depth illusion
+    const flipScale = interpolate(
+      flipY.value,
+      [0, 90, 180],
+      [1, 0.92, 1],
+      Extrapolation.CLAMP
+    );
     return {
       transform: [
         { translateX: translateX.value },
         { translateY: entryY.value },
         { rotateZ: `${rotate}deg` },
+        { scale: flipScale },
       ],
     };
   });
 
   const frontStyle = useAnimatedStyle(() => {
-    const shadowDepth = interpolate(flipY.value, [0, 90], [8, 20], Extrapolation.CLAMP);
+    const shadowDepth = interpolate(flipY.value, [0, 90], [8, 24], Extrapolation.CLAMP);
+    const shadowX = interpolate(flipY.value, [0, 90], [0, 8], Extrapolation.CLAMP);
     return {
       transform: [
         { perspective: 1200 },
@@ -152,15 +162,16 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
       ],
       opacity: interpolate(flipY.value, [0, 89, 90, 180], [1, 1, 0, 0]),
       backfaceVisibility: 'hidden' as const,
-      shadowOffset: { width: 0, height: shadowDepth },
-      shadowOpacity: interpolate(flipY.value, [0, 90], [0.15, 0.3], Extrapolation.CLAMP),
-      shadowRadius: shadowDepth,
+      shadowOffset: { width: shadowX, height: shadowDepth },
+      shadowOpacity: interpolate(flipY.value, [0, 45, 90], [0.15, 0.25, 0.35], Extrapolation.CLAMP),
+      shadowRadius: shadowDepth * 1.2,
       elevation: shadowDepth,
     };
   });
 
   const backStyle = useAnimatedStyle(() => {
-    const shadowDepth = interpolate(flipY.value, [90, 180], [20, 8], Extrapolation.CLAMP);
+    const shadowDepth = interpolate(flipY.value, [90, 180], [24, 8], Extrapolation.CLAMP);
+    const shadowX = interpolate(flipY.value, [90, 180], [-8, 0], Extrapolation.CLAMP);
     return {
       transform: [
         { perspective: 1200 },
@@ -168,9 +179,9 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
       ],
       opacity: interpolate(flipY.value, [0, 89, 90, 180], [0, 0, 1, 1]),
       backfaceVisibility: 'hidden' as const,
-      shadowOffset: { width: 0, height: shadowDepth },
-      shadowOpacity: interpolate(flipY.value, [90, 180], [0.3, 0.15], Extrapolation.CLAMP),
-      shadowRadius: shadowDepth,
+      shadowOffset: { width: shadowX, height: shadowDepth },
+      shadowOpacity: interpolate(flipY.value, [90, 135, 180], [0.35, 0.25, 0.15], Extrapolation.CLAMP),
+      shadowRadius: shadowDepth * 1.2,
       elevation: shadowDepth,
     };
   });
@@ -264,23 +275,13 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
         <Pressable onPress={onClose} style={styles.closeBtn} accessibilityLabel="Fermer">
           <Ionicons name="close" size={28} color={colors.textPrimary} />
         </Pressable>
-        <Text style={[styles.progress, { color: colors.textSecondary }]}>
-          {index + 1}/{cards.length}
-        </Text>
-        <View style={{ width: 28 }} />
-      </View>
-
-      {/* Progress bar */}
-      <View style={[styles.progressBar, { backgroundColor: colors.bgTertiary }]}>
-        <View
-          style={[
-            styles.progressFill,
-            {
-              backgroundColor: colors.accentPrimary,
-              width: `${((index + 1) / cards.length) * 100}%`,
-            },
-          ]}
+        <FlashcardProgress
+          progress={(index + 1) / cards.length}
+          size={52}
+          strokeWidth={4}
+          label={`${index + 1}/${cards.length}`}
         />
+        <View style={{ width: 28 }} />
       </View>
 
       {/* Swipe hints */}
@@ -378,16 +379,6 @@ const styles = StyleSheet.create({
   progress: {
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.base,
-  },
-  progressBar: {
-    height: 4,
-    marginHorizontal: sp.lg,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 2,
   },
   hints: {
     flexDirection: 'row',

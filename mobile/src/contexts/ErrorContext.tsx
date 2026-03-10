@@ -50,35 +50,35 @@ const ErrorContext = createContext<ErrorContextType | undefined>(undefined);
 // Error message translations (French)
 const ERROR_MESSAGES: Record<ErrorType, Record<string, string>> = {
   network: {
-    default: 'Erreur de connexion. Vérifiez votre connexion internet.',
-    offline: 'Vous êtes hors ligne. Les données seront synchronisées à la reconnexion.',
+    default: 'Connexion perdue — on réessaie dans un instant',
+    offline: 'Vous êtes hors ligne. Vos données se synchroniseront à la reconnexion.',
   },
   auth: {
-    default: 'Erreur d\'authentification. Veuillez vous reconnecter.',
-    expired: 'Votre session a expiré. Veuillez vous reconnecter.',
-    invalid: 'Identifiants invalides.',
+    default: 'Session interrompue — reconnectez-vous pour continuer.',
+    expired: 'Votre session a expiré — reconnectez-vous pour continuer.',
+    invalid: 'Identifiants incorrects.',
   },
   validation: {
-    default: 'Les données fournies sont invalides.',
+    default: 'Certaines données semblent incorrectes.',
   },
   server: {
-    default: 'Erreur serveur. Veuillez réessayer plus tard.',
-    maintenance: 'Service en maintenance. Réessayez dans quelques minutes.',
+    default: 'Quelque chose a planté de notre côté. On s\'en occupe.',
+    maintenance: 'Maintenance en cours — on revient dans quelques minutes.',
   },
   timeout: {
-    default: 'La requête a pris trop de temps. Veuillez réessayer.',
+    default: 'Ça prend plus de temps que prévu — réessayez.',
   },
   quota: {
-    default: 'Vous avez atteint votre limite. Passez à un forfait supérieur.',
-    credits: 'Plus de crédits disponibles. Attendez le renouvellement ou upgradez.',
-    analyses: 'Nombre maximum d\'analyses atteint ce mois-ci.',
+    default: 'Vous avez atteint votre limite. Débloquez plus avec un forfait supérieur.',
+    credits: 'Plus de crédits pour l\'instant. Renouvellement automatique bientôt.',
+    analyses: 'Quota d\'analyses du mois atteint.',
   },
   permission: {
-    default: 'Vous n\'avez pas accès à cette fonctionnalité.',
-    plan: 'Cette fonctionnalité nécessite un forfait supérieur.',
+    default: 'Cette fonctionnalité n\'est pas disponible avec votre plan.',
+    plan: 'Débloquez cette fonctionnalité avec un forfait supérieur.',
   },
   unknown: {
-    default: 'Une erreur inattendue s\'est produite.',
+    default: 'Quelque chose s\'est mal passé. Réessayez.',
   },
 };
 

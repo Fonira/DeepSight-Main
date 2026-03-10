@@ -243,7 +243,7 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
         // Network/timeout errors — silently retry next cycle (transient)
         failCountRef.current += 1;
         if (failCountRef.current >= 10) {
-          setFailedError('Connexion au serveur perdue. Vérifiez votre connexion internet et réessayez.');
+          setFailedError('Connexion perdue — on réessaie dans un instant');
           if (pollingRef.current) clearInterval(pollingRef.current);
           if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
         }

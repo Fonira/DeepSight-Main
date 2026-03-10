@@ -19,17 +19,46 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
 import { Spacing, Typography, BorderRadius } from '../../constants/theme';
 
-// SVG tail for iMessage-style bubbles
+/**
+ * iMessage-style bubble tail using smooth cubic beziers.
+ *
+ * The shape mimics the native iOS Messages app tail:
+ * - A concave curve that blends into the bubble's rounded corner
+ * - The outer edge kicks outward then curves back in
+ * - The tail sits at the bottom of the bubble
+ *
+ * Tail dimensions: 15 x 18 for a natural proportioned curve.
+ */
+const TAIL_W = 15;
+const TAIL_H = 18;
+
 const BubbleTail: React.FC<{ color: string; side: 'left' | 'right' }> = ({ color, side }) => {
-  // Left tail (assistant) or right tail (user)
-  const d =
-    side === 'left'
-      ? 'M12 0 C12 0 12 8 0 12 C8 12 12 12 12 12 Z'
-      : 'M0 0 C0 0 0 8 12 12 C4 12 0 12 0 12 Z';
+  // Right tail (user): starts top-left, curves down-right, concave scoop back
+  // Left tail (assistant): mirrored horizontally
+  const rightPath = [
+    `M${TAIL_W} 0`,                        // top-right (attaches to bubble)
+    `L${TAIL_W} ${TAIL_H - 6}`,            // straight down along bubble edge
+    `C${TAIL_W} ${TAIL_H - 2} ${TAIL_W - 2} ${TAIL_H} ${TAIL_W - 6} ${TAIL_H}`, // round to bottom
+    `C${TAIL_W - 12} ${TAIL_H} ${0} ${TAIL_H - 1} ${0} ${TAIL_H - 1}`, // kick out to the tip
+    `C${3} ${TAIL_H - 4} ${7} ${TAIL_H - 9} ${TAIL_W} ${0}`,  // concave scoop back up
+    'Z',
+  ].join(' ');
+
+  const leftPath = [
+    'M0 0',                                 // top-left (attaches to bubble)
+    `L0 ${TAIL_H - 6}`,                    // straight down along bubble edge
+    `C0 ${TAIL_H - 2} 2 ${TAIL_H} 6 ${TAIL_H}`, // round to bottom
+    `C12 ${TAIL_H} ${TAIL_W} ${TAIL_H - 1} ${TAIL_W} ${TAIL_H - 1}`, // kick out to the tip
+    `C${TAIL_W - 3} ${TAIL_H - 4} ${TAIL_W - 7} ${TAIL_H - 9} 0 0`, // concave scoop back up
+    'Z',
+  ].join(' ');
+
+  const d = side === 'right' ? rightPath : leftPath;
+
   return (
     <Svg
-      width={12}
-      height={12}
+      width={TAIL_W}
+      height={TAIL_H}
       style={[
         styles.tail,
         side === 'left' ? styles.tailLeft : styles.tailRight,
@@ -230,19 +259,19 @@ const styles = StyleSheet.create({
   },
   tail: {
     position: 'absolute',
-    bottom: 0,
+    bottom: -1,
   },
   tailLeft: {
-    left: -8,
+    left: -TAIL_W + 3,
   },
   tailRight: {
-    right: -8,
+    right: -TAIL_W + 3,
   },
   bubbleUser: {
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 2,
   },
   bubbleAssistant: {
-    borderBottomLeftRadius: 4,
+    borderBottomLeftRadius: 2,
   },
   messageText: {
     fontSize: Typography.fontSize.sm,
