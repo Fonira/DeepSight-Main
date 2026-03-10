@@ -622,7 +622,7 @@ const LandingPage: React.FC = () => {
             <img
               src="/deepsight-logo-cosmic.png"
               alt="Deep Sight"
-              className="h-32 w-32 rounded-full mx-auto object-cover"
+              className="h-24 w-24 sm:h-32 sm:w-32 rounded-full mx-auto object-cover"
               style={{ filter: 'drop-shadow(0 0 20px rgba(139, 92, 246, 0.4))' }}
             />
           </motion.div>
@@ -980,9 +980,9 @@ const LandingPage: React.FC = () => {
       <section className="py-12 sm:py-20 px-4 sm:px-6">
         <div className="max-w-5xl mx-auto">
           <ScrollReveal>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
               {/* Problem */}
-              <div className="p-6 sm:p-8 rounded-2xl border border-red-500/20 bg-red-500/[0.04]">
+              <div className="p-5 sm:p-8 rounded-2xl border border-red-500/20 bg-red-500/[0.04]">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center">
                     <AlertTriangle className="w-5 h-5 text-red-400" />
@@ -1006,7 +1006,7 @@ const LandingPage: React.FC = () => {
               </div>
 
               {/* Solution */}
-              <div className="p-6 sm:p-8 rounded-2xl border border-accent-primary/20 bg-accent-primary/[0.04]">
+              <div className="p-5 sm:p-8 rounded-2xl border border-accent-primary/20 bg-accent-primary/[0.04]">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-lg bg-accent-primary/10 flex items-center justify-center">
                     <Lightbulb className="w-5 h-5 text-accent-primary" />

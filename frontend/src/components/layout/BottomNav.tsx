@@ -64,7 +64,7 @@ export const BottomNav: React.FC = () => {
       role="navigation"
       aria-label="Navigation principale"
     >
-      <div className="flex items-center justify-around px-2 py-1">
+      <div className="flex items-center justify-around px-1 py-1.5">
         {visibleItems.map((item) => {
           const isActive = location.pathname === item.path;
 
@@ -74,7 +74,7 @@ export const BottomNav: React.FC = () => {
               onClick={() => navigate(item.path)}
               className={`
                 relative flex flex-col items-center justify-center
-                min-w-[60px] py-2 px-3 rounded-xl
+                min-w-[48px] py-2.5 px-2 rounded-xl
                 transition-all duration-200
                 focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-elevated
                 active:scale-95
@@ -114,7 +114,7 @@ export const BottomNav: React.FC = () => {
 
               {/* Label */}
               <span className={`
-                text-[10px] mt-1 font-medium
+                text-[11px] mt-0.5 font-medium
                 ${isActive ? 'text-accent-primary' : ''}
               `}>
                 {item.label}

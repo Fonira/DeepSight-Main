@@ -157,7 +157,7 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`
-                flex items-center gap-2 px-4 sm:px-5 py-3 text-sm font-medium
+                flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-3 text-sm font-medium
                 border-b-2 transition-all duration-200 whitespace-nowrap flex-shrink-0
                 ${isActive
                   ? `${tab.activeBorder} ${tab.activeColor}`

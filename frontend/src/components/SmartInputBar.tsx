@@ -432,7 +432,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
       <div className={`relative rounded-xl border-2 transition-all duration-300 bg-bg-secondary ${getDynamicBorderClasses()}`}>
 
         {/* Input */}
-        <div className="flex items-start gap-3 p-4">
+        <div className="flex items-start gap-3 p-3 sm:p-4">
           {/* Active mode badge (compact) */}
           <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg shrink-0 ${config.bgColor} ${config.textColor}`}>
             <ModeIconRenderer mode={value.mode} className="w-4 h-4" />
@@ -448,7 +448,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
                   if (text) handleInputChange(text.trim());
                 } catch { /* clipboard denied */ }
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg shrink-0 bg-surface-secondary/60 hover:bg-surface-secondary border border-border-subtle text-text-tertiary hover:text-text-secondary transition-colors text-xs"
+              className="flex items-center gap-1.5 px-2.5 py-2.5 rounded-lg shrink-0 bg-surface-secondary/60 hover:bg-surface-secondary border border-border-subtle text-text-tertiary hover:text-text-secondary transition-colors text-xs min-h-[44px]"
               title={language === 'fr' ? 'Coller' : 'Paste'}
             >
               <Clipboard className="w-3.5 h-3.5" />
@@ -534,14 +534,14 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
                 value={value.textTitle || ''}
                 onChange={(e) => onChange({ ...value, textTitle: e.target.value })}
                 placeholder={language === 'fr' ? 'Titre (optionnel)' : 'Title (optional)'}
-                className="flex-1 min-w-0 sm:min-w-[150px] px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:border-blue-500/50 focus:outline-none"
+                className="flex-1 min-w-0 sm:min-w-[150px] px-3 py-2.5 bg-bg-secondary border border-border-subtle rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:border-blue-500/50 focus:outline-none min-h-[44px]"
               />
               <input
                 type="text"
                 value={value.textSource || ''}
                 onChange={(e) => onChange({ ...value, textSource: e.target.value })}
                 placeholder={language === 'fr' ? 'Source (optionnel)' : 'Source (optional)'}
-                className="flex-1 min-w-0 sm:min-w-[150px] px-3 py-2 bg-bg-secondary border border-border-subtle rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:border-blue-500/50 focus:outline-none"
+                className="flex-1 min-w-0 sm:min-w-[150px] px-3 py-2.5 bg-bg-secondary border border-border-subtle rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:border-blue-500/50 focus:outline-none min-h-[44px]"
               />
             </>
           )}

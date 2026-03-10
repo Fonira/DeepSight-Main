@@ -982,7 +982,7 @@ export const DashboardPage: React.FC = () => {
                 <div className="card overflow-hidden">
                   <div className="flex flex-col lg:flex-row">
                     {/* Thumbnail / Player - responsive height */}
-                    <div className="w-full lg:w-96 flex-shrink-0 relative bg-bg-tertiary">
+                    <div className="w-full lg:w-96 flex-shrink-0 relative bg-bg-tertiary max-h-[50vh] lg:max-h-none overflow-hidden">
                       {playerVisible ? (
                         <div className="relative aspect-video">
                           <VideoPlayer
