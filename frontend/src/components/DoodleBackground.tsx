@@ -9,7 +9,7 @@
  * - 3-layer depth system (back, mid, front) + accent + micro + dots
  * - Radial gradient mask for premium edge fading
  * - Brand violet accent highlights on ~10% of icons
- * - 500px tile with ~150 elements for dense coverage
+ * - 500px tile with ~200 elements (reduced from 315 for breathing room)
  * - Grid-jitter placement for even distribution
  */
 
@@ -243,8 +243,14 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
     // Variant seed offset so each variant produces a unique arrangement
     const vo = { default: 0, video: 1000, academic: 2000, analysis: 3000, tech: 4000, creative: 5000 }[variant];
 
-    // ── Layer 1: Deep Background (large, visible) ─────────────────────
-    for (let i = 0; i < 30; i++) {
+    // Helper: variable strokeWidth (0.8–2.0) per element for mixed-media feel
+    const sw = (seed: number, base: number) => {
+      const v = seededRandom(seed);
+      return +(base + (v - 0.5) * 0.8).toFixed(1); // ±0.4 around base
+    };
+
+    // ── Layer 1: Deep Background (large, visible) — 20 items ────────
+    for (let i = 0; i < 20; i++) {
       const s = vo + 100 + i * 37;
       items.push({
         path: pick(iconPool, s),
@@ -254,13 +260,13 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         scale: 1.0 + seededRandom(s + 4) * 0.5,
         color: pickColor(s + 9),
         opacity: isDark ? 0.08 + seededRandom(s + 5) * 0.06 : 0.12 + seededRandom(s + 5) * 0.08,
-        strokeWidth: 1.8,
+        strokeWidth: sw(s + 10, 1.8),
         fill: false,
       });
     }
 
-    // ── Layer 2: Mid Layer (medium, strong) ─────────────────────────
-    for (let i = 0; i < 65; i++) {
+    // ── Layer 2: Mid Layer (medium, strong) — 40 items ──────────────
+    for (let i = 0; i < 40; i++) {
       const s = vo + 300 + i * 23;
       items.push({
         path: pick(iconPool, s),
@@ -270,13 +276,13 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         scale: 0.6 + seededRandom(s + 4) * 0.35,
         color: pickColor(s + 9),
         opacity: isDark ? 0.13 + seededRandom(s + 5) * 0.08 : 0.16 + seededRandom(s + 5) * 0.10,
-        strokeWidth: 1.6,
+        strokeWidth: sw(s + 10, 1.5),
         fill: false,
       });
     }
 
-    // ── Layer 3: Foreground (small, bold) ────────────────────────────
-    for (let i = 0; i < 55; i++) {
+    // ── Layer 3: Foreground (small, bold) — 35 items ────────────────
+    for (let i = 0; i < 35; i++) {
       const s = vo + 600 + i * 31;
       items.push({
         path: pick(iconPool, s),
@@ -286,13 +292,13 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         scale: 0.4 + seededRandom(s + 4) * 0.25,
         color: pickColor(s + 9),
         opacity: isDark ? 0.18 + seededRandom(s + 5) * 0.10 : 0.20 + seededRandom(s + 5) * 0.12,
-        strokeWidth: 1.6,
+        strokeWidth: sw(s + 10, 1.4),
         fill: false,
       });
     }
 
-    // ── Layer 4: Brand Accent (violet highlights, prominent) ────────
-    for (let i = 0; i < 25; i++) {
+    // ── Layer 4: Brand Accent (violet highlights) — 20 items ────────
+    for (let i = 0; i < 20; i++) {
       const s = vo + 900 + i * 41;
       items.push({
         path: pick(iconPool, s),
@@ -302,13 +308,13 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         scale: 0.5 + seededRandom(s + 4) * 0.35,
         color: seededRandom(s + 6) > 0.5 ? accentPrimary : accentSecondary,
         opacity: isDark ? 0.22 + seededRandom(s + 5) * 0.12 : 0.25 + seededRandom(s + 5) * 0.14,
-        strokeWidth: 1.8,
+        strokeWidth: sw(s + 10, 1.8),
         fill: false,
       });
     }
 
-    // ── Layer 5: Micro Icons (tiny scattered, visible) ──────────────
-    for (let i = 0; i < 50; i++) {
+    // ── Layer 5: Micro Icons (tiny scattered) — 30 items ────────────
+    for (let i = 0; i < 30; i++) {
       const s = vo + 1200 + i * 47;
       items.push({
         path: pick(iconPool, s),
@@ -318,13 +324,13 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         scale: 0.25 + seededRandom(s + 4) * 0.2,
         color: pickColor(s + 9),
         opacity: isDark ? 0.14 + seededRandom(s + 5) * 0.08 : 0.16 + seededRandom(s + 5) * 0.10,
-        strokeWidth: 1.4,
+        strokeWidth: sw(s + 10, 1.2),
         fill: false,
       });
     }
 
-    // ── Layer 6: Decorative Dots & Shapes (filled, bold) ────────────
-    for (let i = 0; i < 70; i++) {
+    // ── Layer 6: Decorative Dots & Shapes (filled) — 40 items ───────
+    for (let i = 0; i < 40; i++) {
       const s = vo + 1500 + i * 13;
       const useAccent = seededRandom(s + 7) > 0.80;
       items.push({
@@ -342,8 +348,8 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
       });
     }
 
-    // ── Layer 7: Extra fill icons (medium filled shapes) ────────────
-    for (let i = 0; i < 20; i++) {
+    // ── Layer 7: Extra fill icons (medium filled shapes) — 15 items ─
+    for (let i = 0; i < 15; i++) {
       const s = vo + 2000 + i * 29;
       items.push({
         path: pick(iconPool, s),

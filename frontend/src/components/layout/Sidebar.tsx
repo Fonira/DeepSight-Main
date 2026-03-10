@@ -103,7 +103,7 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, collapsed, bad
       className={({ isActive }) =>
         `${baseClasses} ${
           isActive
-            ? 'bg-accent-primary-muted text-accent-primary-hover'
+            ? 'bg-accent-primary-muted text-accent-primary-hover shadow-[0_0_12px_rgba(99,102,241,0.12)]'
             : 'text-text-secondary hover:text-text-primary hover:bg-bg-hover'
         }`
       }

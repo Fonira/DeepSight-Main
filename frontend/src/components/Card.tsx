@@ -50,7 +50,7 @@ export const Card: React.FC<CardProps> = ({
   const hoverClass = hover
     ? variant === 'interactive'
       ? 'hover:border-border-accent hover:shadow-glow-sm hover:-translate-y-0.5'
-      : 'hover:border-border-default hover:shadow-md hover:-translate-y-px'
+      : 'hover:border-border-default hover:shadow-md hover:-translate-y-0.5'
     : '';
 
   return (

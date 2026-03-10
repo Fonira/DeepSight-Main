@@ -645,7 +645,7 @@ const LandingPage: React.FC = () => {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease, delay: 0.2 }}
-            className="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight leading-[1.1] mb-6"
+            className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-[-0.02em] leading-[1.08] mb-6"
           >
             <span className="text-text-primary">
               {language === 'fr' ? 'Ne regardez plus vos vidéos.' : 'Stop watching your videos.'}

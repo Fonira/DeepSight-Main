@@ -28,7 +28,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   animate = true,
 }) => {
   const baseClass = `
-    bg-gradient-to-r from-bg-tertiary via-bg-hover to-bg-tertiary
+    bg-gradient-to-r from-bg-tertiary via-[rgba(99,102,241,0.08)] to-bg-tertiary
     bg-[length:200%_100%]
     ${animate ? 'animate-shimmer' : ''}
   `;

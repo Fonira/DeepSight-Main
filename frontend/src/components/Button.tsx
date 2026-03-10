@@ -115,12 +115,19 @@ export const AnalyzeButton: React.FC<ButtonProps> = ({
         ${className}
       `}
       style={{ backgroundSize: '200% 100%' }}
+      animate={!loading && !disabled ? {
+        y: [0, -3, 0],
+      } : undefined}
       whileHover={{
         scale: 1.02,
         backgroundPosition: '100% 0',
+        y: 0,
       }}
-      whileTap={{ scale: 0.98 }}
-      transition={{ duration: 0.2 }}
+      whileTap={{ scale: 0.98, y: 0 }}
+      transition={{
+        duration: 0.2,
+        y: { duration: 3, repeat: Infinity, ease: 'easeInOut' },
+      }}
       aria-label={ariaLabel || "Analyze video"}
       aria-busy={loading}
       aria-disabled={disabled || loading}
