@@ -16,7 +16,9 @@ import {
   ActivityIndicator,
   StyleSheet,
   Keyboard,
+  Platform,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -72,7 +74,12 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bgPrimary, borderTopColor: colors.border }]}>
+    <BlurView
+      intensity={Platform.OS === 'ios' ? 80 : 0}
+      tint={colors.bgPrimary === '#0a0a0f' ? 'dark' : 'light'}
+      style={[styles.blurWrap, { borderTopColor: colors.border }]}
+    >
+    <View style={[styles.container, { backgroundColor: Platform.OS === 'ios' ? 'transparent' : colors.bgPrimary }]}>
       {showWebSearch && (
         <Pressable
           style={[
@@ -146,16 +153,19 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         )}
       </Pressable>
     </View>
+    </BlurView>
   );
 };
 
 const styles = StyleSheet.create({
+  blurWrap: {
+    borderTopWidth: 1,
+  },
   container: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
-    borderTopWidth: 1,
     gap: Spacing.sm,
   },
   input: {

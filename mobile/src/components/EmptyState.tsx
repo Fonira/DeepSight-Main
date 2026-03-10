@@ -16,9 +16,11 @@ import {
   EmptyHistoryIllustration,
   EmptyFavoritesIllustration,
   StartAnalysisIllustration,
+  EmptyChatIllustration,
+  EmptyStudyIllustration,
 } from './illustrations';
 
-type IllustrationType = 'history' | 'favorites' | 'analysis' | 'none';
+type IllustrationType = 'history' | 'favorites' | 'analysis' | 'chat' | 'study' | 'none';
 
 interface EmptyStateProps {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -38,6 +40,10 @@ const getIllustration = (type: IllustrationType, size: number, colors: any) => {
       return <EmptyFavoritesIllustration size={size} primaryColor={colors.accentError} />;
     case 'analysis':
       return <StartAnalysisIllustration size={size} primaryColor={colors.accentPrimary} />;
+    case 'chat':
+      return <EmptyChatIllustration size={size} primaryColor={colors.accentPrimary} secondaryColor={colors.accentSecondary} />;
+    case 'study':
+      return <EmptyStudyIllustration size={size} primaryColor={colors.accentPrimary} secondaryColor={colors.accentSecondary} />;
     default:
       return null;
   }

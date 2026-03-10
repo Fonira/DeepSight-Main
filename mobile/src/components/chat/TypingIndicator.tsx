@@ -1,8 +1,8 @@
 /**
- * TypingIndicator - Animated three-dot typing indicator
+ * TypingIndicator - Bouncy spring dots (Linear-inspired)
  *
- * Shows a pulsing dot animation in an assistant-style bubble
- * to indicate the AI is generating a response.
+ * 3 dots that bounce with staggered spring physics,
+ * not just opacity pulse. Each dot has translateY bounce.
  */
 
 import React, { useEffect } from 'react';
@@ -13,53 +13,59 @@ import Animated, {
   useAnimatedStyle,
   withRepeat,
   withSequence,
-  withTiming,
+  withSpring,
   withDelay,
   FadeIn,
   FadeOut,
   type SharedValue,
 } from 'react-native-reanimated';
 import { useTheme } from '../../contexts/ThemeContext';
-import { Spacing, BorderRadius } from '../../constants/theme';
+import { sp, borderRadius } from '../../theme/spacing';
+import { palette } from '../../theme/colors';
+
+const BOUNCE_HEIGHT = -6;
+const SPRING_CONFIG = { damping: 8, stiffness: 200, mass: 0.4 };
+
+const BouncyDot: React.FC<{ delay: number; color: string }> = ({ delay, color }) => {
+  const translateY = useSharedValue(0);
+  const scale = useSharedValue(1);
+
+  useEffect(() => {
+    translateY.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withSpring(BOUNCE_HEIGHT, SPRING_CONFIG),
+          withSpring(0, SPRING_CONFIG),
+        ),
+        -1,
+        false,
+      ),
+    );
+    scale.value = withDelay(
+      delay,
+      withRepeat(
+        withSequence(
+          withSpring(1.2, SPRING_CONFIG),
+          withSpring(1, SPRING_CONFIG),
+        ),
+        -1,
+        false,
+      ),
+    );
+  }, [translateY, scale, delay]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }, { scale: scale.value }],
+  }));
+
+  return (
+    <Animated.View style={[styles.dot, { backgroundColor: color }, animStyle]} />
+  );
+};
 
 export const TypingIndicator: React.FC = () => {
   const { colors } = useTheme();
-
-  const dot1 = useSharedValue(0.3);
-  const dot2 = useSharedValue(0.3);
-  const dot3 = useSharedValue(0.3);
-
-  useEffect(() => {
-    const anim = (sv: SharedValue<number>, delay: number) => {
-      sv.value = withDelay(
-        delay,
-        withRepeat(
-          withSequence(
-            withTiming(1, { duration: 400 }),
-            withTiming(0.3, { duration: 400 }),
-          ),
-          -1,
-          false,
-        ),
-      );
-    };
-    anim(dot1, 0);
-    anim(dot2, 150);
-    anim(dot3, 300);
-  }, [dot1, dot2, dot3]);
-
-  const dotStyle1 = useAnimatedStyle(() => ({
-    opacity: dot1.value,
-    transform: [{ scale: 0.8 + dot1.value * 0.4 }],
-  }));
-  const dotStyle2 = useAnimatedStyle(() => ({
-    opacity: dot2.value,
-    transform: [{ scale: 0.8 + dot2.value * 0.4 }],
-  }));
-  const dotStyle3 = useAnimatedStyle(() => ({
-    opacity: dot3.value,
-    transform: [{ scale: 0.8 + dot3.value * 0.4 }],
-  }));
 
   return (
     <Animated.View
@@ -81,9 +87,9 @@ export const TypingIndicator: React.FC = () => {
           },
         ]}
       >
-        <Animated.View style={[styles.dot, { backgroundColor: colors.textTertiary }, dotStyle1]} />
-        <Animated.View style={[styles.dot, { backgroundColor: colors.textTertiary }, dotStyle2]} />
-        <Animated.View style={[styles.dot, { backgroundColor: colors.textTertiary }, dotStyle3]} />
+        <BouncyDot delay={0} color={palette.indigo} />
+        <BouncyDot delay={120} color={palette.violet} />
+        <BouncyDot delay={240} color={palette.indigo} />
       </View>
     </Animated.View>
   );
@@ -93,8 +99,8 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    marginBottom: Spacing.sm,
-    paddingHorizontal: Spacing.xs,
+    marginBottom: sp.sm,
+    paddingHorizontal: sp.xs,
   },
   avatar: {
     width: 28,
@@ -102,15 +108,15 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: Spacing.sm,
+    marginRight: sp.sm,
     marginBottom: 4,
   },
   bubble: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.lg,
+    paddingHorizontal: sp.lg,
+    paddingVertical: sp.md,
+    borderRadius: borderRadius.lg,
     borderBottomLeftRadius: 4,
     borderWidth: 1,
     gap: 6,

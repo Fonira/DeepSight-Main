@@ -23,6 +23,13 @@ import { springs } from '@/theme/animations';
 import { formatRelativeDate } from '@/utils/formatDate';
 import type { AnalysisSummary } from '@/types';
 
+// Epistemic marker badge colors
+const MODE_BADGE: Record<string, { label: string; bg: string; text: string }> = {
+  standard: { label: 'Standard', bg: 'rgba(59,130,246,0.15)', text: '#60a5fa' },
+  deep: { label: 'Deep', bg: 'rgba(139,92,246,0.15)', text: '#a78bfa' },
+  expert: { label: 'Expert', bg: 'rgba(245,158,11,0.15)', text: '#fbbf24' },
+};
+
 const DELETE_THRESHOLD = -80;
 
 interface AnalysisCardProps {
@@ -193,11 +200,30 @@ export const AnalysisCard: React.FC<AnalysisCardProps> = ({
                   {subtitle}
                 </Text>
               ) : null}
-              {summary.createdAt ? (
-                <Text style={[styles.date, { color: colors.textMuted }]}>
-                  {formatRelativeDate(summary.createdAt)}
-                </Text>
-              ) : null}
+              <View style={styles.metaRow}>
+                {summary.mode && MODE_BADGE[summary.mode] && (
+                  <View
+                    style={[
+                      styles.modeBadge,
+                      { backgroundColor: MODE_BADGE[summary.mode].bg },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.modeBadgeText,
+                        { color: MODE_BADGE[summary.mode].text },
+                      ]}
+                    >
+                      {MODE_BADGE[summary.mode].label}
+                    </Text>
+                  </View>
+                )}
+                {summary.createdAt ? (
+                  <Text style={[styles.date, { color: colors.textMuted }]}>
+                    {formatRelativeDate(summary.createdAt)}
+                  </Text>
+                ) : null}
+              </View>
             </View>
 
             {/* Favorite indicator */}
@@ -275,10 +301,24 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     marginTop: 2,
   },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+    gap: 6,
+  },
+  modeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 9999,
+  },
+  modeBadgeText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: 10,
+  },
   date: {
     fontFamily: fontFamily.body,
     fontSize: fontSize.xs,
-    marginTop: 2,
   },
   favoriteIcon: {
     position: 'absolute',

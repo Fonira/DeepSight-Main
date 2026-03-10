@@ -26,7 +26,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { historyApi } from '../services/api';
 import { Header, VideoCard, EmptyState } from '../components';
-import { VideoCardSkeleton } from '../components/ui/Skeleton';
+import { SkeletonList } from '../components/SkeletonCard';
 import { sp, borderRadius } from '../theme/spacing';
 import { fontFamily, fontSize } from '../theme/typography';
 import { useIsOffline } from '../hooks/useNetworkStatus';
@@ -639,9 +639,7 @@ export const HistoryScreen: React.FC = () => {
       {/* Analysis List */}
       {isLoading ? (
         <View style={styles.skeletonContainer}>
-          {[1, 2, 3, 4].map((i) => (
-            <VideoCardSkeleton key={i} style={styles.skeletonCard} />
-          ))}
+          <SkeletonList count={5} heroFirst />
         </View>
       ) : (
         <FlatList
@@ -685,9 +683,7 @@ export const HistoryScreen: React.FC = () => {
         <>
           {isLoadingPlaylists ? (
             <View style={styles.skeletonContainer}>
-              {[1, 2, 3].map((i) => (
-                <VideoCardSkeleton key={i} style={styles.skeletonCard} />
-              ))}
+              <SkeletonList count={4} />
             </View>
           ) : (
             <FlatList

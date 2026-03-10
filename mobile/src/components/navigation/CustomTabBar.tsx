@@ -11,6 +11,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  interpolateColor,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,17 +22,33 @@ import { sp } from '@/theme/spacing';
 interface TabBarIconProps {
   name: keyof typeof Ionicons.glyphMap;
   isFocused: boolean;
-  color: string;
+  activeColor: string;
+  inactiveColor: string;
 }
 
-function TabBarIcon({ name, isFocused, color }: TabBarIconProps) {
+function TabBarIcon({ name, isFocused, activeColor, inactiveColor }: TabBarIconProps) {
+  const scale = useSharedValue(isFocused ? 1.15 : 1);
+  const progress = useSharedValue(isFocused ? 1 : 0);
+
+  React.useEffect(() => {
+    scale.value = withSpring(isFocused ? 1.15 : 1, { damping: 15, stiffness: 400, mass: 0.5 });
+    progress.value = withSpring(isFocused ? 1 : 0, { damping: 18, stiffness: 350, mass: 0.4 });
+  }, [isFocused, scale, progress]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const colorStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(progress.value, [0, 1], [inactiveColor, activeColor]),
+  }));
+
   return (
-    <Ionicons
-      name={name}
-      size={24}
-      color={color}
-      style={{ opacity: isFocused ? 1 : 0.6 }}
-    />
+    <Animated.View style={animStyle}>
+      <Animated.Text style={colorStyle}>
+        <Ionicons name={name} size={24} />
+      </Animated.Text>
+    </Animated.View>
   );
 }
 
@@ -151,11 +168,8 @@ export function CustomTabBar({
                 <TabBarIcon
                   name={iconName}
                   isFocused={isFocused}
-                  color={
-                    isFocused
-                      ? palette.indigo
-                      : isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.35)'
-                  }
+                  activeColor={palette.indigo}
+                  inactiveColor={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.35)'}
                 />
               </TouchableOpacity>
             );

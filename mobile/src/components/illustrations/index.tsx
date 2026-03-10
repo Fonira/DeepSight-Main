@@ -305,6 +305,123 @@ export const StartAnalysisIllustration: React.FC<IllustrationProps> = ({
   );
 };
 
+// Empty chat illustration - chat bubble with brain
+export const EmptyChatIllustration: React.FC<IllustrationProps> = ({
+  size = 200,
+  primaryColor = Colors.accentPrimary,
+  secondaryColor = Colors.accentSecondary,
+}) => {
+  const float = useSharedValue(0);
+
+  useEffect(() => {
+    float.value = withRepeat(
+      withSequence(
+        withTiming(-4, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+        withTiming(4, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1,
+      true,
+    );
+  }, []);
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 200 200">
+      <Defs>
+        <LinearGradient id="chatGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <Stop offset="0%" stopColor="#6366f1" />
+          <Stop offset="100%" stopColor="#8b5cf6" />
+        </LinearGradient>
+      </Defs>
+
+      <Circle cx="100" cy="100" r="80" fill={`${primaryColor}10`} />
+
+      {/* Chat bubble */}
+      <Path
+        d="M40 70 Q40 50 60 50 L140 50 Q160 50 160 70 L160 110 Q160 130 140 130 L80 130 L55 150 L65 130 Q40 130 40 110 Z"
+        fill="url(#chatGrad)"
+      />
+      {/* Content lines */}
+      <Rect x="55" y="65" width="90" height="7" rx="3" fill="white" opacity="0.9" />
+      <Rect x="55" y="80" width="70" height="6" rx="3" fill="white" opacity="0.6" />
+      <Rect x="55" y="94" width="80" height="6" rx="3" fill="white" opacity="0.6" />
+      <Rect x="55" y="108" width="50" height="6" rx="3" fill="white" opacity="0.4" />
+
+      {/* Brain sparkle */}
+      <Circle cx="155" cy="45" r="12" fill={`${secondaryColor}40`} />
+      <Path
+        d="M155 37 L157 43 L163 45 L157 47 L155 53 L153 47 L147 45 L153 43 Z"
+        fill={secondaryColor}
+      />
+
+      {/* Small sparkle */}
+      <Path
+        d="M42 55 L43 58 L46 59 L43 60 L42 63 L41 60 L38 59 L41 58 Z"
+        fill={primaryColor}
+        opacity="0.6"
+      />
+    </Svg>
+  );
+};
+
+// Empty study illustration - flashcards with star
+export const EmptyStudyIllustration: React.FC<IllustrationProps> = ({
+  size = 200,
+  primaryColor = Colors.accentPrimary,
+  secondaryColor = Colors.accentSecondary,
+}) => {
+  const rotate = useSharedValue(0);
+
+  useEffect(() => {
+    rotate.value = withRepeat(
+      withSequence(
+        withTiming(-3, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+        withTiming(3, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+      ),
+      -1,
+      true,
+    );
+  }, []);
+
+  return (
+    <Svg width={size} height={size} viewBox="0 0 200 200">
+      <Defs>
+        <LinearGradient id="studyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <Stop offset="0%" stopColor="#6366f1" />
+          <Stop offset="100%" stopColor="#8b5cf6" />
+        </LinearGradient>
+      </Defs>
+
+      <Circle cx="100" cy="100" r="80" fill={`${secondaryColor}10`} />
+
+      {/* Card stack - back cards */}
+      <Rect x="45" y="58" width="110" height="80" rx="10" fill={`${primaryColor}15`} transform="rotate(-8, 100, 98)" />
+      <Rect x="45" y="58" width="110" height="80" rx="10" fill={`${primaryColor}25`} transform="rotate(4, 100, 98)" />
+
+      {/* Front card */}
+      <Rect x="45" y="58" width="110" height="80" rx="10" fill="url(#studyGrad)" />
+      <Rect x="58" y="73" width="65" height="7" rx="3" fill="white" opacity="0.9" />
+      <Rect x="58" y="86" width="50" height="5" rx="3" fill="white" opacity="0.6" />
+      <Rect x="58" y="97" width="55" height="5" rx="3" fill="white" opacity="0.5" />
+      <Rect x="58" y="108" width="40" height="5" rx="3" fill="white" opacity="0.4" />
+
+      {/* Star */}
+      <Path
+        d="M160 50 L165 62 L178 64 L168 73 L171 86 L160 79 L149 86 L152 73 L142 64 L155 62 Z"
+        fill="#fbbf24"
+        opacity="0.9"
+      />
+
+      {/* Small decoration */}
+      <Circle cx="40" cy="130" r="6" fill={secondaryColor} opacity="0.4" />
+      <Path
+        d="M165 130 L166 133 L170 134 L166 135 L165 138 L164 135 L160 134 L164 133 Z"
+        fill={primaryColor}
+        opacity="0.5"
+      />
+    </Svg>
+  );
+};
+
 // Onboarding illustrations
 export const OnboardingAnalyzeIllustration: React.FC<IllustrationProps> = ({
   size = 250,
