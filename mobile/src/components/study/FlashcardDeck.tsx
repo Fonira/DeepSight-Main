@@ -26,6 +26,7 @@ import { useStudy } from '../../hooks/useStudy';
 import { sp, borderRadius } from '../../theme/spacing';
 import { fontFamily, fontSize } from '../../theme/typography';
 import { springs, duration } from '../../theme/animations';
+import { MicroConfetti } from './MicroConfetti';
 import type { Flashcard } from '../../types/v2';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -46,6 +47,7 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
   const [loading, setLoading] = useState(true);
   const [finished, setFinished] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Animation values
   const flipY = useSharedValue(0);
@@ -67,7 +69,10 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
   }, [generateFlashcards, entryY]);
 
   const advanceCard = useCallback((isKnown: boolean) => {
-    if (isKnown) setKnown(prev => prev + 1);
+    if (isKnown) {
+      setKnown(prev => prev + 1);
+      setShowConfetti(true);
+    }
     setIsFlipped(false);
     flipY.value = 0;
 
@@ -77,6 +82,7 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
       setFinished(true);
     } else {
       setIndex(prev => prev + 1);
+      setShowConfetti(false);
       entryY.value = 30;
       entryY.value = withSpring(0, springs.bouncy);
     }
@@ -137,17 +143,37 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
     };
   });
 
-  const frontStyle = useAnimatedStyle(() => ({
-    transform: [{ rotateY: `${flipY.value}deg` }],
-    opacity: interpolate(flipY.value, [0, 89, 90, 180], [1, 1, 0, 0]),
-    backfaceVisibility: 'hidden' as const,
-  }));
+  const frontStyle = useAnimatedStyle(() => {
+    const shadowDepth = interpolate(flipY.value, [0, 90], [8, 20], Extrapolation.CLAMP);
+    return {
+      transform: [
+        { perspective: 1200 },
+        { rotateY: `${flipY.value}deg` },
+      ],
+      opacity: interpolate(flipY.value, [0, 89, 90, 180], [1, 1, 0, 0]),
+      backfaceVisibility: 'hidden' as const,
+      shadowOffset: { width: 0, height: shadowDepth },
+      shadowOpacity: interpolate(flipY.value, [0, 90], [0.15, 0.3], Extrapolation.CLAMP),
+      shadowRadius: shadowDepth,
+      elevation: shadowDepth,
+    };
+  });
 
-  const backStyle = useAnimatedStyle(() => ({
-    transform: [{ rotateY: `${flipY.value - 180}deg` }],
-    opacity: interpolate(flipY.value, [0, 89, 90, 180], [0, 0, 1, 1]),
-    backfaceVisibility: 'hidden' as const,
-  }));
+  const backStyle = useAnimatedStyle(() => {
+    const shadowDepth = interpolate(flipY.value, [90, 180], [20, 8], Extrapolation.CLAMP);
+    return {
+      transform: [
+        { perspective: 1200 },
+        { rotateY: `${flipY.value - 180}deg` },
+      ],
+      opacity: interpolate(flipY.value, [0, 89, 90, 180], [0, 0, 1, 1]),
+      backfaceVisibility: 'hidden' as const,
+      shadowOffset: { width: 0, height: shadowDepth },
+      shadowOpacity: interpolate(flipY.value, [90, 180], [0.3, 0.15], Extrapolation.CLAMP),
+      shadowRadius: shadowDepth,
+      elevation: shadowDepth,
+    };
+  });
 
   // Restart
   const handleRestart = useCallback(() => {
@@ -266,6 +292,9 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({ summaryId, onClose
           Maîtrisé →
         </Text>
       </View>
+
+      {/* Confetti burst on correct answer */}
+      <MicroConfetti trigger={showConfetti} onComplete={() => setShowConfetti(false)} />
 
       {/* Card */}
       <View style={styles.cardArea}>
@@ -389,6 +418,7 @@ const styles = StyleSheet.create({
     padding: sp['3xl'],
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
   },
   cardBack: {
     position: 'absolute',

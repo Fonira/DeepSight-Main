@@ -43,7 +43,15 @@ export const letterSpacing = {
   wider: 0.5,
 } as const;
 
-/** Pre-composed text styles for quick use */
+/**
+ * Pre-composed text styles for quick use.
+ *
+ * Hierarchy (UI Polish 4.3d):
+ *   H1 = headingLg  → 24px Bold (strong visual anchor)
+ *   H2 = headingMd  → 20px SemiBold (clear section separator)
+ *   H3 = headingSm  → 18px SemiBold (subsection)
+ *   Body = bodyMd   → 16px Regular (comfortable reading)
+ */
 export const textStyles = {
   displayLg: {
     fontFamily: fontFamily.display,
@@ -64,9 +72,10 @@ export const textStyles = {
     letterSpacing: letterSpacing.tight,
   },
   headingLg: {
-    fontFamily: fontFamily.bodySemiBold,
+    fontFamily: fontFamily.bodyBold,
     fontSize: fontSize['2xl'],
     lineHeight: fontSize['2xl'] * lineHeight.snug,
+    letterSpacing: letterSpacing.tight,
   },
   headingMd: {
     fontFamily: fontFamily.bodySemiBold,

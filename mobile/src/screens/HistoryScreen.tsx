@@ -7,7 +7,6 @@ import {
   FlatList,
   TextInput,
   Pressable,
-  RefreshControl,
   Alert,
   Keyboard,
 } from 'react-native';
@@ -27,6 +26,7 @@ import { useScreenDoodleVariant } from '../contexts/DoodleVariantContext';
 import { historyApi } from '../services/api';
 import { Header, VideoCard, EmptyState } from '../components';
 import { SkeletonList } from '../components/SkeletonCard';
+import { DoodleRefreshControl } from '../components/DoodleRefreshControl';
 import { sp, borderRadius } from '../theme/spacing';
 import { fontFamily, fontSize } from '../theme/typography';
 import { useIsOffline } from '../hooks/useNetworkStatus';
@@ -303,18 +303,23 @@ export const HistoryScreen: React.FC = () => {
   };
 
   const renderItem = useCallback(
-    ({ item }: { item: AnalysisSummary }) => (
-      <View style={viewMode === 'grid' ? styles.gridItem : undefined}>
-        <VideoCard
-          video={item}
-          onPress={() => handleVideoPress(item)}
-          onFavoritePress={() => handleFavoritePress(item)}
-          onLongPress={() => handleDeletePress(item)}
-          isFavorite={item.isFavorite}
-          compact={viewMode === 'grid'}
-        />
-      </View>
-    ),
+    ({ item, index }: { item: AnalysisSummary; index: number }) => {
+      // First item = hero card (full-width thumbnail) in list mode
+      const isHero = index === 0 && viewMode === 'list';
+      return (
+        <View style={viewMode === 'grid' ? styles.gridItem : undefined}>
+          <VideoCard
+            video={item}
+            onPress={() => handleVideoPress(item)}
+            onFavoritePress={() => handleFavoritePress(item)}
+            onLongPress={() => handleDeletePress(item)}
+            isFavorite={item.isFavorite}
+            compact={viewMode === 'grid'}
+            hero={isHero}
+          />
+        </View>
+      );
+    },
     [viewMode, handleVideoPress, handleFavoritePress, handleDeletePress]
   );
 
@@ -658,10 +663,9 @@ export const HistoryScreen: React.FC = () => {
           columnWrapperStyle={viewMode === 'grid' ? styles.gridRow : undefined}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl
+            <DoodleRefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={colors.accentPrimary}
             />
           }
           onEndReached={loadMore}
@@ -697,10 +701,10 @@ export const HistoryScreen: React.FC = () => {
               ]}
               showsVerticalScrollIndicator={false}
               refreshControl={
-                <RefreshControl
+                <DoodleRefreshControl
                   refreshing={refreshingPlaylists}
                   onRefresh={onRefreshPlaylists}
-                  tintColor={colors.accentSecondary}
+                  accentColor={colors.accentSecondary}
                 />
               }
               onEndReached={loadMorePlaylists}

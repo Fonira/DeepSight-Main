@@ -23,6 +23,8 @@ interface VideoCardProps {
   isFavorite?: boolean;
   showMode?: boolean;
   compact?: boolean;
+  /** Hero mode: full-width thumbnail card for first item in list */
+  hero?: boolean;
 }
 
 const VideoCardComponent: React.FC<VideoCardProps> = ({
@@ -33,6 +35,7 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
   isFavorite = false,
   showMode = true,
   compact = false,
+  hero = false,
 }) => {
   const { colors } = useTheme();
 
@@ -72,6 +75,84 @@ const VideoCardComponent: React.FC<VideoCardProps> = ({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     onFavoritePress?.();
   };
+
+  // Hero card: large thumbnail + prominent layout for first item
+  if (hero) {
+    return (
+      <TouchableOpacity
+        style={[styles.heroContainer, { backgroundColor: colors.bgCard }]}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        delayLongPress={500}
+        activeOpacity={0.85}
+      >
+        <View style={styles.heroThumbnailContainer}>
+          <ThumbnailImage
+            uri={videoInfo.thumbnail}
+            videoId={videoInfo.id}
+            style={styles.heroThumbnail}
+          />
+          <View style={styles.platformOverlay}>
+            <PlatformBadge platform={platform} size="sm" showLabel={false} overlay />
+          </View>
+          {typeof videoInfo.duration === 'number' && videoInfo.duration > 0 && (
+            <View style={[styles.duration, { backgroundColor: 'rgba(0,0,0,0.8)' }]}>
+              <Text style={styles.durationText}>
+                {formatDuration(videoInfo.duration)}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.heroContent}>
+          <View style={styles.header}>
+            <Text
+              style={[styles.heroTitle, { color: colors.textPrimary }]}
+              numberOfLines={2}
+            >
+              {videoInfo.title}
+            </Text>
+            {onFavoritePress && (
+              <TouchableOpacity
+                onPress={handleFavoritePress}
+                style={styles.favoriteButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons
+                  name={isFavorite ? 'heart' : 'heart-outline'}
+                  size={22}
+                  color={isFavorite ? colors.accentError : colors.textTertiary}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <Text style={[styles.channel, { color: colors.textSecondary }]}>
+            {videoInfo.channel}
+          </Text>
+
+          <View style={styles.footer}>
+            <View style={styles.badges}>
+              <PlatformBadge platform={platform} size="sm" showLabel />
+              {showMode && analysisSummary?.mode && (
+                <Badge
+                  label={analysisSummary.mode}
+                  variant="primary"
+                  size="sm"
+                  style={{ marginLeft: Spacing.xs }}
+                />
+              )}
+            </View>
+            {analysisSummary?.createdAt && (
+              <Text style={[styles.date, { color: colors.textTertiary }]}>
+                {formatRelativeTime(analysisSummary.createdAt)}
+              </Text>
+            )}
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }
 
   if (compact) {
     return (
@@ -293,6 +374,30 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
     lineHeight: Typography.fontSize.sm * Typography.lineHeight.relaxed,
   },
+  // Hero styles
+  heroContainer: {
+    borderRadius: BorderRadius.lg,
+    overflow: 'hidden',
+    marginBottom: Spacing.md,
+  },
+  heroThumbnailContainer: {
+    position: 'relative',
+    aspectRatio: 16 / 9,
+  },
+  heroThumbnail: {
+    width: '100%',
+    height: '100%',
+  },
+  heroContent: {
+    padding: Spacing.md,
+  },
+  heroTitle: {
+    flex: 1,
+    fontSize: Typography.fontSize.lg,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    lineHeight: Typography.fontSize.lg * Typography.lineHeight.normal,
+    marginRight: Spacing.sm,
+  },
   // Compact styles
   compactContainer: {
     flexDirection: 'row',
@@ -344,6 +449,7 @@ const areEqual = (prevProps: VideoCardProps, nextProps: VideoCardProps): boolean
   if (prevProps.isFavorite !== nextProps.isFavorite) return false;
   if (prevProps.showMode !== nextProps.showMode) return false;
   if (prevProps.compact !== nextProps.compact) return false;
+  if (prevProps.hero !== nextProps.hero) return false;
 
   // Compare video object by id
   const prevId = 'id' in prevProps.video ? prevProps.video.id : prevProps.video;

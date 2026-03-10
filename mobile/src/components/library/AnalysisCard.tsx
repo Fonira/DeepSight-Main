@@ -10,6 +10,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  interpolate,
   runOnJS,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -110,6 +111,7 @@ export const AnalysisCard: React.FC<AnalysisCardProps> = ({
     transform: [
       { translateX: translateX.value },
       { scale: scale.value },
+      { translateY: interpolate(scale.value, [0.97, 1], [2, 0], 'clamp') },
     ],
   }));
 
@@ -118,7 +120,7 @@ export const AnalysisCard: React.FC<AnalysisCardProps> = ({
   }));
 
   const handlePressIn = useCallback(() => {
-    scale.value = withSpring(0.98, springs.gentle);
+    scale.value = withSpring(0.97, springs.gentle);
   }, [scale]);
 
   const handlePressOut = useCallback(() => {
