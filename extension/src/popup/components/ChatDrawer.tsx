@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { ChatMessage, ChatOptions } from '../../types';
 import { escapeHtml, markdownToFullHtml } from '../../utils/sanitize';
 import { BackIcon, SendIcon } from './Icons';
+import { useTranslation } from '../../i18n/useTranslation';
 
 // ── [ask:] parser ──────────────────────────────────────────────────
 interface ParsedContent {
@@ -24,14 +25,6 @@ function parseAskQuestions(content: string): ParsedContent {
 function cleanQuestion(q: string): string {
   return q.replace(/\[\[([^\]]+)\]\]/g, '$1').trim();
 }
-
-// ── Suggestions (empty state) ─────────────────────────────────────
-const EMPTY_SUGGESTIONS = [
-  'Quels sont les points clés ?',
-  'Résume en 3 phrases',
-  'Y a-t-il des biais ?',
-  'Quelles sources sont citées ?',
-];
 
 // ── Plan helpers ──────────────────────────────────────────────────
 const PAID_PLANS = ['starter', 'student', 'etudiant', 'pro', 'expert', 'team', 'equipe'];
@@ -57,6 +50,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   onSessionExpired,
   userPlan,
 }) => {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -66,6 +60,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   const messagesRef = useRef<HTMLDivElement>(null);
 
   const canWs = canUseWebSearch(userPlan);
+  const suggestions = t.chat.suggestions;
 
   // Load chat history on mount
   useEffect(() => {
@@ -131,7 +126,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
         } else {
           setMessages((prev) => [
             ...prev,
-            { role: 'assistant', content: `Erreur\u00a0: ${errorMsg || 'Réponse indisponible'}` },
+            { role: 'assistant', content: `${t.common.error}\u00a0: ${errorMsg || t.chat.unavailable}` },
           ]);
         }
       }
@@ -142,7 +137,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
       } else {
         setMessages((prev) => [
           ...prev,
-          { role: 'assistant', content: `Erreur\u00a0: ${errorMsg}` },
+          { role: 'assistant', content: `${t.common.error}\u00a0: ${errorMsg}` },
         ]);
       }
     } finally {
@@ -171,10 +166,10 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
     <div className="chat-view">
       {/* Header */}
       <div className="chat-header">
-        <button className="icon-btn" onClick={onClose} title="Retour">
+        <button className="icon-btn" onClick={onClose} title={t.common.back}>
           <BackIcon size={18} />
         </button>
-        <span className="chat-header-title">Chat&nbsp;: &laquo;&nbsp;{truncatedTitle}&nbsp;&raquo;</span>
+        <span className="chat-header-title">{t.synthesis.chat}&nbsp;: &laquo;&nbsp;{truncatedTitle}&nbsp;&raquo;</span>
       </div>
 
       {/* Messages */}
@@ -186,17 +181,17 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
         ) : messages.length === 0 ? (
           <div className="chat-welcome">
             <span className="chat-welcome-icon">{'\u{1F4AC}'}</span>
-            <p>Pose une question sur cette vidéo.</p>
+            <p>{t.chat.welcome}</p>
             {/* Clickable suggestions */}
             <div className="chat-suggestions">
-              {EMPTY_SUGGESTIONS.map((q, i) => (
+              {suggestions.map((q, i) => (
                 <button
                   key={i}
                   className="chat-suggestion-btn"
                   onClick={() => handleSuggestionClick(q)}
                   disabled={loading || sessionExpired}
                 >
-                  <span className="chat-suggestion-arrow">→</span>
+                  <span className="chat-suggestion-arrow">{'\u2192'}</span>
                   {q}
                 </button>
               ))}
@@ -208,6 +203,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
               key={i}
               msg={msg}
               onQuestionClick={handleQuestionClick}
+              webEnrichedLabel={t.chat.webEnriched}
             />
           ))
         )}
@@ -225,7 +221,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
       {/* Session expired banner */}
       {sessionExpired && (
         <div className="chat-session-expired">
-          <span>{'\u{1F512}'} Session expirée</span>
+          <span>{'\u{1F512}'} {t.chat.sessionExpired}</span>
           <button
             className="chat-reconnect-btn"
             onClick={() => {
@@ -236,7 +232,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
               }
             }}
           >
-            Se reconnecter
+            {t.chat.reconnect}
           </button>
         </div>
       )}
@@ -249,12 +245,12 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
             if (canWs) setWebSearchEnabled(!webSearchEnabled);
           }}
           title={canWs
-            ? (webSearchEnabled ? 'Désactiver recherche web' : 'Activer recherche web')
-            : 'Recherche web — plan payant requis'
+            ? (webSearchEnabled ? t.chat.webSearchDisable : t.chat.webSearchEnable)
+            : t.chat.webSearchLocked
           }
           style={{ opacity: canWs ? 1 : 0.4 }}
         >
-          {canWs ? '🌐' : '🔒'}
+          {canWs ? '\uD83C\uDF10' : '\uD83D\uDD12'}
         </button>
         <input
           type="text"
@@ -262,7 +258,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={sessionExpired ? 'Session expirée...' : 'Pose une question...'}
+          placeholder={sessionExpired ? t.chat.expiredPlaceholder : t.chat.inputPlaceholder}
           disabled={loading || sessionExpired}
           autoFocus
         />
@@ -270,7 +266,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
           className="chat-send-btn"
           onClick={() => sendMessage()}
           disabled={!input.trim() || loading || sessionExpired}
-          title="Envoyer"
+          title={t.common.send}
         >
           <SendIcon size={16} />
         </button>
@@ -283,9 +279,10 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
 interface MessageBubbleProps {
   msg: ChatMessage;
   onQuestionClick: (question: string) => void;
+  webEnrichedLabel: string;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ msg, onQuestionClick }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ msg, onQuestionClick, webEnrichedLabel }) => {
   const parsed = useMemo(() => {
     if (msg.role === 'user') return { text: msg.content, questions: [] };
     return parseAskQuestions(msg.content);
@@ -296,7 +293,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ msg, onQuestionClick }) =
       {msg.role === 'assistant' ? (
         <>
           {msg.web_search_used && (
-            <div className="chat-web-badge">{'\u{1F310}'} Enrichi par le web</div>
+            <div className="chat-web-badge">{'\u{1F310}'} {webEnrichedLabel}</div>
           )}
           <div
             className="chat-md-content"
@@ -313,7 +310,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ msg, onQuestionClick }) =
                   className="chat-ask-pill"
                   onClick={() => onQuestionClick(q)}
                 >
-                  <span className="chat-ask-arrow">→</span>
+                  <span className="chat-ask-arrow">{'\u2192'}</span>
                   {cleanQuestion(q)}
                 </button>
               ))}

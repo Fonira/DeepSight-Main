@@ -7,6 +7,7 @@ import { LogoutIcon, PlayIcon, ExternalLinkIcon } from './Icons';
 import { SynthesisView } from './SynthesisView';
 import { ChatDrawer } from './ChatDrawer';
 import { PromoBanner } from './PromoBanner';
+import { useTranslation } from '../../i18n/useTranslation';
 
 interface MainViewProps {
   user: User | null;
@@ -29,33 +30,8 @@ type AnalysisPhase =
   | { phase: 'complete'; summaryId: number; summary: Summary }
   | { phase: 'error'; message: string };
 
-// Plan display names — sync avec planPrivileges.ts (source de vérité)
-// ⚠️ SYNC avec planPrivileges.ts — noms swappés : etudiant→"Starter", starter→"Standard"
-const PLAN_DISPLAY: Record<string, string> = {
-  free: 'Gratuit',
-  etudiant: 'Starter',
-  student: 'Starter',    // alias rétrocompatibilité
-  starter: 'Standard',
-  pro: 'Pro',
-  equipe: 'Pro',         // legacy → redirige vers Pro
-  team: 'Pro',           // legacy → redirige vers Pro
-};
-
-// ── Next plan upsell config ──
-interface NextPlanHint {
-  label: string;
-  feature: string;
-  price: string;
-}
-
-const NEXT_PLAN_HINT: Record<string, NextPlanHint> = {
-  free: { label: 'Starter', feature: 'Flashcards + Cartes mentales', price: '2,99€' },
-  etudiant: { label: 'Standard', feature: 'Recherche web IA + 50 analyses', price: '5,99€' },
-  student: { label: 'Standard', feature: 'Recherche web IA + 50 analyses', price: '5,99€' },
-  starter: { label: 'Pro', feature: 'Playlists + Exports + Chat illimité', price: '12,99€' },
-};
-
 export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onLogout, onLoginRedirect, onError }) => {
+  const { t, language } = useTranslation();
   const [video, setVideo] = useState<VideoInfo | null>(null);
   const [mode, setMode] = useState<string>(user?.default_mode || 'standard');
   const [lang, setLang] = useState<string>(user?.default_lang || 'fr');
@@ -116,7 +92,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
 
   // ── Next plan hint for upsell ──
   const userPlanId = planInfo?.plan_id || user?.plan || 'free';
-  const nextPlan = NEXT_PLAN_HINT[userPlanId] || null;
+  const nextPlan = t.upsell[userPlanId as keyof typeof t.upsell] || null;
 
   const startAnalysis = useCallback(async () => {
     if (!video) return;
@@ -130,7 +106,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
       }
     }
 
-    setAnalysis({ phase: 'analyzing', progress: 0, message: 'Démarrage de l\'analyse...' });
+    setAnalysis({ phase: 'analyzing', progress: 0, message: t.analysis.starting });
 
     try {
       const startRes = await chrome.runtime.sendMessage({
@@ -139,7 +115,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
       });
 
       if (!startRes.success) {
-        setAnalysis({ phase: 'error', message: startRes.error || 'Impossible de démarrer l\'analyse' });
+        setAnalysis({ phase: 'error', message: startRes.error || t.analysis.startFailed });
         return;
       }
 
@@ -185,12 +161,12 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
             }
           } else if (status.status === 'failed') {
             if (pollRef.current) clearInterval(pollRef.current);
-            setAnalysis({ phase: 'error', message: status.error || 'Analyse échouée' });
+            setAnalysis({ phase: 'error', message: status.error || t.analysis.failed });
           } else {
             setAnalysis({
               phase: 'analyzing',
               progress: status.progress || 0,
-              message: status.message || 'Traitement en cours...',
+              message: status.message || t.analysis.processing,
             });
           }
         } catch {
@@ -200,7 +176,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
     } catch (e) {
       setAnalysis({ phase: 'error', message: (e as Error).message });
     }
-  }, [video, mode, lang, isGuest]);
+  }, [video, mode, lang, isGuest, t]);
 
   // Chat view
   if (chatOpen && analysis.phase === 'complete') {
@@ -215,7 +191,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
     );
   }
 
-  const planName = planInfo ? PLAN_DISPLAY[planInfo.plan_id] || planInfo.plan_name : null;
+  const planName = planInfo ? (t.plans[planInfo.plan_id as keyof typeof t.plans] || planInfo.plan_name) : null;
   const isFree = !user || user.plan === 'free';
 
   return (
@@ -233,7 +209,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
           {isGuest ? (
             <h1>Deep Sight</h1>
           ) : isFree ? (
-            <h1>{'\u26A1'} Deep Sight {planName || 'D\u00e9couverte'}</h1>
+            <h1>{'\u26A1'} Deep Sight {planName || (t.plans.free)}</h1>
           ) : (
             <h1>Deep Sight {planName}</h1>
           )}
@@ -241,10 +217,10 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         <div className="main-header-actions">
           {isGuest ? (
             <button className="btn-header-login" onClick={onLoginRedirect}>
-              Se connecter
+              {t.common.login}
             </button>
           ) : (
-            <button className="icon-btn icon-btn-danger" onClick={onLogout} title="Déconnexion">
+            <button className="icon-btn icon-btn-danger" onClick={onLogout} title={t.common.logout}>
               <LogoutIcon size={16} />
             </button>
           )}
@@ -255,22 +231,22 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
       {!isGuest && user && (
         <div className="user-bar">
           <span className={`plan-badge plan-${user.plan}`}>
-            {PLAN_DISPLAY[user.plan] || user.plan}
+            {t.plans[user.plan as keyof typeof t.plans] || user.plan}
           </span>
           {planInfo ? (
             <span className={`user-quota ${quotaWarning ? 'quota-warning' : ''}`}>
-              {planInfo.analyses_this_month}/{planInfo.monthly_analyses} analyses
+              {planInfo.analyses_this_month}/{planInfo.monthly_analyses} {t.common.analyses}
             </span>
           ) : (
-            <span className="user-credits">{user.credits} crédits</span>
+            <span className="user-credits">{user.credits} {t.common.credits}</span>
           )}
           {/* Credits urgency badge */}
           {creditsLow && (
             <span
               className={`credits-urgency ${creditsCritical ? 'credits-critical' : 'credits-low'}`}
-              title={`${creditsRemaining} crédits restants`}
+              title={t.credits.remaining.replace('{count}', String(creditsRemaining))}
             >
-              {creditsCritical ? '\u{1F6A8}' : '\u26A0\uFE0F'} {creditsRemaining} cr.
+              {creditsCritical ? '\u{1F6A8}' : '\u26A0\uFE0F'} {creditsRemaining} {t.credits.low}
             </span>
           )}
         </div>
@@ -279,12 +255,12 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
       {/* Credits urgency banner — full width when critical */}
       {!isGuest && creditsCritical && (
         <div className="credits-banner-critical">
-          <span>Plus que {creditsRemaining} crédits — </span>
+          <span>{t.credits.critical.replace('{count}', String(creditsRemaining))} </span>
           <a
             href={`${WEBAPP_URL}/upgrade`}
             onClick={(e) => { e.preventDefault(); chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` }); }}
           >
-            Recharger {'\u2197'}
+            {t.credits.recharge} {'\u2197'}
           </a>
         </div>
       )}
@@ -292,7 +268,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
       {/* Guest banner */}
       {isGuest && (
         <div className="guest-banner">
-          <span>Mode découverte — 1 analyse gratuite sans compte</span>
+          <span>{t.guest.banner}</span>
         </div>
       )}
 
@@ -315,7 +291,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               />
             ) : (
               <div className="video-thumbnail" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(6,182,212,0.1)' }}>
-                <span style={{ fontSize: 20 }}>🎵</span>
+                <span style={{ fontSize: 20 }}>{'\uD83C\uDFB5'}</span>
               </div>
             )}
             <div className="video-status-body">
@@ -324,7 +300,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               </span>
               <span className="video-status-url">{urlLabel}</span>
             </div>
-            <div className="video-live-dot" title="Vidéo détectée" />
+            <div className="video-live-dot" title="Video detected" />
           </div>
           );
         })() : (
@@ -333,7 +309,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               <PlayIcon size={16} />
             </div>
             <span className="video-status-text video-status-none">
-              Ouvre une vidéo YouTube ou TikTok pour l&apos;analyser
+              {t.analysis.noVideo}
             </span>
           </div>
         )}
@@ -345,13 +321,13 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
             {!isGuest && isQuotaExceeded ? (
               <div className="quota-exceeded">
                 <p className="quota-exceeded-text">
-                  {'\uD83D\uDCCA'} Quota atteint ({planInfo?.analyses_this_month}/{planInfo?.monthly_analyses}) — Passez au plan sup&eacute;rieur
+                  {'\uD83D\uDCCA'} {t.analysis.quotaExceeded} ({planInfo?.analyses_this_month}/{planInfo?.monthly_analyses}) — {t.analysis.quotaExceededText}
                 </p>
                 <button
                   className="analyze-btn analyze-btn-disabled"
                   disabled
                 >
-                  {'\u2728'} Analyser cette vid&eacute;o
+                  {'\u2728'} {t.analysis.analyzeButton}
                 </button>
                 <a
                   href={`${WEBAPP_URL}/upgrade`}
@@ -363,20 +339,20 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                     chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` });
                   }}
                 >
-                  Voir les plans {'\u2197'}
+                  {t.common.viewPlans} {'\u2197'}
                 </a>
               </div>
             ) : isGuest && guestUsed ? (
               /* Guest used their free analysis */
               <div className="guest-exhausted">
                 <p className="guest-exhausted-text">
-                  Cr&eacute;ez un compte gratuit pour sauvegarder vos analyses et en faire plus
+                  {t.guest.exhaustedText}
                 </p>
                 <button
                   className="btn-create-account"
                   onClick={() => chrome.tabs.create({ url: `${WEBAPP_URL}/register` })}
                 >
-                  Cr&eacute;er un compte {'\u2197'}
+                  {t.common.createAccount} {'\u2197'}
                 </button>
               </div>
             ) : (
@@ -384,30 +360,30 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               <>
                 <div className="selectors-row">
                   <div className="ds-select-wrapper">
-                    <label>Mode</label>
+                    <label>{t.analysis.mode}</label>
                     <select className="ds-select" value={mode} onChange={(e) => setMode(e.target.value)}>
-                      <option value="standard">Standard</option>
-                      <option value="accessible">Accessible</option>
-                      <option value="expert">Expert</option>
+                      <option value="standard">{t.analysis.modes.standard}</option>
+                      <option value="accessible">{t.analysis.modes.accessible}</option>
+                      <option value="expert">{t.analysis.modes.expert}</option>
                     </select>
                   </div>
                   <div className="ds-select-wrapper">
-                    <label>Langue</label>
+                    <label>{t.analysis.language}</label>
                     <select className="ds-select" value={lang} onChange={(e) => setLang(e.target.value)}>
-                      <option value="fr">Fran&ccedil;ais</option>
-                      <option value="en">English</option>
-                      <option value="es">Espa&ntilde;ol</option>
-                      <option value="de">Deutsch</option>
+                      <option value="fr">{t.analysis.languages.fr}</option>
+                      <option value="en">{t.analysis.languages.en}</option>
+                      <option value="es">{t.analysis.languages.es}</option>
+                      <option value="de">{t.analysis.languages.de}</option>
                     </select>
                   </div>
                 </div>
                 <button className="analyze-btn" onClick={startAnalysis}>
-                  {'\u2728'} Analyser cette vid&eacute;o
+                  {'\u2728'} {t.analysis.analyzeButton}
                 </button>
                 {/* Mistral AI attribution */}
                 <div className="mistral-badge">
                   <span>{'\uD83C\uDDEB\uD83C\uDDF7'}</span>
-                  <span>Propuls&eacute; par Mistral AI</span>
+                  <span>{t.mistral.badge}</span>
                 </div>
               </>
             )}
@@ -435,7 +411,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               onClick={() => setAnalysis({ phase: 'idle' })}
               style={{ height: '40px', fontSize: '13px' }}
             >
-              R&eacute;essayer
+              {t.common.retry}
             </button>
           </div>
         )}
@@ -460,7 +436,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                       {nextPlan.feature}
                     </span>
                     <span className="upsell-sub">
-                      Plan {nextPlan.label} — {nextPlan.price}/mois
+                      Plan {nextPlan.label} — {nextPlan.price}/{language === 'fr' ? 'mois' : 'mo'}
                     </span>
                   </div>
                 </div>
@@ -469,7 +445,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                   className="upsell-btn"
                   onClick={(e) => { e.preventDefault(); chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` }); }}
                 >
-                  D&eacute;bloquer {'\u2197'}
+                  {t.common.unlock} {'\u2197'}
                 </a>
               </div>
             )}
@@ -477,12 +453,12 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
             {/* Guest post-analysis CTA */}
             {isGuest && (
               <div className="guest-post-analysis">
-                <p>Cr&eacute;ez un compte gratuit pour sauvegarder vos analyses et en faire plus</p>
+                <p>{t.guest.exhaustedText}</p>
                 <button
                   className="btn-create-account"
                   onClick={() => chrome.tabs.create({ url: `${WEBAPP_URL}/register` })}
                 >
-                  Cr&eacute;er un compte {'\u2197'}
+                  {t.common.createAccount} {'\u2197'}
                 </button>
               </div>
             )}
@@ -492,7 +468,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         {/* Recent */}
         {!isGuest && analysis.phase === 'idle' && recentAnalyses.length > 0 && (
           <div className="recent-section">
-            <h3>Analyses r&eacute;centes</h3>
+            <h3>{t.analysis.recent}</h3>
             <div className="recent-list">
               {recentAnalyses.slice(0, 5).map((item) => (
                 <a
@@ -504,7 +480,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                 >
                   {item.platform === 'tiktok' ? (
                     <div style={{ width: 48, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(6,182,212,0.1)', borderRadius: 4, flexShrink: 0 }}>
-                      <span style={{ fontSize: 16 }}>🎵</span>
+                      <span style={{ fontSize: 16 }}>{'\uD83C\uDFB5'}</span>
                     </div>
                   ) : (
                     <img src={getThumbnailUrl(item.videoId, 'youtube') || ''} alt="" loading="lazy" />

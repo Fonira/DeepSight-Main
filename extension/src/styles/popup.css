@@ -289,6 +289,34 @@ body {
 }
 .login-legal span { color: var(--ds-text-muted); opacity: 0.5; }
 
+/* ── Language Toggle ── */
+.login-lang-toggle {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  gap: 2px;
+  background: var(--ds-bg-tertiary);
+  border-radius: 6px;
+  padding: 2px;
+}
+.login-lang-btn {
+  padding: 3px 8px;
+  border: none;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all var(--ds-transition);
+  background: transparent;
+  color: var(--ds-text-muted);
+}
+.login-lang-active {
+  background: var(--ds-accent-purple);
+  color: white;
+}
+
 /* ══════════════════════════════════════════════
    MAIN VIEW
    ══════════════════════════════════════════════ */

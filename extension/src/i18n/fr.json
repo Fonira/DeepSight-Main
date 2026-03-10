@@ -1,0 +1,192 @@
+{
+  "common": {
+    "login": "Se connecter",
+    "logout": "Déconnexion",
+    "back": "Retour",
+    "retry": "Réessayer",
+    "send": "Envoyer",
+    "hide": "Masquer",
+    "error": "Erreur",
+    "viewPlans": "Voir les plans",
+    "allPlans": "Tous les plans",
+    "createAccount": "Créer un compte",
+    "unlock": "Débloquer",
+    "analyses": "analyses",
+    "credits": "crédits"
+  },
+  "login": {
+    "tagline": "Ne regardez plus vos vidéos. Analysez-les.",
+    "badgeFr": "IA Française",
+    "badgeEu": "Données en Europe",
+    "googleLoading": "Connexion Google...",
+    "googleButton": "Continuer avec Google",
+    "divider": "ou",
+    "emailPlaceholder": "Adresse e-mail",
+    "passwordPlaceholder": "Mot de passe",
+    "loginLoading": "Connexion...",
+    "guestButton": "Essayer sans compte (1 analyse gratuite)",
+    "privacy": "Confidentialité",
+    "terms": "CGU"
+  },
+  "plans": {
+    "free": "Gratuit",
+    "etudiant": "Starter",
+    "student": "Starter",
+    "starter": "Standard",
+    "pro": "Pro",
+    "equipe": "Pro",
+    "team": "Pro"
+  },
+  "upsell": {
+    "free": {
+      "label": "Starter",
+      "feature": "Flashcards + Cartes mentales",
+      "price": "2,99€"
+    },
+    "etudiant": {
+      "label": "Standard",
+      "feature": "Recherche web IA + 50 analyses",
+      "price": "5,99€"
+    },
+    "student": {
+      "label": "Standard",
+      "feature": "Recherche web IA + 50 analyses",
+      "price": "5,99€"
+    },
+    "starter": {
+      "label": "Pro",
+      "feature": "Playlists + Exports + Chat illimité",
+      "price": "12,99€"
+    }
+  },
+  "analysis": {
+    "noVideo": "Ouvre une vidéo YouTube ou TikTok pour l'analyser",
+    "analyzeButton": "Analyser cette vidéo",
+    "starting": "Démarrage de l'analyse...",
+    "processing": "Traitement en cours...",
+    "failed": "Analyse échouée",
+    "startFailed": "Impossible de démarrer l'analyse",
+    "recent": "Analyses récentes",
+    "quotaExceeded": "Quota atteint",
+    "quotaExceededText": "Passez au plan supérieur",
+    "mode": "Mode",
+    "language": "Langue",
+    "modes": {
+      "standard": "Standard",
+      "accessible": "Accessible",
+      "expert": "Expert"
+    },
+    "languages": {
+      "fr": "Français",
+      "en": "English",
+      "es": "Español",
+      "de": "Deutsch"
+    }
+  },
+  "guest": {
+    "banner": "Mode découverte — 1 analyse gratuite sans compte",
+    "exhaustedText": "Créez un compte gratuit pour sauvegarder vos analyses et en faire plus"
+  },
+  "credits": {
+    "critical": "Plus que {count} crédits —",
+    "recharge": "Recharger",
+    "remaining": "{count} crédits restants",
+    "low": "cr."
+  },
+  "mistral": {
+    "badge": "Propulsé par Mistral AI"
+  },
+  "synthesis": {
+    "complete": "Analyse complète",
+    "fullAnalysis": "Analyse complète",
+    "chat": "Chat",
+    "share": "Partager",
+    "showDetail": "Voir l'analyse détaillée",
+    "hideDetail": "Masquer l'analyse détaillée",
+    "printPdf": "Imprimer / PDF",
+    "reliable": "Fiable",
+    "toVerify": "À vérifier",
+    "unreliable": "Peu fiable",
+    "generatingDef": "Définition en cours de génération...",
+    "shareTitle": "Synthèse DeepSight",
+    "verdict": "Verdict",
+    "keyPoints": "Points Clés",
+    "concepts": "Concepts",
+    "tags": "Tags",
+    "generatedBy": "Généré par",
+    "analysisDesc": "Analyse IA de vidéos YouTube & TikTok",
+    "euBadge": "IA 100% Européenne propulsée par Mistral AI"
+  },
+  "features": {
+    "flashcards": "Flashcards",
+    "mindMaps": "Cartes mentales",
+    "webSearch": "Recherche web",
+    "exports": "Exports",
+    "playlists": "Playlists",
+    "fromPrice": "dès {price}"
+  },
+  "chat": {
+    "welcome": "Pose une question sur cette vidéo.",
+    "sessionExpired": "Session expirée",
+    "reconnect": "Se reconnecter",
+    "webSearchEnable": "Activer recherche web",
+    "webSearchDisable": "Désactiver recherche web",
+    "webSearchLocked": "Recherche web — plan payant requis",
+    "inputPlaceholder": "Pose une question...",
+    "expiredPlaceholder": "Session expirée...",
+    "webEnriched": "Enrichi par le web",
+    "unavailable": "Réponse indisponible",
+    "suggestions": [
+      "Quels sont les points clés ?",
+      "Résume en 3 phrases",
+      "Y a-t-il des biais ?",
+      "Quelles sources sont citées ?"
+    ]
+  },
+  "promos": {
+    "free": [
+      {
+        "text": "Révisez avec des Flashcards IA — dès 2,99€/mois",
+        "cta": "Débloquer Starter"
+      },
+      {
+        "text": "Cartes mentales IA pour chaque vidéo — dès 2,99€/mois",
+        "cta": "Voir les plans"
+      },
+      {
+        "text": "Seulement 5 analyses/mois ? Passez à 20 avec Starter",
+        "cta": "Upgrade →"
+      }
+    ],
+    "starter": [
+      {
+        "text": "Recherche web IA pour croiser les sources — plan Standard",
+        "cta": "Débloquer"
+      },
+      {
+        "text": "50 analyses/mois + vidéos 2h — Passez à Standard",
+        "cta": "Voir les plans"
+      }
+    ],
+    "standard": [
+      {
+        "text": "Analysez des playlists entières — Passez à Pro",
+        "cta": "Débloquer Pro"
+      },
+      {
+        "text": "Exportez en PDF/DOCX — Pro à 12,99€/mois",
+        "cta": "Voir les plans"
+      }
+    ],
+    "pro": [
+      {
+        "text": "DeepSight sur mobile — révisez vos flashcards partout",
+        "cta": "Télécharger"
+      },
+      {
+        "text": "Gérez vos playlists et exports sur deepsightsynthesis.com",
+        "cta": "Ouvrir"
+      }
+    ]
+  }
+}
