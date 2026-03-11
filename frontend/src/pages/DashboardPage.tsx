@@ -40,6 +40,7 @@ import { TournesolTrendingSection } from "../components/TournesolTrendingSection
 // LoadingWordWidget désormais global dans App.tsx
 import VideoDiscoveryModal from "../components/VideoDiscoveryModal";
 import { ThumbnailImage } from "../components/ThumbnailImage";
+import { FreshnessIndicator } from "../components/FreshnessIndicator";
 // 💰 Monetization components
 import { CreditAlert } from "../components/CreditAlert";
 import { UpgradePromptModal } from "../components/UpgradePromptModal";
