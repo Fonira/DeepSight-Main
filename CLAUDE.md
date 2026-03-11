@@ -35,7 +35,7 @@ Chaque requête API porte le header : `?platform=web|mobile|extension`
 
 | Composant | Technologie | Déploiement | URL |
 |-----------|-------------|-------------|-----|
-| **Backend** | FastAPI + Python 3.11 | Railway | `https://deep-sight-backend-v3-production.up.railway.app` |
+| **Backend** | FastAPI + Python 3.11 | Hetzner VPS (Docker) | `https://api.deepsightsynthesis.com` |
 | **Frontend** | React 18 + TypeScript + Vite | Vercel | `https://www.deepsightsynthesis.com` |
 | **Mobile** | Expo SDK 54 + React Native | EAS Build | App Store / Play Store |
 | **Extension** | React + TypeScript + Webpack | dist/ MV3 | Chrome Web Store (à soumettre) |
@@ -338,13 +338,13 @@ FROM_EMAIL=noreply@deepsightsynthesis.com
 
 ### Frontend (.env)
 ```env
-VITE_API_URL=https://deep-sight-backend-v3-production.up.railway.app
+VITE_API_URL=https://api.deepsightsynthesis.com
 VITE_SENTRY_DSN=optional
 ```
 
 ### Mobile (constants/config.ts)
 ```typescript
-export const API_BASE_URL = 'https://deep-sight-backend-v3-production.up.railway.app';
+export const API_BASE_URL = 'https://api.deepsightsynthesis.com';
 export const GOOGLE_CLIENT_ID = 'your-client-id.apps.googleusercontent.com';
 ```
 
@@ -357,7 +357,7 @@ export const GOOGLE_CLIENT_ID = 'your-client-id.apps.googleusercontent.com';
 | VPS Hetzner | clawdbot — 89.167.23.214 (Tailscale: 100.127.186.126) |
 | MSI-PC (local) | Claude Runner — 100.111.253.5:18790 |
 | OpenClaw Gateway | VPS port 18789, token: MarcellinTyronJean22 |
-| Backend deploy | Railway — root: `/backend`, start: `cd src && uvicorn main:app --host 0.0.0.0 --port $PORT` |
+| Backend deploy | Hetzner VPS Docker — `docker compose up -d` in `/opt/deepsight/repo`, Caddy reverse proxy + auto-SSL |
 | Frontend deploy | Vercel — root: `/frontend`, build: `npm run build`, output: `dist/` |
 
 **OpenClaw workflow** : Telegram → Bot(VPS) → Notion → Claude Runner(MSI-PC) → Claude Code → GitHub
