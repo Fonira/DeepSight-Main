@@ -509,7 +509,8 @@ def build_chat_prompt(
     summary: str,
     chat_history: List[Dict],
     mode: str,
-    lang: str
+    lang: str,
+    video_upload_date: str = ""
 ) -> Tuple[str, str]:
     """
     Construit le prompt pour le chat.
@@ -760,9 +761,10 @@ async def generate_chat_response(
     api_key = api_key or get_mistral_key()
     if not api_key:
         return None
-    
+
     system_prompt, user_prompt = build_chat_prompt(
-        question, video_title, transcript, summary, chat_history, mode, lang
+        question, video_title, transcript, summary, chat_history, mode, lang,
+        video_upload_date=video_upload_date
     )
     
     # ═══════════════════════════════════════════════════════════════════════════════
@@ -861,16 +863,18 @@ async def generate_chat_response_stream(
     mode: str = "standard",
     lang: str = "fr",
     model: str = "mistral-small-latest",
-    api_key: str = None
+    api_key: str = None,
+    video_upload_date: str = ""
 ) -> AsyncGenerator[str, None]:
     """Génère une réponse de chat en streaming"""
     api_key = api_key or get_mistral_key()
     if not api_key:
         yield "Error: API key not configured"
         return
-    
+
     system_prompt, user_prompt = build_chat_prompt(
-        question, video_title, transcript, summary, chat_history, mode, lang
+        question, video_title, transcript, summary, chat_history, mode, lang,
+        video_upload_date=video_upload_date
     )
     
     max_tokens = {"accessible": 800, "standard": 1200, "expert": 2000}.get(mode, 1200)
