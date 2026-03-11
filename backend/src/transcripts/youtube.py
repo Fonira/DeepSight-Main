@@ -52,7 +52,7 @@ import time
 
 from core.config import (
     get_supadata_key, get_groq_key, get_deepgram_key,
-    get_openai_key, get_assemblyai_key, TRANSCRIPT_CONFIG
+    get_openai_key, get_assemblyai_key, get_youtube_proxy, TRANSCRIPT_CONFIG
 )
 
 # 💾 Cache pour les transcripts (TTL 24h)
@@ -790,7 +790,17 @@ async def get_transcript_ytapi(video_id: str) -> Tuple[Optional[str], Optional[s
         
         def _fetch():
             try:
-                ytt_api = YouTubeTranscriptApi()
+                # 🔌 Proxy support pour youtube-transcript-api
+                proxy = get_youtube_proxy()
+                if proxy:
+                    import requests as _requests
+                    proxies = {"https": proxy, "http": proxy}
+                    session = _requests.Session()
+                    session.proxies.update(proxies)
+                    ytt_api = YouTubeTranscriptApi(http_client=session)
+                    print(f"  🔌 [YTAPI] Using proxy", flush=True)
+                else:
+                    ytt_api = YouTubeTranscriptApi()
                 transcript_list = ytt_api.list(video_id)
                 preferred_langs = ['fr', 'en', 'es', 'de', 'it', 'pt', 'nl', 'ru', 'ja', 'ko', 'zh', 'ar']
                 
@@ -1024,10 +1034,10 @@ async def get_transcript_piped(video_id: str) -> Tuple[Optional[str], Optional[s
 
 async def get_transcript_ytdlp(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     print(f"  🏅 [YT-DLP] Trying manual subtitles...", flush=True)
-    
+
     try:
         loop = asyncio.get_event_loop()
-        
+
         def _fetch():
             with tempfile.TemporaryDirectory() as tmpdir:
                 cmd = [
@@ -1045,6 +1055,12 @@ async def get_transcript_ytdlp(video_id: str) -> Tuple[Optional[str], Optional[s
                     "-o", f"{tmpdir}/%(id)s.%(ext)s",
                     f"https://youtube.com/watch?v={video_id}"
                 ]
+                # 🔌 Proxy support — contourne le blocage IP YouTube
+                proxy = get_youtube_proxy()
+                if proxy:
+                    cmd.insert(1, "--proxy")
+                    cmd.insert(2, proxy)
+                    print(f"  🔌 [YT-DLP] Using proxy", flush=True)
                 subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUTS["ytdlp_subs"])
                 return _parse_subtitle_files(tmpdir, video_id)
         
@@ -1073,10 +1089,10 @@ async def get_transcript_ytdlp(video_id: str) -> Tuple[Optional[str], Optional[s
 
 async def get_transcript_ytdlp_auto(video_id: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     print(f"  🎖️ [YT-DLP-AUTO] Trying auto-captions...", flush=True)
-    
+
     try:
         loop = asyncio.get_event_loop()
-        
+
         def _fetch():
             with tempfile.TemporaryDirectory() as tmpdir:
                 cmd = [
@@ -1094,6 +1110,11 @@ async def get_transcript_ytdlp_auto(video_id: str) -> Tuple[Optional[str], Optio
                     "-o", f"{tmpdir}/%(id)s.%(ext)s",
                     f"https://youtube.com/watch?v={video_id}"
                 ]
+                # 🔌 Proxy support
+                proxy = get_youtube_proxy()
+                if proxy:
+                    cmd.insert(1, "--proxy")
+                    cmd.insert(2, proxy)
                 subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUTS["ytdlp_auto"])
                 return _parse_subtitle_files(tmpdir, video_id)
         
@@ -1774,6 +1795,11 @@ async def _download_audio_for_transcription(video_id: str) -> Tuple[Optional[byt
                     "--retries", "3",
                     f"https://youtube.com/watch?v={video_id}"
                 ]
+                # 🔌 Proxy support pour download audio
+                proxy = get_youtube_proxy()
+                if proxy:
+                    cmd.insert(1, "--proxy")
+                    cmd.insert(2, proxy)
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUTS["whisper_download"])
                 if result.returncode != 0:
                     return None, ".mp3"

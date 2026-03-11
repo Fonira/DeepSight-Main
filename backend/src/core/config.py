@@ -54,6 +54,9 @@ class _DeepSightSettings(BaseSettings):
     ASSEMBLYAI_API_KEY: str = ""
     SEMANTIC_SCHOLAR_API_KEY: str = ""
 
+    # -- YouTube Proxy (pour contourner le blocage IP YouTube sur VPS) --
+    YOUTUBE_PROXY: str = ""  # ex: socks5://user:pass@host:port ou http://user:pass@host:port
+
     # -- Email --
     EMAIL_ENABLED: str = "true"
     RESEND_API_KEY: str = ""
@@ -221,6 +224,7 @@ SUPADATA_API_KEY = _settings.SUPADATA_API_KEY
 PERPLEXITY_API_KEY = _settings.PERPLEXITY_API_KEY
 BRAVE_SEARCH_API_KEY = _settings.BRAVE_SEARCH_API_KEY
 OPENAI_API_KEY = _settings.OPENAI_API_KEY
+YOUTUBE_PROXY = _settings.YOUTUBE_PROXY
 
 # =============================================================================
 # CRON
@@ -587,6 +591,10 @@ def get_supadata_key() -> str:
     return SUPADATA_API_KEY
 
 
+def get_youtube_proxy() -> str:
+    return YOUTUBE_PROXY
+
+
 def get_perplexity_key() -> str:
     return PERPLEXITY_API_KEY
 
@@ -678,6 +686,7 @@ if __name__ != "__main__":
     print(f"  Perplexity: {'yes' if PERPLEXITY_API_KEY else 'no'}", flush=True)
     print(f"  Brave Search: {'yes' if BRAVE_SEARCH_API_KEY else 'no'}", flush=True)
     print(f"  Supadata: {'yes' if SUPADATA_API_KEY else 'no'}", flush=True)
+    print(f"  YouTube Proxy: {'yes' if YOUTUBE_PROXY else 'no (direct)'}", flush=True)
     print(f"  Audio: Groq={'yes' if get_groq_key() else 'no'}"
           f" OpenAI={'yes' if get_openai_key() else 'no'}"
           f" Deepgram={'yes' if get_deepgram_key() else 'no'}"
