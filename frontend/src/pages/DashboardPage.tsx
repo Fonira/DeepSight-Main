@@ -36,7 +36,7 @@ import { FloatingChatWindow } from "../components/FloatingChatWindow";
 import DoodleBackground from '../components/DoodleBackground';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import SmartInputBar, { SmartInputValue } from "../components/SmartInputBar";
-import { TrendingSection } from "../components/TrendingSection";
+import { TournesolTrendingSection } from "../components/TournesolTrendingSection";
 // LoadingWordWidget désormais global dans App.tsx
 import VideoDiscoveryModal from "../components/VideoDiscoveryModal";
 import { ThumbnailImage } from "../components/ThumbnailImage";
@@ -1161,7 +1161,7 @@ export const DashboardPage: React.FC = () => {
             {/* Empty State → Trending Section */}
             {!selectedSummary && !loading && (
               <div className="animate-fadeIn">
-                <TrendingSection
+                <TournesolTrendingSection
                   language={language as 'fr' | 'en'}
                   onVideoSelect={(videoId) => {
                     setSmartInput({
