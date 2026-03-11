@@ -345,7 +345,10 @@ async def generate_smart_title(
     """
     🎯 Génère un titre intelligent basé sur le contenu.
     """
-    from mistralai import Mistral
+    try:
+        from mistralai import Mistral
+    except ImportError:
+        from mistralai.client import Mistral
     
     api_key = os.getenv("MISTRAL_API_KEY")
     if not api_key:

@@ -16,7 +16,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ListVideo,
+  ListVideo, BookOpen,
   Play, Video, ChevronDown, Clock, Timer,
   Sparkles,
   ExternalLink, MessageCircle, X,

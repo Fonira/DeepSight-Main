@@ -20,7 +20,10 @@ from typing import Optional, List
 from dataclasses import dataclass
 from datetime import datetime
 
-from mistralai import Mistral
+try:
+    from mistralai import Mistral
+except ImportError:
+    from mistralai.client import Mistral
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
