@@ -3,7 +3,7 @@
  * Collapsible with tooltip, active indicator, glassmorphism
  */
 
-import React from "react";
+import React, { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -23,7 +23,8 @@ import {
   User,
   MessageSquare,
   GraduationCap,
-  Brain
+  Brain,
+  Menu
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
@@ -293,12 +294,20 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   collapsed = false,
   onToggle,
-  mobileOpen = false,
-  onMobileClose
+  mobileOpen: mobileOpenProp,
+  onMobileClose: onMobileCloseProp
 }) => {
   const { t, language } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Internal mobile state — works standalone or combined with parent control
+  const [internalMobileOpen, setInternalMobileOpen] = useState(false);
+  const mobileOpen = mobileOpenProp || internalMobileOpen;
+  const closeMobile = () => {
+    setInternalMobileOpen(false);
+    onMobileCloseProp?.();
+  };
 
   const isProUser = normalizePlanId(user?.plan) === 'pro';
   const hasPaidPlan = normalizePlanId(user?.plan) !== 'free';
@@ -306,15 +315,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isUserAdmin = user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
   const handleLogoClick = () => {
     navigate('/dashboard');
-    onMobileClose?.();
+    closeMobile();
   };
 
   const handleNavClick = () => {
-    onMobileClose?.();
+    closeMobile();
   };
 
   return (
     <>
+      {/* Mobile hamburger button — always visible on mobile */}
+      {!mobileOpen && (
+        <button
+          onClick={() => setInternalMobileOpen(true)}
+          className="lg:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-lg bg-bg-elevated/90 backdrop-blur-xl border border-border-default flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+          aria-label="Open menu"
+          aria-expanded={false}
+        >
+          <Menu className="w-4.5 h-4.5" />
+        </button>
+      )}
+
       {/* Mobile overlay */}
       <AnimatePresence>
         {mobileOpen && (
@@ -324,7 +345,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            onClick={onMobileClose}
+            onClick={closeMobile}
             aria-hidden="true"
           />
         )}
@@ -341,15 +362,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className={`h-14 flex items-center justify-between border-b border-border-subtle ${collapsed ? 'px-3 justify-center' : 'px-3.5'}`}>
           <Logo collapsed={collapsed} onClick={handleLogoClick} />
           <div className="flex items-center gap-1">
-            {onMobileClose && (
-              <button
-                onClick={onMobileClose}
-                className="lg:hidden w-7 h-7 rounded-md flex items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-bg-hover transition-colors"
-                aria-label="Close menu"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-            )}
+            <button
+              onClick={closeMobile}
+              className="lg:hidden w-7 h-7 rounded-md flex items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-bg-hover transition-colors"
+              aria-label="Close menu"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
             {onToggle && (
               <button
                 onClick={onToggle}

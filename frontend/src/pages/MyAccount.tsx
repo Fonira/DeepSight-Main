@@ -327,20 +327,13 @@ export const MyAccount: React.FC = () => {
     <div className="min-h-screen bg-bg-primary relative">
       <DoodleBackground variant="tech" />
       {/* Hamburger mobile */}
-      <button
-        onClick={() => setMobileMenuOpen(true)}
-        className="lg:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-lg bg-bg-elevated/90 backdrop-blur-xl border border-border-default flex items-center justify-center text-text-secondary hover:text-text-primary transition-all shadow-md active:scale-95"
-        aria-label="Open menu"
-      >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-      </button>
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
 
       <main
         id="main-content"
         className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}
       >
-        <div className="min-h-screen pt-14 lg:pt-0 p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
+        <div className="min-h-screen pt-14 lg:pt-0 p-4 sm:p-6 lg:p-8 pb-8">
           <div className="max-w-2xl mx-auto space-y-6">
 
             {/* Header */}

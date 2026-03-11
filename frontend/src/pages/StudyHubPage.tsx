@@ -134,9 +134,7 @@ const StudyHubPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-bg-primary relative">
         <ErrorBoundary fallback={null}><DoodleBackground variant="academic" /></ErrorBoundary>
-        <div className="hidden lg:block">
-          <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        </div>
+        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'}`}>
           <div className="min-h-screen flex items-center justify-center p-6">
             <motion.div
@@ -166,14 +164,11 @@ const StudyHubPage: React.FC = () => {
     <div className="min-h-screen bg-bg-primary relative">
       <ErrorBoundary fallback={null}><DoodleBackground variant="academic" /></ErrorBoundary>
 
-      {/* Sidebar desktop */}
-      <div className="hidden lg:block">
-        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-      </div>
+      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
       {/* Main content */}
       <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'}`}>
-        <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-20 lg:pb-8">
+        <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-8">
           <div className="max-w-5xl mx-auto">
 
             {/* Header — avec pt-2 pour le hamburger mobile */}

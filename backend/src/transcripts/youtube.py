@@ -26,7 +26,7 @@
 ║  │  5. yt-dlp manual subtitles (avec anti-bot)                                    │║
 ║  │  6. yt-dlp auto-captions (avec anti-bot)                                       │║
 ║  └────────────────────────────────────────────────────────────────────────────────┘║
-║  ┌─ Phase 3: Audio STT (SHORTS UNIQUEMENT — dernier recours) ────────────────────┐║
+║  ┌─ Phase 3: Audio STT (dernier recours — toutes vidéos) ────────────────────────┐║
 ║  │  7. Groq Whisper (rapide, gratuit jusqu'à 25MB)                                │║
 ║  │  8. OpenAI Whisper (fallback si Groq échoue)                                   │║
 ║  │  9. Deepgram Nova-2 (ultra-rapide)                                             │║
@@ -1829,7 +1829,7 @@ async def _compress_audio(audio_data: bytes, audio_ext: str, source_name: str = 
 
 async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None, is_short: bool = False) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
-    🎯 FONCTION PRINCIPALE v7.0 - Supadata PRIORITAIRE + STT Shorts only
+    🎯 FONCTION PRINCIPALE v7.1 - Supadata PRIORITAIRE + STT pour TOUTES vidéos
     Retourne: (transcript_simple, transcript_timestamped, lang)
 
     Architecture:
@@ -1845,7 +1845,7 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
     │  5. yt-dlp manual subtitles (avec anti-bot)                                    │
     │  6. yt-dlp auto-captions (avec anti-bot)                                       │
     └────────────────────────────────────────────────────────────────────────────────┘
-    ┌─ Phase 3: Audio STT (SHORTS UNIQUEMENT — dernier recours) ───────────────────┐
+    ┌─ Phase 3: Audio STT (dernier recours — toutes vidéos) ───────────────────────┐
     │  7. Groq Whisper (rapide, gratuit jusqu'à 25MB)                                │
     │  8. OpenAI Whisper (fallback si Groq échoue)                                   │
     │  9. Deepgram Nova-2 (ultra-rapide)                                             │
@@ -2026,50 +2026,45 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
         cb.record_failure()
 
     # ═══════════════════════════════════════════════════════════════════════════════
-    # PHASE 3: Audio STT (SHORTS UNIQUEMENT — dernier recours)
+    # PHASE 3: Audio STT (dernier recours — toutes vidéos)
     # ═══════════════════════════════════════════════════════════════════════════════
-    if not is_short:
-        print(f"", flush=True)
-        print(f"⏭️ PHASE 3: SKIPPED (not a Short — STT réservé aux Shorts et TikTok)", flush=True)
-        print(f"─" * 50, flush=True)
-    else:
-        print(f"", flush=True)
-        print(f"📋 PHASE 3: Audio STT (SHORT detected — last resort)", flush=True)
-        print(f"─" * 50, flush=True)
+    print(f"", flush=True)
+    print(f"📋 PHASE 3: Audio STT (last resort{' — SHORT' if is_short else ' — full video'})", flush=True)
+    print(f"─" * 50, flush=True)
 
-        # Télécharger l'audio une seule fois pour tous les services
-        print(f"  🎵 Downloading audio for transcription...", flush=True)
-        audio_data, audio_ext = await _download_audio_for_transcription(video_id)
+    # Télécharger l'audio une seule fois pour tous les services
+    print(f"  🎵 Downloading audio for transcription...", flush=True)
+    audio_data, audio_ext = await _download_audio_for_transcription(video_id)
 
-        if not audio_data:
-            print(f"  ❌ Failed to download audio - trying services anyway", flush=True)
+    if not audio_data:
+        print(f"  ❌ Failed to download audio - trying services anyway", flush=True)
 
-        phase3_methods = [
-            ("Groq Whisper", "whisper", lambda: get_transcript_whisper(video_id)),
-            ("OpenAI Whisper", "openai_whisper", lambda: get_transcript_openai_whisper(video_id, audio_data, audio_ext)),
-            ("Deepgram Nova-2", "deepgram", lambda: get_transcript_deepgram(video_id)),
-            ("AssemblyAI", "assemblyai", lambda: get_transcript_assemblyai(video_id, audio_data, audio_ext)),
-        ]
+    phase3_methods = [
+        ("Groq Whisper", "whisper", lambda: get_transcript_whisper(video_id)),
+        ("OpenAI Whisper", "openai_whisper", lambda: get_transcript_openai_whisper(video_id, audio_data, audio_ext)),
+        ("Deepgram Nova-2", "deepgram", lambda: get_transcript_deepgram(video_id)),
+        ("AssemblyAI", "assemblyai", lambda: get_transcript_assemblyai(video_id, audio_data, audio_ext)),
+    ]
 
-        for name, cb_name, method in phase3_methods:
-            cb = get_circuit_breaker(cb_name)
-            if not cb.can_execute():
-                print(f"  ⏭️ [{name}] Skipped (circuit OPEN)", flush=True)
-                continue
+    for name, cb_name, method in phase3_methods:
+        cb = get_circuit_breaker(cb_name)
+        if not cb.can_execute():
+            print(f"  ⏭️ [{name}] Skipped (circuit OPEN)", flush=True)
+            continue
 
-            print(f"  🎙️ [{name}] Trying...", flush=True)
-            try:
-                simple, timestamped, lang = await method()
-                if simple:
-                    cb.record_success()
-                    print(f"✅ SUCCESS with {name} (Phase 3 - Audio STT)", flush=True)
-                    print(f"{'='*70}", flush=True)
-                    result_ts = timestamped or simple
-                    await _cache_success(video_id, simple, result_ts, lang, name)
-                    return simple, result_ts, lang
-            except Exception as e:
-                print(f"  ⚠️ [{name}] Failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
-            cb.record_failure()
+        print(f"  🎙️ [{name}] Trying...", flush=True)
+        try:
+            simple, timestamped, lang = await method()
+            if simple:
+                cb.record_success()
+                print(f"✅ SUCCESS with {name} (Phase 3 - Audio STT)", flush=True)
+                print(f"{'='*70}", flush=True)
+                result_ts = timestamped or simple
+                await _cache_success(video_id, simple, result_ts, lang, name)
+                return simple, result_ts, lang
+        except Exception as e:
+            print(f"  ⚠️ [{name}] Failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
+        cb.record_failure()
 
     # ═══════════════════════════════════════════════════════════════════════════════
     # ÉCHEC TOTAL — Log détaillé pour diagnostic

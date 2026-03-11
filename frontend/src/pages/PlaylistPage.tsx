@@ -206,7 +206,7 @@ export const PlaylistPage: React.FC = () => {
         <DoodleBackground variant="video" />
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <main className="flex-1 overflow-x-hidden">
-          <div className="container max-w-lg mx-auto px-4 py-16 pb-20 lg:pb-8 text-center">
+          <div className="container max-w-lg mx-auto px-4 py-16 pb-8 text-center">
             <div className="w-16 h-16 rounded-2xl bg-violet-500/10 flex items-center justify-center mx-auto mb-6">
               <Sparkles className="w-8 h-8 text-violet-400" />
             </div>
@@ -482,7 +482,7 @@ export const PlaylistPage: React.FC = () => {
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
       <main className="flex-1 overflow-x-hidden">
-        <div className="container max-w-4xl mx-auto px-4 py-6 sm:py-8 pb-20 lg:pb-8">
+        <div className="container max-w-4xl mx-auto px-4 py-6 sm:py-8 pb-8">
 
           {/* HEADER */}
           <div className="text-center mb-8">

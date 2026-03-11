@@ -945,7 +945,7 @@ export const videoApi = {
     if (params?.page) queryParams.set('page', String(params.page));
     const query = queryParams.toString();
     try {
-      return await request(`/api/history/playlists${query ? `?${query}` : ''}`);
+      return await request(`/api/history/videos${query ? `?${query}` : ''}`);
     } catch (error) {
       // Playlist history endpoint not available
       return { items: [], total: 0 };
