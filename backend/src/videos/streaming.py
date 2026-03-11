@@ -441,9 +441,14 @@ async def analysis_stream_generator(
         if cached_transcript:
             transcript = cached_transcript
         else:
-            # Fetch transcript
-            transcript_result = await get_transcript_with_timestamps(video_id, lang)
-            transcript = transcript_result.get("text", "") if transcript_result else ""
+            # Fetch transcript (returns tuple: simple_text, timestamped_text, detected_lang)
+            transcript_result = await get_transcript_with_timestamps(video_id)
+            if transcript_result and isinstance(transcript_result, tuple):
+                transcript = transcript_result[0] or ""
+            elif transcript_result:
+                transcript = str(transcript_result)
+            else:
+                transcript = ""
             
             if transcript:
                 await cache.cache_transcript(video_id, transcript)
