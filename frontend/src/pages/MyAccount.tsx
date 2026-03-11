@@ -252,9 +252,10 @@ export const MyAccount: React.FC = () => {
     etudiant: { label: 'Starter', color: 'text-blue-400', bgColor: 'bg-blue-500/10', icon: '⚡' },
     starter: { label: 'Standard', color: 'text-blue-400', bgColor: 'bg-blue-500/10', icon: '⭐' },
     pro: { label: 'Pro', color: 'text-violet-400', bgColor: 'bg-violet-500/10', icon: '⭐' },
+    unlimited: { label: 'Pro (Unlimited)', color: 'text-amber-400', bgColor: 'bg-amber-500/10', icon: '👑' },
   };
 
-  const currentPlan = planConfig[user?.plan || 'free'];
+  const currentPlan = planConfig[user?.plan || 'free'] || planConfig['pro'];
 
   // Helpers pour lire les limites/features du plan depuis l'API
   const getLimitVal = (...keys: string[]): number => {

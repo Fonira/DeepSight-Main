@@ -168,12 +168,14 @@ const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
 
   if (!user) return null;
 
-  // Aligné sur planPrivileges.ts (free/etudiant/starter/pro)
+  // Aligné sur planPrivileges.ts (free/etudiant/starter/pro/unlimited)
   const planLabels: Record<string, string> = {
     free: language === 'fr' ? 'Gratuit' : 'Free',
     etudiant: 'Starter',
     starter: 'Standard',
     pro: 'Pro',
+    unlimited: 'Pro ∞',
+    expert: 'Expert',
   };
 
   const planColors: Record<string, string> = {
@@ -181,6 +183,8 @@ const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
     etudiant: 'text-blue-400',
     starter: 'text-emerald-400',
     pro: 'text-violet-400',
+    unlimited: 'text-amber-400',
+    expert: 'text-purple-400',
   };
 
   const planBgColors: Record<string, string> = {
@@ -188,6 +192,8 @@ const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
     etudiant: 'bg-blue-500/10',
     starter: 'bg-emerald-500/10',
     pro: 'bg-violet-500/10',
+    unlimited: 'bg-amber-500/10',
+    expert: 'bg-purple-500/10',
   };
 
   const currentPlan = user.plan || 'free';

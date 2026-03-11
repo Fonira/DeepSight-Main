@@ -1194,7 +1194,7 @@ export const DashboardPage: React.FC = () => {
         markdownComponents={chatMarkdownComponents}
         language={language as 'fr' | 'en'}
         storageKey="dashboard-chat"
-        userPlan={user?.plan || 'free'}
+        userPlan={normalizedPlan}
         webSearchQuota={wsQuota}
         onUpgrade={() => navigate('/pricing')}
       />

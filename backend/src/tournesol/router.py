@@ -7,7 +7,7 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List
 import httpx
@@ -361,6 +361,50 @@ async def get_recommendations(
     except Exception as e:
         print(f"🌻 Tournesol recommendations error: {e}", flush=True)
         return SearchResponse(results=[], total=0, query="recommendations")
+
+
+@router.get("/recommendations/raw")
+async def get_recommendations_raw(request: Request):
+    """
+    🌻 Proxy passthrough vers l'API Tournesol (format brut).
+    Utilisé par le frontend TournesolTrendingSection qui a besoin du format original
+    avec entity.metadata, collective_rating, etc.
+    Contourne le problème CORS (api.tournesol.app ne renvoie pas Access-Control-Allow-Origin).
+    Tous les query params sont passés tels quels à l'API Tournesol.
+    """
+    # Passer tous les query params tels quels à Tournesol
+    params = dict(request.query_params)
+    # Sécurité : limiter le nombre de résultats
+    if "limit" in params:
+        params["limit"] = str(min(int(params["limit"]), 50))
+
+    print(f"🌻 Tournesol raw proxy: params={params}", flush=True)
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(
+                "https://api.tournesol.app/polls/videos/recommendations/",
+                params=params,
+                headers={
+                    "Accept": "application/json",
+                    "User-Agent": "DeepSight/1.0 (tournesol-integration)",
+                },
+            )
+
+            if response.status_code != 200:
+                print(f"🌻 Tournesol raw proxy failed: {response.status_code}", flush=True)
+                return {"count": 0, "next": None, "previous": None, "results": []}
+
+            data = response.json()
+            print(f"🌻 Tournesol raw proxy: {len(data.get('results', []))} results", flush=True)
+            return data
+
+    except httpx.TimeoutException:
+        print("🌻 Tournesol raw proxy timeout", flush=True)
+        return {"count": 0, "next": None, "previous": None, "results": []}
+    except Exception as e:
+        print(f"🌻 Tournesol raw proxy error: {e}", flush=True)
+        return {"count": 0, "next": None, "previous": None, "results": []}
 
 
 @router.get("/batch")

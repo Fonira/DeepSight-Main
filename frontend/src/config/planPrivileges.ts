@@ -318,6 +318,9 @@ export function normalizePlanId(raw: string | undefined | null): PlanId {
     team: 'pro',
     equipe: 'pro',
     'équipe': 'pro',
+    unlimited: 'pro',
+    admin: 'pro',
+    expert: 'pro',
   };
   return aliases[lower] ?? 'free';
 }

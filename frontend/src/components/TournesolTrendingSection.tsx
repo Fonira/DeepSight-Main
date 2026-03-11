@@ -64,7 +64,8 @@ interface TournesolApiResponse {
 // 🌍 CONFIG & TRANSLATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const TOURNESOL_API = 'https://api.tournesol.app/polls/videos/recommendations/';
+// Proxy via notre backend pour contourner CORS (api.tournesol.app ne renvoie pas Access-Control-Allow-Origin)
+const TOURNESOL_API = `${import.meta.env.VITE_API_URL || 'https://api.deepsightsynthesis.com'}/api/tournesol/recommendations/raw`;
 const TOURNESOL_SITE = 'https://tournesol.app';
 
 const LANGUAGES = [
