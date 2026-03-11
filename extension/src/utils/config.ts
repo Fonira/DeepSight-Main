@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'https://deep-sight-backend-v3-production.up.railway.app/api';
+export const API_BASE_URL = 'https://api.deepsightsynthesis.com/api';
 export const WEBAPP_URL = 'https://www.deepsightsynthesis.com';
 
 // Google OAuth Client ID (Web Application type)

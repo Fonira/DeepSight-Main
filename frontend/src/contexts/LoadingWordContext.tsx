@@ -205,7 +205,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
     }
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'https://deep-sight-backend-v3-production.up.railway.app';
+      const API_URL = import.meta.env.VITE_API_URL || 'https://api.deepsightsynthesis.com';
       const token = localStorage.getItem('access_token');
 
       if (!token) {

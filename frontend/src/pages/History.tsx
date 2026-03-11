@@ -48,7 +48,7 @@ import { normalizePlanId } from "../config/planPrivileges";
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🌐 API CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
-const BASE_API_URL = import.meta.env.VITE_API_URL || "https://deep-sight-backend-v3-production.up.railway.app";
+const BASE_API_URL = import.meta.env.VITE_API_URL || "https://api.deepsightsynthesis.com";
 const API_URL = BASE_API_URL.replace(/\/api\/?$/, '') + '/api';
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -54,7 +54,7 @@ type ViewMode = 'select' | 'options' | 'loading' | 'results';
 // 🌐 API
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const API_URL = (import.meta.env.VITE_API_URL || 'https://deep-sight-backend-v3-production.up.railway.app').replace(/\/api\/?$/, '') + '/api';
+const API_URL = (import.meta.env.VITE_API_URL || 'https://api.deepsightsynthesis.com').replace(/\/api\/?$/, '') + '/api';
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem('access_token');

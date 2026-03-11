@@ -11,7 +11,7 @@
 // ⚙️ CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const API_URL = import.meta.env.VITE_API_URL || 'https://deep-sight-backend-v3-production.up.railway.app';
+export const API_URL = import.meta.env.VITE_API_URL || 'https://api.deepsightsynthesis.com';
 
 const TOKEN_KEYS = {
   ACCESS: 'access_token',

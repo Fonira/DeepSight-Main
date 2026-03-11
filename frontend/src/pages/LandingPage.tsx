@@ -495,7 +495,7 @@ const LandingPage: React.FC = () => {
 
     setGuestLoading(true);
 
-    const API = 'https://deep-sight-backend-v3-production.up.railway.app';
+    const API = import.meta.env.VITE_API_URL || 'https://api.deepsightsynthesis.com';
     const fetchUrl = `${API}/api/videos/analyze/guest`;
     const maxRetries = 2;
 
