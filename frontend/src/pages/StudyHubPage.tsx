@@ -26,7 +26,7 @@ import {
 import { videoApi, Summary } from '../services/api';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
-import { normalizePlanId } from '../config/planPrivileges';
+import { normalizePlanId, CONVERSION_TRIGGERS } from '../config/planPrivileges';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -147,12 +147,25 @@ const StudyHubPage: React.FC = () => {
               </div>
               <h1 className="text-2xl font-bold text-text-primary mb-3">{texts.upgradeTitle}</h1>
               <p className="text-text-secondary mb-6">{texts.upgradeDesc}</p>
-              <button
-                onClick={() => navigate('/upgrade')}
-                className="px-6 py-3 rounded-xl bg-accent-primary text-white font-medium hover:bg-accent-primary-hover transition-colors"
-              >
-                {texts.upgrade}
-              </button>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                {CONVERSION_TRIGGERS.trialEnabled && (
+                  <button
+                    onClick={() => navigate('/upgrade?trial=true')}
+                    className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-violet-500/25 flex items-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    {language === 'fr'
+                      ? `Essayer gratuitement ${CONVERSION_TRIGGERS.trialDays} jours`
+                      : `Try free for ${CONVERSION_TRIGGERS.trialDays} days`}
+                  </button>
+                )}
+                <button
+                  onClick={() => navigate('/upgrade')}
+                  className="px-6 py-3 rounded-xl border border-border-subtle text-text-secondary font-medium hover:text-text-primary hover:bg-bg-hover transition-all"
+                >
+                  {texts.upgrade}
+                </button>
+              </div>
             </motion.div>
           </div>
         </main>

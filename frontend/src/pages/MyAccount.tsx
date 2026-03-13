@@ -23,6 +23,7 @@ import {
 import { DeepSightSpinnerMicro } from '../components/ui';
 import { Link, useNavigate } from 'react-router-dom';
 import DoodleBackground from '../components/DoodleBackground';
+import { SEO } from '../components/SEO';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔐 Types
@@ -326,6 +327,7 @@ export const MyAccount: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
+      <SEO title="Mon compte" path="/account" />
       <DoodleBackground variant="tech" />
       {/* Hamburger mobile */}
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />

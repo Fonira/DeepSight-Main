@@ -17,7 +17,9 @@ import {
   ExternalLink, Palette, SlidersHorizontal
 } from 'lucide-react';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { useToast } from '../components/Toast';
 import DoodleBackground from '../components/DoodleBackground';
+import { SEO } from '../components/SEO';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎛️ Types
@@ -57,7 +59,8 @@ export const Settings: React.FC = () => {
 
   // Feedback de sauvegarde
   const [saved, setSaved] = useState<string | null>(null);
-  
+  const { showToast, ToastComponent } = useToast();
+
   // Helper pour les traductions inline
   const tr = useCallback((fr: string, en: string) => language === 'fr' ? fr : en, [language]);
 
@@ -70,7 +73,8 @@ export const Settings: React.FC = () => {
     setPreferences(prev => ({ ...prev, [key]: value }));
     setSaved(key);
     setTimeout(() => setSaved(null), 1500);
-  }, []);
+    showToast(language === 'fr' ? 'Paramètre sauvegardé' : 'Setting saved', 'success');
+  }, [showToast, language]);
 
   const resetToDefaults = useCallback(() => {
     const defaults: Preferences = {
@@ -90,7 +94,8 @@ export const Settings: React.FC = () => {
     setPreferences(defaults);
     setSaved('all');
     setTimeout(() => setSaved(null), 1500);
-  }, []);
+    showToast(language === 'fr' ? 'Paramètres réinitialisés' : 'Settings reset', 'success');
+  }, [showToast, language]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 🎨 Toggle Component
@@ -141,7 +146,7 @@ export const Settings: React.FC = () => {
         <Icon className={`w-5 h-5 flex-shrink-0 ${iconColor}`} />
         <div className="min-w-0">
           <p className="font-medium text-text-primary">{title}</p>
-          <p className="text-sm text-text-tertiary truncate">{description}</p>
+          <p className="text-sm text-text-tertiary line-clamp-3">{description}</p>
         </div>
       </div>
       <div className="flex-shrink-0 ml-4">
@@ -156,6 +161,7 @@ export const Settings: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
+      <SEO title="Paramètres" path="/settings" />
       <DoodleBackground variant="tech" />
       {/* Hamburger mobile */}
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
@@ -442,6 +448,7 @@ export const Settings: React.FC = () => {
           animation: fade-in 0.3s ease-out;
         }
       `}</style>
+      {ToastComponent}
     </div>
   );
 };

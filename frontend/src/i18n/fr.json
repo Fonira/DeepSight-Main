@@ -79,7 +79,11 @@
     "sessionExpired": "Votre session a expiré",
     "pleaseLoginAgain": "Veuillez vous reconnecter",
     "termsAgreement": "En continuant, vous acceptez nos conditions d'utilisation",
-    "subtitle": "Analysez et comprenez vos vidéos YouTube en profondeur"
+    "subtitle": "Analysez et comprenez vos vidéos YouTube et TikTok en profondeur",
+    "featureAnalysis": "Analyse IA",
+    "featureFactCheck": "Vérification des faits",
+    "featureStudyTools": "Outils d'étude",
+    "featureChat": "Chat contextuel"
   },
   "dashboard": {
     "title": "Analyse vidéo",
@@ -528,7 +532,7 @@
     "contact": "Contact",
     "help": "Aide",
     "about": "À propos",
-    "copyright": "© 2025 Deep Sight. Tous droits réservés.",
+    "copyright": "© 2025-2026 Deep Sight. Tous droits réservés.",
     "madeWith": "Fait avec",
     "inFrance": "en France"
   },

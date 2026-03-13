@@ -7,6 +7,8 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
+import { translateApiError } from '../utils/errorMessages';
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // ⚙️ CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -514,7 +516,7 @@ async function request<T>(
         window.dispatchEvent(new CustomEvent('auth:logout'));
       }
 
-      throw new ApiError(errorMessage, response.status, errorData);
+      throw new ApiError(translateApiError(errorMessage), response.status, errorData);
     }
 
     if (response.status === 204) {
@@ -536,11 +538,11 @@ async function request<T>(
     }
     
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new ApiError('Request timeout', 408);
+      throw new ApiError(translateApiError('Request timeout'), 408);
     }
-    
+
     throw new ApiError(
-      error instanceof Error ? error.message : 'Network error',
+      translateApiError(error instanceof Error ? error.message : 'Network error'),
       0
     );
   }

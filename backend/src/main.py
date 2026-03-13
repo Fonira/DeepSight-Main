@@ -7,8 +7,10 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
 import os
 import sys
@@ -930,8 +932,45 @@ async def health_live():
     return {"alive": True, "version": VERSION}
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# GESTION GLOBALE DES ERREURS
+# GESTION GLOBALE DES ERREURS (avec traduction i18n)
 # ═══════════════════════════════════════════════════════════════════════════════
+
+from core.error_messages import get_lang, translate_error, translate_detail, translate_http_status
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """
+    Handler pour les HTTPException (400, 401, 403, 404, etc.).
+    Traduit le detail si Accept-Language contient 'fr'.
+    """
+    lang = get_lang(request)
+    detail = translate_detail(exc.detail, lang)
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": detail},
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Handler pour les erreurs de validation Pydantic.
+    Traduit les messages de validation si Accept-Language contient 'fr'.
+    """
+    lang = get_lang(request)
+    errors = translate_detail(exc.errors(), lang)
+
+    status_msg = translate_http_status(422, lang)
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": errors,
+            **({"message": status_msg} if status_msg else {}),
+        },
+    )
+
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -943,6 +982,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     import uuid
     error_id = str(uuid.uuid4())[:8]
     error_msg = str(exc)
+    lang = get_lang(request)
     logger.error(f"[{error_id}] Unhandled error on {request.method} {request.url.path}: {error_msg}")
 
     # Envoyer à Sentry si activé
@@ -965,21 +1005,26 @@ async def global_exception_handler(request: Request, exc: Exception):
     elif "rate limit" in error_lower:
         safe_error = "Too many requests. Please slow down."
 
+    # Traduire si français
+    safe_error = translate_error(safe_error, lang)
+    detail_msg = translate_error("Internal server error", lang)
+    support_msg = translate_error("Contact support with this error_id", lang)
+
     # SÉCURITÉ: En production, ne pas exposer les détails d'erreur
     if ENVIRONMENT == "production":
         return JSONResponse(
             status_code=500,
             content={
-                "detail": "Internal server error",
+                "detail": detail_msg,
                 "error": safe_error,
                 "error_id": error_id,
-                "support": "Contact support with this error_id"
+                "support": support_msg
             }
         )
     else:
         return JSONResponse(
             status_code=500,
-            content={"detail": "Internal server error", "error": error_msg, "error_id": error_id}
+            content={"detail": detail_msg, "error": error_msg, "error_id": error_id}
         )
 
 

@@ -79,7 +79,11 @@
     "sessionExpired": "Your session has expired",
     "pleaseLoginAgain": "Please sign in again",
     "termsAgreement": "By continuing, you agree to our terms of service",
-    "subtitle": "Analyze and understand your YouTube videos in depth"
+    "subtitle": "Analyze and understand your YouTube and TikTok videos in depth",
+    "featureAnalysis": "AI Analysis",
+    "featureFactCheck": "Fact-checking",
+    "featureStudyTools": "Study Tools",
+    "featureChat": "Contextual Chat"
   },
   "dashboard": {
     "title": "Video Analysis",
@@ -528,7 +532,7 @@
     "contact": "Contact",
     "help": "Help",
     "about": "About",
-    "copyright": "© 2025 Deep Sight. All rights reserved.",
+    "copyright": "© 2025-2026 Deep Sight. All rights reserved.",
     "madeWith": "Made with",
     "inFrance": "in France"
   },

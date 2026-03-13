@@ -12,7 +12,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
-import { normalizePlanId } from '../config/planPrivileges';
+import { normalizePlanId, getMinPlanForFeature, PLANS_INFO, CONVERSION_TRIGGERS, hasFeature } from '../config/planPrivileges';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
 import SmartInputBar, { SmartInputValue } from '../components/SmartInputBar';
@@ -27,6 +27,7 @@ import {
   Timer, Coffee, Rocket
 } from 'lucide-react';
 import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from '../components/ui';
+import { SEO } from '../components/SEO';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -197,10 +198,11 @@ export const PlaylistPage: React.FC = () => {
   // User info
   const userCredits = user?.credits || 0;
   const normalizedPlan = normalizePlanId(user?.plan);
-  const isPaidUser = normalizedPlan !== 'free';
+  // Plan-gate: vérifie accès playlists via planPrivileges (source unique de vérité)
+  const minPlanForPlaylists = getMinPlanForFeature('playlistsEnabled');
+  const minPlanName = PLANS_INFO[minPlanForPlaylists].name;
 
-  // Plan-gate: redirect free users
-  if (!isPaidUser) {
+  if (!hasFeature(normalizedPlan, 'playlistsEnabled')) {
     return (
       <div className="flex min-h-screen bg-bg-primary">
         <DoodleBackground variant="video" />
@@ -213,18 +215,30 @@ export const PlaylistPage: React.FC = () => {
             <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-3">
               {language === 'fr' ? 'Fonctionnalité réservée aux abonnés' : 'Subscribers only feature'}
             </h2>
-            <p className="text-text-secondary text-sm sm:text-base mb-8 max-w-sm mx-auto">
+            <p className="text-text-secondary text-sm sm:text-base mb-6 max-w-sm mx-auto">
               {language === 'fr'
-                ? 'L\'analyse de playlists est disponible à partir du plan Starter. Passez à un plan payant pour débloquer cette fonctionnalité.'
-                : 'Playlist analysis is available from the Starter plan. Upgrade to a paid plan to unlock this feature.'}
+                ? `L'analyse de playlists est disponible à partir du plan ${minPlanName}. Passez au plan ${minPlanName} pour débloquer cette fonctionnalité.`
+                : `Playlist analysis is available from the ${minPlanName} plan. Upgrade to the ${minPlanName} plan to unlock this feature.`}
             </p>
-            <Link
-              to="/upgrade"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold hover:opacity-90 transition-opacity"
-            >
-              <Sparkles className="w-4 h-4" />
-              {language === 'fr' ? 'Voir les plans' : 'View plans'}
-            </Link>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              {CONVERSION_TRIGGERS.trialEnabled && (
+                <Link
+                  to="/upgrade?trial=true"
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-violet-500/25"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  {language === 'fr'
+                    ? `Essayer gratuitement ${CONVERSION_TRIGGERS.trialDays} jours`
+                    : `Try free for ${CONVERSION_TRIGGERS.trialDays} days`}
+                </Link>
+              )}
+              <Link
+                to="/upgrade"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border-subtle text-text-secondary font-medium hover:text-text-primary hover:bg-bg-hover transition-all"
+              >
+                {language === 'fr' ? 'Voir les plans' : 'View plans'}
+              </Link>
+            </div>
           </div>
         </main>
       </div>
@@ -478,6 +492,7 @@ export const PlaylistPage: React.FC = () => {
 
   return (
     <div className="flex min-h-screen bg-bg-primary">
+      <SEO title="Playlists" path="/playlists" />
       <DoodleBackground variant="video" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 

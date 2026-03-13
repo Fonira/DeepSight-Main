@@ -210,7 +210,7 @@ export const Login: React.FC = () => {
 
             {/* Feature pills */}
             <div className="flex flex-wrap gap-2 pt-2">
-              {['AI Analysis', 'Fact-checking', 'Study Tools', 'Contextual Chat'].map((feat) => (
+              {[t.auth.featureAnalysis, t.auth.featureFactCheck, t.auth.featureStudyTools, t.auth.featureChat].map((feat) => (
                 <span
                   key={feat}
                   className="px-3 py-1 rounded-full text-xs font-medium bg-bg-tertiary/60 text-text-secondary border border-border-subtle backdrop-blur-sm"

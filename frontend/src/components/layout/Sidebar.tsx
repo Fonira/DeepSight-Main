@@ -29,7 +29,8 @@ import {
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
 import { PlanBadge } from "../PlanBadge";
-import { normalizePlanId } from "../../config/planPrivileges";
+import { normalizePlanId, getMinPlanForFeature, PLANS_INFO, PLAN_HIERARCHY } from "../../config/planPrivileges";
+import type { PlanId } from "../../config/planPrivileges";
 
 // === Logo ===
 const Logo: React.FC<{ collapsed?: boolean; onClick?: () => void }> = ({ collapsed, onClick }) => {
@@ -72,10 +73,11 @@ interface NavItemProps {
   label: string;
   collapsed?: boolean;
   badge?: string;
+  badgeClassName?: string;
   external?: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, collapsed, badge, external }) => {
+const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, collapsed, badge, badgeClassName, external }) => {
   const baseClasses = "flex items-center gap-2.5 px-2.5 py-2 rounded-md transition-all text-[0.8125rem] font-medium relative";
 
   if (external) {
@@ -132,7 +134,7 @@ const NavItem: React.FC<NavItemProps> = ({ to, icon: Icon, label, collapsed, bad
               >
                 <span className="flex-1 truncate">{label}</span>
                 {badge && (
-                  <span className="px-1.5 py-0.5 rounded-full text-[0.625rem] font-medium bg-accent-secondary-muted text-accent-secondary">
+                  <span className={`px-1.5 py-0.5 rounded-full text-[0.625rem] font-medium ${badgeClassName || 'bg-accent-secondary-muted text-accent-secondary'}`}>
                     {badge}
                   </span>
                 )}
@@ -315,8 +317,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onMobileCloseProp?.();
   };
 
-  const isProUser = normalizePlanId(user?.plan) === 'pro';
-  const hasPaidPlan = normalizePlanId(user?.plan) !== 'free';
+  const userPlan = normalizePlanId(user?.plan);
+
+  // Badges dynamiques — getMinPlanForFeature comme source unique de vérité
+  const planBadgeStyles: Record<PlanId, string> = {
+    free: 'bg-gray-500/15 text-gray-400',
+    etudiant: 'bg-emerald-500/15 text-emerald-400',
+    starter: 'bg-blue-500/15 text-blue-400',
+    pro: 'bg-violet-500/15 text-violet-400',
+  };
+  const minPlanPlaylists = getMinPlanForFeature('playlistsEnabled');
+  const minPlanStudy = getMinPlanForFeature('flashcardsEnabled');
+  const minPlanChat: PlanId = 'etudiant'; // Chat page bloque les free users
+  const getBadge = (minPlan: PlanId) => {
+    const userIdx = PLAN_HIERARCHY.indexOf(userPlan);
+    const minIdx = PLAN_HIERARCHY.indexOf(minPlan);
+    if (userIdx >= minIdx) return {};
+    return { badge: PLANS_INFO[minPlan].name, badgeClassName: planBadgeStyles[minPlan] };
+  };
   const ADMIN_EMAIL = "maximeleparc3@gmail.com";
   const isUserAdmin = user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
   const handleLogoClick = () => {
@@ -392,12 +410,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* ── Analyse ── */}
           <NavItem to="/dashboard" icon={LayoutDashboard} label={t.nav.analysis} collapsed={collapsed} />
           <NavItem to="/history" icon={History} label={t.nav.history} collapsed={collapsed} />
-          <NavItem to="/playlists" icon={ListVideo} label={t.nav.playlists} collapsed={collapsed} badge={isProUser ? undefined : "Pro"} />
+          <NavItem to="/playlists" icon={ListVideo} label={t.nav.playlists} collapsed={collapsed} {...getBadge(minPlanPlaylists)} />
 
           {/* ── Révision & IA ── */}
           <SectionLabel label={t.nav.studySection} icon={Brain} collapsed={collapsed} />
-          <NavItem to="/chat" icon={MessageSquare} label={t.nav.chat} collapsed={collapsed} />
-          <NavItem to="/study" icon={GraduationCap} label={t.nav.study} collapsed={collapsed} badge={hasPaidPlan ? undefined : (language === 'fr' ? 'Starter+' : 'Starter+')} />
+          <NavItem to="/chat" icon={MessageSquare} label={t.nav.chat} collapsed={collapsed} {...getBadge(minPlanChat)} />
+          <NavItem to="/study" icon={GraduationCap} label={t.nav.study} collapsed={collapsed} {...getBadge(minPlanStudy)} />
 
           {/* ── Compte ── */}
           <SectionLabel label={language === 'fr' ? 'Compte' : 'Account'} collapsed={collapsed} />

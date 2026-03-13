@@ -22,6 +22,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
+import { SEO } from '../components/SEO';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -432,13 +433,14 @@ export function UsageDashboard() {
 
   return (
     <DashboardLayout>
+      <SEO title="Utilisation" path="/usage" />
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <BarChart3 className="w-8 h-8 text-accent-primary" />
             <h1 className="text-2xl font-bold text-text-primary">
-              {language === 'fr' ? 'Mon compte' : 'My Account'}
+              {language === 'fr' ? 'Utilisation' : 'Usage'}
             </h1>
           </div>
           <p className="text-text-secondary">

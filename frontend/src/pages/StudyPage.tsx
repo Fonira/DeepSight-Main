@@ -20,6 +20,7 @@ import type { Flashcard, FlashcardStats, QuizQuestionData } from '../components/
 import { useTranslation } from '../hooks/useTranslation';
 import { studyApi, videoApi } from '../services/api';
 import DoodleBackground from '../components/DoodleBackground';
+import { SEO } from '../components/SEO';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -280,6 +281,7 @@ export const StudyPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <SEO title="Révision" path="/study" />
       <DoodleBackground variant="academic" />
 
       <div className="relative z-10 max-w-4xl mx-auto px-4 py-8">

@@ -32,6 +32,7 @@ import { TournesolMini } from "../components/TournesolWidget";
 import { createTimecodeMarkdownComponents } from "../components/TimecodeRenderer";
 import { FloatingChatWindow } from "../components/FloatingChatWindow";
 import DoodleBackground from '../components/DoodleBackground';
+import { SEO } from '../components/SEO';
 import { ThumbnailImage } from "../components/ThumbnailImage";
 import { EnrichedMarkdown } from "../components/EnrichedMarkdown";
 import { ConceptsGlossary } from "../components/ConceptsGlossary";
@@ -475,19 +476,23 @@ export const History: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [videosRes, statsRes] = await Promise.all([
-        api.fetchVideos({
-          page: videosPage,
-          per_page: perPage,
-          category: selectedCategory,
-          search: searchQuery,
-        }),
-        api.fetchStats(),
-      ]);
+      const videosRes = await api.fetchVideos({
+        page: videosPage,
+        per_page: perPage,
+        category: selectedCategory,
+        search: searchQuery,
+      });
 
       setVideos(videosRes.items || videosRes);
       setVideosTotal(videosRes.total || videosRes.length);
-      setStats(statsRes);
+
+      // Stats non-bloquantes : un échec n'empêche pas l'affichage
+      try {
+        const statsRes = await api.fetchStats();
+        setStats(statsRes);
+      } catch {
+        // Stats indisponibles — on continue sans
+      }
 
       // Charger les playlists pour tous les utilisateurs (affichage de l'historique)
       try {
@@ -504,7 +509,7 @@ export const History: React.FC = () => {
       }
     } catch (err) {
       console.error("History load error:", err);
-      setError(language === 'fr' ? "Erreur lors du chargement" : "Loading error");
+      setError(language === 'fr' ? "Erreur réseau — Impossible de charger l'historique" : "Network error — Unable to load history");
     } finally {
       setLoading(false);
     }
@@ -808,6 +813,7 @@ export const History: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
+      <SEO title="Historique" path="/history" />
       <DoodleBackground variant="video" />
       {/* Hamburger mobile */}
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
@@ -1001,14 +1007,21 @@ export const History: React.FC = () => {
               </div>
             </div>
 
-            {/* Error */}
+            {/* Error — affiché uniquement pour les vraies erreurs réseau/serveur */}
             {error && (
               <div className="card p-4 mb-6 border-error/30 bg-red-50 dark:bg-red-900/20">
                 <div className="flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 text-error" />
-                  <p className="text-text-primary">{error}</p>
-                  <button onClick={() => setError(null)} className="ml-auto">
-                    <X className="w-4 h-4" />
+                  <AlertCircle className="w-5 h-5 text-error flex-shrink-0" />
+                  <p className="text-text-primary flex-1">{error}</p>
+                  <button
+                    onClick={loadData}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 transition-colors text-sm font-medium"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    {language === 'fr' ? 'Réessayer' : 'Retry'}
+                  </button>
+                  <button onClick={() => setError(null)} className="flex-shrink-0">
+                    <X className="w-4 h-4 text-text-tertiary hover:text-text-primary" />
                   </button>
                 </div>
               </div>

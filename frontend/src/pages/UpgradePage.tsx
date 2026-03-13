@@ -1,9 +1,9 @@
 /**
- * UpgradePage v5.0 — Dynamique depuis l'API
+ * UpgradePage v6.0 — Fallback robuste + toggle mensuel/annuel
  *
  * Fetch GET /api/billing/plans?platform=web au mount.
- * Fallback sur planPrivileges.ts en cas d'erreur.
- * Rien n'est hardcodé : tout vient de l'API.
+ * Fallback sur planPrivileges.ts si API échoue (snake_case mapping).
+ * Toggle mensuel/annuel avec -20% (cosmétique, pas de price_id Stripe annuel).
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -12,7 +12,7 @@ import {
   Check, X, Sparkles, Zap, Crown,
   ArrowUp, ArrowDown, AlertCircle, RefreshCw,
   BookOpen, ChevronDown, ChevronUp, Lock,
-  Infinity as InfinityIcon, GraduationCap, Users, Star,
+  Infinity as InfinityIcon, GraduationCap, Star,
   Gift, Clock,
 } from 'lucide-react';
 
@@ -64,6 +64,34 @@ function getPlanGradient(planId: string): string {
   return PLAN_GRADIENT_MAP[planId] || 'from-gray-500 to-gray-600';
 }
 
+/** Convert camelCase PlanLimits to snake_case Record matching API format */
+function limitsToSnakeCase(limits: typeof FALLBACK_PLAN_LIMITS[PlanId]): Record<string, unknown> {
+  return {
+    monthly_analyses: limits.monthlyAnalyses,
+    max_video_length_min: limits.maxVideoLengthMin,
+    concurrent_analyses: limits.concurrentAnalyses,
+    priority_queue: limits.priorityQueue,
+    chat_questions_per_video: limits.chatQuestionsPerVideo,
+    chat_daily_limit: limits.chatDailyLimit,
+    flashcards_enabled: limits.flashcardsEnabled,
+    mindmap_enabled: limits.mindmapEnabled,
+    web_search_enabled: limits.webSearchEnabled,
+    web_search_monthly: limits.webSearchMonthly,
+    playlists_enabled: limits.playlistsEnabled,
+    max_playlists: limits.maxPlaylists,
+    max_playlist_videos: limits.maxPlaylistVideos,
+    export_formats: limits.exportFormats,
+    export_markdown: limits.exportMarkdown,
+    export_pdf: limits.exportPdf,
+    history_retention_days: limits.historyRetentionDays,
+    allowed_models: limits.allowedModels,
+    default_model: limits.defaultModel,
+    academic_search: limits.academicSearch,
+    academic_papers_per_analysis: limits.academicPapersPerAnalysis,
+    bibliography_export: limits.bibliographyExport,
+  };
+}
+
 /** Build fallback plans from planPrivileges.ts when API is unavailable */
 function buildFallbackPlans(currentUserPlan: string): ApiBillingPlan[] {
   return PLAN_HIERARCHY.map((pid) => {
@@ -101,7 +129,7 @@ function buildFallbackPlans(currentUserPlan: string): ApiBillingPlan[] {
       icon: info.icon,
       badge: info.badge ? { text: info.badge.text, color: info.badge.color } : null,
       popular: info.popular,
-      limits: limits as unknown as Record<string, unknown>,
+      limits: limitsToSnakeCase(limits),
       platform_features: {},
       features_display: featuresDisplay,
       features_locked: [],
@@ -135,6 +163,63 @@ const SkeletonCard: React.FC = () => (
 );
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// BILLING PERIOD
+// ═══════════════════════════════════════════════════════════════════════════════
+
+type BillingPeriod = 'monthly' | 'annual';
+const ANNUAL_DISCOUNT = 0.20; // 20% de réduction
+
+function getAnnualMonthlyPrice(monthlyCents: number): number {
+  return Math.round(monthlyCents * (1 - ANNUAL_DISCOUNT));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BILLING TOGGLE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+interface BillingToggleProps {
+  period: BillingPeriod;
+  onChange: (period: BillingPeriod) => void;
+  lang: 'fr' | 'en';
+}
+
+const BillingToggle: React.FC<BillingToggleProps> = ({ period, onChange, lang }) => (
+  <div className="flex items-center justify-center gap-3 mb-6 sm:mb-8">
+    <span
+      className={`text-sm font-medium transition-colors cursor-pointer ${
+        period === 'monthly' ? 'text-text-primary' : 'text-text-tertiary'
+      }`}
+      onClick={() => onChange('monthly')}
+    >
+      {lang === 'fr' ? 'Mensuel' : 'Monthly'}
+    </span>
+    <button
+      onClick={() => onChange(period === 'monthly' ? 'annual' : 'monthly')}
+      className="relative w-14 h-7 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
+      style={{ backgroundColor: period === 'annual' ? '#8b5cf6' : 'rgba(255,255,255,0.1)' }}
+      aria-label={lang === 'fr' ? 'Basculer facturation' : 'Toggle billing period'}
+    >
+      <motion.div
+        className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md"
+        animate={{ left: period === 'monthly' ? '2px' : '30px' }}
+        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+      />
+    </button>
+    <span
+      className={`text-sm font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
+        period === 'annual' ? 'text-text-primary' : 'text-text-tertiary'
+      }`}
+      onClick={() => onChange('annual')}
+    >
+      {lang === 'fr' ? 'Annuel' : 'Annual'}
+      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">
+        -20%
+      </span>
+    </span>
+  </div>
+);
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // PLAN CARD
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -147,10 +232,11 @@ interface PlanCardProps {
   trialLoading: boolean;
   onStartTrial: () => void;
   allPlans: ApiBillingPlan[];
+  billingPeriod: BillingPeriod;
 }
 
 const PlanCard: React.FC<PlanCardProps> = ({
-  plan, lang, loading, onSelect, trialEligible, trialLoading, onStartTrial, allPlans,
+  plan, lang, loading, onSelect, trialEligible, trialLoading, onStartTrial, allPlans, billingPeriod,
 }) => {
   const Icon = getPlanIcon(plan.id);
   const gradient = getPlanGradient(plan.id);
@@ -159,7 +245,12 @@ const PlanCard: React.FC<PlanCardProps> = ({
   const isDowngrade = plan.is_downgrade;
   const isFree = plan.price_monthly_cents === 0;
   const nameDisplay = lang === 'fr' ? plan.name : plan.name_en;
-  const priceDisplay = formatPriceFr(plan.price_monthly_cents);
+
+  const isAnnual = billingPeriod === 'annual' && !isFree;
+  const monthlyPrice = plan.price_monthly_cents;
+  const displayPrice = isAnnual ? getAnnualMonthlyPrice(monthlyPrice) : monthlyPrice;
+  const priceDisplay = formatPriceFr(displayPrice);
+  const annualTotal = isAnnual ? formatPriceFr(displayPrice * 12) : null;
 
   // Find unlock plan names for features_locked
   const getUnlockPlanName = (unlockPlanId: string) => {
@@ -216,10 +307,23 @@ const PlanCard: React.FC<PlanCardProps> = ({
 
         {/* Price */}
         <div className="mb-3 sm:mb-4">
+          {isAnnual && (
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <span className="text-sm text-text-tertiary line-through">{formatPriceFr(monthlyPrice)}€</span>
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">
+                -20%
+              </span>
+            </div>
+          )}
           <span className="text-2xl sm:text-3xl font-bold text-text-primary">{priceDisplay}</span>
           <span className="text-text-tertiary text-xs sm:text-sm ml-1">
             €/{lang === 'fr' ? 'mois' : 'mo'}
           </span>
+          {isAnnual && annualTotal && (
+            <div className="text-[10px] text-text-tertiary mt-0.5">
+              {lang === 'fr' ? `soit ${annualTotal}€/an` : `i.e. ${annualTotal}€/year`}
+            </div>
+          )}
         </div>
 
         {/* Features Display */}
@@ -323,12 +427,22 @@ interface ComparisonTableProps {
   lang: 'fr' | 'en';
   loading: string | null;
   onSelect: (plan: ApiBillingPlan) => void;
+  billingPeriod: BillingPeriod;
 }
 
 /** Build comparison rows from API plan limits */
 interface ComparisonCategory {
   name: string;
   rows: { label: string; values: (string | boolean)[] }[];
+}
+
+/** Safely read a limit value, supporting both snake_case (API) and camelCase (fallback) */
+function lim(limits: Record<string, unknown>, snakeKey: string): unknown {
+  if (snakeKey in limits && limits[snakeKey] !== undefined) return limits[snakeKey];
+  // Convert snake_case → camelCase as fallback
+  const camelKey = snakeKey.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
+  if (camelKey in limits && limits[camelKey] !== undefined) return limits[camelKey];
+  return undefined;
 }
 
 function buildComparisonData(plans: ApiBillingPlan[], lang: 'fr' | 'en'): ComparisonCategory[] {
@@ -338,7 +452,8 @@ function buildComparisonData(plans: ApiBillingPlan[], lang: 'fr' | 'en'): Compar
     if (v === -1) return '∞';
     if (typeof v === 'number') return String(v);
     if (Array.isArray(v)) return v.join(', ');
-    return String(v ?? '-');
+    if (v === undefined || v === null) return '-';
+    return String(v);
   };
 
   const fmtMin = (v: unknown): string | boolean => {
@@ -350,48 +465,50 @@ function buildComparisonData(plans: ApiBillingPlan[], lang: 'fr' | 'en'): Compar
     return '-';
   };
 
+  const L = (p: ApiBillingPlan, key: string) => lim(p.limits, key);
+
   const categories: ComparisonCategory[] = [
     {
       name: lang === 'fr' ? '📊 Analyses' : '📊 Analyses',
       rows: [
-        { label: lang === 'fr' ? 'Analyses/mois' : 'Analyses/month', values: plans.map(p => fmt(p.limits.monthly_analyses)) },
-        { label: lang === 'fr' ? 'Durée max vidéo' : 'Max video length', values: plans.map(p => fmtMin(p.limits.max_video_length_min)) },
-        { label: lang === 'fr' ? 'Analyses simultanées' : 'Concurrent analyses', values: plans.map(p => fmt(p.limits.concurrent_analyses)) },
-        { label: lang === 'fr' ? 'File prioritaire' : 'Priority queue', values: plans.map(p => fmt(p.limits.priority_queue)) },
+        { label: lang === 'fr' ? 'Analyses/mois' : 'Analyses/month', values: plans.map(p => fmt(L(p, 'monthly_analyses'))) },
+        { label: lang === 'fr' ? 'Durée max vidéo' : 'Max video length', values: plans.map(p => fmtMin(L(p, 'max_video_length_min'))) },
+        { label: lang === 'fr' ? 'Analyses simultanées' : 'Concurrent analyses', values: plans.map(p => fmt(L(p, 'concurrent_analyses'))) },
+        { label: lang === 'fr' ? 'File prioritaire' : 'Priority queue', values: plans.map(p => fmt(L(p, 'priority_queue'))) },
       ],
     },
     {
       name: lang === 'fr' ? '💬 Chat IA' : '💬 AI Chat',
       rows: [
-        { label: lang === 'fr' ? 'Questions/vidéo' : 'Questions/video', values: plans.map(p => fmt(p.limits.chat_questions_per_video)) },
-        { label: lang === 'fr' ? 'Messages/jour' : 'Messages/day', values: plans.map(p => fmt(p.limits.chat_daily_limit)) },
+        { label: lang === 'fr' ? 'Questions/vidéo' : 'Questions/video', values: plans.map(p => fmt(L(p, 'chat_questions_per_video'))) },
+        { label: lang === 'fr' ? 'Messages/jour' : 'Messages/day', values: plans.map(p => fmt(L(p, 'chat_daily_limit'))) },
       ],
     },
     {
       name: lang === 'fr' ? '🎓 Outils d\'étude' : '🎓 Study tools',
       rows: [
-        { label: 'Flashcards', values: plans.map(p => fmt(p.limits.flashcards_enabled)) },
-        { label: lang === 'fr' ? 'Cartes mentales' : 'Mind maps', values: plans.map(p => fmt(p.limits.mindmap_enabled)) },
+        { label: 'Flashcards', values: plans.map(p => fmt(L(p, 'flashcards_enabled'))) },
+        { label: lang === 'fr' ? 'Cartes mentales' : 'Mind maps', values: plans.map(p => fmt(L(p, 'mindmap_enabled'))) },
       ],
     },
     {
       name: lang === 'fr' ? '🔍 Recherche web' : '🔍 Web search',
       rows: [
-        { label: lang === 'fr' ? 'Recherches/mois' : 'Searches/month', values: plans.map(p => fmt(p.limits.web_search_monthly)) },
+        { label: lang === 'fr' ? 'Recherches/mois' : 'Searches/month', values: plans.map(p => fmt(L(p, 'web_search_monthly'))) },
       ],
     },
     {
       name: lang === 'fr' ? '📚 Playlists' : '📚 Playlists',
       rows: [
-        { label: lang === 'fr' ? 'Playlists' : 'Playlists', values: plans.map(p => fmt(p.limits.playlists_enabled)) },
-        { label: lang === 'fr' ? 'Vidéos/playlist' : 'Videos/playlist', values: plans.map(p => p.limits.playlists_enabled ? fmt(p.limits.max_playlist_videos) : false) },
+        { label: lang === 'fr' ? 'Playlists' : 'Playlists', values: plans.map(p => fmt(L(p, 'playlists_enabled'))) },
+        { label: lang === 'fr' ? 'Vidéos/playlist' : 'Videos/playlist', values: plans.map(p => L(p, 'playlists_enabled') ? fmt(L(p, 'max_playlist_videos')) : false) },
       ],
     },
     {
       name: lang === 'fr' ? '📄 Export' : '📄 Export',
       rows: [
-        { label: 'Markdown', values: plans.map(p => fmt(p.limits.export_markdown)) },
-        { label: 'PDF', values: plans.map(p => fmt(p.limits.export_pdf)) },
+        { label: 'Markdown', values: plans.map(p => fmt(L(p, 'export_markdown'))) },
+        { label: 'PDF', values: plans.map(p => fmt(L(p, 'export_pdf'))) },
       ],
     },
     {
@@ -400,9 +517,10 @@ function buildComparisonData(plans: ApiBillingPlan[], lang: 'fr' | 'en'): Compar
         {
           label: lang === 'fr' ? 'Rétention' : 'Retention',
           values: plans.map(p => {
-            const d = p.limits.history_retention_days;
+            const d = L(p, 'history_retention_days');
             if (d === -1) return '∞';
-            return `${d} ${lang === 'fr' ? 'jours' : 'days'}`;
+            if (typeof d === 'number') return `${d} ${lang === 'fr' ? 'jours' : 'days'}`;
+            return '-';
           }),
         },
       ],
@@ -412,7 +530,7 @@ function buildComparisonData(plans: ApiBillingPlan[], lang: 'fr' | 'en'): Compar
   return categories;
 }
 
-const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading, onSelect }) => {
+const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading, onSelect, billingPeriod }) => {
   const [expanded, setExpanded] = useState<string[]>([]);
   const categories = useMemo(() => buildComparisonData(plans, lang), [plans, lang]);
 
@@ -432,8 +550,6 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
     if (value === '0') return <X className="w-5 h-5 text-gray-500" />;
     return <span className="text-sm text-text-secondary">{value}</span>;
   };
-
-  const colCount = plans.length + 1;
 
   return (
     <motion.div
@@ -463,7 +579,11 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
               </div>
               <div className="font-bold text-text-primary text-xs">{lang === 'fr' ? plan.name : plan.name_en}</div>
               <div className="text-[10px] text-text-tertiary">
-                {plan.price_monthly_cents === 0 ? '0€' : `${formatPriceFr(plan.price_monthly_cents)}€`}
+                {plan.price_monthly_cents === 0
+                  ? '0€'
+                  : billingPeriod === 'annual'
+                    ? `${formatPriceFr(getAnnualMonthlyPrice(plan.price_monthly_cents))}€/${lang === 'fr' ? 'mois' : 'mo'}`
+                    : `${formatPriceFr(plan.price_monthly_cents)}€/${lang === 'fr' ? 'mois' : 'mo'}`}
               </div>
               {plan.is_current && (
                 <div className="text-[10px] text-green-400 mt-1 flex items-center justify-center gap-1">
@@ -665,6 +785,7 @@ export const UpgradePage: React.FC = () => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [downgradeTarget, setDowngradeTarget] = useState<ApiBillingPlan | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [trialEligible, setTrialEligible] = useState(false);
   const [trialLoading, setTrialLoading] = useState(false);
 
@@ -813,7 +934,7 @@ export const UpgradePage: React.FC = () => {
   return (
     <div className="min-h-screen bg-bg-primary relative">
       <SEO
-        title="Tarifs"
+        title="Mon plan"
         description="Découvrez les plans Deep Sight : Gratuit, Starter, Standard, Pro. Analysez vos vidéos YouTube et TikTok avec l'IA."
         path="/upgrade"
       />
@@ -953,6 +1074,9 @@ export const UpgradePage: React.FC = () => {
               </motion.div>
             )}
 
+            {/* Billing Period Toggle */}
+            <BillingToggle period={billingPeriod} onChange={setBillingPeriod} lang={lang} />
+
             {/* View Toggle */}
             <div className="flex justify-center mb-6 sm:mb-8">
               <div className="inline-flex bg-bg-tertiary rounded-xl p-1">
@@ -1014,6 +1138,7 @@ export const UpgradePage: React.FC = () => {
                             trialLoading={trialLoading}
                             onStartTrial={handleStartTrial}
                             allPlans={plans}
+                            billingPeriod={billingPeriod}
                           />
                         </motion.div>
                       ))}
@@ -1034,6 +1159,7 @@ export const UpgradePage: React.FC = () => {
                       lang={lang}
                       loading={loading}
                       onSelect={handleSelectPlan}
+                      billingPeriod={billingPeriod}
                     />
                   )}
                 </motion.div>

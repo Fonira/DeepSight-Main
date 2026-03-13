@@ -8,11 +8,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  Scale, Shield, FileText, Mail, Phone, 
+import {
+  Scale, Shield, FileText, Mail, Phone,
   Building, Server, Lock, Eye, Trash2,
   AlertCircle, CreditCard, RefreshCw, Users, BookOpen
 } from 'lucide-react';
+import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -47,9 +48,9 @@ const LEGAL_INFO = {
       website: "https://vercel.com",
     },
     backend: {
-      name: "Railway Corporation",
-      address: "548 Market St, San Francisco, CA 94104, USA", 
-      website: "https://railway.app",
+      name: "Hetzner Online GmbH",
+      address: "Industriestr. 25, 91710 Gunzenhausen, Allemagne",
+      website: "https://www.hetzner.com",
     },
   },
   dpo: {
@@ -178,10 +179,10 @@ const MentionsLegales: React.FC = () => (
           </a>
         </div>
       </div>
-      <div className="mt-4 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
-        <p className="text-amber-200 text-sm">
-          <AlertCircle className="w-4 h-4 inline mr-2" />
-          Les données sont hébergées aux États-Unis. Des garanties appropriées (clauses contractuelles types) encadrent ces transferts conformément au RGPD.
+      <div className="mt-4 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+        <p className="text-green-200 text-sm">
+          <Shield className="w-4 h-4 inline mr-2" />
+          Le backend et les données utilisateur sont hébergés en Allemagne (UE) chez Hetzner. Le frontend est servi depuis le CDN mondial de Vercel. Vos données restent en Europe conformément au RGPD.
         </p>
       </div>
     </section>
@@ -833,6 +834,8 @@ const CookiesPolicy: React.FC = () => (
 const LegalPage: React.FC = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>('mentions');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Gérer le hash dans l'URL pour naviguer directement à une section
   useEffect(() => {
@@ -858,66 +861,73 @@ const LegalPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative">
+    <div className="min-h-screen bg-bg-primary relative">
       <DoodleBackground variant="academic" />
-      {/* Header */}
-      <header className="border-b border-white/10 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <div className="w-10 h-10 rounded-xl overflow-hidden">
-                <img src="/deepsight-logo-cosmic.png" alt="Deep Sight" className="w-full h-full object-contain" />
+      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
+
+      <main
+        id="main-content"
+        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}
+      >
+        <div className="min-h-screen pt-14 lg:pt-0 p-4 sm:p-6 lg:p-8 pb-8">
+          <div className="max-w-4xl mx-auto">
+
+            {/* Header */}
+            <header className="mb-6">
+              <div className="flex items-center justify-between">
+                <h1 className="text-xl sm:text-2xl font-semibold flex items-center gap-3 text-text-primary">
+                  <div className="w-10 h-10 rounded-xl bg-accent-primary/10 flex items-center justify-center">
+                    <Scale className="w-5 h-5 text-accent-primary" />
+                  </div>
+                  Mentions légales
+                </h1>
+                <Link
+                  to="/dashboard"
+                  className="px-4 py-2 bg-accent-primary hover:bg-accent-primary-hover text-white font-medium rounded-lg transition-colors text-sm"
+                >
+                  Retour au Dashboard
+                </Link>
               </div>
-              <span className="text-xl font-bold text-white">{LEGAL_INFO.website.name}</span>
-            </Link>
-            <Link 
-              to="/dashboard" 
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black font-medium rounded-lg transition-colors"
-            >
-              Retour au Dashboard
-            </Link>
+            </header>
+
+            {/* Navigation tabs */}
+            <nav className="mb-6">
+              <div className="flex gap-1 overflow-x-auto py-2">
+                {TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg whitespace-nowrap transition-all text-sm ${
+                      activeTab === tab.id
+                        ? 'bg-accent-primary/10 text-accent-primary border border-accent-primary/30'
+                        : 'text-text-tertiary hover:text-text-primary hover:bg-bg-secondary'
+                    }`}
+                  >
+                    {tab.icon}
+                    <span className="font-medium">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+            </nav>
+
+            {/* Content */}
+            {renderContent()}
+
+            {/* Footer de la page légale */}
+            <footer className="mt-16 pt-8 border-t border-border-subtle text-center text-text-muted text-sm">
+              <p>
+                Dernière mise à jour : {LEGAL_INFO.lastUpdate}
+              </p>
+              <p className="mt-2">
+                Pour toute question, contactez-nous à{' '}
+                <a href={`mailto:${LEGAL_INFO.contact.email}`} className="text-accent-primary hover:underline">
+                  {LEGAL_INFO.contact.email}
+                </a>
+              </p>
+            </footer>
+
           </div>
         </div>
-      </header>
-
-      {/* Navigation tabs */}
-      <nav className="border-b border-white/10 bg-slate-900/30">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex gap-1 overflow-x-auto py-2">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 rounded-lg whitespace-nowrap transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                {tab.icon}
-                <span className="font-medium">{tab.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </nav>
-
-      {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 py-12">
-        {renderContent()}
-
-        {/* Footer de la page légale */}
-        <footer className="mt-16 pt-8 border-t border-white/10 text-center text-white/40 text-sm">
-          <p>
-            Dernière mise à jour : {LEGAL_INFO.lastUpdate}
-          </p>
-          <p className="mt-2">
-            Pour toute question, contactez-nous à{' '}
-            <a href={`mailto:${LEGAL_INFO.contact.email}`} className="text-amber-400 hover:underline">
-              {LEGAL_INFO.contact.email}
-            </a>
-          </p>
-        </footer>
       </main>
     </div>
   );

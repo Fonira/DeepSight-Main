@@ -297,28 +297,10 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
     }
   }, [value, onChange, autoDetected]);
 
-  // Manual mode selection
+  // Manual mode selection — preserve each tab's input independently
   const selectMode = useCallback((mode: InputMode) => {
     setAutoDetected(false);
-
-    const currentText = getInputValue(value);
-    const newValue: SmartInputValue = {
-      mode,
-      searchLanguages: value.searchLanguages || ['fr', 'en'],
-    };
-
-    switch (mode) {
-      case 'url': newValue.url = currentText; break;
-      case 'text':
-        newValue.rawText = currentText;
-        newValue.textTitle = value.textTitle;
-        newValue.textSource = value.textSource;
-        break;
-      case 'search': newValue.searchQuery = currentText; break;
-      case 'library': newValue.libraryQuery = currentText; break;
-    }
-
-    onChange(newValue);
+    onChange({ ...value, mode });
   }, [value, onChange]);
 
   // Toggle language selection
@@ -490,7 +472,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
                 <span className="hidden sm:inline">
                   {isSearchMode
                     ? (language === 'fr' ? 'Rechercher' : 'Search')
-                    : (language === 'fr' ? 'Analyser' : 'Analyze')
+                    : (language === 'fr' ? `Analyser · ${creditCost} crédit${creditCost > 1 ? 's' : ''}` : `Analyze · ${creditCost} credit${creditCost > 1 ? 's' : ''}`)
                   }
                 </span>
               </>

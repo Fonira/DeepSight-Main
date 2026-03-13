@@ -35,6 +35,7 @@ import { Sidebar } from "../components/layout/Sidebar";
 import { FloatingChatWindow } from "../components/FloatingChatWindow";
 import DoodleBackground from '../components/DoodleBackground';
 import { ErrorBoundary } from '../components/ErrorBoundary';
+import { SEO } from '../components/SEO';
 import SmartInputBar, { SmartInputValue } from "../components/SmartInputBar";
 import { TournesolTrendingSection } from "../components/TournesolTrendingSection";
 // LoadingWordWidget désormais global dans App.tsx
@@ -659,6 +660,7 @@ export const DashboardPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
+      <SEO title="Analyse" path="/dashboard" />
       <ErrorBoundary fallback={null}><DoodleBackground variant="analysis" /></ErrorBoundary>
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
