@@ -1,90 +1,115 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # DeepSight Production Stack — Hetzner VPS
-# Usage: docker compose up -d
+#
+# Usage depuis /opt/deepsight/repo :
+#   docker compose -f deploy/hetzner/docker-compose.yml up -d
+#
+# Rebuild backend après changement de code :
+#   docker compose -f deploy/hetzner/docker-compose.yml up -d --build backend
+#
+# ⚠️ Les noms de containers (container_name) et le réseau correspondent
+#    exactement à la config de production existante pour éviter toute casse.
 # ═══════════════════════════════════════════════════════════════════════════════
 
-services:
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - deepsight
+networks:
+  repo_deepsight:
+    name: repo_deepsight
+    driver: bridge
 
+volumes:
+  postgres_data:
+    name: repo_postgres_data
+  redis_data:
+    name: repo_redis_data
+  caddy_data:
+    name: repo_caddy_data
+  caddy_config:
+    name: repo_caddy_config
+
+services:
+  # ─── PostgreSQL 17 ──────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: repo-postgres-1
+    restart: unless-stopped
+    networks:
+      - repo_deepsight
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../../postgres/backups:/backups
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-deepsight}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-deepsight}
+      PGDATA: /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-deepsight} -d ${POSTGRES_DB:-deepsight}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  # ─── Redis 7 ────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: repo-redis-1
+    restart: unless-stopped
+    networks:
+      - repo_deepsight
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─── FastAPI Backend (4 workers Uvicorn) ────────────────────────────────────
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: ../../backend
+      dockerfile: ../deploy/hetzner/Dockerfile
+    image: deepsight-backend:latest
+    container_name: repo-backend-1
     restart: unless-stopped
-    env_file: .env.production
-    environment:
-      - PORT=8080
-      - ENV=production
-      - DATABASE_URL=postgresql+asyncpg://deepsight:${DB_PASSWORD}@postgres:5432/deepsight
-      - REDIS_URL=redis://redis:6379/0
-      - DB_POOL_SIZE=20
-      - DB_MAX_OVERFLOW=10
+    networks:
+      - repo_deepsight
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    env_file:
+      - ../../.env.production
+    environment:
+      PORT: "8080"
+      ENV: production
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-deepsight}:${POSTGRES_PASSWORD}@repo-postgres-1:5432/${POSTGRES_DB:-deepsight}
+      REDIS_URL: redis://repo-redis-1:6379/0
+      DB_POOL_SIZE: "20"
+      DB_MAX_OVERFLOW: "10"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    networks:
-      - deepsight
 
-  postgres:
-    image: postgres:17-alpine
+  # ─── Caddy — Reverse Proxy + Auto-SSL ──────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: repo-caddy-1
     restart: unless-stopped
-    environment:
-      POSTGRES_DB: deepsight
-      POSTGRES_USER: deepsight
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./postgres/backups:/backups
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U deepsight"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
     networks:
-      - deepsight
-
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru --appendonly yes
+      - repo_deepsight
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      backend:
+        condition: service_healthy
     volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    networks:
-      - deepsight
-
-networks:
-  deepsight:
-    driver: bridge
-
-volumes:
-  postgres_data:
-  redis_data:
-  caddy_data:
-  caddy_config:
+      - ../../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
