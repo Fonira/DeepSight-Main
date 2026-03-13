@@ -587,6 +587,7 @@ async def analyze_video_v2(
                     progress=100,
                     message="✅ Analyse retrouvée en cache (gratuit!)",
                     cost=0,
+                    result={"summary_id": existing.id},
                     video_info={
                         "video_id": existing.video_id,
                         "title": existing.video_title,
@@ -1226,6 +1227,7 @@ async def analyze_video_v2_1(
                     "progress": 100,
                     "message": "✅ Analyse retrouvée en cache (gratuit!)",
                     "cost": 0,
+                    "result": {"summary_id": existing.id},
                     "video_info": {
                         "video_id": existing.video_id,
                         "title": existing.video_title,

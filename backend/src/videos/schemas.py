@@ -123,6 +123,9 @@ class AnalyzeV2Response(BaseModel):
     # Options appliquées
     applied_options: Optional[Dict[str, Any]] = None
 
+    # Résultat (présent si status="completed", contient summary_id)
+    result: Optional[Dict[str, Any]] = None
+
     # Erreur si échec immédiat
     error: Optional[str] = None
 
