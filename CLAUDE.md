@@ -357,12 +357,60 @@ export const GOOGLE_CLIENT_ID = 'your-client-id.apps.googleusercontent.com';
 | VPS Hetzner | clawdbot — 89.167.23.214 (Tailscale: 100.127.186.126) |
 | MSI-PC (local) | Claude Runner — 100.111.253.5:18790 |
 | OpenClaw Gateway | VPS port 18789, token: MarcellinTyronJean22 |
-| Backend deploy | Hetzner VPS Docker — `docker compose up -d` in `/opt/deepsight/repo`, Caddy reverse proxy + auto-SSL |
+| Backend deploy | Hetzner VPS Docker (containers manuels, PAS docker-compose) |
 | Frontend deploy | Vercel — root: `/frontend`, build: `npm run build`, output: `dist/` |
+
+### Docker Stack Hetzner (Production)
+| Container | Image | Rôle |
+|-----------|-------|------|
+| `repo-backend-1` | `deepsight-backend:latest` | FastAPI 4 workers (port 8080) |
+| `repo-caddy-1` | `caddy:2-alpine` | Reverse proxy + auto-SSL (80/443) |
+| `repo-postgres-1` | `postgres:17-alpine` | PostgreSQL 17 |
+| `repo-redis-1` | `redis:7-alpine` | Redis 7 cache |
+
+- **Réseau** : `repo_deepsight`
+- **Env** : `/opt/deepsight/repo/.env.production`
+- **SSH** : `ssh -i ~/.ssh/id_hetzner root@89.167.23.214` (depuis Cowork)
+- ⚠️ Pas de docker-compose.yml fonctionnel — containers via `docker run`
+
+### Logs & Monitoring (équivalent Railway)
+```bash
+# Live tail
+ssh root@89.167.23.214 "docker logs repo-backend-1 -f --tail 50"
+# Erreurs uniquement
+ssh root@89.167.23.214 "docker logs repo-backend-1 2>&1 | grep -i error"
+# Depuis X minutes
+ssh root@89.167.23.214 "docker logs repo-backend-1 --since 30m"
+# Health check
+ssh root@89.167.23.214 "docker exec repo-backend-1 curl -s http://localhost:8080/health"
+# Status containers
+ssh root@89.167.23.214 "docker ps --format '{{.Names}} {{.Status}}'"
+```
+
+### Déploiement Backend
+```bash
+# 1. Push code sur GitHub
+# 2. Sur le VPS :
+cd /opt/deepsight/repo && git pull
+# 3. Rebuild image si code Python changé :
+docker build -t deepsight-backend:latest -f deploy/hetzner/Dockerfile ./backend
+# 4. Recréer container :
+docker stop repo-backend-1 && docker rm repo-backend-1
+docker run -d --name repo-backend-1 --network repo_deepsight \
+  --env-file /opt/deepsight/repo/.env.production \
+  -e PORT=8080 -e ENV=production \
+  -e 'DATABASE_URL=postgresql+asyncpg://deepsight:<DB_PASSWORD>@repo-postgres-1:5432/deepsight' \
+  -e REDIS_URL=redis://repo-redis-1:6379/0 \
+  -e DB_POOL_SIZE=20 -e DB_MAX_OVERFLOW=10 \
+  --restart unless-stopped \
+  --health-cmd 'curl -f http://localhost:8080/health || exit 1' \
+  --health-interval 30s --health-timeout 10s --health-retries 3 --health-start-period 30s \
+  deepsight-backend:latest
+```
 
 **OpenClaw workflow** : Telegram → Bot(VPS) → Notion → Claude Runner(MSI-PC) → Claude Code → GitHub
 
-**OpenClaw skills** : notion-api, github, git, ssh-exec, gmail, railway, vercel, postgres, sysadmin, pr-reviewer, filesystem, telegram, whisper
+**OpenClaw skills** : notion-api, github, git, ssh-exec, gmail, vercel, postgres, sysadmin, pr-reviewer, filesystem, telegram, whisper
 
 **MCP connecteurs (claude.ai)** : Slack, Vercel, Notion
 
@@ -381,15 +429,19 @@ export const GOOGLE_CLIENT_ID = 'your-client-id.apps.googleusercontent.com';
 
 ## Known Issues & TODOs
 
-### 🔴 Critique (Mobile)
-- **Google OAuth** : `/api/auth/google/token` à implémenter côté backend pour échange de token mobile
+### 🔴 Critique
+- **Google OAuth Mobile** : `/api/auth/google/token` à implémenter côté backend pour échange de token mobile
+- **YouTube IP ban Hetzner** : VPS IP bloquée par YouTube. Supadata = méthode principale. Proxy Webshare en cours de config pour fallback yt-dlp/ytapi.
 
 ### 🟡 Backend
+- [ ] Configurer proxy YouTube (Webshare) pour fallback transcript
 - [ ] Redis cache pour transcripts
 - [ ] Rate limiting IP pour requêtes non authentifiées
 - [ ] Optimiser requêtes N+1 dans /history
+- [ ] Recréer un docker-compose.yml fonctionnel (actuellement containers manuels)
 
 ### 🟡 Frontend/Mobile
+- [x] ~~Tendances DeepSight~~ → Remplacé par Tournesol (privacy)
 - [ ] Finaliser UI Playlists
 - [ ] Composant Mind Map
 - [ ] TTS audio player
@@ -397,6 +449,12 @@ export const GOOGLE_CLIENT_ID = 'your-client-id.apps.googleusercontent.com';
 ### 🟢 Extension
 - [ ] Soumettre sur Chrome Web Store
 - [ ] Tester auth sync cross-domaine en production
+
+### ✅ Résolu récemment (Mars 2026)
+- Clé Supadata renouvelée (`sd_084d9af...` dans .env.production)
+- Section Tournesol remplace Tendances DeepSight (privacy)
+- Support proxy YouTube ajouté (YOUTUBE_PROXY env var)
+- Migration Railway → Hetzner VPS complète
 
 ---
 

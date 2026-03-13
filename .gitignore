@@ -59,8 +59,19 @@ coverage/
 *.pem
 credentials.json
 play-store-credentials.json
+.secrets/
 extension/node_modules/  
 extension/node_modules/ 
 
 deepsight-video/
 mobile/nul
+
+# Fichiers temporaires Vite
+frontend/vite.config.ts.timestamp-*.mjs
+
+# Claude Code worktrees
+.claude/worktrees/
+
+# Fichiers poubelle
+**/nul
+**/null.txt
