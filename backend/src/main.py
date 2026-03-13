@@ -465,7 +465,26 @@ async def lifespan(app: FastAPI):
         from apscheduler.triggers.interval import IntervalTrigger as _IT
 
         async def _scheduled_onboarding():
+            """Onboarding emails — Redis lock pour éviter multi-worker execution."""
             try:
+                # Redis distributed lock (SETNX): un seul worker exécute le job
+                lock_acquired = False
+                try:
+                    from core.cache import cache_service
+                    if hasattr(cache_service, 'backend') and hasattr(cache_service.backend, 'redis'):
+                        redis = cache_service.backend.redis
+                        # SET NX EX = set-if-not-exists avec TTL 5min
+                        lock_acquired = await redis.set(
+                            "deepsight:lock:onboarding_emails", "1", nx=True, ex=300
+                        )
+                    else:
+                        lock_acquired = True  # Pas de Redis → fallback (idempotent)
+                except Exception:
+                    lock_acquired = True  # Redis down → on laisse passer (idempotent)
+
+                if not lock_acquired:
+                    return  # Un autre worker a déjà le lock
+
                 from db.database import get_session as _get_sess
                 async for db in _get_sess():
                     from services.onboarding_emails import process_onboarding_emails

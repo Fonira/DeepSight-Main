@@ -15,6 +15,7 @@ Tracking : Table onboarding_email_log (auto-créée si absente).
   Pas besoin de migration Alembic — la table est créée au premier appel.
 """
 
+import asyncio
 from datetime import datetime, timedelta
 from sqlalchemy import (
     Column, Integer, String, DateTime, func, select, and_, text,
@@ -25,6 +26,9 @@ from db.database import Base, User
 from services.email_service import EmailService
 from core.config import APP_NAME, FRONTEND_URL
 from core.logging import logger
+
+# Resend rate limit: 2 req/sec → 0.6s entre chaque envoi pour marge
+RESEND_THROTTLE_SECONDS = 0.6
 
 email_service = EmailService()
 
@@ -230,6 +234,7 @@ async def process_onboarding_emails(db: AsyncSession) -> dict[str, int]:
 
             # J+2 : Feature discovery
             if days_since_signup >= 2 and "j2" not in sent_keys:
+                await asyncio.sleep(RESEND_THROTTLE_SECONDS)
                 success = await _send_j2_feature_discovery(user)
                 if success:
                     await _mark_email_sent(db, user.id, "j2")
@@ -238,6 +243,7 @@ async def process_onboarding_emails(db: AsyncSession) -> dict[str, int]:
 
             # J+7 : Engagement
             if days_since_signup >= 7 and "j7" not in sent_keys:
+                await asyncio.sleep(RESEND_THROTTLE_SECONDS)
                 success = await _send_j7_engagement(user)
                 if success:
                     await _mark_email_sent(db, user.id, "j7")
