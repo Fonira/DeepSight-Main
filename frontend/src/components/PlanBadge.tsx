@@ -1,13 +1,15 @@
 /**
  * PlanBadge — Sidebar plan status with usage mini-bar
  * Fetches GET /api/billing/my-plan and shows plan + analyses progress
+ * Re-fetches on auth changes (user:updated, auth:success, visibility)
  */
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
-import { billingApi, type ApiBillingMyPlan } from '../services/api';
+import { billingApi, getAccessToken, type ApiBillingMyPlan } from '../services/api';
 import { useTranslation } from '../hooks/useTranslation';
+import { useAuth } from '../hooks/useAuth';
 
 interface PlanBadgeProps {
   collapsed?: boolean;
@@ -16,13 +18,42 @@ interface PlanBadgeProps {
 export const PlanBadge: React.FC<PlanBadgeProps> = ({ collapsed }) => {
   const navigate = useNavigate();
   const { language } = useTranslation();
+  const { user } = useAuth();
   const [plan, setPlan] = useState<ApiBillingMyPlan | null>(null);
 
   const tr = (fr: string, en: string) => language === 'fr' ? fr : en;
 
-  useEffect(() => {
+  const fetchPlan = useCallback(() => {
+    if (!getAccessToken()) return;
     billingApi.getMyPlan('web').then(setPlan).catch(() => {});
   }, []);
+
+  // Re-fetch whenever the authenticated user changes (id or plan)
+  useEffect(() => {
+    if (user) {
+      fetchPlan();
+    } else {
+      setPlan(null);
+    }
+  }, [user?.id, user?.plan, fetchPlan]);
+
+  // Listen for auth events and page visibility changes
+  useEffect(() => {
+    const handleUserUpdated = () => fetchPlan();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') fetchPlan();
+    };
+
+    window.addEventListener('user:updated', handleUserUpdated);
+    window.addEventListener('auth:success', handleUserUpdated);
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      window.removeEventListener('user:updated', handleUserUpdated);
+      window.removeEventListener('auth:success', handleUserUpdated);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [fetchPlan]);
 
   if (!plan) return null;
 

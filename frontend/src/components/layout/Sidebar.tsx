@@ -3,7 +3,7 @@
  * Collapsible with tooltip, active indicator, glassmorphism
  */
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -164,9 +164,14 @@ const SectionLabel: React.FC<{ label: string; icon?: React.ElementType; collapse
 
 // === User Card ===
 const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { t, language } = useTranslation();
   const navigate = useNavigate();
+
+  // Force refresh user data on mount to ensure fresh plan/credits
+  useEffect(() => {
+    refreshUser();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!user) return null;
 

@@ -513,11 +513,14 @@ export const History: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [videosPage, playlistsPage, selectedCategory, searchQuery, language]);
+  }, [videosPage, playlistsPage, selectedCategory, searchQuery, language, user?.id]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    // Only load when we have an authenticated user
+    if (user?.id) {
+      loadData();
+    }
+  }, [loadData, user?.id]);
 
   // Charger détails playlist
   const loadPlaylistDetail = async (playlistId: string) => {
