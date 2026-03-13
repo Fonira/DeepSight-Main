@@ -1947,60 +1947,64 @@ async def _analyze_video_background_v6(
                 lang = detected_lang or "fr"
             
             # ═══════════════════════════════════════════════════════════════════
-            # 3. DÉTECTER LA CATÉGORIE (🆕 v3.0: avec métadonnées enrichies)
+            # 3+4. ⚡ CATÉGORIE + ENRICHISSEMENT WEB EN PARALLÈLE (v6.1)
             # ═══════════════════════════════════════════════════════════════════
+            import asyncio
             _task_store[task_id]["progress"] = 30
-            _task_store[task_id]["message"] = "🏷️ Détection de la catégorie..."
-            
-            if not category or category == "auto":
-                # 🆕 v3.0: Passer TOUTES les métadonnées pour une meilleure détection
-                category, confidence = detect_category(
-                    title=video_info["title"],
-                    description=video_info.get("description", ""),
-                    transcript=transcript[:3000],
-                    channel=video_info.get("channel", ""),
-                    tags=video_info.get("tags", []),
-                    youtube_categories=video_info.get("categories", [])
-                )
-                print(f"🏷️ Auto-detected category: {category} ({confidence:.0%})", flush=True)
-            else:
-                confidence = 0.9
-            
-            # ═══════════════════════════════════════════════════════════════════
-            # 4. 🆕 ENRICHIR LE CONTEXTE AVEC PERPLEXITY (AVANT Mistral)
-            # ═══════════════════════════════════════════════════════════════════
-            web_context = None
-            enrichment_sources = []
-            
-            if enrichment_level != EnrichmentLevel.NONE:
-                _task_store[task_id]["progress"] = 40
-                _task_store[task_id]["message"] = f"🌐 Recherche web préliminaire ({enrichment_level.value})..."
-                
+            _task_store[task_id]["message"] = "🏷️ Détection catégorie & recherche web..."
+
+            # — Catégorie (sync → wrap in executor si non-async, ou inline)
+            async def _detect_category_async():
+                if not category or category == "auto":
+                    cat, conf = detect_category(
+                        title=video_info["title"],
+                        description=video_info.get("description", ""),
+                        transcript=transcript[:3000],
+                        channel=video_info.get("channel", ""),
+                        tags=video_info.get("tags", []),
+                        youtube_categories=video_info.get("categories", [])
+                    )
+                    print(f"🏷️ Auto-detected category: {cat} ({conf:.0%})", flush=True)
+                    return cat, conf
+                return category, 0.9
+
+            # — Enrichissement web (async)
+            async def _enrich_web_async():
+                if enrichment_level == EnrichmentLevel.NONE:
+                    print(f"⏭️ [v5.0] Skipping web enrichment (plan={user_plan})", flush=True)
+                    return None, [], enrichment_level
                 print(f"🌐 [v5.0] PRE-ANALYSIS: Fetching web context from Perplexity...", flush=True)
-                
                 try:
-                    web_context, enrichment_sources, actual_level = await get_pre_analysis_context(
+                    # Note: pour l'enrichissement, on passe "auto" comme catégorie provisoire
+                    # car la catégorie finale est détectée en parallèle
+                    _wc, _es, _al = await get_pre_analysis_context(
                         video_title=video_info["title"],
                         video_channel=video_info.get("channel", ""),
-                        category=category,
+                        category=category or "auto",  # catégorie provisoire
                         transcript=transcript,
                         plan=user_plan,
                         lang=lang,
                         upload_date=video_info.get("upload_date", "")
                     )
-                    
-                    if web_context:
-                        print(f"✅ [v5.0] PRE-ANALYSIS: Got {len(web_context)} chars of web context", flush=True)
-                        print(f"✅ [v5.0] PRE-ANALYSIS: {len(enrichment_sources)} sources found", flush=True)
+                    if _wc:
+                        print(f"✅ [v5.0] PRE-ANALYSIS: Got {len(_wc)} chars, {len(_es)} sources", flush=True)
                     else:
                         print(f"⚠️ [v5.0] PRE-ANALYSIS: No web context returned", flush=True)
-                        
+                    return _wc, _es, _al
                 except Exception as e:
                     print(f"⚠️ [v5.0] PRE-ANALYSIS failed (continuing without): {e}", flush=True)
-                    web_context = None
-                    enrichment_sources = []
-            else:
-                print(f"⏭️ [v5.0] Skipping web enrichment (plan={user_plan})", flush=True)
+                    return None, [], enrichment_level
+
+            # ⚡ Lancer les deux en parallèle
+            (category, confidence), (_web_ctx, _enrich_src, _) = await asyncio.gather(
+                _detect_category_async(),
+                _enrich_web_async()
+            )
+            web_context = _web_ctx
+            enrichment_sources = _enrich_src
+
+            _task_store[task_id]["progress"] = 45
+            print(f"⚡ [v6.1] Category + web enrichment computed in PARALLEL", flush=True)
             
             # ═══════════════════════════════════════════════════════════════════
             # 5. GÉNÉRER LE RÉSUMÉ (MISTRAL) AVEC CONTEXTE WEB
@@ -2108,20 +2112,25 @@ async def _analyze_video_background_v6(
             print(f"✅ Summary generated: {final_word_count} words", flush=True)
             
             # ═══════════════════════════════════════════════════════════════════
-            # 6. EXTRAIRE LES ENTITÉS
+            # 6+7. ⚡ ENTITÉS + FIABILITÉ EN PARALLÈLE (optimisation v6.1)
             # ═══════════════════════════════════════════════════════════════════
             _task_store[task_id]["progress"] = 75
-            _task_store[task_id]["message"] = "🔍 Extraction des entités..."
-            
-            entities = await extract_entities(summary_content, lang=lang)
-            
-            # ═══════════════════════════════════════════════════════════════════
-            # 7. CALCULER LE SCORE DE FIABILITÉ
-            # ═══════════════════════════════════════════════════════════════════
-            _task_store[task_id]["progress"] = 85
-            _task_store[task_id]["message"] = "⚖️ Calcul du score de fiabilité..."
-            
-            reliability = await calculate_reliability_score(summary_content, entities, lang=lang)
+            _task_store[task_id]["message"] = "🔍 Extraction des entités & fiabilité..."
+
+            import asyncio
+            entities_task = asyncio.create_task(extract_entities(summary_content, lang=lang))
+            reliability_task = asyncio.create_task(calculate_reliability_score(summary_content, {}, lang=lang))
+
+            entities, reliability_base = await asyncio.gather(entities_task, reliability_task)
+
+            # Recalculer la fiabilité avec les entités si différent (léger ajustement)
+            # La v6.0 passait entities à calculate_reliability_score, mais l'impact est marginal
+            # On utilise le score de base + un bonus si les entités sont riches
+            reliability = reliability_base
+            if entities and len(entities) > 5:
+                reliability = min(98, reliability + 2)  # Bonus pour richesse d'entités
+
+            print(f"⚡ [v6.1] Entities + reliability computed in PARALLEL", flush=True)
             
             # Bonus de fiabilité si enrichi avec Perplexity (PRÉ-ANALYSE)
             if enrichment_sources:

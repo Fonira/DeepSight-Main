@@ -49,6 +49,7 @@ from dataclasses import dataclass
 from enum import Enum
 import asyncio
 import time
+import contextvars
 
 from core.config import (
     get_supadata_key, get_groq_key, get_deepgram_key,
@@ -91,6 +92,38 @@ TIMEOUTS = {
     "deepgram": 300,          # Deepgram Nova-2
     "assemblyai": 300,        # Nouveau - AssemblyAI
 }
+
+# ⚡ v7.1: Timeouts réduits pour vidéos courtes (<5 min) — gain ~50% sur fallback
+TIMEOUTS_SHORT = {
+    "supadata": 20,           # 45 → 20 (petite vidéo = réponse rapide)
+    "ytapi": 15,              # 25 → 15
+    "invidious": 20,          # 35 → 20
+    "piped": 20,              # 35 → 20
+    "ytdlp_subs": 45,         # 90 → 45
+    "ytdlp_auto": 45,         # 90 → 45
+    "whisper_download": 60,   # 240 → 60 (fichier audio petit)
+    "whisper_transcribe": 90, # 360 → 90 (transcription rapide)
+    "openai_whisper": 90,     # 360 → 90
+    "deepgram": 60,           # 300 → 60
+    "assemblyai": 60,         # 300 → 60
+}
+
+
+def get_timeout(method: str, is_short: bool = False) -> int:
+    """Retourne le timeout adapté à la durée de la vidéo."""
+    timeouts = TIMEOUTS_SHORT if is_short else TIMEOUTS
+    return timeouts.get(method, 30)
+
+# ⚡ v7.1: ContextVar async-safe pour timeouts adaptatifs
+# Permet à toutes les sous-fonctions d'utiliser automatiquement les bons timeouts
+# sans modifier leurs signatures. Set une seule fois dans get_transcript_with_timestamps().
+_active_timeouts: contextvars.ContextVar[dict] = contextvars.ContextVar(
+    '_active_timeouts', default=TIMEOUTS
+)
+
+def _t(method: str) -> int:
+    """Raccourci async-safe: retourne le timeout actif pour la méthode donnée."""
+    return _active_timeouts.get().get(method, 30)
 
 # 🛡️ USER-AGENTS ROTATIFS (anti-détection)
 USER_AGENTS = [
@@ -672,7 +705,7 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
                         "https://api.supadata.ai/v1/youtube/transcript",
                         params=params,
                         headers={"x-api-key": api_key},
-                        timeout=TIMEOUTS["supadata"]
+                        timeout=_t("supadata")
                     )
 
                     if response.status_code == 200:
@@ -736,7 +769,16 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
                     data = response.json()
                     content = data.get("content", "")
                     detected_lang = data.get("lang", "fr")
-                    if content and len(content.strip()) >= 20:
+                    # ⚡ v7.1: Supadata peut retourner une liste au lieu d'un string
+                    if isinstance(content, list):
+                        # Liste de segments [{text: "...", start: ...}, ...]
+                        if content and isinstance(content[0], dict):
+                            content = " ".join(seg.get("text", "") for seg in content if seg.get("text"))
+                        elif content and isinstance(content[0], str):
+                            content = " ".join(content)
+                        else:
+                            content = ""
+                    if content and isinstance(content, str) and len(content.strip()) >= 20:
                         print(f"  ✅ [SUPADATA] Unified success: {len(content)} chars", flush=True)
                         return content.strip(), content.strip(), detected_lang
 
@@ -755,7 +797,15 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
                                 pd = poll.json()
                                 content = pd.get("content", "")
                                 detected_lang = pd.get("lang", "fr")
-                                if content and len(content.strip()) >= 20:
+                                # ⚡ v7.1: Même protection list → string
+                                if isinstance(content, list):
+                                    if content and isinstance(content[0], dict):
+                                        content = " ".join(seg.get("text", "") for seg in content if seg.get("text"))
+                                    elif content and isinstance(content[0], str):
+                                        content = " ".join(content)
+                                    else:
+                                        content = ""
+                                if content and isinstance(content, str) and len(content.strip()) >= 20:
                                     print(f"  ✅ [SUPADATA] Async success: {len(content)} chars", flush=True)
                                     return content.strip(), content.strip(), detected_lang
                             elif poll.status_code == 202:
@@ -852,7 +902,7 @@ async def get_transcript_ytapi(video_id: str) -> Tuple[Optional[str], Optional[s
         
         simple, timestamped, lang = await asyncio.wait_for(
             loop.run_in_executor(executor, _fetch),
-            timeout=TIMEOUTS["ytapi"]
+            timeout=_t("ytapi")
         )
         
         if simple:
@@ -886,7 +936,7 @@ async def get_transcript_invidious(video_id: str) -> Tuple[Optional[str], Option
                 # Récupérer la liste des captions
                 response = await client.get(
                     f"{instance}/api/v1/captions/{video_id}",
-                    timeout=TIMEOUTS["invidious"],
+                    timeout=_t("invidious"),
                     headers={"User-Agent": get_random_user_agent()}
                 )
 
@@ -926,7 +976,7 @@ async def get_transcript_invidious(video_id: str) -> Tuple[Optional[str], Option
                 
                 caption_response = await client.get(
                     caption_url,
-                    timeout=TIMEOUTS["invidious"],
+                    timeout=_t("invidious"),
                     headers={"User-Agent": get_random_user_agent()}
                 )
                 
@@ -966,7 +1016,7 @@ async def get_transcript_piped(video_id: str) -> Tuple[Optional[str], Optional[s
                 # API Piped pour les streams (inclut les sous-titres)
                 response = await client.get(
                     f"{instance}/streams/{video_id}",
-                    timeout=TIMEOUTS["piped"],
+                    timeout=_t("piped"),
                     headers={"User-Agent": get_random_user_agent()}
                 )
 
@@ -1005,7 +1055,7 @@ async def get_transcript_piped(video_id: str) -> Tuple[Optional[str], Optional[s
                 # Télécharger les sous-titres
                 caption_response = await client.get(
                     caption_url,
-                    timeout=TIMEOUTS["piped"],
+                    timeout=_t("piped"),
                     headers={"User-Agent": get_random_user_agent()},
                     follow_redirects=True
                 )
@@ -1061,12 +1111,12 @@ async def get_transcript_ytdlp(video_id: str) -> Tuple[Optional[str], Optional[s
                     cmd.insert(1, "--proxy")
                     cmd.insert(2, proxy)
                     print(f"  🔌 [YT-DLP] Using proxy", flush=True)
-                subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUTS["ytdlp_subs"])
+                subprocess.run(cmd, capture_output=True, text=True, timeout=_t("ytdlp_subs"))
                 return _parse_subtitle_files(tmpdir, video_id)
         
         simple, timestamped, lang = await asyncio.wait_for(
             loop.run_in_executor(executor, _fetch),
-            timeout=TIMEOUTS["ytdlp_subs"] + 10
+            timeout=_t("ytdlp_subs") + 10
         )
         
         if simple:
@@ -1115,12 +1165,12 @@ async def get_transcript_ytdlp_auto(video_id: str) -> Tuple[Optional[str], Optio
                 if proxy:
                     cmd.insert(1, "--proxy")
                     cmd.insert(2, proxy)
-                subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUTS["ytdlp_auto"])
+                subprocess.run(cmd, capture_output=True, text=True, timeout=_t("ytdlp_auto"))
                 return _parse_subtitle_files(tmpdir, video_id)
         
         simple, timestamped, lang = await asyncio.wait_for(
             loop.run_in_executor(executor, _fetch),
-            timeout=TIMEOUTS["ytdlp_auto"] + 10
+            timeout=_t("ytdlp_auto") + 10
         )
         
         if simple:
@@ -1221,7 +1271,7 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
                         f"https://youtube.com/watch?v={video_id}"
                     ]
                     
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUTS["whisper_download"])
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=_t("whisper_download"))
                     
                     if result.returncode != 0:
                         print(f"  ⚠️ [WHISPER] yt-dlp failed: {result.stderr[:100]}", flush=True)
@@ -1235,7 +1285,7 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
             
             result = await asyncio.wait_for(
                 loop.run_in_executor(executor, _download_audio),
-                timeout=TIMEOUTS["whisper_download"]
+                timeout=_t("whisper_download")
             )
             
             if result and result[0]:
@@ -1293,7 +1343,7 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
             response = await client.post(
                 "https://api.groq.com/openai/v1/audio/transcriptions",
                 headers={"Authorization": f"Bearer {groq_key}"},
-                files=files, data=data, timeout=TIMEOUTS["whisper_transcribe"]
+                files=files, data=data, timeout=_t("whisper_transcribe")
             )
             elapsed = time.time() - start_time
             print(f"  🎙️ [WHISPER] Groq response in {elapsed:.1f}s: {response.status_code}", flush=True)
@@ -1417,7 +1467,7 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
                         f"https://youtube.com/watch?v={video_id}"
                     ]
 
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUTS["whisper_download"])
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=_t("whisper_download"))
 
                     if result.returncode != 0:
                         return None, None
@@ -1430,7 +1480,7 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
 
             result = await asyncio.wait_for(
                 loop.run_in_executor(executor, _download_audio),
-                timeout=TIMEOUTS["whisper_download"]
+                timeout=_t("whisper_download")
             )
 
             if result and result[0]:
@@ -1467,7 +1517,7 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
                     "Content-Type": mime_type,
                 },
                 content=audio_data,
-                timeout=TIMEOUTS["deepgram"],
+                timeout=_t("deepgram"),
             )
             elapsed = time.time() - start_time
             print(f"  🎙️ [DEEPGRAM] Response in {elapsed:.1f}s: {response.status_code}", flush=True)
@@ -1558,7 +1608,7 @@ async def get_transcript_openai_whisper(video_id: str, audio_data: bytes = None,
             response = await client.post(
                 "https://api.openai.com/v1/audio/transcriptions",
                 headers={"Authorization": f"Bearer {openai_key}"},
-                files=files, data=data, timeout=TIMEOUTS["openai_whisper"]
+                files=files, data=data, timeout=_t("openai_whisper")
             )
             elapsed = time.time() - start_time
             print(f"  🎙️ [OPENAI-WHISPER] Response in {elapsed:.1f}s: {response.status_code}", flush=True)
@@ -1667,7 +1717,7 @@ async def get_transcript_assemblyai(video_id: str, audio_data: bytes = None, aud
             # Étape 3: Polling jusqu'à complétion
             print(f"  🎙️ [ASSEMBLYAI] Waiting for transcription...", flush=True)
             start_time = time.time()
-            while time.time() - start_time < TIMEOUTS["assemblyai"]:
+            while time.time() - start_time < _t("assemblyai"):
                 status_response = await client.get(
                     f"https://api.assemblyai.com/v2/transcript/{transcript_id}",
                     headers={"Authorization": assemblyai_key}
@@ -1800,7 +1850,7 @@ async def _download_audio_for_transcription(video_id: str) -> Tuple[Optional[byt
                 if proxy:
                     cmd.insert(1, "--proxy")
                     cmd.insert(2, proxy)
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=TIMEOUTS["whisper_download"])
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=_t("whisper_download"))
                 if result.returncode != 0:
                     return None, ".mp3"
                 for f in Path(tmpdir).iterdir():
@@ -1810,7 +1860,7 @@ async def _download_audio_for_transcription(video_id: str) -> Tuple[Optional[byt
 
         result = await asyncio.wait_for(
             loop.run_in_executor(executor, _download),
-            timeout=TIMEOUTS["whisper_download"]
+            timeout=_t("whisper_download")
         )
         return result
 
@@ -1880,8 +1930,15 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
     """
     print(f"", flush=True)
     print(f"{'='*70}", flush=True)
-    print(f"🔍 TRANSCRIPT EXTRACTION v7.0 for {video_id} (is_short={is_short})", flush=True)
+    print(f"🔍 TRANSCRIPT EXTRACTION v7.1 for {video_id} (is_short={is_short})", flush=True)
     print(f"{'='*70}", flush=True)
+
+    # ⚡ v7.1: Activer les timeouts adaptatifs pour vidéos courtes
+    if is_short:
+        _active_timeouts.set(TIMEOUTS_SHORT)
+        print(f"⚡ [v7.1] Short video detected → using REDUCED timeouts (50% faster fallback)", flush=True)
+    else:
+        _active_timeouts.set(TIMEOUTS)
 
     # ═══════════════════════════════════════════════════════════════════════════════
     # CACHE CHECK: Vérifie si le transcript est déjà en cache

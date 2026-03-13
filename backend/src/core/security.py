@@ -65,20 +65,27 @@ CREDIT_COSTS = {
 
 # Rate limiting par plan - LIMITES AUGMENTÉES
 RATE_LIMITS = {
-    "free": {"requests_per_minute": 30, "burst": 15},
-    "starter": {"requests_per_minute": 60, "burst": 25},
-    "pro": {"requests_per_minute": 120, "burst": 40},
-    "expert": {"requests_per_minute": 200, "burst": 60},
+    "free": {"requests_per_minute": 60, "burst": 30},
+    "starter": {"requests_per_minute": 90, "burst": 40},
+    "pro": {"requests_per_minute": 150, "burst": 60},
+    "expert": {"requests_per_minute": 200, "burst": 80},
     "unlimited": {"requests_per_minute": 999999, "burst": 999999},
 }
 
 # Endpoints exemptés du rate limiting strict
+# ⚡ v7.1: Ajout status polling + history/keywords (polling léger, ne doit pas bloquer l'UX)
 RATE_LIMIT_EXEMPT_ENDPOINTS = {
     "/api/auth/me",
     "/api/auth/quota",
     "/api/health",
     "/health",
 }
+
+# Endpoints avec préfixe — exemptés si le path commence par un de ces préfixes
+RATE_LIMIT_EXEMPT_PREFIXES = [
+    "/api/videos/status/",      # Polling status analyse (2-3 req/sec pendant analyse)
+    "/api/history/keywords",    # Auto-complete keywords
+]
 
 # Cache pour les appels récents
 _user_request_cache: Dict[int, Dict[str, float]] = {}
@@ -116,7 +123,13 @@ def _hash_token(token: str) -> str:
 
 def is_endpoint_exempt(endpoint: str) -> bool:
     """Vérifie si un endpoint est exempté du rate limiting strict"""
-    return endpoint in RATE_LIMIT_EXEMPT_ENDPOINTS
+    if endpoint in RATE_LIMIT_EXEMPT_ENDPOINTS:
+        return True
+    # Vérifier les préfixes (endpoints dynamiques comme /status/{task_id})
+    for prefix in RATE_LIMIT_EXEMPT_PREFIXES:
+        if endpoint.startswith(prefix):
+            return True
+    return False
 
 
 async def check_rate_limit(
