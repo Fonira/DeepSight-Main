@@ -7,6 +7,7 @@
 import os
 import sys
 import json
+import importlib
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
@@ -19,6 +20,11 @@ os.environ.setdefault("MISTRAL_API_KEY", "test-key")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from httpx import AsyncClient, ASGITransport
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔧 FIX MODULE SHADOWING — import vrai module router
+# ═══════════════════════════════════════════════════════════════════════════════
+_videos_router = importlib.import_module('videos.router')
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -139,13 +145,13 @@ class TestAnalyzeVideo:
     @pytest.mark.asyncio
     async def test_analyze_valid_url(self, auth_client, api_user):
         """POST /analyze avec URL YouTube valide → 200 + task_id."""
-        with patch("videos.router.extract_video_id", return_value="dQw4w9WgXcQ"), \
-             patch("videos.router.detect_platform", return_value="youtube"), \
-             patch("videos.router.SECURITY_AVAILABLE", False), \
-             patch("videos.router.check_can_analyze", new_callable=AsyncMock) as m_check, \
-             patch("videos.router.get_summary_by_video_id", new_callable=AsyncMock, return_value=None), \
-             patch("videos.router.create_task", new_callable=AsyncMock), \
-             patch("videos.router._analyze_video_background_v6", new_callable=AsyncMock):
+        with patch.object(_videos_router, "extract_video_id", return_value="dQw4w9WgXcQ"), \
+             patch.object(_videos_router, "detect_platform", return_value="youtube"), \
+             patch.object(_videos_router, "SECURITY_AVAILABLE", False), \
+             patch.object(_videos_router, "check_can_analyze", new_callable=AsyncMock) as m_check, \
+             patch.object(_videos_router, "get_summary_by_video_id", new_callable=AsyncMock, return_value=None), \
+             patch.object(_videos_router, "create_task", new_callable=AsyncMock), \
+             patch.object(_videos_router, "_analyze_video_background_v6", new_callable=AsyncMock):
             m_check.return_value = (True, None, 100, 1)
 
             resp = await auth_client.post("/api/videos/analyze", json={
@@ -162,9 +168,9 @@ class TestAnalyzeVideo:
     @pytest.mark.asyncio
     async def test_analyze_invalid_url(self, auth_client):
         """POST /analyze avec URL invalide → 400."""
-        with patch("videos.router.detect_platform", return_value="youtube"), \
-             patch("videos.router.extract_video_id", return_value=None), \
-             patch("videos.router.SECURITY_AVAILABLE", False):
+        with patch.object(_videos_router, "detect_platform", return_value="youtube"), \
+             patch.object(_videos_router, "extract_video_id", return_value=None), \
+             patch.object(_videos_router, "SECURITY_AVAILABLE", False):
 
             resp = await auth_client.post("/api/videos/analyze", json={
                 "url": "https://notayoutube.com/invalid",
@@ -186,12 +192,12 @@ class TestAnalyzeVideo:
         app.dependency_overrides[get_verified_user] = override
         app.dependency_overrides[check_daily_limit] = override
 
-        with patch("videos.router.extract_video_id", return_value="abc123"), \
-             patch("videos.router.detect_platform", return_value="youtube"), \
-             patch("videos.router.SECURITY_AVAILABLE", False), \
-             patch("videos.router.check_can_analyze", new_callable=AsyncMock) as m_check, \
-             patch("videos.router.get_summary_by_video_id", new_callable=AsyncMock, return_value=None), \
-             patch("videos.router._analyze_video_background_v6", new_callable=AsyncMock):
+        with patch.object(_videos_router, "extract_video_id", return_value="abc123"), \
+             patch.object(_videos_router, "detect_platform", return_value="youtube"), \
+             patch.object(_videos_router, "SECURITY_AVAILABLE", False), \
+             patch.object(_videos_router, "check_can_analyze", new_callable=AsyncMock) as m_check, \
+             patch.object(_videos_router, "get_summary_by_video_id", new_callable=AsyncMock, return_value=None), \
+             patch.object(_videos_router, "_analyze_video_background_v6", new_callable=AsyncMock):
             m_check.return_value = (False, "insufficient_credits", 0, 1)
 
             async with AsyncClient(
@@ -218,7 +224,7 @@ class TestTaskStatus:
     async def test_status_existing_task(self, auth_client, api_user):
         """GET /status/{task_id} existant → statut correct."""
         task_id = "test-task-123"
-        with patch.dict("videos.router._task_store", {
+        with patch.dict(_videos_router._task_store, {
             task_id: {
                 "status": "completed",
                 "progress": 100,
@@ -237,7 +243,7 @@ class TestTaskStatus:
     @pytest.mark.asyncio
     async def test_status_nonexistent_task(self, auth_client):
         """GET /status/{task_id} inexistant → 404."""
-        with patch("videos.router.get_task", new_callable=AsyncMock, return_value=None):
+        with patch.object(_videos_router, "get_task", new_callable=AsyncMock, return_value=None):
             resp = await auth_client.get("/api/videos/status/nonexistent-task")
 
         assert resp.status_code == 404
@@ -264,7 +270,7 @@ class TestHistory:
             )
             for i in range(3)
         ]
-        with patch("videos.router.get_user_history", new_callable=AsyncMock) as m:
+        with patch.object(_videos_router, "get_user_history", new_callable=AsyncMock) as m:
             m.return_value = (mock_items, 3)
             resp = await auth_client.get("/api/videos/history")
 
@@ -276,7 +282,7 @@ class TestHistory:
     @pytest.mark.asyncio
     async def test_history_pagination(self, auth_client):
         """GET /history avec pagination (page=2, limit=10)."""
-        with patch("videos.router.get_user_history", new_callable=AsyncMock) as m:
+        with patch.object(_videos_router, "get_user_history", new_callable=AsyncMock) as m:
             m.return_value = ([], 25)
             resp = await auth_client.get("/api/videos/history?page=2&per_page=10")
 
@@ -297,7 +303,7 @@ class TestSummaryAccess:
     async def test_summary_own_user(self, auth_client, api_user):
         """GET /summary/{id} appartenant au user → 200."""
         summary = make_mock_summary(user_id=api_user.id)
-        with patch("videos.router.get_summary_by_id", new_callable=AsyncMock, return_value=summary):
+        with patch.object(_videos_router, "get_summary_by_id", new_callable=AsyncMock, return_value=summary):
             resp = await auth_client.get("/api/videos/summary/1")
 
         assert resp.status_code == 200
@@ -307,8 +313,7 @@ class TestSummaryAccess:
     @pytest.mark.asyncio
     async def test_summary_other_user(self, auth_client):
         """GET /summary/{id} d'un autre user → 404 (get_summary_by_id filtre par user_id)."""
-        # get_summary_by_id(session, summary_id, user_id) retourne None si user_id != owner
-        with patch("videos.router.get_summary_by_id", new_callable=AsyncMock, return_value=None):
+        with patch.object(_videos_router, "get_summary_by_id", new_callable=AsyncMock, return_value=None):
             resp = await auth_client.get("/api/videos/summary/999")
 
         assert resp.status_code == 404

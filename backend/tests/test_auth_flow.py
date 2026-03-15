@@ -6,6 +6,7 @@
 
 import os
 import sys
+import importlib
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
@@ -18,6 +19,13 @@ os.environ.setdefault("MISTRAL_API_KEY", "test-key")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from httpx import AsyncClient, ASGITransport
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔧 FIX MODULE SHADOWING
+# auth/__init__.py fait `from .router import router` ce qui écrase l'attribut
+# auth.router (module) par l'objet APIRouter. On importe le vrai module ici.
+# ═══════════════════════════════════════════════════════════════════════════════
+_auth_router = importlib.import_module('auth.router')
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -125,8 +133,8 @@ class TestRegister:
     @pytest.mark.asyncio
     async def test_register_valid_email(self, client, api_user):
         """POST /register avec email valide → 200 + success."""
-        with patch("auth.router.create_user", new_callable=AsyncMock) as m, \
-             patch("auth.router.EMAIL_CONFIG", {"ENABLED": False}):
+        with patch.object(_auth_router, "create_user", new_callable=AsyncMock) as m, \
+             patch.object(_auth_router, "EMAIL_CONFIG", {"ENABLED": False}):
             m.return_value = (True, api_user, "Compte créé")
 
             resp = await client.post("/api/auth/register", json={
@@ -142,7 +150,7 @@ class TestRegister:
     @pytest.mark.asyncio
     async def test_register_duplicate_email(self, client):
         """POST /register avec email déjà pris → 400."""
-        with patch("auth.router.create_user", new_callable=AsyncMock) as m:
+        with patch.object(_auth_router, "create_user", new_callable=AsyncMock) as m:
             m.return_value = (False, None, "Email already exists")
 
             resp = await client.post("/api/auth/register", json={
@@ -164,9 +172,9 @@ class TestLogin:
     @pytest.mark.asyncio
     async def test_login_valid_credentials(self, client, api_user):
         """POST /login credentials valides → token retourné."""
-        with patch("auth.router.authenticate_user", new_callable=AsyncMock) as m_auth, \
-             patch("auth.router.create_access_token", return_value="test_access_token"), \
-             patch("auth.router.create_refresh_token", return_value="test_refresh_token"):
+        with patch.object(_auth_router, "authenticate_user", new_callable=AsyncMock) as m_auth, \
+             patch.object(_auth_router, "create_access_token", return_value="test_access_token"), \
+             patch.object(_auth_router, "create_refresh_token", return_value="test_refresh_token"):
             m_auth.return_value = (True, api_user, "OK", "session_tok")
 
             resp = await client.post("/api/auth/login", json={
@@ -184,7 +192,7 @@ class TestLogin:
     @pytest.mark.asyncio
     async def test_login_wrong_password(self, client):
         """POST /login mauvais password → 401."""
-        with patch("auth.router.authenticate_user", new_callable=AsyncMock) as m_auth:
+        with patch.object(_auth_router, "authenticate_user", new_callable=AsyncMock) as m_auth:
             m_auth.return_value = (False, None, "Invalid credentials", None)
 
             resp = await client.post("/api/auth/login", json={
@@ -216,8 +224,6 @@ class TestGetMe:
     @pytest.mark.asyncio
     async def test_me_no_token(self, client):
         """GET /me sans token → 401."""
-        # Le client fixture override get_session mais PAS get_current_user.
-        # Sans header Authorization, get_current_user lève 401.
         with patch("auth.dependencies.SECURITY_AVAILABLE", False):
             resp = await client.get("/api/auth/me")
 
@@ -246,12 +252,12 @@ class TestRefreshToken:
     @pytest.mark.asyncio
     async def test_refresh_valid(self, client, api_user):
         """POST /refresh avec refresh_token valide → nouveau access_token."""
-        with patch("auth.router.verify_token") as m_verify, \
-             patch("auth.router.get_user_by_id", new_callable=AsyncMock) as m_get_user, \
-             patch("auth.router.validate_session_token", new_callable=AsyncMock) as m_valid, \
-             patch("auth.router.create_user_session", new_callable=AsyncMock) as m_session, \
-             patch("auth.router.create_access_token", return_value="new_access"), \
-             patch("auth.router.create_refresh_token", return_value="new_refresh"):
+        with patch.object(_auth_router, "verify_token") as m_verify, \
+             patch.object(_auth_router, "get_user_by_id", new_callable=AsyncMock) as m_get_user, \
+             patch.object(_auth_router, "validate_session_token", new_callable=AsyncMock) as m_valid, \
+             patch.object(_auth_router, "create_user_session", new_callable=AsyncMock) as m_session, \
+             patch.object(_auth_router, "create_access_token", return_value="new_access"), \
+             patch.object(_auth_router, "create_refresh_token", return_value="new_refresh"):
             m_verify.return_value = {"sub": "1", "session": "old_session"}
             m_get_user.return_value = api_user
             m_valid.return_value = True
@@ -269,7 +275,7 @@ class TestRefreshToken:
     @pytest.mark.asyncio
     async def test_refresh_expired(self, client):
         """POST /refresh avec refresh_token expiré → 401."""
-        with patch("auth.router.verify_token", return_value=None):
+        with patch.object(_auth_router, "verify_token", return_value=None):
             resp = await client.post("/api/auth/refresh", json={
                 "refresh_token": "expired_refresh_token"
             })

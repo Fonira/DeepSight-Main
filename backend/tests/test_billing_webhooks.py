@@ -7,6 +7,7 @@
 import os
 import sys
 import json
+import importlib
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
@@ -18,6 +19,11 @@ os.environ.setdefault("MISTRAL_API_KEY", "test-key")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from httpx import AsyncClient, ASGITransport
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔧 FIX MODULE SHADOWING — import vrai module router
+# ═══════════════════════════════════════════════════════════════════════════════
+_billing_router = importlib.import_module('billing.router')
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -123,7 +129,6 @@ class TestStripeWebhooks:
         """Webhook checkout.session.completed → plan upgradé en DB."""
         user = make_mock_user(plan="free", credits=150)
 
-        # Mock la requête DB pour trouver l'utilisateur
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = user
         mock_session.execute.return_value = mock_result
@@ -136,14 +141,14 @@ class TestStripeWebhooks:
             "id": "cs_test"
         }, event_id="evt_checkout_1")
 
-        with patch("billing.router.init_stripe", return_value=True), \
-             patch("billing.router.STRIPE_CONFIG", {
+        with patch.object(_billing_router, "init_stripe", return_value=True), \
+             patch.object(_billing_router, "STRIPE_CONFIG", {
                  "WEBHOOK_SECRET": "whsec_test",
                  "ENABLED": True,
                  "PRICES": {}
              }), \
-             patch("billing.router.stripe") as mock_stripe, \
-             patch("billing.router.get_limits", return_value={"monthly_credits": 15000}):
+             patch.object(_billing_router, "stripe") as mock_stripe, \
+             patch.object(_billing_router, "get_limits", return_value={"monthly_credits": 15000}):
             mock_stripe.Webhook.construct_event.return_value = event
 
             resp = await client.post(
@@ -174,14 +179,14 @@ class TestStripeWebhooks:
             "status": "canceled"
         }, event_id="evt_deleted_1")
 
-        with patch("billing.router.init_stripe", return_value=True), \
-             patch("billing.router.STRIPE_CONFIG", {
+        with patch.object(_billing_router, "init_stripe", return_value=True), \
+             patch.object(_billing_router, "STRIPE_CONFIG", {
                  "WEBHOOK_SECRET": "whsec_test",
                  "ENABLED": True,
                  "PRICES": {}
              }), \
-             patch("billing.router.stripe") as mock_stripe, \
-             patch("billing.router.get_limits", return_value={"monthly_credits": 150}):
+             patch.object(_billing_router, "stripe") as mock_stripe, \
+             patch.object(_billing_router, "get_limits", return_value={"monthly_credits": 150}):
             mock_stripe.Webhook.construct_event.return_value = event
 
             resp = await client.post(
@@ -211,13 +216,13 @@ class TestStripeWebhooks:
             "attempt_count": 1
         }, event_id="evt_failed_1")
 
-        with patch("billing.router.init_stripe", return_value=True), \
-             patch("billing.router.STRIPE_CONFIG", {
+        with patch.object(_billing_router, "init_stripe", return_value=True), \
+             patch.object(_billing_router, "STRIPE_CONFIG", {
                  "WEBHOOK_SECRET": "whsec_test",
                  "ENABLED": True,
                  "PRICES": {}
              }), \
-             patch("billing.router.stripe") as mock_stripe:
+             patch.object(_billing_router, "stripe") as mock_stripe:
             mock_stripe.Webhook.construct_event.return_value = event
 
             resp = await client.post(
@@ -238,14 +243,17 @@ class TestStripeWebhooks:
         """Webhook avec signature invalide → 401."""
         import stripe as stripe_lib
 
-        with patch("billing.router.init_stripe", return_value=True), \
-             patch("billing.router.STRIPE_CONFIG", {
+        with patch.object(_billing_router, "init_stripe", return_value=True), \
+             patch.object(_billing_router, "STRIPE_CONFIG", {
                  "WEBHOOK_SECRET": "whsec_test",
                  "ENABLED": True
              }), \
-             patch("billing.router.stripe.Webhook.construct_event",
-                   side_effect=stripe_lib.error.SignatureVerificationError(
-                       "Bad sig", "sig_header")):
+             patch.object(_billing_router, "stripe") as mock_stripe:
+            # Garder les vraies classes d'erreur pour que except stripe.error.X fonctionne
+            mock_stripe.error = stripe_lib.error
+            mock_stripe.Webhook.construct_event.side_effect = stripe_lib.error.SignatureVerificationError(
+                "Bad sig", "sig_header"
+            )
 
             resp = await client.post(
                 "/api/billing/webhook",
@@ -272,8 +280,8 @@ class TestBillingPortal:
         mock_portal = MagicMock()
         mock_portal.url = "https://billing.stripe.com/session/test_portal"
 
-        with patch("billing.router.init_stripe", return_value=True), \
-             patch("billing.router.stripe") as mock_stripe:
+        with patch.object(_billing_router, "init_stripe", return_value=True), \
+             patch.object(_billing_router, "stripe") as mock_stripe:
             mock_stripe.billing_portal.Session.create.return_value = mock_portal
 
             resp = await auth_client.get("/api/billing/portal")

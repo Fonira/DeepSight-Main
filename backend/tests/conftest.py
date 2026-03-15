@@ -11,8 +11,33 @@ import asyncio
 from typing import AsyncGenerator, Generator
 from unittest.mock import MagicMock, AsyncMock
 
-# Ajouter le src au path
+# Ajouter le src et tests au path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.insert(0, os.path.dirname(__file__))
+
+# Charger les fixtures avancées de conftest_enhanced.py
+pytest_plugins = ['conftest_enhanced']
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔧 FIX MODULE SHADOWING (via pytest session hook)
+# Les __init__.py exportent `from .router import router` ce qui fait que
+# `auth.router` pointe vers l'objet APIRouter au lieu du module router.py.
+# On force les modules router à être accessibles pour que patch() fonctionne.
+# Ce hook s'exécute APRÈS le chargement de tous les modules.
+# ═══════════════════════════════════════════════════════════════════════════════
+import importlib
+
+def pytest_collection_modifyitems(session, config, items):
+    """Fix module shadowing after all imports are resolved."""
+    for pkg in ('auth', 'videos', 'billing', 'chat', 'playlists', 'tts', 'study'):
+        mod_name = f'{pkg}.router'
+        if mod_name in sys.modules and not isinstance(sys.modules[mod_name], type(sys)):
+            # The module entry is an APIRouter object, not a module
+            try:
+                actual_mod = importlib.import_module(mod_name)
+                sys.modules[mod_name] = actual_mod
+            except ImportError:
+                pass
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 CONFIGURATION ASYNCIO

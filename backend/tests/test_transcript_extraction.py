@@ -437,9 +437,10 @@ This is a test
 # ===================================================================
 
 @pytest.mark.slow
+@pytest.mark.integration
 @pytest.mark.asyncio
 class TestIntegrationExtraction:
-    """Integration tests that require network access"""
+    """Integration tests that require network access — skip with -m 'not integration'"""
 
     async def test_basic_extraction(self):
         """Test basic extraction works"""

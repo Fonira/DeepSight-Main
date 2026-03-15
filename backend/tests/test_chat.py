@@ -6,6 +6,7 @@
 
 import os
 import sys
+import importlib
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime
@@ -17,6 +18,11 @@ os.environ.setdefault("MISTRAL_API_KEY", "test-key")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from httpx import AsyncClient, ASGITransport
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔧 FIX MODULE SHADOWING — import vrai module router
+# ═══════════════════════════════════════════════════════════════════════════════
+_chat_router = importlib.import_module('chat.router')
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -114,8 +120,8 @@ class TestChatAsk:
     @pytest.mark.asyncio
     async def test_ask_valid_message(self, auth_client, api_user):
         """POST /chat/ask avec message valide → réponse."""
-        with patch("chat.router.V4_AVAILABLE", True), \
-             patch("chat.router.process_chat_message_v4", new_callable=AsyncMock) as m_chat:
+        with patch.object(_chat_router, "V4_AVAILABLE", True), \
+             patch.object(_chat_router, "process_chat_message_v4", new_callable=AsyncMock) as m_chat:
             m_chat.return_value = {
                 "response": "Voici la réponse à votre question.",
                 "web_search_used": False,
@@ -150,9 +156,8 @@ class TestChatAsk:
     @pytest.mark.asyncio
     async def test_ask_summary_not_found(self, auth_client):
         """POST /chat/ask avec summary d'un autre user → 404."""
-        with patch("chat.router.V4_AVAILABLE", True), \
-             patch("chat.router.process_chat_message_v4", new_callable=AsyncMock) as m_chat:
-            # process_chat_message_v4 retourne une erreur quand le summary n'existe pas
+        with patch.object(_chat_router, "V4_AVAILABLE", True), \
+             patch.object(_chat_router, "process_chat_message_v4", new_callable=AsyncMock) as m_chat:
             m_chat.return_value = {"error": "Summary not found"}
 
             resp = await auth_client.post("/api/chat/ask", json={
@@ -167,8 +172,8 @@ class TestChatAsk:
     @pytest.mark.asyncio
     async def test_ask_quota_exceeded(self, auth_client):
         """POST /chat/ask avec crédits insuffisants → 429."""
-        with patch("chat.router.V4_AVAILABLE", True), \
-             patch("chat.router.process_chat_message_v4", new_callable=AsyncMock) as m_chat:
+        with patch.object(_chat_router, "V4_AVAILABLE", True), \
+             patch.object(_chat_router, "process_chat_message_v4", new_callable=AsyncMock) as m_chat:
             m_chat.return_value = {"error": "Daily chat limit reached"}
 
             resp = await auth_client.post("/api/chat/ask", json={
