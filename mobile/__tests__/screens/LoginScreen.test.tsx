@@ -45,22 +45,29 @@ jest.mock('../../src/contexts/LanguageContext', () => ({
     language: 'fr',
     t: {
       auth: {
-        login: 'Connexion',
+        welcomeBack: 'Bienvenue',
+        subtitle: 'Accédez à vos analyses',
+        signIn: 'Connexion',
         email: 'Email',
         password: 'Mot de passe',
         forgotPassword: 'Mot de passe oublié ?',
         noAccount: "Pas de compte ?",
+        signUp: 'Créer un compte',
+        loginWithGoogle: 'Continuer avec Google',
+        or: 'ou',
+        login: 'Connexion',
         createAccount: 'Créer un compte',
         continueWithGoogle: 'Continuer avec Google',
-        or: 'ou',
       },
       common: {
         error: 'Erreur',
+        or: 'ou',
       },
       errors: {
         required: 'Ce champ est requis',
         invalidEmail: 'Email invalide',
         passwordTooShort: '8 caractères minimum',
+        passwordMinLength: '8 caractères minimum',
       },
     },
   }),
@@ -243,8 +250,8 @@ describe('LoginScreen', () => {
 
       render(<LoginScreen />);
 
-      // Error display depends on implementation
-      expect(mockClearError).not.toHaveBeenCalled();
+      // clearError is called on mount via useEffect
+      expect(mockClearError).toHaveBeenCalled();
     });
   });
 
