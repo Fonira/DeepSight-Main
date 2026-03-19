@@ -556,7 +556,43 @@ export const videoApi = {
     };
   },
 
-  async getSummary(summaryId: string): Promise<AnalysisSummary> {
+  /**
+   * ? Quick Chat — Prépare une vidéo pour le chat IA sans analyse complète.
+   * Zéro crédit, temps de réponse ~2-5s.
+   */
+  async quickChat(url: string, lang: string = 'fr'): Promise<{
+    summary_id: number;
+    video_id: string;
+    video_title: string;
+    video_channel: string;
+    video_duration: number;
+    thumbnail_url: string;
+    platform: string;
+    transcript_available: boolean;
+    word_count: number;
+    message: string;
+  }> {
+    return request('/api/videos/quick-chat', {
+      method: 'POST',
+      body: { url, lang },
+    });
+  },
+
+  /**
+   * ?? Upgrade Quick Chat ? Analyse complète (conserve l'historique de chat)
+   */
+  async upgradeQuickChat(summaryId: number, mode: string = 'standard'): Promise<{
+    task_id: string;
+    status: string;
+    message: string;
+  }> {
+    return request('/api/videos/quick-chat/upgrade', {
+      method: 'POST',
+      body: { summary_id: summaryId, mode },
+    });
+  },
+
+    async getSummary(summaryId: string): Promise<AnalysisSummary> {
     const response = await request<{
       id: number;
       video_id: string;

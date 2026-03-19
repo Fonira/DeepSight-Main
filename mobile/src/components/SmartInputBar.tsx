@@ -58,7 +58,9 @@ interface SmartInputBarProps {
     deepResearch?: boolean;
     model?: string;
   }) => void;
+  onQuickChat?: (url: string) => void;
   isLoading?: boolean;
+  isQuickChatting?: boolean;
   creditCost?: number;
   creditsRemaining?: number;
   userPlan?: string;
@@ -112,7 +114,9 @@ const SEARCH_LANGUAGES = [
 
 const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
   onSubmit,
+  onQuickChat,
   isLoading = false,
+  isQuickChatting = false,
   creditCost,
   creditsRemaining,
   userPlan = 'free',
@@ -691,6 +695,44 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
             )}
           </Text>
         </View>
+      )}
+
+      {/* ? Quick Chat Button — URL mode only */}
+      {inputMode === 'url' && inputValue.trim().length > 0 && onQuickChat && (
+        <TouchableOpacity
+          onPress={() => onQuickChat(inputValue.trim())}
+          disabled={isLoading || isQuickChatting}
+          activeOpacity={0.8}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingVertical: 10,
+            paddingHorizontal: 16,
+            borderRadius: 12,
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            borderWidth: 1,
+            borderColor: 'rgba(16, 185, 129, 0.25)',
+            marginBottom: 8,
+            opacity: (isLoading || isQuickChatting) ? 0.5 : 1,
+          }}
+        >
+          {isQuickChatting ? (
+            <ActivityIndicator size="small" color="#10B981" style={{ marginRight: 8 }} />
+          ) : (
+            <Text style={{ marginRight: 6, fontSize: 16 }}>?</Text>
+          )}
+          <Text style={{
+            color: '#10B981',
+            fontFamily: Typography.fontFamily.bodySemiBold,
+            fontSize: Typography.fontSize.sm,
+          }}>
+            {isQuickChatting
+              ? (isEn ? 'Preparing chat...' : 'Préparation...')
+              : (isEn ? 'Quick Chat (free)' : 'Chat direct (gratuit)')
+            }
+          </Text>
+        </TouchableOpacity>
       )}
 
       {/* Submit Button */}

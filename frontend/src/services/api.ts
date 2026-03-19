@@ -52,6 +52,25 @@ export interface TokenResponse {
   user?: User;
 }
 
+// ? Quick Chat — Response type
+// ?? Upgrade Quick Chat ? Full Analysis
+export interface UpgradeQuickChatResponse {
+  task_id: string;
+  status: string;
+  message: string;
+}
+export interface QuickChatResponse {
+  summary_id: number;
+  video_id: string;
+  video_title: string;
+  video_channel: string;
+  video_duration: number;
+  thumbnail_url: string;
+  platform: string;
+  transcript_available: boolean;
+  word_count: number;
+  message: string;
+}
 export interface Summary {
   id: number;
   video_id: string;
@@ -864,7 +883,36 @@ export const videoApi = {
     });
   },
 
-  async getTaskStatus(taskId: string): Promise<TaskStatus> {
+  /**
+   * ? Quick Chat — Prépare une vidéo pour le chat IA sans analyse complète.
+   * Extrait uniquement le transcript et crée un Summary léger.
+   * Zéro crédit consommé, temps de réponse ~2-5s.
+   * 
+   * Endpoint: POST /api/videos/quick-chat
+   */
+  async quickChat(url: string, lang: string = 'fr'): Promise<QuickChatResponse> {
+    return request('/api/videos/quick-chat', {
+      method: 'POST',
+      body: { url, lang },
+      timeout: 30000,
+    });
+  },
+
+    /**
+   * ?? Upgrade Quick Chat ? Analyse complète.
+   * Lance une analyse en background, conserve l'historique de chat.
+   * 
+   * Endpoint: POST /api/videos/quick-chat/upgrade
+   */
+  async upgradeQuickChat(summaryId: number, mode: string = 'standard', deepResearch: boolean = false): Promise<UpgradeQuickChatResponse> {
+    return request('/api/videos/quick-chat/upgrade', {
+      method: 'POST',
+      body: { summary_id: summaryId, mode, deep_research: deepResearch },
+      timeout: 30000,
+    });
+  },
+
+    async getTaskStatus(taskId: string): Promise<TaskStatus> {
     return request(`/api/videos/status/${taskId}`);
   },
 

@@ -1,4 +1,4 @@
-"""
+﻿"""
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║  📋 VIDEO SCHEMAS — Modèles Pydantic pour les vidéos                               ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
@@ -141,6 +141,41 @@ class ExportRequest(BaseModel):
     """Requête pour exporter une analyse"""
     format: str = Field(..., description="Format d'export: txt, md, json, docx, pdf")
 
+
+
+class UpgradeQuickChatRequest(BaseModel):
+    """Requete pour upgrader un Quick Chat vers une analyse complete"""
+    summary_id: int = Field(..., description="ID du Summary Quick Chat a upgrader")
+    mode: str = Field(default="standard", description="Mode d'analyse: accessible, standard, expert")
+    category: Optional[str] = Field(default=None, description="Categorie forcee (auto-detection si None)")
+    deep_research: bool = Field(default=False, description="Recherche approfondie")
+
+
+class UpgradeQuickChatResponse(BaseModel):
+    """Reponse de l'upgrade Quick Chat"""
+    task_id: str
+    status: str = "processing"
+    message: str = "Analyse complete lancee - l'historique de chat est conserve"
+
+
+class QuickChatRequest(BaseModel):
+    """Requete pour le mode Quick Chat - transcript-only, sans analyse complete"""
+    url: str = Field(..., description="URL de la video YouTube ou TikTok")
+    lang: str = Field(default="fr", description="Langue preferee pour le chat: fr, en")
+
+
+class QuickChatResponse(BaseModel):
+    """Reponse du Quick Chat - summary leger pret pour le chat"""
+    summary_id: int
+    video_id: str
+    video_title: str
+    video_channel: str = ""
+    video_duration: int = 0
+    thumbnail_url: str = ""
+    platform: str = "youtube"
+    transcript_available: bool = True
+    word_count: int = 0
+    message: str = "Quick Chat pret - vous pouvez chatter avec l'IA sur cette video"
 
 class UpdateSummaryRequest(BaseModel):
     """Requête pour mettre à jour un résumé"""

@@ -1,4 +1,4 @@
-"""
+﻿"""
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║  📹 VIDEO ROUTER v6.0 — SÉCURITÉ RENFORCÉE + ENRICHISSEMENT PERPLEXITY             ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
@@ -19,7 +19,7 @@ from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, UploadFile, File, Form, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.database import get_session, User
+from db.database import get_session, User, Summary
 from auth.dependencies import get_current_user, get_verified_user, require_plan, check_daily_limit, require_feature, get_current_admin
 from core.config import PLAN_LIMITS, CATEGORIES
 
@@ -39,7 +39,9 @@ from .schemas import (
     AnalyzeVideoRequest, AnalyzePlaylistRequest, UpdateSummaryRequest,
     SummaryResponse, SummaryListItem, HistoryResponse, CategoryResponse,
     TaskStatusResponse, VideoInfoResponse, ExtensionSummaryResponse,
-    GuestAnalyzeRequest, GuestAnalyzeResponse
+    GuestAnalyzeRequest, GuestAnalyzeResponse,
+    QuickChatRequest, QuickChatResponse,
+    UpgradeQuickChatRequest, UpgradeQuickChatResponse
 )
 from .summary_extractor import extract_extension_summary
 from .service import (
@@ -156,6 +158,212 @@ async def check_video_cache(video_id: str):
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🆓 GUEST DEMO — Analyse express sans authentification
 # ═══════════════════════════════════════════════════════════════════════════════
+
+
+# =========================================================================
+# QUICK CHAT - Transcript-only, zero credit, acces direct au chat IA
+# =========================================================================
+
+@router.post("/quick-chat", response_model=QuickChatResponse)
+async def quick_chat_prepare(
+    request: QuickChatRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    Mode Quick Chat - Prepare une video pour le chat IA sans analyse complete.
+    Zero credit consomme, temps de reponse ~2-5s.
+    """
+    import time
+    start_time = time.time()
+    url = request.url.strip()
+    platform = detect_platform(url)
+    print(f"[QUICK CHAT] Starting for {platform} URL: {url[:80]}...", flush=True)
+
+    # 1. Detecter plateforme et extraire video_id
+    if platform == "tiktok":
+        tiktok_id = extract_tiktok_video_id(url)
+        if not tiktok_id:
+            raise HTTPException(status_code=400, detail="URL TikTok invalide.")
+        video_id = tiktok_id
+    else:
+        video_id = extract_video_id(url)
+        if not video_id:
+            raise HTTPException(status_code=400, detail="URL YouTube ou TikTok invalide.")
+
+    # 2. Verifier si un Summary existe deja
+    existing = await get_summary_by_video_id(session, current_user.id, video_id)
+    if existing:
+        print(f"[QUICK CHAT] Existing summary found: id={existing.id}", flush=True)
+        return QuickChatResponse(
+            summary_id=existing.id,
+            video_id=video_id,
+            video_title=existing.video_title or "",
+            video_channel=existing.video_channel or "",
+            video_duration=existing.video_duration or 0,
+            thumbnail_url=existing.thumbnail_url or "",
+            platform=existing.platform or platform,
+            transcript_available=bool(existing.transcript_context),
+            word_count=existing.word_count or 0,
+            message="Analyse existante trouvee - chat disponible immediatement"
+        )
+
+    # 3. Recuperer les metadonnees
+    try:
+        if platform == "tiktok":
+            video_info = await get_tiktok_video_info(url)
+            if not video_info:
+                raise ValueError("No info")
+            thumbnail_url = video_info.get("thumbnail", video_info.get("thumbnail_url", ""))
+        else:
+            video_info = await get_video_info(video_id)
+            thumbnail_url = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
+    except Exception as e:
+        print(f"[QUICK CHAT] Failed to get video info: {e}", flush=True)
+        raise HTTPException(status_code=400, detail="Impossible de recuperer les informations de la video.")
+
+    title = video_info.get("title", "Video sans titre")
+    channel = video_info.get("channel", video_info.get("author", ""))
+    duration = video_info.get("duration", 0)
+    upload_date = video_info.get("upload_date", "")
+
+    # 4. Extraire le transcript
+    try:
+        if platform == "tiktok":
+            transcript_text = await get_tiktok_transcript(url)
+        else:
+            is_short = "/shorts/" in url or duration <= 90
+            transcript_result = await get_transcript_with_timestamps(video_id, is_short=is_short)
+            transcript_text = transcript_result[0] if isinstance(transcript_result, tuple) else transcript_result
+    except Exception as e:
+        print(f"[QUICK CHAT] Failed to get transcript: {e}", flush=True)
+        raise HTTPException(status_code=400, detail="Impossible de recuperer la transcription.")
+
+    if not transcript_text or len(transcript_text.strip()) < 50:
+        raise HTTPException(status_code=400, detail="Transcription trop courte ou indisponible.")
+
+    word_count = len(transcript_text.split())
+
+    # 5. Creer un Summary leger (transcript-only)
+    try:
+        summary_id = await save_summary(
+            session=session, user_id=current_user.id,
+            video_id=video_id, video_title=title, video_channel=channel,
+            video_duration=duration, video_url=url, thumbnail_url=thumbnail_url,
+            category="general", category_confidence=0.0,
+            lang=request.lang, mode="quick_chat", model_used="none",
+            summary_content="", transcript_context=transcript_text,
+            video_upload_date=upload_date, platform=platform
+        )
+    except Exception as e:
+        print(f"[QUICK CHAT] Failed to save: {e}", flush=True)
+        raise HTTPException(status_code=500, detail="Erreur lors de la sauvegarde.")
+
+    elapsed = time.time() - start_time
+    print(f"[QUICK CHAT] Done in {elapsed:.1f}s - summary_id={summary_id}, words={word_count}", flush=True)
+
+    return QuickChatResponse(
+        summary_id=summary_id, video_id=video_id, video_title=title,
+        video_channel=channel, video_duration=duration, thumbnail_url=thumbnail_url,
+        platform=platform, transcript_available=True, word_count=word_count,
+        message=f"Quick Chat pret en {elapsed:.1f}s - {word_count} mots disponibles"
+    )
+
+
+# =========================================================================
+# UPGRADE QUICK CHAT -> ANALYSE COMPLETE (conserve historique de chat)
+# =========================================================================
+
+@router.post("/quick-chat/upgrade", response_model=UpgradeQuickChatResponse)
+async def upgrade_quick_chat(
+    request: UpgradeQuickChatRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """Upgrade un Quick Chat vers une analyse complete, conserve l'historique."""
+    from sqlalchemy import select as sa_select, update as sa_update
+
+    # 1. Verifier le summary
+    result = await session.execute(
+        sa_select(Summary).where(Summary.id == request.summary_id, Summary.user_id == current_user.id)
+    )
+    summary = result.scalar_one_or_none()
+    if not summary:
+        raise HTTPException(status_code=404, detail="Analyse non trouvee")
+
+    # 2. Deja analyse?
+    if summary.mode and summary.mode != "quick_chat" and summary.summary_content:
+        return UpgradeQuickChatResponse(task_id="already_done", status="completed", message="Analyse complete deja disponible")
+
+    # 3. Credits
+    can, reason = await check_can_analyze(session, current_user.id)
+    if not can:
+        raise HTTPException(status_code=403, detail=reason)
+    await deduct_credit(session, current_user.id)
+
+    # 4. Background task
+    task_id = str(uuid4())
+    _task_store[task_id] = {"status": "processing", "progress": 10, "message": "Analyse en cours...", "summary_id": request.summary_id}
+
+    async def run_upgrade():
+        from db.database import async_session_maker
+        try:
+            async with async_session_maker() as bg_session:
+                res = await bg_session.execute(sa_select(Summary).where(Summary.id == request.summary_id))
+                s = res.scalar_one_or_none()
+                if not s or not s.transcript_context:
+                    _task_store[task_id].update({"status": "failed", "message": "Transcript introuvable"})
+                    return
+
+                _task_store[task_id].update({"progress": 30, "message": "Generation de l'analyse..."})
+                try:
+                    cat = request.category or await detect_category(s.transcript_context[:2000])
+                except Exception:
+                    cat = "general"
+
+                try:
+                    summary_content = await generate_summary(
+                        title=s.video_title or "", transcript=s.transcript_context,
+                        category=cat, lang=s.lang or "fr", mode=request.mode,
+                        channel=s.video_channel or "", platform=s.platform or "youtube"
+                    )
+                except Exception as e:
+                    _task_store[task_id].update({"status": "failed", "message": f"Erreur: {str(e)[:100]}"})
+                    return
+
+                if not summary_content:
+                    _task_store[task_id].update({"status": "failed", "message": "Resume non genere"})
+                    return
+
+                _task_store[task_id].update({"progress": 70, "message": "Extraction des entites..."})
+                try:
+                    entities = await extract_entities(summary_content)
+                except Exception:
+                    entities = {}
+                try:
+                    reliability = await calculate_reliability_score(summary_content, s.video_title or "", s.video_channel or "")
+                except Exception:
+                    reliability = 50.0
+
+                import json as json_mod
+                await bg_session.execute(
+                    sa_update(Summary).where(Summary.id == request.summary_id).values(
+                        summary_content=summary_content, category=cat, mode=request.mode,
+                        model_used="mistral-small-2603",
+                        entities_extracted=json_mod.dumps(entities) if entities else None,
+                        reliability_score=reliability, word_count=len(s.transcript_context.split())
+                    )
+                )
+                await bg_session.commit()
+                _task_store[task_id].update({"status": "completed", "progress": 100, "message": "Analyse terminee"})
+                print(f"[UPGRADE] Summary {request.summary_id} upgraded OK", flush=True)
+        except Exception as e:
+            print(f"[UPGRADE] Failed: {e}", flush=True)
+            _task_store[task_id].update({"status": "failed", "message": f"Erreur: {str(e)[:100]}"})
+
+    background_tasks.add_task(run_upgrade)
+    return UpgradeQuickChatResponse(task_id=task_id, status="processing", message="Analyse lancee - historique conserve")
 
 @router.post("/analyze/guest", response_model=GuestAnalyzeResponse)
 async def analyze_video_guest(

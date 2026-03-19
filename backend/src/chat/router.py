@@ -1,4 +1,4 @@
-"""
+﻿"""
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║  💬 CHAT ROUTER v4.0 — ENRICHISSEMENT PERPLEXITY PROGRESSIF                        ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
@@ -227,7 +227,7 @@ async def _ask_question_legacy(
         if can_search:
             web_search_result = await search_with_perplexity(
                 request.question,
-                f"{summary.video_title}: {summary.summary_content[:1000]}",
+                f"{summary.video_title}: {(summary.summary_content or "")[:1000]}",
                 summary.lang or "fr"
             )
             if web_search_result:
@@ -248,7 +248,7 @@ async def _ask_question_legacy(
         question=request.question,
         video_title=summary.video_title,
         transcript=transcript,
-        summary=summary.summary_content,
+        summary=summary.summary_content or "",
         chat_history=history,
         mode=request.mode,
         lang=summary.lang or "fr",
@@ -321,7 +321,7 @@ async def ask_question_stream(
             question=request.question,
             video_title=summary.video_title,
             transcript=summary.transcript_context or "",
-            summary=summary.summary_content,
+            summary=summary.summary_content or "",
             chat_history=history,
             mode=request.mode,
             lang=summary.lang or "fr"

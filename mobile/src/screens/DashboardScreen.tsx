@@ -131,7 +131,32 @@ export const DashboardScreen: React.FC = () => {
     }
   }, [user?.analyses_this_month]);
 
-  const handleSmartInputSubmit = async (data: {
+  // ? Quick Chat — Chat direct sans analyse
+  const [isQuickChatting, setIsQuickChatting] = useState(false);
+  
+  const handleQuickChat = async (url: string) => {
+    if (!url?.trim()) return;
+    setIsQuickChatting(true);
+    try {
+      const response = await videoApi.quickChat(url.trim(), language);
+      if (response.summary_id) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        navigation.navigate('Analysis', {
+          summaryId: String(response.summary_id),
+          initialTab: 'chat',
+        });
+      }
+    } catch (error: any) {
+      Alert.alert(
+        t.common.error,
+        error?.message || t.errors.generic
+      );
+    } finally {
+      setIsQuickChatting(false);
+    }
+  };
+
+    const handleSmartInputSubmit = async (data: {
     inputType: 'url' | 'text' | 'search';
     value: string;
     category: string;
@@ -552,7 +577,9 @@ export const DashboardScreen: React.FC = () => {
           <Card variant="elevated" style={styles.smartInputCard}>
             <SmartInputBar
               onSubmit={handleSmartInputSubmit}
+              onQuickChat={handleQuickChat}
               isLoading={isAnalyzing}
+              isQuickChatting={isQuickChatting}
               creditCost={estimatedCredits}
               creditsRemaining={user?.credits}
               userPlan={user?.plan}

@@ -1,4 +1,4 @@
-"""
+﻿"""
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║  💬 CHAT SERVICE v4.0 — ENRICHISSEMENT PERPLEXITY PROGRESSIF                       ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
@@ -1358,7 +1358,7 @@ async def process_chat_message_v4(
         question=question,
         video_title=summary.video_title,
         transcript=summary.transcript_context or "",
-        summary=summary.summary_content,
+        summary=summary.summary_content or "",
         chat_history=chat_history,
         user_plan=user_plan,
         mode=mode,

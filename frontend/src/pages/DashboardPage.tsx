@@ -298,7 +298,32 @@ export const DashboardPage: React.FC = () => {
 
   // === Analyse vidÃ©o ===
 
-  const handleAnalyze = async () => {
+  // ? Quick Chat — Direct chat sans analyse
+  const [quickChatLoading, setQuickChatLoading] = useState(false);
+  
+  const handleQuickChat = async () => {
+    if (smartInput.mode !== 'url' || !smartInput.url?.trim()) return;
+    
+    setQuickChatLoading(true);
+    setError(null);
+    
+    try {
+      const response = await videoApi.quickChat(smartInput.url.trim(), language);
+      
+      if (response.summary_id) {
+        // Naviguer directement vers le chat avec ce summary_id
+        window.location.href = /chat?summary=;
+      }
+    } catch (err: any) {
+      setError(err?.message || (language === 'fr' 
+        ? "Impossible de préparer le chat. Essayez l'analyse complète."
+        : "Unable to prepare chat. Try full analysis."));
+    } finally {
+      setQuickChatLoading(false);
+    }
+  };
+
+    const handleAnalyze = async () => {
     // Validation selon le mode
     if (smartInput.mode === 'url' && !smartInput.url?.trim()) return;
     if (smartInput.mode === 'text' && !smartInput.rawText?.trim()) return;
