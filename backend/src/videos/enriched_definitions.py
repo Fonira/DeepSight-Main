@@ -17,6 +17,7 @@ from datetime import datetime
 import os
 
 from core.config import get_perplexity_key, get_mistral_key
+from core.config import MISTRAL_INTERNAL_MODEL
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -158,7 +159,7 @@ IMPORTANT: JSON uniquement, pas de texte avant/après. Préférer null à l'ince
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "mistral-small-latest",
+                    "model": MISTRAL_INTERNAL_MODEL,
                     "messages": [
                         {"role": "user", "content": prompt}
                     ],

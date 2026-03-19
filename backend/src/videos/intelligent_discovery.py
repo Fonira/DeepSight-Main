@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
-MISTRAL_MODEL = "mistral-small-latest"
+MISTRAL_MODEL = MISTRAL_INTERNAL_MODEL
 
 # Patterns clickbait à pénaliser
 CLICKBAIT_PATTERNS = [
@@ -1664,6 +1664,7 @@ class IntelligentDiscoveryService:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 import hashlib
+from core.config import MISTRAL_INTERNAL_MODEL
 
 def generate_text_video_id(text: str) -> str:
     """Génère un ID unique pour une analyse de texte brut"""

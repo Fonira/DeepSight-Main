@@ -56,7 +56,7 @@ async def compare_videos(
 
 @router.get("/cost")
 async def comparison_cost(
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     user: User = Depends(get_current_user),
 ):
     """Retourne le coût en crédits d'une comparaison."""

@@ -242,7 +242,7 @@ async def _ask_question_legacy(
     
     # Déterminer le modèle selon le plan
     plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
-    model = plan_limits.get("default_model", "mistral-small-latest")
+    model = plan_limits.get("default_model", "mistral-small-2603")
     
     response = await generate_chat_response(
         question=request.question,

@@ -812,7 +812,7 @@ IMPORTANT:
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "mistral-small-latest",
+                    "model": "mistral-small-2603",
                     "messages": [
                         {"role": "user", "content": prompt}
                     ],

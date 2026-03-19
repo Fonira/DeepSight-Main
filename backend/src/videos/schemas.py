@@ -57,7 +57,7 @@ class AnalyzeVideoV2Request(BaseModel):
     lang: str = Field(default="fr", description="Langue: fr, en, es, de, it, pt")
 
     # Modèle IA
-    model: Optional[str] = Field(default=None, description="Modèle: mistral-small-latest, mistral-medium-latest, mistral-large-latest")
+    model: Optional[str] = Field(default=None, description="Modèle: mistral-small-2603, mistral-medium-2508, mistral-large-2512")
 
     # Catégorie
     category: Optional[str] = Field(default=None, description="Catégorie forcée (None = auto-détection)")

@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import get_mistral_key, MISTRAL_MODELS
 from core.logging import logger
+from core.config import MISTRAL_INTERNAL_MODEL
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ⚙️ CONFIGURATION
@@ -53,8 +54,8 @@ CHUNK_CONFIG = {
     },
 }
 
-DIGEST_MODEL = "mistral-small-latest"      # Fast, cheap → chunk summaries
-SYNTHESIS_MODEL = "mistral-large-latest"   # Quality → full digest assembly
+DIGEST_MODEL = MISTRAL_INTERNAL_MODEL      # Fast, cheap → chunk summaries
+SYNTHESIS_MODEL = "mistral-large-2512"   # Quality → full digest assembly
 
 MAX_CHUNK_CHARS = 15000        # Max chars per chunk before truncation
 MIN_CHUNK_CHARS = 500          # Min chars for a chunk to be worth summarizing

@@ -49,9 +49,9 @@ class SecurityError(Exception):
 # Coûts en crédits par opération et par modèle
 CREDIT_COSTS = {
     "video_analysis": {
-        "mistral-small-latest": 1,
-        "mistral-medium-latest": 2,
-        "mistral-large-latest": 3,
+        "mistral-small-2603": 1,
+        "mistral-medium-2508": 2,
+        "mistral-large-2512": 3,
     },
     "playlist_video": 1,
     "chat_message": 0,
@@ -558,7 +558,7 @@ async def release_reservation(user_id: int, operation_id: str):
 async def check_video_analysis_allowed(
     session: AsyncSession,
     user_id: int,
-    model: str = "mistral-small-latest"
+    model: str = "mistral-small-2603"
 ) -> Tuple[bool, str, Dict[str, Any]]:
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
@@ -568,7 +568,7 @@ async def check_video_analysis_allowed(
     
     plan_limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
     
-    allowed_models = plan_limits.get("models", ["mistral-small-latest"])
+    allowed_models = plan_limits.get("models", ["mistral-small-2603"])
     if model not in allowed_models:
         return False, "model_not_allowed", {
             "message": f"Le modèle {model} n'est pas disponible pour votre plan.",
@@ -787,9 +787,9 @@ async def get_user_credits_info(
             "can_use_playlists": plan_limits.get("can_use_playlists", False)
         },
         "costs": {
-            "video_small": get_credit_cost("video_analysis", "mistral-small-latest"),
-            "video_medium": get_credit_cost("video_analysis", "mistral-medium-latest"),
-            "video_large": get_credit_cost("video_analysis", "mistral-large-latest"),
+            "video_small": get_credit_cost("video_analysis", "mistral-small-2603"),
+            "video_medium": get_credit_cost("video_analysis", "mistral-medium-2508"),
+            "video_large": get_credit_cost("video_analysis", "mistral-large-2512"),
             "playlist_video": CREDIT_COSTS["playlist_video"]
         }
     }

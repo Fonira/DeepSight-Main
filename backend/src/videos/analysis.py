@@ -12,6 +12,7 @@ from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime
 
 from core.config import get_mistral_key, get_perplexity_key, MISTRAL_MODELS, VERSION
+from core.config import MISTRAL_INTERNAL_MODEL
 
 try:
     from core.cache import cache_service, make_cache_key
@@ -1269,7 +1270,7 @@ async def generate_summary(
     category: str,
     lang: str,
     mode: str,
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     duration: int = 0,
     channel: str = "",
     description: str = "",
@@ -1477,7 +1478,7 @@ Summary:
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "mistral-small-latest",
+                    "model": MISTRAL_INTERNAL_MODEL,
                     "messages": [{"role": "user", "content": f"{prompt}\n\n{summary[:3000]}"}],
                     "temperature": 0.1,
                     "max_tokens": 500

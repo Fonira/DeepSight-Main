@@ -134,7 +134,7 @@ class User(Base):
     # Préférences
     default_lang = Column(String(5), default="fr")
     default_mode = Column(String(20), default="standard")
-    default_model = Column(String(50), default="mistral-small-latest")
+    default_model = Column(String(50), default="mistral-small-2603")
     avatar_url = Column(Text) 
     
     # Stats

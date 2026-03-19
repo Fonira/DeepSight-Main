@@ -24,7 +24,7 @@ function resetStore() {
     preferences: {
       mode: 'standard',
       lang: 'fr',
-      model: 'mistral-small-latest',
+      model: 'mistral-small-2603',
       category: 'auto',
       webEnrich: false,
     },
@@ -85,7 +85,7 @@ describe('Initial State', () => {
 
     expect(preferences.mode).toBe('standard');
     expect(preferences.lang).toBe('fr');
-    expect(preferences.model).toBe('mistral-small-latest');
+    expect(preferences.model).toBe('mistral-small-2603');
     expect(preferences.category).toBe('auto');
     expect(preferences.webEnrich).toBe(false);
   });
@@ -360,16 +360,16 @@ describe('Preferences Actions', () => {
     const prefs = useAnalysisStore.getState().preferences;
     expect(prefs.lang).toBe('en');
     expect(prefs.mode).toBe('expert');
-    expect(prefs.model).toBe('mistral-small-latest'); // unchanged
+    expect(prefs.model).toBe('mistral-small-2603'); // unchanged
   });
 
   it('resetPreferences restores defaults', () => {
-    useAnalysisStore.getState().setPreferences({ lang: 'en', mode: 'expert', model: 'mistral-large-latest' });
+    useAnalysisStore.getState().setPreferences({ lang: 'en', mode: 'expert', model: 'mistral-large-2512' });
     useAnalysisStore.getState().resetPreferences();
 
     const prefs = useAnalysisStore.getState().preferences;
     expect(prefs.mode).toBe('standard');
     expect(prefs.lang).toBe('fr');
-    expect(prefs.model).toBe('mistral-small-latest');
+    expect(prefs.model).toBe('mistral-small-2603');
   });
 });

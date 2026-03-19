@@ -51,7 +51,7 @@ def analyze_video_task(
     user_id: int,
     mode: str = "standard",
     lang: str = "fr",
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     category: str = "auto",
     web_enrich: bool = False,
 ) -> Dict[str, Any]:
@@ -264,7 +264,7 @@ def analyze_playlist_task(
     video_ids: List[str],
     mode: str = "standard",
     lang: str = "fr",
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
 ) -> Dict[str, Any]:
     """
     Tâche d'analyse batch d'une playlist.
@@ -460,7 +460,7 @@ def create_full_analysis_workflow(
     user_id: int,
     mode: str = "standard",
     lang: str = "fr",
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     generate_tts: bool = False,
     web_enrich: bool = False,
 ) -> chain:

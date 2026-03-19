@@ -53,7 +53,7 @@ const INITIAL_STATE = {
   preferences: {
     mode: 'standard' as const,
     lang: 'fr' as const,
-    model: 'mistral-small-latest',
+    model: 'mistral-small-2603',
     category: 'auto',
     webEnrich: false,
   },
@@ -97,7 +97,7 @@ describe('Analysis Store — Initial State', () => {
     expect(preferences).toEqual({
       mode: 'standard',
       lang: 'fr',
-      model: 'mistral-small-latest',
+      model: 'mistral-small-2603',
       category: 'auto',
       webEnrich: false,
     });
@@ -502,7 +502,7 @@ describe('Analysis Store — Preferences', () => {
     expect(prefs.mode).toBe('expert');
     expect(prefs.lang).toBe('en');
     // Le reste inchangé
-    expect(prefs.model).toBe('mistral-small-latest');
+    expect(prefs.model).toBe('mistral-small-2603');
     expect(prefs.category).toBe('auto');
     expect(prefs.webEnrich).toBe(false);
   });
@@ -529,7 +529,7 @@ describe('Analysis Store — Preferences', () => {
     expect(useAnalysisStore.getState().preferences).toEqual({
       mode: 'standard',
       lang: 'fr',
-      model: 'mistral-small-latest',
+      model: 'mistral-small-2603',
       category: 'auto',
       webEnrich: false,
     });

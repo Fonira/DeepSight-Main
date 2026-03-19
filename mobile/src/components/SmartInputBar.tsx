@@ -131,7 +131,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
   const [deepResearch, setDeepResearch] = useState(false);
   const [urlValidation, setUrlValidation] = useState<URLValidationResult | null>(null);
-  const [selectedModel, setSelectedModel] = useState('mistral-small-latest');
+  const [selectedModel, setSelectedModel] = useState('mistral-small-2603');
   const [showModelSelector, setShowModelSelector] = useState(false);
 
   // Check if user has access to deep research (Pro+ plans)
@@ -141,13 +141,13 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
   // Available AI models based on plan
   const availableModels = useMemo((): AIModel[] => {
     const models: AIModel[] = [
-      { id: 'mistral-small-latest', name: 'Mistral Small', desc: 'Rapide', descEn: 'Fast', icon: '⚡' },
+      { id: 'mistral-small-2603', name: 'Mistral Small 3.1', desc: 'Rapide (128K)', descEn: 'Fast (128K)', icon: '⚡' },
     ];
     if (['student', 'starter', 'pro', 'expert', 'unlimited'].includes(normalizedPlan)) {
-      models.push({ id: 'mistral-medium-latest', name: 'Mistral Medium', desc: 'Équilibré', descEn: 'Balanced', icon: '⚖️' });
+      models.push({ id: 'mistral-medium-2508', name: 'Mistral Medium 3.1', desc: 'Avancé (131K)', descEn: 'Advanced (131K)', icon: '⚖️' });
     }
     if (['pro', 'expert', 'unlimited'].includes(normalizedPlan)) {
-      models.push({ id: 'mistral-large-latest', name: 'Mistral Large', desc: 'Puissant', descEn: 'Powerful', icon: '🚀' });
+      models.push({ id: 'mistral-large-2512', name: 'Mistral Large 3', desc: 'Expert (262K)', descEn: 'Expert (262K)', icon: '🚀' });
     }
     return models;
   }, [normalizedPlan]);

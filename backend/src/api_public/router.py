@@ -21,11 +21,17 @@ from db.database import get_session, User
 
 # Optional imports - these features may not be available in all deployments
 try:
-    from videos.streaming import run_analysis_task
+    from videos.router import (
+        _task_store, _analyze_video_background_v6,
+        get_summary_by_video_id
+    )
+    from transcripts import extract_video_id, get_video_info
+    from transcripts.tiktok import detect_platform, extract_tiktok_video_id
+    from db.database import TaskStatus
     ANALYSIS_AVAILABLE = True
-except ImportError:
+except ImportError as e:
     ANALYSIS_AVAILABLE = False
-    print("⚠️ [API Public] Video analysis not available", flush=True)
+    print(f"⚠️ [API Public] Video analysis not available: {e}", flush=True)
 
 try:
     from chat.service import process_chat_message_v4
@@ -276,14 +282,28 @@ async def get_current_api_user(
     }
 
 
-@router.post("/analyze", response_model=AnalyzeResponse)
+class AnalyzeAsyncResponse(BaseModel):
+    """Réponse d'analyse asynchrone — retourne un task_id à poller"""
+    success: bool
+    task_id: str
+    video_id: str
+    status: str
+    estimated_credits: int
+    poll_url: str
+    message: str
+
+
+@router.post("/analyze")
 async def analyze_video_api(
     req: AnalyzeRequest,
+    request: Request,
     user: User = Depends(get_api_user),
     session: AsyncSession = Depends(get_session)
 ):
     """
-    🎬 Analyser une vidéo YouTube.
+    🎬 Lancer l'analyse d'une vidéo YouTube (asynchrone).
+
+    Retourne un `task_id` à poller via `GET /api/v1/analyze/status/{task_id}`.
 
     **Modes disponibles:**
     - `express`: Synthèse rapide (~30s), 10 crédits
@@ -304,33 +324,183 @@ async def analyze_video_api(
             }
         )
 
+    # Détecter la plateforme et extraire l'ID
+    platform = detect_platform(req.url)
+
+    if platform == "tiktok":
+        video_id = extract_tiktok_video_id(req.url)
+        if not video_id:
+            raise HTTPException(status_code=400, detail={
+                "error": "invalid_url",
+                "message": "Invalid TikTok URL"
+            })
+    else:
+        video_id = extract_video_id(req.url)
+        if not video_id:
+            raise HTTPException(status_code=400, detail={
+                "error": "invalid_url",
+                "message": "Invalid YouTube URL. Expected format: https://youtube.com/watch?v=xxx"
+            })
+
     # Calcul des crédits
     credits_map = {"express": 10, "standard": 20, "detailed": 50}
     credits_cost = credits_map[req.mode]
 
-    try:
-        # Pour l'instant, l'API publique retourne une erreur car l'analyse sync n'est pas supportée
-        # L'analyse est asynchrone via le système de tâches
-        raise HTTPException(
-            status_code=501,
-            detail={
-                "error": "not_implemented",
-                "message": "Synchronous analysis via API is not yet implemented. Use the web interface or POST /api/videos/analyze endpoint with authentication.",
-                "video_url": req.url
-            }
-        )
+    # Vérifier les crédits de l'utilisateur
+    if hasattr(user, 'credits') and user.credits is not None:
+        if user.credits < credits_cost:
+            raise HTTPException(status_code=403, detail={
+                "error": "insufficient_credits",
+                "message": f"Not enough credits. Required: {credits_cost}, available: {user.credits}",
+                "credits_available": user.credits,
+                "credits_required": credits_cost
+            })
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "error": "analysis_failed",
-                "message": str(e),
-                "video_url": req.url
-            }
+    # Vérifier le cache (même vidéo déjà analysée)
+    existing = await get_summary_by_video_id(session, video_id, user.id)
+    if existing:
+        return {
+            "success": True,
+            "task_id": f"cached_{existing.id}",
+            "video_id": video_id,
+            "status": "completed",
+            "estimated_credits": 0,
+            "poll_url": f"/api/v1/analyze/status/cached_{existing.id}",
+            "message": "Analysis found in cache (free). Use the poll URL to get results.",
+            "cached": True,
+            "analysis_id": str(existing.id)
+        }
+
+    # Mapper mode API → mode interne
+    mode_map = {"express": "accessible", "standard": "standard", "detailed": "expert"}
+    internal_mode = mode_map.get(req.mode, "standard")
+
+    # Mapper langue
+    lang = req.language if req.language != "auto" else "fr"
+
+    # Générer task_id
+    import uuid
+    task_id = f"api_{uuid.uuid4().hex[:16]}"
+
+    # Stocker la tâche
+    _task_store[task_id] = {
+        "status": "pending",
+        "progress": 0,
+        "message": "Queued via API v1",
+        "user_id": user.id,
+        "video_id": video_id,
+        "credit_cost": credits_cost,
+        "deep_research": False,
+    }
+
+    # Lancer l'analyse en background
+    asyncio.ensure_future(
+        _analyze_video_background_v6(
+            task_id=task_id,
+            video_id=video_id,
+            url=req.url,
+            mode=internal_mode,
+            category="auto",
+            lang=lang,
+            model="mistral-small-2603",
+            user_id=user.id,
+            user_plan=user.plan,
+            credit_cost=credits_cost,
+            deep_research=False,
+            platform=platform,
         )
+    )
+
+    return {
+        "success": True,
+        "task_id": task_id,
+        "video_id": video_id,
+        "status": "pending",
+        "estimated_credits": credits_cost,
+        "poll_url": f"/api/v1/analyze/status/{task_id}",
+        "message": "Analysis started. Poll the status URL to track progress."
+    }
+
+
+@router.get("/analyze/status/{task_id}")
+async def get_api_analysis_status(
+    task_id: str,
+    user: User = Depends(get_api_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    📊 Vérifier l'état d'une analyse lancée via l'API.
+
+    **États possibles:**
+    - `pending`: En attente de traitement
+    - `processing`: Analyse en cours
+    - `completed`: Terminée — le champ `result` contient l'analyse
+    - `failed`: Échec — le champ `error` contient le détail
+    """
+    # Gérer les task_id de cache
+    if task_id.startswith("cached_"):
+        try:
+            from db.database import Summary
+            summary_id = int(task_id.replace("cached_", ""))
+            result = await session.execute(
+                select(Summary).where(
+                    Summary.id == summary_id,
+                    Summary.user_id == user.id
+                )
+            )
+            summary = result.scalar_one_or_none()
+            if summary:
+                return {
+                    "task_id": task_id,
+                    "status": "completed",
+                    "progress": 100,
+                    "result": {
+                        "analysis_id": str(summary.id),
+                        "video_id": summary.video_id,
+                        "title": summary.video_title or summary.title,
+                        "summary": summary.summary,
+                        "cached": True,
+                    }
+                }
+        except Exception:
+            pass
+
+        raise HTTPException(status_code=404, detail={
+            "error": "not_found",
+            "message": f"Task {task_id} not found"
+        })
+
+    # Chercher dans le task store
+    task = _task_store.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail={
+            "error": "not_found",
+            "message": f"Task {task_id} not found or expired"
+        })
+
+    # Vérifier que la tâche appartient à l'utilisateur
+    if task.get("user_id") != user.id:
+        raise HTTPException(status_code=403, detail={
+            "error": "access_denied",
+            "message": "This task belongs to another user"
+        })
+
+    response = {
+        "task_id": task_id,
+        "status": task.get("status", "unknown"),
+        "progress": task.get("progress", 0),
+        "message": task.get("message", ""),
+    }
+
+    # Si terminé, inclure le résultat
+    if task.get("status") == "completed" and task.get("result"):
+        response["result"] = task["result"]
+
+    # Si échoué, inclure l'erreur
+    if task.get("status") == "failed":
+        response["error"] = task.get("error", "Unknown error")
+
+    return response
 
 
 @router.get("/analysis/{analysis_id}")

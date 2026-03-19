@@ -73,9 +73,9 @@ export const ANALYSIS_CATEGORIES = [
 
 // AI Models - Only Mistral models
 export const AI_MODELS = [
-  { id: 'mistral-small', label: 'Mistral Small', provider: 'Mistral' },
-  { id: 'mistral-medium', label: 'Mistral Medium', provider: 'Mistral' },
-  { id: 'mistral-large', label: 'Mistral Large', provider: 'Mistral' },
+  { id: 'mistral-small', label: 'Mistral Small 3.1', provider: 'Mistral' },
+  { id: 'mistral-medium', label: 'Mistral Medium 3.1', provider: 'Mistral' },
+  { id: 'mistral-large', label: 'Mistral Large 3', provider: 'Mistral' },
 ] as const;
 
 // Supported Languages

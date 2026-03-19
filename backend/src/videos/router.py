@@ -346,10 +346,10 @@ async def analyze_video(
     
     # Déterminer le modèle à utiliser
     plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
-    model = request.model or plan_limits.get("default_model", "mistral-small-latest")
+    model = request.model or plan_limits.get("default_model", "mistral-small-2603")
     
     # Vérifier que le modèle est autorisé
-    allowed_models = plan_limits.get("models", ["mistral-small-latest"])
+    allowed_models = plan_limits.get("models", ["mistral-small-2603"])
     if model not in allowed_models:
         model = allowed_models[0]  # Fallback au modèle par défaut
     
@@ -531,10 +531,10 @@ async def analyze_video_v2(
 
     # Déterminer le modèle
     plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
-    model = request.model or plan_limits.get("default_model", "mistral-small-latest")
+    model = request.model or plan_limits.get("default_model", "mistral-small-2603")
 
     # Vérifier que le modèle est autorisé
-    allowed_models = plan_limits.get("models", ["mistral-small-latest"])
+    allowed_models = plan_limits.get("models", ["mistral-small-2603"])
     if model not in allowed_models:
         model = allowed_models[0]
 
@@ -1114,10 +1114,10 @@ async def analyze_video_v2_1(
 
     # Déterminer le modèle
     plan_limits = PLAN_LIMITS.get(current_user.plan, PLAN_LIMITS["free"])
-    model = request.model or plan_limits.get("default_model", "mistral-small-latest")
+    model = request.model or plan_limits.get("default_model", "mistral-small-2603")
 
     # Vérifier que le modèle est autorisé
-    allowed_models = plan_limits.get("models", ["mistral-small-latest"])
+    allowed_models = plan_limits.get("models", ["mistral-small-2603"])
     if model not in allowed_models:
         model = allowed_models[0]
 
@@ -2014,10 +2014,10 @@ async def _analyze_video_background_v6(
             # Déterminer le modèle selon le plan
             plan_limits = PLAN_LIMITS.get(user_plan, PLAN_LIMITS["free"])
             if not model:
-                model = plan_limits.get("default_model", "mistral-small-latest")
+                model = plan_limits.get("default_model", "mistral-small-2603")
             
             # Vérifier que le modèle est autorisé
-            allowed_models = plan_limits.get("models", ["mistral-small-latest"])
+            allowed_models = plan_limits.get("models", ["mistral-small-2603"])
             if model not in allowed_models:
                 model = allowed_models[0]
             
@@ -2831,7 +2831,7 @@ async def create_study_card(
             summary=summary.summary_content or "",
             transcript=summary.transcript_context or "",
             lang=summary.lang or "fr",
-            model="mistral-small-latest"
+            model="mistral-small-2603"
         )
         
         return {
@@ -2879,7 +2879,7 @@ async def create_concept_map(
             channel=summary.video_channel or "Chaîne inconnue",
             summary=summary.summary_content or "",
             lang=summary.lang or "fr",
-            model="mistral-small-latest"
+            model="mistral-small-2603"
         )
         
         return {
@@ -2929,7 +2929,7 @@ async def create_all_study_materials(
             summary=summary.summary_content or "",
             transcript=summary.transcript_context or "",
             lang=summary.lang or "fr",
-            model="mistral-small-latest",
+            model="mistral-small-2603",
             include_card=True,
             include_map=True
         )
@@ -3191,7 +3191,7 @@ async def analyze_hybrid(
             raise HTTPException(status_code=400, detail=error)
         
         # Vérifier les crédits
-        model = request.model or "mistral-small-latest"
+        model = request.model or "mistral-small-2603"
         credit_cost = get_credit_cost(model) if SECURITY_AVAILABLE else 1
         
         if current_user.credits < credit_cost:
@@ -3311,7 +3311,7 @@ async def analyze_hybrid(
 @router.post("/estimate-credits", response_model=CreditEstimation)
 async def estimate_credits(
     num_videos: int = Query(1, ge=1, le=50),
-    model: str = Query("mistral-small-latest"),
+    model: str = Query("mistral-small-2603"),
     current_user: User = Depends(get_current_user),
 ):
     """
@@ -3321,9 +3321,9 @@ async def estimate_credits(
     """
     # Multiplicateur selon le modèle
     multipliers = {
-        "mistral-small-latest": 1.0,
-        "mistral-medium-latest": 2.0,
-        "mistral-large-latest": 3.0,
+        "mistral-small-2603": 1.0,
+        "mistral-medium-2508": 2.0,
+        "mistral-large-2512": 3.0,
     }
     
     multiplier = multipliers.get(model, 1.0)

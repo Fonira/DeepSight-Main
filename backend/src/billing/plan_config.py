@@ -92,8 +92,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "export_markdown": False,
             "export_pdf": False,
             "history_retention_days": 60,
-            "allowed_models": ["mistral-small-latest"],
-            "default_model": "mistral-small-latest",
+            "allowed_models": ["mistral-small-2603"],
+            "default_model": "mistral-small-2603",
         },
         "features_display": [
             {"text": "5 analyses / mois", "icon": "📊"},
@@ -159,8 +159,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "export_markdown": True,
             "export_pdf": False,
             "history_retention_days": -1,
-            "allowed_models": ["mistral-small-latest"],
-            "default_model": "mistral-small-latest",
+            "allowed_models": ["mistral-small-2603"],
+            "default_model": "mistral-small-2603",
         },
         "features_display": [
             {"text": "20 analyses / mois", "icon": "📊"},
@@ -227,8 +227,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "export_markdown": True,
             "export_pdf": False,
             "history_retention_days": -1,
-            "allowed_models": ["mistral-small-latest", "mistral-medium-latest"],
-            "default_model": "mistral-medium-latest",
+            "allowed_models": ["mistral-small-2603", "mistral-medium-2508"],
+            "default_model": "mistral-medium-2508",
         },
         "features_display": [
             {"text": "50 analyses / mois", "icon": "📊"},
@@ -296,8 +296,8 @@ PLANS: dict[str, dict[str, Any]] = {
             "export_markdown": True,
             "export_pdf": True,
             "history_retention_days": -1,
-            "allowed_models": ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"],
-            "default_model": "mistral-large-latest",
+            "allowed_models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
+            "default_model": "mistral-large-2512",
         },
         "features_display": [
             {"text": "200 analyses / mois", "icon": "📊"},

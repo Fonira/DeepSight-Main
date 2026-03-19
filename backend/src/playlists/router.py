@@ -104,44 +104,44 @@ PLAN_VIDEO_LIMITS = {
 }
 
 PLAN_MODELS = {
-    "free": "mistral-small-latest",
-    "starter": "mistral-small-latest",
-    "pro": "mistral-medium-latest",
-    "expert": "mistral-large-latest",
-    "unlimited": "mistral-large-latest"
+    "free": "mistral-small-2603",
+    "starter": "mistral-small-2603",
+    "pro": "mistral-medium-2508",
+    "expert": "mistral-large-2512",
+    "unlimited": "mistral-large-2512"
 }
 
 CHAT_CONFIG = {
     "free": {
-        "model": "mistral-small-latest",
+        "model": "mistral-small-2603",
         "max_corpus": 40000,
         "max_videos": 10,
         "daily_limit": 10,
         "web_search": False
     },
     "starter": {
-        "model": "mistral-small-latest",
+        "model": "mistral-small-2603",
         "max_corpus": 60000,
         "max_videos": 15,
         "daily_limit": 40,
         "web_search": False
     },
     "pro": {
-        "model": "mistral-large-latest",
+        "model": "mistral-large-2512",
         "max_corpus": 450000,   # ~150K tokens Mistral
         "max_videos": 50,
         "daily_limit": 100,
         "web_search": True
     },
     "expert": {
-        "model": "mistral-large-latest",
+        "model": "mistral-large-2512",
         "max_corpus": 450000,   # ~150K tokens Mistral
         "max_videos": 50,
         "daily_limit": -1,
         "web_search": True
     },
     "unlimited": {
-        "model": "mistral-large-latest",
+        "model": "mistral-large-2512",
         "max_corpus": 450000,   # ~150K tokens Mistral
         "max_videos": 50,
         "daily_limit": -1,
@@ -492,7 +492,7 @@ async def analyze_playlist(
         )
     
     task_id = str(uuid4())
-    model = request.model or PLAN_MODELS.get(plan, "mistral-small-latest")
+    model = request.model or PLAN_MODELS.get(plan, "mistral-small-2603")
     
     _playlist_task_store[task_id] = {
         "status": "pending",
@@ -576,7 +576,7 @@ async def analyze_corpus(
         )
     
     task_id = str(uuid4())
-    model = request.model or PLAN_MODELS.get(plan, "mistral-small-latest")
+    model = request.model or PLAN_MODELS.get(plan, "mistral-small-2603")
     
     _playlist_task_store[task_id] = {
         "status": "pending",
@@ -1059,7 +1059,7 @@ async def generate_corpus_summary(
 
     # Générer la méta-analyse
     plan = current_user.plan or "free"
-    model = PLAN_MODELS.get(plan, "mistral-small-latest")
+    model = PLAN_MODELS.get(plan, "mistral-small-2603")
     lang = videos[0].lang if videos else "fr"
 
     meta_analysis = await _generate_meta_analysis_v4(

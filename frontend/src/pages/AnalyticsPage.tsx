@@ -375,9 +375,9 @@ export const AnalyticsPage: React.FC = () => {
                     
                     // Model display names
                     const modelNames: Record<string, { name: string; emoji: string }> = {
-                      'mistral-small-latest': { name: 'Mistral Small', emoji: '⚡' },
-                      'mistral-medium-latest': { name: 'Mistral Medium', emoji: '⚖️' },
-                      'mistral-large-latest': { name: 'Mistral Large', emoji: '🚀' },
+                      'mistral-small-2603': { name: 'Mistral Small 3.1', emoji: '⚡' },
+                      'mistral-medium-2508': { name: 'Mistral Medium 3.1', emoji: '⚖️' },
+                      'mistral-large-2512': { name: 'Mistral Large 3', emoji: '🚀' },
                     };
                     
                     const modelInfo = modelNames[model] || { name: model, emoji: '🤖' };

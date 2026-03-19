@@ -144,7 +144,7 @@ export function useAnalysisStream(
   const {
     mode = 'standard',
     lang = 'fr',
-    model = 'mistral-small-latest',
+    model = 'mistral-small-2603',
     webEnrich = false,
     onToken,
     onStatusChange,

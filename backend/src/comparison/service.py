@@ -126,9 +126,9 @@ Return EXACTLY this JSON format:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 COMPARISON_CREDIT_COST = {
-    "mistral-small-latest": 75,
-    "mistral-medium-latest": 150,
-    "mistral-large-latest": 375,
+    "mistral-small-2603": 75,
+    "mistral-medium-2508": 150,
+    "mistral-large-2512": 375,
 }
 
 
@@ -147,7 +147,7 @@ async def generate_comparison(
     summary_a_id: int,
     summary_b_id: int,
     lang: str = "fr",
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
 ) -> dict:
     """
     Compare deux vidéos analysées via Mistral JSON mode.

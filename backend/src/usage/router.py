@@ -238,8 +238,8 @@ async def get_usage_stats(
         max_playlist_videos=plan_limits.get("max_playlist_videos", 0),
         
         # Modèles
-        available_models=plan_limits.get("models", ["mistral-small-latest"]),
-        default_model=plan_limits.get("default_model", "mistral-small-latest"),
+        available_models=plan_limits.get("models", ["mistral-small-2603"]),
+        default_model=plan_limits.get("default_model", "mistral-small-2603"),
         
         # Dates
         member_since=current_user.created_at,
@@ -256,7 +256,7 @@ async def get_available_models(
     """
     plan = current_user.plan or "free"
     plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
-    user_models = plan_limits.get("models", ["mistral-small-latest"])
+    user_models = plan_limits.get("models", ["mistral-small-2603"])
     
     models = []
     for model_id, model_info in MISTRAL_MODELS.items():
@@ -285,7 +285,7 @@ async def get_available_models(
     return {
         "models": models,
         "current_plan": plan,
-        "default_model": plan_limits.get("default_model", "mistral-small-latest")
+        "default_model": plan_limits.get("default_model", "mistral-small-2603")
     }
 
 
@@ -500,7 +500,7 @@ async def get_costs_info():
 @router.post("/estimate")
 async def estimate_cost(
     action: str,  # "analysis", "chat", "playlist"
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     duration_minutes: int = 15,
     with_web_search: bool = False,
     with_fact_check: bool = False,
@@ -515,7 +515,7 @@ async def estimate_cost(
     """
     plan = current_user.plan or "free"
     plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
-    available_models = plan_limits.get("models", ["mistral-small-latest"])
+    available_models = plan_limits.get("models", ["mistral-small-2603"])
     
     # Vérifier que le modèle est disponible pour le plan
     if model not in available_models:
@@ -572,7 +572,7 @@ async def get_model_costs(current_user: User = Depends(get_current_user)):
     """
     plan = current_user.plan or "free"
     plan_limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
-    available_models = plan_limits.get("models", ["mistral-small-latest"])
+    available_models = plan_limits.get("models", ["mistral-small-2603"])
     
     models_with_costs = []
     for model_id, cost_info in MODEL_COSTS.items():

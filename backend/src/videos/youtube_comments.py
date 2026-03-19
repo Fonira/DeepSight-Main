@@ -371,7 +371,7 @@ async def analyze_comments_with_ai(
     comments: List[Dict[str, Any]],
     video_title: str,
     lang: str = "fr",
-    model: str = "mistral-small-latest"
+    model: str = "mistral-small-2603"
 ) -> Dict[str, Any]:
     """
     Utilise Mistral pour une analyse approfondie des commentaires.
@@ -452,7 +452,7 @@ async def analyze_comments(
     use_ai: bool = True,
     video_title: str = "",
     lang: str = "fr",
-    model: str = "mistral-small-latest"
+    model: str = "mistral-small-2603"
 ) -> CommentsAnalysis:
     """
     Analyse complète des commentaires d'une vidéo YouTube.

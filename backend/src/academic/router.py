@@ -489,7 +489,7 @@ JSON array:"""
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "mistral-small-latest",
+                    "model": "mistral-small-2603",
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 500,
                     "temperature": 0.1
@@ -738,7 +738,7 @@ JSON array:"""
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "mistral-small-latest",
+                    "model": "mistral-small-2603",
                     "messages": [{"role": "user", "content": prompt}],
                     "max_tokens": 600,
                     "temperature": 0.2

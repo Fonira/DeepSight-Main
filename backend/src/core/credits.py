@@ -30,26 +30,54 @@ PLAN_CREDITS = {
     "unlimited": 999_999   # Admin
 }
 
-# Coût de base par modèle (pour une analyse standard)
+# Coût de base par modèle — Gamme Mistral 2026
+# Les crédits reflètent le pricing réel : Large 3 = 75% moins cher qu'avant
 MODEL_COSTS = {
-    "mistral-small-latest": {
-        "analysis": 50,      # Analyse vidéo
-        "chat": 5,           # Message chat
-        "name": "Mistral Small",
+    # ── Tier 0 : Micro-tâches internes ──
+    "ministral-8b-2512": {
+        "analysis": 20,      # Micro-tâches uniquement (entités, flashcards)
+        "chat": 2,           # Chat simple
+        "name": "Ministral 8B",
+        "multiplier": 0.4    # 60% moins cher que Small
+    },
+
+    # ── Tier 1 : Standard ──
+    "mistral-small-2603": {
+        "analysis": 50,      # Identique à l'ancien Small
+        "chat": 5,
+        "name": "Mistral Small 3.1",
         "multiplier": 1.0
     },
-    "mistral-medium-latest": {
+
+    # ── Tier 2 : Avancé ──
+    "mistral-medium-2508": {
         "analysis": 100,     # 2x Small
-        "chat": 10,          # 2x Small
-        "name": "Mistral Medium",
+        "chat": 10,
+        "name": "Mistral Medium 3.1",
         "multiplier": 2.0
     },
+
+    # ── Tier 3 : Expert ──
+    "mistral-large-2512": {
+        "analysis": 150,     # 3x Small (était 5x — reflète la baisse de prix de 75%)
+        "chat": 15,
+        "name": "Mistral Large 3",
+        "multiplier": 3.0    # Réduit de 5.0 → 3.0 grâce au pricing 2026
+    },
+
+    # ── Aliases legacy (rétrocompatibilité DB + API) ──
+    "mistral-small-latest": {
+        "analysis": 50, "chat": 5,
+        "name": "Mistral Small (legacy)", "multiplier": 1.0
+    },
+    "mistral-medium-latest": {
+        "analysis": 100, "chat": 10,
+        "name": "Mistral Medium (legacy)", "multiplier": 2.0
+    },
     "mistral-large-latest": {
-        "analysis": 250,     # 5x Small
-        "chat": 25,          # 5x Small
-        "name": "Mistral Large",
-        "multiplier": 5.0
-    }
+        "analysis": 150, "chat": 15,
+        "name": "Mistral Large (legacy)", "multiplier": 3.0
+    },
 }
 
 # Coûts additionnels pour les fonctionnalités premium

@@ -76,8 +76,8 @@ describe('Free Plan', () => {
   });
 
   it('only has basic model', () => {
-    expect(limits.allowedModels).toEqual(['mistral-small-latest']);
-    expect(limits.defaultModel).toBe('mistral-small-latest');
+    expect(limits.allowedModels).toEqual(['mistral-small-2603']);
+    expect(limits.defaultModel).toBe('mistral-small-2603');
   });
 
   it('has no priority queue', () => {
@@ -127,10 +127,10 @@ describe('Pro Plan', () => {
   });
 
   it('has all models available', () => {
-    expect(limits.allowedModels).toContain('mistral-small-latest');
-    expect(limits.allowedModels).toContain('mistral-medium-latest');
-    expect(limits.allowedModels).toContain('mistral-large-latest');
-    expect(limits.defaultModel).toBe('mistral-medium-latest');
+    expect(limits.allowedModels).toContain('mistral-small-2603');
+    expect(limits.allowedModels).toContain('mistral-medium-2508');
+    expect(limits.allowedModels).toContain('mistral-large-2512');
+    expect(limits.defaultModel).toBe('mistral-medium-2508');
   });
 
   it('has playlist support', () => {

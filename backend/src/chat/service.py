@@ -753,7 +753,7 @@ async def generate_chat_response(
     chat_history: List[Dict],
     mode: str = "standard",
     lang: str = "fr",
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     api_key: str = None,
     video_upload_date: str = ""
 ) -> Optional[str]:
@@ -862,7 +862,7 @@ async def generate_chat_response_stream(
     chat_history: List[Dict],
     mode: str = "standard",
     lang: str = "fr",
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     api_key: str = None,
     video_upload_date: str = ""
 ) -> AsyncGenerator[str, None]:
@@ -925,7 +925,7 @@ async def generate_chat_response_v4(
     user_plan: str,
     mode: str = "standard",
     lang: str = "fr",
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     web_search_requested: bool = False,
     video_upload_date: str = ""
 ) -> Tuple[str, List[Dict[str, str]], bool]:
@@ -1347,7 +1347,7 @@ async def process_chat_message_v4(
     
     # 5. Déterminer le modèle selon le plan
     plan_limits = PLAN_LIMITS.get(user_plan, PLAN_LIMITS["free"])
-    model = plan_limits.get("default_model", "mistral-small-latest")
+    model = plan_limits.get("default_model", "mistral-small-2603")
     
     # 6. Générer la réponse avec enrichissement v4.0
     response, sources, web_search_used = await generate_chat_response_v4(

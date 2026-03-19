@@ -146,7 +146,7 @@ type AnalysisStore = AnalysisState & AnalysisActions;
 const DEFAULT_PREFERENCES: AnalysisPreferences = {
   mode: 'standard',
   lang: 'fr',
-  model: 'mistral-small-latest',
+  model: 'mistral-small-2603',
   category: 'auto',
   webEnrich: false,
 };

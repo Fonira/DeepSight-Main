@@ -194,7 +194,7 @@ Retourne EXACTEMENT ce format JSON:
 async def call_mistral_json(
     system_prompt: str,
     user_prompt: str,
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     max_tokens: int = 2500,
     temperature: float = 0.1
 ) -> str:
@@ -248,7 +248,7 @@ async def generate_study_card(
     summary: str,
     transcript: str = "",
     lang: str = "fr",
-    model: str = "mistral-small-latest"
+    model: str = "mistral-small-2603"
 ) -> Dict[str, Any]:
     """
     Génère une fiche de révision complète.
@@ -300,7 +300,7 @@ async def generate_concept_map(
     channel: str,
     summary: str,
     lang: str = "fr",
-    model: str = "mistral-small-latest"
+    model: str = "mistral-small-2603"
 ) -> Dict[str, Any]:
     """
     Génère un arbre pédagogique (mindmap) au format Mermaid.
@@ -360,7 +360,7 @@ async def generate_study_materials(
     summary: str,
     transcript: str = "",
     lang: str = "fr",
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     include_card: bool = True,
     include_map: bool = True
 ) -> Dict[str, Any]:

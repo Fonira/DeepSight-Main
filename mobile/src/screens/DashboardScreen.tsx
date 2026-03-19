@@ -217,7 +217,7 @@ export const DashboardScreen: React.FC = () => {
         category: data.category,
         language: data.language || 'fr',
         deep_research: data.deepResearch || false,
-        model: data.model || 'mistral-small-latest',
+        model: data.model || 'mistral-small-2603',
       };
 
       if (data.inputType === 'url') {
@@ -329,7 +329,7 @@ export const DashboardScreen: React.FC = () => {
         mode: pendingSearchData.mode,
         category: pendingSearchData.category,
         language: pendingSearchData.language,
-        model: user?.default_model || 'mistral-small-latest',
+        model: user?.default_model || 'mistral-small-2603',
         deep_research: pendingSearchData.deepResearch,
       };
 

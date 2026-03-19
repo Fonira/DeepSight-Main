@@ -815,7 +815,7 @@ class AnalyzeRequestV2(BaseModel):
     # Modèle IA
     model: Optional[str] = Field(
         default=None,
-        description="Modèle IA: mistral-small-latest, mistral-medium-latest, mistral-large-latest"
+        description="Modèle IA: mistral-small-2603, mistral-medium-2508, mistral-large-2512"
     )
 
     # Catégorie
@@ -894,9 +894,9 @@ class AnalyzeRequestV2(BaseModel):
         if v is None:
             return None
         valid_models = [
-            'mistral-small-latest',
-            'mistral-medium-latest',
-            'mistral-large-latest'
+            'mistral-small-2603',
+            'mistral-medium-2508',
+            'mistral-large-2512'
         ]
         if v not in valid_models:
             raise ValueError(f"Modèle invalide. Valeurs acceptées: {', '.join(valid_models)}")

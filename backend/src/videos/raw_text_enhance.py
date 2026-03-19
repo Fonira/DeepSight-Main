@@ -395,7 +395,7 @@ TEXTE:
 Réponds UNIQUEMENT avec le titre:"""
 
         response = await client.chat.complete_async(
-            model="mistral-small-latest",
+            model="mistral-small-2603",
             messages=[{"role": "user", "content": prompt}],
             max_tokens=80,
             temperature=0.2,

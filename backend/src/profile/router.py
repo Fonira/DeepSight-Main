@@ -63,17 +63,17 @@ class ModelsResponse(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 MODELS_CONFIG = {
-    "mistral-small-latest": {
+    "mistral-small-2603": {
         "name": "Mistral Small",
         "description": "Rapide et économique, idéal pour les analyses simples",
         "plans": ["free", "starter", "pro", "expert", "unlimited"]
     },
-    "mistral-medium-latest": {
+    "mistral-medium-2508": {
         "name": "Mistral Medium",
         "description": "Équilibré entre vitesse et qualité",
         "plans": ["starter", "pro", "expert", "unlimited"]
     },
-    "mistral-large-latest": {
+    "mistral-large-2512": {
         "name": "Mistral Large",
         "description": "Haute qualité, analyses détaillées et nuancées",
         "plans": ["pro", "expert", "unlimited"]
@@ -106,7 +106,7 @@ async def get_profile(
         avatar_url=getattr(current_user, 'avatar_url', None),
         default_lang=current_user.default_lang or "fr",
         default_mode=current_user.default_mode or "standard",
-        default_model=current_user.default_model or "mistral-small-latest",
+        default_model=current_user.default_model or "mistral-small-2603",
         total_videos=current_user.total_videos or 0,
         total_words=current_user.total_words or 0,
         total_playlists=current_user.total_playlists or 0
@@ -162,7 +162,7 @@ async def update_profile(
         avatar_url=getattr(current_user, 'avatar_url', None),
         default_lang=current_user.default_lang or "fr",
         default_mode=current_user.default_mode or "standard",
-        default_model=current_user.default_model or "mistral-small-latest",
+        default_model=current_user.default_model or "mistral-small-2603",
         total_videos=current_user.total_videos or 0,
         total_words=current_user.total_words or 0,
         total_playlists=current_user.total_playlists or 0
@@ -270,7 +270,7 @@ async def get_available_models(
     
     return ModelsResponse(
         models=models,
-        current_model=current_user.default_model or "mistral-small-latest",
+        current_model=current_user.default_model or "mistral-small-2603",
         plan=user_plan
     )
 

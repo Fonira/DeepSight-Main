@@ -213,7 +213,7 @@ async def stream_mistral_analysis(
     channel: str,
     mode: str = "standard",
     lang: str = "fr",
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     web_context: str = None,
 ) -> AsyncGenerator[str, None]:
     """
@@ -784,7 +784,7 @@ async def stream_analysis(
     request: Request,
     mode: str = Query("standard", regex="^(accessible|standard|expert)$"),
     lang: str = Query("fr", regex="^(fr|en)$"),
-    model: str = Query("mistral-small-latest"),
+    model: str = Query("mistral-small-2603"),
     web_enrich: bool = Query(False),
     deep_research: bool = Query(False),
     token: Optional[str] = Query(None),

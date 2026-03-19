@@ -29,6 +29,7 @@ from collections import Counter, defaultdict
 import logging
 
 import httpx
+from core.config import MISTRAL_INTERNAL_MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ logger = logging.getLogger(__name__)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
-MISTRAL_MODEL = "mistral-small-latest"
+MISTRAL_MODEL = MISTRAL_INTERNAL_MODEL
 
 # 🆕 Configuration parallélisme
 MAX_CONCURRENT_SEARCHES = 6  # Nombre max de recherches YouTube simultanées

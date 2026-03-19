@@ -162,12 +162,21 @@ def require_video_length(
 def get_allowed_model(user_plan: str, requested: Optional[str] = None) -> str:
     """Retourne le modèle autorisé ou le modèle par défaut du plan.
 
+    Résout les aliases legacy (mistral-small-2603 → mistral-small-2603, etc.)
     Si le modèle demandé n'est pas dans les modèles autorisés, retourne le défaut.
     """
-    limits = get_limits(user_plan)
-    allowed = limits.get("allowed_models", ["mistral-small-latest"])
-    default = limits.get("default_model", "mistral-small-latest")
+    from core.config import resolve_mistral_model
 
-    if requested and requested in allowed:
-        return requested
+    limits = get_limits(user_plan)
+    allowed = limits.get("allowed_models", ["mistral-small-2603"])
+    default = limits.get("default_model", "mistral-small-2603")
+
+    if not requested:
+        return default
+
+    # Résoudre les aliases legacy (ex: mistral-small-2603 → mistral-small-2603)
+    resolved = resolve_mistral_model(requested)
+
+    if resolved in allowed:
+        return resolved
     return default

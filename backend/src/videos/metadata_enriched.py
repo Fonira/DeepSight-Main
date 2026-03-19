@@ -12,6 +12,7 @@ from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 
 from core.config import get_mistral_key, get_perplexity_key
+from core.config import MISTRAL_INTERNAL_MODEL
 
 from .schemas import (
     VideoMetadataEnriched, PublicFigure, SponsorshipInfo, SponsorshipType,
@@ -398,7 +399,7 @@ Réponds UNIQUEMENT avec le JSON."""
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "mistral-small-latest",
+                    "model": MISTRAL_INTERNAL_MODEL,
                     "messages": [{"role": "user", "content": prompt}],
                     "temperature": 0.2,
                     "max_tokens": 800

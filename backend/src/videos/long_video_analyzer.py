@@ -365,7 +365,7 @@ async def analyze_chunk_with_retry(
     category: str,
     lang: str,
     mode: str,
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     api_key: str = None,
     max_retries: int = MAX_RETRIES_PER_CHUNK
 ) -> Optional[ChunkAnalysis]:
@@ -538,7 +538,7 @@ async def analyze_chunk(
     category: str,
     lang: str,
     mode: str,
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     api_key: str = None
 ) -> Optional[ChunkAnalysis]:
     """Wrapper pour compatibilité - utilise la version avec retry."""
@@ -559,7 +559,7 @@ async def analyze_chunks_parallel(
     category: str,
     lang: str,
     mode: str,
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     max_concurrent: int = MAX_CONCURRENT_CHUNKS,
     progress_callback = None
 ) -> Tuple[List[ChunkAnalysis], AnalysisReport]:
@@ -694,7 +694,7 @@ async def synthesize_chunk_analyses(
     category: str,
     lang: str,
     mode: str,
-    model: str = "mistral-large-latest",  # Utiliser un modèle plus puissant pour la synthèse
+    model: str = "mistral-large-2512",  # Utiliser un modèle plus puissant pour la synthèse
     api_key: str = None,
     web_context: str = None,
     upload_date: str = "",
@@ -884,7 +884,7 @@ async def analyze_long_video(
     category: str,
     lang: str,
     mode: str,
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     web_context: str = None,
     progress_callback = None,
     transcript_timestamped: str = None,  # 🆕 v3.0: Transcript avec vrais timestamps
@@ -1002,7 +1002,7 @@ async def analyze_long_video(
         progress_callback(80, f"🔄 Fusion des {len(chunk_analyses)} analyses...")
     
     # Utiliser un modèle plus puissant pour la synthèse si disponible
-    synthesis_model = "mistral-large-latest" if "large" in model or mode == "expert" else model
+    synthesis_model = "mistral-large-2512" if "large" in model or mode == "expert" else model
     
     final_summary = await synthesize_chunk_analyses(
         analyses=chunk_analyses,

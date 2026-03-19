@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from core.config import get_perplexity_key, get_mistral_key
+from core.config import MISTRAL_INTERNAL_MODEL
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -267,7 +268,7 @@ async def get_definitions_from_mistral(
 ) -> Dict[str, ConceptDefinition]:
     """
     Fallback Mistral pour les définitions quand Perplexity échoue.
-    Utilise mistral-small-latest (rapide, économique).
+    Utilise mistral-small-2603 (rapide, économique).
     """
     api_key = get_mistral_key()
     if not api_key or not concepts:
@@ -327,7 +328,7 @@ Reply ONLY with valid JSON:
                     "Content-Type": "application/json"
                 },
                 json={
-                    "model": "mistral-small-latest",
+                    "model": MISTRAL_INTERNAL_MODEL,
                     "messages": [
                         {"role": "user", "content": prompt}
                     ],

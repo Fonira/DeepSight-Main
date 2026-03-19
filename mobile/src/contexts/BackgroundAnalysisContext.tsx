@@ -254,7 +254,7 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
         url: params.videoUrl,
         mode: params.mode,
         category: params.category === 'auto' ? 'general' : params.category,
-        model: 'mistral-small-latest',
+        model: 'mistral-small-2603',
         language: 'fr',
       });
 

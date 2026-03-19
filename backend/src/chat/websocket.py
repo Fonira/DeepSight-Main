@@ -488,7 +488,7 @@ Si tu cites des informations web, mentionne-le clairement."""
                         "Content-Type": "application/json",
                     },
                     json={
-                        "model": "mistral-small-latest",
+                        "model": "mistral-small-2603",
                         "messages": messages,
                         "stream": True,
                         "max_tokens": 2000,

@@ -101,7 +101,7 @@ async def generate_quiz(
             summary=summary.summary_content or "",
             transcript=summary.transcript_context or "",
             lang=summary.lang or "fr",
-            model="mistral-small-latest"
+            model="mistral-small-2603"
         )
 
         # Extraire les questions QCM de la fiche
@@ -174,7 +174,7 @@ async def generate_mindmap(
             channel=summary.video_channel or "Chaîne inconnue",
             summary=summary.summary_content or "",
             lang=summary.lang or "fr",
-            model="mistral-small-latest"
+            model="mistral-small-2603"
         )
 
         mermaid_code = ""
@@ -233,7 +233,7 @@ async def generate_flashcards(
             summary=summary.summary_content or "",
             transcript=summary.transcript_context or "",
             lang=summary.lang or "fr",
-            model="mistral-small-latest"
+            model="mistral-small-2603"
         )
 
         flashcards = []
@@ -320,7 +320,7 @@ async def generate_all_materials(
             summary=summary.summary_content or "",
             transcript=summary.transcript_context or "",
             lang=summary.lang or "fr",
-            model="mistral-small-latest",
+            model="mistral-small-2603",
             include_card=True,
             include_map=True
         )

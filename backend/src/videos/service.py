@@ -63,7 +63,7 @@ from core.credits import (
 async def check_can_analyze(
     session: AsyncSession,
     user_id: int,
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     duration_minutes: int = 15,
     with_web_search: bool = False
 ) -> Tuple[bool, str, int, int]:
@@ -990,7 +990,7 @@ async def generate_chat_response(
     chat_history: List[Dict],
     mode: str = "standard",
     lang: str = "fr",
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     api_key: str = None,
     video_duration: int = 0  # 🆕 Pour la recherche intelligente
 ) -> Optional[str]:
@@ -1049,7 +1049,7 @@ async def generate_chat_response_stream(
     chat_history: List[Dict],
     mode: str = "standard",
     lang: str = "fr",
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     api_key: str = None,
     video_duration: int = 0  # 🆕 Pour la recherche intelligente
 ) -> AsyncGenerator[str, None]:
@@ -1112,7 +1112,7 @@ async def generate_chat_response_v4(
     user_plan: str,
     mode: str = "standard",
     lang: str = "fr",
-    model: str = "mistral-small-latest",
+    model: str = "mistral-small-2603",
     web_search_requested: bool = False,
     video_duration: int = 0  # 🆕 Pour la recherche intelligente
 ) -> Tuple[str, List[Dict[str, str]], bool]:
@@ -1436,7 +1436,7 @@ async def process_chat_message_v4(
     
     # 5. Déterminer le modèle selon le plan
     plan_limits = PLAN_LIMITS.get(user_plan, PLAN_LIMITS["free"])
-    model = plan_limits.get("default_model", "mistral-small-latest")
+    model = plan_limits.get("default_model", "mistral-small-2603")
     
     # 6. Générer la réponse avec enrichissement v4.0
     response, sources, web_search_used = await generate_chat_response_v4(

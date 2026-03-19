@@ -15,7 +15,7 @@ class ComparisonRequest(BaseModel):
     summary_a_id: int = Field(..., description="ID du premier résumé à comparer")
     summary_b_id: int = Field(..., description="ID du second résumé à comparer")
     lang: str = Field(default="fr", description="Langue de l'analyse")
-    model: str = Field(default="mistral-small-latest", description="Modèle Mistral")
+    model: str = Field(default="mistral-small-2603", description="Modèle Mistral")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -216,7 +216,7 @@ def get_plan_info(plan: str, lang: str = "fr") -> Dict[str, Any]:
         "price_display": limits.get("price_display", {}).get(lang, ""),
         "daily_analyses": limits.get("daily_analyses", 5),
         "monthly_credits": limits.get("monthly_credits", 0),
-        "models": limits.get("models", ["mistral-small-latest"]),
+        "models": limits.get("models", ["mistral-small-2603"]),
         "blocked_features": limits.get("blocked_features", []),
         "upgrade_prompt": limits.get("upgrade_prompt", {}).get(lang, "")
     }

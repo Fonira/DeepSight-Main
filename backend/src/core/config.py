@@ -307,9 +307,17 @@ LEGAL_CONFIG = {
     "CITY": _settings.LEGAL_CITY,
     "ADDRESS": _settings.LEGAL_ADDRESS,
     "EMAIL": _settings.LEGAL_EMAIL,
-    "HOST_NAME": "Railway Corporation",
-    "HOST_ADDRESS": "548 Market Street, San Francisco, CA 94104, USA",
-    "HOST_WEBSITE": "https://railway.app",
+    "HOST_NAME": "Hetzner Online GmbH",
+    "HOST_ADDRESS": "Industriestr. 25, 91710 Gunzenhausen, Germany",
+    "HOST_WEBSITE": "https://www.hetzner.com",
+    "AI_PROVIDER": "Mistral AI SAS",
+    "AI_PROVIDER_ADDRESS": "15 rue des Halles, 75001 Paris, France",
+    "AI_PROVIDER_WEBSITE": "https://mistral.ai",
+    "AI_DATA_LOCATION": "Union Européenne",
+    "AI_DPA_URL": "https://legal.mistral.ai/terms/data-processing-addendum",
+    "GDPR_COMPLIANT": True,
+    "EU_AI_ACT_COMPLIANT": True,
+    "CLOUD_ACT_EXEMPT": True,
     "SITE_NAME": "Deep Sight",
     "SITE_URL": APP_URL,
 }
@@ -329,8 +337,8 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "can_use_playlists": False,
         "max_playlist_videos": 0,
         "history_days": 7,
-        "models": ["mistral-small-latest"],
-        "default_model": "mistral-small-latest",
+        "models": ["mistral-small-2603"],
+        "default_model": "mistral-small-2603",
         "name": {"fr": "GRATUIT", "en": "FREE"},
         "color": "#888888",
         "price": 0,
@@ -359,8 +367,8 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "can_use_playlists": False,
         "max_playlist_videos": 0,
         "history_days": 60,
-        "models": ["mistral-small-latest", "mistral-medium-latest"],
-        "default_model": "mistral-small-latest",
+        "models": ["mistral-small-2603"],
+        "default_model": "mistral-small-2603",
         "name": {"fr": "STARTER", "en": "STARTER"},
         "color": "#00D4AA",
         "price": 499,
@@ -389,8 +397,8 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "can_use_playlists": True,
         "max_playlist_videos": 10,
         "history_days": 180,
-        "models": ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"],
-        "default_model": "mistral-medium-latest",
+        "models": ["mistral-small-2603", "mistral-medium-2508"],
+        "default_model": "mistral-medium-2508",
         "name": {"fr": "PRO", "en": "PRO"},
         "color": "#D4A574",
         "price": 999,
@@ -420,8 +428,8 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "can_use_playlists": True,
         "max_playlist_videos": 50,
         "history_days": -1,
-        "models": ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"],
-        "default_model": "mistral-large-latest",
+        "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
+        "default_model": "mistral-large-2512",
         "name": {"fr": "EXPERT", "en": "EXPERT"},
         "color": "#F4D03F",
         "price": 1499,
@@ -451,8 +459,8 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "can_use_playlists": True,
         "max_playlist_videos": 100,
         "history_days": -1,
-        "models": ["mistral-small-latest", "mistral-medium-latest", "mistral-large-latest"],
-        "default_model": "mistral-large-latest",
+        "models": ["ministral-8b-2512", "mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
+        "default_model": "mistral-large-2512",
         "name": {"fr": "ADMIN", "en": "ADMIN"},
         "color": "#ffd700",
         "price": 0,
@@ -506,47 +514,94 @@ R2_CONFIG = {
 }
 
 # =============================================================================
-# MISTRAL MODELS
+# MISTRAL MODELS — Gamme 2026 (Migration Mars 2026)
+# =============================================================================
+# 🇫🇷 100% Mistral AI — IA Française, données hébergées en UE
+# DPA: https://legal.mistral.ai/terms/data-processing-addendum
+# Zero Data Retention activé sur le compte API DeepSight
 # =============================================================================
 
 MISTRAL_MODELS = {
-    "mistral-small-latest": {
-        "name": "Mistral Small",
-        "context": 32000,
+    # ── Tier 0 : Micro-tâches internes (entités, classification, flashcards) ──
+    "ministral-8b-2512": {
+        "name": "Ministral 8B",
+        "context": 128000,
+        "speed": "very_fast",
+        "quality": "adequate",
+        "cost_input_per_1m": 0.10,
+        "cost_output_per_1m": 0.10,
+        "plans": ["free", "starter", "pro", "expert", "unlimited"],
+        "internal_only": True,
+        "use_cases": ["entity_extraction", "flashcards", "classification", "study_tools"],
+        "description": {
+            "fr": "Ultra-rapide pour les tâches automatiques (extraction, flashcards)",
+            "en": "Ultra-fast for automated tasks (extraction, flashcards)"
+        }
+    },
+
+    # ── Tier 1 : Standard (Free + Étudiant + Starter) ──
+    "mistral-small-2603": {
+        "name": "Mistral Small 3.1",
+        "context": 128000,
         "speed": "fast",
         "quality": "good",
-        "cost_per_1k_tokens": 0.0002,
+        "cost_input_per_1m": 0.10,
+        "cost_output_per_1m": 0.30,
         "plans": ["free", "starter", "pro", "expert", "unlimited"],
         "description": {
-            "fr": "Rapide et \u00e9conomique, id\u00e9al pour les analyses simples",
-            "en": "Fast and economical, ideal for simple analyses"
+            "fr": "Rapide et intelligent, idéal pour les analyses courantes",
+            "en": "Fast and smart, ideal for standard analyses"
         }
     },
-    "mistral-medium-latest": {
-        "name": "Mistral Medium",
-        "context": 32000,
+
+    # ── Tier 2 : Avancé (Pro) ──
+    "mistral-medium-2508": {
+        "name": "Mistral Medium 3.1",
+        "context": 131000,
         "speed": "medium",
         "quality": "very_good",
-        "cost_per_1k_tokens": 0.0027,
-        "plans": ["starter", "pro", "expert", "unlimited"],
-        "description": {
-            "fr": "\u00c9quilibr\u00e9 entre vitesse et qualit\u00e9",
-            "en": "Balanced between speed and quality"
-        }
-    },
-    "mistral-large-latest": {
-        "name": "Mistral Large",
-        "context": 128000,
-        "speed": "slow",
-        "quality": "excellent",
-        "cost_per_1k_tokens": 0.008,
+        "cost_input_per_1m": 0.40,
+        "cost_output_per_1m": 2.00,
         "plans": ["pro", "expert", "unlimited"],
         "description": {
-            "fr": "Haute qualit\u00e9, analyses d\u00e9taill\u00e9es et nuanc\u00e9es",
-            "en": "High quality, detailed and nuanced analyses"
+            "fr": "Analyses approfondies, raisonnement de niveau GPT-4",
+            "en": "Deep analyses, GPT-4 level reasoning"
         }
-    }
+    },
+
+    # ── Tier 3 : Expert ──
+    "mistral-large-2512": {
+        "name": "Mistral Large 3",
+        "context": 262000,
+        "speed": "medium",
+        "quality": "excellent",
+        "cost_input_per_1m": 0.50,
+        "cost_output_per_1m": 1.50,
+        "plans": ["expert", "unlimited"],
+        "description": {
+            "fr": "Maximum de qualité, contexte 262K pour vidéos longues",
+            "en": "Maximum quality, 262K context for long videos"
+        }
+    },
 }
+
+# Mapping ancien → nouveau (rétrocompatibilité API + DB)
+MISTRAL_MODEL_ALIASES: Dict[str, str] = {
+    "mistral-small-latest": "mistral-small-2603",
+    "mistral-medium-latest": "mistral-medium-2508",
+    "mistral-large-latest": "mistral-large-2512",
+}
+
+# Modèle dédié aux micro-tâches internes (entités, flashcards, classification)
+MISTRAL_INTERNAL_MODEL = "ministral-8b-2512"
+
+# Modèle de modération contenu
+MISTRAL_MODERATION_MODEL = "mistral-moderation-latest"
+
+
+def resolve_mistral_model(model_id: str) -> str:
+    """Résout un alias de modèle legacy vers le nouveau modèle."""
+    return MISTRAL_MODEL_ALIASES.get(model_id, model_id)
 
 # =============================================================================
 # CATEGORIES

@@ -87,8 +87,8 @@ export type AnalysisMode = typeof ANALYSIS_MODES[number]['id'];
 
 export const AI_MODELS = [
   { id: "auto", name: "Auto", description_fr: "Sélection automatique", description_en: "Automatic selection" },
-  { id: "mistral-small-latest", name: "Mistral Small", description_fr: "Rapide (32K contexte)", description_en: "Fast (32K context)" },
-  { id: "mistral-large-latest", name: "Mistral Large", description_fr: "Qualité (128K contexte)", description_en: "Quality (128K context)" },
+  { id: "mistral-small-2603", name: "Mistral Small 3.1", description_fr: "Rapide et intelligent (128K contexte)", description_en: "Fast and smart (128K context)" },
+  { id: "mistral-large-2512", name: "Mistral Large 3", description_fr: "Maximum de qualité (262K contexte)", description_en: "Maximum quality (262K context)" },
 ] as const;
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -260,7 +260,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     can_use_playlists: false,
     max_playlist_videos: 0,
     history_days: 3,
-    models: ["mistral-small-latest"],
+    models: ["mistral-small-2603"],
   },
   student: {
     id: "student",
@@ -277,7 +277,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     can_use_playlists: false,
     max_playlist_videos: 0,
     history_days: 90,
-    models: ["mistral-small-latest"],
+    models: ["mistral-small-2603"],
   },
   starter: {
     id: "starter",
@@ -294,7 +294,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     can_use_playlists: false,
     max_playlist_videos: 0,
     history_days: 60,
-    models: ["mistral-small-latest"],
+    models: ["mistral-small-2603"],
   },
   pro: {
     id: "pro",
@@ -311,7 +311,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     can_use_playlists: true,
     max_playlist_videos: 50,
     history_days: -1, // permanent
-    models: ["mistral-large-latest"],
+    models: ["mistral-large-2512"],
   },
   expert: {
     id: "expert",
@@ -328,7 +328,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     can_use_playlists: true,
     max_playlist_videos: 100,
     history_days: -1,
-    models: ["mistral-large-latest"],
+    models: ["mistral-large-2512"],
   },
   unlimited: {
     id: "unlimited",
@@ -345,7 +345,7 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     can_use_playlists: true,
     max_playlist_videos: 200,
     history_days: -1,
-    models: ["mistral-large-latest"],
+    models: ["mistral-large-2512"],
   },
 };
 

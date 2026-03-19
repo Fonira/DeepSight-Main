@@ -782,7 +782,7 @@ export const videoApi = {
         url, 
         category: category || 'auto',
         mode: mode || 'standard',
-        model: model || 'mistral-small-latest',
+        model: model || 'mistral-small-2603',
         deep_research: deepResearch || false,
         lang: lang || 'fr'  // 🌐 Langue du résumé
       },
