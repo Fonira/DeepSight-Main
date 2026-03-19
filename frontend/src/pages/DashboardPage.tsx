@@ -32,7 +32,7 @@ import { VideoPlayer, VideoPlayerRef } from "../components/VideoPlayer";
 import { createTimecodeMarkdownComponents, TimecodeInfo } from "../components/TimecodeRenderer";
 import { TournesolWidget, TournesolMini } from "../components/TournesolWidget";
 import { Sidebar } from "../components/layout/Sidebar";
-import { FloatingChatWindow } from "../components/FloatingChatWindow";
+import { ChatPanel } from "../components/ChatPanel";
 import DoodleBackground from '../components/DoodleBackground';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { SEO } from '../components/SEO';
@@ -1187,21 +1187,19 @@ export const DashboardPage: React.FC = () => {
 
       {/* FAB Chat IA supprimé — remplacé par bandeau sous la miniature */}
 
-      {/* 🆕 Chat Panel - FloatingChatWindow (Draggable & Resizable) */}
-      <FloatingChatWindow
+      {/* 💬 Chat Panel — Interface épurée latérale */}
+      <ChatPanel
         isOpen={chatOpen && !!selectedSummary}
         onClose={() => setChatOpen(false)}
-        title={language === 'fr' ? 'Chat IA' : 'AI Chat'}
-        subtitle={selectedSummary?.video_title}
-        type="video"
+        videoTitle={selectedSummary?.video_title || ''}
+        videoId={selectedSummary?.video_id || ''}
+        thumbnailUrl={selectedSummary?.thumbnail_url}
         messages={chatMessages}
         isLoading={chatLoading}
         webSearchEnabled={webSearchEnabled}
         onToggleWebSearch={setWebSearchEnabled}
         onSendMessage={handleSendChat}
-        markdownComponents={chatMarkdownComponents}
         language={language as 'fr' | 'en'}
-        storageKey="dashboard-chat"
         userPlan={normalizedPlan}
         webSearchQuota={wsQuota}
         onUpgrade={() => navigate('/pricing')}
