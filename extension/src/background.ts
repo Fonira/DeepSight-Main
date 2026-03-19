@@ -208,7 +208,39 @@ async function getTaskStatus(taskId: string): Promise<TaskStatus> {
 }
 
 async function getSummary(summaryId: number): Promise<Summary> {
-  return apiRequest<Summary>(`/videos/summary/${summaryId}`);
+  const summary = await apiRequest<Summary>(`/videos/summary/${summaryId}`);
+
+  // Enrichir avec le score Tournesol (non-bloquant)
+  if (summary.video_url && !summary.tournesol) {
+    try {
+      const videoIdMatch = summary.video_url.match(/[?&]v=([^&]+)/);
+      const videoId = videoIdMatch?.[1];
+      if (videoId) {
+        const tournesolData = await apiRequest<{
+          found: boolean;
+          data?: {
+            tournesol_score: number | null;
+            n_comparisons: number;
+            n_contributors: number;
+            criteria_scores?: { criteria: string; score: number }[];
+          };
+        }>(`/tournesol/video/${videoId}`);
+        if (tournesolData.found && tournesolData.data) {
+          summary.tournesol = {
+            found: true,
+            tournesol_score: tournesolData.data.tournesol_score,
+            n_comparisons: tournesolData.data.n_comparisons,
+            n_contributors: tournesolData.data.n_contributors,
+            criteria_scores: tournesolData.data.criteria_scores,
+          };
+        }
+      }
+    } catch {
+      // Tournesol fetch failed — silently continue without score
+    }
+  }
+
+  return summary;
 }
 
 // ── Share API ──

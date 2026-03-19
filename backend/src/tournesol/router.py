@@ -12,6 +12,9 @@ from pydantic import BaseModel
 from typing import Optional, List
 import httpx
 import asyncio
+import logging
+
+logger = logging.getLogger("deepsight.tournesol")
 
 router = APIRouter()
 
@@ -61,10 +64,10 @@ async def get_tournesol_data(video_id: str):
     
     url = f"https://api.tournesol.app/polls/videos/entities/yt:{clean_id}"
     
-    print(f"🌻 Tournesol proxy: Fetching {url}", flush=True)
-    
+    logger.info(f"Fetching Tournesol data for {clean_id}")
+
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             response = await client.get(
                 url,
                 headers={
@@ -73,7 +76,7 @@ async def get_tournesol_data(video_id: str):
                 }
             )
             
-            print(f"🌻 Tournesol proxy: Response {response.status_code}", flush=True)
+            logger.debug(f"Tournesol API response: {response.status_code} for {clean_id}")
             
             if response.status_code == 404:
                 return TournesolResponse(
@@ -88,10 +91,6 @@ async def get_tournesol_data(video_id: str):
                 )
             
             data = response.json()
-            # 🔍 DEBUG: Log COMPLET de la réponse Tournesol brute
-            import json
-            print(f"🌻 Tournesol proxy: RAW RESPONSE for {clean_id}:", flush=True)
-            print(f"🌻 {json.dumps(data, indent=2, default=str)[:2000]}", flush=True)
             
             # L'API Tournesol peut retourner les données de différentes façons
             # Essayer plusieurs chemins possibles
@@ -116,11 +115,7 @@ async def get_tournesol_data(video_id: str):
                 n_contributors = n_contributors or cr.get("n_contributors", 0)
                 criteria_scores = criteria_scores or cr.get("criteria_scores")
             
-            print(f"🌻 Tournesol proxy: PARSED VALUES:", flush=True)
-            print(f"🌻   tournesol_score = {tournesol_score}", flush=True)
-            print(f"🌻   n_comparisons = {n_comparisons}", flush=True)
-            print(f"🌻   n_contributors = {n_contributors}", flush=True)
-            print(f"🌻   criteria_scores = {criteria_scores}", flush=True)
+            logger.info(f"Tournesol data for {clean_id}: score={tournesol_score}, comparisons={n_comparisons}, contributors={n_contributors}")
             
             # Construire la réponse
             entity = TournesolEntity(
@@ -140,17 +135,11 @@ async def get_tournesol_data(video_id: str):
             )
             
     except httpx.TimeoutException:
-        print(f"🌻 Tournesol proxy: Timeout for {clean_id}", flush=True)
-        return TournesolResponse(
-            found=False,
-            error="Timeout"
-        )
+        logger.warning(f"Tournesol API timeout for {clean_id}")
+        return TournesolResponse(found=False, error="Timeout")
     except Exception as e:
-        print(f"🌻 Tournesol proxy: Error {e}", flush=True)
-        return TournesolResponse(
-            found=False,
-            error=str(e)
-        )
+        logger.error(f"Tournesol API error for {clean_id}: {e}")
+        return TournesolResponse(found=False, error=str(e))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -213,7 +202,7 @@ async def search_tournesol(request: SearchRequest):
     if request.language:
         params["language"] = request.language
 
-    print(f"🔍 Tournesol search: '{request.query}' (limit={limit})", flush=True)
+    logger.info(f"Tournesol search: query='{request.query}', limit={limit}")
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -227,7 +216,7 @@ async def search_tournesol(request: SearchRequest):
             )
 
             if response.status_code != 200:
-                print(f"🔍 Tournesol search failed: {response.status_code}", flush=True)
+                logger.warning(f"Tournesol search failed: {response.status_code}")
                 return SearchResponse(results=[], total=0, query=request.query)
 
             data = response.json()
@@ -260,7 +249,7 @@ async def search_tournesol(request: SearchRequest):
                     duration=metadata.get("duration")
                 ))
 
-            print(f"🔍 Tournesol search: {len(results)} results", flush=True)
+            logger.info(f"Tournesol search: {len(results)} results")
 
             return SearchResponse(
                 results=results[:limit],
@@ -269,10 +258,10 @@ async def search_tournesol(request: SearchRequest):
             )
 
     except httpx.TimeoutException:
-        print(f"🔍 Tournesol search timeout", flush=True)
+        logger.warning("Tournesol search timeout")
         return SearchResponse(results=[], total=0, query=request.query)
     except Exception as e:
-        print(f"🔍 Tournesol search error: {e}", flush=True)
+        logger.error(f"Tournesol search error: {e}")
         return SearchResponse(results=[], total=0, query=request.query)
 
 
@@ -306,7 +295,7 @@ async def get_recommendations(
     if date_gte:
         params["date_gte"] = date_gte
 
-    print(f"🌻 Tournesol recommendations: limit={limit}, language={language}", flush=True)
+    logger.info(f"Tournesol recommendations: limit={limit}, language={language}")
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -320,7 +309,7 @@ async def get_recommendations(
             )
 
             if response.status_code != 200:
-                print(f"🌻 Tournesol recommendations failed: {response.status_code}", flush=True)
+                logger.warning(f"Tournesol recommendations failed: {response.status_code}")
                 return SearchResponse(results=[], total=0, query="recommendations")
 
             data = response.json()
@@ -347,7 +336,7 @@ async def get_recommendations(
                     duration=metadata.get("duration")
                 ))
 
-            print(f"🌻 Tournesol recommendations: {len(results)} results", flush=True)
+            logger.info(f"Tournesol recommendations: {len(results)} results")
 
             return SearchResponse(
                 results=results,
@@ -356,10 +345,10 @@ async def get_recommendations(
             )
 
     except httpx.TimeoutException:
-        print(f"🌻 Tournesol recommendations timeout", flush=True)
+        logger.warning("Tournesol recommendations timeout")
         return SearchResponse(results=[], total=0, query="recommendations")
     except Exception as e:
-        print(f"🌻 Tournesol recommendations error: {e}", flush=True)
+        logger.error(f"Tournesol recommendations error: {e}")
         return SearchResponse(results=[], total=0, query="recommendations")
 
 
@@ -378,7 +367,7 @@ async def get_recommendations_raw(request: Request):
     if "limit" in params:
         params["limit"] = str(min(int(params["limit"]), 50))
 
-    print(f"🌻 Tournesol raw proxy: params={params}", flush=True)
+    logger.info(f"Tournesol raw proxy: params={params}")
 
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
@@ -392,18 +381,18 @@ async def get_recommendations_raw(request: Request):
             )
 
             if response.status_code != 200:
-                print(f"🌻 Tournesol raw proxy failed: {response.status_code}", flush=True)
+                logger.warning(f"Tournesol raw proxy failed: {response.status_code}")
                 return {"count": 0, "next": None, "previous": None, "results": []}
 
             data = response.json()
-            print(f"🌻 Tournesol raw proxy: {len(data.get('results', []))} results", flush=True)
+            logger.info(f"Tournesol raw proxy: {len(data.get('results', []))} results")
             return data
 
     except httpx.TimeoutException:
-        print("🌻 Tournesol raw proxy timeout", flush=True)
+        logger.warning("Tournesol raw proxy timeout")
         return {"count": 0, "next": None, "previous": None, "results": []}
     except Exception as e:
-        print(f"🌻 Tournesol raw proxy error: {e}", flush=True)
+        logger.error(f"Tournesol raw proxy error: {e}")
         return {"count": 0, "next": None, "previous": None, "results": []}
 
 

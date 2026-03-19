@@ -85,7 +85,7 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId
         </div>
       </div>
 
-      {/* Platform logos */}
+      {/* Platform logos + Tournesol badge */}
       <div className="synthesis-platforms">
         <img src={chrome.runtime.getURL('platforms/youtube-icon-red.png')} alt="YouTube" style={{ height: 16 }} />
         <span className="synthesis-platform-sep" />
@@ -93,6 +93,40 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId
         <span className="synthesis-platform-sep" />
         <img src={chrome.runtime.getURL('platforms/mistral-logo-white.png')} alt="Mistral AI" style={{ height: 12, opacity: 0.7 }} />
       </div>
+
+      {/* Tournesol Score Badge */}
+      {summary.tournesol?.found && summary.tournesol.tournesol_score !== null && (
+        <a
+          href={`https://tournesol.app/entities/yt:${summary.video_url?.match(/[?&]v=([^&]+)/)?.[1] || ''}`}
+          target="_blank"
+          rel="noreferrer"
+          className="tournesol-badge"
+          title={`Score Tournesol: ${summary.tournesol.tournesol_score} | ${summary.tournesol.n_contributors} contributeurs | ${summary.tournesol.n_comparisons} comparaisons`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            margin: '8px 0',
+            borderRadius: '8px',
+            background: summary.tournesol.tournesol_score >= 50 ? 'rgba(34,197,94,0.12)' :
+                         summary.tournesol.tournesol_score >= 20 ? 'rgba(234,179,8,0.12)' :
+                         'rgba(255,255,255,0.05)',
+            border: `1px solid ${summary.tournesol.tournesol_score >= 50 ? 'rgba(34,197,94,0.25)' :
+                                  summary.tournesol.tournesol_score >= 20 ? 'rgba(234,179,8,0.25)' :
+                                  'rgba(255,255,255,0.1)'}`,
+            fontSize: '12px',
+            color: '#d4d4d8',
+            textDecoration: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <span style={{ fontSize: '14px' }}>{'\uD83C\uDF3B'}</span>
+          <span style={{ fontWeight: 600 }}>Tournesol: {summary.tournesol.tournesol_score > 0 ? '+' : ''}{Math.round(summary.tournesol.tournesol_score)}</span>
+          <span style={{ opacity: 0.6, fontSize: '11px' }}>({summary.tournesol.n_contributors} votes)</span>
+        </a>
+      )}
 
       {/* Verdict */}
       <div className="synthesis-verdict">

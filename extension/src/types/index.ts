@@ -48,6 +48,14 @@ export interface TaskStatus {
   error?: string;
 }
 
+export interface TournesolData {
+  found: boolean;
+  tournesol_score: number | null;   // Score brut (-100 à +100)
+  n_comparisons: number;
+  n_contributors: number;
+  criteria_scores?: { criteria: string; score: number }[];
+}
+
 export interface Summary {
   id: number;
   video_title: string;
@@ -61,6 +69,7 @@ export interface Summary {
   key_points?: string[];
   facts_to_verify?: string[];
   created_at: string;
+  tournesol?: TournesolData;
 }
 
 export interface Concept {
