@@ -227,7 +227,7 @@ async def _ask_question_legacy(
         if can_search:
             web_search_result = await search_with_perplexity(
                 request.question,
-                f"{summary.video_title}: {(summary.summary_content or "")[:1000]}",
+                f"{summary.video_title}: {(summary.summary_content or '')[:1000]}",
                 summary.lang or "fr"
             )
             if web_search_result:
