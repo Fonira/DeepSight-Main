@@ -42,6 +42,7 @@ import { TournesolTrendingSection } from "../components/TournesolTrendingSection
 import VideoDiscoveryModal from "../components/VideoDiscoveryModal";
 import { ThumbnailImage } from "../components/ThumbnailImage";
 import { FreshnessIndicator } from "../components/FreshnessIndicator";
+import { FactCheckLite } from "../components/FactCheckLite";
 // 💰 Monetization components
 import { CreditAlert } from "../components/CreditAlert";
 import { UpgradePromptModal } from "../components/UpgradePromptModal";
