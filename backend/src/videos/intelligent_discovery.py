@@ -26,6 +26,7 @@ from collections import Counter
 import logging
 
 import httpx
+from core.config import MISTRAL_INTERNAL_MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -1664,7 +1665,6 @@ class IntelligentDiscoveryService:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 import hashlib
-from core.config import MISTRAL_INTERNAL_MODEL
 
 def generate_text_video_id(text: str) -> str:
     """Génère un ID unique pour une analyse de texte brut"""
