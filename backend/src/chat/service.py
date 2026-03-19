@@ -673,13 +673,15 @@ VIDÉO vs RÉALITÉ : Si la question porte sur des faits vérifiables, précise 
 
 HONNÊTETÉ : Si l'info n'est pas dans la vidéo, dis-le simplement.
 
-PISTES DE RÉFLEXION (en fin de réponse) :
+PISTES DE RÉFLEXION (OBLIGATOIRE en fin de réponse) :
 ---
 **🔮 Pour aller plus loin :**
 [ask:Question courte et pertinente 1]
 [ask:Question courte et pertinente 2]
+[ask:Question courte et pertinente 3]
+[ask:Question courte et pertinente 4]
 
-Génère 2-3 questions max, courtes et spécifiques au contenu.
+Génère TOUJOURS 4 questions de suivi, courtes (max 10 mots), variées et spécifiques au contenu de ta réponse. Alterne entre approfondissement, lien avec un autre point de la vidéo, question critique, et perspective différente.
 🌐 Réponds uniquement en français.
 """
         
@@ -722,13 +724,15 @@ VIDEO vs REALITY: For verifiable facts, specify "in this video" to distinguish f
 
 HONESTY: If the info isn't in the video, just say so.
 
-REFLECTION QUESTIONS (at end of response):
+REFLECTION QUESTIONS (MANDATORY at end of response):
 ---
 **🔮 To go further:**
 [ask:Short relevant question 1]
 [ask:Short relevant question 2]
+[ask:Short relevant question 3]
+[ask:Short relevant question 4]
 
-Generate 2-3 questions max, short and specific to the content.
+ALWAYS generate 4 follow-up questions, short (max 10 words), varied and specific to your response content. Alternate between: deepening the topic, linking to another video point, a critical question, and a different perspective.
 🌐 Respond only in English.
 """
         

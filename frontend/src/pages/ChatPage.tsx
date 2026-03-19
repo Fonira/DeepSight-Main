@@ -12,7 +12,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Send, Bot, User, ArrowLeft, Loader2,
@@ -252,6 +252,21 @@ const ChatPage: React.FC = () => {
     a.video_title?.toLowerCase().includes(sidebarSearch.toLowerCase()) ||
     a.video_channel?.toLowerCase().includes(sidebarSearch.toLowerCase())
   );
+
+  // ── Extract follow-up suggestions from the last assistant message ──
+  const followUpSuggestions = useMemo(() => {
+    if (isSending) return []; // Hide while generating
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'assistant') {
+        const content = typeof messages[i].content === 'string' ? messages[i].content : '';
+        const { questions } = parseAskQuestions(content);
+        return questions.map(q =>
+          q.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, term, display) => display || term)
+        ).slice(0, 5);
+      }
+    }
+    return [];
+  }, [messages, isSending]);
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // 🔒 UPGRADE CTA
@@ -671,9 +686,24 @@ const ChatPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* ═══ Input ═══ */}
+              {/* ═══ Input + Follow-up suggestions ═══ */}
               <div className="flex-shrink-0 border-t border-white/[0.04] bg-[#0a0a0f]/90 backdrop-blur-xl">
-                <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3">
+                <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-2.5 pb-3">
+                  {/* Follow-up suggestion chips */}
+                  {followUpSuggestions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2.5 animate-[fadeIn_0.3s_ease-out]">
+                      {followUpSuggestions.map((suggestion, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleSend(suggestion)}
+                          disabled={isSending}
+                          className="px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-cyan-500/10 border border-white/[0.06] hover:border-cyan-500/20 text-white/45 hover:text-cyan-300/80 text-xs transition-all duration-200 disabled:opacity-30 max-w-[280px] truncate"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex items-end gap-2">
                     <textarea
                       ref={inputRef}
