@@ -107,7 +107,7 @@ async def categorize_with_mistral(
     if not api_key or not terms:
         return {}
     
-    terms = terms[:20]  # Limiter à 20 termes
+    terms = terms[:30]  # Augmenté de 20 → 30 (Ministral 8B quasi gratuit)
     
     prompt = f"""Tu es un assistant expert en analyse de contenu. Catégorise chaque terme et donne une définition TRÈS COURTE (max 30 mots) UNIQUEMENT si tu es CERTAIN.
 
@@ -222,7 +222,7 @@ async def enrich_with_perplexity(
     if not api_key or not terms:
         return {}
     
-    terms = terms[:15]  # Limiter à 15 termes (Perplexity est plus lent)
+    terms = terms[:20]  # Augmenté de 15 → 20 (Perplexity reste limité pour le coût)
     
     prompt = f"""Tu es un assistant de recherche. Pour chaque terme, donne UNIQUEMENT des informations VÉRIFIABLES:
 1. Une définition FACTUELLE et PRÉCISE (2-3 phrases max)
@@ -376,7 +376,7 @@ async def get_enriched_definitions(
             unique_terms.append(t.strip())
             seen.add(t_lower)
     
-    terms = unique_terms[:25]  # Max 25 termes
+    terms = unique_terms[:40]  # Augmenté de 25 → 40 (Ministral 8B couvre le surplus)
     
     print(f"📚 [Definitions] Processing {len(terms)} terms...")
     

@@ -11,9 +11,12 @@ import httpx
 import json
 import re
 import asyncio
+import logging
 from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 from datetime import datetime
+
+logger = logging.getLogger("deepsight.concepts")
 
 from core.config import get_perplexity_key, get_mistral_key
 from core.config import MISTRAL_INTERNAL_MODEL
@@ -112,8 +115,8 @@ async def get_definitions_from_perplexity(
     if not api_key or not concepts:
         return {}
     
-    # Limiter à 15 concepts max pour éviter les requêtes trop longues
-    concepts = concepts[:15]
+    # Limiter à 20 concepts max pour Perplexity (coût + longueur réponse)
+    concepts = concepts[:20]
     
     # Construire le prompt
     if language == "fr":
@@ -274,7 +277,8 @@ async def get_definitions_from_mistral(
     if not api_key or not concepts:
         return {}
 
-    concepts = concepts[:15]
+    # Augmenté de 15 → 30 pour couvrir plus de concepts (Ministral 8B = quasi gratuit)
+    concepts = concepts[:30]
 
     if language == "fr":
         prompt = f"""Tu es un professeur encyclopédiste. Donne une définition COURTE et VÉRIFIABLE (2-3 phrases, max 60 mots) pour chaque terme ci-dessous.
@@ -424,9 +428,17 @@ async def get_concepts_with_definitions(
     missing_concepts = [c for c in concepts if c.lower() not in definitions]
 
     if missing_concepts:
-        print(f"🔄 [Concepts] {len(missing_concepts)} concepts sans définition Perplexity, fallback Mistral...")
-        mistral_definitions = await get_definitions_from_mistral(missing_concepts, context, language)
+        logger.info(f"[Concepts] {len(missing_concepts)} concepts sans définition Perplexity, fallback Mistral...")
+        # Batch 1 : concepts 1-15 via Mistral Small (qualité)
+        mistral_definitions = await get_definitions_from_mistral(missing_concepts[:15], context, language)
         definitions.update(mistral_definitions)
+
+        # Batch 2 : concepts 16+ via Ministral 8B (rapide, quasi gratuit)
+        still_missing = [c for c in concepts if c.lower() not in definitions]
+        if still_missing:
+            logger.info(f"[Concepts] {len(still_missing)} concepts restants, batch Ministral 8B...")
+            overflow_definitions = await get_definitions_from_mistral(still_missing[:30], context, language)
+            definitions.update(overflow_definitions)
 
     # Construire la liste finale
     concepts_list = []
