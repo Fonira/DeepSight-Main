@@ -683,10 +683,14 @@ export const DashboardPage: React.FC = () => {
                   </p>
                 </div>
                 {/* Platform logos */}
-                <div className="flex items-center gap-4 sm:gap-5">
+                <div className="flex items-center gap-3 sm:gap-4">
                   <img src="/platforms/youtube-logo-white.png" alt="YouTube" className="h-5 sm:h-6 opacity-60 hover:opacity-100 transition-all duration-300 hover:scale-110" />
                   <div className="w-px h-5 bg-border-subtle" />
                   <img src="/platforms/tiktok-logo-white.png" alt="TikTok" className="h-5 sm:h-6 opacity-60 hover:opacity-100 transition-all duration-300 hover:scale-110" />
+                  <div className="w-px h-5 bg-border-subtle" />
+                  <a href="https://tournesol.app" target="_blank" rel="noreferrer" className="opacity-60 hover:opacity-100 transition-all duration-300 hover:scale-110" title="Tournesol — Recommandations éthiques">
+                    <img src="/platforms/tournesol-logo.png" alt="Tournesol" className="h-5 sm:h-6" />
+                  </a>
                   <div className="w-px h-5 bg-border-subtle" />
                   <div className="flex items-center gap-1.5 opacity-50 hover:opacity-90 transition-all duration-300">
                     <img src="/platforms/mistral-logo-white.svg" alt="Mistral AI" className="h-4 sm:h-5" />

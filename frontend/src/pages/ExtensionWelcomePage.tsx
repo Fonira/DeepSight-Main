@@ -221,8 +221,11 @@ const ExtensionWelcomePage = () => {
             className="mt-16 flex justify-center"
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bg-secondary/50 border border-border-default text-text-tertiary text-xs">
-              <span>🇫🇷🇪🇺</span>
-              <span>IA 100% Française & Européenne — propulsé par Mistral AI</span>
+              <span>{'\uD83C\uDDEB\uD83C\uDDF7\uD83C\uDDEA\uD83C\uDDFA'}</span>
+              <span>IA 100% Fran\u00e7aise & Europ\u00e9enne — propuls\u00e9 par Mistral AI</span>
+              <span className="opacity-40">|</span>
+              <img src="/platforms/tournesol-logo.png" alt="Tournesol" className="h-4 inline" />
+              <span>Qualit\u00e9 Tournesol</span>
             </div>
           </motion.div>
         </div>

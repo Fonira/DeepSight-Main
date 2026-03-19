@@ -936,14 +936,14 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ─── PROPULSÉ PAR MISTRAL AI ─── */}
+      {/* ─── PROPULSÉ PAR MISTRAL AI + TOURNESOL ─── */}
       <section className="py-10 sm:py-16 px-4 sm:px-6">
         <ScrollReveal className="max-w-3xl mx-auto text-center">
           <p className="text-xs sm:text-sm text-text-tertiary uppercase tracking-widest mb-6">
             {language === 'fr' ? 'Plateformes & technologie' : 'Platforms & technology'}
           </p>
-          {/* Logos row: YouTube + TikTok + Mistral */}
-          <div className="flex items-center justify-center gap-8 sm:gap-12 mb-6">
+          {/* Logos row: YouTube + TikTok + Tournesol + Mistral */}
+          <div className="flex items-center justify-center gap-6 sm:gap-10 mb-6">
             <div className="flex flex-col items-center gap-2">
               <img
                 src="/platforms/youtube-icon-red.svg"
@@ -962,6 +962,15 @@ const LandingPage: React.FC = () => {
               />
               <span className="text-[10px] text-text-muted">TikTok</span>
             </div>
+            <a href="https://tournesol.app" target="_blank" rel="noreferrer" className="flex flex-col items-center gap-2 hover:scale-105 transition-transform">
+              <img
+                src="/platforms/tournesol-logo.png"
+                alt="Tournesol"
+                className="h-10 sm:h-14 w-auto object-contain"
+                style={{ filter: 'drop-shadow(0 0 12px rgba(255, 200, 0, 0.4))' }}
+              />
+              <span className="text-[10px] text-text-muted">Tournesol</span>
+            </a>
             <div className="flex flex-col items-center gap-2">
               <img
                 src="/mistral-logo.svg"
@@ -973,12 +982,12 @@ const LandingPage: React.FC = () => {
             </div>
           </div>
           <p className="text-base sm:text-lg font-semibold bg-gradient-to-r from-accent-primary via-violet-400 to-cyan-400 bg-clip-text text-transparent">
-            {language === 'fr' ? 'YouTube & TikTok — Propulsé par Mistral AI' : 'YouTube & TikTok — Powered by Mistral AI'}
+            {language === 'fr' ? 'YouTube & TikTok — Propulsé par Mistral AI & Tournesol' : 'YouTube & TikTok — Powered by Mistral AI & Tournesol'}
           </p>
           <p className="text-xs text-text-tertiary mt-2 max-w-md mx-auto">
             {language === 'fr'
-              ? 'Modèles d\'IA de pointe, développés en France, pour des analyses précises et souveraines.'
-              : 'State-of-the-art AI models, developed in France, for precise and sovereign analyses.'}
+              ? 'IA 100% fran\u00e7aise (Mistral AI) et recommandations \u00e9thiques (Tournesol) pour des analyses souveraines et fiables.'
+              : 'French AI (Mistral AI) and ethical recommendations (Tournesol) for sovereign and reliable analyses.'}
           </p>
         </ScrollReveal>
       </section>

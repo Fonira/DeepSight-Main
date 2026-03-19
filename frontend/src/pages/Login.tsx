@@ -231,7 +231,7 @@ export const Login: React.FC = () => {
             <p className="text-text-muted text-xs uppercase tracking-widest font-medium">
               {language === 'fr' ? 'Plateformes compatibles' : 'Compatible platforms'}
             </p>
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-5">
               <div className="group flex items-center gap-2.5 opacity-80 hover:opacity-100 transition-all duration-300 hover:scale-105">
                 <img src="/platforms/youtube-logo-white.png" alt="YouTube" className="h-7 drop-shadow-lg" />
               </div>
@@ -239,12 +239,18 @@ export const Login: React.FC = () => {
               <div className="group flex items-center gap-2.5 opacity-80 hover:opacity-100 transition-all duration-300 hover:scale-105">
                 <img src="/platforms/tiktok-logo-white.png" alt="TikTok" className="h-7 drop-shadow-lg" />
               </div>
+              <div className="w-px h-8 bg-white/10" />
+              <a href="https://tournesol.app" target="_blank" rel="noreferrer" className="group flex items-center gap-2.5 opacity-80 hover:opacity-100 transition-all duration-300 hover:scale-105">
+                <img src="/platforms/tournesol-logo.png" alt="Tournesol" className="h-7 drop-shadow-lg" />
+              </a>
             </div>
             <div className="flex items-center gap-2 mt-3">
               <span className="text-text-muted text-[10px] uppercase tracking-wider">
                 {language === 'fr' ? 'Propulsé par' : 'Powered by'}
               </span>
               <img src="/platforms/mistral-logo-white.svg" alt="Mistral AI" className="h-5 opacity-70" />
+              <span className="text-text-muted text-[10px]">&</span>
+              <img src="/platforms/tournesol-logo.png" alt="Tournesol" className="h-5 opacity-70" />
             </div>
           </motion.div>
 
@@ -275,10 +281,12 @@ export const Login: React.FC = () => {
           </div>
 
           {/* Platform logos under DeepSight logo */}
-          <div className="flex items-center justify-center gap-5 mb-5">
+          <div className="flex items-center justify-center gap-4 mb-5">
             <img src="/platforms/youtube-icon-red.svg" alt="YouTube" className="h-7 opacity-80 hover:opacity-100 transition-opacity" />
             <div className="w-px h-5 bg-border-subtle" />
             <img src="/platforms/tiktok-note-white.png" alt="TikTok" className="h-7 opacity-80 hover:opacity-100 transition-opacity" />
+            <div className="w-px h-5 bg-border-subtle" />
+            <img src="/platforms/tournesol-logo.png" alt="Tournesol" className="h-6 opacity-70 hover:opacity-100 transition-opacity" />
             <div className="w-px h-5 bg-border-subtle" />
             <img src="/platforms/mistral-logo-white.svg" alt="Mistral AI" className="h-5 opacity-60 hover:opacity-90 transition-opacity" />
           </div>
