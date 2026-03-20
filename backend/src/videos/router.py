@@ -192,7 +192,7 @@ async def quick_chat_prepare(
             raise HTTPException(status_code=400, detail="URL YouTube ou TikTok invalide.")
 
     # 2. Verifier si un Summary existe deja
-    existing = await get_summary_by_video_id(session, current_user.id, video_id)
+    existing = await get_summary_by_video_id(session, video_id, current_user.id)
     if existing:
         print(f"[QUICK CHAT] Existing summary found: id={existing.id}", flush=True)
         return QuickChatResponse(
@@ -208,10 +208,23 @@ async def quick_chat_prepare(
             message="Analyse existante trouvee - chat disponible immediatement"
         )
 
+    # 2b. Résoudre les URLs courtes TikTok (vm.tiktok.com → tiktok.com/@user/video/...)
+    resolved_url = url
+    if platform == "tiktok" and ("vm.tiktok.com" in url or "vt.tiktok.com" in url):
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=8.0, follow_redirects=True, max_redirects=5) as client:
+                head_resp = await client.head(url)
+                if head_resp.status_code in (200, 301, 302) and "tiktok.com" in str(head_resp.url):
+                    resolved_url = str(head_resp.url).split("?")[0]  # Drop tracking params
+                    print(f"[QUICK CHAT] Resolved short URL → {resolved_url[:80]}", flush=True)
+        except Exception as e:
+            print(f"[QUICK CHAT] Short URL resolution failed: {e}", flush=True)
+
     # 3. Recuperer les metadonnees
     try:
         if platform == "tiktok":
-            video_info = await get_tiktok_video_info(url)
+            video_info = await get_tiktok_video_info(resolved_url)
             if not video_info:
                 raise ValueError("No info")
             thumbnail_url = video_info.get("thumbnail", video_info.get("thumbnail_url", ""))
@@ -222,15 +235,51 @@ async def quick_chat_prepare(
         print(f"[QUICK CHAT] Failed to get video info: {e}", flush=True)
         raise HTTPException(status_code=400, detail="Impossible de recuperer les informations de la video.")
 
-    title = video_info.get("title", "Video sans titre")
-    channel = video_info.get("channel", video_info.get("author", ""))
+    title = str(video_info.get("title", "Video sans titre"))[:255]
+    raw_channel = video_info.get("channel", video_info.get("author", ""))
+    # Supadata retourne channel comme dict {"username":"...","displayName":"...","avatarUrl":"..."}
+    if isinstance(raw_channel, dict):
+        channel = (
+            raw_channel.get("displayName")
+            or raw_channel.get("name")
+            or raw_channel.get("username")
+            or raw_channel.get("title")
+            or "Unknown"
+        )
+    else:
+        channel = str(raw_channel) if raw_channel else ""
+    channel = channel[:255]  # Securite VARCHAR(255)
     duration = video_info.get("duration", 0)
-    upload_date = video_info.get("upload_date", "")
+    raw_upload_date = video_info.get("upload_date", "")
+    upload_date = str(raw_upload_date)[:50] if raw_upload_date else ""
+
+    # 3b. Fallback thumbnail TikTok via oEmbed si manquant
+    if platform == "tiktok" and not thumbnail_url:
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                oembed_resp = await client.get(
+                    "https://www.tiktok.com/oembed",
+                    params={"url": resolved_url},
+                )
+                if oembed_resp.status_code == 200:
+                    oembed_data = oembed_resp.json()
+                    thumbnail_url = oembed_data.get("thumbnail_url", "")
+                    # Also grab title/author from oEmbed if still generic
+                    if title in ("TikTok Video", "Video sans titre", "", "TikTok"):
+                        title = str(oembed_data.get("title", title))[:255]
+                    if not channel or channel in ("Unknown", ""):
+                        channel = str(oembed_data.get("author_name", channel))[:255]
+                    print(f"[QUICK CHAT] oEmbed fallback: thumb={bool(thumbnail_url)}, title={title[:40]}", flush=True)
+        except Exception as e:
+            print(f"[QUICK CHAT] oEmbed fallback failed: {e}", flush=True)
 
     # 4. Extraire le transcript
     try:
         if platform == "tiktok":
-            transcript_text = await get_tiktok_transcript(url)
+            tiktok_result = await get_tiktok_transcript(resolved_url)
+            # get_tiktok_transcript returns (full_text, timestamped_text, lang)
+            transcript_text = tiktok_result[0] if isinstance(tiktok_result, tuple) else tiktok_result
         else:
             is_short = "/shorts/" in url or duration <= 90
             transcript_result = await get_transcript_with_timestamps(video_id, is_short=is_short)
@@ -244,12 +293,25 @@ async def quick_chat_prepare(
 
     word_count = len(transcript_text.split())
 
+    # 4b. Si le titre est generique, deduire depuis le transcript
+    if title in ("TikTok Video", "Video sans titre", "", "TikTok") and transcript_text:
+        words = transcript_text.strip().split()[:15]
+        derived_title = " ".join(words)
+        if len(derived_title) > 80:
+            derived_title = derived_title[:77] + "..."
+        title = derived_title or title
+        print(f"[QUICK CHAT] Derived title from transcript: {title[:50]}...", flush=True)
+
     # 5. Creer un Summary leger (transcript-only)
+    # Securite: tronquer tous les champs VARCHAR avant insert
+    safe_video_id = str(video_id)[:100]
+    safe_url = str(resolved_url if resolved_url != url else url)[:500]
+    safe_thumbnail = str(thumbnail_url)[:500] if thumbnail_url else ""
     try:
         summary_id = await save_summary(
             session=session, user_id=current_user.id,
-            video_id=video_id, video_title=title, video_channel=channel,
-            video_duration=duration, video_url=url, thumbnail_url=thumbnail_url,
+            video_id=safe_video_id, video_title=title, video_channel=channel,
+            video_duration=duration, video_url=safe_url, thumbnail_url=safe_thumbnail,
             category="general", category_confidence=0.0,
             lang=request.lang, mode="quick_chat", model_used="none",
             summary_content="", transcript_context=transcript_text,
@@ -297,7 +359,7 @@ async def upgrade_quick_chat(
         return UpgradeQuickChatResponse(task_id="already_done", status="completed", message="Analyse complete deja disponible")
 
     # 3. Credits
-    can, reason = await check_can_analyze(session, current_user.id)
+    can, reason, _, _ = await check_can_analyze(session, current_user.id)
     if not can:
         raise HTTPException(status_code=403, detail=reason)
     await deduct_credit(session, current_user.id)

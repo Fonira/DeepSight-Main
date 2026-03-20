@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
@@ -32,9 +32,37 @@ const IMAGE_HEIGHT = 80;
 const CarouselItem = React.memo(({ item }: { item: AnalysisSummary }) => {
   const { colors } = useTheme();
 
-  const thumbnail =
+  // YouTube: fallback vers le thumbnail standard si pas de thumbnail custom
+  // TikTok: pas de fallback YouTube — essayer oEmbed côté client
+  const staticThumbnail =
     item.thumbnail ||
-    (item.videoId ? getYouTubeThumbnail(item.videoId, 'medium') : null);
+    (item.platform !== 'tiktok' && item.videoId
+      ? getYouTubeThumbnail(item.videoId, 'medium')
+      : null);
+
+  // TikTok oEmbed fallback: fetch thumbnail côté client (device IP non bloqué)
+  const [tiktokThumb, setTiktokThumb] = useState<string | null>(null);
+  useEffect(() => {
+    if (staticThumbnail || item.platform !== 'tiktok' || !item.video_url) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const resp = await fetch(
+          `https://www.tiktok.com/oembed?url=${encodeURIComponent(item.video_url!)}`,
+        );
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (!cancelled && data.thumbnail_url) {
+          setTiktokThumb(data.thumbnail_url);
+        }
+      } catch {
+        // Silent — placeholder will show
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [staticThumbnail, item.platform, item.video_url]);
+
+  const thumbnail = staticThumbnail || tiktokThumb;
 
   const handlePress = useCallback(() => {
     router.push({
@@ -67,14 +95,20 @@ const CarouselItem = React.memo(({ item }: { item: AnalysisSummary }) => {
           style={[
             styles.cardImage,
             styles.cardImageFallback,
-            { backgroundColor: colors.bgTertiary },
+            { backgroundColor: item.platform === 'tiktok' ? '#010101' : colors.bgTertiary },
           ]}
         >
-          <Ionicons
-            name="play-circle-outline"
-            size={28}
-            color={colors.textMuted}
-          />
+          {item.platform === 'tiktok' ? (
+            <View style={styles.tiktokBadgeLarge}>
+              <Text style={styles.tiktokBadgeText}>TikTok</Text>
+            </View>
+          ) : (
+            <Ionicons
+              name="play-circle-outline"
+              size={28}
+              color={colors.textMuted}
+            />
+          )}
         </View>
       )}
       <View style={styles.cardContent}>
@@ -279,6 +313,18 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.bodyMedium,
     fontSize: fontSize.xs,
     textAlign: 'center',
+  },
+  tiktokBadgeLarge: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  tiktokBadgeText: {
+    color: '#000',
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.sm,
+    letterSpacing: -0.3,
   },
 });
 

@@ -554,7 +554,14 @@ def detect_category(
     """
     tags = tags or []
     youtube_categories = youtube_categories or []
-    
+
+    # ⚠️ Protection: s'assurer que tous les champs sont des strings (pas des dicts)
+    title = str(title) if title and not isinstance(title, str) else (title or "")
+    description = str(description) if description and not isinstance(description, str) else (description or "")
+    channel = str(channel) if channel and not isinstance(channel, str) else (channel or "")
+    transcript = str(transcript) if transcript and not isinstance(transcript, str) else (transcript or "")
+    tags = [str(t) for t in tags if t]
+
     # Normaliser les textes
     title_lower = title.lower() if title else ""
     desc_lower = description.lower() if description else ""
