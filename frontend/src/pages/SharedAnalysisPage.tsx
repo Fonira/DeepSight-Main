@@ -62,7 +62,7 @@ export default function SharedAnalysisPage() {
     return (
       <div className="min-h-screen bg-[#0d1117] flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <div className="text-6xl mb-4">404</div>
+          <div className="text-4xl sm:text-6xl mb-4">404</div>
           <h1 className="text-2xl font-bold text-[#e6edf3] mb-2">
             Analysis not found
           </h1>

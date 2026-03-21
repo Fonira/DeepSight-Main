@@ -434,6 +434,11 @@ export const History: React.FC = () => {
   const [detailCopied, setDetailCopied] = useState(false);
   const [detailShowExportMenu, setDetailShowExportMenu] = useState(false);
   const [detailExporting, setDetailExporting] = useState(false);
+  // Quick Chat Upgrade states
+  const [upgradeMode, setUpgradeMode] = useState<string>('standard');
+  const [upgradeDeepResearch, setUpgradeDeepResearch] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [upgradeTaskId, setUpgradeTaskId] = useState<string | null>(null);
   const [detailShowCitationModal, setDetailShowCitationModal] = useState(false);
   const [detailShowStudyToolsModal, setDetailShowStudyToolsModal] = useState(false);
   const [detailShowKeywordsModal, setDetailShowKeywordsModal] = useState(false);
@@ -568,6 +573,42 @@ export const History: React.FC = () => {
     setVideoDetailPlayerVisible(false);
     setDetailCopied(false);
     setDetailConcepts([]);
+  };
+
+  const handleUpgradeQuickChat = async () => {
+    if (!selectedVideoDetail) return;
+    setUpgradeLoading(true);
+    try {
+      const response = await videoApi.upgradeQuickChat(
+        selectedVideoDetail.id,
+        upgradeMode,
+        upgradeDeepResearch
+      );
+      setUpgradeTaskId(response.task_id);
+      // Poll for completion
+      const pollInterval = setInterval(async () => {
+        try {
+          const status = await videoApi.getTaskStatus(response.task_id);
+          if (status.status === 'completed' || status.status === 'done') {
+            clearInterval(pollInterval);
+            // Reload the summary
+            const updated = await videoApi.getSummary(selectedVideoDetail.id);
+            setSelectedVideoDetail({...selectedVideoDetail, ...updated, summary_content: updated.summary_content});
+            setUpgradeLoading(false);
+            setUpgradeTaskId(null);
+          } else if (status.status === 'error' || status.status === 'failed') {
+            clearInterval(pollInterval);
+            setUpgradeLoading(false);
+            setUpgradeTaskId(null);
+          }
+        } catch (e) {
+          // Keep polling
+        }
+      }, 5000);
+    } catch (err: any) {
+      setError(err?.message || 'Upgrade failed');
+      setUpgradeLoading(false);
+    }
   };
 
   const handleDetailTimecodeClick = useCallback((seconds: number) => {
@@ -1129,6 +1170,82 @@ export const History: React.FC = () => {
                   </div>
 
                   {/* Summary Content */}
+                  {selectedVideoDetail.mode === 'quick_chat' && !selectedVideoDetail.summary_content ? (
+                    /* Quick Chat Upgrade Panel */
+                    <div className="card p-6">
+                      <div className="flex items-center gap-3 mb-5">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+                          <BookOpen className="w-5 h-5 text-emerald-400" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-text-primary">
+                            {language === 'fr' ? 'Quick Chat — Pas encore d\'analyse' : 'Quick Chat — No analysis yet'}
+                          </h3>
+                          <p className="text-sm text-text-tertiary">
+                            {language === 'fr' ? 'Vous pouvez generer une analyse complete pour cette video' : 'You can generate a full analysis for this video'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Mode selector */}
+                      <div className="mb-4">
+                        <label className="text-sm font-medium text-text-secondary mb-2 block">
+                          {language === 'fr' ? 'Mode d\'analyse' : 'Analysis mode'}
+                        </label>
+                        <div className="flex gap-2">
+                          {['accessible', 'standard', 'expert'].map((m) => (
+                            <button
+                              key={m}
+                              type="button"
+                              onClick={() => setUpgradeMode(m)}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${upgradeMode === m ? 'bg-accent-primary text-white shadow-md' : 'bg-bg-secondary text-text-secondary hover:bg-bg-tertiary'}`}
+                            >
+                              {m.charAt(0).toUpperCase() + m.slice(1)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Deep Research toggle */}
+                      <div className="mb-5 flex items-center justify-between p-3 rounded-lg bg-bg-secondary">
+                        <div>
+                          <p className="text-sm font-medium text-text-primary">
+                            {language === 'fr' ? 'Recherche approfondie' : 'Deep Research'}
+                          </p>
+                          <p className="text-xs text-text-tertiary">
+                            {language === 'fr' ? 'Sources externes + fact-checking avance' : 'External sources + advanced fact-checking'}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setUpgradeDeepResearch(!upgradeDeepResearch)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${upgradeDeepResearch ? 'bg-accent-primary' : 'bg-bg-tertiary'}`}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${upgradeDeepResearch ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                      </div>
+
+                      {/* Generate button */}
+                      <button
+                        type="button"
+                        onClick={handleUpgradeQuickChat}
+                        disabled={upgradeLoading}
+                        className="w-full py-3 px-6 rounded-xl font-semibold text-sm transition-all duration-200 bg-gradient-to-r from-accent-primary to-blue-500 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {upgradeLoading ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            {language === 'fr' ? 'Analyse en cours...' : 'Analyzing...'}
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-4 h-4 fill-current" />
+                            {language === 'fr' ? 'Generer l\'analyse complete (1 credit)' : 'Generate full analysis (1 credit)'}
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  ) : (
                   <div className="card">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-5 border-b border-border-subtle">
                       <h3 className="font-semibold text-text-primary flex items-center gap-2">
@@ -1195,14 +1312,15 @@ export const History: React.FC = () => {
                       </div>
                     </div>
                   </div>
+                  )}
                 </div>
 
-                {/* Chat FAB pour la vue détail */}
+                {/* Chat FAB pour la vue detail */}
                 {!chatTarget && (
                   <button
                     onClick={() => handleOpenVideoChat({ id: selectedVideoDetail.id, video_id: selectedVideoDetail.video_id, video_title: selectedVideoDetail.video_title } as VideoSummary)}
                     aria-label={language === 'fr' ? 'Ouvrir le chat IA' : 'Open AI chat'}
-                    className="fixed bottom-6 right-6 z-[9999] h-[52px] px-5 rounded-[26px] border-none cursor-pointer flex items-center gap-2 text-white font-bold text-sm bg-gradient-to-br from-[#00BCD4] to-[#00ACC1] shadow-lg hover:scale-105 transition-transform"
+                    className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-[9999] h-[52px] px-5 rounded-[26px] border-none cursor-pointer flex items-center gap-2 text-white font-bold text-sm bg-gradient-to-br from-[#00BCD4] to-[#00ACC1] shadow-lg hover:scale-105 transition-transform"
                   >
                     <MessageCircle size={20} />
                     <span>Chat IA</span>
@@ -1817,7 +1935,7 @@ const PlaylistCard: React.FC<{
         </div>
 
         {/* Stats en ligne */}
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 mb-3">
           <div className="text-center p-2 rounded-lg bg-bg-secondary">
             <div className="flex items-center justify-center gap-1 text-purple-600 dark:text-purple-400">
               <Clock className="w-3 h-3" />

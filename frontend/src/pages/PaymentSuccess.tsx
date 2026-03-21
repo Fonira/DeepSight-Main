@@ -314,7 +314,7 @@ export const PaymentSuccess: React.FC = () => {
                   transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
                   className="mb-2"
                 >
-                  <span className="text-5xl block mb-4">{plan.icon}</span>
+                  <span className="text-4xl sm:text-5xl block mb-4">{plan.icon}</span>
                   <h1 className="text-2xl sm:text-3xl font-bold text-white">
                     Bienvenue dans le plan {plan.name} !
                   </h1>

@@ -248,7 +248,7 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
           <div className="glass-panel rounded-xl p-3">
             <div className="flex items-center justify-center gap-1 text-emerald-400 mb-1">
               <CheckCircle className="w-4 h-4" />

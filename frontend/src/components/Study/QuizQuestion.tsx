@@ -214,7 +214,7 @@ export const QuizQuestion: React.FC<QuizQuestionProps> = ({
           
           <h3 className="text-2xl font-bold text-white mb-2">{t.completed}</h3>
           
-          <div className="text-5xl font-bold text-amber-400 my-6">
+          <div className="text-4xl sm:text-5xl font-bold text-amber-400 my-6">
             {score}/{questions.length}
           </div>
           

@@ -30,7 +30,7 @@ import {
   RefreshCw, Sparkles, BarChart3, PieChart, TrendingUp,
   FileText, Video, Tag, Layers, MessageSquare,
   Target, Send, Trash2, Bot, User, BookOpen,
-  ExternalLink, Hash,
+  ExternalLink, Hash, Pencil, MoreVertical, X, Check,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -691,6 +691,14 @@ export const PlaylistDetailPage: React.FC = () => {
   const [details, setDetails] = useState<PlaylistDetailsResponse | null>(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
 
+  // CRUD State
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState('');
+  const [isSavingRename, setIsSavingRename] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+
   // ═══════════════════════════════════════════════════════════════════
   // COMPUTED
   // ═══════════════════════════════════════════════════════════════════
@@ -821,6 +829,65 @@ export const PlaylistDetailPage: React.FC = () => {
     }
   };
 
+  // ── DELETE PLAYLIST ──────────────────────────────────────────────
+  const handleDeletePlaylist = async () => {
+    if (!id || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await playlistApi.delete(id);
+      navigate('/playlists', { replace: true });
+    } catch (err: any) {
+      console.error('Error deleting playlist:', err);
+      setError(
+        language === 'fr'
+          ? 'Erreur lors de la suppression du corpus.'
+          : 'Error deleting corpus.'
+      );
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  // ── RENAME PLAYLIST ─────────────────────────────────────────────
+  const startRenaming = () => {
+    setRenameValue(playlist?.playlist_title || '');
+    setIsRenaming(true);
+    setShowActionsMenu(false);
+  };
+
+  const handleSaveRename = async () => {
+    if (!id || !renameValue.trim() || isSavingRename) return;
+    if (renameValue.trim() === playlist?.playlist_title) {
+      setIsRenaming(false);
+      return;
+    }
+    setIsSavingRename(true);
+    try {
+      const updated = await playlistApi.update(id, { name: renameValue.trim() });
+      setPlaylist(updated);
+      setIsRenaming(false);
+    } catch (err: any) {
+      console.error('Error renaming playlist:', err);
+      setError(
+        language === 'fr'
+          ? 'Erreur lors du renommage du corpus.'
+          : 'Error renaming corpus.'
+      );
+    } finally {
+      setIsSavingRename(false);
+    }
+  };
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveRename();
+    } else if (e.key === 'Escape') {
+      setIsRenaming(false);
+    }
+  };
+
   // ═══════════════════════════════════════════════════════════════════
   // TAB CONFIG
   // ═══════════════════════════════════════════════════════════════════
@@ -922,9 +989,45 @@ export const PlaylistDetailPage: React.FC = () => {
               </div>
 
               <div className="flex-1 min-w-0">
-                <h1 className="text-2xl font-bold text-text-primary mb-2 truncate">
-                  {playlist.playlist_title}
-                </h1>
+                {/* Titre éditable inline */}
+                {isRenaming ? (
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={handleRenameKeyDown}
+                      autoFocus
+                      className="text-2xl font-bold text-text-primary bg-bg-secondary border border-accent-primary rounded-lg px-3 py-1 flex-1 min-w-0 outline-none"
+                    />
+                    <button
+                      onClick={handleSaveRename}
+                      disabled={isSavingRename || !renameValue.trim()}
+                      className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
+                    >
+                      {isSavingRename ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    </button>
+                    <button
+                      onClick={() => setIsRenaming(false)}
+                      className="p-2 rounded-lg bg-bg-tertiary text-text-muted hover:bg-bg-secondary transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 mb-2 group">
+                    <h1 className="text-2xl font-bold text-text-primary truncate">
+                      {playlist.playlist_title}
+                    </h1>
+                    <button
+                      onClick={startRenaming}
+                      className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-bg-tertiary text-text-muted transition-all"
+                      title={language === 'fr' ? 'Renommer' : 'Rename'}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
                 <div className="flex items-center gap-4 text-sm text-text-muted flex-wrap">
                   <span className="flex items-center gap-1">
                     <Video className="w-4 h-4" />
@@ -966,6 +1069,37 @@ export const PlaylistDetailPage: React.FC = () => {
                 <button onClick={loadPlaylistData} className="btn btn-secondary">
                   <RefreshCw className="w-4 h-4" />
                 </button>
+
+                {/* Menu actions (renommer, supprimer) */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowActionsMenu(!showActionsMenu)}
+                    className="btn btn-secondary"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                  {showActionsMenu && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setShowActionsMenu(false)} />
+                      <div className="absolute right-0 top-full mt-1 w-48 bg-bg-secondary border border-border-subtle rounded-xl shadow-xl z-20 overflow-hidden">
+                        <button
+                          onClick={startRenaming}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                          {language === 'fr' ? 'Renommer' : 'Rename'}
+                        </button>
+                        <button
+                          onClick={() => { setShowDeleteConfirm(true); setShowActionsMenu(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          {language === 'fr' ? 'Supprimer le corpus' : 'Delete corpus'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1196,7 +1330,7 @@ export const PlaylistDetailPage: React.FC = () => {
                   <Target className="w-5 h-5 text-green-400" />
                   {language === 'fr' ? 'Score de fiabilité' : 'Reliability Score'}
                 </h3>
-                <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-center">
                   <div className="p-4 bg-green-500/10 rounded-lg">
                     <p className="text-2xl font-bold text-green-400">
                       {videos.filter(v => (v.reliability_score || 0) >= 0.7).length}
@@ -1221,6 +1355,52 @@ export const PlaylistDetailPage: React.FC = () => {
           )}
 
         </div>
+
+        {/* ═══ MODALE SUPPRESSION ═══ */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !isDeleting && setShowDeleteConfirm(false)} />
+            <div className="relative bg-bg-secondary border border-border-subtle rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                  <Trash2 className="w-5 h-5 text-red-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-text-primary">
+                  {language === 'fr' ? 'Supprimer ce corpus ?' : 'Delete this corpus?'}
+                </h3>
+              </div>
+              <p className="text-text-secondary text-sm mb-2">
+                <strong className="text-text-primary">{playlist.playlist_title}</strong>
+              </p>
+              <p className="text-text-muted text-sm mb-6">
+                {language === 'fr'
+                  ? `${stats.totalVideos} vidéos, ${stats.analyzedCount} analysées. Cette action est irréversible — les synthèses et le chat seront perdus.`
+                  : `${stats.totalVideos} videos, ${stats.analyzedCount} analyzed. This action is irreversible — summaries and chat will be lost.`}
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                  className="btn btn-secondary"
+                >
+                  {language === 'fr' ? 'Annuler' : 'Cancel'}
+                </button>
+                <button
+                  onClick={handleDeletePlaylist}
+                  disabled={isDeleting}
+                  className="px-4 py-2 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isDeleting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  {language === 'fr' ? 'Supprimer' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
