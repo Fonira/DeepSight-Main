@@ -135,6 +135,7 @@ class _DeepSightSettings(BaseSettings):
 
     # -- Transcript --
     YTDLP_COOKIES_PATH: str = ""
+    MAX_DURATION_FOR_STT: int = Field(default=1200)
 
     @property
     def is_production(self) -> bool:
@@ -690,6 +691,10 @@ def get_assemblyai_key() -> Optional[str]:
     return _settings.ASSEMBLYAI_API_KEY or None
 
 
+def get_elevenlabs_key() -> Optional[str]:
+    return _settings.ELEVENLABS_API_KEY or None
+
+
 # =============================================================================
 # TRANSCRIPT CONFIG
 # =============================================================================
@@ -715,6 +720,8 @@ RATE_LIMIT_ENABLED = _settings.RATE_LIMIT_ENABLED.lower() == "true"
 # =============================================================================
 # TRANSCRIPT CONFIG
 # =============================================================================
+
+MAX_DURATION_FOR_STT = _settings.MAX_DURATION_FOR_STT
 
 TRANSCRIPT_CONFIG = {
     "circuit_breaker_failure_threshold": 5,
@@ -745,7 +752,8 @@ if __name__ != "__main__":
     print(f"  Audio: Groq={'yes' if get_groq_key() else 'no'}"
           f" OpenAI={'yes' if get_openai_key() else 'no'}"
           f" Deepgram={'yes' if get_deepgram_key() else 'no'}"
-          f" AssemblyAI={'yes' if get_assemblyai_key() else 'no'}", flush=True)
+          f" AssemblyAI={'yes' if get_assemblyai_key() else 'no'}"
+          f" ElevenLabs={'yes' if get_elevenlabs_key() else 'no'}", flush=True)
     print(f"  Rate Limit: {RATE_LIMIT_ENABLED}", flush=True)
     print(f"  Cache: Redis={'yes' if _settings.REDIS_URL else 'no (memory fallback)'}"
           f" max_size={_settings.CACHE_MAX_SIZE}", flush=True)

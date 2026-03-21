@@ -53,7 +53,8 @@ import contextvars
 
 from core.config import (
     get_supadata_key, get_groq_key, get_deepgram_key,
-    get_openai_key, get_assemblyai_key, get_youtube_proxy, TRANSCRIPT_CONFIG
+    get_openai_key, get_assemblyai_key, get_elevenlabs_key,
+    get_youtube_proxy, TRANSCRIPT_CONFIG
 )
 
 # 💾 Cache pour les transcripts (TTL 24h)
@@ -78,6 +79,7 @@ except ImportError:
 
 GROQ_MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB max pour Groq
 OPENAI_MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB max pour OpenAI Whisper
+MAX_DURATION_FOR_STT = int(os.environ.get("MAX_DURATION_FOR_STT", "1200"))  # 20 min max pour STT
 
 TIMEOUTS = {
     "supadata": 45,           # 30 → 45 (connexions lentes)
@@ -91,6 +93,7 @@ TIMEOUTS = {
     "openai_whisper": 360,    # Nouveau - OpenAI Whisper
     "deepgram": 300,          # Deepgram Nova-2
     "assemblyai": 300,        # Nouveau - AssemblyAI
+    "elevenlabs_scribe": 300,  # ElevenLabs Scribe v2
 }
 
 # ⚡ v7.1: Timeouts réduits pour vidéos courtes (<5 min) — gain ~50% sur fallback
@@ -106,6 +109,7 @@ TIMEOUTS_SHORT = {
     "openai_whisper": 90,     # 360 → 90
     "deepgram": 60,           # 300 → 60
     "assemblyai": 60,         # 300 → 60
+    "elevenlabs_scribe": 60,  # 300 → 60
 }
 
 
@@ -337,6 +341,7 @@ class TranscriptSource(Enum):
     OPENAI_WHISPER = "openai-whisper"  # Nouveau
     DEEPGRAM = "deepgram-nova2"
     ASSEMBLYAI = "assemblyai"  # Nouveau
+    ELEVENLABS_SCRIBE = "elevenlabs-scribe"
     CACHE = "cache"
     NONE = "none"
 
@@ -1779,6 +1784,87 @@ async def get_transcript_assemblyai(video_id: str, audio_data: bytes = None, aud
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🎙️ MÉTHODE 11: ELEVENLABS SCRIBE v2
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def _elevenlabs_scribe_transcribe(video_id: str, audio_data: bytes = None, audio_ext: str = ".mp3", language: str = None) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    🎙️ ElevenLabs Scribe v2 - Dernier fallback STT
+    Utilise l'audio pré-téléchargé si fourni, sinon télécharge
+    """
+    elevenlabs_key = get_elevenlabs_key()
+    if not elevenlabs_key:
+        print(f"  ⏭️ [ELEVENLABS-SCRIBE] Skipped: No API key", flush=True)
+        return None, None, None
+
+    print(f"  🎙️ [ELEVENLABS-SCRIBE] Starting...", flush=True)
+
+    # Si pas d'audio fourni, télécharger
+    if not audio_data:
+        audio_data, audio_ext = await _download_audio_for_transcription(video_id)
+        if not audio_data:
+            print(f"  ❌ [ELEVENLABS-SCRIBE] Failed to download audio", flush=True)
+            return None, None, None
+
+    print(f"  🎙️ [ELEVENLABS-SCRIBE] Sending {len(audio_data)/1024/1024:.1f}MB to ElevenLabs...", flush=True)
+
+    try:
+        mime_types = {'.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.webm': 'audio/webm', '.opus': 'audio/opus', '.wav': 'audio/wav'}
+        mime_type = mime_types.get(audio_ext, 'audio/mpeg')
+
+        async with httpx.AsyncClient() as client:
+            files = {'file': (f'audio{audio_ext}', audio_data, mime_type)}
+            data = {'model': 'scribe_v2'}
+            if language:
+                data['language_code'] = language
+
+            start_time = time.time()
+            response = await client.post(
+                "https://api.elevenlabs.io/v1/speech-to-text",
+                headers={"xi-api-key": elevenlabs_key},
+                files=files, data=data, timeout=_t("elevenlabs_scribe")
+            )
+            elapsed = time.time() - start_time
+            print(f"  🎙️ [ELEVENLABS-SCRIBE] Response in {elapsed:.1f}s: {response.status_code}", flush=True)
+
+            if response.status_code == 200:
+                result = response.json()
+                full_text = result.get("text", "")
+                utterances = result.get("utterances", [])
+                detected_lang = result.get("language_code", language or "fr")
+
+                if full_text:
+                    if utterances:
+                        timestamped_parts = []
+                        last_ts = -30
+                        for utt in utterances:
+                            text = utt.get("text", "").strip()
+                            start = utt.get("start", 0)
+                            if not text:
+                                continue
+                            # ElevenLabs returns start in seconds (float)
+                            if start - last_ts >= 30:
+                                ts = format_seconds_to_timestamp(start)
+                                timestamped_parts.append(f"\n[{ts}] {text}")
+                                last_ts = start
+                            else:
+                                timestamped_parts.append(f" {text}")
+                        timestamped = "".join(timestamped_parts).strip()
+                    else:
+                        timestamped = full_text
+
+                    print(f"  ✅ [ELEVENLABS-SCRIBE] Success: {len(full_text)} chars", flush=True)
+                    return full_text, timestamped, detected_lang
+            else:
+                print(f"  ❌ [ELEVENLABS-SCRIBE] Error: {response.text[:200]}", flush=True)
+
+    except Exception as e:
+        print(f"  ❌ [ELEVENLABS-SCRIBE] Transcription error: {e}", flush=True)
+
+    return None, None, None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 HELPERS AUDIO — Fonctions partagées pour le téléchargement/compression audio
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -1903,7 +1989,7 @@ async def _compress_audio(audio_data: bytes, audio_ext: str, source_name: str = 
 # 🎯 FONCTION PRINCIPALE — 10 MÉTHODES EN 3 PHASES (PARALLÈLE + SÉQUENTIEL)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None, is_short: bool = False) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None, is_short: bool = False, duration: int = 0) -> Tuple[Optional[str], Optional[str], Optional[str]]:
     """
     🎯 FONCTION PRINCIPALE v7.1 - Supadata PRIORITAIRE + STT pour TOUTES vidéos
     Retourne: (transcript_simple, transcript_timestamped, lang)
@@ -2115,39 +2201,44 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
     print(f"📋 PHASE 3: Audio STT (last resort{' — SHORT' if is_short else ' — full video'})", flush=True)
     print(f"─" * 50, flush=True)
 
-    # Télécharger l'audio une seule fois pour tous les services
-    print(f"  🎵 Downloading audio for transcription...", flush=True)
-    audio_data, audio_ext = await _download_audio_for_transcription(video_id)
+    # Duration guard: skip all STT providers for videos longer than MAX_DURATION_FOR_STT
+    if duration > 0 and duration > MAX_DURATION_FOR_STT:
+        print(f"  ⏭️ [STT] Skipped ALL STT providers: video duration {duration}s > MAX_DURATION_FOR_STT {MAX_DURATION_FOR_STT}s", flush=True)
+    else:
+        # Télécharger l'audio une seule fois pour tous les services
+        print(f"  🎵 Downloading audio for transcription...", flush=True)
+        audio_data, audio_ext = await _download_audio_for_transcription(video_id)
 
-    if not audio_data:
-        print(f"  ❌ Failed to download audio - trying services anyway", flush=True)
+        if not audio_data:
+            print(f"  ❌ Failed to download audio - trying services anyway", flush=True)
 
-    phase3_methods = [
-        ("Groq Whisper", "whisper", lambda: get_transcript_whisper(video_id)),
-        ("OpenAI Whisper", "openai_whisper", lambda: get_transcript_openai_whisper(video_id, audio_data, audio_ext)),
-        ("Deepgram Nova-2", "deepgram", lambda: get_transcript_deepgram(video_id)),
-        ("AssemblyAI", "assemblyai", lambda: get_transcript_assemblyai(video_id, audio_data, audio_ext)),
-    ]
+        phase3_methods = [
+            ("Groq Whisper", "whisper", lambda: get_transcript_whisper(video_id)),
+            ("OpenAI Whisper", "openai_whisper", lambda: get_transcript_openai_whisper(video_id, audio_data, audio_ext)),
+            ("Deepgram Nova-2", "deepgram", lambda: get_transcript_deepgram(video_id)),
+            ("AssemblyAI", "assemblyai", lambda: get_transcript_assemblyai(video_id, audio_data, audio_ext)),
+            ("ElevenLabs Scribe", "elevenlabs_scribe", lambda: _elevenlabs_scribe_transcribe(video_id, audio_data, audio_ext)),
+        ]
 
-    for name, cb_name, method in phase3_methods:
-        cb = get_circuit_breaker(cb_name)
-        if not cb.can_execute():
-            print(f"  ⏭️ [{name}] Skipped (circuit OPEN)", flush=True)
-            continue
+        for name, cb_name, method in phase3_methods:
+            cb = get_circuit_breaker(cb_name)
+            if not cb.can_execute():
+                print(f"  ⏭️ [{name}] Skipped (circuit OPEN)", flush=True)
+                continue
 
-        print(f"  🎙️ [{name}] Trying...", flush=True)
-        try:
-            simple, timestamped, lang = await method()
-            if simple:
-                cb.record_success()
-                print(f"✅ SUCCESS with {name} (Phase 3 - Audio STT)", flush=True)
-                print(f"{'='*70}", flush=True)
-                result_ts = timestamped or simple
-                await _cache_success(video_id, simple, result_ts, lang, name)
-                return simple, result_ts, lang
-        except Exception as e:
-            print(f"  ⚠️ [{name}] Failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
-        cb.record_failure()
+            print(f"  🎙️ [{name}] Trying...", flush=True)
+            try:
+                simple, timestamped, lang = await method()
+                if simple:
+                    cb.record_success()
+                    print(f"✅ SUCCESS with {name} (Phase 3 - Audio STT)", flush=True)
+                    print(f"{'='*70}", flush=True)
+                    result_ts = timestamped or simple
+                    await _cache_success(video_id, simple, result_ts, lang, name)
+                    return simple, result_ts, lang
+            except Exception as e:
+                print(f"  ⚠️ [{name}] Failed ({type(e).__name__}): {str(e)[:200]}", flush=True)
+            cb.record_failure()
 
     # ═══════════════════════════════════════════════════════════════════════════════
     # ÉCHEC TOTAL — Log détaillé pour diagnostic
@@ -2155,7 +2246,7 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
     print(f"", flush=True)
     print(f"❌ FAILED: All methods failed for {video_id} (is_short={is_short})", flush=True)
     # Log l'état des circuit breakers pour diagnostic
-    for cb_name in ["supadata", "ytapi", "invidious", "piped", "ytdlp", "ytdlp_auto", "whisper", "openai_whisper", "deepgram", "assemblyai"]:
+    for cb_name in ["supadata", "ytapi", "invidious", "piped", "ytdlp", "ytdlp_auto", "whisper", "openai_whisper", "deepgram", "assemblyai", "elevenlabs_scribe"]:
         cb = get_circuit_breaker(cb_name)
         if cb.state != CircuitState.CLOSED:
             print(f"  🔌 [{cb_name}] circuit={cb.state.value} failures={cb.failures}", flush=True)
@@ -2321,6 +2412,7 @@ __all__ = [
     "get_transcript_openai_whisper",  # v6.0
     "get_transcript_deepgram",
     "get_transcript_assemblyai",  # v6.0
+    "_elevenlabs_scribe_transcribe",  # v7.2
     # Playlists
     "get_playlist_videos",
     "get_playlist_info",
