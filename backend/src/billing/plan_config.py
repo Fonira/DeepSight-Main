@@ -110,17 +110,17 @@ PLANS: dict[str, dict[str, Any]] = {
         ],
         "platforms": {
             "web": {
-                "analyse": True, "chat": True, "flashcards": False,
+                "analyse": True, "chat": True, "tts": False, "flashcards": False,
                 "mindmap": False, "web_search": False, "export_md": False,
                 "export_pdf": False, "playlists": False, "history": True,
             },
             "mobile": {
-                "analyse": True, "chat": True, "flashcards": False,
+                "analyse": True, "chat": True, "tts": False, "flashcards": False,
                 "mindmap": False, "web_search": False, "export_md": False,
                 "export_pdf": False, "playlists": False, "history": True,
             },
             "extension": {
-                "analyse": True, "chat": True, "flashcards": False,
+                "analyse": True, "chat": True, "tts": False, "flashcards": False,
                 "mindmap": False, "web_search": False, "export_md": False,
                 "export_pdf": False, "playlists": False, "history": True,
             },
@@ -178,17 +178,17 @@ PLANS: dict[str, dict[str, Any]] = {
         ],
         "platforms": {
             "web": {
-                "analyse": True, "chat": True, "flashcards": True,
+                "analyse": True, "chat": True, "tts": True, "flashcards": True,
                 "mindmap": True, "web_search": False, "export_md": True,
                 "export_pdf": False, "playlists": False, "history": True,
             },
             "mobile": {
-                "analyse": True, "chat": True, "flashcards": True,
+                "analyse": True, "chat": True, "tts": True, "flashcards": True,
                 "mindmap": False, "web_search": False, "export_md": False,
                 "export_pdf": False, "playlists": False, "history": True,
             },
             "extension": {
-                "analyse": True, "chat": True, "flashcards": False,
+                "analyse": True, "chat": True, "tts": True, "flashcards": False,
                 "mindmap": False, "web_search": False, "export_md": False,
                 "export_pdf": False, "playlists": False, "history": True,
             },
@@ -247,17 +247,17 @@ PLANS: dict[str, dict[str, Any]] = {
         ],
         "platforms": {
             "web": {
-                "analyse": True, "chat": True, "flashcards": True,
+                "analyse": True, "chat": True, "tts": True, "flashcards": True,
                 "mindmap": True, "web_search": True, "export_md": True,
                 "export_pdf": False, "playlists": False, "history": True,
             },
             "mobile": {
-                "analyse": True, "chat": True, "flashcards": True,
+                "analyse": True, "chat": True, "tts": True, "flashcards": True,
                 "mindmap": False, "web_search": False, "export_md": False,
                 "export_pdf": False, "playlists": False, "history": True,
             },
             "extension": {
-                "analyse": True, "chat": True, "flashcards": False,
+                "analyse": True, "chat": True, "tts": True, "flashcards": False,
                 "mindmap": False, "web_search": False, "export_md": False,
                 "export_pdf": False, "playlists": False, "history": True,
             },
@@ -314,17 +314,17 @@ PLANS: dict[str, dict[str, Any]] = {
         "features_locked": [],
         "platforms": {
             "web": {
-                "analyse": True, "chat": True, "flashcards": True,
+                "analyse": True, "chat": True, "tts": True, "flashcards": True,
                 "mindmap": True, "web_search": True, "export_md": True,
                 "export_pdf": True, "playlists": True, "history": True,
             },
             "mobile": {
-                "analyse": True, "chat": True, "flashcards": True,
+                "analyse": True, "chat": True, "tts": True, "flashcards": True,
                 "mindmap": False, "web_search": False, "export_md": False,
                 "export_pdf": False, "playlists": True, "history": True,
             },
             "extension": {
-                "analyse": True, "chat": True, "flashcards": False,
+                "analyse": True, "chat": True, "tts": True, "flashcards": False,
                 "mindmap": False, "web_search": False, "export_md": False,
                 "export_pdf": False, "playlists": False, "history": True,
             },

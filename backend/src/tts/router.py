@@ -1,262 +1,201 @@
 """
-╔════════════════════════════════════════════════════════════════════════════════════╗
-║  🔊 TTS ROUTER — Text-to-Speech API endpoints                                      ║
-║  v1.0 — Generate audio from summaries and text                                     ║
-╚════════════════════════════════════════════════════════════════════════════════════╝
+TTS ROUTER — ElevenLabs Text-to-Speech streaming
+v2.0 — Direct ElevenLabs streaming proxy + voices endpoint
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
-from fastapi.responses import FileResponse, StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from typing import Optional
-import aiofiles
+import httpx
+import logging
 
-from db.database import get_session, User
+from db.database import User
 from auth.dependencies import get_current_user
-from videos.service import get_summary_by_id
+from billing.permissions import require_feature
+from core.config import get_elevenlabs_key
 
-from .schemas import (
-    TTSGenerateRequest,
-    TTSGenerateResponse,
-    TTSStatusResponse,
-    TTSVoice
-)
-from .service import (
-    generate_tts,
-    estimate_duration,
-    is_tts_available,
-    get_available_voices,
-    get_cache_path,
-    check_cache
-)
-
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# ElevenLabs config
+ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1"
+DEFAULT_VOICE_ID = "pMsXgVXv3BLzUgSXRplE"  # Voix française
+DEFAULT_MODEL_ID = "eleven_flash_v2_5"       # 75ms latency, supports French
+MAX_TEXT_LENGTH = 5000
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 📊 STATUS
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@router.get("/status", response_model=TTSStatusResponse)
-async def tts_status():
-    """
-    Check TTS service availability and configuration.
-    """
-    available, provider = is_tts_available()
-    
-    return TTSStatusResponse(
-        available=available,
-        provider=provider if available else None,
-        voices=get_available_voices() if available else [],
-        max_text_length=4096,
-        supported_formats=["mp3", "opus", "aac", "flac"]
-    )
+# Voices cache
+_voices_cache: dict = {"data": None, "expires": 0}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🎙️ GENERATE TTS
+# 🎙️ POST /api/tts — Stream TTS audio
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@router.post("/generate", response_model=TTSGenerateResponse)
-async def generate_audio(
-    request: TTSGenerateRequest,
-    current_user: User = Depends(get_current_user)
+@router.post("")
+async def tts_stream(
+    request: Request,
+    current_user: User = Depends(get_current_user),
 ):
     """
-    Generate TTS audio from text.
-    
-    Returns a URL to the generated audio file.
-    Audio is cached by content hash for efficiency.
+    Stream TTS audio from ElevenLabs.
+
+    Body: { text: string, voice_id?: string, model_id?: string }
+    Returns: streaming audio/mpeg response
     """
-    # Check if TTS is available
-    available, provider = is_tts_available()
-    if not available:
-        raise HTTPException(
-            status_code=503,
-            detail="TTS service not configured. Please set OPENAI_API_KEY or ELEVENLABS_API_KEY."
-        )
-    
-    # Validate text length
-    if len(request.text) > 4096:
+    # Feature check
+    user_plan = current_user.plan or "free"
+    platform = request.query_params.get("platform", "web")
+    require_feature(user_plan, "tts", platform, label="Text-to-Speech")
+
+    # Parse body
+    body = await request.json()
+    text = body.get("text", "").strip()
+    voice_id = body.get("voice_id", DEFAULT_VOICE_ID)
+    model_id = body.get("model_id", DEFAULT_MODEL_ID)
+
+    if not text:
+        raise HTTPException(status_code=400, detail="Text is required")
+
+    if len(text) > MAX_TEXT_LENGTH:
         raise HTTPException(
             status_code=400,
-            detail="Text too long. Maximum 4096 characters."
+            detail=f"Text too long. Maximum {MAX_TEXT_LENGTH} characters, got {len(text)}."
         )
-    
-    # Generate TTS
-    audio_path, cache_key, cached, error = await generate_tts(
-        text=request.text,
-        voice=request.voice.value,
-        speed=request.speed,
-        format=request.format
-    )
-    
-    if error:
-        raise HTTPException(status_code=500, detail=error)
-    
-    if not audio_path:
-        raise HTTPException(status_code=500, detail="Failed to generate audio")
-    
-    # Build audio URL
-    audio_url = f"/api/tts/audio/{cache_key}.{request.format}"
-    
-    return TTSGenerateResponse(
-        success=True,
-        audio_url=audio_url,
-        cache_key=cache_key,
-        duration_estimate=estimate_duration(request.text, request.speed),
-        text_length=len(request.text),
-        cached=cached
-    )
 
-
-@router.post("/generate/summary/{summary_id}", response_model=TTSGenerateResponse)
-async def generate_summary_audio(
-    summary_id: int,
-    voice: TTSVoice = TTSVoice.NOVA,
-    speed: float = Query(default=1.0, ge=0.25, le=4.0),
-    format: str = Query(default="mp3", regex="^(mp3|opus|aac|flac)$"),
-    current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session)
-):
-    """
-    Generate TTS audio from a saved summary.
-    
-    Automatically extracts the summary content and generates audio.
-    """
-    # Check if TTS is available
-    available, provider = is_tts_available()
-    if not available:
+    # Get API key
+    api_key = get_elevenlabs_key()
+    if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="TTS service not configured."
+            detail="TTS service not configured"
         )
-    
-    # Get the summary
-    summary = await get_summary_by_id(session, summary_id, current_user.id)
-    if not summary:
-        raise HTTPException(status_code=404, detail="Summary not found")
-    
-    # Extract text (summary content)
-    text = summary.summary_content
-    if not text:
-        raise HTTPException(status_code=400, detail="Summary has no content")
-    
-    # Truncate if too long
-    if len(text) > 4096:
-        text = text[:4000] + "... (content truncated for audio)"
-    
-    # Generate TTS
-    audio_path, cache_key, cached, error = await generate_tts(
-        text=text,
-        voice=voice.value,
-        speed=speed,
-        format=format
-    )
-    
-    if error:
-        raise HTTPException(status_code=500, detail=error)
-    
-    if not audio_path:
-        raise HTTPException(status_code=500, detail="Failed to generate audio")
-    
-    # Build audio URL
-    audio_url = f"/api/tts/audio/{cache_key}.{format}"
-    
-    return TTSGenerateResponse(
-        success=True,
-        audio_url=audio_url,
-        cache_key=cache_key,
-        duration_estimate=estimate_duration(text, speed),
-        text_length=len(text),
-        cached=cached
-    )
 
+    # Proxy to ElevenLabs streaming endpoint
+    elevenlabs_url = f"{ELEVENLABS_BASE_URL}/text-to-speech/{voice_id}/stream"
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 🔊 AUDIO STREAMING
-# ═══════════════════════════════════════════════════════════════════════════════
+    async def stream_audio():
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                async with client.stream(
+                    "POST",
+                    elevenlabs_url,
+                    headers={
+                        "xi-api-key": api_key,
+                        "Content-Type": "application/json",
+                        "Accept": "audio/mpeg",
+                    },
+                    json={
+                        "text": text,
+                        "model_id": model_id,
+                        "voice_settings": {
+                            "stability": 0.5,
+                            "similarity_boost": 0.75,
+                        },
+                    },
+                ) as response:
+                    if response.status_code != 200:
+                        error_body = await response.aread()
+                        logger.error(
+                            "ElevenLabs error: status=%d body=%s",
+                            response.status_code,
+                            error_body[:200],
+                        )
+                        return
+                    async for chunk in response.aiter_bytes(chunk_size=4096):
+                        yield chunk
+            except httpx.TimeoutException:
+                logger.error("ElevenLabs TTS timeout")
+            except Exception as e:
+                logger.error("ElevenLabs TTS error: %s", str(e))
 
-@router.get("/audio/{filename}")
-async def get_audio(filename: str):
-    """
-    Stream a cached audio file.
-    
-    The filename should be in the format: {cache_key}.{format}
-    """
-    # Parse filename
-    if "." not in filename:
-        raise HTTPException(status_code=400, detail="Invalid filename format")
-    
-    cache_key, format = filename.rsplit(".", 1)
-    
-    if format not in ["mp3", "opus", "aac", "flac"]:
-        raise HTTPException(status_code=400, detail="Invalid audio format")
-    
-    # Get cached file path
-    audio_path = await check_cache(cache_key, format)
-    
-    if not audio_path:
-        raise HTTPException(status_code=404, detail="Audio not found or expired")
-    
-    # Get MIME type
-    mime_types = {
-        "mp3": "audio/mpeg",
-        "opus": "audio/opus",
-        "aac": "audio/aac",
-        "flac": "audio/flac"
-    }
-    
-    return FileResponse(
-        path=str(audio_path),
-        media_type=mime_types.get(format, "audio/mpeg"),
-        filename=f"deepsight_tts.{format}",
-        headers={
-            "Accept-Ranges": "bytes",
-            "Cache-Control": "public, max-age=86400"
-        }
-    )
-
-
-@router.get("/audio/{filename}/stream")
-async def stream_audio(filename: str):
-    """
-    Stream audio with chunked transfer encoding.
-    Better for mobile and progressive loading.
-    """
-    # Parse filename
-    if "." not in filename:
-        raise HTTPException(status_code=400, detail="Invalid filename format")
-    
-    cache_key, format = filename.rsplit(".", 1)
-    
-    if format not in ["mp3", "opus", "aac", "flac"]:
-        raise HTTPException(status_code=400, detail="Invalid audio format")
-    
-    # Get cached file path
-    audio_path = await check_cache(cache_key, format)
-    
-    if not audio_path:
-        raise HTTPException(status_code=404, detail="Audio not found or expired")
-    
-    async def audio_streamer():
-        async with aiofiles.open(audio_path, "rb") as f:
-            while chunk := await f.read(8192):
-                yield chunk
-    
-    mime_types = {
-        "mp3": "audio/mpeg",
-        "opus": "audio/opus",
-        "aac": "audio/aac",
-        "flac": "audio/flac"
-    }
-    
     return StreamingResponse(
-        audio_streamer(),
-        media_type=mime_types.get(format, "audio/mpeg"),
+        stream_audio(),
+        media_type="audio/mpeg",
         headers={
-            "Accept-Ranges": "bytes",
-            "Cache-Control": "public, max-age=86400"
-        }
+            "Cache-Control": "no-cache",
+            "Transfer-Encoding": "chunked",
+        },
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🗣️ GET /api/tts/voices — List available voices
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/voices")
+async def list_voices(
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Return available ElevenLabs voices (cached 1h).
+    """
+    import time
+
+    now = time.time()
+
+    # Return cached if valid
+    if _voices_cache["data"] and _voices_cache["expires"] > now:
+        return _voices_cache["data"]
+
+    api_key = get_elevenlabs_key()
+    if not api_key:
+        raise HTTPException(status_code=503, detail="TTS service not configured")
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(
+                f"{ELEVENLABS_BASE_URL}/voices",
+                headers={"xi-api-key": api_key},
+            )
+
+            if response.status_code != 200:
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail="Failed to fetch voices from ElevenLabs"
+                )
+
+            data = response.json()
+            voices = [
+                {
+                    "voice_id": v["voice_id"],
+                    "name": v["name"],
+                    "category": v.get("category", ""),
+                    "labels": v.get("labels", {}),
+                    "preview_url": v.get("preview_url", ""),
+                }
+                for v in data.get("voices", [])
+            ]
+
+            result = {"voices": voices, "default_voice_id": DEFAULT_VOICE_ID}
+
+            # Cache for 1 hour
+            _voices_cache["data"] = result
+            _voices_cache["expires"] = now + 3600
+
+            return result
+
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Voices request timed out")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to fetch ElevenLabs voices: %s", str(e))
+        raise HTTPException(status_code=500, detail="Failed to fetch voices")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📊 GET /api/tts/status — TTS availability check
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/status")
+async def tts_status():
+    """Check if TTS is available."""
+    api_key = get_elevenlabs_key()
+    return {
+        "available": bool(api_key),
+        "provider": "elevenlabs" if api_key else None,
+        "model": DEFAULT_MODEL_ID,
+        "default_voice_id": DEFAULT_VOICE_ID,
+        "max_text_length": MAX_TEXT_LENGTH,
+    }
