@@ -282,7 +282,7 @@ async def quick_chat_prepare(
             transcript_text = tiktok_result[0] if isinstance(tiktok_result, tuple) else tiktok_result
         else:
             is_short = "/shorts/" in url or duration <= 90
-            transcript_result = await get_transcript_with_timestamps(video_id, is_short=is_short)
+            transcript_result = await get_transcript_with_timestamps(video_id, is_short=is_short, duration=duration)
             transcript_text = transcript_result[0] if isinstance(transcript_result, tuple) else transcript_result
     except Exception as e:
         print(f"[QUICK CHAT] Failed to get transcript: {e}", flush=True)
@@ -516,7 +516,7 @@ async def analyze_video_guest(
         is_short = "/shorts/" in url or duration <= 90
 
         try:
-            transcript_result = await get_transcript_with_timestamps(video_id, is_short=is_short)
+            transcript_result = await get_transcript_with_timestamps(video_id, is_short=is_short, duration=duration)
             if isinstance(transcript_result, tuple):
                 transcript_text = transcript_result[0]
             else:
@@ -1026,8 +1026,9 @@ async def _analyze_video_background_v2(
             if platform == "tiktok":
                 transcript, transcript_timestamped, detected_lang = await get_tiktok_transcript(url, video_id)
             else:
-                _is_short = "/shorts/" in url or (video_info.get("duration", 0) or 0) <= 90
-                transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id, is_short=_is_short)
+                _duration = int(video_info.get("duration", 0) or 0)
+                _is_short = "/shorts/" in url or _duration <= 90
+                transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id, is_short=_is_short, duration=_duration)
             if not transcript:
                 raise Exception("No transcript available for this video")
 
@@ -1694,8 +1695,9 @@ async def _analyze_video_background_v2_1(
             if platform == "tiktok":
                 transcript, transcript_timestamped, detected_lang = await get_tiktok_transcript(url, video_id)
             else:
-                _is_short = "/shorts/" in url or (video_info.get("duration", 0) or 0) <= 90
-                transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id, is_short=_is_short)
+                _duration = int(video_info.get("duration", 0) or 0)
+                _is_short = "/shorts/" in url or _duration <= 90
+                transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id, is_short=_is_short, duration=_duration)
             if not transcript:
                 raise Exception("No transcript available for this video")
 
@@ -2206,12 +2208,13 @@ async def _analyze_video_background_v6(
             # ═══════════════════════════════════════════════════════════════════
             _task_store[task_id]["progress"] = 20
             _task_store[task_id]["message"] = "📝 Extraction du transcript..."
-            
+
             if platform == "tiktok":
                 transcript, transcript_timestamped, detected_lang = await get_tiktok_transcript(url, video_id)
             else:
-                _is_short = "/shorts/" in url or (video_info.get("duration", 0) or 0) <= 90
-                transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id, is_short=_is_short)
+                _duration = int(video_info.get("duration", 0) or 0)
+                _is_short = "/shorts/" in url or _duration <= 90
+                transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id, is_short=_is_short, duration=_duration)
 
             if not transcript:
                 raise Exception("No transcript available for this video")

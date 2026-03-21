@@ -2163,8 +2163,9 @@ async def _analyze_playlist_background(
                         continue
                     
                     print(f"   Title: {video_info.get('title', '')[:50]}", flush=True)
-                    
-                    transcript_result = await get_transcript_with_timestamps(video_id, lang)
+                    _duration = int(video_info.get("duration", 0) or 0)
+
+                    transcript_result = await get_transcript_with_timestamps(video_id, lang, duration=_duration)
                     
                     if isinstance(transcript_result, tuple):
                         if len(transcript_result) >= 3:
@@ -2365,8 +2366,9 @@ async def _analyze_corpus_background(
                     video_info = await get_video_info(video_id)
                     if not video_info:
                         continue
-                    
-                    transcript_result = await get_transcript_with_timestamps(video_id, lang)
+                    _duration = int(video_info.get("duration", 0) or 0)
+
+                    transcript_result = await get_transcript_with_timestamps(video_id, lang, duration=_duration)
                     
                     if isinstance(transcript_result, tuple):
                         transcript_simple, transcript_timestamped, _ = (
