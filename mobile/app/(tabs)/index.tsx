@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Pressable,
   Alert,
+  TextInput,
+  Keyboard,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -22,7 +24,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuth } from '@/contexts/AuthContext';
-import { historyApi } from '@/services/api';
+import { historyApi, videoApi } from '@/services/api';
 import { Avatar } from '@/components/ui/Avatar';
 import { YouTubeSearch } from '@/components/home/YouTubeSearch';
 import { URLInput } from '@/components/home/URLInput';
@@ -34,10 +36,14 @@ import { textStyles, fontFamily, fontSize } from '@/theme/typography';
 import { sp, borderRadius } from '@/theme/spacing';
 import { palette } from '@/theme/colors';
 import { DoodleBackground } from '@/components/ui/DoodleBackground';
+import { TournesolRecommendations } from '@/components/tournesol/TournesolRecommendations';
+import { DeepSightSpinner } from '@/components/ui/DeepSightSpinner';
 
 // Platform logos HD
 const YOUTUBE_ICON = require('@/assets/platforms/youtube-icon-red.png');
 const TIKTOK_NOTE = require('@/assets/platforms/tiktok-note-white.png');
+const MISTRAL_LOGO = require('@/assets/platforms/mistral-logo-white.png');
+const TOURNESOL_LOGO = require('@/assets/platforms/tournesol-logo.png');
 
 type InputMode = 'search' | 'url';
 
@@ -48,7 +54,7 @@ const TABS: { key: InputMode; label: string; icon: string }[] = [
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const user = useAuthStore((s) => s.user);
   const { logout } = useAuth();
   const optionsRef = useRef<SimpleBottomSheetRef>(null);
@@ -58,6 +64,35 @@ export default function HomeScreen() {
   const [favorites, setFavorites] = useState<AnalysisSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [tournesolRefreshKey, setTournesolRefreshKey] = useState(0);
+  const [quickChatUrl, setQuickChatUrl] = useState('');
+  const [quickChatLoading, setQuickChatLoading] = useState(false);
+
+  // Quick Chat handler
+  const handleQuickChat = useCallback(async () => {
+    const url = quickChatUrl.trim();
+    if (!url) return;
+    const isValid = url.includes('youtube.com') || url.includes('youtu.be') || url.includes('tiktok.com');
+    if (!isValid) {
+      Alert.alert('Lien invalide', 'Colle un lien YouTube ou TikTok valide.');
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Keyboard.dismiss();
+    setQuickChatLoading(true);
+    try {
+      const result = await videoApi.quickChat(url);
+      setQuickChatUrl('');
+      router.push({
+        pathname: '/(tabs)/analysis/[id]',
+        params: { id: String(result.summary_id), backTo: 'home', initialTab: '1', quickChat: 'true' },
+      } as any);
+    } catch (err: any) {
+      Alert.alert('Erreur Quick Chat', err?.message || 'Impossible de préparer le chat.');
+    } finally {
+      setQuickChatLoading(false);
+    }
+  }, [quickChatUrl]);
 
   // Animated tab indicator
   const indicatorX = useSharedValue(0);
@@ -97,6 +132,8 @@ export default function HomeScreen() {
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     loadData();
+    // Incrémenter la clé pour forcer un re-fetch des suggestions Tournesol
+    setTournesolRefreshKey((prev) => prev + 1);
   }, [loadData]);
 
   const handleOptionsPress = useCallback(() => {
@@ -188,6 +225,21 @@ export default function HomeScreen() {
               </Text>
             </View>
           </View>
+          {/* Powered by Mistral + Tournesol */}
+          <View style={styles.poweredRow}>
+            <Text style={[styles.poweredText, { color: colors.textMuted }]}>Propulsé par</Text>
+            <Image
+              source={MISTRAL_LOGO}
+              style={[styles.mistralLogo, !isDark && { tintColor: '#1a1a2e' }]}
+              contentFit="contain"
+            />
+            <View style={[styles.poweredSep, { backgroundColor: colors.border }]} />
+            <Image
+              source={TOURNESOL_LOGO}
+              style={styles.tournesolLogo}
+              contentFit="contain"
+            />
+          </View>
         </View>
 
         {/* Mode Tabs */}
@@ -248,6 +300,46 @@ export default function HomeScreen() {
         {/* Credit Bar */}
         <CreditBar />
 
+        {/* Quick Chat Block */}
+        <View style={[styles.quickChatBox, { backgroundColor: colors.bgElevated, borderColor: colors.border }]}>
+          <View style={styles.quickChatHeader}>
+            <Ionicons name="flash" size={16} color={palette.amber} />
+            <Text style={[styles.quickChatTitle, { color: colors.textPrimary }]}>Quick Chat</Text>
+            <View style={[styles.quickChatBadge, { backgroundColor: palette.green + '20' }]}>
+              <Text style={[styles.quickChatBadgeText, { color: palette.green }]}>0 crédit</Text>
+            </View>
+          </View>
+          <Text style={[styles.quickChatDesc, { color: colors.textTertiary }]}>
+            Chatte directement avec une vidéo YouTube ou TikTok — sans analyse complète
+          </Text>
+          <View style={styles.quickChatRow}>
+            <TextInput
+              style={[styles.quickChatInput, { backgroundColor: colors.bgSecondary, color: colors.textPrimary, borderColor: colors.border }]}
+              placeholder="https://youtube.com/... ou tiktok.com/..."
+              placeholderTextColor={colors.textMuted}
+              value={quickChatUrl}
+              onChangeText={setQuickChatUrl}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              returnKeyType="go"
+              onSubmitEditing={handleQuickChat}
+              editable={!quickChatLoading}
+            />
+            <Pressable
+              style={[styles.quickChatBtn, { backgroundColor: quickChatUrl.trim() ? palette.indigo : colors.bgSecondary }]}
+              onPress={handleQuickChat}
+              disabled={quickChatLoading || !quickChatUrl.trim()}
+            >
+              {quickChatLoading ? (
+                <DeepSightSpinner size="xs" speed="fast" />
+              ) : (
+                <Ionicons name="chatbubble-ellipses" size={18} color={quickChatUrl.trim() ? '#fff' : colors.textMuted} />
+              )}
+            </Pressable>
+          </View>
+        </View>
+
         {/* Recents */}
         <View style={styles.sectionSpacing}>
           <RecentCarousel
@@ -266,6 +358,9 @@ export default function HomeScreen() {
             isLoading={isLoading}
           />
         )}
+
+        {/* Tournesol Recommendations */}
+        <TournesolRecommendations language="fr" limit={10} refreshTrigger={tournesolRefreshKey} />
       </ScrollView>
 
       {/* Options Bottom Sheet */}
@@ -358,5 +453,88 @@ const styles = StyleSheet.create({
     width: 1,
     height: 20,
     opacity: 0.3,
+  },
+  poweredRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: sp.sm,
+    opacity: 0.5,
+  },
+  poweredText: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  mistralLogo: {
+    height: 16,
+    width: 65,
+  },
+  poweredSep: {
+    width: 1,
+    height: 12,
+    opacity: 0.3,
+    marginHorizontal: 2,
+  },
+  tournesolLogo: {
+    width: 16,
+    height: 16,
+  },
+  // ── Quick Chat ──
+  quickChatBox: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: sp.md,
+    marginTop: sp.lg,
+  },
+  quickChatHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  quickChatTitle: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.sm,
+    flex: 1,
+  },
+  quickChatBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  quickChatBadgeText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: 10,
+  },
+  quickChatDesc: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
+    marginBottom: sp.sm,
+    lineHeight: fontSize.xs * 1.4,
+  },
+  quickChatRow: {
+    flexDirection: 'row',
+    gap: sp.sm,
+    alignItems: 'center',
+  },
+  quickChatInput: {
+    flex: 1,
+    height: 40,
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: sp.md,
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.sm,
+  },
+  quickChatBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

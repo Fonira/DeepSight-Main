@@ -125,7 +125,7 @@
         "expo-notifications",
         {
           "icon": "./src/assets/images/notification-icon.png",
-          "color": "#6366F1",
+          "color": "#C8903A",
           "sounds": []
         }
       ],
@@ -158,7 +158,7 @@
     ],
     "notification": {
       "icon": "./src/assets/images/notification-icon.png",
-      "color": "#6366F1",
+      "color": "#C8903A",
       "androidMode": "default"
     },
     "owner": "maximeadmin",

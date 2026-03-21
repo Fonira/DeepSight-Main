@@ -131,7 +131,7 @@ export const DashboardScreen: React.FC = () => {
     }
   }, [user?.analyses_this_month]);
 
-  // ? Quick Chat — Chat direct sans analyse
+  // ? Quick Chat ï¿½ Chat direct sans analyse
   const [isQuickChatting, setIsQuickChatting] = useState(false);
   
   const handleQuickChat = async (url: string) => {
@@ -518,6 +518,12 @@ export const DashboardScreen: React.FC = () => {
             style={[styles.bannerLogoMistral, !isDark && { tintColor: '#1a1a2e' }]}
             resizeMode="contain"
           />
+          <View style={[styles.bannerDivider, { backgroundColor: colors.border }]} />
+          <Image
+            source={require('../assets/platforms/tournesol-logo.png')}
+            style={styles.bannerLogoTournesol}
+            resizeMode="contain"
+          />
         </Animated.View>
 
         {/* Analysis Input Section */}
@@ -867,7 +873,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: sp.lg,
+    flexWrap: 'wrap',
+    gap: sp.md,
     marginBottom: sp.lg,
     opacity: 0.5,
     backgroundColor: 'rgba(255,255,255,0.03)',
@@ -877,16 +884,20 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.05)',
   },
   bannerLogoYt: {
-    height: 28,
-    width: 120,
-  },
-  bannerLogoTk: {
-    height: 28,
-    width: 105,
-  },
-  bannerLogoMistral: {
     height: 22,
     width: 95,
+  },
+  bannerLogoTk: {
+    height: 22,
+    width: 85,
+  },
+  bannerLogoMistral: {
+    height: 18,
+    width: 75,
+  },
+  bannerLogoTournesol: {
+    height: 20,
+    width: 20,
   },
   bannerDivider: {
     width: 1,

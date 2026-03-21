@@ -9,9 +9,9 @@
 export const palette = {
   // Core brand
   blue: '#3b82f6',
-  violet: '#8b5cf6',
-  cyan: '#06b6d4',
-  indigo: '#6366f1',
+  violet: '#9B6B4A', // ambre chaud (ancien #8b5cf6)
+  cyan: '#C48B7C', // sunset rosé (ancien #06b6d4)
+  indigo: '#C8903A', // or gouvernail (ancien #6366f1)
 
   // Semantic
   green: '#10b981',
@@ -22,6 +22,15 @@ export const palette = {
   // Neutrals
   white: '#ffffff',
   black: '#000000',
+
+  // New warm palette
+  gold: '#C8903A',
+  goldLight: '#D4A054',
+  goldDark: '#B07D2E',
+  sunset: '#C48B7C',
+  warmAmber: '#9B6B4A',
+  ivoryWhite: '#F5F0E8',
+  warmBeige: '#B5A89B',
 } as const;
 
 export const darkColors = {
@@ -33,33 +42,33 @@ export const darkColors = {
   bgHover: '#252535',
   bgCard: '#15151f',
 
-  // Glassmorphism surfaces
-  glassBg: 'rgba(255, 255, 255, 0.05)',
-  glassBorder: 'rgba(255, 255, 255, 0.10)',
-  glassHover: 'rgba(255, 255, 255, 0.08)',
+  // Glassmorphism surfaces - warm palette
+  glassBg: 'rgba(200, 144, 58, 0.05)',
+  glassBorder: 'rgba(200, 144, 58, 0.10)',
+  glassHover: 'rgba(200, 144, 58, 0.08)',
 
-  // Text
-  textPrimary: '#ffffff',
-  textSecondary: '#d0d0d8',
-  textTertiary: '#a0a0b0',
-  textMuted: '#707080',
+  // Text - warm palette
+  textPrimary: '#F5F0E8', // ivoire blanc
+  textSecondary: '#D4CCC4',
+  textTertiary: '#B5A89B',
+  textMuted: '#7A7068',
 
-  // Accents
-  accentPrimary: palette.blue,
-  accentPrimaryLight: '#60a5fa',
-  accentSecondary: palette.violet,
-  accentTertiary: palette.cyan,
+  // Accents - warm palette
+  accentPrimary: '#C8903A', // or gouvernail
+  accentPrimaryLight: '#D4A054',
+  accentSecondary: '#9B6B4A', // ambre chaud
+  accentTertiary: '#C48B7C', // sunset rosé
+  accentInfo: '#3b82f6', // blue kept as info
 
   // Semantic
   accentSuccess: palette.green,
   accentError: palette.red,
   accentWarning: palette.amber,
-  accentInfo: palette.blue,
 
-  // Borders
-  border: 'rgba(255, 255, 255, 0.08)',
-  borderLight: 'rgba(255, 255, 255, 0.15)',
-  borderFocus: palette.blue,
+  // Borders - warm palette
+  border: 'rgba(200, 144, 58, 0.08)',
+  borderLight: 'rgba(200, 144, 58, 0.15)',
+  borderFocus: '#C8903A',
 
   // Overlays
   overlay: 'rgba(0, 0, 0, 0.6)',
@@ -72,58 +81,58 @@ export const darkColors = {
   success: palette.green,
   error: palette.red,
   warning: palette.amber,
-  info: palette.blue,
+  info: '#3b82f6',
 } as const;
 
 export const lightColors = {
-  // Backgrounds
-  bgPrimary: '#ffffff',
-  bgSecondary: '#f5f5f7',
-  bgTertiary: '#ebebf0',
-  bgElevated: '#ffffff',
-  bgHover: '#f0f0f2',
-  bgCard: '#ffffff',
+  // Backgrounds - warm palette
+  bgPrimary: '#FAF7F2',
+  bgSecondary: '#F5F0E8',
+  bgTertiary: '#EDE7DD',
+  bgElevated: '#FAF7F2',
+  bgHover: '#F0EADF',
+  bgCard: '#FAF7F2',
 
-  // Glassmorphism surfaces
-  glassBg: 'rgba(0, 0, 0, 0.03)',
-  glassBorder: 'rgba(0, 0, 0, 0.08)',
-  glassHover: 'rgba(0, 0, 0, 0.05)',
+  // Glassmorphism surfaces - warm palette
+  glassBg: 'rgba(200, 144, 58, 0.04)',
+  glassBorder: 'rgba(200, 144, 58, 0.10)',
+  glassHover: 'rgba(200, 144, 58, 0.06)',
 
-  // Text
-  textPrimary: '#1a1a1b',
-  textSecondary: '#4a4a4f',
-  textTertiary: '#6a6a70',
-  textMuted: '#8a8a90',
+  // Text - warm palette
+  textPrimary: '#2A2420',
+  textSecondary: '#5A4F45',
+  textTertiary: '#7A6F65',
+  textMuted: '#9A8F85',
 
-  // Accents
-  accentPrimary: '#2563eb',
-  accentPrimaryLight: '#3b82f6',
-  accentSecondary: '#7c3aed',
-  accentTertiary: '#0891b2',
+  // Accents - warm palette
+  accentPrimary: '#A67828',
+  accentPrimaryLight: '#B88E3E',
+  accentSecondary: '#8B5E3A',
+  accentTertiary: '#A67850',
+  accentInfo: '#3b82f6', // blue kept as info
 
   // Semantic
   accentSuccess: '#059669',
   accentError: '#dc2626',
   accentWarning: '#d97706',
-  accentInfo: '#2563eb',
 
-  // Borders
-  border: '#e5e5e8',
-  borderLight: '#d4d4d8',
-  borderFocus: '#2563eb',
+  // Borders - warm palette
+  border: '#D4CCC4',
+  borderLight: '#E5DDD5',
+  borderFocus: '#A67828',
 
   // Overlays
   overlay: 'rgba(0, 0, 0, 0.4)',
   overlayLight: 'rgba(0, 0, 0, 0.15)',
 
   // Semantic aliases
-  background: '#ffffff',
-  surface: '#ffffff',
-  surfaceSecondary: '#f5f5f7',
+  background: '#FAF7F2',
+  surface: '#FAF7F2',
+  surfaceSecondary: '#F5F0E8',
   success: '#059669',
   error: '#dc2626',
   warning: '#d97706',
-  info: '#2563eb',
+  info: '#3b82f6',
 } as const;
 
 /** Theme color interface - uses string to allow both dark and light assignments */
@@ -165,9 +174,9 @@ export interface ThemeColors {
 
 /** Gradient presets */
 export const gradients = {
-  primary: ['#3b82f6', '#8b5cf6'] as const,
-  secondary: ['#8b5cf6', '#06b6d4'] as const,
-  accent: ['#6366f1', '#8b5cf6'] as const,
+  primary: ['#C8903A', '#9B6B4A'] as const, // or → ambre
+  secondary: ['#9B6B4A', '#C48B7C'] as const, // ambre → sunset
+  accent: ['#C8903A', '#D4A054'] as const, // or → or clair
   warm: ['#f59e0b', '#ef4444'] as const,
   success: ['#10b981', '#06b6d4'] as const,
   dark: ['#0a0a0f', '#12121a'] as const,

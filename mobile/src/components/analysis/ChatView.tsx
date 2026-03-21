@@ -26,6 +26,18 @@ import { ChatInput } from './ChatInput';
 import { ChatMarkdown } from './ChatMarkdown';
 import type { ChatMessage } from '../../types';
 
+// ── Parse [ask:...] questions from assistant messages ──
+const parseAskQuestions = (content: string): { cleaned: string; questions: string[] } => {
+  const regex = /\[ask:([^\]]+)\]/g;
+  const questions: string[] = [];
+  let match;
+  while ((match = regex.exec(content)) !== null) {
+    questions.push(match[1].trim());
+  }
+  const cleaned = content.replace(regex, '').trim();
+  return { cleaned, questions };
+};
+
 interface ChatViewProps {
   summaryId: string;
   /** Offset clavier (pixels entre le bas de la view et le bas de l'écran).
@@ -96,30 +108,60 @@ export const ChatView: React.FC<ChatViewProps> = ({ summaryId, keyboardOffset = 
     sendMessage(q);
   }, [sendMessage]);
 
+  const handleAskQuestion = useCallback((question: string) => {
+    Haptics.selectionAsync();
+    sendMessage(question);
+  }, [sendMessage]);
+
   const renderMessage = useCallback(({ item }: { item: ChatMessage }) => {
     const isUser = item.role === 'user';
+    const { cleaned, questions } = isUser
+      ? { cleaned: item.content, questions: [] }
+      : parseAskQuestions(item.content);
+
     return (
-      <View
-        style={[
-          styles.bubble,
-          isUser ? styles.bubbleUser : styles.bubbleAssistant,
-          { backgroundColor: isUser ? palette.indigo : colors.bgCard, borderColor: isUser ? 'transparent' : colors.border },
-        ]}
-      >
-        {isUser ? (
-          <Text style={[styles.bubbleText, { color: '#ffffff' }]} selectable>
-            {item.content}
-          </Text>
-        ) : (
-          <ChatMarkdown
-            content={item.content}
-            textColor={colors.textPrimary}
-            isDark={isDark}
-          />
+      <View>
+        <View
+          style={[
+            styles.bubble,
+            isUser ? styles.bubbleUser : styles.bubbleAssistant,
+            { backgroundColor: isUser ? palette.indigo : colors.bgCard, borderColor: isUser ? 'transparent' : colors.border },
+          ]}
+        >
+          {isUser ? (
+            <Text style={[styles.bubbleText, { color: '#ffffff' }]} selectable>
+              {item.content}
+            </Text>
+          ) : (
+            <ChatMarkdown
+              content={cleaned}
+              textColor={colors.textPrimary}
+              isDark={isDark}
+            />
+          )}
+        </View>
+        {/* Questions cliquables "Pour aller plus loin" */}
+        {questions.length > 0 && (
+          <View style={[styles.askBlock, { borderColor: colors.border }]}>
+            <View style={styles.askHeader}>
+              <Ionicons name="sparkles" size={14} color={palette.amber} />
+              <Text style={[styles.askHeaderText, { color: palette.amber }]}>Pour aller plus loin</Text>
+            </View>
+            {questions.map((q, idx) => (
+              <Pressable
+                key={idx}
+                style={[styles.askBtn, { backgroundColor: palette.cyan + '1A', borderColor: palette.cyan + '4D' }]}
+                onPress={() => handleAskQuestion(q)}
+              >
+                <Ionicons name="arrow-forward" size={14} color={palette.cyan} style={{ marginTop: 2 }} />
+                <Text style={[styles.askBtnText, { color: palette.cyan }]}>{q}</Text>
+              </Pressable>
+            ))}
+          </View>
         )}
       </View>
     );
-  }, [colors, isDark]);
+  }, [colors, isDark, handleAskQuestion]);
 
   const keyExtractor = useCallback((item: ChatMessage) => item.id, []);
   const quotaText = `${messages.filter((m) => m.role === 'user').length}/15 questions`;
@@ -229,6 +271,40 @@ const styles = StyleSheet.create({
   },
   typingContainer: { flexDirection: 'row', gap: 4, paddingVertical: 4, paddingHorizontal: 4 },
   typingDot: { width: 6, height: 6, borderRadius: 3 },
+  // ── Clickable [ask:] questions ──
+  askBlock: {
+    alignSelf: 'flex-start',
+    width: '100%',
+    marginBottom: sp.md,
+    marginTop: -sp.xs,
+    paddingTop: sp.sm,
+  },
+  askHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: sp.sm,
+  },
+  askHeaderText: {
+    fontFamily: fontFamily.bodySemiBold,
+    fontSize: fontSize.xs,
+  },
+  askBtn: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    paddingVertical: sp.md,
+    paddingHorizontal: sp.lg,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    marginBottom: sp.sm,
+  },
+  askBtnText: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: fontSize.sm,
+    flex: 1,
+    lineHeight: fontSize.sm * 1.4,
+  },
 });
 
 export default ChatView;

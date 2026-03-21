@@ -204,6 +204,15 @@ export const LandingScreen: React.FC = () => {
               style={[styles.platformMistral, !isDark && { tintColor: '#1a1a2e' }]}
               resizeMode="contain"
             />
+            <View style={[styles.poweredSep, { backgroundColor: colors.border }]} />
+            <Image
+              source={require('../assets/platforms/tournesol-logo.png')}
+              style={styles.platformTournesol}
+              resizeMode="contain"
+            />
+            <Text style={[styles.tournesolLabel, { color: colors.textMuted }]}>
+              Tournesol
+            </Text>
           </Animated.View>
         </View>
 
@@ -451,9 +460,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: Spacing.sm,
+    flexWrap: 'wrap',
+    gap: 6,
     marginTop: Spacing.md,
     opacity: 0.6,
+    paddingHorizontal: Spacing.lg,
   },
   poweredText: {
     fontSize: Typography.fontSize.xs,
@@ -462,8 +473,21 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   platformMistral: {
-    height: 22,
-    width: 90,
+    height: 18,
+    width: 70,
+  },
+  poweredSep: {
+    width: 1,
+    height: 14,
+    marginHorizontal: 4,
+  },
+  platformTournesol: {
+    width: 20,
+    height: 20,
+  },
+  tournesolLabel: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.body,
   },
 });
 

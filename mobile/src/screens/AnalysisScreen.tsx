@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+﻿import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -60,7 +60,8 @@ import type { RootStackParamList, AnalysisSummary, ChatMessage } from '../types'
 type AnalysisNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Analysis'>;
 type AnalysisRouteProp = RouteProp<RootStackParamList, 'Analysis'>;
 
-type TabType = 'summary' | 'concepts' | 'chat' | 'tools';
+type TabType = 'summary' | 'concepts' | 'study';
+type StudySubTab = 'chat' | 'tools';
 
 export const AnalysisScreen: React.FC = () => {
   const { colors } = useTheme();
@@ -81,9 +82,12 @@ export const AnalysisScreen: React.FC = () => {
 
   const { summaryId, videoUrl, initialTab } = route.params || {};
 
-  const [activeTab, setActiveTab] = useState<TabType>(initialTab || 'summary');
+  // Map legacy tab values to new structure
+  const mappedInitialTab: TabType = initialTab === 'chat' || initialTab === 'tools' ? 'study' : (initialTab || 'summary');
+  const [activeTab, setActiveTab] = useState<TabType>(mappedInitialTab);
+  const [studySubTab, setStudySubTab] = useState<StudySubTab>(initialTab === 'tools' ? 'tools' : 'chat');
   // Ref to always have the latest activeTab value (avoids stale closures in useEffect/navigation.replace)
-  const activeTabRef = useRef<TabType>(initialTab || 'summary');
+  const activeTabRef = useRef<TabType>(mappedInitialTab);
   // Keep ref in sync with state
   useEffect(() => {
     activeTabRef.current = activeTab;
@@ -147,6 +151,10 @@ export const AnalysisScreen: React.FC = () => {
 
   // Upgrade modal state
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  // Quick Chat Upgrade states
+  const [upgradeMode, setUpgradeMode] = useState<string>('standard');
+  const [upgradeDeepResearch, setUpgradeDeepResearch] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [upgradeLimitType, setUpgradeLimitType] = useState<'chat' | 'analysis' | 'playlist' | 'export' | 'webSearch' | 'tts' | 'credits'>('analysis');
 
   // Helper to calculate step from progress
@@ -157,6 +165,41 @@ export const AnalysisScreen: React.FC = () => {
     if (progress < 90) return 3; // Analysis
     return 4; // Complete
   }, []);
+
+  // Handle Quick Chat upgrade to full analysis
+  const handleUpgradeQuickChat = async () => {
+    if (!summary) return;
+    setUpgradeLoading(true);
+    try {
+      const summaryId = String(summary.id || route.params?.summaryId);
+      const response = await videoApi.upgradeQuickChat(
+        parseInt(summaryId),
+        upgradeMode,
+        upgradeDeepResearch
+      );
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Poll for completion
+      const pollInterval = setInterval(async () => {
+        try {
+          const status = await videoApi.getTaskStatus(response.task_id);
+          if (status.status === 'completed' || status.status === 'done') {
+            clearInterval(pollInterval);
+            await loadCompletedAnalysis(summaryId);
+            setUpgradeLoading(false);
+          } else if (status.status === 'error' || status.status === 'failed') {
+            clearInterval(pollInterval);
+            setUpgradeLoading(false);
+            Alert.alert('Erreur', 'L\'analyse a echoue');
+          }
+        } catch (e) {
+          // Keep polling
+        }
+      }, 5000);
+    } catch (err: any) {
+      Alert.alert('Erreur', err?.message || 'Impossible de lancer l\'analyse');
+      setUpgradeLoading(false);
+    }
+  };
 
   // Load completed analysis data (summary, concepts, chat history)
   const loadCompletedAnalysis = useCallback(async (summaryIdToLoad: string) => {
@@ -727,22 +770,22 @@ export const AnalysisScreen: React.FC = () => {
     }
   }, [summary]);
 
-  // Force dismiss keyboard when leaving chat tab
+  // Force dismiss keyboard when leaving chat sub-tab
   useEffect(() => {
-    if (activeTab !== 'chat') {
+    if (activeTab !== 'study' || studySubTab !== 'chat') {
       Keyboard.dismiss();
     }
-  }, [activeTab]);
+  }, [activeTab, studySubTab]);
 
   // Defensive listener: if keyboard opens on a non-chat tab, force close it
   useEffect(() => {
     const sub = Keyboard.addListener('keyboardDidShow', () => {
-      if (activeTab !== 'chat') {
+      if (!(activeTab === 'study' && studySubTab === 'chat')) {
         Keyboard.dismiss();
       }
     });
     return () => sub.remove();
-  }, [activeTab]);
+  }, [activeTab, studySubTab]);
 
   // Render streaming state (new analysis in progress)
   if (isStreaming) {
@@ -796,10 +839,9 @@ export const AnalysisScreen: React.FC = () => {
 
   // Tabs
   const tabs: TabItem[] = [
-    { id: 'chat', label: t.analysis.chat, icon: 'chatbubble-outline' },
     { id: 'summary', label: t.analysis.summary, icon: 'document-text-outline' },
     { id: 'concepts', label: t.analysis.concepts, icon: 'bulb-outline' },
-    { id: 'tools', label: t.analysis.studyTools, icon: 'school-outline' },
+    { id: 'study', label: language === 'fr' ? 'Réviser' : 'Study', icon: 'school-outline' },
   ];
 
   return (
@@ -932,7 +974,128 @@ export const AnalysisScreen: React.FC = () => {
             )}
           </View>
 
-          {/* Summary content with clickable timecodes and markdown */}
+          {/* Summary content or Quick Chat upgrade panel */}
+          {summary?.mode === 'quick_chat' && !summary?.content ? (
+            <View style={{ padding: 20, borderRadius: 16, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.border }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#10b98120', alignItems: 'center', justifyContent: 'center' }}>
+                  <Ionicons name="chatbubbles-outline" size={20} color="#10b981" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
+                    Quick Chat
+                  </Text>
+                  <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 2 }}>
+                    {language === 'fr' ? 'Pas encore d\'analyse. Generez le resume complet.' : 'No analysis yet. Generate the full summary.'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Mode selector */}
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 }}>
+                {language === 'fr' ? 'Mode d\'analyse' : 'Analysis mode'}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+                {['accessible', 'standard', 'expert'].map((m) => (
+                  <TouchableOpacity
+                    key={m}
+                    onPress={() => setUpgradeMode(m)}
+                    style={{
+                      flex: 1,
+                      paddingVertical: 10,
+                      borderRadius: 10,
+                      alignItems: 'center',
+                      backgroundColor: upgradeMode === m ? colors.accentPrimary : colors.bgSecondary,
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 13,
+                      fontWeight: '600',
+                      color: upgradeMode === m ? '#fff' : colors.textSecondary,
+                    }}>
+                      {m.charAt(0).toUpperCase() + m.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Deep Research toggle */}
+              <TouchableOpacity
+                onPress={() => setUpgradeDeepResearch(!upgradeDeepResearch)}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: 12,
+                  borderRadius: 10,
+                  backgroundColor: colors.bgSecondary,
+                  marginBottom: 16,
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text }}>
+                    {language === 'fr' ? 'Recherche approfondie' : 'Deep Research'}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
+                    {language === 'fr' ? 'Sources externes + fact-checking' : 'External sources + fact-checking'}
+                  </Text>
+                </View>
+                <View style={{
+                  width: 44,
+                  height: 24,
+                  borderRadius: 12,
+                  backgroundColor: upgradeDeepResearch ? colors.accentPrimary : colors.bgTertiary,
+                  justifyContent: 'center',
+                  paddingHorizontal: 2,
+                }}>
+                  <View style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    backgroundColor: '#fff',
+                    alignSelf: upgradeDeepResearch ? 'flex-end' : 'flex-start',
+                  }} />
+                </View>
+              </TouchableOpacity>
+
+              {/* Generate button */}
+              <TouchableOpacity
+                onPress={handleUpgradeQuickChat}
+                disabled={upgradeLoading}
+                style={{
+                  paddingVertical: 14,
+                  borderRadius: 12,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexDirection: 'row',
+                  gap: 8,
+                  opacity: upgradeLoading ? 0.6 : 1,
+                }}
+              >
+                <LinearGradient
+                  colors={[colors.accentPrimary, '#3b82f6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={{
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0, bottom: 0,
+                    borderRadius: 12,
+                  }}
+                />
+                {upgradeLoading ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Ionicons name="play" size={18} color="#fff" />
+                )}
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#fff' }}>
+                  {upgradeLoading
+                    ? (language === 'fr' ? 'Analyse en cours...' : 'Analyzing...')
+                    : (language === 'fr' ? 'Generer l\'analyse (1 credit)' : 'Generate analysis (1 credit)')
+                  }
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
           <Card variant="elevated" style={styles.summaryCard}>
             <AnalysisContentDisplay
               content={summary?.content || ''}
@@ -941,6 +1104,7 @@ export const AnalysisScreen: React.FC = () => {
               emptyStateMessage={t.history.empty}
             />
           </Card>
+          )}
 
           {/* Actions — Glassmorphism container */}
           <View style={styles.actionsRowGlass}>
@@ -1133,81 +1297,133 @@ export const AnalysisScreen: React.FC = () => {
         </View>
       )}
 
-      {activeTab === 'chat' && (
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? tabContentOffset : 0}
-        >
-          <FlatList
-            ref={chatScrollRef}
-            data={chatMessages}
-            keyExtractor={(item, index) => `chat-${index}-${item.id || 'msg'}`}
-            keyboardDismissMode="none"
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 16 }}
-            onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: true })}
-            ListEmptyComponent={
-              <View style={styles.chatEmptyState}>
-                <Ionicons name="chatbubble-outline" size={48} color={colors.textTertiary} />
-                <Text style={[styles.chatEmptyText, { color: colors.textSecondary }]}>
-                  {t.chat.askQuestion}
+      {activeTab === 'study' && (
+        <View style={{ flex: 1 }}>
+          {/* Segmented Control: Chat IA / Outils d'étude */}
+          {!activeStudyTool && (
+            <View style={[styles.studySegmentContainer, { borderBottomColor: colors.border }]}>
+              <TouchableOpacity
+                style={[
+                  styles.studySegmentBtn,
+                  studySubTab === 'chat' && [styles.studySegmentActive, { borderBottomColor: colors.accentPrimary }],
+                ]}
+                onPress={() => setStudySubTab('chat')}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="chatbubble-outline"
+                  size={16}
+                  color={studySubTab === 'chat' ? colors.accentPrimary : colors.textTertiary}
+                />
+                <Text style={[
+                  styles.studySegmentText,
+                  { color: studySubTab === 'chat' ? colors.accentPrimary : colors.textTertiary },
+                  studySubTab === 'chat' && styles.studySegmentTextActive,
+                ]}>
+                  Chat IA
                 </Text>
-                <View style={{ marginTop: Spacing.lg, width: '100%' }}>
-                  <SuggestedQuestions
-                    onQuestionSelect={(question) => handleSendMessage(question)}
-                    variant="chat"
-                    category={summary?.category}
-                  />
-                </View>
-              </View>
-            }
-            renderItem={({ item, index }) => (
-              <ChatBubble
-                role={item.role}
-                content={item.content}
-                timestamp={item.timestamp}
-                index={index}
-                onQuestionPress={(question) => handleSendMessage(question)}
-                webSearchUsed={item.web_search_used}
-              />
-            )}
-            ListFooterComponent={isSendingMessage ? <TypingIndicator /> : null}
-          />
-
-          {/* Chat limit warning */}
-          {planLimits.chatDailyLimit !== -1 &&
-            planUsage.chat_messages_today >= planLimits.chatDailyLimit && (
-            <View style={styles.chatLimitWarning}>
-              <Text style={styles.chatLimitText}>
-                {language === 'fr'
-                  ? 'Limite atteinte. Passez au plan supérieur pour continuer.'
-                  : 'Limit reached. Upgrade to continue chatting.'}
-              </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.studySegmentBtn,
+                  studySubTab === 'tools' && [styles.studySegmentActive, { borderBottomColor: colors.accentPrimary }],
+                ]}
+                onPress={() => setStudySubTab('tools')}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="albums-outline"
+                  size={16}
+                  color={studySubTab === 'tools' ? colors.accentPrimary : colors.textTertiary}
+                />
+                <Text style={[
+                  styles.studySegmentText,
+                  { color: studySubTab === 'tools' ? colors.accentPrimary : colors.textTertiary },
+                  studySubTab === 'tools' && styles.studySegmentTextActive,
+                ]}>
+                  {language === 'fr' ? 'Outils' : 'Tools'}
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
-          <ChatInput
-            value={chatInput}
-            onChangeText={setChatInput}
-            onSend={() => handleSendMessage()}
-            isLoading={isSendingMessage}
-            showWebSearch={true}
-            webSearchEnabled={webSearchEnabled}
-            onToggleWebSearch={() => {
-              const canWs = (PLAN_LIMITS[userPlan]?.webSearchMonthly ?? 0) > 0;
-              if (!canWs) {
-                setUpgradeLimitType('webSearch');
-                setShowUpgradeModal(true);
-              } else {
-                setWebSearchEnabled(!webSearchEnabled);
-              }
-            }}
-            canUseWebSearch={(PLAN_LIMITS[userPlan]?.webSearchMonthly ?? 0) > 0}
-          />
-        </KeyboardAvoidingView>
-      )}
 
-      {activeTab === 'tools' && (
+          {/* Chat IA sub-tab */}
+          {studySubTab === 'chat' && !activeStudyTool && (
+            <KeyboardAvoidingView
+              style={{ flex: 1 }}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? tabContentOffset : 0}
+            >
+              <FlatList
+                ref={chatScrollRef}
+                data={chatMessages}
+                keyExtractor={(item, index) => `chat-${index}-${item.id || 'msg'}`}
+                keyboardDismissMode="none"
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 16, paddingBottom: 16 }}
+                onContentSizeChange={() => chatScrollRef.current?.scrollToEnd({ animated: true })}
+                ListEmptyComponent={
+                  <View style={styles.chatEmptyState}>
+                    <Ionicons name="chatbubble-outline" size={48} color={colors.textTertiary} />
+                    <Text style={[styles.chatEmptyText, { color: colors.textSecondary }]}>
+                      {t.chat.askQuestion}
+                    </Text>
+                    <View style={{ marginTop: Spacing.lg, width: '100%' }}>
+                      <SuggestedQuestions
+                        onQuestionSelect={(question) => handleSendMessage(question)}
+                        variant="chat"
+                        category={summary?.category}
+                      />
+                    </View>
+                  </View>
+                }
+                renderItem={({ item, index }) => (
+                  <ChatBubble
+                    role={item.role}
+                    content={item.content}
+                    timestamp={item.timestamp}
+                    index={index}
+                    onQuestionPress={(question) => handleSendMessage(question)}
+                    webSearchUsed={item.web_search_used}
+                  />
+                )}
+                ListFooterComponent={isSendingMessage ? <TypingIndicator /> : null}
+              />
+
+              {/* Chat limit warning */}
+              {planLimits.chatDailyLimit !== -1 &&
+                planUsage.chat_messages_today >= planLimits.chatDailyLimit && (
+                <View style={styles.chatLimitWarning}>
+                  <Text style={styles.chatLimitText}>
+                    {language === 'fr'
+                      ? 'Limite atteinte. Passez au plan supérieur pour continuer.'
+                      : 'Limit reached. Upgrade to continue chatting.'}
+                  </Text>
+                </View>
+              )}
+              <ChatInput
+                value={chatInput}
+                onChangeText={setChatInput}
+                onSend={() => handleSendMessage()}
+                isLoading={isSendingMessage}
+                showWebSearch={true}
+                webSearchEnabled={webSearchEnabled}
+                onToggleWebSearch={() => {
+                  const canWs = (PLAN_LIMITS[userPlan]?.webSearchMonthly ?? 0) > 0;
+                  if (!canWs) {
+                    setUpgradeLimitType('webSearch');
+                    setShowUpgradeModal(true);
+                  } else {
+                    setWebSearchEnabled(!webSearchEnabled);
+                  }
+                }}
+                canUseWebSearch={(PLAN_LIMITS[userPlan]?.webSearchMonthly ?? 0) > 0}
+              />
+            </KeyboardAvoidingView>
+          )}
+
+          {/* Outils d'étude sub-tab */}
+          {(studySubTab === 'tools' || activeStudyTool) && (
         <View style={styles.toolsContainer} onStartShouldSetResponder={() => { Keyboard.dismiss(); return false; }}>
           {/* Back button when a tool is active */}
           {activeStudyTool && (
@@ -1372,6 +1588,8 @@ export const AnalysisScreen: React.FC = () => {
 
         </View>
       )}
+        </View>
+      )}
 
       {/* Upgrade Modal */}
       <UpgradePromptModal
@@ -1380,8 +1598,8 @@ export const AnalysisScreen: React.FC = () => {
         limitType={upgradeLimitType}
       />
 
-      {/* Floating Chat FAB - visible on all tabs except chat */}
-      {summary && activeTab !== 'chat' && (
+      {/* Floating Chat FAB - visible on all tabs except study/chat */}
+      {summary && !(activeTab === 'study' && studySubTab === 'chat') && (
         <FloatingChat
           summaryId={summary.id}
           videoTitle={summary.title}
@@ -1664,6 +1882,31 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     fontFamily: Typography.fontFamily.body,
     marginTop: Spacing.md,
+  },
+  studySegmentContainer: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    paddingHorizontal: Spacing.md,
+  },
+  studySegmentBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  studySegmentActive: {
+    borderBottomWidth: 2,
+  },
+  studySegmentText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.body,
+  },
+  studySegmentTextActive: {
+    fontWeight: '600' as const,
   },
   toolsContainer: {
     flex: 1,

@@ -162,7 +162,7 @@ export default function WelcomeScreen() {
             <Text style={styles.platformLabelTk}>TikTok</Text>
           </View>
         </View>
-        {/* Mistral — smaller, separate row */}
+        {/* Mistral + Tournesol — smaller, separate row */}
         <View style={styles.poweredRow}>
           <Text style={[styles.poweredText, { color: colors.textMuted }]}>Propulsé par</Text>
           <Image
@@ -170,6 +170,15 @@ export default function WelcomeScreen() {
             style={[styles.mistralLogo, !isDark && { tintColor: '#1a1a2e' }]}
             resizeMode="contain"
           />
+          <View style={[styles.poweredSep, { backgroundColor: colors.border }]} />
+          <Image
+            source={require('@/assets/platforms/tournesol-logo.png')}
+            style={styles.tournesolLogo}
+            resizeMode="contain"
+          />
+          <Text style={[styles.tournesolLabel, { color: colors.textMuted }]}>
+            Tournesol
+          </Text>
         </View>
       </View>
 
@@ -284,8 +293,21 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   mistralLogo: {
-    height: 20,
-    width: 80,
+    height: 18,
+    width: 70,
+  },
+  poweredSep: {
+    width: 1,
+    height: 14,
+    opacity: 0.3,
+  },
+  tournesolLogo: {
+    width: 18,
+    height: 18,
+  },
+  tournesolLabel: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
   },
   pager: {
     flex: 1,

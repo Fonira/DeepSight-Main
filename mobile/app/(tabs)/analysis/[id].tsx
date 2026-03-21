@@ -31,16 +31,19 @@ import { StreamingOverlay } from '@/components/analysis/StreamingOverlay';
 import { AnalysisContentDisplay } from '@/components/analysis/AnalysisContentDisplay';
 import { ChatView } from '@/components/analysis/ChatView';
 import { ActionBar } from '@/components/analysis/ActionBar';
+import { QuickChatScreen } from '@/components/analysis/QuickChatScreen';
 import { DoodleBackground } from '@/components/ui/DoodleBackground';
+import { DeepSightSpinner } from '@/components/ui/DeepSightSpinner';
 
 const TAB_LABELS = ['Résumé', 'Chat'] as const;
 const TAB_BAR_HEIGHT = 60;
 
 export default function AnalysisDetailScreen() {
-  const { id, backTo, initialTab } = useLocalSearchParams<{
+  const { id, backTo, initialTab, quickChat } = useLocalSearchParams<{
     id: string;
     backTo?: string;
     initialTab?: string;
+    quickChat?: string;
   }>();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -294,13 +297,26 @@ export default function AnalysisDetailScreen() {
     </View>
   );
 
-  // Loading state
+  // ── Quick Chat mode ──────────────────────────────────────────────────────
+  const isQuickChat = quickChat === 'true' || summary?.mode === 'quick_chat';
+
+  if (isQuickChat && summary) {
+    return <QuickChatScreen summary={summary} onBack={handleBack} />;
+  }
+
+  // Loading state — Quick Chat = DeepSight spinner, analyse = skeleton
   if (isLoading && !isProcessing) {
     return (
       <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
         {BackHeader}
-        <AnalysisSkeleton />
+        {isQuickChat ? (
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <DeepSightSpinner size="lg" label="Connexion au chat..." showLabel />
+          </View>
+        ) : (
+          <AnalysisSkeleton />
+        )}
       </View>
     );
   }

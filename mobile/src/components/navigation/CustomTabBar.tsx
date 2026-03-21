@@ -57,7 +57,7 @@ function TabBarIcon({ name, isFocused, activeColor, inactiveColor }: TabBarIconP
 const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   index: 'home',
   library: 'time-outline',
-  study: 'school-outline',
+  study: 'book-outline',
   subscription: 'sparkles-outline',
   profile: 'settings-outline',
 };

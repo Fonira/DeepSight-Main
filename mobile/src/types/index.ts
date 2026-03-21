@@ -291,7 +291,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
 
   // Modal screens
-  Analysis: { videoUrl?: string; summaryId?: string; videoId?: string; initialTab?: 'summary' | 'chat' | 'concepts' | 'tools' };
+  Analysis: { videoUrl?: string; summaryId?: string; videoId?: string; initialTab?: 'summary' | 'chat' | 'concepts' | 'tools' | 'study' };
   VideoPlayer: { videoId: string; startTime?: number };
   Chat: { summaryId: string };
   StudyTools: { summaryId: string };

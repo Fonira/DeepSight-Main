@@ -557,8 +557,8 @@ export const videoApi = {
   },
 
   /**
-   * ? Quick Chat — Prépare une vidéo pour le chat IA sans analyse complète.
-   * Zéro crédit, temps de réponse ~2-5s.
+   * ? Quick Chat ï¿½ Prï¿½pare une vidï¿½o pour le chat IA sans analyse complï¿½te.
+   * Zï¿½ro crï¿½dit, temps de rï¿½ponse ~2-5s.
    */
   async quickChat(url: string, lang: string = 'fr'): Promise<{
     summary_id: number;
@@ -579,7 +579,7 @@ export const videoApi = {
   },
 
   /**
-   * ?? Upgrade Quick Chat ? Analyse complète (conserve l'historique de chat)
+   * ?? Upgrade Quick Chat ? Analyse complï¿½te (conserve l'historique de chat)
    */
   async upgradeQuickChat(summaryId: number, mode: string = 'standard'): Promise<{
     task_id: string;
@@ -601,6 +601,7 @@ export const videoApi = {
       video_duration?: number;
       video_url?: string;
       thumbnail_url?: string;
+      platform?: string;
       category: string;
       lang?: string;
       mode: string;
@@ -635,13 +636,16 @@ export const videoApi = {
         id: response.video_id,
         title: response.video_title || 'Sans titre',
         description: '',
-        thumbnail: response.thumbnail_url || `https://img.youtube.com/vi/${response.video_id}/mqdefault.jpg`,
+        thumbnail: response.thumbnail_url || (response.platform !== 'tiktok' ? `https://img.youtube.com/vi/${response.video_id}/mqdefault.jpg` : ''),
         channel: response.video_channel || 'Unknown',
         channelId: '',
         duration: response.video_duration || 0,
         publishedAt: response.created_at || '',
         viewCount: 0,
       },
+      // Platform (youtube / tiktok / text)
+      platform: response.platform || (response.video_url?.includes('tiktok') ? 'tiktok' : 'youtube'),
+      video_url: response.video_url,
       // Pass through additional fields for notes/tags
       notes: response.notes,
       tags: response.tags,

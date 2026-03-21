@@ -233,6 +233,12 @@ export const LoginScreen: React.FC = () => {
               style={[styles.platformLogoMistral, !isDark && { tintColor: '#1a1a2e' }]}
               resizeMode="contain"
             />
+            <View style={[styles.platformDivider, { backgroundColor: colors.border }]} />
+            <Image
+              source={require('../assets/platforms/tournesol-logo.png')}
+              style={styles.platformLogoTournesol}
+              resizeMode="contain"
+            />
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(200).springify().damping(8)}>
@@ -481,21 +487,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: sp.xl,
+    flexWrap: 'wrap',
+    gap: sp.md,
     marginBottom: sp.xl,
     opacity: 0.4,
+    paddingHorizontal: sp.lg,
   },
   platformLogoYt: {
-    height: 32,
-    width: 140,
+    height: 24,
+    width: 100,
   },
   platformLogoTk: {
-    height: 32,
-    width: 120,
+    height: 24,
+    width: 90,
   },
   platformLogoMistral: {
-    height: 26,
-    width: 110,
+    height: 20,
+    width: 80,
+  },
+  platformLogoTournesol: {
+    height: 20,
+    width: 20,
   },
   platformDivider: {
     width: 1,

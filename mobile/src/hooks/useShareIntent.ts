@@ -1,22 +1,22 @@
 /**
- * 🔗 useShareIntent — Receive shared URLs from other apps (TikTok, YouTube, etc.)
+ * 🔗 useDeepSightShareIntent — Receive shared URLs from YouTube/TikTok
  *
  * Uses expo-share-intent to handle ACTION_SEND intents (Android) and
- * Share Extension (iOS). When a user shares a TikTok/YouTube URL from
- * another app, DeepSight receives it and auto-navigates to analysis.
+ * Share Extension (iOS). When a user shares a video URL from another app,
+ * DeepSight receives it and auto-launches Quick Chat (zero credit, ~2-5s).
  *
- * Requires: npm install expo-share-intent
- * Note: expo-share-intent only works in dev builds, NOT Expo Go.
+ * Flow: YouTube/TikTok → Share → DeepSight → Quick Chat auto → Navigate to chat
+ *
+ * Requires: expo-share-intent (dev builds only, NOT Expo Go)
  */
 
 import { useEffect, useCallback, useRef } from 'react';
 import { Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useShareIntent as useExpoShareIntent } from 'expo-share-intent';
 import { validateYouTubeUrl } from '../utils/formatters';
 import { videoApi } from '../services/api';
-
-interface NavigationLike {
-  navigate: (screen: string, params?: Record<string, unknown>) => void;
-}
+import { useAuth } from '../contexts/AuthContext';
 
 /**
  * Extract a URL from shared text content.
@@ -47,112 +47,130 @@ function extractUrlFromText(text: string): string | null {
 }
 
 /**
- * Hook to handle incoming shared content from other apps.
- * Call this in the DeepLinkHandler component which already has navigation access.
+ * Hook to handle incoming shared content from YouTube/TikTok.
+ * Call this once in the root RootNavigator component.
  *
- * @param navigation - React Navigation object with navigate()
- * @param isAuthenticated - Whether the user is logged in
+ * Strategy: Quick Chat (zero credit, instant) → user can upgrade to full analysis later.
+ * This is the lowest-friction path: 1 tap from share sheet → chat ready in seconds.
  */
-export function useShareIntent(
-  navigation: NavigationLike,
-  isAuthenticated: boolean,
-): void {
+export function useDeepSightShareIntent(): void {
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const processedUrlsRef = useRef<Set<string>>(new Set());
+  const isProcessingRef = useRef(false);
+
+  // expo-share-intent hook — handles both cold start and foreground shares
+  const { hasShareIntent, shareIntent, resetShareIntent, error } = useExpoShareIntent({
+    debug: __DEV__,
+    resetOnBackground: true,
+  });
 
   const handleSharedUrl = useCallback(async (url: string) => {
     // Deduplicate — don't process the same URL twice in quick succession
     if (processedUrlsRef.current.has(url)) return;
+    if (isProcessingRef.current) return;
     processedUrlsRef.current.add(url);
-    setTimeout(() => processedUrlsRef.current.delete(url), 10_000);
+    isProcessingRef.current = true;
 
-    const validation = validateYouTubeUrl(url);
-    if (!validation.isValid) return;
-
-    // If not authenticated, can't analyze — just alert
-    if (!isAuthenticated) {
-      Alert.alert(
-        'DeepSight',
-        'Connectez-vous pour analyser cette vidéo.',
-      );
-      return;
-    }
+    // Auto-clear dedup after 15s
+    setTimeout(() => processedUrlsRef.current.delete(url), 15_000);
 
     try {
-      // Auto-start analysis
-      const response = await videoApi.analyze({
-        url,
-        mode: 'standard',
-        language: 'fr',
-        model: 'mistral',
-        category: 'auto',
-      });
+      const validation = validateYouTubeUrl(url);
+      if (!validation.isValid) {
+        if (__DEV__) console.log('[ShareIntent] URL not valid YouTube/TikTok:', url);
+        return;
+      }
 
-      const taskId = response.task_id;
-      if (!taskId) return;
+      // If not authenticated — prompt to login
+      if (!isAuthenticated) {
+        Alert.alert(
+          'DeepSight',
+          'Connectez-vous pour analyser cette vidéo.',
+          [{ text: 'OK' }],
+        );
+        return;
+      }
 
-      navigation.navigate('Analysis', {
-        videoUrl: url,
-        summaryId: taskId,
-      });
+      // Launch Quick Chat (zero credit, ~2-5s response)
+      if (__DEV__) console.log('[ShareIntent] Launching Quick Chat for:', url);
+
+      const result = await videoApi.quickChat(url, 'fr');
+
+      if (!result?.summary_id) {
+        throw new Error('No summary_id returned');
+      }
+
+      // Navigate directly to Quick Chat screen
+      router.push({
+        pathname: '/(tabs)/analysis/[id]',
+        params: {
+          id: String(result.summary_id),
+          quickChat: 'true',
+        },
+      } as any);
+
     } catch (err: any) {
-      if (__DEV__) console.error('[ShareIntent] Auto-analyze failed:', err);
+      if (__DEV__) console.error('[ShareIntent] Quick Chat failed:', err);
 
-      if (err?.status === 402 || err?.status === 403) {
+      const status = err?.status || err?.statusCode;
+      if (status === 402 || status === 403) {
         Alert.alert(
           'Quota dépassé',
-          'Passez à un plan supérieur pour analyser cette vidéo.',
+          'Passez à un plan supérieur pour analyser plus de vidéos.',
+          [{ text: 'OK' }],
         );
       } else {
-        // Navigate to Dashboard — user can retry manually
         Alert.alert(
           'Erreur',
-          'Impossible de lancer l\'analyse. Réessayez depuis l\'app.',
+          'Impossible de préparer le chat. Réessayez depuis l\'app.',
+          [{ text: 'OK' }],
         );
       }
+    } finally {
+      isProcessingRef.current = false;
     }
-  }, [navigation, isAuthenticated]);
+  }, [isAuthenticated, router]);
 
-  // Handle share intents via expo-share-intent (dev builds only)
+  // React to new share intents
   useEffect(() => {
-    let cleanup: (() => void) | undefined;
+    if (!hasShareIntent) return;
 
-    async function initShareIntent() {
-      try {
-        // Dynamic import — only available in dev builds with expo-share-intent
-        const ShareIntent = await import('expo-share-intent');
+    // Extract URL from shared content
+    let url: string | null = null;
 
-        // Handle initial share (app opened via share action)
-        const initial = ShareIntent.getShareIntent?.();
-        if (initial?.text) {
-          const url = extractUrlFromText(initial.text);
-          if (url) handleSharedUrl(url);
-        } else if ((initial as any)?.webUrl) {
-          const url = extractUrlFromText((initial as any).webUrl);
-          if (url) handleSharedUrl(url);
-        }
-
-        // Subscribe to new shares while app is open
-        const subscription = ShareIntent.addShareIntentListener?.((intent: { text?: string; webUrl?: string }) => {
-          const text = intent?.text || intent?.webUrl || '';
-          const url = extractUrlFromText(text);
-          if (url) handleSharedUrl(url);
-        });
-
-        cleanup = () => {
-          subscription?.remove?.();
-        };
-      } catch {
-        // expo-share-intent not installed (Expo Go) — silent fail
-        if (__DEV__) console.log('[ShareIntent] expo-share-intent not available (Expo Go?)');
-      }
+    // Priority 1: webUrl (iOS share extension often provides this directly)
+    if (shareIntent.webUrl) {
+      url = extractUrlFromText(shareIntent.webUrl);
     }
 
-    initShareIntent();
+    // Priority 2: text content (Android ACTION_SEND usually puts URL in text)
+    if (!url && shareIntent.text) {
+      url = extractUrlFromText(shareIntent.text);
+    }
 
-    return () => {
-      cleanup?.();
-    };
-  }, [handleSharedUrl]);
+    if (url) {
+      handleSharedUrl(url);
+    } else if (__DEV__) {
+      console.log('[ShareIntent] No valid URL found in shared content:', {
+        text: shareIntent.text?.slice(0, 100),
+        webUrl: shareIntent.webUrl,
+        type: shareIntent.type,
+      });
+    }
+
+    // Reset after processing so the same intent isn't processed again
+    resetShareIntent();
+  }, [hasShareIntent, shareIntent, handleSharedUrl, resetShareIntent]);
+
+  // Log errors in dev
+  useEffect(() => {
+    if (error && __DEV__) {
+      console.warn('[ShareIntent] Error:', error);
+    }
+  }, [error]);
 }
 
+// Keep backward-compatible export name
+export { useDeepSightShareIntent as useShareIntent };
 export { extractUrlFromText };

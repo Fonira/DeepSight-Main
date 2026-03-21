@@ -180,7 +180,7 @@ export default function LoginScreen() {
               resizeMode="contain"
             />
           </View>
-          {/* Mistral — separate row, smaller */}
+          {/* Mistral + Tournesol — separate row, smaller */}
           <View style={styles.poweredRow}>
             <Text style={[styles.poweredText, { color: colors.textMuted }]}>Propulsé par</Text>
             <Image
@@ -188,6 +188,15 @@ export default function LoginScreen() {
               style={[styles.mistralLogo, !isDark && { tintColor: '#1a1a2e' }]}
               resizeMode="contain"
             />
+            <View style={[styles.poweredSep, { backgroundColor: colors.border }]} />
+            <Image
+              source={require('@/assets/platforms/tournesol-logo.png')}
+              style={styles.tournesolLogo}
+              resizeMode="contain"
+            />
+            <Text style={[styles.tournesolLabel, { color: colors.textMuted }]}>
+              Tournesol
+            </Text>
           </View>
 
           {/* Form */}
@@ -336,8 +345,21 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   mistralLogo: {
-    height: 20,
-    width: 80,
+    height: 18,
+    width: 70,
+  },
+  poweredSep: {
+    width: 1,
+    height: 14,
+    opacity: 0.3,
+  },
+  tournesolLogo: {
+    width: 18,
+    height: 18,
+  },
+  tournesolLabel: {
+    fontFamily: fontFamily.body,
+    fontSize: fontSize.xs,
   },
   platformLogoYt: {
     height: 28,

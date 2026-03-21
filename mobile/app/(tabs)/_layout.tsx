@@ -26,7 +26,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="study"
         options={{
-          title: 'Étude',
+          title: 'Étude & Chat',
         }}
       />
       <Tabs.Screen
