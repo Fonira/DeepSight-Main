@@ -13,6 +13,7 @@ import {
   Platform,
   FlatList,
   Keyboard,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,6 +41,7 @@ import { TournesolWidget } from '../components/tournesol';
 import { AnalysisValueDisplay } from '../components/analysis/AnalysisValueDisplay';
 import { AnalysisContentDisplay } from '../components/analysis/AnalysisContentDisplay';
 import { TTSPlayer } from '../components/audio/TTSPlayer';
+import { AudioPlayerButton } from '../components/AudioPlayerButton';
 import { SuggestedQuestions } from '../components/chat/SuggestedQuestions';
 import { ChatBubble } from '../components/chat/ChatBubble';
 import { TypingIndicator } from '../components/chat/TypingIndicator';
@@ -174,14 +176,13 @@ export const AnalysisScreen: React.FC = () => {
       const summaryId = String(summary.id || route.params?.summaryId);
       const response = await videoApi.upgradeQuickChat(
         parseInt(summaryId),
-        upgradeMode,
-        upgradeDeepResearch
+        upgradeMode
       );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       // Poll for completion
       const pollInterval = setInterval(async () => {
         try {
-          const status = await videoApi.getTaskStatus(response.task_id);
+          const status = await videoApi.getStatus(response.task_id);
           if (status.status === 'completed' || status.status === 'done') {
             clearInterval(pollInterval);
             await loadCompletedAnalysis(summaryId);
@@ -217,7 +218,7 @@ export const AnalysisScreen: React.FC = () => {
       analytics.track('analysis_completed', {
         platform: summaryData.platform || 'youtube',
         mode: summaryData.mode || 'standard',
-        word_count: summaryData.word_count || 0,
+        word_count: summaryData.wordCount || 0,
       });
 
       // Load concepts
@@ -976,13 +977,13 @@ export const AnalysisScreen: React.FC = () => {
 
           {/* Summary content or Quick Chat upgrade panel */}
           {summary?.mode === 'quick_chat' && !summary?.content ? (
-            <View style={{ padding: 20, borderRadius: 16, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.border }}>
+            <View style={{ padding: 20, borderRadius: 16, backgroundColor: colors.bgCard, borderWidth: 1, borderColor: colors.border }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                 <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#10b98120', alignItems: 'center', justifyContent: 'center' }}>
                   <Ionicons name="chatbubbles-outline" size={20} color="#10b981" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', color: colors.textPrimary }}>
                     Quick Chat
                   </Text>
                   <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 2 }}>
@@ -1033,7 +1034,7 @@ export const AnalysisScreen: React.FC = () => {
                 }}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '500', color: colors.text }}>
+                  <Text style={{ fontSize: 14, fontWeight: '500', color: colors.textPrimary }}>
                     {language === 'fr' ? 'Recherche approfondie' : 'Deep Research'}
                   </Text>
                   <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
@@ -1103,11 +1104,16 @@ export const AnalysisScreen: React.FC = () => {
               showEmptyState={!summary?.content}
               emptyStateMessage={t.history.empty}
             />
+            {summary?.content && (
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 8 }}>
+                <AudioPlayerButton text={summary.content.slice(0, 5000)} size="md" />
+              </View>
+            )}
           </Card>
           )}
 
           {/* Actions — Glassmorphism container */}
-          <View style={styles.actionsRowGlass}>
+          <View style={[styles.actionsRowGlass, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
             <ActionButton icon="copy-outline" label={t.common.copy} onPress={handleCopy} />
             <ActionButton icon="share-outline" label={t.common.share} onPress={handleShare} />
             <ActionButton icon="play-outline" label={t.common.video} onPress={handleOpenVideo} color={colors.accentSecondary} />
@@ -1265,7 +1271,7 @@ export const AnalysisScreen: React.FC = () => {
                 {
                   borderLeftWidth: 4,
                   borderLeftColor: index % 3 === 0 ? '#3b82f6' : index % 3 === 1 ? '#8b5cf6' : '#06b6d4',
-                  backgroundColor: 'rgba(255,255,255,0.04)',
+                  backgroundColor: colors.bgCard,
                 },
               ]}>
                 <View style={styles.conceptHeader}>
@@ -1816,10 +1822,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginVertical: Spacing.md,
-    backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
     padding: 12,
   },
   actionButton: {

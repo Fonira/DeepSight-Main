@@ -24,6 +24,7 @@ import { palette } from '../../theme/colors';
 import { useChat } from '../../hooks/useChat';
 import { ChatInput } from './ChatInput';
 import { ChatMarkdown } from './ChatMarkdown';
+import { AudioPlayerButton } from '../AudioPlayerButton';
 import type { ChatMessage } from '../../types';
 
 // ── Parse [ask:...] questions from assistant messages ──
@@ -133,11 +134,16 @@ export const ChatView: React.FC<ChatViewProps> = ({ summaryId, keyboardOffset = 
               {item.content}
             </Text>
           ) : (
-            <ChatMarkdown
-              content={cleaned}
-              textColor={colors.textPrimary}
-              isDark={isDark}
-            />
+            <>
+              <ChatMarkdown
+                content={cleaned}
+                textColor={colors.textPrimary}
+                isDark={isDark}
+              />
+              <View style={{ alignItems: 'flex-end', marginTop: 6 }}>
+                <AudioPlayerButton text={cleaned} size="sm" />
+              </View>
+            </>
           )}
         </View>
         {/* Questions cliquables "Pour aller plus loin" */}
