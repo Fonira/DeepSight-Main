@@ -103,6 +103,15 @@ export interface ChatResponse {
   web_search_used: boolean;
 }
 
+// ── Quick Chat ──
+
+export interface QuickChatResponse {
+  summary_id: number;
+  video_title: string;
+  word_count: number;
+  message: string;
+}
+
 // ── Plan Info ──
 
 export interface PlanFeatures {
@@ -159,7 +168,8 @@ export type MessageAction =
   | 'ANALYSIS_PROGRESS'
   | 'GET_PLAN'
   | 'START_GUEST_ANALYSIS'
-  | 'SHARE_ANALYSIS';
+  | 'SHARE_ANALYSIS'
+  | 'QUICK_CHAT';
 
 export interface ExtensionMessage {
   action: MessageAction;

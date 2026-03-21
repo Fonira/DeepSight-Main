@@ -49,6 +49,7 @@ module.exports = (env, argv) => {
           { from: '../frontend/public/deepsight-logo-cosmic.png', to: 'assets/deepsight-logo-cosmic.png', noErrorOnMissing: true },
           { from: '../frontend/public/spinner-cosmic.jpg', to: 'assets/spinner-cosmic.jpg', noErrorOnMissing: true },
           { from: '../frontend/public/spinner-wheel.jpg', to: 'assets/spinner-wheel.jpg', noErrorOnMissing: true },
+          { from: 'public/platforms', to: 'platforms', noErrorOnMissing: true },
         ],
       }),
     ],

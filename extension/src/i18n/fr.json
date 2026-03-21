@@ -71,6 +71,8 @@
     "quotaExceededText": "Passez au plan supérieur",
     "mode": "Mode",
     "language": "Langue",
+    "quickChatButton": "Quick Chat IA",
+    "quickChatPreparing": "Préparation du chat...",
     "modes": {
       "standard": "Standard",
       "accessible": "Accessible",

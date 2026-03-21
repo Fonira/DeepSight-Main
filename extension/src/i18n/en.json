@@ -71,6 +71,8 @@
     "quotaExceededText": "Upgrade to a higher plan",
     "mode": "Mode",
     "language": "Language",
+    "quickChatButton": "Quick AI Chat",
+    "quickChatPreparing": "Preparing chat...",
     "modes": {
       "standard": "Standard",
       "accessible": "Accessible",

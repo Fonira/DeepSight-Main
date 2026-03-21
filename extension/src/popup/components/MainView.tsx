@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import type { User, Summary, RecentAnalysis, PlanInfo } from '../../types';
+import type { User, Summary, RecentAnalysis, PlanInfo, QuickChatResponse } from '../../types';
 import { extractVideoId, getThumbnailUrl, detectPlatform, type VideoPlatform } from '../../utils/video';
 import { addRecentAnalysis, getRecentAnalyses, getFreeAnalysisCount, incrementFreeAnalysisCount } from '../../utils/storage';
 import { WEBAPP_URL } from '../../utils/config';
@@ -39,6 +39,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
   const [recentAnalyses, setRecentAnalyses] = useState<RecentAnalysis[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
   const [guestUsed, setGuestUsed] = useState(false);
+  const [quickChatLoading, setQuickChatLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Check guest analysis count
@@ -93,6 +94,28 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
   // ── Next plan hint for upsell ──
   const userPlanId = planInfo?.plan_id || user?.plan || 'free';
   const nextPlan = t.upsell[userPlanId as keyof typeof t.upsell] || null;
+
+  // ── Quick Chat ──
+  const startQuickChat = useCallback(async () => {
+    if (!video) return;
+    setQuickChatLoading(true);
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'QUICK_CHAT',
+        data: { url: video.url, lang },
+      });
+
+      if (!response.success) throw new Error(response.error || 'Quick Chat failed');
+
+      const result = response.result as QuickChatResponse;
+      chrome.tabs.create({ url: `${WEBAPP_URL}/chat?summary=${result.summary_id}` });
+    } catch (e) {
+      onError((e as Error).message);
+    } finally {
+      setQuickChatLoading(false);
+    }
+  }, [video, lang, onError]);
 
   const startAnalysis = useCallback(async () => {
     if (!video) return;
@@ -329,6 +352,14 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                 >
                   {'\u2728'} {t.analysis.analyzeButton}
                 </button>
+                {/* Quick Chat still available even when quota exceeded (0 credits) */}
+                <button
+                  className="quickchat-btn"
+                  onClick={startQuickChat}
+                  disabled={quickChatLoading}
+                >
+                  {quickChatLoading ? t.analysis.quickChatPreparing : `\u{1F4AC} ${t.analysis.quickChatButton}`}
+                </button>
                 <a
                   href={`${WEBAPP_URL}/upgrade`}
                   target="_blank"
@@ -377,6 +408,13 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                     </select>
                   </div>
                 </div>
+                <button
+                  className="quickchat-btn"
+                  onClick={startQuickChat}
+                  disabled={!video || quickChatLoading}
+                >
+                  {quickChatLoading ? t.analysis.quickChatPreparing : `\u{1F4AC} ${t.analysis.quickChatButton}`}
+                </button>
                 <button className="analyze-btn" onClick={startAnalysis}>
                   {'\u2728'} {t.analysis.analyzeButton}
                 </button>

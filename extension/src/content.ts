@@ -77,16 +77,39 @@ function logoImgHtml(size = 24): string {
 
 function spinnerHtml(size = 48): string {
   return `
-    <div class="ds-deepsight-spinner" style="width:${size}px;height:${size}px;">
-      <img src="${assetUrl('spinner-cosmic.jpg')}" alt="" class="ds-spinner-cosmic" />
-      <img src="${assetUrl('spinner-wheel.jpg')}" alt="" class="ds-spinner-wheel" />
+    <div class="ds-gouvernail-spinner" style="width:${size}px;height:${size}px;">
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <circle cx="24" cy="24" r="20" opacity="0.3"/>
+        <circle cx="24" cy="24" r="3"/>
+        <line x1="24" y1="4" x2="24" y2="11"/>
+        <line x1="38.1" y1="9.9" x2="33.2" y2="14.8"/>
+        <line x1="44" y1="24" x2="37" y2="24"/>
+        <line x1="38.1" y1="38.1" x2="33.2" y2="33.2"/>
+        <line x1="24" y1="44" x2="24" y2="37"/>
+        <line x1="9.9" y1="38.1" x2="14.8" y2="33.2"/>
+        <line x1="4" y1="24" x2="11" y2="24"/>
+        <line x1="9.9" y1="9.9" x2="14.8" y2="14.8"/>
+        <circle cx="24" cy="24" r="12" opacity="0.2"/>
+      </svg>
     </div>`;
 }
 
 function spinnerSmallHtml(): string {
   return `
-    <div class="ds-deepsight-spinner ds-deepsight-spinner-sm">
-      <img src="${assetUrl('spinner-wheel.jpg')}" alt="" class="ds-spinner-wheel" />
+    <div class="ds-gouvernail-spinner ds-gouvernail-spinner-sm">
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+        <circle cx="24" cy="24" r="20" opacity="0.3"/>
+        <circle cx="24" cy="24" r="3"/>
+        <line x1="24" y1="4" x2="24" y2="11"/>
+        <line x1="38.1" y1="9.9" x2="33.2" y2="14.8"/>
+        <line x1="44" y1="24" x2="37" y2="24"/>
+        <line x1="38.1" y1="38.1" x2="33.2" y2="33.2"/>
+        <line x1="24" y1="44" x2="24" y2="37"/>
+        <line x1="9.9" y1="38.1" x2="14.8" y2="33.2"/>
+        <line x1="4" y1="24" x2="11" y2="24"/>
+        <line x1="9.9" y1="9.9" x2="14.8" y2="14.8"/>
+        <circle cx="24" cy="24" r="12" opacity="0.2"/>
+      </svg>
     </div>`;
 }
 
@@ -211,6 +234,10 @@ function renderAnalyzeReady(container: HTMLElement, user: { credits: number; pla
       \u{1F680} Analyze this video
     </button>
 
+    <button class="ds-btn ds-btn-quickchat" id="ds-quickchat-btn">
+      \u{1F4AC} Quick Chat IA
+    </button>
+
     <div class="ds-options-row">
       <select id="ds-mode" class="ds-select" title="Analysis mode">
         <option value="standard">\u{1F4CB} Standard</option>
@@ -242,6 +269,35 @@ function renderAnalyzeReady(container: HTMLElement, user: { credits: number; pla
     const mode = (document.getElementById('ds-mode') as HTMLSelectElement).value;
     const lang = (document.getElementById('ds-lang') as HTMLSelectElement).value;
     startAnalysis(window.location.href, { mode, lang });
+  });
+
+  // ── Quick Chat Button Handler ──
+  document.getElementById('ds-quickchat-btn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('ds-quickchat-btn') as HTMLButtonElement;
+    const lang = (document.getElementById('ds-lang') as HTMLSelectElement).value;
+    const resultEl = document.getElementById('ds-result');
+
+    btn.disabled = true;
+    btn.innerHTML = `${spinnerSmallHtml()} Pr\u00E9paration...`;
+
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'QUICK_CHAT',
+        data: { url: window.location.href, lang },
+      });
+
+      if (!response.success) throw new Error(response.error || 'Quick Chat failed');
+
+      const result = response.result as { summary_id: number; video_title: string };
+      openChat(result.summary_id, result.video_title);
+    } catch (e) {
+      if (resultEl) {
+        resultEl.classList.remove('hidden');
+        resultEl.innerHTML = `<div class="ds-error"><p>\u274C ${escapeHtml((e as Error).message)}</p></div>`;
+      }
+      btn.disabled = false;
+      btn.innerHTML = '\u{1F4AC} Quick Chat IA';
+    }
   });
 
   document.getElementById('ds-logout')?.addEventListener('click', async () => {
@@ -345,7 +401,7 @@ const FEATURE_TEASERS: FeatureTeaser[] = [
   { icon: '\u{1F9E0}', label: 'Carte mentale', minPlan: 'etudiant', url: `${WEBAPP_URL}/upgrade` },
   { icon: '\u{1F310}', label: 'Recherche web IA', minPlan: 'starter', url: `${WEBAPP_URL}/upgrade` },
   { icon: '\u{1F4E6}', label: 'Export PDF/DOCX', minPlan: 'pro', url: `${WEBAPP_URL}/upgrade` },
-  { icon: '\u{1F4CB}', label: 'Playlists entières', minPlan: 'pro', url: `${WEBAPP_URL}/upgrade` },
+  { icon: '\u{1F4CB}', label: 'Playlists enti\u00E8res', minPlan: 'pro', url: `${WEBAPP_URL}/upgrade` },
 ];
 
 const PLAN_RANK: Record<string, number> = { free: 0, etudiant: 1, student: 1, starter: 2, pro: 3 };
@@ -590,6 +646,9 @@ function openChat(summaryId: number, videoTitle: string): void {
       </form>
     </div>
   `;
+
+  // Show the result container (it may be hidden)
+  resultEl.classList.remove('hidden');
 
   document.getElementById('ds-chat-back')?.addEventListener('click', () => displaySummary(summaryId));
 

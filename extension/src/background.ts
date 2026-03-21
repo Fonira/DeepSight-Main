@@ -21,6 +21,7 @@ import type {
   ChatOptions,
   ChatMessage,
   PlanInfo,
+  QuickChatResponse,
 } from './types';
 
 // ── Core API Request ──
@@ -252,6 +253,15 @@ async function shareAnalysis(videoId: string): Promise<{ share_url: string; shar
   });
 }
 
+// ── Quick Chat API ──
+
+async function quickChat(url: string, lang: string = 'fr'): Promise<QuickChatResponse> {
+  return apiRequest<QuickChatResponse>('/videos/quick-chat', {
+    method: 'POST',
+    body: JSON.stringify({ url, lang }),
+  });
+}
+
 // ── Chat API ──
 
 async function askQuestion(
@@ -456,6 +466,16 @@ async function handleMessage(message: ExtensionMessage): Promise<MessageResponse
       try {
         const result = await shareAnalysis(videoId);
         return { success: true, share_url: result.share_url };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case 'QUICK_CHAT': {
+      const { url, lang } = message.data as { url: string; lang?: string };
+      try {
+        const result = await quickChat(url, lang || 'fr');
+        return { success: true, result };
       } catch (e) {
         return { success: false, error: (e as Error).message };
       }

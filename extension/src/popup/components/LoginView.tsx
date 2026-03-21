@@ -101,6 +101,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
           className="login-platform-logo login-platform-mistral"
           style={{ height: 15, width: 'auto', opacity: 0.7 }}
         />
+        <span className="login-platform-sep" />
+        <img
+          src={chrome.runtime.getURL('platforms/tournesol-logo.png')}
+          alt="Tournesol"
+          className="login-platform-logo"
+          style={{ height: 16, width: 'auto', opacity: 0.8 }}
+        />
       </div>
 
       {/* FR/EU trust badges */}
