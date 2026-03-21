@@ -391,6 +391,14 @@ async def initialize_database_background():
             await init_rate_limiter(redis_url)
             logger.info("Rate limiter initialized")
 
+        # Étape 5: Démarrer la queue email (throttled Resend)
+        try:
+            from services.email_queue import email_queue
+            email_queue.start()
+            logger.info("Email queue started")
+        except Exception as eq_err:
+            logger.warning(f"Email queue init failed (non-blocking): {eq_err}")
+
         # Marquer l'app comme prête
         _app_state["ready"] = True
         logger.info("🟢 Application fully ready to serve requests")
@@ -520,6 +528,13 @@ async def lifespan(app: FastAPI):
     if scheduler is not None:
         scheduler.shutdown(wait=False)
         logger.info("Backup scheduler stopped")
+    # Stop email queue worker
+    try:
+        from services.email_queue import email_queue
+        email_queue.stop()
+        logger.info("Email queue stopped")
+    except Exception:
+        pass
     await close_db()
     logger.info("Application shutdown")
 

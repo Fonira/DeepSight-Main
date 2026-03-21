@@ -73,9 +73,14 @@ async def _get_sent_keys(db: AsyncSession, user_id: int) -> set[str]:
 
 async def _mark_email_sent(db: AsyncSession, user_id: int, email_key: str) -> None:
     """Enregistre qu'un email onboarding a été envoyé."""
-    log = OnboardingEmailLog(user_id=user_id, email_key=email_key)
-    db.add(log)
-    await db.commit()
+    try:
+        log = OnboardingEmailLog(user_id=user_id, email_key=email_key)
+        db.add(log)
+        await db.flush()  # flush uniquement — le commit final est fait par l'appelant
+    except Exception as e:
+        await db.rollback()
+        logger.error("Failed to mark email sent", extra={"user_id": user_id, "email_key": email_key, "error": str(e)})
+        raise
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -205,13 +210,11 @@ async def process_onboarding_emails(db: AsyncSession) -> dict[str, int]:
 
     Returns: {"j2_sent": N, "j7_sent": N, "errors": N, "users_checked": N}
     """
-    # Auto-création de la table de log si nécessaire
     await _ensure_table_exists(db)
 
     now = datetime.utcnow()
     stats = {"j2_sent": 0, "j7_sent": 0, "errors": 0, "users_checked": 0}
 
-    # Utilisateurs créés entre 2 et 30 jours (pas besoin de checker les très anciens)
     cutoff_old = now - timedelta(days=30)
     cutoff_j2 = now - timedelta(days=2)
 
@@ -219,15 +222,23 @@ async def process_onboarding_emails(db: AsyncSession) -> dict[str, int]:
         select(User).where(
             and_(
                 User.created_at >= cutoff_old,
-                User.created_at <= cutoff_j2,  # Au moins 2 jours
-                User.email_verified == True,  # noqa: E712 — email confirmé
+                User.created_at <= cutoff_j2,
+                User.email_verified == True,  # noqa: E712
             )
         )
     )
     users = result.scalars().all()
     stats["users_checked"] = len(users)
 
+    # Safety cap — max 30 emails par run pour ne pas exploser le quota Resend (100/jour plan gratuit)
+    MAX_EMAILS_PER_RUN = 30
+    emails_sent_this_run = 0
+
     for user in users:
+        if emails_sent_this_run >= MAX_EMAILS_PER_RUN:
+            logger.warning("Onboarding cron hit MAX_EMAILS_PER_RUN cap", extra={"cap": MAX_EMAILS_PER_RUN})
+            break
+
         try:
             sent_keys = await _get_sent_keys(db, user.id)
             days_since_signup = (now - user.created_at).days
@@ -239,19 +250,27 @@ async def process_onboarding_emails(db: AsyncSession) -> dict[str, int]:
                 if success:
                     await _mark_email_sent(db, user.id, "j2")
                     stats["j2_sent"] += 1
+                    emails_sent_this_run += 1
                     logger.info("Onboarding J+2 sent", extra={"user_id": user.id, "email": user.email})
 
             # J+7 : Engagement
-            if days_since_signup >= 7 and "j7" not in sent_keys:
+            if days_since_signup >= 7 and "j7" not in sent_keys and emails_sent_this_run < MAX_EMAILS_PER_RUN:
                 await asyncio.sleep(RESEND_THROTTLE_SECONDS)
                 success = await _send_j7_engagement(user)
                 if success:
                     await _mark_email_sent(db, user.id, "j7")
                     stats["j7_sent"] += 1
+                    emails_sent_this_run += 1
                     logger.info("Onboarding J+7 sent", extra={"user_id": user.id, "email": user.email})
 
         except Exception as e:
             stats["errors"] += 1
             logger.error("Onboarding email error", extra={"user_id": user.id, "error": str(e)})
+
+    # Commit final unique — une seule transaction pour tous les logs
+    try:
+        await db.commit()
+    except Exception as e:
+        logger.error("Failed to commit onboarding email logs", extra={"error": str(e)})
 
     return stats

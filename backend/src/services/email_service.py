@@ -1,15 +1,13 @@
 """
 EmailService — Transactional emails via Resend + Jinja2 templates
+Tous les envois passent par la queue async avec throttling (email_queue.py).
 """
 
-import httpx
 from pathlib import Path
 from typing import Optional
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from core.config import EMAIL_CONFIG, APP_NAME, FRONTEND_URL
-
-RESEND_API_URL = "https://api.resend.com/emails"
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates" / "emails"
 
 
@@ -38,49 +36,23 @@ class EmailService:
         subject: str,
         html_content: str,
         text_content: Optional[str] = None,
+        priority: bool = False,
     ) -> bool:
-        """Send an email via the Resend HTTP API. Returns True on success."""
-        if not EMAIL_CONFIG.get("ENABLED"):
-            print("📧 Email disabled — skipping", flush=True)
-            return False
+        """
+        Queue an email for sending via the throttled email queue.
+        Returns True if successfully queued.
 
-        api_key = EMAIL_CONFIG.get("RESEND_API_KEY")
-        if not api_key:
-            print("📧 RESEND_API_KEY not configured — skipping", flush=True)
-            return False
-
-        from_email = EMAIL_CONFIG.get("FROM_EMAIL", "noreply@deepsightsynthesis.com")
-        from_name = EMAIL_CONFIG.get("FROM_NAME", APP_NAME)
-
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    RESEND_API_URL,
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "from": f"{from_name} <{from_email}>",
-                        "to": [to],
-                        "subject": subject,
-                        "html": html_content,
-                        "text": text_content or "",
-                    },
-                    timeout=10,
-                )
-            if response.status_code in (200, 201):
-                print(f"📧 Email sent to {to}: {subject}", flush=True)
-                return True
-            else:
-                print(
-                    f"📧 Email failed ({response.status_code}): {response.text}",
-                    flush=True,
-                )
-                return False
-        except Exception as e:
-            print(f"📧 Email error: {e}", flush=True)
-            return False
+        Args:
+            priority: True for critical emails (verification, password reset)
+        """
+        from services.email_queue import email_queue
+        return await email_queue.enqueue(
+            to=to,
+            subject=subject,
+            html=html_content,
+            text=text_content or "",
+            priority=priority,
+        )
 
     # ------------------------------------------------------------------
     # Template renderer

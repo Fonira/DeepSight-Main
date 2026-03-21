@@ -1,12 +1,10 @@
 """
 EMAIL SERVICE — Design sobre et professionnel v2.0
+Tous les envois passent par la queue async avec throttling (email_queue.py).
 """
 
-import httpx
 from typing import Optional
 from core.config import EMAIL_CONFIG, APP_NAME, FRONTEND_URL
-
-RESEND_API_URL = "https://api.resend.com/emails"
 
 EMAIL_BASE_STYLE = """
 <style>
@@ -35,36 +33,19 @@ EMAIL_BASE_STYLE = """
 """
 
 
-async def send_email(to: str, subject: str, html: str, text: Optional[str] = None) -> bool:
-    if not EMAIL_CONFIG.get("ENABLED"):
-        print("📧 Email disabled", flush=True)
-        return False
-    
-    api_key = EMAIL_CONFIG.get("RESEND_API_KEY")
-    if not api_key:
-        print("📧 Resend API key not configured", flush=True)
-        return False
-    
-    from_email = EMAIL_CONFIG.get("FROM_EMAIL", "noreply@deepsightsynthesis.com")
-    from_name = EMAIL_CONFIG.get("FROM_NAME", APP_NAME)
-    
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                RESEND_API_URL,
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json={"from": f"{from_name} <{from_email}>", "to": [to], "subject": subject, "html": html, "text": text or ""},
-                timeout=10
-            )
-            if response.status_code in [200, 201]:
-                print(f"📧 Email sent to {to}", flush=True)
-                return True
-            else:
-                print(f"📧 Email failed: {response.status_code} - {response.text}", flush=True)
-                return False
-    except Exception as e:
-        print(f"📧 Email error: {e}", flush=True)
-        return False
+async def send_email(to: str, subject: str, html: str, text: Optional[str] = None, priority: bool = False) -> bool:
+    """
+    Queue an email for sending via the throttled email queue.
+    All auth emails (verification, reset) use priority=True.
+    """
+    from services.email_queue import email_queue
+    return await email_queue.enqueue(
+        to=to,
+        subject=subject,
+        html=html,
+        text=text or "",
+        priority=priority,
+    )
 
 
 async def send_verification_email(email: str, code: str, username: str) -> bool:
@@ -82,7 +63,7 @@ async def send_verification_email(email: str, code: str, username: str) -> bool:
         <div class="footer"><p><strong>{APP_NAME}</strong> — Analyse vidéo intelligente</p></div>
     </div></body></html>"""
     text = f"Bonjour {username},\n\nVotre code de vérification : {code}\n\nCe code expire dans 10 minutes.\n\n— {APP_NAME}"
-    return await send_email(email, subject, html, text)
+    return await send_email(email, subject, html, text, priority=True)
 
 
 async def send_password_reset_email(email: str, code: str) -> bool:

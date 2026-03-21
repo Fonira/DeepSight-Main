@@ -193,7 +193,13 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
                     # ⚠️ Supadata peut retourner channel comme dict {"name": "...", "id": "..."}
                     raw_channel = data.get("channel", data.get("author", "Unknown"))
                     if isinstance(raw_channel, dict):
-                        channel_str = raw_channel.get("name", raw_channel.get("title", str(raw_channel)))
+                        channel_str = (
+                            raw_channel.get("displayName")
+                            or raw_channel.get("name")
+                            or raw_channel.get("username")
+                            or raw_channel.get("title")
+                            or "Unknown"
+                        )
                     else:
                         channel_str = str(raw_channel) if raw_channel else "Unknown"
                     logger.info(f"[TIKTOK] Supadata metadata OK: {data.get('title', '')[:50]} ({duration}s)")
