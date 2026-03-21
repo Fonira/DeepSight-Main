@@ -78,6 +78,8 @@ interface SmartInputBarProps {
   language?: 'fr' | 'en';
   placeholder?: string;
   showLanguageSelector?: boolean;
+  onQuickChat?: (url: string) => void;
+  isQuickChatting?: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -232,6 +234,8 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   value,
   onChange,
   onSubmit,
+  onQuickChat,
+  isQuickChatting = false,
   loading = false,
   disabled = false,
   userCredits = 0,
@@ -452,6 +456,28 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
               rows={1}
             />
           </div>
+
+          {/* Quick Chat Button - next to Submit */}
+          {onQuickChat && value.mode === 'url' && inputVal.trim().length > 10 && !loading && (
+            <button
+              type="button"
+              onClick={() => onQuickChat(inputVal.trim())}
+              disabled={isQuickChatting}
+              className="flex items-center justify-center gap-2 px-4 h-12 rounded-xl transition-all duration-200 font-medium text-sm whitespace-nowrap bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 hover:border-emerald-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+              title={language === 'fr' ? "Chatter avec l'IA sans analyse (gratuit)" : 'Chat directly with AI (free)'}
+            >
+              {isQuickChatting ? (
+                <div className="w-4 h-4 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              )}
+              <span className="hidden sm:inline">
+                {language === 'fr' ? 'Chat IA' : 'AI Chat'}
+              </span>
+            </button>
+          )}
 
           {/* Submit Button — Visible & Explicit */}
           <button

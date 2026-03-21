@@ -608,7 +608,22 @@
     "cancel": {
       "title": "Payment cancelled",
       "subtitle": "Your payment was cancelled. No amount was charged.",
-      "backToPlans": "Back to plans"
+      "backToPlans": "Review plans",
+      "tryFree": "Continue for free",
+      "needHelp": "Got a question? Contact us",
+      "whySection": "Having second thoughts?",
+      "reasons": {
+        "price": "The price doesn't fit my budget",
+        "features": "I'm not sure about the features",
+        "trial": "I'd like to try it first",
+        "other": "Other reason"
+      },
+      "reassurance": {
+        "trial": "Try the Pro plan free for 7 days — no commitment.",
+        "guarantee": "14-day money-back guarantee, no questions asked.",
+        "security": "100% secure payment via Stripe. Your card details are never stored on our servers."
+      },
+      "startTrial": "Start 7-day free trial"
     }
   },
   "admin": {

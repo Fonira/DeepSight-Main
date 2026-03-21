@@ -24,7 +24,7 @@ import {
   ChevronRight, ExternalLink, CheckCircle,
   RefreshCw, History, Sparkles, X,
   FileText, Save, BarChart3,
-  Timer, Coffee, Rocket
+  Timer, Coffee, Rocket, Trash2
 } from 'lucide-react';
 import { DeepSightSpinner, DeepSightSpinnerMicro, DeepSightSpinnerSmall } from '../components/ui';
 import { SEO } from '../components/SEO';
@@ -189,6 +189,7 @@ export const PlaylistPage: React.FC = () => {
   // History State
   const [history, setHistory] = useState<PlaylistHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [deletingPlaylistId, setDeletingPlaylistId] = useState<string | null>(null);
 
   // Options - 🆕 Limite par défaut à 10, max 50
   const [videoCount] = useState(5);
@@ -290,6 +291,20 @@ export const PlaylistPage: React.FC = () => {
       loadHistory();
     }
   }, [user, loadHistory]);
+
+  const handleDeleteFromHistory = async (e: React.MouseEvent, playlistId: string) => {
+    e.stopPropagation(); // Ne pas naviguer vers la playlist
+    if (deletingPlaylistId) return;
+    setDeletingPlaylistId(playlistId);
+    try {
+      await playlistApi.delete(playlistId);
+      setHistory(prev => prev.filter(p => p.playlist_id !== playlistId));
+    } catch (err) {
+      console.error('Error deleting playlist:', err);
+    } finally {
+      setDeletingPlaylistId(null);
+    }
+  };
 
   // Persistance
   useEffect(() => {
@@ -790,7 +805,7 @@ export const PlaylistPage: React.FC = () => {
                     {history.map((item) => (
                       <div
                         key={item.playlist_id}
-                        className="p-4 hover:bg-bg-secondary/50 transition-colors cursor-pointer"
+                        className="p-4 hover:bg-bg-secondary/50 transition-colors cursor-pointer group"
                         onClick={() => navigate(`/playlist/${item.playlist_id}`)}
                       >
                         <div className="flex items-center gap-4">
@@ -807,6 +822,18 @@ export const PlaylistPage: React.FC = () => {
                             </p>
                           </div>
 
+                          <button
+                            onClick={(e) => handleDeleteFromHistory(e, item.playlist_id)}
+                            disabled={deletingPlaylistId === item.playlist_id}
+                            className="p-2 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors opacity-0 group-hover:opacity-100"
+                            title={language === 'fr' ? 'Supprimer' : 'Delete'}
+                          >
+                            {deletingPlaylistId === item.playlist_id ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                          </button>
                           <ChevronRight className="w-4 h-4 text-text-muted" />
                         </div>
                       </div>

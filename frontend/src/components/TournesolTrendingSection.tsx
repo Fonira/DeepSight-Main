@@ -177,12 +177,21 @@ export const TournesolTrendingSection: React.FC<TournesolTrendingSectionProps> =
   const [error, setError] = useState<string | null>(null);
   const t = MESSAGES[language];
 
+  // Nombre de résultats demandés par page
+  const PAGE_SIZE = 12;
+  // Pool total dans lequel on pioche aléatoirement (Tournesol a ~500+ vidéos recommandées)
+  const POOL_SIZE = 200;
+
   const fetchRecommendations = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      // Offset aléatoire pour varier les suggestions à chaque chargement
+      const randomOffset = Math.floor(Math.random() * (POOL_SIZE - PAGE_SIZE));
+
       const params = new URLSearchParams({
-        limit: '12',
+        limit: String(PAGE_SIZE),
+        offset: String(randomOffset),
         unsafe: 'false',
       });
       if (langFilter) {
@@ -195,7 +204,9 @@ export const TournesolTrendingSection: React.FC<TournesolTrendingSectionProps> =
       }
 
       const data: TournesolApiResponse = await response.json();
-      setResults(data.results || []);
+      // Mélanger les résultats pour encore plus de variété visuelle
+      const shuffled = (data.results || []).sort(() => Math.random() - 0.5);
+      setResults(shuffled);
     } catch (err) {
       console.error('[TournesolTrending] Fetch error:', err);
       setError(t.error);
@@ -236,21 +247,33 @@ export const TournesolTrendingSection: React.FC<TournesolTrendingSectionProps> =
           </div>
         </div>
 
-        {/* Language filter */}
-        <div className="flex gap-1 bg-white/5 rounded-lg p-1">
-          {LANGUAGES.map((l) => (
-            <button
-              key={l.value}
-              onClick={() => setLangFilter(l.value)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
-                langFilter === l.value
-                  ? 'bg-yellow-500/20 text-yellow-300'
-                  : 'text-white/40 hover:text-white/60'
-              }`}
-            >
-              {l.label[language]}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          {/* Refresh button */}
+          <button
+            onClick={fetchRecommendations}
+            disabled={loading}
+            className="p-2 rounded-lg text-white/30 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all disabled:opacity-30"
+            title={language === 'fr' ? 'Nouvelles suggestions' : 'New suggestions'}
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+
+          {/* Language filter */}
+          <div className="flex gap-1 bg-white/5 rounded-lg p-1">
+            {LANGUAGES.map((l) => (
+              <button
+                key={l.value}
+                onClick={() => setLangFilter(l.value)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
+                  langFilter === l.value
+                    ? 'bg-yellow-500/20 text-yellow-300'
+                    : 'text-white/40 hover:text-white/60'
+                }`}
+              >
+                {l.label[language]}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

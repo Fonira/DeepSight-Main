@@ -34,6 +34,8 @@ export default {
           'violet-muted': 'var(--accent-violet-muted)',
           cyan: 'var(--accent-cyan)',
           'cyan-muted': 'var(--accent-cyan-muted)',
+          info: 'var(--accent-info)',
+          'info-muted': 'var(--accent-info-muted)',
         },
         error: 'var(--error)',
         'error-muted': 'var(--error-muted)',
@@ -47,9 +49,9 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
-        display: ['Inter', '-apple-system', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
+        sans: ['"DM Sans"', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'sans-serif'],
+        display: ['"Cormorant Garamond"', 'Georgia', '"Times New Roman"', 'serif'],
+        mono: ['"JetBrains Mono"', '"Fira Code"', 'monospace'],
       },
       fontSize: {
         'display-lg': ['clamp(2.5rem, 6vw, 4rem)', { lineHeight: '1.1', letterSpacing: '-0.03em', fontWeight: '800' }],

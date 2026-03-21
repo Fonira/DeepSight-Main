@@ -277,6 +277,7 @@ const ChatPage = lazyWithRetry(() => import("./pages/ChatPage"));
 const NotFoundPage = lazyWithRetry(() => import("./pages/NotFoundPage"));
 const ExtensionWelcomePage = lazyWithRetry(() => import("./pages/ExtensionWelcomePage"));
 const PrivacyPolicy = lazyWithRetry(() => import("./pages/PrivacyPolicy"));
+const ApiDocsPage = lazyWithRetry(() => import("./pages/ApiDocsPage"));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔮 PREFETCH CONFIGURATION
@@ -487,6 +488,14 @@ const AppRoutes = () => {
                   <RouteErrorBoundary variant="full" componentName="PaymentCancel">
                     <Suspense fallback={<PageSkeleton variant="simple" />}>
                       <PaymentCancel />
+                    </Suspense>
+                  </RouteErrorBoundary>
+                } />
+
+                <Route path="/api-docs" element={
+                  <RouteErrorBoundary variant="full" componentName="ApiDocsPage">
+                    <Suspense fallback={<PageSkeleton variant="full" />}>
+                      <ApiDocsPage />
                     </Suspense>
                   </RouteErrorBoundary>
                 } />

@@ -608,7 +608,22 @@
     "cancel": {
       "title": "Paiement annulé",
       "subtitle": "Votre paiement a été annulé. Aucun montant n'a été débité.",
-      "backToPlans": "Retour aux offres"
+      "backToPlans": "Revoir les offres",
+      "tryFree": "Continuer gratuitement",
+      "needHelp": "Une question ? Contactez-nous",
+      "whySection": "Une hésitation ?",
+      "reasons": {
+        "price": "Le prix ne correspond pas à mon budget",
+        "features": "Je ne suis pas sûr(e) des fonctionnalités",
+        "trial": "Je voudrais d'abord essayer",
+        "other": "Autre raison"
+      },
+      "reassurance": {
+        "trial": "Essayez le plan Pro gratuitement pendant 7 jours — sans engagement.",
+        "guarantee": "Satisfait ou remboursé sous 14 jours, sans conditions.",
+        "security": "Paiement 100% sécurisé via Stripe. Vos données bancaires ne sont jamais stockées chez nous."
+      },
+      "startTrial": "Essai gratuit 7 jours"
     }
   },
   "admin": {

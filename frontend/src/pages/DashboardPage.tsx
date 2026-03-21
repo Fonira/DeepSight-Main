@@ -301,18 +301,19 @@ export const DashboardPage: React.FC = () => {
   // ? Quick Chat � Direct chat sans analyse
   const [quickChatLoading, setQuickChatLoading] = useState(false);
   
-  const handleQuickChat = async () => {
+  const handleQuickChat = async (url?: string) => {
     if (smartInput.mode !== 'url' || !smartInput.url?.trim()) return;
     
     setQuickChatLoading(true);
     setError(null);
     
     try {
-      const response = await videoApi.quickChat(smartInput.url.trim(), language);
+      const chatUrl = url || smartInput.url?.trim() || '';
+      const response = await videoApi.quickChat(chatUrl, language);
       
       if (response.summary_id) {
         // Naviguer directement vers le chat avec ce summary_id
-        window.location.href = /chat?summary=;
+        window.location.href = `/chat?summary=${response.summary_id}`;
       }
     } catch (err: any) {
       setError(err?.message || (language === 'fr' 
@@ -735,33 +736,9 @@ export const DashboardPage: React.FC = () => {
                 disabled={loading}
                 userCredits={user?.credits || 0}
                 language={language as 'fr' | 'en'}
+                onQuickChat={handleQuickChat}
+                isQuickChatting={quickChatLoading}
               />
-
-              {/* Quick Chat Button - visible when URL is entered */}
-              {smartInput.mode === 'url' && smartInput.url && smartInput.url.trim().length > 10 && !loading && (
-                <div className="mt-3 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={handleQuickChat}
-                    disabled={quickChatLoading}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 hover:border-emerald-500/40 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {quickChatLoading ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
-                        {language === 'fr' ? 'Preparation du chat...' : 'Preparing chat...'}
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                        {language === 'fr' ? 'Chat direct (gratuit)' : 'Direct Chat (free)'}
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
 
               {/* Quota */}
               {user && (

@@ -227,8 +227,8 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
 
   if (isMobileOrReduced) return null;
 
-  const accentPrimary = isDark ? '#A78BFA' : '#8B5CF6';
-  const accentSecondary = isDark ? '#818CF8' : '#6366F1';
+  const accentPrimary = isDark ? '#D4A054' : '#C8903A';
+  const accentSecondary = isDark ? '#C8903A' : '#D4A054';
 
   // Rich multi-color palettes for both modes
   const darkColors = ['#A78BFA', '#818CF8', '#F472B6', '#FBBF24', '#34D399', '#60A5FA', '#F87171', '#C084FC', '#A5B4FC', '#E5E7EB', '#D1D5DB', '#9CA3AF', '#E2E8F0', '#FDE68A'];
@@ -267,7 +267,7 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         rotation: rot(s + 3),
         scale: 1.0 + seededRandom(s + 4) * 0.5,
         color: pickColor(s + 9),
-        opacity: isDark ? 0.08 + seededRandom(s + 5) * 0.06 : 0.12 + seededRandom(s + 5) * 0.08,
+        opacity: isDark ? 0.12 + seededRandom(s + 5) * 0.08 : 0.16 + seededRandom(s + 5) * 0.10,
         strokeWidth: sw(s + 10, 1.8),
         fill: false,
       });
@@ -283,7 +283,7 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         rotation: rot(s + 3),
         scale: 0.6 + seededRandom(s + 4) * 0.35,
         color: pickColor(s + 9),
-        opacity: isDark ? 0.13 + seededRandom(s + 5) * 0.08 : 0.16 + seededRandom(s + 5) * 0.10,
+        opacity: isDark ? 0.18 + seededRandom(s + 5) * 0.10 : 0.22 + seededRandom(s + 5) * 0.12,
         strokeWidth: sw(s + 10, 1.5),
         fill: false,
       });
@@ -299,7 +299,7 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         rotation: rot(s + 3),
         scale: 0.4 + seededRandom(s + 4) * 0.25,
         color: pickColor(s + 9),
-        opacity: isDark ? 0.18 + seededRandom(s + 5) * 0.10 : 0.20 + seededRandom(s + 5) * 0.12,
+        opacity: isDark ? 0.22 + seededRandom(s + 5) * 0.12 : 0.30 + seededRandom(s + 5) * 0.14,
         strokeWidth: sw(s + 10, 1.4),
         fill: false,
       });
@@ -315,7 +315,7 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         rotation: rot(s + 3),
         scale: 0.5 + seededRandom(s + 4) * 0.35,
         color: seededRandom(s + 6) > 0.5 ? accentPrimary : accentSecondary,
-        opacity: isDark ? 0.22 + seededRandom(s + 5) * 0.12 : 0.25 + seededRandom(s + 5) * 0.14,
+        opacity: isDark ? 0.30 + seededRandom(s + 5) * 0.14 : 0.45 + seededRandom(s + 5) * 0.16,
         strokeWidth: sw(s + 10, 1.8),
         fill: false,
       });
