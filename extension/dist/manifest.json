@@ -23,7 +23,7 @@
     "https://vm.tiktok.com/*",
     "https://m.tiktok.com/*",
     "https://www.deepsightsynthesis.com/*",
-    "https://deep-sight-backend-v3-production.up.railway.app/*"
+    "https://api.deepsightsynthesis.com/*"
   ],
 
   "background": {

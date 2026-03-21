@@ -1135,3 +1135,27 @@
 .hidden {
   display: none !important;
 }
+
+
+/* ── Quick Chat Button (Sidebar) ── */
+
+.ds-btn-quickchat {
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+  color: white !important;
+  border: none !important;
+  margin-top: 6px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.ds-btn-quickchat:hover:not(:disabled) {
+  opacity: 0.9;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+  transform: translateY(-1px);
+}
+
+.ds-btn-quickchat:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
