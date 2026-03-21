@@ -192,7 +192,7 @@ async def quick_chat_prepare(
             raise HTTPException(status_code=400, detail="URL YouTube ou TikTok invalide.")
 
     # 2. Verifier si un Summary existe deja
-    existing = await get_summary_by_video_id(session, video_id, current_user.id)
+    existing = await get_summary_by_video_id(session, str(video_id), int(current_user.id))
     if existing:
         print(f"[QUICK CHAT] Existing summary found: id={existing.id}", flush=True)
         return QuickChatResponse(
@@ -287,6 +287,12 @@ async def quick_chat_prepare(
     except Exception as e:
         print(f"[QUICK CHAT] Failed to get transcript: {e}", flush=True)
         raise HTTPException(status_code=400, detail="Impossible de recuperer la transcription.")
+
+    # Guard: extractors can return tuples (text, timestamps, lang)
+    if isinstance(transcript_text, (tuple, list)):
+        transcript_text = transcript_text[0]
+    if not isinstance(transcript_text, str):
+        transcript_text = str(transcript_text) if transcript_text else ""
 
     if not transcript_text or len(transcript_text.strip()) < 50:
         raise HTTPException(status_code=400, detail="Transcription trop courte ou indisponible.")

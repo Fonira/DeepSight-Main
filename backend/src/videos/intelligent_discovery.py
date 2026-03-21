@@ -26,7 +26,10 @@ from collections import Counter
 import logging
 
 import httpx
-from core.config import MISTRAL_INTERNAL_MODEL
+try:
+    from core.config import MISTRAL_INTERNAL_MODEL
+except ImportError:
+    MISTRAL_INTERNAL_MODEL = "ministral-8b-2512"
 
 logger = logging.getLogger(__name__)
 

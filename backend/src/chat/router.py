@@ -225,9 +225,10 @@ async def _ask_question_legacy(
     if use_perplexity:
         can_search, used, limit = await check_web_search_quota(session, current_user.id)
         if can_search:
+            _context_preview = (summary.summary_content or "")[:1000]
             web_search_result = await search_with_perplexity(
                 request.question,
-                f"{summary.video_title}: {(summary.summary_content or '')[:1000]}",
+                f"{summary.video_title}: {_context_preview}",
                 summary.lang or "fr"
             )
             if web_search_result:
