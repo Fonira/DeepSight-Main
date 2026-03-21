@@ -36,7 +36,7 @@ services:
       - repo_deepsight
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../../postgres/backups:/backups
+      - /opt/deepsight/backups:/backups
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-deepsight}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -110,6 +110,6 @@ services:
       backend:
         condition: service_healthy
     volumes:
-      - ../../caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
