@@ -1,33 +1,70 @@
-# DeepSight - Configuration Claude Code
+# DeepSight — Configuration Claude Code & Cowork
+*Mis à jour : 20 Mars 2026*
 
 ## Stack Technique
-- **Backend**: FastAPI + Python 3.11 (async)
-- **Frontend**: React 18 + TypeScript + Vite
-- **Mobile**: Expo SDK 54 + React Native 0.81
-- **Tests**: Jest + React Testing Library (mobile), Pytest (backend)
+- **Backend**: FastAPI + Python 3.11 (async, 4 workers Uvicorn)
+- **Frontend**: React 18 + TypeScript + Vite (v7.0.1)
+- **Mobile**: Expo SDK 54 + React Native 0.81 + React 19
+- **Extension**: React + TypeScript + Webpack (Manifest V3 v2.0)
+- **DB**: PostgreSQL 17 + Redis 7 (Docker Hetzner)
+- **IA**: Mistral AI (analyse) + Perplexity (enrichissement chat) + Brave Search (fact-check)
+- **Tests**: Vitest + Playwright (frontend), Jest + Testing Library (mobile), Pytest (backend)
 
 ## Commandes essentielles
 
-### Mobile
-```bash
-cd mobile && npm run typecheck    # Vérification TypeScript
-cd mobile && npm test             # Exécuter tous les tests
-cd mobile && npm test -- --watch  # Mode watch
-cd mobile && npx expo start       # Démarrer l'app
-```
-
 ### Backend
 ```bash
-cd backend && pytest              # Exécuter tous les tests
+cd backend && pytest              # 526 tests
 cd backend && pytest -x           # Stopper au premier échec
 cd backend && pytest --cov        # Avec couverture
+cd backend/src && uvicorn main:app --reload --port 8000
 ```
 
 ### Frontend
 ```bash
-cd frontend && npm run typecheck  # Vérification TypeScript
-cd frontend && npm run lint       # Linting
-cd frontend && npm run build      # Build production
+cd frontend && npm run typecheck  # tsc --noEmit
+cd frontend && npm run lint       # ESLint
+cd frontend && npm run build      # Build production (Vite)
+cd frontend && npm run dev        # Dev server localhost:5173
+cd frontend && npm run test       # Vitest (400 tests)
+```
+
+### Mobile
+```bash
+cd mobile && npm run typecheck    # tsc --noEmit
+cd mobile && npm test             # Jest (178 tests)
+cd mobile && npm test -- --watch  # Mode watch
+cd mobile && npx expo start       # Dev server
+```
+
+### Extension
+```bash
+cd extension && npm run build     # Webpack → dist/
+cd extension && npm run dev       # Watch mode
+cd extension && npm run typecheck # tsc --noEmit
+```
+
+### Déploiement Production
+```bash
+# Frontend → Vercel (auto sur git push main)
+cd frontend && git push origin main
+
+# Backend → Hetzner VPS
+ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
+  "cd /opt/deepsight/repo && git pull && \
+   docker build -t deepsight-backend:latest -f deploy/hetzner/Dockerfile ./backend && \
+   docker stop repo-backend-1 && docker rm repo-backend-1 && \
+   docker run -d --name repo-backend-1 --network repo_deepsight \
+     --env-file /opt/deepsight/repo/.env.production \
+     -e PORT=8080 -e ENV=production \
+     --restart unless-stopped \
+     --health-cmd 'curl -f http://localhost:8080/health || exit 1' \
+     --health-interval 30s --health-timeout 10s --health-retries 3 \
+     deepsight-backend:latest"
+
+# Mobile → EAS
+cd mobile && eas update           # OTA update
+cd mobile && eas build --platform all --profile production  # Native build
 ```
 
 ## Workflow TDD Strict
@@ -51,7 +88,28 @@ cd frontend && npm run build      # Build production
 
 ## Conventions de code
 
-### TypeScript/React Native
+### TypeScript/React (Web)
+```typescript
+// ✅ Imports destructurés
+import { useState, useCallback } from 'react';
+
+// ✅ Interfaces (pas types) pour les objets
+interface Props {
+  title: string;
+  onPress: () => void;
+}
+
+// ✅ Composants fonctionnels uniquement
+export const MyComponent: React.FC<Props> = ({ title, onPress }) => { ... };
+
+// ✅ Zustand stores avec Immer
+const useStore = create<State>()(devtools(persist(immer((set) => ({ ... })))));
+
+// ✅ TanStack Query pour data fetching
+const { data } = useQuery({ queryKey: ['key'], queryFn: () => api.fetch() });
+```
+
+### TypeScript/React Native (Mobile)
 ```typescript
 // ✅ Imports destructurés
 import { View, Text, StyleSheet } from 'react-native';
@@ -63,17 +121,19 @@ interface Props {
 }
 
 // ✅ Composants fonctionnels uniquement
-export const MyComponent: React.FC<Props> = ({ title, onPress }) => {
-  // ...
-};
+export const MyComponent: React.FC<Props> = ({ title, onPress }) => { ... };
 
 // ✅ Styles en bas du fichier
 const styles = StyleSheet.create({
   container: { flex: 1 },
 });
+
+// ✅ Expo Router pour navigation
+import { useRouter } from 'expo-router';
+router.push({ pathname: '/(tabs)/analysis/[id]', params: { id: '123' } });
 ```
 
-### Python/FastAPI
+### Python/FastAPI (Backend)
 ```python
 # ✅ Toujours async
 async def get_data(db: AsyncSession) -> list[Model]:
@@ -87,13 +147,17 @@ def process(items: list[str]) -> dict[str, int]:
 # ✅ Pas de print(), utiliser logger
 from core.logging import logger
 logger.info("Message structuré", extra={"key": "value"})
+
+# ✅ Pydantic v2 pour validation
+class VideoRequest(BaseModel):
+    url: str
+    platform: Literal["web", "mobile", "extension"] = "web"
 ```
 
 ## Patterns de test
 
-### React Native / Jest
+### React Native / Jest (Mobile)
 ```typescript
-// Factory function pour les props
 const getDefaultProps = (overrides?: Partial<Props>): Props => ({
   title: 'Default',
   onPress: jest.fn(),
@@ -101,18 +165,25 @@ const getDefaultProps = (overrides?: Partial<Props>): Props => ({
   ...overrides,
 });
 
-// Pattern AAA
 describe('Component', () => {
   it('should handle action', () => {
-    // Arrange
     const props = getDefaultProps({ title: 'Test' });
-
-    // Act
     render(<Component {...props} />);
     fireEvent.press(screen.getByText('Test'));
-
-    // Assert
     expect(props.onPress).toHaveBeenCalledTimes(1);
+  });
+});
+```
+
+### Frontend / Vitest
+```typescript
+import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+
+describe('Component', () => {
+  it('renders correctly', () => {
+    render(<Component />);
+    expect(screen.getByText('Title')).toBeInTheDocument();
   });
 });
 ```
@@ -137,10 +208,10 @@ git commit -m "type(scope): description"
 ```
 
 ## Sécurité
-- Jamais de secrets en dur
-- Valider tous les inputs utilisateur
-- Échapper les outputs (XSS)
-- Utiliser les dépendances du projet
+- Jamais de secrets en dur → tout via `core/config.py` (backend) ou `.env` (frontend)
+- Valider tous les inputs utilisateur (Pydantic backend, zod/TS frontend)
+- Échapper les outputs (XSS) — `sanitize.ts` dans extension
+- Utiliser les dépendances du projet, pas d'imports externes sans validation
 
 ## Debug Protocol
 1. Lire le message d'erreur COMPLET
@@ -149,3 +220,38 @@ git commit -m "type(scope): description"
 4. Formuler une hypothèse
 5. Tester la correction
 6. Vérifier que les tests passent
+
+## 🔴 Réflexe automatique sur erreur signalée
+```bash
+# Logs backend
+ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
+  "docker logs repo-backend-1 --tail 100 2>&1 | grep -i -E 'error|traceback|exception|critical|failed'"
+
+# Health check
+ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
+  "docker exec repo-backend-1 curl -s http://localhost:8080/health"
+
+# Status containers
+ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
+  "docker ps --format '{{.Names}} {{.Status}}'"
+```
+
+## Architecture clé
+
+### 14 Routers Backend
+auth, videos, chat, billing, playlists, exports, history, search, academic, admin, analytics, batch, notifications, tournesol, study
+
+### 23 Tables DB
+User, Summary, RefreshToken, ChatMessage, ChatQuota, PlaylistAnalysis, PlaylistChatMessage, VideoChunk, VideoComparison, AcademicPaper, SharedAnalysis, TranscriptCache, TranscriptCacheChunk, TranscriptEmbedding, DailyQuota, CreditTransaction, WebSearchUsage, TaskStatus, ApiUsage, AnalyticsEvent, PushToken, AdminLog, ApiStatus
+
+### Plans tarifaires
+- **free** (0€) → 5 analyses/mois, 250 crédits, 15min max
+- **etudiant** (2.99€) → 20 analyses, 2000 crédits, flashcards
+- **starter** (5.99€) → 50 analyses, 3000 crédits, web search
+- **pro** (12.99€) → 200 analyses, 15000 crédits, playlists, PDF export
+
+### Transcript extraction (7 méthodes)
+Supadata → youtube-transcript-api → Invidious → Piped → yt-dlp subs → yt-dlp auto → Audio STT (Groq/OpenAI/Deepgram/AssemblyAI)
+
+# currentDate
+Today's date is 2026-03-20.
