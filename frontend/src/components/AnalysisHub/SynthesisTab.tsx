@@ -9,6 +9,7 @@ import {
   Download, ChevronDown, FileText, FileDown
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from '../ui';
+import { AudioPlayerButton } from '../AudioPlayerButton';
 import { EnrichedMarkdown } from '../EnrichedMarkdown';
 import { DeepResearchSources } from '../SummaryReader';
 import { ConceptsGlossary } from '../ConceptsGlossary';
@@ -78,6 +79,9 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
         <h3 className="font-semibold text-text-primary flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-accent-primary" />
           {language === 'fr' ? 'Synthèse' : 'Summary'}
+          {selectedSummary?.summary_content && (
+            <AudioPlayerButton text={selectedSummary.summary_content.slice(0, 5000)} size="sm" />
+          )}
         </h3>
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0">
           {/* Copy */}

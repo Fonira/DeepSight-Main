@@ -18,6 +18,7 @@ import {
   ExternalLink, Loader2, Search, Lock, ArrowDown
 } from 'lucide-react';
 import { parseAskQuestions } from './ClickableQuestions';
+import { AudioPlayerButton } from './AudioPlayerButton';
 import { EnrichedMarkdown, cleanConceptMarkers } from './EnrichedMarkdown';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -231,8 +232,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
       <div
         className={`
           fixed z-[9999] flex flex-col
-          bg-[#0c0c14]/95 backdrop-blur-2xl
-          border-l border-white/[0.06]
+          bg-bg-secondary/98 backdrop-blur-sm
+          border-l border-border-default
           transition-transform duration-300 ease-out
 
           /* Mobile: plein écran */
@@ -370,6 +371,11 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                           <EnrichedMarkdown language={language} className="text-sm leading-relaxed">
                             {beforeQuestions}
                           </EnrichedMarkdown>
+                        </div>
+
+                        {/* TTS button */}
+                        <div className="mt-2 flex justify-end">
+                          <AudioPlayerButton text={beforeQuestions} size="sm" />
                         </div>
 
                         {/* [ask:] Suggested follow-up questions */}
