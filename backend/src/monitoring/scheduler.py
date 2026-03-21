@@ -1,7 +1,8 @@
-"""
-Background monitoring job — runs every 5 minutes.
+﻿"""
+Background monitoring job - runs every 5 minutes.
 
-Sends alert emails on service down / recovery with 30-min cooldown dedup.
+Sends alert emails ONLY on status transitions (operational -> down/degraded,
+down/degraded -> operational) with a 24h reminder for persistent issues.
 """
 
 from datetime import datetime, timezone, timedelta
@@ -9,22 +10,20 @@ from typing import Dict, Optional
 
 from monitoring.checks import run_all_checks
 
-# ───────────────────────────────────────────────────────────────────────────
-# In-memory state
-# ───────────────────────────────────────────────────────────────────────────
+# ─── In-memory state ─────────────────────────────────────────────────────────
 
 # Per-service: last time an alert was fired
 _last_alert_sent: Dict[str, datetime] = {}
 
-# Per-service: last known status (to detect recovery)
+# Per-service: last known status (to detect transitions)
 _last_known_status: Dict[str, str] = {}
 
-COOLDOWN = timedelta(minutes=30)
+# Cooldown for PERSISTENT issues (same status, no transition)
+# Only re-alert once per 24h if service stays down/degraded
+PERSISTENT_COOLDOWN = timedelta(hours=24)
 
 
-# ───────────────────────────────────────────────────────────────────────────
-# Alert emails
-# ───────────────────────────────────────────────────────────────────────────
+# ─── Alert emails ────────────────────────────────────────────────────────────
 
 def _build_alert_html(service_name: str, status: str, message: Optional[str]) -> str:
     color = "#ef4444" if status == "down" else "#f59e0b"
@@ -56,7 +55,7 @@ def _build_alert_html(service_name: str, status: str, message: Optional[str]) ->
     </tr>
   </table>
   <p style="font-size:13px;color:#6b6b80;margin:0;">
-    Sent by DeepSight Monitoring &mdash; alerts are deduplicated (30-min cooldown).
+    Sent by DeepSight Monitoring — alerts fire on status change only (24h reminder for persistent issues).
   </p>
 </div>"""
 
@@ -98,12 +97,10 @@ async def _send_alert(to: str, subject: str, html: str) -> None:
         print(f"Monitoring: failed to send alert email: {e}", flush=True)
 
 
-# ───────────────────────────────────────────────────────────────────────────
-# Main job
-# ───────────────────────────────────────────────────────────────────────────
+# ─── Main job ────────────────────────────────────────────────────────────────
 
 async def monitoring_job() -> None:
-    """Run all health checks, log summary, send alerts with dedup."""
+    """Run all health checks, log summary, send alerts on STATUS TRANSITIONS only."""
     try:
         from core.config import ADMIN_CONFIG
     except ImportError:
@@ -127,7 +124,7 @@ async def monitoring_job() -> None:
         status = svc["status"]
         prev_status = _last_known_status.get(name)
 
-        # ── Recovery notification ──
+        # ── Recovery: was bad, now operational ──
         if prev_status in ("down", "degraded") and status == "operational":
             if admin_email:
                 await _send_alert(
@@ -135,17 +132,26 @@ async def monitoring_job() -> None:
                     subject=f"[DeepSight] {name} recovered",
                     html=_build_recovery_html(name),
                 )
-            # Clear cooldown on recovery
             _last_alert_sent.pop(name, None)
 
-        # ── Down / degraded alert with cooldown ──
-        elif status in ("down", "degraded"):
+        # ── New incident: was OK (or unknown), now bad ──
+        elif status in ("down", "degraded") and prev_status not in ("down", "degraded"):
+            if admin_email:
+                await _send_alert(
+                    to=admin_email,
+                    subject=f"[DeepSight] {name} is {status}",
+                    html=_build_alert_html(name, status, svc.get("message")),
+                )
+                _last_alert_sent[name] = now
+
+        # ── Persistent issue: still bad, only remind once per 24h ──
+        elif status in ("down", "degraded") and prev_status in ("down", "degraded"):
             last_sent = _last_alert_sent.get(name)
-            if last_sent is None or (now - last_sent) >= COOLDOWN:
+            if last_sent is not None and (now - last_sent) >= PERSISTENT_COOLDOWN:
                 if admin_email:
                     await _send_alert(
                         to=admin_email,
-                        subject=f"[DeepSight] {name} is {status}",
+                        subject=f"[DeepSight] {name} still {status} (24h reminder)",
                         html=_build_alert_html(name, status, svc.get("message")),
                     )
                     _last_alert_sent[name] = now
