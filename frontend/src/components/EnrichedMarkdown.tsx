@@ -204,8 +204,8 @@ function createComponents(onTimecodeClick?: (seconds: number) => void) {
   const getTextContent = (children: React.ReactNode): string => {
     if (typeof children === 'string') return children;
     if (Array.isArray(children)) return children.map(getTextContent).join('');
-    if (React.isValidElement(children) && (children as any).props?.children) {
-      return getTextContent((children as any).props.children);
+    if (React.isValidElement<{ children?: React.ReactNode }>(children) && children.props?.children) {
+      return getTextContent(children.props.children);
     }
     return '';
   };

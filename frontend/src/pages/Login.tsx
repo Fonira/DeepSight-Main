@@ -84,7 +84,7 @@ export const Login: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      const from = (location.state as any)?.from?.pathname || '/dashboard';
+      const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/dashboard';
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate, location]);
