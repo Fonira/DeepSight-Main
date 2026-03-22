@@ -5,6 +5,7 @@ import { extractVideoId, detectCurrentPagePlatform } from '../utils/video';
 import { addRecentAnalysis } from '../utils/storage';
 import { escapeHtml } from '../utils/sanitize';
 import { WEBAPP_URL } from '../utils/config';
+import { ttsStop } from './tts';
 
 import { watchNavigation, isVideoPage, getCurrentVideoId } from './navigation';
 import { detectTheme, watchTheme } from './theme';
@@ -373,6 +374,9 @@ function showError(message: string): void {
 // ── Navigation handler ──
 
 async function onNavigate(videoId: string | null): Promise<void> {
+  // Stop TTS audio on navigation
+  ttsStop();
+
   // Reset state
   ctx.videoId = videoId;
   ctx.summary = null;

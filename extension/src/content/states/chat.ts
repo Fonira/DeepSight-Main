@@ -24,7 +24,7 @@ function spinnerSmall(): string {
 function renderMessage(msg: ChatMessage): string {
   const cls = msg.role === 'user' ? 'ds-chat-msg-user' : 'ds-chat-msg-assistant';
   const content = msg.role === 'assistant'
-    ? markdownToSafeHtml(msg.content)
+    ? markdownToSafeHtml(escapeHtml(msg.content))
     : escapeHtml(msg.content);
 
   const webBadge = msg.web_search_used

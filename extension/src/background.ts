@@ -74,7 +74,6 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 async function tryRefreshToken(): Promise<boolean> {
   const { refreshToken } = await getStoredTokens();
   if (!refreshToken) {
-    console.warn('[DeepSight] No refresh token available');
     return false;
   }
 
@@ -86,21 +85,19 @@ async function tryRefreshToken(): Promise<boolean> {
     });
 
     if (!response.ok) {
-      console.warn('[DeepSight] Refresh token failed:', response.status);
       return false;
     }
 
     const data: LoginResponse = await response.json();
     if (!data.access_token) {
-      console.warn('[DeepSight] Refresh response missing access_token');
       return false;
     }
-    await setStoredTokens(data.access_token, data.refresh_token);
+    // Bug #10: keep existing refresh_token if server doesn't send a new one
+    const newRefreshToken = data.refresh_token || refreshToken;
+    await setStoredTokens(data.access_token, newRefreshToken);
     await setStoredUser(data.user);
-    console.log('[DeepSight] Token refreshed successfully');
     return true;
-  } catch (err) {
-    console.error('[DeepSight] Token refresh error:', err);
+  } catch {
     return false;
   }
 }
@@ -296,7 +293,7 @@ async function isAuthenticated(): Promise<boolean> {
   return !!accessToken;
 }
 
-async function pollAnalysis(taskId: string): Promise<unknown> {
+async function pollAnalysis(taskId: string, originTabId?: number): Promise<unknown> {
   const MAX_DURATION_MS = 30 * 60 * 1000;
   const startTime = Date.now();
   let pollInterval = 2000;
@@ -308,15 +305,13 @@ async function pollAnalysis(taskId: string): Promise<unknown> {
       return status;
     }
 
-    // Send progress to active tab (content script)
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      if (tabs[0]?.id) {
-        chrome.tabs.sendMessage(tabs[0].id, {
-          action: 'ANALYSIS_PROGRESS',
-          data: { taskId, progress: status.progress, message: status.message },
-        }).catch(() => {});
-      }
-    });
+    // Send progress only to the originating tab (Bug #8 fix)
+    if (originTabId !== undefined) {
+      chrome.tabs.sendMessage(originTabId, {
+        action: 'ANALYSIS_PROGRESS',
+        data: { taskId, progress: status.progress, message: status.message },
+      }).catch(() => {});
+    }
 
     const elapsed = Date.now() - startTime;
     if (elapsed > 5 * 60 * 1000) pollInterval = 8000;
@@ -331,7 +326,7 @@ async function pollAnalysis(taskId: string): Promise<unknown> {
 
 // ── Message Handler ──
 
-async function handleMessage(message: ExtensionMessage): Promise<MessageResponse> {
+async function handleMessage(message: ExtensionMessage, senderTabId?: number): Promise<MessageResponse> {
   switch (message.action) {
     case 'CHECK_AUTH': {
       if (await isAuthenticated()) {
@@ -386,7 +381,7 @@ async function handleMessage(message: ExtensionMessage): Promise<MessageResponse
       const { url, options } = message.data as { url: string; options: AnalyzeOptions };
       try {
         const { task_id } = await analyzeVideo(url, options);
-        const result = await pollAnalysis(task_id) as {
+        const result = await pollAnalysis(task_id, senderTabId) as {
           status: string;
           result?: { summary_id: number; video_title?: string };
         };
@@ -498,6 +493,13 @@ async function handleMessage(message: ExtensionMessage): Promise<MessageResponse
         refreshToken: string;
         user: Record<string, unknown>;
       };
+      // Bug #9: validate before storing
+      if (!accessToken || typeof accessToken !== 'string') {
+        return { success: false, error: 'Invalid accessToken' };
+      }
+      if (!user || typeof user.id === 'undefined' || typeof user.plan !== 'string') {
+        return { success: false, error: 'Invalid user data' };
+      }
       try {
         await setStoredTokens(accessToken, rt);
         await setStoredUser(user as never);
@@ -516,8 +518,9 @@ async function handleMessage(message: ExtensionMessage): Promise<MessageResponse
 // ── Message Listener ──
 
 chrome.runtime.onMessage.addListener(
-  (message: ExtensionMessage, _sender, sendResponse: (response: MessageResponse) => void) => {
-    handleMessage(message)
+  (message: ExtensionMessage, sender, sendResponse: (response: MessageResponse) => void) => {
+    const senderTabId = sender.tab?.id;
+    handleMessage(message, senderTabId)
       .then(sendResponse)
       .catch((e) => sendResponse({ error: (e as Error).message }));
     return true;
