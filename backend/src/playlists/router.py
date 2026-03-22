@@ -2098,212 +2098,98 @@ async def _analyze_playlist_background(
     user_id: int,
     user_plan: str
 ):
-    """Analyse une playlist YouTube en arrière-plan."""
-    from db.database import async_session_maker
-    
-    print(f"\n🔧 BACKGROUND PLAYLIST ANALYSIS", flush=True)
-    print(f"   Task: {task_id}", flush=True)
-    print(f"   Mode: {mode}, Model: {model}", flush=True)
-    
-    async with async_session_maker() as session:
-        try:
-            _playlist_task_store[task_id]["status"] = "processing"
-            _playlist_task_store[task_id]["message"] = "Récupération de la playlist..."
-            
-            playlist_info = await get_playlist_info(playlist_id)
-            if not playlist_info:
-                raise Exception("Impossible de récupérer la playlist")
-            
-            print(f"📚 Playlist: {playlist_info.get('title', 'Unknown')}", flush=True)
-            
-            videos = await get_playlist_videos(playlist_id, max_videos)
-            if not videos:
-                raise Exception("Aucune vidéo trouvée")
-            
-            total_videos = len(videos)
-            _playlist_task_store[task_id]["total_videos"] = total_videos
-            _playlist_task_store[task_id]["message"] = f"{total_videos} vidéos trouvées"
-            
-            print(f"📺 {total_videos} videos found", flush=True)
-            
-            playlist_analysis = PlaylistAnalysis(
-                user_id=user_id,
-                playlist_id=playlist_id,
-                playlist_url=url,
-                playlist_title=playlist_info.get("title", "Playlist"),
-                num_videos=total_videos,
-                status="processing",
-                started_at=datetime.utcnow()
-            )
-            session.add(playlist_analysis)
-            await session.commit()
-            
-            summaries = []
-            total_duration = 0
-            total_words = 0
-            
-            for idx, video in enumerate(videos):
-                position = idx + 1
-                _playlist_task_store[task_id]["current_video"] = position
-                _playlist_task_store[task_id]["progress"] = int((position / total_videos) * 80)
-                
-                video_id = video.get("video_id")
-                if not video_id:
-                    print(f"⚠️ Skip video {position}: no video_id", flush=True)
-                    continue
-                
-                _playlist_task_store[task_id]["message"] = f"Analyse {position}/{total_videos}: {video.get('title', '')[:40]}..."
-                
-                print(f"\n📹 [{position}/{total_videos}] {video_id}", flush=True)
-                
-                try:
-                    video_info = await get_video_info(video_id)
-                    if not video_info:
-                        print(f"   ❌ No video info", flush=True)
-                        continue
-                    
-                    print(f"   Title: {video_info.get('title', '')[:50]}", flush=True)
-                    _duration = int(video_info.get("duration", 0) or 0)
+    """
+    🆕 v5.0: Analyse playlist YouTube via le pipeline parallèle + chunked.
 
-                    transcript_result = await get_transcript_with_timestamps(video_id, lang, duration=_duration)
-                    
-                    if isinstance(transcript_result, tuple):
-                        if len(transcript_result) >= 3:
-                            transcript_simple, transcript_timestamped, detected_lang = transcript_result
-                        else:
-                            transcript_simple = transcript_result[0] if transcript_result else None
-                            transcript_timestamped = transcript_simple
-                    else:
-                        transcript_simple = transcript_result
-                        transcript_timestamped = transcript_result
-                    
-                    if not transcript_simple:
-                        print(f"   ⚠️ No transcript", flush=True)
-                        continue
-                    
-                    print(f"   ✅ Transcript: {len(transcript_simple)} chars", flush=True)
-                    
-                    category_result = detect_category(
-                        title=video_info.get("title", ""),
-                        description=video_info.get("description", ""),
-                        transcript=transcript_simple[:2000]
-                    )
-                    category = category_result[0] if isinstance(category_result, tuple) else category_result
-                    print(f"   📁 Category: {category}", flush=True)
-                    
-                    summary_content = await generate_summary(
-                        title=video_info.get("title", ""),
-                        transcript=transcript_simple,
-                        category=category,
-                        lang=lang,
-                        mode=mode,
-                        model=model,
-                        duration=video_info.get("duration", 0),
-                        channel=video_info.get("channel", ""),
-                        description=video_info.get("description", "")
-                    )
-                    
-                    if not summary_content:
-                        print(f"   ⚠️ No summary generated", flush=True)
-                        continue
-                    
-                    word_count = len(summary_content.split())
-                    duration = video_info.get("duration", 0)
-                    total_duration += duration
-                    total_words += word_count
-                    
-                    print(f"   ✅ Summary: {word_count} words", flush=True)
-                    
-                    transcript_context = transcript_timestamped if isinstance(transcript_timestamped, str) else None
-                    if transcript_context:
-                        transcript_context = transcript_context[:40000]  # 🆕 v4.2: Augmenté pour vidéos longues
-                    
-                    summary = Summary(
-                        user_id=user_id,
-                        video_id=video_id,
-                        video_title=video_info.get("title"),
-                        video_channel=video_info.get("channel"),
-                        video_duration=duration,
-                        video_url=f"https://www.youtube.com/watch?v={video_id}",
-                        thumbnail_url=video_info.get("thumbnail_url", video_info.get("thumbnail")),
-                        category=category,
-                        lang=lang,
-                        mode=mode,
-                        model_used=model,
-                        summary_content=summary_content,
-                        transcript_context=transcript_context,
-                        word_count=word_count,
-                        playlist_id=playlist_id,
-                        playlist_position=position
-                    )
-                    session.add(summary)
-                    
-                    summaries.append({
-                        "position": position,
-                        "title": video_info.get("title"),
-                        "channel": video_info.get("channel"),
-                        "summary": summary_content[:2000],
-                        "category": category,
-                        "duration": duration,
-                        "word_count": word_count
-                    })
-                    
-                    user = await session.get(User, user_id)
-                    if user and user.credits > 0:
-                        user.credits -= 1
-                        user.total_videos += 1
-                        user.total_words += word_count
-                    
-                    await session.commit()
-                    
-                except Exception as e:
-                    print(f"   ❌ Error: {e}", flush=True)
-                    await session.rollback()
-                    continue
-            
-            if not summaries:
-                raise Exception("Aucune vidéo analysée")
-            
-            _playlist_task_store[task_id]["progress"] = 85
-            _playlist_task_store[task_id]["message"] = "Génération de la méta-analyse..."
-            
-            meta_analysis = await _generate_meta_analysis_v4(
-                summaries=summaries,
-                playlist_title=playlist_info.get("title", "Playlist"),
-                lang=lang,
-                model=model
-            )
-            
-            playlist_analysis.meta_analysis = meta_analysis
-            playlist_analysis.total_duration = total_duration
-            playlist_analysis.total_words = total_words
-            playlist_analysis.num_processed = len(summaries)
-            playlist_analysis.status = "completed"
-            playlist_analysis.completed_at = datetime.utcnow()
-            
-            user = await session.get(User, user_id)
-            if user:
-                user.total_playlists += 1
-            
-            await session.commit()
-            
-            _playlist_task_store[task_id]["status"] = "completed"
-            _playlist_task_store[task_id]["progress"] = 100
-            _playlist_task_store[task_id]["message"] = "Analyse terminée!"
-            _playlist_task_store[task_id]["result"] = {
-                "playlist_id": playlist_id,
-                "num_videos": len(summaries),
-                "total_duration": total_duration,
-                "total_words": total_words
-            }
-            
-            print(f"\n✅ PLAYLIST COMPLETED: {len(summaries)} videos, {total_words} words", flush=True)
-            
-        except Exception as e:
-            print(f"❌ PLAYLIST FAILED: {e}", flush=True)
-            await session.rollback()
-            _playlist_task_store[task_id]["status"] = "failed"
-            _playlist_task_store[task_id]["message"] = str(e)
+    1. Récupère la liste des vidéos de la playlist YouTube
+    2. Convertit en liste d'URLs
+    3. Délègue au pipeline v5.0
+    """
+    from .pipeline import run_playlist_pipeline, PipelineProgress
+
+    logger.info(
+        f"playlist_background_v5: task={task_id} playlist={playlist_id} "
+        f"max_videos={max_videos} model={model}"
+    )
+
+    _playlist_task_store[task_id]["status"] = "processing"
+    _playlist_task_store[task_id]["message"] = "Récupération de la playlist..."
+
+    try:
+        # Phase 1 : Récupérer la liste des vidéos
+        playlist_info = await get_playlist_info(playlist_id)
+        if not playlist_info:
+            raise Exception("Impossible de récupérer les informations de la playlist")
+
+        playlist_title = playlist_info.get("title", "Playlist")
+        logger.info(f"playlist_info: title={playlist_title}")
+
+        videos = await get_playlist_videos(playlist_id, max_videos)
+        if not videos:
+            raise Exception("Aucune vidéo trouvée dans la playlist")
+
+        # Convertir en URLs
+        video_urls = []
+        for v in videos:
+            vid = v.get("video_id")
+            if vid:
+                video_urls.append(f"https://www.youtube.com/watch?v={vid}")
+
+        if not video_urls:
+            raise Exception("Aucune URL valide extraite de la playlist")
+
+        _playlist_task_store[task_id]["total_videos"] = len(video_urls)
+        _playlist_task_store[task_id]["message"] = f"{len(video_urls)} vidéos trouvées"
+
+        # Phase 2 : Déléguer au pipeline v5
+        async def on_progress(progress: PipelineProgress):
+            _playlist_task_store[task_id].update({
+                "status": "processing",
+                "progress": progress.percent,
+                "message": progress.message,
+                "current_video": progress.completed_videos,
+                "total_videos": progress.total_videos,
+                "current_step": progress.current_step,
+                "current_video_title": progress.current_video_title,
+                "current_chunk": progress.current_chunk,
+                "total_chunks": progress.total_chunks,
+                "skipped_videos": progress.skipped_videos,
+            })
+
+        result = await run_playlist_pipeline(
+            urls=video_urls,
+            corpus_name=playlist_title,
+            mode=mode,
+            lang=lang,
+            model=model,
+            user_id=user_id,
+            user_plan=user_plan,
+            on_progress=on_progress,
+            playlist_id=playlist_id,  # Conserver le vrai ID YouTube
+        )
+
+        _playlist_task_store[task_id]["status"] = "completed"
+        _playlist_task_store[task_id]["progress"] = 100
+        _playlist_task_store[task_id]["message"] = "Analyse terminée!"
+        _playlist_task_store[task_id]["result"] = {
+            "playlist_id": result.corpus_id,
+            "num_videos": result.num_processed,
+            "total_duration": result.total_duration,
+            "total_words": result.total_words,
+            "num_skipped": result.num_skipped,
+            "processing_time": result.processing_time_seconds,
+        }
+
+        logger.info(
+            f"playlist_complete_v5: task={task_id} "
+            f"videos={result.num_processed}/{len(video_urls)} "
+            f"time={result.processing_time_seconds:.1f}s"
+        )
+
+    except Exception as e:
+        logger.error(f"playlist_failed_v5: task={task_id} error={e}")
+        _playlist_task_store[task_id]["status"] = "failed"
+        _playlist_task_store[task_id]["message"] = str(e)[:500]
 
 
 async def _analyze_corpus_background(
@@ -2316,187 +2202,76 @@ async def _analyze_corpus_background(
     user_id: int,
     user_plan: str
 ):
-    """Analyse un corpus personnalisé en arrière-plan."""
-    from db.database import async_session_maker
-    
-    corpus_id = f"corpus_{uuid4().hex[:12]}"
-    
-    print(f"\n🔧 BACKGROUND CORPUS ANALYSIS", flush=True)
-    print(f"   Task: {task_id}", flush=True)
-    print(f"   Corpus: {corpus_name} ({len(urls)} URLs)", flush=True)
-    
-    async with async_session_maker() as session:
-        try:
-            _playlist_task_store[task_id]["status"] = "processing"
-            
-            total_videos = len(urls)
-            _playlist_task_store[task_id]["total_videos"] = total_videos
-            
-            playlist_analysis = PlaylistAnalysis(
-                user_id=user_id,
-                playlist_id=corpus_id,
-                playlist_url=",".join(urls[:5]),
-                playlist_title=corpus_name,
-                num_videos=total_videos,
-                status="processing",
-                started_at=datetime.utcnow()
-            )
-            session.add(playlist_analysis)
-            await session.commit()
-            
-            summaries = []
-            total_duration = 0
-            total_words = 0
-            
-            for idx, url in enumerate(urls):
-                position = idx + 1
-                _playlist_task_store[task_id]["current_video"] = position
-                _playlist_task_store[task_id]["progress"] = int((position / total_videos) * 80)
-                
-                video_id = extract_video_id(url)
-                if not video_id:
-                    print(f"⚠️ Invalid URL: {url}", flush=True)
-                    continue
-                
-                _playlist_task_store[task_id]["message"] = f"Analyse {position}/{total_videos}..."
-                
-                print(f"\n📹 [{position}/{total_videos}] {video_id}", flush=True)
-                
-                try:
-                    video_info = await get_video_info(video_id)
-                    if not video_info:
-                        continue
-                    _duration = int(video_info.get("duration", 0) or 0)
+    """
+    🆕 v5.0: Analyse corpus via le nouveau pipeline parallèle + chunked.
 
-                    transcript_result = await get_transcript_with_timestamps(video_id, lang, duration=_duration)
-                    
-                    if isinstance(transcript_result, tuple):
-                        transcript_simple, transcript_timestamped, _ = (
-                            transcript_result if len(transcript_result) >= 3 
-                            else (transcript_result[0], transcript_result[0], lang)
-                        )
-                    else:
-                        transcript_simple = transcript_result
-                        transcript_timestamped = transcript_result
-                    
-                    if not transcript_simple:
-                        continue
-                    
-                    category_result = detect_category(
-                        title=video_info.get("title", ""),
-                        description=video_info.get("description", ""),
-                        transcript=transcript_simple[:2000]
-                    )
-                    category = category_result[0] if isinstance(category_result, tuple) else category_result
-                    
-                    summary_content = await generate_summary(
-                        title=video_info.get("title", ""),
-                        transcript=transcript_simple,
-                        category=category,
-                        lang=lang,
-                        mode=mode,
-                        model=model,
-                        duration=video_info.get("duration", 0),
-                        channel=video_info.get("channel", ""),
-                        description=video_info.get("description", "")
-                    )
-                    
-                    if not summary_content:
-                        continue
-                    
-                    word_count = len(summary_content.split())
-                    duration = video_info.get("duration", 0)
-                    total_duration += duration
-                    total_words += word_count
-                    
-                    transcript_context = transcript_timestamped if isinstance(transcript_timestamped, str) else None
-                    if transcript_context:
-                        transcript_context = transcript_context[:40000]  # 🆕 v4.2: Augmenté pour vidéos longues
-                    
-                    summary = Summary(
-                        user_id=user_id,
-                        video_id=video_id,
-                        video_title=video_info.get("title"),
-                        video_channel=video_info.get("channel"),
-                        video_duration=duration,
-                        video_url=f"https://www.youtube.com/watch?v={video_id}",
-                        thumbnail_url=video_info.get("thumbnail_url", video_info.get("thumbnail")),
-                        category=category,
-                        lang=lang,
-                        mode=mode,
-                        model_used=model,
-                        summary_content=summary_content,
-                        transcript_context=transcript_context,
-                        word_count=word_count,
-                        playlist_id=corpus_id,
-                        playlist_position=position
-                    )
-                    session.add(summary)
-                    
-                    summaries.append({
-                        "position": position,
-                        "title": video_info.get("title"),
-                        "channel": video_info.get("channel"),
-                        "summary": summary_content[:2000],
-                        "category": category,
-                        "duration": duration,
-                        "word_count": word_count
-                    })
-                    
-                    user = await session.get(User, user_id)
-                    if user and user.credits > 0:
-                        user.credits -= 1
-                        user.total_videos += 1
-                        user.total_words += word_count
-                    
-                    await session.commit()
-                    
-                except Exception as e:
-                    print(f"❌ Error {video_id}: {e}", flush=True)
-                    await session.rollback()
-                    continue
-            
-            if not summaries:
-                raise Exception("Aucune vidéo analysée")
-            
-            _playlist_task_store[task_id]["progress"] = 85
-            _playlist_task_store[task_id]["message"] = "Méta-analyse..."
-            
-            meta_analysis = await _generate_meta_analysis_v4(
-                summaries=summaries,
-                playlist_title=corpus_name,
-                lang=lang,
-                model=model
-            )
-            
-            playlist_analysis.meta_analysis = meta_analysis
-            playlist_analysis.total_duration = total_duration
-            playlist_analysis.total_words = total_words
-            playlist_analysis.num_processed = len(summaries)
-            playlist_analysis.status = "completed"
-            playlist_analysis.completed_at = datetime.utcnow()
-            
-            user = await session.get(User, user_id)
-            if user:
-                user.total_playlists += 1
-            
-            await session.commit()
-            
-            _playlist_task_store[task_id]["status"] = "completed"
-            _playlist_task_store[task_id]["progress"] = 100
-            _playlist_task_store[task_id]["message"] = "Terminé!"
-            _playlist_task_store[task_id]["result"] = {
-                "playlist_id": corpus_id,
-                "num_videos": len(summaries),
-                "total_duration": total_duration,
-                "total_words": total_words
-            }
-            
-        except Exception as e:
-            print(f"❌ CORPUS FAILED: {e}", flush=True)
-            await session.rollback()
-            _playlist_task_store[task_id]["status"] = "failed"
-            _playlist_task_store[task_id]["message"] = str(e)
+    Délègue au pipeline.run_playlist_pipeline() qui gère :
+    - Traitement parallèle (3 vidéos simultanées)
+    - Chunking adaptatif (vidéos 1h30-4h+)
+    - Méta-analyse multi-pass
+    - Persistance BDD atomique
+    """
+    from .pipeline import run_playlist_pipeline, PipelineProgress
+
+    logger.info(
+        f"corpus_background_v5: task={task_id} corpus={corpus_name} "
+        f"videos={len(urls)} model={model} plan={user_plan}"
+    )
+
+    _playlist_task_store[task_id]["status"] = "processing"
+    _playlist_task_store[task_id]["total_videos"] = len(urls)
+
+    async def on_progress(progress: PipelineProgress):
+        """Callback de progress pour le task store."""
+        _playlist_task_store[task_id].update({
+            "status": "processing",
+            "progress": progress.percent,
+            "message": progress.message,
+            "current_video": progress.completed_videos,
+            "total_videos": progress.total_videos,
+            # Champs étendus pour le frontend v5.3
+            "current_step": progress.current_step,
+            "current_video_title": progress.current_video_title,
+            "current_chunk": progress.current_chunk,
+            "total_chunks": progress.total_chunks,
+            "skipped_videos": progress.skipped_videos,
+        })
+
+    try:
+        result = await run_playlist_pipeline(
+            urls=urls,
+            corpus_name=corpus_name,
+            mode=mode,
+            lang=lang,
+            model=model,
+            user_id=user_id,
+            user_plan=user_plan,
+            on_progress=on_progress,
+        )
+
+        _playlist_task_store[task_id]["status"] = "completed"
+        _playlist_task_store[task_id]["progress"] = 100
+        _playlist_task_store[task_id]["message"] = "Terminé!"
+        _playlist_task_store[task_id]["result"] = {
+            "playlist_id": result.corpus_id,
+            "num_videos": result.num_processed,
+            "total_duration": result.total_duration,
+            "total_words": result.total_words,
+            "num_skipped": result.num_skipped,
+            "processing_time": result.processing_time_seconds,
+        }
+
+        logger.info(
+            f"corpus_complete_v5: task={task_id} "
+            f"videos={result.num_processed}/{len(urls)} "
+            f"skipped={result.num_skipped} "
+            f"time={result.processing_time_seconds:.1f}s"
+        )
+
+    except Exception as e:
+        logger.error(f"corpus_failed_v5: task={task_id} error={e}")
+        _playlist_task_store[task_id]["status"] = "failed"
+        _playlist_task_store[task_id]["message"] = str(e)[:500]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

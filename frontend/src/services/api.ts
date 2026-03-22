@@ -228,15 +228,21 @@ export interface PlaylistTaskStatus {
   
   // Messages
   message?: string;
-  current_step?: string;  // 🆕 Étape actuelle (fetching, transcript, summary, etc.)
-  
+  current_step?: string;  // Étape actuelle (init, transcript, chunking, summary, merge, meta, done)
+
   // Métadonnées
-  playlist_id?: string;    // 🆕 ID de la playlist
-  playlist_title?: string; // 🆕 Titre de la playlist
-  
+  playlist_id?: string;
+  playlist_title?: string;
+
+  // 🆕 v5.0: Progress granulaire pipeline chunked
+  current_video_title?: string;  // Titre de la vidéo en cours
+  current_chunk?: number;        // Chunk en cours de traitement
+  total_chunks?: number;         // Nombre total de chunks pour la vidéo en cours
+  skipped_videos?: Array<{ video_id?: string; url?: string; reason: string }>;
+
   // Estimation temps
-  estimated_time_remaining?: string;  // 🆕 Ex: "~5 min"
-  
+  estimated_time_remaining?: string;
+
   // Résultats
   results?: Summary[];
   corpus_summary?: string;
@@ -245,6 +251,8 @@ export interface PlaylistTaskStatus {
     num_videos?: number;
     total_duration?: number;
     total_words?: number;
+    num_skipped?: number;          // 🆕 v5.0
+    processing_time?: number;      // 🆕 v5.0 (secondes)
   };
   
   // Erreur

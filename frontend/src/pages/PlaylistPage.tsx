@@ -47,7 +47,7 @@ interface PlaylistHistoryItem {
   completed_at?: string;
 }
 
-// Type étendu pour la progression
+// Type étendu pour la progression v5.0
 interface ExtendedPlaylistTaskStatus extends PlaylistTaskStatus {
   progress_percent?: number;
   completed_videos?: number;
@@ -55,11 +55,18 @@ interface ExtendedPlaylistTaskStatus extends PlaylistTaskStatus {
   playlist_id?: string;
   playlist_title?: string;
   estimated_time_remaining?: string;
+  // 🆕 v5.0: Pipeline chunked
+  current_video_title?: string;
+  current_chunk?: number;
+  total_chunks?: number;
+  skipped_videos?: Array<{ video_id?: string; url?: string; reason: string }>;
   result?: {
     playlist_id?: string;
     num_videos?: number;
     total_duration?: number;
     total_words?: number;
+    num_skipped?: number;
+    processing_time?: number;
   };
 }
 
@@ -501,6 +508,11 @@ export const PlaylistPage: React.FC = () => {
   const estimatedTime = (progress as ExtendedPlaylistTaskStatus)?.estimated_time_remaining;
   const isProcessing = progress?.status === 'processing' || progress?.status === 'pending';
   const isCompleted = progress?.status === 'completed';
+  // 🆕 v5.0: Infos pipeline chunked
+  const currentVideoTitle = (progress as ExtendedPlaylistTaskStatus)?.current_video_title || '';
+  const currentChunk = (progress as ExtendedPlaylistTaskStatus)?.current_chunk || 0;
+  const totalChunks = (progress as ExtendedPlaylistTaskStatus)?.total_chunks || 0;
+  const skippedVideos = (progress as ExtendedPlaylistTaskStatus)?.skipped_videos || [];
 
   // 🆕 Message d'encouragement
   const encouragementMsg = isProcessing ? getEncouragementMessage(displayPercent, totalVideos, language) : null;
@@ -697,9 +709,23 @@ export const PlaylistPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* 🆕 v5.0: Détails vidéo en cours + chunking */}
+                {isProcessing && currentVideoTitle && (
+                  <div className="mt-3 flex items-center gap-2 text-xs text-text-muted">
+                    <span className="truncate max-w-[300px]" title={currentVideoTitle}>
+                      🎬 {currentVideoTitle}
+                    </span>
+                    {totalChunks > 1 && (
+                      <span className="whitespace-nowrap text-violet-400/70">
+                        ({currentChunk}/{totalChunks} segments)
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* 🆕 MESSAGE D'ENCOURAGEMENT */}
                 {isProcessing && encouragementMsg && (
-                  <div className="mt-3 text-center text-sm text-violet-300">
+                  <div className="mt-2 text-center text-sm text-violet-300">
                     {encouragementMsg}
                   </div>
                 )}
@@ -737,6 +763,20 @@ export const PlaylistPage: React.FC = () => {
                           ? `✅ Analyse terminée ! ${(progress as ExtendedPlaylistTaskStatus).result?.num_videos || totalVideos} vidéos analysées avec succès.`
                           : `✅ Analysis complete! ${(progress as ExtendedPlaylistTaskStatus).result?.num_videos || totalVideos} videos analyzed successfully.`}
                       </p>
+                      {(progress as ExtendedPlaylistTaskStatus).result?.num_skipped ? (
+                        <p className="text-amber-400/70 text-xs mt-1">
+                          {language === 'fr'
+                            ? `⚠️ ${(progress as ExtendedPlaylistTaskStatus).result?.num_skipped} vidéo(s) ignorée(s) (transcript indisponible)`
+                            : `⚠️ ${(progress as ExtendedPlaylistTaskStatus).result?.num_skipped} video(s) skipped (transcript unavailable)`}
+                        </p>
+                      ) : null}
+                      {(progress as ExtendedPlaylistTaskStatus).result?.processing_time ? (
+                        <p className="text-text-muted text-xs mt-1">
+                          {language === 'fr'
+                            ? `Temps de traitement : ${Math.round((progress as ExtendedPlaylistTaskStatus).result!.processing_time!)}s`
+                            : `Processing time: ${Math.round((progress as ExtendedPlaylistTaskStatus).result!.processing_time!)}s`}
+                        </p>
+                      ) : null}
                     </div>
 
                     {/* Boutons d'action */}
