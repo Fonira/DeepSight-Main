@@ -14,8 +14,9 @@ import {
   Settings as SettingsIcon, Globe, Moon, Sun, Bell, BellOff,
   Keyboard, Info, Check, RotateCcw,
   Sparkles, BookOpen, Monitor, Download,
-  ExternalLink, Palette, SlidersHorizontal
+  ExternalLink, Palette, SlidersHorizontal, Volume2
 } from 'lucide-react';
+import { useTTSContext } from '../contexts/TTSContext';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { useToast } from '../components/Toast';
 import DoodleBackground from '../components/DoodleBackground';
@@ -43,6 +44,7 @@ export const Settings: React.FC = () => {
   const { language } = useTranslation();
   const { setLanguage } = useLanguage();
   const { isDark } = useTheme();
+  const { autoPlayEnabled, setAutoPlayEnabled } = useTTSContext();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
@@ -262,6 +264,34 @@ export const Settings: React.FC = () => {
                     enabled={preferences.notifications}
                     onToggle={() => savePreference('notifications', !preferences.notifications)}
                     saved={saved === 'notifications'}
+                  />
+                </SettingRow>
+              </div>
+            </section>
+
+            {/* Lecture vocale */}
+            <section className="card">
+              <div className="panel-header">
+                <h2 className="font-semibold text-text-primary flex items-center gap-2">
+                  <Volume2 className="w-5 h-5 text-accent-primary" />
+                  {tr('Lecture vocale', 'Voice Playback')}
+                </h2>
+              </div>
+              <div className="panel-body divide-y divide-border-subtle">
+                <SettingRow
+                  icon={Volume2}
+                  iconColor="text-cyan-400"
+                  title={tr('Lecture automatique', 'Auto-play voice')}
+                  description={tr(
+                    'Les réponses du Chat IA sont lues automatiquement à voix haute',
+                    'AI Chat responses are automatically read aloud'
+                  )}
+                >
+                  <Toggle
+                    enabled={autoPlayEnabled}
+                    onToggle={() => setAutoPlayEnabled(!autoPlayEnabled)}
+                    color="bg-cyan-500"
+                    saved={saved === 'ttsAutoPlay'}
                   />
                 </SettingRow>
               </div>

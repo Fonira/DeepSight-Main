@@ -29,10 +29,10 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
     }
   };
 
-  const iconSize = size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4';
+  const iconSize = size === 'sm' ? 'w-4 h-4' : 'w-5 h-5';
   const btnSize = size === 'sm'
-    ? 'w-7 h-7'
-    : 'w-8 h-8';
+    ? 'w-8 h-8'
+    : 'w-9 h-9';
 
   return (
     <button
@@ -46,7 +46,7 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
           ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30'
           : error
             ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
-            : 'bg-white/[0.04] text-white/40 hover:text-white/70 hover:bg-white/[0.08]'
+            : 'bg-white/[0.06] text-white/50 hover:text-cyan-400 hover:bg-cyan-500/15 border border-white/[0.08] hover:border-cyan-500/30'
         }
         ${isLoading ? 'animate-pulse cursor-wait' : 'cursor-pointer'}
         ${className}

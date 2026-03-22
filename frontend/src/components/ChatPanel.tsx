@@ -391,8 +391,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                         </div>
 
                         {/* TTS button */}
-                        <div className="mt-2 flex justify-end">
-                          <AudioPlayerButton text={beforeQuestions} size="sm" />
+                        <div className="mt-2 pt-1.5 flex justify-end">
+                          <AudioPlayerButton text={beforeQuestions} size="md" />
                         </div>
 
                         {/* [ask:] Suggested follow-up questions */}
