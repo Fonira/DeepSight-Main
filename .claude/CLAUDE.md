@@ -80,6 +80,20 @@ cd mobile && eas build --platform all --profile production  # Native build
 - Toujours exécuter les tests après modification
 - Un commit = tests verts
 
+## Autonomie & Clarification
+
+### Autonomie d'exécution
+- **TOUJOURS exécuter** quand les outils le permettent — ne jamais juste expliquer ce qu'il faudrait faire
+- Si une action est faisable avec les outils disponibles (Edit, Bash, Write, etc.) → **la faire directement**
+- Ne jamais répondre "vous pouvez faire X" ou "il faudrait Y" si Claude peut le faire lui-même
+- Si l'utilisateur dit "fais-le toi-même" → c'est un signal que tu aurais dû agir dès le départ
+
+### Questionnement proactif
+- **TOUJOURS poser des questions** quand les exigences sont ambiguës, incomplètes ou multi-interprétables
+- Utiliser AskUserQuestion avec des choix multiples pour clarifier AVANT de coder
+- Ne jamais deviner le scope, le comportement attendu ou les contraintes — demander
+- Poser des questions précises avec des options concrètes, pas des questions ouvertes vagues
+
 ## Modes de réflexion
 - `think` : Modifications simples
 - `think hard` : Logique complexe, bugs subtils
