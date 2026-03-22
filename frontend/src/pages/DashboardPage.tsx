@@ -1195,8 +1195,8 @@ export const DashboardPage: React.FC = () => {
             )}
 
             {/* Empty State → Trending Section */}
-            {!selectedSummary && !loading && (
-              <div className="animate-fadeIn">
+            {!selectedSummary && (
+              <div className={nimate-fadeIn transition-opacity duration-300 ${loading ? 'opacity-40 pointer-events-none' : 'opacity-100'}>
                 <TournesolTrendingSection
                   language={language as 'fr' | 'en'}
                   onVideoSelect={(videoId) => {
