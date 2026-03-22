@@ -561,7 +561,7 @@ export const DashboardPage: React.FC = () => {
             setSelectedSummary(fullSummary);
             scrollToResults();
           } else {
-            setSelectedSummary(status.result as any);
+            setSelectedSummary(status.result.summary ?? null);
             scrollToResults();
           }
 
@@ -574,7 +574,7 @@ export const DashboardPage: React.FC = () => {
             const newCount = analysisCountThisMonth + 1;
             setAnalysisCountThisMonth(newCount);
             // Calculate time saved (video duration - 45 seconds analysis time)
-            const videoDuration = (status.result as any)?.video_duration || 600;
+            const videoDuration = status.result.summary?.video_duration ?? 600;
             setLastAnalysisTimeSaved(Math.max(0, videoDuration - 45));
             // Show modal after 2nd analysis or later
             if (newCount >= 2) {

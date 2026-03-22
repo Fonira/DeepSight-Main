@@ -76,7 +76,7 @@ export function usePWA(): PWAState & PWAActions {
     try {
       return typeof window !== 'undefined' && (
         window.matchMedia?.('(display-mode: standalone)')?.matches ||
-        (window.navigator as any).standalone === true ||
+        (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
         document.referrer.includes('android-app://')
       );
     } catch {
@@ -88,42 +88,49 @@ export function usePWA(): PWAState & PWAActions {
 
   // Enregistrer le Service Worker
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      // Enregistrer le SW
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => {
-          setSwRegistered(true);
-          setSwRegistration(registration);
+    if (!('serviceWorker' in navigator)) return;
 
-          // Vérifier les mises à jour
-          registration.addEventListener('updatefound', () => {
-            const newWorker = registration.installing;
-            if (newWorker) {
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  setUpdateAvailable(true);
-                }
-              });
-            }
-          });
+    let updateInterval: ReturnType<typeof setInterval> | undefined;
 
-          // Vérifier périodiquement les mises à jour (toutes les heures)
-          setInterval(() => {
-            registration.update();
-          }, 60 * 60 * 1000);
-        })
-        .catch((error) => {
-          console.error('[PWA] Service Worker registration failed:', error);
+    const onSwMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'SW_UPDATED') {
+        setUpdateAvailable(true);
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', onSwMessage);
+
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((registration) => {
+        setSwRegistered(true);
+        setSwRegistration(registration);
+
+        // Vérifier les mises à jour
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                setUpdateAvailable(true);
+              }
+            });
+          }
         });
 
-      // Écouter les messages du SW
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data?.type === 'SW_UPDATED') {
-          setUpdateAvailable(true);
-        }
+        // Vérifier périodiquement les mises à jour (toutes les heures)
+        updateInterval = setInterval(() => {
+          registration.update();
+        }, 60 * 60 * 1000);
+      })
+      .catch((error) => {
+        console.error('[PWA] Service Worker registration failed:', error);
       });
-    }
+
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', onSwMessage);
+      if (updateInterval !== undefined) clearInterval(updateInterval);
+    };
   }, []);
 
   // Écouter l'événement beforeinstallprompt

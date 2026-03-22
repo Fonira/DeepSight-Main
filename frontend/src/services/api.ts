@@ -435,6 +435,8 @@ interface RequestOptions {
   skipAuth?: boolean;
   skipCredentials?: boolean;
   timeout?: number;
+  /** Internal flag — prevents infinite retry loop when a refreshed token still yields 401 */
+  _retried?: boolean;
 }
 
 async function request<T>(
@@ -448,6 +450,7 @@ async function request<T>(
     skipAuth = false,
     skipCredentials = false,
     timeout = 30000,
+    _retried = false,
   } = options;
 
   const url = `${API_URL}${endpoint}`;
@@ -525,12 +528,11 @@ async function request<T>(
         }));
       }
 
-      // 401 = token expiré
-      if (response.status === 401 && !skipAuth) {
+      // 401 = token expiré — _retried guard prevents infinite refresh loop
+      if (response.status === 401 && !skipAuth && !_retried) {
         const refreshed = await tryRefreshToken();
         if (refreshed) {
-          // Retry avec nouveau token
-          return request(endpoint, options);
+          return request(endpoint, { ...options, _retried: true });
         }
         window.dispatchEvent(new CustomEvent('auth:logout'));
       }

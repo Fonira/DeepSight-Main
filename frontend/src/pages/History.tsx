@@ -430,6 +430,7 @@ export const History: React.FC = () => {
   const [videoDetailPlayerVisible, setVideoDetailPlayerVisible] = useState(false);
   const [videoDetailPlayerStart, setVideoDetailPlayerStart] = useState(0);
   const videoDetailPlayerRef = useRef<YouTubePlayerRef>(null);
+  const upgradeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // Toolbar states pour vue détail vidéo
   const [detailCopied, setDetailCopied] = useState(false);
   const [detailShowExportMenu, setDetailShowExportMenu] = useState(false);
@@ -465,6 +466,15 @@ export const History: React.FC = () => {
         }
       },
     });
+  }, []);
+
+  // Cleanup upgrade polling interval on unmount
+  useEffect(() => {
+    return () => {
+      if (upgradeIntervalRef.current !== null) {
+        clearInterval(upgradeIntervalRef.current);
+      }
+    };
   }, []);
 
   // URL params
@@ -591,6 +601,7 @@ export const History: React.FC = () => {
           const status = await videoApi.getTaskStatus(response.task_id);
           if (status.status === 'completed' || status.status === 'done') {
             clearInterval(pollInterval);
+            upgradeIntervalRef.current = null;
             // Reload the summary
             const updated = await videoApi.getSummary(selectedVideoDetail.id);
             setSelectedVideoDetail({...selectedVideoDetail, ...updated, summary_content: updated.summary_content});
@@ -598,13 +609,15 @@ export const History: React.FC = () => {
             setUpgradeTaskId(null);
           } else if (status.status === 'error' || status.status === 'failed') {
             clearInterval(pollInterval);
+            upgradeIntervalRef.current = null;
             setUpgradeLoading(false);
             setUpgradeTaskId(null);
           }
         } catch (e) {
-          // Keep polling
+          // Keep polling on transient network errors
         }
       }, 5000);
+      upgradeIntervalRef.current = pollInterval;
     } catch (err: any) {
       setError(err?.message || 'Upgrade failed');
       setUpgradeLoading(false);

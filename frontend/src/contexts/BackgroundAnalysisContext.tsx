@@ -143,7 +143,13 @@ export const BackgroundAnalysisProvider: React.FC<{ children: React.ReactNode }>
           return;
         }
 
-        const storedTasks = JSON.parse(stored);
+        const storedTasks: unknown = JSON.parse(stored);
+        // Guard: ensure stored data is an array before iterating
+        if (!Array.isArray(storedTasks)) {
+          localStorage.removeItem(STORAGE_KEY);
+          setIsRestoring(false);
+          return;
+        }
         // Restaurer les tâches et reprendre le polling
         for (const task of storedTasks) {
           if (task.taskId && task.status === 'processing') {
