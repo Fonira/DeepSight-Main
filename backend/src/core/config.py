@@ -92,6 +92,7 @@ class _DeepSightSettings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "json"
     VERBOSE_LOGGING: str = "false"
+    HEALTH_CHECK_SECRET: str = ""
 
     # -- Rate Limiting --
     RATE_LIMIT_ENABLED: str = "true"
@@ -716,6 +717,9 @@ CACHE_CONFIG = {
 # =============================================================================
 
 RATE_LIMIT_ENABLED = _settings.RATE_LIMIT_ENABLED.lower() == "true"
+
+# Health Check
+HEALTH_CHECK_SECRET = _settings.HEALTH_CHECK_SECRET
 
 # =============================================================================
 # TRANSCRIPT CONFIG
