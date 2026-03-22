@@ -40,7 +40,6 @@ import { AcademicSourcesSection } from '../components/academic';
 import { TournesolWidget } from '../components/tournesol';
 import { AnalysisValueDisplay } from '../components/analysis/AnalysisValueDisplay';
 import { AnalysisContentDisplay } from '../components/analysis/AnalysisContentDisplay';
-import { TTSPlayer } from '../components/audio/TTSPlayer';
 import { AudioPlayerButton } from '../components/AudioPlayerButton';
 import { SuggestedQuestions } from '../components/chat/SuggestedQuestions';
 import { ChatBubble } from '../components/chat/ChatBubble';
@@ -1144,10 +1143,10 @@ export const AnalysisScreen: React.FC = () => {
 
           {/* TTS Player - Listen to summary */}
           {summary?.content && (
-            <View style={{ marginTop: Spacing.lg }}>
-              <TTSPlayer
+            <View style={{ marginTop: Spacing.lg, alignItems: 'flex-start' }}>
+              <AudioPlayerButton
                 text={summary.content}
-                title={summary.title}
+                size="md"
                 onUpgradePress={() => {
                   setUpgradeLimitType('tts');
                   setShowUpgradeModal(true);

@@ -4,7 +4,11 @@ v3.0 — FR voices, text cleanup, speed control
 """
 
 import re
+import time
+import logging
 from core.config import get_elevenlabs_key
+
+logger = logging.getLogger(__name__)
 
 
 def is_tts_available() -> bool:
@@ -28,6 +32,9 @@ VOICES = {
 }
 
 DEFAULT_MODEL_ID = "eleven_multilingual_v2"
+
+# Set of all known voice IDs (for validation)
+KNOWN_VOICE_IDS = {vid for lang_voices in VOICES.values() for vid in lang_voices.values()}
 
 
 def get_voice_id(language: str = "fr", gender: str = "female") -> str:
@@ -126,3 +133,59 @@ def clean_text_for_tts(text: str, strip_questions: bool = True) -> str:
             cleaned = cleaned[:5000]
 
     return cleaned
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔌 CIRCUIT BREAKER — Protection contre ElevenLabs down
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class CircuitBreaker:
+    """
+    Simple circuit breaker for ElevenLabs API.
+
+    - CLOSED: requests pass through normally
+    - OPEN: after failure_threshold errors in failure_window → immediate error for recovery_timeout
+    - HALF-OPEN: after recovery_timeout → allow 1 test request
+    """
+
+    def __init__(self, failure_threshold: int = 3, recovery_timeout: int = 60, failure_window: int = 300):
+        self.failure_threshold = failure_threshold
+        self.recovery_timeout = recovery_timeout
+        self.failure_window = failure_window
+        self._state = "closed"
+        self._failures: list[float] = []
+        self._opened_at = 0.0
+
+    @property
+    def state(self) -> str:
+        if self._state == "open":
+            if time.time() - self._opened_at >= self.recovery_timeout:
+                self._state = "half-open"
+        return self._state
+
+    def record_success(self):
+        if self._state in ("half-open", "open"):
+            logger.info("ElevenLabs circuit breaker CLOSED — service recovered")
+        self._failures.clear()
+        self._state = "closed"
+
+    def record_failure(self):
+        now = time.time()
+        self._failures = [t for t in self._failures if now - t < self.failure_window]
+        self._failures.append(now)
+
+        if len(self._failures) >= self.failure_threshold:
+            self._state = "open"
+            self._opened_at = now
+            logger.warning(
+                "ElevenLabs circuit breaker OPEN — %d failures in %ds, blocking for %ds",
+                len(self._failures), self.failure_window, self.recovery_timeout,
+            )
+
+    def can_execute(self) -> bool:
+        state = self.state
+        return state in ("closed", "half-open")
+
+
+# Singleton circuit breaker for ElevenLabs
+elevenlabs_circuit = CircuitBreaker(failure_threshold=3, recovery_timeout=60, failure_window=300)

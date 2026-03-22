@@ -1,10 +1,10 @@
 """
 TTS ROUTER — ElevenLabs Text-to-Speech
-v3.0 — FR metropolitan voices, speed control, text cleanup, premium gate
+v4.0 — Rate limiting, circuit breaker, streaming, plan gating, analytics
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import Response
+from fastapi.responses import StreamingResponse
 import httpx
 import logging
 
@@ -12,8 +12,9 @@ from db.database import User
 from auth.dependencies import get_current_user
 from billing.permissions import require_feature
 from core.config import get_elevenlabs_key
+from middleware.rate_limiter import InMemoryBackend
 from tts.schemas import TTSRequest
-from tts.service import clean_text_for_tts, get_voice_id, DEFAULT_MODEL_ID
+from tts.service import clean_text_for_tts, get_voice_id, DEFAULT_MODEL_ID, elevenlabs_circuit
 
 logger = logging.getLogger(__name__)
 
@@ -28,19 +29,59 @@ _voices_cache: dict = {"data": None, "expires": 0}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🎙️ POST /api/tts — Generate TTS audio (v3)
+# 🚦 TTS DAILY RATE LIMITER
+# ═══════════════════════════════════════════════════════════════════════════════
+
+TTS_DAILY_LIMITS = {
+    "free": 0,
+    "etudiant": 20,
+    "starter": 50,
+    "pro": 200,
+    "expert": 500,
+    "unlimited": 10000,
+}
+
+_tts_daily_backend = InMemoryBackend()
+
+
+async def check_tts_rate_limit(current_user: User = Depends(get_current_user)):
+    """Dependency: enforce TTS daily rate limit per plan."""
+    user_plan = current_user.plan or "free"
+    limit = TTS_DAILY_LIMITS.get(user_plan, 0)
+
+    if limit == 0:
+        raise HTTPException(
+            status_code=403,
+            detail="TTS non disponible pour votre plan",
+        )
+
+    key = f"tts_daily:user:{current_user.id}"
+    result = await _tts_daily_backend.check_and_increment(key, limit, 86400)
+
+    if not result.allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Limite TTS quotidienne atteinte ({limit}/jour). Reessayez demain.",
+            headers={"Retry-After": str(result.retry_after)},
+        )
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# POST /api/tts — Generate TTS audio (v4)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @router.post("")
 async def tts_generate(
     request: Request,
     current_user: User = Depends(get_current_user),
+    _rate: None = Depends(check_tts_rate_limit),
 ):
     """
     Generate TTS audio from ElevenLabs.
 
     Body: { text, language?, gender?, speed?, strip_questions? }
-    Returns: audio/mpeg response
+    Returns: streaming audio/mpeg response
     """
     # Feature check — premium only
     user_plan = current_user.plan or "free"
@@ -60,6 +101,14 @@ async def tts_generate(
     if not cleaned_text:
         raise HTTPException(status_code=400, detail="Text is required (empty after cleanup)")
 
+    # Circuit breaker check
+    if not elevenlabs_circuit.can_execute():
+        raise HTTPException(
+            status_code=503,
+            detail="TTS service temporarily unavailable. Retry in 60s.",
+            headers={"Retry-After": "60"},
+        )
+
     # Resolve voice
     voice_id = tts_req.voice_id or get_voice_id(tts_req.language, tts_req.gender)
     model_id = tts_req.model_id or DEFAULT_MODEL_ID
@@ -69,7 +118,7 @@ async def tts_generate(
     if not api_key:
         raise HTTPException(status_code=503, detail="TTS service not configured")
 
-    # Call ElevenLabs
+    # Call ElevenLabs with streaming
     elevenlabs_url = f"{ELEVENLABS_BASE_URL}/text-to-speech/{voice_id}"
 
     payload = {
@@ -85,75 +134,97 @@ async def tts_generate(
         },
     }
 
+    headers = {
+        "xi-api-key": api_key,
+        "Content-Type": "application/json",
+        "Accept": "audio/mpeg",
+    }
+
+    client = httpx.AsyncClient(timeout=60.0)
+
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                elevenlabs_url,
-                headers={
-                    "xi-api-key": api_key,
-                    "Content-Type": "application/json",
-                    "Accept": "audio/mpeg",
-                },
-                json=payload,
-            )
-
-            if response.status_code == 401:
-                logger.error("ElevenLabs API key invalid (401)")
-                raise HTTPException(
-                    status_code=502,
-                    detail="TTS provider authentication failed. Contact support.",
-                )
-
-            if response.status_code != 200:
-                logger.error(
-                    "ElevenLabs error: status=%d body=%s",
-                    response.status_code,
-                    response.text[:200],
-                )
-                raise HTTPException(
-                    status_code=502,
-                    detail=f"TTS provider error ({response.status_code})",
-                )
-
-            audio_bytes = response.content
-            if len(audio_bytes) == 0:
-                raise HTTPException(
-                    status_code=502,
-                    detail="TTS provider returned empty audio",
-                )
-
-            logger.info(
-                "TTS generated: user=%s lang=%s gender=%s speed=%.1f text_len=%d audio_bytes=%d",
-                current_user.email, tts_req.language, tts_req.gender,
-                tts_req.speed, len(cleaned_text), len(audio_bytes),
-            )
-
-            return Response(
-                content=audio_bytes,
-                media_type="audio/mpeg",
-                headers={"Cache-Control": "no-cache"},
-            )
-
-    except HTTPException:
-        raise
+        req = client.build_request("POST", elevenlabs_url, headers=headers, json=payload)
+        response = await client.send(req, stream=True)
     except httpx.TimeoutException:
+        await client.aclose()
+        elevenlabs_circuit.record_failure()
         logger.error("ElevenLabs TTS timeout for user=%s", current_user.email)
         raise HTTPException(status_code=504, detail="TTS request timed out")
     except Exception as e:
+        await client.aclose()
+        elevenlabs_circuit.record_failure()
         logger.error("ElevenLabs TTS error: %s", str(e))
         raise HTTPException(status_code=500, detail="TTS generation failed")
 
+    # Check response status before streaming
+    if response.status_code == 401:
+        await response.aclose()
+        await client.aclose()
+        elevenlabs_circuit.record_failure()
+        logger.error("ElevenLabs API key invalid (401)")
+        raise HTTPException(
+            status_code=502,
+            detail="TTS provider authentication failed. Contact support.",
+        )
+
+    if response.status_code != 200:
+        error_body = (await response.aread()).decode(errors="replace")[:200]
+        await response.aclose()
+        await client.aclose()
+        elevenlabs_circuit.record_failure()
+        logger.error("ElevenLabs error: status=%d body=%s", response.status_code, error_body)
+        raise HTTPException(
+            status_code=502,
+            detail=f"TTS provider error ({response.status_code})",
+        )
+
+    # Success — record circuit breaker + analytics
+    elevenlabs_circuit.record_success()
+
+    logger.info("TTS generated", extra={
+        "user_id": current_user.id,
+        "plan": current_user.plan,
+        "text_length": len(tts_req.text),
+        "language": tts_req.language,
+        "estimated_chars": len(cleaned_text),
+        "voice_id": voice_id,
+    })
+
+    # Stream audio chunks to client
+    async def stream_audio():
+        try:
+            async for chunk in response.aiter_bytes(chunk_size=8192):
+                yield chunk
+        finally:
+            await response.aclose()
+            await client.aclose()
+
+    return StreamingResponse(
+        stream_audio(),
+        media_type="audio/mpeg",
+        headers={"Cache-Control": "no-cache"},
+    )
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🗣️ GET /api/tts/voices — List available voices
+# GET /api/tts/voices — List available voices (plan-gated)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/voices")
 async def list_voices(
     current_user: User = Depends(get_current_user),
 ):
-    """Return available ElevenLabs voices (cached 1h)."""
+    """Return available ElevenLabs voices (cached 1h). Free users get empty list."""
     import time
+
+    # Plan gating — free users cannot access TTS
+    user_plan = current_user.plan or "free"
+    if user_plan == "free":
+        return {
+            "voices": [],
+            "default_voices": {},
+            "message": "TTS non disponible pour le plan gratuit. Passez au plan Etudiant+.",
+        }
 
     now = time.time()
 
@@ -212,7 +283,7 @@ async def list_voices(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 📊 GET /api/tts/status — TTS availability check
+# GET /api/tts/status — TTS availability check
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/status")
@@ -227,4 +298,5 @@ async def tts_status():
         "supported_languages": ["fr", "en"],
         "supported_genders": ["male", "female"],
         "speed_range": {"min": 0.7, "max": 3.0, "default": 1.0},
+        "circuit_breaker": elevenlabs_circuit.state,
     }

@@ -3,7 +3,7 @@ TTS SCHEMAS — Pydantic models for TTS endpoints
 v3.0 — language, gender, speed support
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional, Literal
 
 
@@ -18,3 +18,14 @@ class TTSRequest(BaseModel):
     strip_questions: bool = Field(default=True, description="Strip trailing questions from text")
     voice_id: Optional[str] = Field(default=None, description="Override voice ID (advanced)")
     model_id: Optional[str] = Field(default=None, description="Override model ID (advanced)")
+
+    @field_validator("voice_id")
+    @classmethod
+    def validate_voice_id(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            from tts.service import KNOWN_VOICE_IDS
+            if v not in KNOWN_VOICE_IDS:
+                raise ValueError(
+                    f"Voice ID inconnu: {v}. Utilisez GET /api/tts/voices pour la liste."
+                )
+        return v

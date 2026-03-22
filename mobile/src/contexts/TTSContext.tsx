@@ -46,6 +46,7 @@ interface TTSContextType {
   stopPlaying: () => void;
   isPlaying: boolean;
   isLoading: boolean;
+  currentText: string;
 
   // Premium
   isPremium: boolean;
@@ -70,7 +71,9 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Playback
   const [isLoading, setIsLoading] = useState(false);
+  const [currentText, setCurrentText] = useState('');
   const tempFileRef = useRef<File | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const player = useAudioPlayer(null);
   const status = useAudioPlayerStatus(player);
   const isPlaying = status.playing;
@@ -97,6 +100,20 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     };
     load();
+  }, []);
+
+  // Cleanup old TTS temp files on mount
+  useEffect(() => {
+    try {
+      const items = Paths.cache.list();
+      for (const item of items) {
+        if (item.name.startsWith('tts_')) {
+          try { item.delete(); } catch {}
+        }
+      }
+    } catch {
+      // Ignore
+    }
   }, []);
 
   // Setters with persistence
@@ -129,17 +146,14 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Ignore
     }
     if (tempFileRef.current) {
-      try {
-        tempFileRef.current.delete();
-      } catch {
-        // Ignore
-      }
+      try { tempFileRef.current.delete(); } catch {}
       tempFileRef.current = null;
     }
   }, [player]);
 
   const stopPlaying = useCallback(() => {
     cleanup();
+    setCurrentText('');
     setIsLoading(false);
   }, [cleanup]);
 
@@ -149,6 +163,11 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       stopPlaying();
       return;
     }
+
+    // Abort previous fetch if still in-flight
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     setIsLoading(true);
 
@@ -176,6 +195,7 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           speed,
           strip_questions: true,
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -192,7 +212,7 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
-      // Write audio blob to temp file
+      // Write audio blob to temp file via expo-file-system v19 API
       const audioBlob = await response.blob();
       const reader = new FileReader();
       const base64Audio = await new Promise<string>((resolve, reject) => {
@@ -214,6 +234,7 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       await cleanup();
       tempFileRef.current = tempFile;
+      setCurrentText(text);
 
       // Play the audio file
       player.replace({ uri: tempFile.uri });
@@ -227,6 +248,7 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       player.play();
     } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return;
       if (__DEV__) console.warn('[TTS]', err);
       await cleanup();
     } finally {
@@ -236,7 +258,10 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => { cleanup(); };
+    return () => {
+      abortRef.current?.abort();
+      cleanup();
+    };
   }, [cleanup]);
 
   return (
@@ -247,6 +272,7 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       speed, setSpeed,
       playText, stopPlaying,
       isPlaying, isLoading,
+      currentText,
       isPremium,
     }}>
       {children}

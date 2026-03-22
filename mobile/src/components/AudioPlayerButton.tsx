@@ -3,7 +3,7 @@
  * Uses TTSContext for language/gender/speed settings
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Pressable, ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTTSContext } from '../contexts/TTSContext';
@@ -20,20 +20,22 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
   size = 'sm',
   onUpgradePress,
 }) => {
-  const { isPlaying, isLoading, isPremium, playText, stopPlaying } = useTTSContext();
+  const { isPlaying, isLoading, isPremium, playText, stopPlaying, currentText } = useTTSContext();
   const { colors } = useTheme();
 
-  const handlePress = () => {
+  const isThisPlaying = isPlaying && currentText === text;
+
+  const handlePress = useCallback(() => {
     if (!isPremium) {
       onUpgradePress?.();
       return;
     }
-    if (isPlaying) {
+    if (isThisPlaying) {
       stopPlaying();
     } else {
       playText(text);
     }
-  };
+  }, [isPremium, isThisPlaying, text, stopPlaying, playText, onUpgradePress]);
 
   const iconSize = size === 'sm' ? 16 : 20;
   const btnSize = size === 'sm' ? 28 : 34;
@@ -60,8 +62,8 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
     );
   }
 
-  const iconColor = isPlaying ? '#06B6D4' : colors.textSecondary;
-  const bgColor = isPlaying ? 'rgba(6, 182, 212, 0.15)' : colors.glassBg;
+  const iconColor = isThisPlaying ? '#06B6D4' : colors.textSecondary;
+  const bgColor = isThisPlaying ? 'rgba(6, 182, 212, 0.15)' : colors.glassBg;
 
   return (
     <Pressable
@@ -73,18 +75,18 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
           width: btnSize,
           height: btnSize,
           backgroundColor: bgColor,
-          borderColor: isPlaying ? 'rgba(6, 182, 212, 0.3)' : 'transparent',
+          borderColor: isThisPlaying ? 'rgba(6, 182, 212, 0.3)' : 'transparent',
           opacity: isLoading ? 0.6 : 1,
         },
       ]}
-      accessibilityLabel={isPlaying ? 'Arrêter la lecture' : 'Écouter'}
+      accessibilityLabel={isThisPlaying ? 'Arrêter la lecture' : 'Écouter'}
       accessibilityRole="button"
     >
       {isLoading ? (
         <ActivityIndicator size="small" color={colors.textSecondary} />
       ) : (
         <Ionicons
-          name={isPlaying ? 'volume-mute' : 'volume-high'}
+          name={isThisPlaying ? 'volume-mute' : 'volume-high'}
           size={iconSize}
           color={iconColor}
         />

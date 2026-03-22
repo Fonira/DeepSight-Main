@@ -78,8 +78,18 @@ const TTSContext = createContext<TTSContextType | null>(null);
 const MAX_CACHE = 20;
 const audioCache = new Map<string, string>();
 
+function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return hash.toString(36);
+}
+
 function cacheKey(text: string, lang: string, gender: string, speed: number) {
-  return `${lang}|${gender}|${speed}|${text.slice(0, 200)}`;
+  return `${lang}|${gender}|${speed}|${simpleHash(text)}`;
 }
 
 function setCacheEntry(key: string, blobUrl: string) {
@@ -166,21 +176,21 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDuration(0);
   }, [cleanup]);
 
-  // Pause/Resume
+  // Pause/Resume — read state from audio element to avoid stale closures
   const pauseResume = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    if (isPlaying && !isPaused) {
-      audio.pause();
-      setIsPaused(true);
-      setIsPlaying(false);
-    } else if (isPaused) {
+    if (audio.paused) {
       audio.play().catch(() => {});
       setIsPaused(false);
       setIsPlaying(true);
+    } else {
+      audio.pause();
+      setIsPaused(true);
+      setIsPlaying(false);
     }
-  }, [isPlaying, isPaused]);
+  }, []);
 
   // Play text
   const playText = useCallback(async (text: string) => {

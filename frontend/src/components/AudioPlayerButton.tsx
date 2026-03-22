@@ -1,8 +1,8 @@
 /**
  * AudioPlayerButton v2 — Inline mini-player with progress, seek, speed
- * ┌──────────────────────────────────────────────┐
+ * ┌──────────────────────────────────────────────────────┐
  * │  ▶️/⏸️  ────────●──── 1:23/2:45  ⏹️  1.5x   │
- * └──────────────────────────────────────────────┘
+ * └──────────────────────────────────────────────────────┘
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
@@ -24,15 +24,13 @@ function formatTime(t: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`;
 }
 
-export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
+const AudioPlayerButtonInner: React.FC<AudioPlayerButtonProps> = ({
   text,
   size = 'sm',
   className = '',
 }) => {
   const {
     language, gender, speed: globalSpeed, isPremium,
-    isPlaying: ctxPlaying, isPaused: ctxPaused, isLoading: ctxLoading,
-    currentAudioRef,
   } = useTTSContext();
 
   // Local player state (each bubble has its own player)
@@ -46,6 +44,7 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
   const progressRef = useRef<HTMLDivElement>(null);
+  const controllerRef = useRef<AbortController | null>(null);
 
   // Sync localSpeed with globalSpeed when not playing
   useEffect(() => {
@@ -54,6 +53,20 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
     }
   }, [globalSpeed, localPlaying, localPaused]);
 
+  // Bug 5: Stop when another AudioPlayerButton starts playing
+  useEffect(() => {
+    const handler = () => {
+      if (audioRef.current && !audioRef.current.paused) {
+        audioRef.current.pause();
+        setLocalPlaying(false);
+        setLocalPaused(false);
+      }
+    };
+    window.addEventListener('deepsight-stop-all-audio', handler);
+    return () => window.removeEventListener('deepsight-stop-all-audio', handler);
+  }, []);
+
+  // Bug 2: Revoke blobUrl on cleanup to prevent memory leaks
   const cleanup = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -68,6 +81,8 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
 
   const handleStop = useCallback((e?: React.MouseEvent) => {
     e?.stopPropagation();
+    controllerRef.current?.abort();
+    controllerRef.current = null;
     cleanup();
     setLocalPlaying(false);
     setLocalPaused(false);
@@ -97,6 +112,14 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
       return;
     }
 
+    // Bug 5: Stop all other audio players before starting
+    window.dispatchEvent(new CustomEvent('deepsight-stop-all-audio'));
+
+    // Bug 1: Abort any in-flight request
+    controllerRef.current?.abort();
+    const controller = new AbortController();
+    controllerRef.current = controller;
+
     // Start new playback
     setLocalLoading(true);
 
@@ -119,7 +142,18 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
           speed: localSpeed,
           strip_questions: true,
         }),
+        signal: controller.signal,
       });
+
+      if (controller.signal.aborted) return;
+
+      // Bug 4: Handle 403 feature_locked
+      if (response.status === 403) {
+        const data = await response.json().catch(() => ({}));
+        if (data?.detail?.error === 'feature_locked' || data?.error === 'feature_locked') {
+          throw new Error('Fonctionnalité réservée aux abonnés. Passez au plan Étudiant.');
+        }
+      }
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -128,6 +162,8 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
 
       const blob = await response.blob();
       if (blob.size === 0) throw new Error('Empty audio');
+
+      if (controller.signal.aborted) return;
 
       cleanup();
 
@@ -147,6 +183,7 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
       setLocalPlaying(true);
       setLocalPaused(false);
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       console.error('[AudioPlayer]', err);
       cleanup();
     } finally {
@@ -175,8 +212,12 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
     }
   }, [localSpeed]);
 
+  // Bug 1: Abort controller on unmount
   useEffect(() => {
-    return () => { cleanup(); };
+    return () => {
+      controllerRef.current?.abort();
+      cleanup();
+    };
   }, [cleanup]);
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
@@ -291,3 +332,9 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
     </div>
   );
 };
+
+// Bonus: Memoize to avoid re-renders in chat (20+ bubbles)
+export const AudioPlayerButton = React.memo(
+  AudioPlayerButtonInner,
+  (prev, next) => prev.text === next.text && prev.size === next.size && prev.className === next.className
+);
