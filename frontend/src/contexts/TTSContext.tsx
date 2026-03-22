@@ -1,53 +1,275 @@
 /**
- * TTSContext — Global TTS state with auto-play toggle
- * Persists autoPlayEnabled in localStorage
+ * TTSContext v2 — Global TTS state with language, gender, speed, premium check
+ * Persists all settings in localStorage
  */
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { useTTS } from '../hooks/useTTS';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { useAuthContext } from './AuthContext';
+import { API_URL, getAccessToken } from '../services/api';
 
-const STORAGE_KEY = 'deepsight_tts_autoplay';
+// ═══════════════════════════════════════════════════════════════════════════════
+// Storage keys
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const KEYS = {
+  autoplay: 'deepsight_tts_autoplay',
+  lang: 'deepsight_tts_lang',
+  gender: 'deepsight_tts_gender',
+  speed: 'deepsight_tts_speed',
+} as const;
+
+function loadSetting<T>(key: string, fallback: T): T {
+  try {
+    const val = localStorage.getItem(key);
+    if (val === null) return fallback;
+    return JSON.parse(val) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveSetting(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Safari private mode
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Types
+// ═══════════════════════════════════════════════════════════════════════════════
+
+type TTSLanguage = 'fr' | 'en';
+type TTSGender = 'male' | 'female';
 
 interface TTSContextType {
+  // Settings
   autoPlayEnabled: boolean;
-  setAutoPlayEnabled: (enabled: boolean) => void;
+  setAutoPlayEnabled: (v: boolean) => void;
+  language: TTSLanguage;
+  setLanguage: (l: TTSLanguage) => void;
+  gender: TTSGender;
+  setGender: (g: TTSGender) => void;
+  speed: number;
+  setSpeed: (s: number) => void;
+
+  // Playback
   playText: (text: string) => Promise<void>;
-  stopPlaying: () => void;
+  pauseResume: () => void;
+  stop: () => void;
+  stopPlaying: () => void;  // alias of stop for backward compat
   isPlaying: boolean;
+  isPaused: boolean;
   isLoading: boolean;
+  currentTime: number;
+  duration: number;
+
+  // Premium
+  isPremium: boolean;
+
+  // Audio ref for AudioPlayer seek
+  currentAudioRef: React.RefObject<HTMLAudioElement | null>;
 }
 
 const TTSContext = createContext<TTSContextType | null>(null);
 
-export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isPlaying, isLoading, play, stop } = useTTS();
-  const [autoPlayEnabled, setAutoPlayEnabledState] = useState(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === 'true';
-    } catch {
-      return false;
-    }
-  });
+// Audio cache: key = text+lang+gender+speed -> blobUrl
+const audioCache = new Map<string, string>();
 
-  const setAutoPlayEnabled = useCallback((enabled: boolean) => {
-    setAutoPlayEnabledState(enabled);
-    try {
-      localStorage.setItem(STORAGE_KEY, String(enabled));
-    } catch {
-      // Safari private mode
+function cacheKey(text: string, lang: string, gender: string, speed: number) {
+  return `${lang}|${gender}|${speed}|${text.slice(0, 200)}`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Provider
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuthContext();
+  const plan = user?.plan || 'free';
+  const isPremium = plan !== 'free' && plan !== 'decouverte';
+
+  // Settings state
+  const [autoPlayEnabled, setAutoPlayEnabledState] = useState(() => loadSetting(KEYS.autoplay, false));
+  const [language, setLanguageState] = useState<TTSLanguage>(() => loadSetting(KEYS.lang, 'fr'));
+  const [gender, setGenderState] = useState<TTSGender>(() => loadSetting(KEYS.gender, 'female'));
+  const [speed, setSpeedState] = useState<number>(() => loadSetting(KEYS.speed, 1));
+
+  // Playback state
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
+
+  // Setters with persistence
+  const setAutoPlayEnabled = useCallback((v: boolean) => {
+    setAutoPlayEnabledState(v);
+    saveSetting(KEYS.autoplay, v);
+  }, []);
+
+  const setLanguage = useCallback((l: TTSLanguage) => {
+    setLanguageState(l);
+    saveSetting(KEYS.lang, l);
+  }, []);
+
+  const setGender = useCallback((g: TTSGender) => {
+    setGenderState(g);
+    saveSetting(KEYS.gender, g);
+  }, []);
+
+  const setSpeed = useCallback((s: number) => {
+    setSpeedState(s);
+    saveSetting(KEYS.speed, s);
+    // Apply to current audio immediately
+    if (audioRef.current) {
+      audioRef.current.playbackRate = s;
     }
   }, []);
 
-  const playText = useCallback(async (text: string) => {
-    await play(text);
-  }, [play]);
+  // Cleanup
+  const cleanup = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.removeAttribute('src');
+      audioRef.current = null;
+    }
+    // Don't revoke cached URLs
+    blobUrlRef.current = null;
+  }, []);
 
-  const stopPlaying = useCallback(() => {
+  // Stop
+  const stop = useCallback(() => {
+    cleanup();
+    setIsPlaying(false);
+    setIsPaused(false);
+    setIsLoading(false);
+    setCurrentTime(0);
+    setDuration(0);
+  }, [cleanup]);
+
+  // Pause/Resume
+  const pauseResume = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying && !isPaused) {
+      audio.pause();
+      setIsPaused(true);
+      setIsPlaying(false);
+    } else if (isPaused) {
+      audio.play().catch(() => {});
+      setIsPaused(false);
+      setIsPlaying(true);
+    }
+  }, [isPlaying, isPaused]);
+
+  // Play text
+  const playText = useCallback(async (text: string) => {
+    if (!text?.trim()) return;
+
+    // Stop any current playback
     stop();
-  }, [stop]);
+    setIsLoading(true);
+
+    try {
+      const key = cacheKey(text, language, gender, speed);
+      let blobUrl = audioCache.get(key);
+
+      if (!blobUrl) {
+        const token = getAccessToken();
+        if (!token) throw new Error('Authentication required');
+
+        const response = await fetch(`${API_URL}/api/tts`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text,
+            language,
+            gender,
+            speed,
+            strip_questions: true,
+          }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          const detail = data?.detail;
+          if (response.status === 403 && detail?.error === 'feature_locked') {
+            throw new Error(detail.message || 'Upgrade your plan for TTS');
+          }
+          throw new Error(
+            typeof detail === 'string' ? detail : detail?.message || `TTS error (${response.status})`
+          );
+        }
+
+        const blob = await response.blob();
+        if (blob.size === 0) throw new Error('Empty audio response');
+
+        blobUrl = URL.createObjectURL(blob);
+        audioCache.set(key, blobUrl);
+      }
+
+      blobUrlRef.current = blobUrl;
+
+      const audio = new Audio(blobUrl);
+      audio.playbackRate = speed;
+      audioRef.current = audio;
+
+      audio.onloadedmetadata = () => {
+        setDuration(audio.duration);
+      };
+
+      audio.ontimeupdate = () => {
+        setCurrentTime(audio.currentTime);
+      };
+
+      audio.onended = () => {
+        setIsPlaying(false);
+        setIsPaused(false);
+        setCurrentTime(0);
+      };
+
+      audio.onerror = () => {
+        setIsPlaying(false);
+        setIsLoading(false);
+      };
+
+      await audio.play();
+      setIsPlaying(true);
+      setIsPaused(false);
+    } catch (err) {
+      console.error('[TTS] Error:', err);
+      cleanup();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [language, gender, speed, stop, cleanup]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { cleanup(); };
+  }, [cleanup]);
 
   return (
-    <TTSContext.Provider value={{ autoPlayEnabled, setAutoPlayEnabled, playText, stopPlaying, isPlaying, isLoading }}>
+    <TTSContext.Provider value={{
+      autoPlayEnabled, setAutoPlayEnabled,
+      language, setLanguage,
+      gender, setGender,
+      speed, setSpeed,
+      playText, pauseResume, stop, stopPlaying: stop,
+      isPlaying, isPaused, isLoading,
+      currentTime, duration,
+      isPremium,
+      currentAudioRef: audioRef,
+    }}>
       {children}
     </TTSContext.Provider>
   );

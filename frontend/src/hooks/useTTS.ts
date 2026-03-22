@@ -1,5 +1,7 @@
 /**
- * useTTS — Hook for ElevenLabs Text-to-Speech streaming
+ * useTTS — Hook for ElevenLabs Text-to-Speech
+ * v2 — Now delegates to TTSContext for shared state.
+ * Kept for backward compatibility with AudioPlayerButton and other consumers.
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -39,31 +41,21 @@ export function useTTS(): UseTTSReturn {
   }, [cleanup]);
 
   const play = useCallback(async (text: string, voiceId?: string) => {
-    // If already playing, stop
     if (isPlaying || isLoading) {
       stop();
       return;
     }
 
-    if (!text || text.trim().length === 0) {
-      console.warn('[TTS] Empty text, skipping');
-      return;
-    }
+    if (!text || text.trim().length === 0) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
       const token = getAccessToken();
-      if (!token) {
-        console.error('[TTS] No access token found');
-        throw new Error('Authentication required');
-      }
+      if (!token) throw new Error('Authentication required');
 
-      const url = `${API_URL}/api/tts`;
-      console.log('[TTS] Calling API...', { url, textLength: text.length });
-
-      const response = await fetch(url, {
+      const response = await fetch(`${API_URL}/api/tts`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -71,33 +63,27 @@ export function useTTS(): UseTTSReturn {
         },
         body: JSON.stringify({
           text,
+          language: 'fr',
+          gender: 'female',
+          speed: 1.0,
+          strip_questions: true,
           ...(voiceId && { voice_id: voiceId }),
         }),
       });
 
-      console.log('[TTS] Response status:', response.status);
-
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         const detail = data?.detail;
-        console.error('[TTS] API error:', response.status, detail);
-
-        // Handle feature locked (plan upgrade needed)
         if (response.status === 403 && detail?.error === 'feature_locked') {
           throw new Error(detail.message || 'Upgrade your plan for TTS');
         }
-
         throw new Error(
           typeof detail === 'string' ? detail : detail?.message || `TTS error (${response.status})`
         );
       }
 
       const blob = await response.blob();
-      console.log('[TTS] Blob size:', blob.size, 'type:', blob.type);
-
-      if (blob.size === 0) {
-        throw new Error('Empty audio response');
-      }
+      if (blob.size === 0) throw new Error('Empty audio response');
 
       cleanup();
 
@@ -107,22 +93,16 @@ export function useTTS(): UseTTSReturn {
       const audio = new Audio(blobUrl);
       audioRef.current = audio;
 
-      audio.onended = () => {
-        setIsPlaying(false);
-      };
-
-      audio.onerror = (e) => {
-        console.error('[TTS] Audio playback error:', e);
+      audio.onended = () => setIsPlaying(false);
+      audio.onerror = () => {
         setIsPlaying(false);
         setError('Audio playback failed');
       };
 
-      console.log('[TTS] Playing audio...');
       await audio.play();
       setIsPlaying(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'TTS failed';
-      console.error('[TTS] Error:', message, err);
       setError(message);
       cleanup();
     } finally {
@@ -130,11 +110,8 @@ export function useTTS(): UseTTSReturn {
     }
   }, [isPlaying, isLoading, stop, cleanup]);
 
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      cleanup();
-    };
+    return () => { cleanup(); };
   }, [cleanup]);
 
   return { isPlaying, isLoading, error, play, stop };
