@@ -1,20 +1,34 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
+import { version } from './package.json';
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+    // Upload source maps to Sentry on production builds
+    // Requires SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT env vars
+    sentryVitePlugin({
+      org: process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      authToken: process.env.SENTRY_AUTH_TOKEN,
+      sourcemaps: {
+        filesToDeleteAfterUpload: ['./dist/**/*.map'],
+      },
+      disable: !process.env.SENTRY_AUTH_TOKEN,
+    }),
   ],
 
   // Inject build timestamp for cache-busting detection
   define: {
     __BUILD_TIMESTAMP__: JSON.stringify(Date.now().toString()),
+    __APP_VERSION__: JSON.stringify(version),
   },
-  
+
   build: {
-    // Génère des sourcemaps pour le debugging
-    sourcemap: false, // Désactivé en prod pour réduire la taille
+    // Source maps for Sentry — uploaded then deleted by the plugin
+    sourcemap: 'hidden',
     
     // Taille minimale pour le code splitting
     chunkSizeWarningLimit: 500,
