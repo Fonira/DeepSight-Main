@@ -8,6 +8,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { ThemeProvider } from '../src/contexts/ThemeContext';
+import { TTSProvider } from '../src/contexts/TTSContext';
 import { createQueryClient } from '../src/utils/queryClient';
 import { darkColors } from '../src/theme/colors';
 import { useShareIntent } from '../src/hooks/useShareIntent';
@@ -43,7 +44,9 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <AuthProvider>
-              <RootNavigator />
+              <TTSProvider>
+                <RootNavigator />
+              </TTSProvider>
             </AuthProvider>
           </ThemeProvider>
         </QueryClientProvider>

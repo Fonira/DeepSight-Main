@@ -26,6 +26,9 @@ import { SEO } from '../components/SEO';
 import { normalizePlanId, CONVERSION_TRIGGERS } from '../config/planPrivileges';
 import { EnrichedMarkdown, cleanConceptMarkers } from '../components/EnrichedMarkdown';
 import { parseAskQuestions } from '../components/ClickableQuestions';
+import { AudioPlayerButton } from '../components/AudioPlayerButton';
+import { TTSToggle } from '../components/TTSToggle';
+import { useTTSContext } from '../contexts/TTSContext';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -51,6 +54,7 @@ const ChatPage: React.FC = () => {
 
   const plan = normalizePlanId(user?.plan);
   const canChat = plan !== 'free';
+  const { autoPlayEnabled, playText, stopPlaying } = useTTSContext();
 
   // ── State ──
   const [analyses, setAnalyses] = useState<Summary[]>([]);
@@ -178,11 +182,25 @@ const ChatPage: React.FC = () => {
     setMobileDrawerOpen(false);
   };
 
+  // ── Auto-play TTS on new assistant message ──
+  const prevMsgCountRef = useRef(messages.length);
+  useEffect(() => {
+    if (messages.length > prevMsgCountRef.current && autoPlayEnabled) {
+      const last = messages[messages.length - 1];
+      if (last?.role === 'assistant') {
+        const text = typeof last.content === 'string' ? last.content : '';
+        playText(text.slice(0, 5000));
+      }
+    }
+    prevMsgCountRef.current = messages.length;
+  }, [messages, autoPlayEnabled, playText]);
+
   // ── Send message ──
   const handleSend = useCallback(async (text?: string) => {
     const message = text || inputValue.trim();
     if (!message || !selectedAnalysis || isSending) return;
 
+    stopPlaying();
     setInputValue('');
     if (inputRef.current) inputRef.current.style.height = 'auto';
 
@@ -598,6 +616,11 @@ const ChatPage: React.FC = () => {
                                 </EnrichedMarkdown>
                               </div>
 
+                              {/* TTS button */}
+                              <div className="mt-2 flex justify-end">
+                                <AudioPlayerButton text={beforeQuestions} size="sm" />
+                              </div>
+
                               {questions.length > 0 && (
                                 <div className="mt-3 pt-3 border-t border-white/[0.05] flex flex-wrap gap-1.5">
                                   {questions.map((q, qi) => (
@@ -704,6 +727,9 @@ const ChatPage: React.FC = () => {
                       ))}
                     </div>
                   )}
+                  <div className="flex items-center justify-end mb-2">
+                    <TTSToggle />
+                  </div>
                   <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex items-end gap-2">
                     <textarea
                       ref={inputRef}

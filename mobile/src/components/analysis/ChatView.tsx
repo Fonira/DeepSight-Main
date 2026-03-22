@@ -25,6 +25,8 @@ import { useChat } from '../../hooks/useChat';
 import { ChatInput } from './ChatInput';
 import { ChatMarkdown } from './ChatMarkdown';
 import { AudioPlayerButton } from '../AudioPlayerButton';
+import { TTSToggle } from '../TTSToggle';
+import { useTTSContext } from '../../contexts/TTSContext';
 import type { ChatMessage } from '../../types';
 
 // ── Parse [ask:...] questions from assistant messages ──
@@ -92,17 +94,32 @@ const TypingIndicator: React.FC = () => {
 export const ChatView: React.FC<ChatViewProps> = ({ summaryId, keyboardOffset = 120 }) => {
   const { colors, isDark } = useTheme();
   const { messages, isLoading, sendMessage, loadHistory } = useChat(summaryId);
+  const { autoPlayEnabled, playText, stopPlaying } = useTTSContext();
   const [inputText, setInputText] = useState('');
+  const prevMsgCountRef = useRef(messages.length);
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
+
+  // Auto-play TTS on new assistant message
+  useEffect(() => {
+    if (messages.length > prevMsgCountRef.current && autoPlayEnabled) {
+      const last = messages[messages.length - 1];
+      if (last?.role === 'assistant') {
+        const text = typeof last.content === 'string' ? last.content : '';
+        playText(text.slice(0, 5000));
+      }
+    }
+    prevMsgCountRef.current = messages.length;
+  }, [messages, autoPlayEnabled, playText]);
 
   const handleSend = useCallback(async () => {
     const text = inputText.trim();
     if (!text || isLoading) return;
+    stopPlaying();
     Haptics.selectionAsync();
     setInputText('');
     await sendMessage(text);
-  }, [inputText, isLoading, sendMessage]);
+  }, [inputText, isLoading, sendMessage, stopPlaying]);
 
   const handleSuggestion = useCallback((q: string) => {
     Haptics.selectionAsync();
@@ -229,6 +246,9 @@ export const ChatView: React.FC<ChatViewProps> = ({ summaryId, keyboardOffset = 
           <TypingIndicator />
         </View>
       )}
+      <View style={styles.ttsToggleRow}>
+        <TTSToggle />
+      </View>
       <ChatInput inputText={inputText} setInputText={setInputText} onSend={handleSend} isLoading={isLoading} colors={colors} quotaText={quotaText} />
     </KeyboardAvoidingView>
   );
@@ -245,6 +265,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontFamily: fontFamily.bodySemiBold, fontSize: fontSize.lg, marginTop: sp.md },
   emptySubtitle: { fontFamily: fontFamily.body, fontSize: fontSize.sm, textAlign: 'center' },
+  ttsToggleRow: { paddingHorizontal: sp.lg, paddingTop: sp.xs, alignItems: 'flex-end' },
   suggestionsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',

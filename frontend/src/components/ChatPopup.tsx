@@ -24,6 +24,7 @@ import {
 import { DeepSightSpinnerMicro } from './ui';
 import { parseAskQuestions, ClickableQuestionsBlock } from './ClickableQuestions';
 import { EnrichedMarkdown } from './EnrichedMarkdown';
+import { AudioPlayerButton } from './AudioPlayerButton';
 
 // =============================================================================
 // TYPES
@@ -305,6 +306,11 @@ const ChatBubble: React.FC<{
                 <EnrichedMarkdown language={language} onTimecodeClick={onTimecodeClick}>
                   {beforeQuestions}
                 </EnrichedMarkdown>
+              </div>
+
+              {/* TTS button */}
+              <div className="mt-2 flex justify-end">
+                <AudioPlayerButton text={beforeQuestions} size="sm" />
               </div>
 
               {/* Sources */}

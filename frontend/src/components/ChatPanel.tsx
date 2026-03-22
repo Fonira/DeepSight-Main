@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { parseAskQuestions } from './ClickableQuestions';
 import { AudioPlayerButton } from './AudioPlayerButton';
+import { TTSToggle } from './TTSToggle';
+import { useTTSContext } from '../contexts/TTSContext';
 import { EnrichedMarkdown, cleanConceptMarkers } from './EnrichedMarkdown';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -109,6 +111,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   const isFree = !userPlan || userPlan === 'free';
   const quotaRemaining = webSearchQuota?.remaining ?? 0;
   const quotaLimit = webSearchQuota?.limit ?? 0;
+  const { autoPlayEnabled, playText, stopPlaying } = useTTSContext();
+  const prevMsgCountRef = useRef(messages.length);
 
   // ─── Translations ───
   const t = language === 'fr' ? {
@@ -168,6 +172,18 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // ─── Auto-play TTS on new assistant message ───
+  useEffect(() => {
+    if (messages.length > prevMsgCountRef.current && autoPlayEnabled) {
+      const last = messages[messages.length - 1];
+      if (last?.role === 'assistant') {
+        const text = typeof last.content === 'string' ? last.content : '';
+        playText(text.slice(0, 5000));
+      }
+    }
+    prevMsgCountRef.current = messages.length;
+  }, [messages, autoPlayEnabled, playText]);
+
   // ─── Focus input on open ───
   useEffect(() => {
     if (isOpen) setTimeout(() => inputRef.current?.focus(), 150);
@@ -185,6 +201,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (input.trim() && !isLoading) {
+      stopPlaying();
       onSendMessage(input.trim());
       setInput('');
       if (inputRef.current) inputRef.current.style.height = 'auto';
@@ -506,8 +523,9 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
            INPUT AREA
         ═══════════════════════════════════════════════════════════════════════ */}
         <div className="px-4 py-3 border-t border-white/[0.06] flex-shrink-0 bg-[#0a0a12]/80 backdrop-blur-xl">
-          {/* Web search toggle — discret */}
+          {/* Web search toggle + TTS toggle */}
           <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
             <button
               onClick={() => {
                 if (isFree) onUpgrade?.();
@@ -528,6 +546,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                 <span className="text-[10px] opacity-60">{quotaRemaining}/{quotaLimit}</span>
               )}
             </button>
+            <TTSToggle />
+            </div>
 
             {onClearHistory && messages.length > 0 && (
               <button

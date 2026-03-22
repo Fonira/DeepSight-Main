@@ -17,6 +17,7 @@ import { useAuth } from "./hooks/useAuth";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { LoadingWordProvider } from "./contexts/LoadingWordContext";
+import { TTSProvider } from "./contexts/TTSContext";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { SkipLink } from "./components/SkipLink";
 
@@ -150,10 +151,10 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo);
     
-    // Reporter à Sentry si disponible
-    if (typeof window !== 'undefined' && (window as any).Sentry) {
-      (window as any).Sentry.captureException(error, { extra: errorInfo });
-    }
+    // Reporter à Sentry
+    import('./lib/sentry').then(({ captureError }) => {
+      captureError(error, { componentStack: errorInfo.componentStack });
+    });
   }
 
   render() {
@@ -400,6 +401,7 @@ const AppRoutes = () => {
     <LanguageProvider>
       <LoadingWordProvider>
         <AuthProvider value={auth}>
+          <TTSProvider>
           <Router>
             {/* ♿ Skip Link pour l'accessibilité */}
             <SkipLink targetId="main-content" />
@@ -650,6 +652,7 @@ const AppRoutes = () => {
               <CookieBanner />
             </ErrorBoundary>
             </Router>
+          </TTSProvider>
           </AuthProvider>
         </LoadingWordProvider>
       </LanguageProvider>
