@@ -319,7 +319,8 @@ export const SettingsScreen: React.FC = () => {
     {
       title: t.settings.about,
       data: [
-        { key: 'version', icon: 'information-circle-outline', label: t.settings.version, value: Constants.expoConfig?.version || '1.0.0', type: 'info' },
+        { key: 'about', icon: 'information-circle-outline', label: 'À propos', type: 'navigate', onPress: () => navigation.navigate('About' as any) },
+        { key: 'version', icon: 'code-slash-outline', label: t.settings.version, value: Constants.expoConfig?.version || '1.0.0', type: 'info' },
       ],
     },
   ];

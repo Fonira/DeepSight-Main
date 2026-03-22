@@ -316,6 +316,9 @@ export type RootStackParamList = {
 
   // Playlist detail
   PlaylistDetail: { playlistId: string };
+
+  // About
+  About: undefined;
 };
 
 export type MainTabParamList = {

@@ -18,3 +18,4 @@ export { StudyScreen } from './StudyScreen';
 export { ContactScreen } from './ContactScreen';
 export { AnalyticsScreen } from './AnalyticsScreen';
 export { PlaylistDetailScreen } from './PlaylistDetailScreen';
+export { AboutScreen } from './AboutScreen';

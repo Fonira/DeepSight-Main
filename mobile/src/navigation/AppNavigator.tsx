@@ -45,6 +45,7 @@ import {
   ContactScreen,
   AnalyticsScreen,
   PlaylistDetailScreen,
+  AboutScreen,
 } from '../screens';
 import type { RootStackParamList, MainTabParamList } from '../types';
 
@@ -136,6 +137,7 @@ const MainStack: React.FC = () => {
         component={PlaylistDetailScreen}
         options={{ animation: 'slide_from_right' }}
       />
+      <Stack.Screen name="About" component={AboutScreen} />
     </Stack.Navigator>
   );
 };
@@ -175,6 +177,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       Contact: 'contact',
       StudyTools: 'study/:summaryId',
       Analytics: 'analytics',
+      About: 'about',
     },
   },
 };
