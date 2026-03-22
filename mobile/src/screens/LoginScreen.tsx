@@ -204,7 +204,7 @@ export const LoginScreen: React.FC = () => {
               <Text style={[styles.logoSight, { color: colors.textPrimary }]}>Sight</Text>
             </View>
             <Text style={styles.tagline}>
-              Ne regardez plus vos vidéos. Analysez-les.
+              Ne subissez plus vos vidéos — interrogez-les.
             </Text>
           </Animated.View>
 

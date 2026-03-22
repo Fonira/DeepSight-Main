@@ -654,11 +654,11 @@ const LandingPage: React.FC = () => {
             className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-[-0.02em] leading-[1.08] mb-6"
           >
             <span className="text-text-primary">
-              {language === 'fr' ? 'Ne regardez plus vos vidéos.' : 'Stop watching your videos.'}
+              {language === 'fr' ? 'Ne subissez plus vos vidéos' : 'Stop enduring your videos'}
             </span>
             <br />
             <span className="bg-gradient-to-r from-accent-primary via-violet-400 to-cyan-400 bg-clip-text text-transparent">
-              {language === 'fr' ? 'Analysez-les.' : 'Analyze them.'}
+              {language === 'fr' ? '— interrogez-les.' : '— question them.'}
             </span>
           </motion.h1>
 
@@ -670,8 +670,8 @@ const LandingPage: React.FC = () => {
             className="text-base sm:text-lg text-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed"
           >
             {language === 'fr'
-              ? 'Deep Sight extrait, structure et vérifie le contenu de vos vidéos YouTube et TikTok. Synthèses pondérées, fact-checking sourcé, chat contextuel. L\'outil conçu pour ceux qui pensent avant de partager.'
-              : 'Deep Sight extracts, structures and verifies your YouTube and TikTok video content. Weighted summaries, sourced fact-checking, contextual chat. The tool built for those who think before they share.'}
+              ? "DeepSight analyse YouTube et TikTok, vérifie chaque affirmation sur le web et répond à vos questions. Du short au cours de 3 heures, allez plus loin — ouvrez vos horizons."
+              : "DeepSight analyzes YouTube and TikTok, verifies every claim on the web and answers your questions. From shorts to 3-hour lectures, go further — broaden your horizons."}
           </motion.p>
 
           {/* Guest Demo Input / CTA */}

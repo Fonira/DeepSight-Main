@@ -41,7 +41,7 @@ Chaque requête API porte le header : `?platform=web|mobile|extension`
 | **Extension** | React + TypeScript + Webpack (MV3 v2.0) | dist/ | Chrome Web Store (à soumettre) |
 
 ### Communication & Positionnement
-- **Tagline** : "Ne regardez plus vos vidéos. Analysez-les."
+- **Tagline** : "Ne subissez plus vos vidéos — interrogez-les."
 - **Différenciateur** : IA 100% Française & Européenne — propulsé par Mistral AI
 - **Badge** : 🇫🇷🇪🇺 "Vos données restent en Europe"
 

@@ -104,7 +104,7 @@ const ExtensionWelcomePage = () => {
               transition={{ delay: 0.4 }}
               className="text-text-secondary text-lg sm:text-xl max-w-xl mx-auto"
             >
-              Ne regardez plus vos vidéos. <strong className="text-text-primary">Analysez-les.</strong>
+              Ne subissez plus vos vidéos — <strong className="text-text-primary">interrogez-les.</strong>
             </motion.p>
           </motion.div>
 
