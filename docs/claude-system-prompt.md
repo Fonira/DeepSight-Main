@@ -78,3 +78,143 @@ DeepSight : SaaS d'analyse IA de vidéos YouTube et TikTok.
 - **Plans** : free (0€), étudiant (2.99€), starter (5.99€), pro (12.99€)
 - **Design** : dark mode first, fond `#0a0a0f`, accents indigo/violet/cyan
 - **Conventions** : interfaces (pas types), composants fonctionnels, async/await, Pydantic v2
+
+---
+---
+
+# Guide d'installation par plateforme
+
+> Les instructions ci-dessus (sections 1 à 4) sont le contenu à installer.
+> Cette section explique OÙ et COMMENT les installer sur chaque plateforme.
+
+---
+
+## Claude Code (CLI, VS Code, JetBrains, Web)
+
+**Statut : DÉJÀ ACTIF** — rien à faire.
+
+Les règles sont dans `.claude/CLAUDE.md` et les skills dans `.claude/commands/`.
+Les slash commands `/do`, `/clarify`, `/powershell` sont disponibles automatiquement.
+
+---
+
+## Claude.ai (navigateur — chat avec Projects)
+
+**Étapes :**
+
+1. Aller sur **claude.ai** → cliquer sur le nom du Project (ou en créer un nouveau)
+2. Dans le panneau latéral, cliquer sur **"Set custom instructions"** (icone crayon)
+3. **Copier-coller tout le contenu des sections 1 à 4** (de "Tu es un assistant d'exécution" jusqu'à la fin de la section 4)
+4. Cliquer **Save**
+
+**Résultat** : Claude appliquera les règles d'autonomie, de questionnement et de PowerShell dans toutes les conversations de ce Project.
+
+**Note** : Les slash commands `/do`, `/clarify`, `/powershell` ne fonctionnent pas ici. Mais tu peux écrire en texte libre :
+- "Mode /do : [ta demande]" → Claude comprendra qu'il doit exécuter sans proposer
+- "Mode /clarify : [ta demande]" → Claude posera des questions structurées
+- "Écris-moi du PowerShell pour [tâche]" → les règles de syntaxe s'appliqueront
+
+---
+
+## Claude Desktop (app macOS / Windows)
+
+**Étapes :**
+
+1. Ouvrir **Claude Desktop**
+2. Créer un **nouveau Project** (ou ouvrir un existant)
+3. Cliquer sur l'icone **"Add content"** dans le panneau Project Knowledge
+4. Choisir **"Add text content"**
+5. **Copier-coller tout le contenu des sections 1 à 4**
+6. Nommer le fichier : `DeepSight Instructions`
+7. Sauvegarder
+
+**Alternative** : glisser-déposer ce fichier (`claude-system-prompt.md`) directement dans le Project Knowledge.
+
+**Résultat** : même effet que sur claude.ai — les règles s'appliquent à toutes les conversations du Project.
+
+---
+
+## API Anthropic (SDK Python / TypeScript)
+
+**Étapes :**
+
+Passer le contenu des sections 1 à 4 comme paramètre `system` dans l'appel API :
+
+```python
+# Python SDK
+import anthropic
+
+client = anthropic.Anthropic()
+
+# Lire le fichier d'instructions
+with open("docs/claude-system-prompt.md") as f:
+    # Extraire sections 1-4 (ignorer le header et ce guide)
+    content = f.read()
+    # Couper avant "# Guide d'installation"
+    system_prompt = content.split("---\n---")[0].strip()
+
+message = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=4096,
+    system=system_prompt,
+    messages=[{"role": "user", "content": "Ta demande ici"}]
+)
+```
+
+```typescript
+// TypeScript SDK
+import Anthropic from '@anthropic-ai/sdk';
+import { readFileSync } from 'fs';
+
+const client = new Anthropic();
+
+const fullContent = readFileSync('docs/claude-system-prompt.md', 'utf-8');
+const systemPrompt = fullContent.split('---\n---')[0].trim();
+
+const message = await client.messages.create({
+  model: 'claude-sonnet-4-20250514',
+  max_tokens: 4096,
+  system: systemPrompt,
+  messages: [{ role: 'user', content: 'Ta demande ici' }],
+});
+```
+
+**Note** : le séparateur `---\n---` sépare les instructions du guide d'installation. Le code ci-dessus n'envoie que les instructions.
+
+---
+
+## Claude Mobile (iOS / Android)
+
+**Étapes :**
+
+1. Ouvrir l'app Claude sur ton téléphone
+2. Aller dans un **Project** (même fonctionnement que claude.ai)
+3. Ajouter les instructions dans **Custom Instructions** du Project
+4. Copier-coller les sections 1 à 4
+
+**Astuce** : crée le Project sur claude.ai (navigateur, plus facile à coller du texte long), il se synchronisera automatiquement sur l'app mobile.
+
+---
+
+## Cursor IDE
+
+**Statut : PARTIELLEMENT ACTIF**
+
+- Les règles PowerShell sont dans `.cursor/rules/powershell.mdc` (auto-apply sur `.ps1/.bat/.cmd`)
+- Les règles globales sont dans `.cursor/rules/deepsight-global.mdc`
+- Les slash commands `/do`, `/clarify`, `/powershell` ne fonctionnent **pas** dans Cursor
+
+Pour les règles d'autonomie et de questionnement dans Cursor, tu peux créer un fichier `.cursor/rules/claude-behavior.mdc` avec les sections 1 et 2.
+
+---
+
+## Récapitulatif
+
+| Plateforme | Skills slash | Règles comportementales | Action requise |
+|---|---|---|---|
+| Claude Code (CLI/IDE/Web) | `/do` `/clarify` `/powershell` | Automatique | Aucune |
+| Claude.ai (Projects) | Texte libre | Custom Instructions | Copier sections 1-4 |
+| Claude Desktop | Texte libre | Project Knowledge | Copier ou glisser le fichier |
+| Claude Mobile | Texte libre | Custom Instructions | Copier (ou sync depuis claude.ai) |
+| API Anthropic | N/A | System prompt | Charger le fichier en code |
+| Cursor | N/A | `.cursor/rules/` | Déjà en place pour PowerShell |
