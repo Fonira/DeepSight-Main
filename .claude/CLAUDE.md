@@ -1,107 +1,67 @@
-# DeepSight — Configuration Claude Code & Cowork
-*Mis à jour : 20 Mars 2026*
+# DeepSight — Claude Code Configuration
+*Mis à jour : 22 Mars 2026*
 
-## Stack Technique
-- **Backend**: FastAPI + Python 3.11 (async, 4 workers Uvicorn)
-- **Frontend**: React 18 + TypeScript + Vite (v7.0.1)
-- **Mobile**: Expo SDK 54 + React Native 0.81 + React 19
-- **Extension**: React + TypeScript + Webpack (Manifest V3 v2.0)
-- **DB**: PostgreSQL 17 + Redis 7 (Docker Hetzner)
-- **IA**: Mistral AI (analyse) + Perplexity (enrichissement chat) + Brave Search (fact-check)
-- **Tests**: Vitest + Playwright (frontend), Jest + Testing Library (mobile), Pytest (backend)
+> Architecture, stack, conventions et API : voir `/CLAUDE.md` (root).
+> Ce fichier contient uniquement les règles spécifiques à Claude Code.
 
-## Commandes essentielles
+---
 
-### Backend
-```bash
-cd backend && pytest              # 526 tests
-cd backend && pytest -x           # Stopper au premier échec
-cd backend && pytest --cov        # Avec couverture
-cd backend/src && uvicorn main:app --reload --port 8000
-```
+## Autonomie d'exécution
 
-### Frontend
-```bash
-cd frontend && npm run typecheck  # tsc --noEmit
-cd frontend && npm run lint       # ESLint
-cd frontend && npm run build      # Build production (Vite)
-cd frontend && npm run dev        # Dev server localhost:5173
-cd frontend && npm run test       # Vitest (400 tests)
-```
+- **TOUJOURS exécuter** quand les outils le permettent — ne jamais juste expliquer
+- Si faisable avec Edit, Bash, Write → **le faire directement**
+- Ne jamais dire "vous pouvez faire X" ou "il faudrait Y" — fais-le
+- "fais-le toi-même" = signal que tu aurais dû agir dès le départ
+- Enchaîner les étapes sans validation intermédiaire (sauf actions destructives/push)
 
-### Mobile
-```bash
-cd mobile && npm run typecheck    # tsc --noEmit
-cd mobile && npm test             # Jest (178 tests)
-cd mobile && npm test -- --watch  # Mode watch
-cd mobile && npx expo start       # Dev server
-```
+## Questionnement proactif
 
-### Extension
-```bash
-cd extension && npm run build     # Webpack → dist/
-cd extension && npm run dev       # Watch mode
-cd extension && npm run typecheck # tsc --noEmit
-```
+- **TOUJOURS poser des questions** quand les exigences sont ambiguës ou multi-interprétables
+- Utiliser **AskUserQuestion** avec des choix multiples pour clarifier AVANT de coder
+- Ne jamais deviner le scope ou le comportement attendu — demander
+- Questions précises avec options concrètes, jamais de questions ouvertes vagues
+- Minimum 2 questions sur les tâches complexes
 
-### Déploiement Production
-```bash
-# Frontend → Vercel (auto sur git push main)
-cd frontend && git push origin main
+## PowerShell — syntaxe stricte
 
-# Backend → Hetzner VPS
-ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
-  "cd /opt/deepsight/repo && git pull && \
-   docker build -t deepsight-backend:latest -f deploy/hetzner/Dockerfile ./backend && \
-   docker stop repo-backend-1 && docker rm repo-backend-1 && \
-   docker run -d --name repo-backend-1 --network repo_deepsight \
-     --env-file /opt/deepsight/repo/.env.production \
-     -e PORT=8080 -e ENV=production \
-     --restart unless-stopped \
-     --health-cmd 'curl -f http://localhost:8080/health || exit 1' \
-     --health-interval 30s --health-timeout 10s --health-retries 3 \
-     deepsight-backend:latest"
-
-# Mobile → EAS
-cd mobile && eas update           # OTA update
-cd mobile && eas build --platform all --profile production  # Native build
-```
-
-## Workflow TDD Strict
-
-### Cycle obligatoire
-1. **RED** : Écrire un test qui ÉCHOUE
-2. **GREEN** : Implémenter le code MINIMAL pour passer
-3. **REFACTOR** : Améliorer sans casser les tests
-
-### Règles absolues
-- Ne JAMAIS modifier un test pour le faire passer
-- Couverture minimum : 80%
-- Toujours exécuter les tests après modification
-- Un commit = tests verts
-
-## Autonomie & Clarification
-
-### Autonomie d'exécution
-- **TOUJOURS exécuter** quand les outils le permettent — ne jamais juste expliquer ce qu'il faudrait faire
-- Si une action est faisable avec les outils disponibles (Edit, Bash, Write, etc.) → **la faire directement**
-- Ne jamais répondre "vous pouvez faire X" ou "il faudrait Y" si Claude peut le faire lui-même
-- Si l'utilisateur dit "fais-le toi-même" → c'est un signal que tu aurais dû agir dès le départ
-
-### Questionnement proactif
-- **TOUJOURS poser des questions** quand les exigences sont ambiguës, incomplètes ou multi-interprétables
-- Utiliser AskUserQuestion avec des choix multiples pour clarifier AVANT de coder
-- Ne jamais deviner le scope, le comportement attendu ou les contraintes — demander
-- Poser des questions précises avec des options concrètes, pas des questions ouvertes vagues
-
-### PowerShell — syntaxe stricte
-- **JAMAIS** utiliser `&&` pour chaîner → utiliser `;` (PS 5.1 par défaut)
-- **JAMAIS** utiliser `==`, `!=`, `&&`, `||` → utiliser `-eq`, `-ne`, `-and`, `-or`
-- **JAMAIS** utiliser `curl` sans `.exe` → écrire `curl.exe` (sinon c'est l'alias Invoke-WebRequest)
-- **TOUJOURS** guillemeter les chemins avec espaces
-- **TOUJOURS** utiliser `-ErrorAction Stop` dans les try/catch
+- `;` pour chaîner (pas `&&`) — cible PS 5.1 par défaut
+- `-eq`, `-ne`, `-and`, `-or` (pas `==`, `!=`, `&&`, `||`)
+- `curl.exe` (pas `curl`) pour le vrai curl Windows
+- Guillemets sur les chemins avec espaces
+- `-ErrorAction Stop` dans les try/catch
 - Backtick (`` ` ``) pour échapper, pas backslash
-- En cas de doute sur la version → cibler PS 5.1 (le plus répandu)
+- Voir `/powershell` pour la référence complète
+
+## Skills disponibles
+
+| Skill | Usage |
+|-------|-------|
+| `/do <tâche>` | Mode exécution autonome — fait tout sans proposer |
+| `/clarify <tâche>` | Questionnement structuré avant implémentation |
+| `/powershell <tâche>` | Commandes PowerShell avec syntaxe garantie |
+| `/tdd <feature>` | Workflow TDD Red-Green-Refactor |
+| `/test-component <composant>` | Génère des tests complets |
+| `/debug <erreur>` | Debug approfondi avec ultrathink |
+| `/validate` | Validation complète avant commit/PR |
+| `/fix-issue <issue>` | Corrige une issue GitHub |
+| `/build-ios` | Build iOS avec validation préalable |
+
+## Commandes rapides
+
+```bash
+# Backend
+cd backend && pytest                    # 526 tests
+cd backend/src && uvicorn main:app --reload --port 8000
+
+# Frontend
+cd frontend && npm run typecheck && npm run lint && npm run test
+
+# Mobile
+cd mobile && npm run typecheck && npm test
+
+# Extension
+cd extension && npm run build && npm run typecheck
+```
 
 ## Modes de réflexion
 - `think` : Modifications simples
@@ -109,142 +69,15 @@ cd mobile && eas build --platform all --profile production  # Native build
 - `think harder` : Refactoring majeur
 - `ultrathink` : Architecture, décisions critiques
 
-## Conventions de code
-
-### TypeScript/React (Web)
-```typescript
-// ✅ Imports destructurés
-import { useState, useCallback } from 'react';
-
-// ✅ Interfaces (pas types) pour les objets
-interface Props {
-  title: string;
-  onPress: () => void;
-}
-
-// ✅ Composants fonctionnels uniquement
-export const MyComponent: React.FC<Props> = ({ title, onPress }) => { ... };
-
-// ✅ Zustand stores avec Immer
-const useStore = create<State>()(devtools(persist(immer((set) => ({ ... })))));
-
-// ✅ TanStack Query pour data fetching
-const { data } = useQuery({ queryKey: ['key'], queryFn: () => api.fetch() });
-```
-
-### TypeScript/React Native (Mobile)
-```typescript
-// ✅ Imports destructurés
-import { View, Text, StyleSheet } from 'react-native';
-
-// ✅ Interfaces (pas types) pour les objets
-interface Props {
-  title: string;
-  onPress: () => void;
-}
-
-// ✅ Composants fonctionnels uniquement
-export const MyComponent: React.FC<Props> = ({ title, onPress }) => { ... };
-
-// ✅ Styles en bas du fichier
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-});
-
-// ✅ Expo Router pour navigation
-import { useRouter } from 'expo-router';
-router.push({ pathname: '/(tabs)/analysis/[id]', params: { id: '123' } });
-```
-
-### Python/FastAPI (Backend)
-```python
-# ✅ Toujours async
-async def get_data(db: AsyncSession) -> list[Model]:
-    result = await db.execute(select(Model))
-    return result.scalars().all()
-
-# ✅ Type hints obligatoires
-def process(items: list[str]) -> dict[str, int]:
-    pass
-
-# ✅ Pas de print(), utiliser logger
-from core.logging import logger
-logger.info("Message structuré", extra={"key": "value"})
-
-# ✅ Pydantic v2 pour validation
-class VideoRequest(BaseModel):
-    url: str
-    platform: Literal["web", "mobile", "extension"] = "web"
-```
-
-## Patterns de test
-
-### React Native / Jest (Mobile)
-```typescript
-const getDefaultProps = (overrides?: Partial<Props>): Props => ({
-  title: 'Default',
-  onPress: jest.fn(),
-  isLoading: false,
-  ...overrides,
-});
-
-describe('Component', () => {
-  it('should handle action', () => {
-    const props = getDefaultProps({ title: 'Test' });
-    render(<Component {...props} />);
-    fireEvent.press(screen.getByText('Test'));
-    expect(props.onPress).toHaveBeenCalledTimes(1);
-  });
-});
-```
-
-### Frontend / Vitest
-```typescript
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
-
-describe('Component', () => {
-  it('renders correctly', () => {
-    render(<Component />);
-    expect(screen.getByText('Title')).toBeInTheDocument();
-  });
-});
-```
-
-### Edge cases obligatoires
-1. États vides (null, undefined, [])
-2. Valeurs limites (0, -1, MAX_INT)
-3. États d'erreur (network, API, validation)
-4. États de chargement
-5. Interactions rapides (double-tap, spam)
-
 ## Workflow Git
 ```bash
-# Feature branch
 git checkout -b feature/nom-feature
-
-# Commits atomiques
 git add <fichiers spécifiques>
 git commit -m "type(scope): description"
-
 # Types: feat, fix, refactor, test, docs, chore
 ```
 
-## Sécurité
-- Jamais de secrets en dur → tout via `core/config.py` (backend) ou `.env` (frontend)
-- Valider tous les inputs utilisateur (Pydantic backend, zod/TS frontend)
-- Échapper les outputs (XSS) — `sanitize.ts` dans extension
-- Utiliser les dépendances du projet, pas d'imports externes sans validation
-
-## Debug Protocol
-1. Lire le message d'erreur COMPLET
-2. Identifier le fichier et la ligne
-3. Comprendre le contexte (stack trace)
-4. Formuler une hypothèse
-5. Tester la correction
-6. Vérifier que les tests passent
-
-## 🔴 Réflexe automatique sur erreur signalée
+## Debug — réflexe sur erreur signalée
 ```bash
 # Logs backend
 ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
@@ -253,28 +86,4 @@ ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
 # Health check
 ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
   "docker exec repo-backend-1 curl -s http://localhost:8080/health"
-
-# Status containers
-ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
-  "docker ps --format '{{.Names}} {{.Status}}'"
 ```
-
-## Architecture clé
-
-### 14 Routers Backend
-auth, videos, chat, billing, playlists, exports, history, search, academic, admin, analytics, batch, notifications, tournesol, study
-
-### 23 Tables DB
-User, Summary, RefreshToken, ChatMessage, ChatQuota, PlaylistAnalysis, PlaylistChatMessage, VideoChunk, VideoComparison, AcademicPaper, SharedAnalysis, TranscriptCache, TranscriptCacheChunk, TranscriptEmbedding, DailyQuota, CreditTransaction, WebSearchUsage, TaskStatus, ApiUsage, AnalyticsEvent, PushToken, AdminLog, ApiStatus
-
-### Plans tarifaires
-- **free** (0€) → 5 analyses/mois, 250 crédits, 15min max
-- **etudiant** (2.99€) → 20 analyses, 2000 crédits, flashcards
-- **starter** (5.99€) → 50 analyses, 3000 crédits, web search
-- **pro** (12.99€) → 200 analyses, 15000 crédits, playlists, PDF export
-
-### Transcript extraction (7 méthodes)
-Supadata → youtube-transcript-api → Invidious → Piped → yt-dlp subs → yt-dlp auto → Audio STT (Groq/OpenAI/Deepgram/AssemblyAI)
-
-# currentDate
-Today's date is 2026-03-20.

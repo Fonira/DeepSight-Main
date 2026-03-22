@@ -5,7 +5,7 @@ alwaysApply: true
 
 # DeepSight — Règles globales
 
-**DeepSight** : SaaS d’analyse de vidéos YouTube par IA (épistémologie bayésienne). Backend FastAPI (Railway), Frontend React+Vite (Vercel), Mobile Expo (EAS).
+**DeepSight** : SaaS d’analyse de vidéos YouTube par IA (épistémologie bayésienne). Backend FastAPI (Hetzner VPS), Frontend React+Vite (Vercel), Mobile Expo (EAS).
 
 ## Structure
 

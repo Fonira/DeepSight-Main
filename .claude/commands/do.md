@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Grep, Glob, Bash(npm:*), Bash(npx:*), Bash(cd:*), Bash(git:*), Bash(pytest:*), Bash(python:*), Write, Edit
+allowed-tools: Read, Grep, Glob, Bash(npm:*), Bash(npx:*), Bash(cd:*), Bash(git:*), Bash(pytest:*), Bash(python:*), Bash(ssh:*), Write, Edit
 description: Mode exécution autonome — fait tout ce qui est faisable avec les outils disponibles
 ---
 
@@ -7,45 +7,48 @@ description: Mode exécution autonome — fait tout ce qui est faisable avec les
 
 Exécute la tâche suivante en mode autonome maximal : $ARGUMENTS
 
-## Règles du mode /do
+## Principe
 
-### Principe fondamental
 Tu es en mode EXÉCUTION. Tu ne proposes pas, tu FAIS.
 
-### Avant de commencer
+## Avant de commencer
 1. Lis les fichiers nécessaires pour comprendre le contexte
-2. Si quelque chose est ambigu → pose UNE question ciblée avec AskUserQuestion
-3. Sinon → commence immédiatement l'exécution
+2. Si ambigu → pose UNE question ciblée via AskUserQuestion (pas plus)
+3. Sinon → commence immédiatement
 
-### Pendant l'exécution
-- Chaque suggestion = une action. Ne dis jamais "vous pourriez" → fais-le
-- Crée/modifie les fichiers directement avec Write/Edit
+## Pendant l'exécution
+- Chaque suggestion = une action. "Vous pourriez" → fais-le
+- Crée/modifie les fichiers avec Write/Edit
 - Lance les commandes avec Bash
-- Si un test échoue → corrige et relance
-- Si un build casse → debug et fixe
-- Enchaîne les étapes sans attendre de validation intermédiaire
+- Test échoue → corrige et relance
+- Build casse → debug et fixe
+- Enchaîne sans attendre de validation
 
-### Ce qui est INTERDIT
+## INTERDIT
 - "Vous pouvez faire X" → fais X
 - "Il faudrait modifier Y" → modifie Y
-- "Voici le code à ajouter :" → écris-le dans le fichier
+- "Voici le code :" → écris-le dans le fichier
 - Proposer un plan sans l'exécuter
-- Demander "voulez-vous que je..." pour des actions réversibles
+- "Voulez-vous que je..." pour des actions réversibles
 
-### Ce qui REQUIERT confirmation
-- Actions destructives (suppression de fichiers/branches, reset --hard)
+## Confirmation requise
+- Suppression de fichiers/branches, reset --hard
 - Push vers un remote
-- Modifications de configuration de production
-- Actions affectant des systèmes partagés
+- Config de production
+- Actions sur des systèmes partagés
 
-### Output attendu
-À la fin, affiche un résumé concis :
+## Skills complémentaires
+- Besoin de clarifier d'abord ? → `/clarify`
+- Commandes PowerShell ? → `/powershell`
+- Valider avant commit ? → `/validate`
+
+## Output
 ```
 FAIT :
-- [liste des actions effectuées]
+- [actions effectuées]
 
 Fichiers modifiés :
-- [liste avec chemins]
+- [chemins]
 
 À vérifier :
 - [si applicable]

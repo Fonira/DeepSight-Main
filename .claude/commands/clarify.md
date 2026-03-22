@@ -7,76 +7,49 @@ description: Questionnement structuré pour définir précisément une tâche av
 
 Analyse la demande suivante et pose toutes les questions nécessaires : $ARGUMENTS
 
-## Workflow
-
-### Phase 1 — Analyse de la demande
+## Phase 1 — Analyse
 1. Lis la demande attentivement
-2. Identifie le(s) composant(s) concernés (backend/frontend/mobile/extension)
-3. Recherche le code existant lié à la demande (Grep, Glob, Read)
+2. Identifie les composants concernés (backend/frontend/mobile/extension)
+3. Recherche le code existant lié (Grep, Glob, Read)
 
-### Phase 2 — Identification des zones d'ombre
-Pour chaque aspect de la demande, évalue :
-- Le scope est-il clair ? (quels fichiers, quels composants)
-- Le comportement attendu est-il précis ?
-- Les cas limites sont-ils définis ?
-- L'impact sur les autres plateformes est-il considéré ?
-- Les contraintes de plan (free/étudiant/starter/pro) sont-elles claires ?
-- Le style/design est-il spécifié ?
-- Les tests nécessaires sont-ils identifiés ?
+## Phase 2 — Zones d'ombre
+Évalue chaque aspect :
+- Scope clair ? (quels fichiers, quels composants)
+- Comportement attendu précis ?
+- Cas limites définis ?
+- Impact sur les autres plateformes ?
+- Contraintes de plan (free/étudiant/starter/pro) claires ?
+- Style/design spécifié ?
 
-### Phase 3 — Questions structurées
-Utilise AskUserQuestion pour poser des questions groupées (max 4 par appel) :
+## Phase 3 — Questions
+Utilise **AskUserQuestion** avec des questions groupées (max 4) :
 
-**Catégories de questions :**
+1. **Scope** : "Quelles plateformes ?" → Web / Mobile / Web+Mobile / Toutes
+2. **Comportement** : "Comment X fonctionne quand Y ?" → options concrètes
+3. **Design** : "Quel pattern UI ?" → options avec previews
+4. **Priorité** : "Quels aspects prioritaires ?" → multi-select
 
-1. **Scope** : "Quelles plateformes sont concernées ?"
-   - Options : Web uniquement / Mobile uniquement / Web + Mobile / Toutes
-
-2. **Comportement** : "Comment X doit-il fonctionner quand Y ?"
-   - Options avec descriptions claires des alternatives
-
-3. **Design** : "Quel pattern UI pour cette feature ?"
-   - Options avec previews si possible
-
-4. **Priorité** : "Quels aspects sont prioritaires ?"
-   - Multi-select activé
-
-### Phase 4 — Brief de synthèse
-Après les réponses, affiche un brief structuré :
-
+## Phase 4 — Brief
 ```
-BRIEF — [Nom de la tâche]
+BRIEF — [Tâche]
 
-Objectif : [résumé en 1 phrase]
-
-Scope :
-  - Composants : [backend/frontend/mobile/extension]
-  - Fichiers clés : [liste]
-
-Spécifications :
-  - [spec 1]
-  - [spec 2]
-
-Contraintes :
-  - [contrainte 1]
-
-Tests requis :
-  - [test 1]
-
-Hypothèses (non confirmées) :
-  - [si applicable]
+Objectif : [1 phrase]
+Scope : [composants + fichiers clés]
+Specs : [liste]
+Contraintes : [liste]
+Tests : [liste]
 ```
 
-### Phase 5 — Validation finale
-Pose une dernière question :
-"Ce brief est-il correct ? Puis-je commencer l'implémentation ?"
+## Phase 5 — Lancement
+Dernière question : "Brief correct ? Puis-je commencer ?"
 - Oui, lance-toi
 - Oui, mais ajuste [préciser]
 - Non, il manque [préciser]
 
+Puis passe en mode `/do` pour l'exécution.
+
 ## Règles
-- Poser au MINIMUM 2 questions, même si la demande semble claire
+- Minimum 2 questions, même si la demande semble claire
 - Toujours vérifier le scope (quelles plateformes)
-- Toujours demander la priorité si plusieurs sous-tâches
-- Utiliser des options concrètes, jamais des questions ouvertes inutiles
-- Les questions doivent apporter de la valeur — pas de questions évidentes
+- Options concrètes, jamais de questions ouvertes inutiles
+- Chaque question doit apporter de la valeur
