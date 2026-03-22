@@ -99,6 +99,7 @@ class _DeepSightSettings(BaseSettings):
 
     # -- Cache & Queues --
     REDIS_URL: str = ""
+    VPS_DATABASE_URL: str = ""  # PostgreSQL VPS pour cache L2 (video content cache)
     CACHE_MAX_SIZE: int = 10000
     CACHE_TTL_TRANSCRIPT: int = 86400   # 24h
     CACHE_TTL_ANALYSIS: int = 3600      # 1h
@@ -706,6 +707,7 @@ def get_elevenlabs_key() -> Optional[str]:
 
 CACHE_CONFIG = {
     "REDIS_URL": _settings.REDIS_URL,
+    "VPS_DATABASE_URL": _settings.VPS_DATABASE_URL,
     "MAX_SIZE": _settings.CACHE_MAX_SIZE,
     "TTL_TRANSCRIPT": _settings.CACHE_TTL_TRANSCRIPT,
     "TTL_ANALYSIS": _settings.CACHE_TTL_ANALYSIS,
@@ -761,6 +763,7 @@ if __name__ != "__main__":
     print(f"  Rate Limit: {RATE_LIMIT_ENABLED}", flush=True)
     print(f"  Cache: Redis={'yes' if _settings.REDIS_URL else 'no (memory fallback)'}"
           f" max_size={_settings.CACHE_MAX_SIZE}", flush=True)
+    print(f"  Video Cache L2: {'yes' if _settings.VPS_DATABASE_URL else 'no (VPS_DATABASE_URL not set)'}", flush=True)
     print(f"  Backup S3: {'yes' if _settings.AWS_ACCESS_KEY_ID else 'local-only'}"
           f" (cron={_settings.BACKUP_CRON_HOUR:02d}:{_settings.BACKUP_CRON_MINUTE:02d} UTC,"
           f" retention={_settings.BACKUP_RETENTION_DAYS}d)", flush=True)

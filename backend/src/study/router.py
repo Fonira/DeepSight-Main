@@ -86,6 +86,27 @@ async def generate_quiz(
     if not summary:
         raise HTTPException(status_code=404, detail="Résumé non trouvé")
 
+    # 💾 Check global video content cache
+    _s_platform = getattr(summary, "platform", "youtube") or "youtube"
+    _s_vid = getattr(summary, "video_id", None)
+    _s_lang = summary.lang or "fr"
+    try:
+        from main import get_video_cache
+        _vcache = get_video_cache()
+        if _vcache is not None and _s_vid:
+            _cached = await _vcache.get_studio_content(_s_platform, _s_vid, "quiz", _s_lang)
+            if _cached and _cached.get("quiz"):
+                print(f"💾 [STUDIO CACHE HIT] quiz for {_s_platform}/{_s_vid}", flush=True)
+                return QuizResponse(
+                    success=True,
+                    summary_id=summary_id,
+                    quiz=[QuizQuestion(**q) for q in _cached["quiz"]],
+                    title=_cached.get("title", summary.video_title or "Quiz"),
+                    difficulty=_cached.get("difficulty", "standard"),
+                )
+    except Exception:
+        pass
+
     # Vérifier les crédits
     if current_user.credits < 1:
         raise HTTPException(status_code=402, detail="Crédits insuffisants")
@@ -127,6 +148,18 @@ async def generate_quiz(
                         explanation=q.get("explanation", "")
                     ))
 
+        # 💾 Cache the generated quiz
+        if quiz_questions and _s_vid:
+            try:
+                if _vcache is not None:
+                    await _vcache.set_studio_content(_s_platform, _s_vid, "quiz", _s_lang, {
+                        "quiz": [q.model_dump() for q in quiz_questions],
+                        "title": summary.video_title or "Quiz",
+                        "difficulty": "standard",
+                    })
+            except Exception:
+                pass
+
         return QuizResponse(
             success=True,
             summary_id=summary_id,
@@ -161,6 +194,28 @@ async def generate_mindmap(
     if not summary:
         raise HTTPException(status_code=404, detail="Résumé non trouvé")
 
+    # 💾 Check global video content cache
+    _s_platform = getattr(summary, "platform", "youtube") or "youtube"
+    _s_vid = getattr(summary, "video_id", None)
+    _s_lang = summary.lang or "fr"
+    _vcache = None
+    try:
+        from main import get_video_cache
+        _vcache = get_video_cache()
+        if _vcache is not None and _s_vid:
+            _cached = await _vcache.get_studio_content(_s_platform, _s_vid, "mindmap", _s_lang)
+            if _cached and _cached.get("mermaid_code"):
+                print(f"💾 [STUDIO CACHE HIT] mindmap for {_s_platform}/{_s_vid}", flush=True)
+                return MindmapResponse(
+                    success=True,
+                    summary_id=summary_id,
+                    mermaid_code=_cached["mermaid_code"],
+                    concepts=_cached.get("concepts", []),
+                    title=_cached.get("title", summary.video_title or "Mindmap"),
+                )
+    except Exception:
+        pass
+
     # Vérifier les crédits
     if current_user.credits < 1:
         raise HTTPException(status_code=402, detail="Crédits insuffisants")
@@ -183,6 +238,18 @@ async def generate_mindmap(
         if concept_map:
             mermaid_code = concept_map.get("mermaid", concept_map.get("code", ""))
             concepts = concept_map.get("concepts", [])
+
+        # 💾 Cache the generated mindmap
+        if mermaid_code and _s_vid:
+            try:
+                if _vcache is not None:
+                    await _vcache.set_studio_content(_s_platform, _s_vid, "mindmap", _s_lang, {
+                        "mermaid_code": mermaid_code,
+                        "concepts": concepts,
+                        "title": summary.video_title or "Mindmap",
+                    })
+            except Exception:
+                pass
 
         return MindmapResponse(
             success=True,
@@ -217,6 +284,27 @@ async def generate_flashcards(
     summary = await get_summary_by_id(session, summary_id, current_user.id)
     if not summary:
         raise HTTPException(status_code=404, detail="Résumé non trouvé")
+
+    # 💾 Check global video content cache
+    _s_platform = getattr(summary, "platform", "youtube") or "youtube"
+    _s_vid = getattr(summary, "video_id", None)
+    _s_lang = summary.lang or "fr"
+    _vcache = None
+    try:
+        from main import get_video_cache
+        _vcache = get_video_cache()
+        if _vcache is not None and _s_vid:
+            _cached = await _vcache.get_studio_content(_s_platform, _s_vid, "flashcards", _s_lang)
+            if _cached and _cached.get("flashcards"):
+                print(f"💾 [STUDIO CACHE HIT] flashcards for {_s_platform}/{_s_vid}", flush=True)
+                return FlashcardsResponse(
+                    success=True,
+                    summary_id=summary_id,
+                    flashcards=[FlashcardItem(**fc) for fc in _cached["flashcards"]],
+                    title=_cached.get("title", summary.video_title or "Flashcards"),
+                )
+    except Exception:
+        pass
 
     # Vérifier les crédits
     if current_user.credits < 1:
@@ -272,6 +360,17 @@ async def generate_flashcards(
                             back=definition,
                             category="Définitions"
                         ))
+
+        # 💾 Cache the generated flashcards
+        if flashcards and _s_vid:
+            try:
+                if _vcache is not None:
+                    await _vcache.set_studio_content(_s_platform, _s_vid, "flashcards", _s_lang, {
+                        "flashcards": [fc.model_dump() for fc in flashcards],
+                        "title": summary.video_title or "Flashcards",
+                    })
+            except Exception:
+                pass
 
         return FlashcardsResponse(
             success=True,

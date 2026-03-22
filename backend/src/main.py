@@ -262,6 +262,23 @@ except ImportError as e:
     HEALTH_V1_ROUTER_AVAILABLE = False
     print(f"⚠️ Health v1 router not available: {e}", flush=True)
 
+# 💾 Video Content Cache (L1 Redis + L2 PostgreSQL VPS)
+try:
+    from services.video_content_cache import VideoContentCacheService
+    from api.v1.cache import router as cache_router, set_cache_service
+    VIDEO_CACHE_AVAILABLE = True
+except ImportError as e:
+    VIDEO_CACHE_AVAILABLE = False
+    print(f"⚠️ Video content cache not available: {e}", flush=True)
+
+# Global video cache instance
+_video_cache: "VideoContentCacheService | None" = None
+
+
+def get_video_cache():
+    """Getter pour le service de cache vidéo global."""
+    return _video_cache
+
 VERSION = "3.8.1"  # Phase 4.1: Analytics, Store Review, Push i18n
 APP_NAME = "Deep Sight API"
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
@@ -407,6 +424,27 @@ async def initialize_database_background():
         except Exception as eq_err:
             logger.warning(f"Email queue init failed (non-blocking): {eq_err}")
 
+        # Étape 6: Initialiser le Video Content Cache (L1 Redis + L2 PostgreSQL VPS)
+        global _video_cache
+        if VIDEO_CACHE_AVAILABLE:
+            try:
+                from core.config import CACHE_CONFIG
+                redis_url = CACHE_CONFIG.get("REDIS_URL", "")
+                vps_db_url = CACHE_CONFIG.get("VPS_DATABASE_URL", "")
+                if redis_url and vps_db_url:
+                    _video_cache = VideoContentCacheService(
+                        redis_url=redis_url,
+                        vps_database_url=vps_db_url,
+                    )
+                    await _video_cache.initialize()
+                    set_cache_service(_video_cache)
+                    logger.info("Video content cache initialized (L1=Redis, L2=PostgreSQL VPS)")
+                else:
+                    logger.info("Video content cache disabled (missing REDIS_URL or VPS_DATABASE_URL)")
+            except Exception as vc_err:
+                logger.warning(f"Video content cache init failed (non-blocking): {vc_err}")
+                _video_cache = None
+
         # Marquer l'app comme prête
         _app_state["ready"] = True
         logger.info("🟢 Application fully ready to serve requests")
@@ -543,6 +581,13 @@ async def lifespan(app: FastAPI):
         logger.info("Email queue stopped")
     except Exception:
         pass
+    # Close video content cache
+    if _video_cache is not None:
+        try:
+            await _video_cache.close()
+            logger.info("Video content cache closed")
+        except Exception:
+            pass
     await close_db()
     logger.info("Application shutdown")
 
@@ -708,6 +753,11 @@ if COMPARISON_ROUTER_AVAILABLE:
 if HEALTH_V1_ROUTER_AVAILABLE:
     app.include_router(health_v1_router, prefix="/api/v1/health", tags=["Health Check"])
     print("🩺 Health v1 router loaded (GET /api/v1/health, GET /api/v1/health/deep)", flush=True)
+
+# 💾 Video Content Cache router (cache status & stats)
+if VIDEO_CACHE_AVAILABLE:
+    app.include_router(cache_router, tags=["Video Cache"])
+    print("💾 Video cache router loaded (GET /api/v1/cache/video/{platform}/{video_id}, GET /api/v1/cache/stats)", flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE

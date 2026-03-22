@@ -302,6 +302,21 @@ async def health_deep(secret: str = Query(default="")):
         else:
             services[name] = result
 
+    # Video Content Cache (L1 Redis + L2 PostgreSQL VPS)
+    try:
+        from main import get_video_cache
+        vcache = get_video_cache()
+        if vcache is not None:
+            health = vcache.is_healthy
+            services["video_cache_redis"] = {
+                "status": "ok" if health.get("l1_redis") else "degraded",
+            }
+            services["video_cache_postgres"] = {
+                "status": "ok" if health.get("l2_postgres") else "degraded",
+            }
+    except Exception:
+        pass  # Cache not available, skip silently
+
     # Determine overall status
     all_ok = all(s.get("status") == "ok" for s in services.values())
     critical_down = any(

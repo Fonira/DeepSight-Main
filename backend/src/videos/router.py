@@ -662,7 +662,64 @@ async def analyze_video(
         })
     
     print(f"🎬 Video ID extracted: {video_id}, cost: {credit_cost} credits", flush=True)
-    
+
+    # ═══════════════════════════════════════════════════════════════════════════════
+    # 💾 GLOBAL VIDEO CONTENT CACHE — Cross-user L1 Redis / L2 PostgreSQL VPS
+    # ═══════════════════════════════════════════════════════════════════════════════
+    if not request.force_refresh:
+        try:
+            from main import get_video_cache
+            _vcache = get_video_cache()
+            if _vcache is not None:
+                _analysis_lang = request.lang or "fr"
+                _cached = await _vcache.get_analysis(platform, video_id, request.mode, _analysis_lang)
+                if _cached and _cached.get("summary_content"):
+                    # Sauvegarder dans l'historique utilisateur (gratuit, source=cache)
+                    _cache_summary_id = await save_summary(
+                        session=session,
+                        user_id=current_user.id,
+                        video_id=video_id,
+                        video_title=_cached.get("video_title", "Unknown"),
+                        video_channel=_cached.get("video_channel", "Unknown"),
+                        video_duration=_cached.get("video_duration", 0),
+                        video_url=request.url,
+                        thumbnail_url=_cached.get("thumbnail_url", ""),
+                        category=_cached.get("category", "general"),
+                        category_confidence=_cached.get("category_confidence", 0.5),
+                        lang=_cached.get("lang", _analysis_lang),
+                        mode=_cached.get("mode", request.mode),
+                        model_used=_cached.get("model_used", "cache"),
+                        summary_content=_cached["summary_content"],
+                        transcript_context=_cached.get("transcript_context", ""),
+                        video_upload_date=_cached.get("video_upload_date"),
+                        entities_extracted=_cached.get("entities_extracted"),
+                        reliability_score=_cached.get("reliability_score", 0),
+                        enrichment_data=_cached.get("enrichment_data"),
+                        platform=platform,
+                    )
+                    try:
+                        from core.plan_limits import increment_daily_usage
+                        await increment_daily_usage(session, current_user.id)
+                    except Exception:
+                        pass
+                    print(f"💾 [GLOBAL CACHE HIT] {platform}/{video_id} → summary_id={_cache_summary_id} (0 credits)", flush=True)
+                    return TaskStatusResponse(
+                        task_id=f"cached_{_cache_summary_id}",
+                        status="completed",
+                        progress=100,
+                        message="✅ Analyse retrouvée en cache global (gratuit!)",
+                        result={
+                            "summary_id": _cache_summary_id,
+                            "cached": True,
+                            "from_cache": True,
+                            "video_title": _cached.get("video_title", "Unknown"),
+                            "category": _cached.get("category", "general"),
+                            "cost": 0,
+                        }
+                    )
+        except Exception as _vcache_err:
+            print(f"⚠️ [GLOBAL CACHE] Check failed (continuing): {_vcache_err}", flush=True)
+
     # ═══════════════════════════════════════════════════════════════════════════════
     # 💾 SYSTÈME DE CACHE v2.0 — Économise les crédits API
     # ═══════════════════════════════════════════════════════════════════════════════
@@ -2204,17 +2261,50 @@ async def _analyze_video_background_v6(
             print(f"✅ Video info: {video_info.get('title', 'Unknown')[:50]}", flush=True)
             
             # ═══════════════════════════════════════════════════════════════════
-            # 2. EXTRAIRE LA TRANSCRIPTION
+            # 2. EXTRAIRE LA TRANSCRIPTION (avec global cache check)
             # ═══════════════════════════════════════════════════════════════════
             _task_store[task_id]["progress"] = 20
             _task_store[task_id]["message"] = "📝 Extraction du transcript..."
 
-            if platform == "tiktok":
-                transcript, transcript_timestamped, detected_lang = await get_tiktok_transcript(url, video_id)
-            else:
-                _duration = int(video_info.get("duration", 0) or 0)
-                _is_short = "/shorts/" in url or _duration <= 90
-                transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id, is_short=_is_short, duration=_duration)
+            # 💾 Check global video content cache for transcript
+            transcript = None
+            transcript_timestamped = None
+            detected_lang = None
+            try:
+                from main import get_video_cache
+                _vcache = get_video_cache()
+                if _vcache is not None:
+                    _cached_t = await _vcache.get_transcript(platform, video_id)
+                    if _cached_t:
+                        transcript = _cached_t.get("transcript")
+                        transcript_timestamped = _cached_t.get("transcript_timestamped")
+                        detected_lang = _cached_t.get("detected_lang")
+                        if transcript:
+                            print(f"💾 [GLOBAL CACHE HIT] Transcript for {platform}/{video_id}: {len(transcript)} chars", flush=True)
+            except Exception as _vce:
+                print(f"⚠️ [GLOBAL CACHE] Transcript check failed: {_vce}", flush=True)
+
+            # Extract if not found in cache
+            if not transcript:
+                if platform == "tiktok":
+                    transcript, transcript_timestamped, detected_lang = await get_tiktok_transcript(url, video_id)
+                else:
+                    _duration = int(video_info.get("duration", 0) or 0)
+                    _is_short = "/shorts/" in url or _duration <= 90
+                    transcript, transcript_timestamped, detected_lang = await get_transcript_with_timestamps(video_id, is_short=_is_short, duration=_duration)
+
+                # 💾 Cache the freshly extracted transcript
+                if transcript:
+                    try:
+                        if _vcache is not None:
+                            await _vcache.set_transcript(platform, video_id, {
+                                "transcript": transcript,
+                                "transcript_timestamped": transcript_timestamped,
+                                "detected_lang": detected_lang,
+                            })
+                            print(f"💾 [GLOBAL CACHE SET] Transcript cached for {platform}/{video_id}", flush=True)
+                    except Exception:
+                        pass
 
             if not transcript:
                 raise Exception("No transcript available for this video")
@@ -2475,6 +2565,32 @@ async def _analyze_video_background_v6(
             )
             
             print(f"💾 Summary saved: id={summary_id}", flush=True)
+
+            # 💾 Cache the analysis in global video content cache
+            try:
+                from main import get_video_cache
+                _vcache_post = get_video_cache()
+                if _vcache_post is not None:
+                    await _vcache_post.set_analysis(platform, video_id, mode, lang, {
+                        "summary_content": summary_content,
+                        "video_title": video_info["title"],
+                        "video_channel": video_info.get("channel", "Unknown"),
+                        "video_duration": video_info.get("duration", 0),
+                        "thumbnail_url": default_thumbnail,
+                        "category": category,
+                        "category_confidence": confidence,
+                        "lang": lang,
+                        "mode": mode,
+                        "model_used": model,
+                        "transcript_context": (transcript_timestamped or transcript)[:10000],
+                        "video_upload_date": video_info.get("upload_date"),
+                        "entities_extracted": entities,
+                        "reliability_score": reliability,
+                        "enrichment_data": enrichment_metadata,
+                    })
+                    print(f"💾 [GLOBAL CACHE SET] Analysis cached for {platform}/{video_id} mode={mode} lang={lang}", flush=True)
+            except Exception as _vce:
+                print(f"⚠️ [GLOBAL CACHE] Analysis cache set failed: {_vce}", flush=True)
 
             # 🎫 Incrémenter le compteur quotidien d'analyses
             try:
