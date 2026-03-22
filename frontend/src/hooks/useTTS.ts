@@ -45,16 +45,25 @@ export function useTTS(): UseTTSReturn {
       return;
     }
 
+    if (!text || text.trim().length === 0) {
+      console.warn('[TTS] Empty text, skipping');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
       const token = getAccessToken();
       if (!token) {
+        console.error('[TTS] No access token found');
         throw new Error('Authentication required');
       }
 
-      const response = await fetch(`${API_URL}/api/tts`, {
+      const url = `${API_URL}/api/tts`;
+      console.log('[TTS] Calling API...', { url, textLength: text.length });
+
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -66,9 +75,12 @@ export function useTTS(): UseTTSReturn {
         }),
       });
 
+      console.log('[TTS] Response status:', response.status);
+
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         const detail = data?.detail;
+        console.error('[TTS] API error:', response.status, detail);
 
         // Handle feature locked (plan upgrade needed)
         if (response.status === 403 && detail?.error === 'feature_locked') {
@@ -81,6 +93,8 @@ export function useTTS(): UseTTSReturn {
       }
 
       const blob = await response.blob();
+      console.log('[TTS] Blob size:', blob.size, 'type:', blob.type);
+
       if (blob.size === 0) {
         throw new Error('Empty audio response');
       }
@@ -97,15 +111,18 @@ export function useTTS(): UseTTSReturn {
         setIsPlaying(false);
       };
 
-      audio.onerror = () => {
+      audio.onerror = (e) => {
+        console.error('[TTS] Audio playback error:', e);
         setIsPlaying(false);
         setError('Audio playback failed');
       };
 
+      console.log('[TTS] Playing audio...');
       await audio.play();
       setIsPlaying(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'TTS failed';
+      console.error('[TTS] Error:', message, err);
       setError(message);
       cleanup();
     } finally {

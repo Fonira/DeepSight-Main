@@ -1,10 +1,10 @@
 """
-TTS ROUTER — ElevenLabs Text-to-Speech streaming
-v2.0 — Direct ElevenLabs streaming proxy + voices endpoint
+TTS ROUTER — ElevenLabs Text-to-Speech
+v2.1 — Non-streaming proxy with proper error propagation
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response
 from typing import Optional
 import httpx
 import logging
@@ -29,19 +29,19 @@ _voices_cache: dict = {"data": None, "expires": 0}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🎙️ POST /api/tts — Stream TTS audio
+# 🎙️ POST /api/tts — Generate TTS audio
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @router.post("")
-async def tts_stream(
+async def tts_generate(
     request: Request,
     current_user: User = Depends(get_current_user),
 ):
     """
-    Stream TTS audio from ElevenLabs.
+    Generate TTS audio from ElevenLabs.
 
     Body: { text: string, voice_id?: string, model_id?: string }
-    Returns: streaming audio/mpeg response
+    Returns: audio/mpeg response
     """
     # Feature check
     user_plan = current_user.plan or "free"
@@ -71,52 +71,72 @@ async def tts_stream(
             detail="TTS service not configured"
         )
 
-    # Proxy to ElevenLabs streaming endpoint
-    elevenlabs_url = f"{ELEVENLABS_BASE_URL}/text-to-speech/{voice_id}/stream"
+    # Call ElevenLabs (non-streaming for proper error handling)
+    elevenlabs_url = f"{ELEVENLABS_BASE_URL}/text-to-speech/{voice_id}"
 
-    async def stream_audio():
+    try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            try:
-                async with client.stream(
-                    "POST",
-                    elevenlabs_url,
-                    headers={
-                        "xi-api-key": api_key,
-                        "Content-Type": "application/json",
-                        "Accept": "audio/mpeg",
+            response = await client.post(
+                elevenlabs_url,
+                headers={
+                    "xi-api-key": api_key,
+                    "Content-Type": "application/json",
+                    "Accept": "audio/mpeg",
+                },
+                json={
+                    "text": text,
+                    "model_id": model_id,
+                    "voice_settings": {
+                        "stability": 0.5,
+                        "similarity_boost": 0.75,
                     },
-                    json={
-                        "text": text,
-                        "model_id": model_id,
-                        "voice_settings": {
-                            "stability": 0.5,
-                            "similarity_boost": 0.75,
-                        },
-                    },
-                ) as response:
-                    if response.status_code != 200:
-                        error_body = await response.aread()
-                        logger.error(
-                            "ElevenLabs error: status=%d body=%s",
-                            response.status_code,
-                            error_body[:200],
-                        )
-                        return
-                    async for chunk in response.aiter_bytes(chunk_size=4096):
-                        yield chunk
-            except httpx.TimeoutException:
-                logger.error("ElevenLabs TTS timeout")
-            except Exception as e:
-                logger.error("ElevenLabs TTS error: %s", str(e))
+                },
+            )
 
-    return StreamingResponse(
-        stream_audio(),
-        media_type="audio/mpeg",
-        headers={
-            "Cache-Control": "no-cache",
-            "Transfer-Encoding": "chunked",
-        },
-    )
+            if response.status_code == 401:
+                logger.error("ElevenLabs API key invalid (401)")
+                raise HTTPException(
+                    status_code=502,
+                    detail="TTS provider authentication failed. Contact support.",
+                )
+
+            if response.status_code != 200:
+                logger.error(
+                    "ElevenLabs error: status=%d body=%s",
+                    response.status_code,
+                    response.text[:200],
+                )
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"TTS provider error ({response.status_code})",
+                )
+
+            audio_bytes = response.content
+            if len(audio_bytes) == 0:
+                raise HTTPException(
+                    status_code=502,
+                    detail="TTS provider returned empty audio",
+                )
+
+            logger.info(
+                "TTS generated: user=%s text_len=%d audio_bytes=%d",
+                current_user.email, len(text), len(audio_bytes),
+            )
+
+            return Response(
+                content=audio_bytes,
+                media_type="audio/mpeg",
+                headers={"Cache-Control": "no-cache"},
+            )
+
+    except HTTPException:
+        raise
+    except httpx.TimeoutException:
+        logger.error("ElevenLabs TTS timeout for user=%s", current_user.email)
+        raise HTTPException(status_code=504, detail="TTS request timed out")
+    except Exception as e:
+        logger.error("ElevenLabs TTS error: %s", str(e))
+        raise HTTPException(status_code=500, detail="TTS generation failed")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
