@@ -574,7 +574,15 @@ async def _authenticate_websocket(websocket: WebSocket, token: Optional[str]) ->
         await websocket.close(code=4001, reason="Invalid or expired token.")
         return None
 
-    user_id = int(payload.get("sub", 0))
+    sub = payload.get("sub")
+    if sub is None:
+        await websocket.close(code=4001, reason="Invalid token payload: missing sub.")
+        return None
+    try:
+        user_id = int(sub)
+    except (ValueError, TypeError):
+        await websocket.close(code=4001, reason="Invalid token payload: sub must be an integer.")
+        return None
     if not user_id:
         await websocket.close(code=4001, reason="Invalid token payload.")
         return None

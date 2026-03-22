@@ -11,6 +11,8 @@
 """
 
 import json
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +20,8 @@ from sqlalchemy import select
 from pydantic import BaseModel, Field
 from typing import Optional, List
 import io
+
+logger = logging.getLogger(__name__)
 
 from db.database import get_session, User, Summary
 from auth.dependencies import get_current_user
@@ -148,9 +152,9 @@ async def export_analysis(
     if summary.entities_extracted:
         try:
             entities = json.loads(summary.entities_extracted)
-        except:
-            pass
-    
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning(f"Failed to parse entities_extracted for summary {request.summary_id}: {e}")
+
     # Récupérer les flashcards si nécessaire
     flashcards = None
     if request.include_flashcards or request.pdf_type in ["flashcards", "study"]:
@@ -163,8 +167,8 @@ async def export_analysis(
             fact_check = json.loads(summary.fact_check_result)
             if isinstance(fact_check, dict) and "sources" in fact_check:
                 sources = fact_check["sources"]
-        except:
-            pass
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning(f"Failed to parse fact_check_result for summary {request.summary_id}: {e}")
     
     # Générer l'export
     content, filename, mimetype = export_summary(
@@ -270,8 +274,8 @@ async def _get_or_generate_flashcards(
                     entities["concepts"][:10],
                     summary.summary_content
                 )
-        except:
-            pass
+        except Exception as e:
+            logger.error(f"Failed to generate flashcards from entities: {e}")
     
     return None
 

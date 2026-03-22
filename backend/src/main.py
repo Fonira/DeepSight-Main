@@ -155,7 +155,6 @@ try:
 except ImportError as e:
     NOTIFICATIONS_ROUTER_AVAILABLE = False
     print(f"⚠️ Notifications router not available: {e}", flush=True)
-    print(f"⚠️ Usage router not available: {e}", flush=True)
 
 # 🔑 NOUVEAU: Import du Public API router (Plan Expert)
 try:
@@ -602,8 +601,20 @@ app = FastAPI(
 
 @app.get("/health")
 async def health_check():
-    """Healthcheck pour Railway."""
-    return {"status": "ok"}
+    """Healthcheck pour Hetzner/Docker."""
+    from fastapi.responses import JSONResponse
+    if not _app_state.get("ready", False):
+        error = _app_state.get("error")
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "starting",
+                "db_initialized": _app_state.get("db_initialized", False),
+                "migrations_completed": _app_state.get("migrations_completed", False),
+                "error": error,
+            }
+        )
+    return {"status": "ok", "db": "ready"}
 
 
 # Configuration CORS - CRITIQUE pour éviter les erreurs 502
@@ -612,8 +623,8 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],
-    expose_headers=["*"],
+    allow_headers=["Authorization", "Content-Type", "X-Platform", "X-Requested-With"],
+    expose_headers=["Content-Disposition", "X-Session-Invalid"],
     max_age=3600,
 )
 

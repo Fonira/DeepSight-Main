@@ -1948,7 +1948,7 @@ QUESTION: {question}
                 error_body = ""
                 try:
                     error_body = response.text[:500]
-                except:
+                except Exception:
                     pass
                 print(f"[CHAT v4.2] ❌ API Error {response.status_code}: {error_body}", flush=True)
                 if response.status_code == 429:
@@ -2034,7 +2034,7 @@ Réponds de manière concise et factuelle."""
                             domain = url.split("/")[2] if len(url.split("/")) > 2 else url[:40]
                             answer += f"- [{domain}]({url})\n"
                             sources.append({"url": url, "domain": domain})
-                        except:
+                        except (IndexError, AttributeError):
                             pass
                 
                 result = {"answer": answer, "sources": sources}

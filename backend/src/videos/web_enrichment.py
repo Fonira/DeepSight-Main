@@ -682,7 +682,7 @@ async def call_perplexity(
                                 domain = url.split("/")[2] if "/" in url else url[:30]
                                 # Nettoyer le domaine pour un affichage lisible
                                 site_name = _extract_site_name(domain)
-                            except:
+                            except (IndexError, AttributeError):
                                 domain = "source"
                                 site_name = f"Source {i+1}"
                             sources.append({
@@ -698,7 +698,7 @@ async def call_perplexity(
                                 try:
                                     domain = url_str.split("/")[2]
                                     title = _extract_site_name(domain)
-                                except:
+                                except (IndexError, AttributeError):
                                     title = f"Source {i+1}"
                             sources.append({
                                 "title": title or f"Source {i+1}",

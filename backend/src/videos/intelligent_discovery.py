@@ -492,11 +492,11 @@ class YouTubeSearcher:
             if upload_date and len(upload_date) == 8:
                 try:
                     published_at = datetime.strptime(upload_date, "%Y%m%d")
-                except:
+                except ValueError:
                     published_at = datetime.now()
             else:
                 published_at = datetime.now()
-            
+
             # Thumbnail
             thumbnails = raw.get("thumbnails", [])
             thumbnail_url = ""

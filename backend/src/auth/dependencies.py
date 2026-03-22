@@ -10,6 +10,9 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import os
+import logging
+
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,13 +21,17 @@ from typing import Optional
 from db.database import get_session, User
 from .service import verify_token, get_user_by_id, validate_session_token
 
+logger = logging.getLogger(__name__)
+
 # Import du service de sécurité
 try:
     from core.security import is_token_blacklisted, check_rate_limit
     SECURITY_AVAILABLE = True
 except ImportError:
     SECURITY_AVAILABLE = False
-    print("⚠️ Security module not available, using basic auth", flush=True)
+    if os.getenv("ENV") == "production":
+        raise ImportError("core.security module is required in production but could not be imported")
+    logger.warning("Security module not available, using basic auth")
 
 # Schéma OAuth2 pour les tokens Bearer
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
@@ -89,9 +96,23 @@ async def get_current_user(
         )
     
     # Récupérer l'utilisateur
-    user_id = int(payload.get("sub"))
+    sub = payload.get("sub")
+    if sub is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "token_invalid", "message": "Invalid token payload: missing sub."},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    try:
+        user_id = int(sub)
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "token_invalid", "message": "Invalid token payload: sub must be an integer."},
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     session_token = payload.get("session")  # 🆕 Récupérer le session_token du JWT
-    
+
     user = await get_user_by_id(session, user_id)
     
     if not user:
@@ -165,11 +186,17 @@ async def get_current_user_optional(
     if not payload:
         return None
     
-    user_id = int(payload.get("sub"))
+    sub = payload.get("sub")
+    if sub is None:
+        return None
+    try:
+        user_id = int(sub)
+    except (ValueError, TypeError):
+        return None
     session_token = payload.get("session")
-    
+
     user = await get_user_by_id(session, user_id)
-    
+
     if not user:
         return None
     
@@ -192,7 +219,7 @@ async def get_current_admin(
     
     # Vérifier is_admin dans la DB OU email == ADMIN_EMAIL
     admin_email = ADMIN_CONFIG.get("ADMIN_EMAIL", "").lower()
-    is_admin = current_user.is_admin or (current_user.email.lower() == admin_email)
+    is_admin = current_user.is_admin or ((current_user.email or "").lower() == admin_email)
     
     if not is_admin:
         raise HTTPException(
