@@ -120,8 +120,8 @@ async def deep_status(secret: str = ""):
     }
 
 
-async def _check_redis():
-    """Check Redis connectivity."""
+async def _check_redis() -> dict:
+    """Check Redis connectivity and return enriched metrics."""
     import os
     redis_url = os.environ.get("REDIS_URL", "")
     if not redis_url:
@@ -129,6 +129,11 @@ async def _check_redis():
             "name": "redis",
             "status": "degraded",
             "latency_ms": None,
+            "connected_clients": None,
+            "memory": None,
+            "hit_ratio": None,
+            "uptime_hours": None,
+            "keys": None,
             "message": "Not configured",
             "last_checked": datetime.now(timezone.utc).isoformat(),
         }
@@ -137,12 +142,27 @@ async def _check_redis():
         start = time.perf_counter()
         r = aioredis.from_url(redis_url, socket_timeout=5)
         await r.ping()
+        info = await r.info(section="all")
+        db_size = await r.dbsize()
         await r.aclose()
         latency = (time.perf_counter() - start) * 1000
+
+        hits = info.get("keyspace_hits", 0)
+        misses = info.get("keyspace_misses", 0)
+        total = hits + misses
+        hit_ratio = round(hits / total, 2) if total > 0 else None
+
+        uptime_s = info.get("uptime_in_seconds", 0)
+
         return {
             "name": "redis",
             "status": "operational",
             "latency_ms": round(latency, 2),
+            "connected_clients": info.get("connected_clients"),
+            "memory": info.get("used_memory_human", "unknown"),
+            "hit_ratio": hit_ratio,
+            "uptime_hours": round(uptime_s / 3600, 1),
+            "keys": db_size,
             "message": None,
             "last_checked": datetime.now(timezone.utc).isoformat(),
         }
@@ -151,6 +171,11 @@ async def _check_redis():
             "name": "redis",
             "status": "down",
             "latency_ms": None,
+            "connected_clients": None,
+            "memory": None,
+            "hit_ratio": None,
+            "uptime_hours": None,
+            "keys": None,
             "message": str(e)[:120],
             "last_checked": datetime.now(timezone.utc).isoformat(),
         }

@@ -99,9 +99,27 @@ async def _check_redis() -> Dict[str, Any]:
     r = aioredis.from_url(redis_url, socket_connect_timeout=CHECK_TIMEOUT)
     try:
         pong = await r.ping()
-        if pong:
-            return {"status": "ok"}
-        return {"status": "error", "error": "PING returned False"}
+        if not pong:
+            return {"status": "error", "error": "PING returned False"}
+
+        info = await r.info(section="all")
+        db_size = await r.dbsize()
+
+        hits = info.get("keyspace_hits", 0)
+        misses = info.get("keyspace_misses", 0)
+        total = hits + misses
+        hit_ratio = round(hits / total, 2) if total > 0 else None
+
+        uptime_s = info.get("uptime_in_seconds", 0)
+
+        return {
+            "status": "ok",
+            "connected_clients": info.get("connected_clients"),
+            "memory": info.get("used_memory_human", "unknown"),
+            "hit_ratio": hit_ratio,
+            "uptime_hours": round(uptime_s / 3600, 1),
+            "keys": db_size,
+        }
     finally:
         await r.aclose()
 
@@ -308,3 +326,115 @@ async def health_deep(secret: str = Query(default="")):
     }
 
     return JSONResponse(status_code=status_code, content=body)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GET /redis — Detailed Redis metrics (secret-protected)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.get("/redis")
+async def health_redis(secret: str = Query(default="")):
+    """
+    Detailed Redis health — memory, stats, clients, keyspace, slow log.
+
+    Protected by HEALTH_CHECK_SECRET query parameter.
+    """
+    if not HEALTH_CHECK_SECRET:
+        raise HTTPException(
+            status_code=503,
+            detail="HEALTH_CHECK_SECRET not configured on server",
+        )
+    if secret != HEALTH_CHECK_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid secret")
+
+    redis_url = os.environ.get("REDIS_URL", "")
+    if not redis_url:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "error": "REDIS_URL not configured"},
+        )
+
+    import redis.asyncio as aioredis
+
+    r = aioredis.from_url(redis_url, socket_connect_timeout=5)
+    try:
+        start = time.perf_counter()
+        await r.ping()
+        latency = round((time.perf_counter() - start) * 1000, 2)
+
+        info_memory = await r.info(section="memory")
+        info_stats = await r.info(section="stats")
+        info_clients = await r.info(section="clients")
+        info_keyspace = await r.info(section="keyspace")
+        info_server = await r.info(section="server")
+        db_size = await r.dbsize()
+
+        # Slow log (last 5 entries)
+        slow_log_raw: list = await r.slowlog_get(5)
+        slow_log = [
+            {
+                "id": entry.get("id"),
+                "duration_us": entry.get("duration"),
+                "command": entry.get("command", b"").decode("utf-8", errors="replace")
+                if isinstance(entry.get("command"), bytes)
+                else str(entry.get("command", "")),
+                "timestamp": entry.get("start_time"),
+            }
+            for entry in slow_log_raw
+        ] if slow_log_raw else []
+
+        # Hit ratio
+        hits = info_stats.get("keyspace_hits", 0)
+        misses = info_stats.get("keyspace_misses", 0)
+        total = hits + misses
+        hit_ratio = round(hits / total, 4) if total > 0 else None
+
+        # Keyspace db0 info
+        db0 = info_keyspace.get("db0", {})
+        db0_keys = db0.get("keys", 0) if isinstance(db0, dict) else None
+
+        frag_ratio = info_memory.get("mem_fragmentation_ratio")
+
+        return {
+            "status": "operational",
+            "timestamp": _now_iso(),
+            "latency_ms": latency,
+            "memory": {
+                "used_memory_human": info_memory.get("used_memory_human"),
+                "used_memory_peak_human": info_memory.get("used_memory_peak_human"),
+                "fragmentation_ratio": float(frag_ratio) if frag_ratio else None,
+                "maxmemory_human": info_memory.get("maxmemory_human"),
+            },
+            "stats": {
+                "keyspace_hits": hits,
+                "keyspace_misses": misses,
+                "hit_ratio": hit_ratio,
+                "expired_keys": info_stats.get("expired_keys", 0),
+                "evicted_keys": info_stats.get("evicted_keys", 0),
+                "total_commands_processed": info_stats.get("total_commands_processed", 0),
+            },
+            "clients": {
+                "connected_clients": info_clients.get("connected_clients"),
+                "blocked_clients": info_clients.get("blocked_clients"),
+            },
+            "keyspace": {
+                "db_size": db_size,
+                "db0_keys": db0_keys,
+            },
+            "server": {
+                "redis_version": info_server.get("redis_version"),
+                "uptime_hours": round(info_server.get("uptime_in_seconds", 0) / 3600, 1),
+            },
+            "slow_log": slow_log,
+        }
+    except Exception as e:
+        return JSONResponse(
+            status_code=503,
+            content={
+                "status": "down",
+                "timestamp": _now_iso(),
+                "error": str(e)[:200],
+            },
+        )
+    finally:
+        await r.aclose()
