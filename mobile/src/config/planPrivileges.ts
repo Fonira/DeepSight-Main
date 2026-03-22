@@ -243,7 +243,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     exportMarkdown: true,         // synced — Markdown dès Student
     exportTxt: true,
     exportWatermark: false,
-    ttsAudio: false,
+    ttsAudio: true,
     apiAccess: false,
     prioritySupport: false,
     sharedWorkspace: false,

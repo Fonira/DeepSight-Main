@@ -1,48 +1,67 @@
 /**
- * AudioPlayerButton — Mobile TTS toggle button
- * Pressable with Ionicons icon, plays/stops TTS via useTTS hook
+ * AudioPlayerButton v2 — Mobile TTS button with premium gate
+ * Uses TTSContext for language/gender/speed settings
  */
 
 import React from 'react';
-import { Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { Pressable, ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTTS } from '../hooks/useTTS';
+import { useTTSContext } from '../contexts/TTSContext';
 import { useTheme } from '../contexts/ThemeContext';
 
 interface AudioPlayerButtonProps {
   text: string;
   size?: 'sm' | 'md';
+  onUpgradePress?: () => void;
 }
 
 export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
   text,
   size = 'sm',
+  onUpgradePress,
 }) => {
-  const { isPlaying, isLoading, error, play, stop } = useTTS();
+  const { isPlaying, isLoading, isPremium, playText, stopPlaying } = useTTSContext();
   const { colors } = useTheme();
 
   const handlePress = () => {
+    if (!isPremium) {
+      onUpgradePress?.();
+      return;
+    }
     if (isPlaying) {
-      stop();
+      stopPlaying();
     } else {
-      play(text);
+      playText(text);
     }
   };
 
   const iconSize = size === 'sm' ? 16 : 20;
   const btnSize = size === 'sm' ? 28 : 34;
 
-  const iconColor = isPlaying
-    ? '#3B82F6'
-    : error
-      ? '#EF4444'
-      : colors.textSecondary;
+  // Locked state
+  if (!isPremium) {
+    return (
+      <Pressable
+        onPress={handlePress}
+        style={[
+          styles.button,
+          {
+            width: btnSize,
+            height: btnSize,
+            backgroundColor: colors.bgTertiary,
+            borderColor: 'transparent',
+          },
+        ]}
+        accessibilityLabel="Lecture vocale (plan premium requis)"
+        accessibilityRole="button"
+      >
+        <Ionicons name="lock-closed" size={12} color={colors.textTertiary} />
+      </Pressable>
+    );
+  }
 
-  const bgColor = isPlaying
-    ? 'rgba(59, 130, 246, 0.15)'
-    : error
-      ? 'rgba(239, 68, 68, 0.1)'
-      : colors.glassBg;
+  const iconColor = isPlaying ? '#06B6D4' : colors.textSecondary;
+  const bgColor = isPlaying ? 'rgba(6, 182, 212, 0.15)' : colors.glassBg;
 
   return (
     <Pressable
@@ -54,11 +73,11 @@ export const AudioPlayerButton: React.FC<AudioPlayerButtonProps> = ({
           width: btnSize,
           height: btnSize,
           backgroundColor: bgColor,
-          borderColor: isPlaying ? 'rgba(59, 130, 246, 0.3)' : 'transparent',
+          borderColor: isPlaying ? 'rgba(6, 182, 212, 0.3)' : 'transparent',
           opacity: isLoading ? 0.6 : 1,
         },
       ]}
-      accessibilityLabel={isPlaying ? 'Stop audio' : 'Play audio'}
+      accessibilityLabel={isPlaying ? 'Arrêter la lecture' : 'Écouter'}
       accessibilityRole="button"
     >
       {isLoading ? (

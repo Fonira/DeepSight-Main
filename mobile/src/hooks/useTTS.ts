@@ -1,13 +1,19 @@
 /**
- * useTTS — Mobile TTS hook using expo-audio + expo-file-system
- * Downloads audio from backend /api/tts, writes to temp file, plays via AudioPlayer
+ * useTTS — Mobile TTS hook using expo-audio + expo-file-system (SDK 54)
+ * v2 — Supports language, gender, speed params
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useAudioPlayer, useAudioPlayerStatus, AudioModule } from 'expo-audio';
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import { API_BASE_URL } from '../constants/config';
 import { tokenStorage } from '../utils/storage';
+
+interface UseTTSOptions {
+  language?: 'fr' | 'en';
+  gender?: 'male' | 'female';
+  speed?: number;
+}
 
 interface UseTTSReturn {
   isPlaying: boolean;
@@ -17,10 +23,10 @@ interface UseTTSReturn {
   stop: () => void;
 }
 
-export function useTTS(): UseTTSReturn {
+export function useTTS(options?: UseTTSOptions): UseTTSReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const tempFileRef = useRef<string | null>(null);
+  const tempFileRef = useRef<File | null>(null);
   const player = useAudioPlayer(null);
   const status = useAudioPlayerStatus(player);
 
@@ -35,7 +41,7 @@ export function useTTS(): UseTTSReturn {
     }
     if (tempFileRef.current) {
       try {
-        await FileSystem.deleteAsync(tempFileRef.current, { idempotent: true });
+        tempFileRef.current.delete();
       } catch {
         // Ignore cleanup errors
       }
@@ -58,66 +64,70 @@ export function useTTS(): UseTTSReturn {
     setError(null);
 
     try {
-      // Configure for silent mode playback
       try {
         await AudioModule.setAudioModeAsync({ playsInSilentMode: true });
       } catch {
-        // Ignore if not supported
+        // Ignore
       }
 
       const token = await tokenStorage.getAccessToken();
-      if (!token) {
-        throw new Error('Authentication required');
-      }
+      if (!token) throw new Error('Authentication required');
 
-      // Download audio from backend
-      const tempPath = `${FileSystem.cacheDirectory}tts_${Date.now()}.mp3`;
+      const response = await fetch(`${API_BASE_URL}/api/tts`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text,
+          language: options?.language || 'fr',
+          gender: options?.gender || 'female',
+          speed: options?.speed || 1.0,
+          strip_questions: true,
+          ...(voiceId && { voice_id: voiceId }),
+        }),
+      });
 
-      const downloadResult = await FileSystem.downloadAsync(
-        `${API_BASE_URL}/api/tts`,
-        tempPath,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          httpMethod: 'POST',
-          body: JSON.stringify({
-            text,
-            ...(voiceId && { voice_id: voiceId }),
-          }),
-        }
-      );
-
-      if (downloadResult.status !== 200) {
-        // Try to read error
+      if (!response.ok) {
         try {
-          const errorContent = await FileSystem.readAsStringAsync(tempPath);
-          const errorData = JSON.parse(errorContent);
+          const errorData = await response.json();
           const detail = errorData?.detail;
           if (detail?.error === 'feature_locked') {
             throw new Error(detail.message || 'Upgrade your plan for TTS');
           }
-          throw new Error(typeof detail === 'string' ? detail : detail?.message || `TTS error (${downloadResult.status})`);
+          throw new Error(typeof detail === 'string' ? detail : detail?.message || `TTS error (${response.status})`);
         } catch (parseErr) {
           if (parseErr instanceof Error && !parseErr.message.startsWith('TTS error')) {
             throw parseErr;
           }
-          throw new Error(`TTS error (${downloadResult.status})`);
+          throw new Error(`TTS error (${response.status})`);
         }
       }
 
-      // Check file has content
-      const fileInfo = await FileSystem.getInfoAsync(tempPath);
-      if (!fileInfo.exists || (fileInfo.size !== undefined && fileInfo.size < 100)) {
+      const audioBlob = await response.blob();
+      const reader = new FileReader();
+      const base64Audio = await new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          resolve(base64);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(audioBlob);
+      });
+
+      const tempFile = new File(Paths.cache, `tts_${Date.now()}.mp3`);
+      tempFile.create({ overwrite: true });
+      tempFile.write(base64Audio, { encoding: 'base64' });
+
+      if (!tempFile.exists || tempFile.size < 100) {
         throw new Error('Empty audio response');
       }
 
       await cleanup();
-      tempFileRef.current = tempPath;
+      tempFileRef.current = tempFile;
 
-      // Play the audio file
-      player.replace({ uri: tempPath });
+      player.replace({ uri: tempFile.uri });
       player.play();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'TTS failed';
@@ -126,13 +136,10 @@ export function useTTS(): UseTTSReturn {
     } finally {
       setIsLoading(false);
     }
-  }, [isPlaying, isLoading, stop, cleanup, player]);
+  }, [isPlaying, isLoading, stop, cleanup, player, options?.language, options?.gender, options?.speed]);
 
-  // Cleanup on unmount
   useEffect(() => {
-    return () => {
-      cleanup();
-    };
+    return () => { cleanup(); };
   }, [cleanup]);
 
   return { isPlaying, isLoading, error, play, stop };
