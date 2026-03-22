@@ -74,11 +74,24 @@ interface TTSContextType {
 
 const TTSContext = createContext<TTSContextType | null>(null);
 
-// Audio cache: key = text+lang+gender+speed -> blobUrl
+// Audio cache: key = text+lang+gender+speed -> blobUrl (LRU, max 20 entries)
+const MAX_CACHE = 20;
 const audioCache = new Map<string, string>();
 
 function cacheKey(text: string, lang: string, gender: string, speed: number) {
   return `${lang}|${gender}|${speed}|${text.slice(0, 200)}`;
+}
+
+function setCacheEntry(key: string, blobUrl: string) {
+  if (audioCache.size >= MAX_CACHE) {
+    const firstKey = audioCache.keys().next().value;
+    if (firstKey !== undefined) {
+      const oldUrl = audioCache.get(firstKey);
+      if (oldUrl) URL.revokeObjectURL(oldUrl);
+      audioCache.delete(firstKey);
+    }
+  }
+  audioCache.set(key, blobUrl);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -105,6 +118,7 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   // Setters with persistence
   const setAutoPlayEnabled = useCallback((v: boolean) => {
@@ -172,9 +186,14 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const playText = useCallback(async (text: string) => {
     if (!text?.trim()) return;
 
+    // Abort any in-flight request
+    abortRef.current?.abort();
     // Stop any current playback
     stop();
     setIsLoading(true);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const key = cacheKey(text, language, gender, speed);
@@ -197,7 +216,11 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             speed,
             strip_questions: true,
           }),
+          signal: controller.signal,
         });
+
+        // Check if aborted during fetch
+        if (controller.signal.aborted) return;
 
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
@@ -213,8 +236,11 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const blob = await response.blob();
         if (blob.size === 0) throw new Error('Empty audio response');
 
+        // Check if aborted during blob read
+        if (controller.signal.aborted) return;
+
         blobUrl = URL.createObjectURL(blob);
-        audioCache.set(key, blobUrl);
+        setCacheEntry(key, blobUrl);
       }
 
       blobUrlRef.current = blobUrl;

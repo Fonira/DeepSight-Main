@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { useAudioPlayer, useAudioPlayerStatus, AudioModule } from 'expo-audio';
+import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
 import { API_BASE_URL } from '../constants/config';
 import { tokenStorage } from '../utils/storage';
@@ -65,7 +65,7 @@ export function useTTS(options?: UseTTSOptions): UseTTSReturn {
 
     try {
       try {
-        await AudioModule.setAudioModeAsync({ playsInSilentMode: true });
+        await setAudioModeAsync({ playsInSilentMode: true });
       } catch {
         // Ignore
       }

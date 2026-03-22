@@ -5,7 +5,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAudioPlayer, useAudioPlayerStatus, AudioModule } from 'expo-audio';
+import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { File, Paths } from 'expo-file-system';
 import { API_BASE_URL } from '../constants/config';
 import { tokenStorage } from '../utils/storage';
@@ -155,7 +155,7 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       // Configure for silent mode playback
       try {
-        await AudioModule.setAudioModeAsync({ playsInSilentMode: true });
+        await setAudioModeAsync({ playsInSilentMode: true });
       } catch {
         // Ignore
       }
@@ -218,9 +218,9 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Play the audio file
       player.replace({ uri: tempFile.uri });
 
-      // Set speed
+      // Set playback speed
       try {
-        await (player as any).setRate(speed, true);
+        player.playbackRate = speed;
       } catch {
         // Fallback: rate not supported on all platforms
       }

@@ -3,7 +3,7 @@
  * Toggle autoplay, language, gender, speed
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Volume2, VolumeX, Lock } from 'lucide-react';
 import { useTTSContext } from '../contexts/TTSContext';
 
@@ -23,11 +23,19 @@ export const TTSToolbar: React.FC<TTSToolbarProps> = ({ className = '' }) => {
   } = useTTSContext();
 
   const [showUpgradeHint, setShowUpgradeHint] = useState(false);
+  const hintTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+    };
+  }, []);
 
   const handleToggleAutoPlay = () => {
     if (!isPremium) {
       setShowUpgradeHint(true);
-      setTimeout(() => setShowUpgradeHint(false), 3000);
+      if (hintTimerRef.current) clearTimeout(hintTimerRef.current);
+      hintTimerRef.current = setTimeout(() => setShowUpgradeHint(false), 3000);
       return;
     }
     setAutoPlayEnabled(!autoPlayEnabled);

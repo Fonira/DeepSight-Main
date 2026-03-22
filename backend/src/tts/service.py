@@ -55,8 +55,7 @@ _EMOJI_RE = re.compile(
     r"|[\u2600-\u27bf]"              # Misc symbols
     r"|[\ufe00-\ufe0f]"             # Variation selectors
     r"|[\u200d]"                     # ZWJ
-    r"|[\u20e3]"                     # Combining enclosing keycap
-    r"|[\ud83c-\ud83e][\udc00-\udfff]",  # Surrogates (shouldn't appear in Python 3)
+    r"|[\u20e3]",                    # Combining enclosing keycap
 )
 
 # Markdown patterns
@@ -100,7 +99,7 @@ def clean_text_for_tts(text: str, strip_questions: bool = True) -> str:
     cleaned = re.sub(r"\*\*(.+?)\*\*", r"\1", cleaned)
     cleaned = re.sub(r"__(.+?)__", r"\1", cleaned)
     cleaned = re.sub(r"\*(.+?)\*", r"\1", cleaned)
-    cleaned = re.sub(r"_(.+?)_", r"\1", cleaned)
+    cleaned = re.sub(r"(?<!\w)_(.+?)_(?!\w)", r"\1", cleaned)
     cleaned = re.sub(r"`{1,3}[^`]*`{1,3}", "", cleaned)
     cleaned = re.sub(r"#{1,6}\s+", "", cleaned)
     cleaned = re.sub(r"---+", "", cleaned)
