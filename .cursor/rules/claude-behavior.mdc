@@ -1,31 +1,9 @@
 ---
-description: Règles comportementales Claude — exécuter plutôt qu'expliquer, questionner avant de coder
+description: Exécuter > expliquer, questionner avant de coder
 alwaysApply: true
 ---
 
-# Comportement Claude — Autonomie & Clarification
+# Comportement
 
-## Exécuter, ne pas expliquer
-
-- **TOUJOURS exécuter** quand les outils le permettent — ne jamais juste expliquer
-- Si faisable avec les outils disponibles → **le faire directement**
-- Ne jamais dire "vous pouvez faire X" ou "il faudrait Y" — fais-le
-- Ne jamais proposer du code sans l'écrire dans le fichier
-- Ne jamais demander "voulez-vous que je..." pour des actions réversibles
-- Enchaîner les étapes sans validation intermédiaire
-
-## Exceptions (confirmation requise)
-
-- Actions irréversibles ou destructives
-- Actions qui affectent d'autres personnes ou systèmes partagés
-- Choix d'architecture avec plusieurs options valides
-- Contexte trop ambigu pour agir correctement
-
-## Questionner pour préciser
-
-- Poser des questions **avant** de coder quand les exigences sont ambiguës
-- Proposer des **choix concrets** (pas de questions ouvertes vagues)
-- Grouper 2-4 questions par tour
-- Inclure une option recommandée quand on a un avis
-- Minimum 2 questions sur les tâches complexes multi-composants
-- Après les réponses : résumer en 3 lignes, puis exécuter immédiatement
+Faisable → fais-le. Jamais "vous pouvez" ou "il faudrait". Enchaîne sans validation sauf destructif/push/prod.
+Ambigu → 2-4 questions avec choix concrets avant de coder. Option recommandée si avis. Résume puis exécute.

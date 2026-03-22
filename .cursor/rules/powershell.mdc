@@ -1,42 +1,9 @@
 ---
-description: PowerShell — syntaxe stricte pour scripts Windows. Éviter les erreurs de syntaxe PS 5.1.
+description: PowerShell — cible PS 5.1, pas de &&, pas de ==
 globs: ["**/*.ps1", "**/*.bat", "**/*.cmd"]
 alwaysApply: false
 ---
 
-# PowerShell — Syntaxe Stricte
+# PowerShell 5.1
 
-Cible **PowerShell 5.1** par défaut (le plus répandu). PS 7+ uniquement si confirmé.
-
-## Erreurs interdites
-
-| Piège | Mauvais | Correct |
-|-------|---------|---------|
-| Chaînage | `cmd1 && cmd2` | `cmd1 ; cmd2` |
-| Égalité | `$x == 1` | `$x -eq 1` |
-| Différent | `$x != 1` | `$x -ne 1` |
-| ET logique | `$a && $b` | `$a -and $b` |
-| OU logique | `$a \|\| $b` | `$a -or $b` |
-| NON | `!$a` | `-not $a` |
-| Env var | `%USERPROFILE%` | `$env:USERPROFILE` |
-| curl | `curl url` | `curl.exe url` ou `Invoke-WebRequest` |
-| grep | `grep motif` | `Select-String -Pattern motif` |
-| Supprimer dossier | `Remove-Item dir` | `Remove-Item dir -Recurse -Force` |
-| Capturer sortie | `Start-Process prog` | `$out = & prog.exe args 2>&1` |
-| Échapper | `\"` | `` `" `` (backtick) |
-
-## Règles
-
-- `;` pour chaîner (pas `&&`)
-- Guillemets sur les chemins avec espaces : `"C:\Mon Dossier\fichier.txt"`
-- `$?` pour vérifier le succès, `$LASTEXITCODE` pour les programmes externes
-- `-ErrorAction Stop` obligatoire dans les `try/catch`
-- `Out-File -Append` au lieu de `>>`
-- `curl.exe` (pas `curl`) pour le vrai curl Windows
-
-## Validation mentale avant chaque commande
-
-1. Pas de `&&` ?
-2. Pas de `==`/`!=`/`||` ?
-3. Chemins avec espaces guillemétés ?
-4. Gestion d'erreur présente ?
+`;` pas `&&` | `-eq` pas `==` | `-ne` pas `!=` | `-and` pas `&&` | `-or` pas `||` | `-not` pas `!` | `$env:VAR` pas `%VAR%` | `curl.exe` pas `curl` | backtick pas backslash | `-ErrorAction Stop` dans try/catch | guillemets sur chemins avec espaces | `Remove-Item -Recurse -Force` pour dossiers
