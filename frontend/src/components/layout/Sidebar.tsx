@@ -18,6 +18,7 @@ import {
   Sparkles,
   ExternalLink,
   Shield,
+  Info,
   Scale,
   BarChart3,
   User,
@@ -424,10 +425,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <NavItem to="/upgrade" icon={CreditCard} label={t.nav.subscription} collapsed={collapsed} />
           <NavItem to="/usage" icon={BarChart3} label={t.nav.usage || (language === 'fr' ? 'Utilisation' : 'Usage')} collapsed={collapsed} />
 
-          {isUserAdmin && (
+          {isUserAdmin ? (
             <>
               <SectionLabel label="Admin" collapsed={collapsed} />
               <NavItem to="/admin" icon={Shield} label={t.nav.admin} collapsed={collapsed} />
+            </>
+          ) : (
+            <>
+              <SectionLabel label={language === 'fr' ? 'Infos' : 'Info'} collapsed={collapsed} />
+              <NavItem to="/about" icon={Info} label={language === 'fr' ? 'À propos' : 'About'} collapsed={collapsed} />
             </>
           )}
 

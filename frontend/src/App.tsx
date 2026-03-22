@@ -259,6 +259,7 @@ const PaymentSuccess = lazyWithRetry(() => import("./pages/PaymentSuccess"));
 const PaymentCancel = lazyWithRetry(() => import("./pages/PaymentCancel"));
 const StatusPage = lazyWithRetry(() => import("./pages/StatusPage"));
 const ContactPage = lazyWithRetry(() => import("./pages/ContactPage"));
+const AboutPage = lazyWithRetry(() => import("./pages/AboutPage"));
 const SharedAnalysisPage = lazyWithRetry(() => import("./pages/SharedAnalysisPage"));
 
 // Pages protégées
@@ -287,7 +288,7 @@ const ApiDocsPage = lazyWithRetry(() => import("./pages/ApiDocsPage"));
 const PREFETCH_MAP: Record<string, string[]> = {
   '/': ['/dashboard', '/login'],
   '/login': ['/dashboard'],
-  '/dashboard': ['/history', '/settings', '/playlists', '/analytics', '/chat', '/study'],
+  '/dashboard': ['/history', '/settings', '/playlists', '/analytics', '/chat', '/study', '/about'],
   '/history': ['/dashboard', '/analytics'],
   '/settings': ['/account'],
   '/playlists': ['/dashboard', '/playlist'],
@@ -309,6 +310,7 @@ const PAGE_LOADERS: Record<string, () => Promise<any>> = {
   '/analytics': () => import("./pages/AnalyticsPage"),
   '/chat': () => import("./pages/ChatPage"),
   '/study': () => import("./pages/StudyHubPage"),
+  '/about': () => import("./pages/AboutPage"),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -474,6 +476,14 @@ const AppRoutes = () => {
                   <RouteErrorBoundary variant="full" componentName="ContactPage">
                     <Suspense fallback={<PageSkeleton variant="full" />}>
                       <ContactPage />
+                    </Suspense>
+                  </RouteErrorBoundary>
+                } />
+
+                <Route path="/about" element={
+                  <RouteErrorBoundary variant="full" componentName="AboutPage">
+                    <Suspense fallback={<PageSkeleton variant="full" />}>
+                      <AboutPage />
                     </Suspense>
                   </RouteErrorBoundary>
                 } />
