@@ -15,7 +15,7 @@
     "credits": "crédits"
   },
   "login": {
-    "tagline": "Ne regardez plus vos vidéos. Analysez-les.",
+    "tagline": "Ne subissez plus vos vidéos — interrogez-les.",
     "badgeFr": "IA Française",
     "badgeEu": "Données en Europe",
     "googleLoading": "Connexion Google...",
@@ -144,6 +144,67 @@
       "Y a-t-il des biais ?",
       "Quelles sources sont citées ?"
     ]
+  },
+  "widget": {
+    "analyze": "Analyser cette vidéo",
+    "quickChat": "Quick Chat IA",
+    "back": "← Retour",
+    "minimize": "Réduire",
+    "expand": "Agrandir",
+    "analyzing": "Analyse en cours...",
+    "analysisComplete": "Analyse complète",
+    "reliability": "Fiabilité",
+    "verdict": "Verdict",
+    "keyPoints": "Points clés",
+    "seeDetail": "Voir l'analyse détaillée",
+    "hideDetail": "Masquer",
+    "chatWith": "Chatter avec la vidéo",
+    "openFull": "Analyse complète sur DeepSight",
+    "copy": "Copier",
+    "share": "Partager",
+    "copied": "Copié!",
+    "tournesolScore": "Score Tournesol"
+  },
+  "panel": {
+    "synthesis": "Synthèse",
+    "chat": "Chat",
+    "factcheck": "Faits",
+    "tournesol": "Tournesol",
+    "study": "Étude",
+    "noVideo": "Aucune vidéo détectée",
+    "noVideoSub": "Naviguez sur YouTube ou TikTok pour analyser une vidéo.",
+    "notAnalyzed": "Vidéo non analysée",
+    "notAnalyzedSub": "Lancez l'analyse depuis le widget YouTube.",
+    "loading": "Chargement..."
+  },
+  "bridge": {
+    "title": "Retrouvez cette analyse sur",
+    "web": "Application Web",
+    "ios": "App iOS",
+    "android": "App Android",
+    "upgrade": "Passer Pro"
+  },
+  "teaser": {
+    "unlockMore": "Débloquez plus",
+    "flashcards": "Flashcards IA",
+    "mindmap": "Carte mentale",
+    "webSearch": "Recherche web IA",
+    "export": "Export PDF/DOCX",
+    "playlists": "Playlists entières",
+    "seeAllPlans": "Voir tous les plans →",
+    "reviewMobile": "Révisez vos flashcards sur mobile",
+    "downloadApp": "Télécharger l'app"
+  },
+  "onboarding": {
+    "welcome": "Bienvenue sur DeepSight !",
+    "step1": "Ouvrez une vidéo YouTube",
+    "step2": "Cliquez sur 'Analyser'",
+    "step3": "Lisez la synthèse IA",
+    "shortcuts": "Raccourcis clavier",
+    "shortcutWidget": "Alt+D — Toggle widget",
+    "shortcutAnalyze": "Alt+A — Analyser",
+    "shortcutChat": "Alt+C — Chat",
+    "shortcutPanel": "Alt+S — Side Panel"
   },
   "promos": {
     "free": [

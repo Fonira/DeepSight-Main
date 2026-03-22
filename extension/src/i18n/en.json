@@ -15,7 +15,7 @@
     "credits": "credits"
   },
   "login": {
-    "tagline": "Stop watching your videos. Analyze them.",
+    "tagline": "Stop enduring your videos — question them.",
     "badgeFr": "French AI",
     "badgeEu": "Data in Europe",
     "googleLoading": "Google login...",
@@ -144,6 +144,67 @@
       "Are there any biases?",
       "What sources are cited?"
     ]
+  },
+  "widget": {
+    "analyze": "Analyze this video",
+    "quickChat": "Quick AI Chat",
+    "back": "← Back",
+    "minimize": "Minimize",
+    "expand": "Expand",
+    "analyzing": "Analyzing...",
+    "analysisComplete": "Analysis complete",
+    "reliability": "Reliability",
+    "verdict": "Verdict",
+    "keyPoints": "Key points",
+    "seeDetail": "See detailed analysis",
+    "hideDetail": "Hide",
+    "chatWith": "Chat with this video",
+    "openFull": "Full analysis on DeepSight",
+    "copy": "Copy",
+    "share": "Share",
+    "copied": "Copied!",
+    "tournesolScore": "Tournesol score"
+  },
+  "panel": {
+    "synthesis": "Analysis",
+    "chat": "Chat",
+    "factcheck": "Facts",
+    "tournesol": "Tournesol",
+    "study": "Study",
+    "noVideo": "No video detected",
+    "noVideoSub": "Go to YouTube or TikTok to analyze a video.",
+    "notAnalyzed": "Video not yet analyzed",
+    "notAnalyzedSub": "Launch analysis from the YouTube widget.",
+    "loading": "Loading..."
+  },
+  "bridge": {
+    "title": "Find this analysis on",
+    "web": "Web App",
+    "ios": "iOS App",
+    "android": "Android App",
+    "upgrade": "Go Pro"
+  },
+  "teaser": {
+    "unlockMore": "Unlock more",
+    "flashcards": "AI Flashcards",
+    "mindmap": "Mind map",
+    "webSearch": "AI Web search",
+    "export": "PDF/DOCX Export",
+    "playlists": "Full playlists",
+    "seeAllPlans": "See all plans →",
+    "reviewMobile": "Study flashcards on mobile",
+    "downloadApp": "Download the app"
+  },
+  "onboarding": {
+    "welcome": "Welcome to DeepSight!",
+    "step1": "Open a YouTube video",
+    "step2": "Click 'Analyze'",
+    "step3": "Read the AI synthesis",
+    "shortcuts": "Keyboard shortcuts",
+    "shortcutWidget": "Alt+D — Toggle widget",
+    "shortcutAnalyze": "Alt+A — Analyze",
+    "shortcutChat": "Alt+C — Chat",
+    "shortcutPanel": "Alt+S — Side Panel"
   },
   "promos": {
     "free": [

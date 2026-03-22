@@ -72,7 +72,7 @@ def test_frontend_has_essential_elements(page):
     """La page d'accueil contient un titre, un CTA, et n'est pas blanche."""
     page.goto(BASE_URL, wait_until="networkidle")
 
-    # Titre principal : "Ne regardez plus vos vidéos." ou "Stop watching..."
+    # Titre principal : "Ne subissez plus vos vidéos —" ou "Stop enduring..."
     h1 = page.locator("h1")
     assert h1.count() > 0, "Aucun <h1> trouvé — page blanche ?"
     h1_text = h1.first.inner_text()

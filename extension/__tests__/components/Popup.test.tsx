@@ -24,7 +24,7 @@ jest.mock('../../src/i18n/useTranslation', () => ({
         credits: 'crédits',
       },
       login: {
-        tagline: 'Ne regardez plus vos vidéos. Analysez-les.',
+        tagline: 'Ne subissez plus vos vidéos — interrogez-les.',
         badgeFr: 'IA Française',
         badgeEu: 'Données en Europe',
         googleLoading: 'Connexion Google...',
@@ -156,7 +156,7 @@ describe('App — unauthenticated state', () => {
     render(<App />);
 
     await waitFor(() => {
-      expect(screen.getByText('Ne regardez plus vos vidéos. Analysez-les.')).toBeInTheDocument();
+      expect(screen.getByText('Ne subissez plus vos vidéos — interrogez-les.')).toBeInTheDocument();
     });
   });
 });
