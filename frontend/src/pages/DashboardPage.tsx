@@ -313,7 +313,7 @@ export const DashboardPage: React.FC = () => {
       
       if (response.summary_id) {
         // Naviguer directement vers le chat avec ce summary_id
-        window.location.href = `/chat?summary=${response.summary_id}`;
+        navigate(`/chat?summary=${response.summary_id}`);
       }
     } catch (err: any) {
       setError(err?.message || (language === 'fr' 
@@ -455,20 +455,25 @@ export const DashboardPage: React.FC = () => {
           }
         );
         
-        // Cas 1: Analyse déjà en cache
-        if (response.status === "completed" && response.result?.summary_id) {
-          setLoadingMessage(language === 'fr' ? "Chargement du résumé..." : "Loading summary...");
-          setLoadingProgress(90);
+        // Cas 1: Analyse déjà en cache (result.summary_id ou task_id format cached_<id>)
+        if (response.status === "completed") {
+          const cachedSummaryId = response.result?.summary_id
+            || (response.task_id?.startsWith("cached_") ? parseInt(response.task_id.replace("cached_", "")) : null);
 
-          const fullSummary = await videoApi.getSummary(response.result.summary_id);
-          setSelectedSummary(fullSummary);
-          scrollToResults();
-          setPlayerVisible(false);
-          setLoadingProgress(100);
-          await refreshUser(true);
-          return;
+          if (cachedSummaryId) {
+            setLoadingMessage(language === 'fr' ? "Chargement du résumé..." : "Loading summary...");
+            setLoadingProgress(90);
+
+            const fullSummary = await videoApi.getSummary(cachedSummaryId);
+            setSelectedSummary(fullSummary);
+            scrollToResults();
+            setPlayerVisible(false);
+            setLoadingProgress(100);
+            await refreshUser(true);
+            return;
+          }
         }
-        
+
         // Cas 2: Nouvelle analyse en cours (task asynchrone)
         if (response.task_id && response.status !== "completed") {
           pollingRef.current = true;

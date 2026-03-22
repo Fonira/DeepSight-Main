@@ -804,7 +804,7 @@ IMPORTANT:
 - confidence: "high" = terme bien connu, "medium" = assez connu, "low" = incertain"""
 
     try:
-        async with httpx.AsyncClient(timeout=45.0) as client:
+        async with httpx.AsyncClient(timeout=20.0) as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
                 headers={
@@ -863,36 +863,35 @@ IMPORTANT:
 @router.get("/keywords", response_model=KeywordsResponse)
 async def get_all_keywords(
     limit: int = Query(100, ge=1, le=500),
-    with_definitions: bool = Query(True, description="Inclure les définitions IA"),
+    with_definitions: bool = Query(False, description="Inclure les définitions IA (appel Mistral, plus lent)"),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session)
 ):
     """
     🧠 Récupère tous les mots-clés extraits des analyses de l'utilisateur.
 
-    Utilisé pour le widget "Le Saviez-Vous" qui affiche un mot aléatoire
-    et permet de naviguer vers l'analyse source.
+    ⚡ Optimisé v2: with_definitions=False par défaut (retour <500ms).
+    Les définitions sont chargées lazily par le client si besoin.
 
     Sources d'extraction (par priorité):
     1. [[concepts]] marqués dans le summary_content (les plus pertinents)
     2. Tags du résumé (comma-separated)
-
-    Params:
-    - limit: Nombre max de mots-clés (défaut: 100)
-    - with_definitions: Si True, génère des définitions via Mistral (défaut: True)
-
-    Retourne:
-    - keywords: Liste de mots-clés avec définitions et source
-    - total: Nombre total de mots-clés
-    - has_history: True si l'utilisateur a des analyses
     """
     import re
     from sqlalchemy import select, or_
     from db.database import Summary
 
-    # Récupérer TOUTES les analyses (pas seulement celles avec tags)
+    # ⚡ Ne charger QUE les colonnes nécessaires (pas le transcript/summary complet)
     stmt = (
-        select(Summary)
+        select(
+            Summary.id,
+            Summary.summary_content,
+            Summary.tags,
+            Summary.video_title,
+            Summary.video_id,
+            Summary.category,
+            Summary.created_at
+        )
         .where(Summary.user_id == current_user.id)
         .where(
             or_(
@@ -901,15 +900,16 @@ async def get_all_keywords(
             )
         )
         .order_by(Summary.created_at.desc())
+        .limit(200)  # ⚡ Limiter les analyses scannées
     )
 
     result = await session.execute(stmt)
-    summaries = result.scalars().all()
+    rows = result.all()
 
     keywords_raw = []
     seen_terms = set()
 
-    def _add_keyword(term: str, summary: Summary):
+    def _add_keyword(term: str, row):
         """Helper pour ajouter un keyword sans doublon"""
         term = term.strip()
         if not term or len(term) < 2:
@@ -922,32 +922,33 @@ async def get_all_keywords(
         seen_terms.add(term_lower)
         keywords_raw.append({
             "term": term,
-            "summary_id": summary.id,
-            "video_title": summary.video_title,
-            "video_id": summary.video_id,
-            "category": summary.category,
-            "created_at": summary.created_at.isoformat() if summary.created_at else None
+            "summary_id": row.id,
+            "video_title": row.video_title,
+            "video_id": row.video_id,
+            "category": row.category,
+            "created_at": row.created_at.isoformat() if row.created_at else None
         })
 
-    for summary in summaries:
+    for row in rows:
         if len(keywords_raw) >= limit:
             break
 
         # 1. PRIORITÉ: Extraire les [[concepts]] du contenu
-        if summary.summary_content:
+        if row.summary_content:
             concept_pattern = r'\[\[([^\]|]+?)(?:\|[^\]]+?)?\]\]'
-            concepts = re.findall(concept_pattern, summary.summary_content)
+            concepts = re.findall(concept_pattern, row.summary_content)
             for concept in concepts:
-                _add_keyword(concept, summary)
+                _add_keyword(concept, row)
 
         # 2. Extraire des tags
-        if summary.tags:
-            tags = [t.strip() for t in summary.tags.split(",") if t.strip()]
+        if row.tags:
+            tags = [t.strip() for t in row.tags.split(",") if t.strip()]
             for tag in tags:
-                _add_keyword(tag, summary)
+                _add_keyword(tag, row)
 
-    # Générer les définitions académiques si demandé
+    # Générer les définitions académiques si EXPLICITEMENT demandé
     if with_definitions and keywords_raw:
+        # ⚡ Vérifier d'abord le cache — si tout est en cache, pas d'appel Mistral
         terms = [k["term"] for k in keywords_raw]
         definitions = await _generate_academic_definitions(terms)
 
@@ -978,5 +979,29 @@ async def get_all_keywords(
     return KeywordsResponse(
         keywords=keywords,
         total=len(keywords),
-        has_history=len(summaries) > 0
+        has_history=len(rows) > 0
     )
+
+
+@router.get("/keywords/define")
+async def get_keyword_definition(
+    term: str = Query(..., min_length=2, max_length=100, description="Terme à définir"),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    ⚡ Lazy-load: définition académique d'un seul mot-clé.
+    Appelé par le client quand un mot est affiché dans le widget.
+    Utilise le cache en mémoire pour retourner instantanément si déjà connu.
+    """
+    term_lower = term.lower()
+
+    # Check cache first (instantané)
+    if term_lower in _definitions_cache:
+        return _definitions_cache[term_lower]
+
+    # Generate for this single term
+    definitions = await _generate_academic_definitions([term])
+    if term_lower in definitions:
+        return definitions[term_lower]
+
+    return {"term": term, "definition": None, "confidence": "low"}

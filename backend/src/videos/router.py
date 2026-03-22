@@ -1092,35 +1092,31 @@ async def _analyze_video_background_v2(
             if not lang or lang == "auto":
                 lang = detected_lang or "fr"
 
-            # 3. Détecter la catégorie
+            # 3+4. ⚡ CATÉGORIE + ENRICHISSEMENT WEB EN PARALLÈLE (perf v2.0.1)
+            import asyncio
             _task_store[task_id]["progress"] = 30
-            _task_store[task_id]["message"] = "🏷️ Détection de la catégorie..."
+            _task_store[task_id]["message"] = "🏷️ Détection catégorie & recherche web..."
 
-            if not category or category == "auto":
-                category, confidence = detect_category(
-                    title=video_info["title"],
-                    description=video_info.get("description", ""),
-                    transcript=transcript[:3000],
-                    channel=video_info.get("channel", ""),
-                    tags=video_info.get("tags", []),
-                    youtube_categories=video_info.get("categories", [])
-                )
-            else:
-                confidence = 0.9
+            async def _detect_cat_v2():
+                if not category or category == "auto":
+                    return detect_category(
+                        title=video_info["title"],
+                        description=video_info.get("description", ""),
+                        transcript=transcript[:3000],
+                        channel=video_info.get("channel", ""),
+                        tags=video_info.get("tags", []),
+                        youtube_categories=video_info.get("categories", [])
+                    )
+                return category, 0.9
 
-            # 4. Enrichissement web (si activé)
-            web_context = None
-            enrichment_sources = []
-
-            if enrichment_level != EnrichmentLevel.NONE:
-                _task_store[task_id]["progress"] = 40
-                _task_store[task_id]["message"] = f"🌐 Recherche web ({enrichment_level.value})..."
-
+            async def _enrich_web_v2():
+                if enrichment_level == EnrichmentLevel.NONE:
+                    return None, [], enrichment_level
                 try:
-                    web_context, enrichment_sources, actual_level = await get_pre_analysis_context(
+                    return await get_pre_analysis_context(
                         video_title=video_info["title"],
                         video_channel=video_info.get("channel", ""),
-                        category=category,
+                        category=category or "auto",
                         transcript=transcript,
                         plan=user_plan,
                         lang=lang,
@@ -1128,6 +1124,13 @@ async def _analyze_video_background_v2(
                     )
                 except Exception as e:
                     print(f"⚠️ [v2.0] Web enrichment failed: {e}", flush=True)
+                    return None, [], enrichment_level
+
+            (category, confidence), (_web_ctx, _enrich_src, _) = await asyncio.gather(
+                _detect_cat_v2(), _enrich_web_v2()
+            )
+            web_context = _web_ctx
+            enrichment_sources = _enrich_src
 
             # 5. Générer le résumé avec les options de customization
             _task_store[task_id]["progress"] = 55
@@ -1218,26 +1221,33 @@ async def _analyze_video_background_v2(
             if not summary_content:
                 raise Exception("Failed to generate summary")
 
-            # 6. Extraire les entités (si demandé)
+            # 6+7. ⚡ ENTITÉS + FIABILITÉ EN PARALLÈLE (perf v2.0.1)
+            _task_store[task_id]["progress"] = 75
+            _task_store[task_id]["message"] = "🔍 Extraction des entités & fiabilité..."
+
             entities = None
-            if options.get("include_entities", True):
-                _task_store[task_id]["progress"] = 75
-                _task_store[task_id]["message"] = "🔍 Extraction des entités..."
-                entities = await extract_entities(summary_content, lang=lang)
-
-            # 7. Calculer la fiabilité (si demandé)
             reliability = None
-            if options.get("include_reliability", True):
-                _task_store[task_id]["progress"] = 85
-                _task_store[task_id]["message"] = "⚖️ Calcul du score de fiabilité..."
-                reliability = await calculate_reliability_score(summary_content, entities or {}, lang=lang)
+            _do_entities = options.get("include_entities", True)
+            _do_reliability = options.get("include_reliability", True)
 
-                if enrichment_sources:
-                    reliability_bonus = {
-                        EnrichmentLevel.FULL: 8,
-                        EnrichmentLevel.DEEP: 15
-                    }.get(enrichment_level, 0)
-                    reliability = min(98, reliability + reliability_bonus)
+            if _do_entities and _do_reliability:
+                entities, reliability = await asyncio.gather(
+                    extract_entities(summary_content, lang=lang),
+                    calculate_reliability_score(summary_content, {}, lang=lang)
+                )
+                if entities and len(entities) > 5:
+                    reliability = min(98, reliability + 2)
+            elif _do_entities:
+                entities = await extract_entities(summary_content, lang=lang)
+            elif _do_reliability:
+                reliability = await calculate_reliability_score(summary_content, {}, lang=lang)
+
+            if reliability is not None and enrichment_sources:
+                reliability_bonus = {
+                    EnrichmentLevel.FULL: 8,
+                    EnrichmentLevel.DEEP: 15
+                }.get(enrichment_level, 0)
+                reliability = min(98, reliability + reliability_bonus)
 
             # 8. Consommer les crédits et sauvegarder
             _task_store[task_id]["progress"] = 92
@@ -1762,33 +1772,30 @@ async def _analyze_video_background_v2_1(
                 lang = detected_lang or "fr"
 
             # ═══════════════════════════════════════════════════════════════════
-            # 3. DÉTECTER LA CATÉGORIE
+            # 3+4+5+6. ⚡ CATÉGORIE + COMMENTAIRES + METADATA + WEB EN PARALLÈLE (perf v2.1.1)
             # ═══════════════════════════════════════════════════════════════════
+            import asyncio
             _task_store[task_id]["progress"] = 22
-            _task_store[task_id]["message"] = "🏷️ Détection de la catégorie..."
+            _task_store[task_id]["message"] = "⚡ Détection catégorie, métadonnées & recherche web..."
 
-            if not category or category == "auto":
-                category, confidence = detect_category(
-                    title=video_info["title"],
-                    description=video_info.get("description", ""),
-                    transcript=transcript[:3000],
-                    channel=video_info.get("channel", ""),
-                    tags=video_info.get("tags", []),
-                    youtube_categories=video_info.get("categories", [])
-                )
-            else:
-                confidence = 0.9
+            async def _detect_cat_v21():
+                if not category or category == "auto":
+                    return detect_category(
+                        title=video_info["title"],
+                        description=video_info.get("description", ""),
+                        transcript=transcript[:3000],
+                        channel=video_info.get("channel", ""),
+                        tags=video_info.get("tags", []),
+                        youtube_categories=video_info.get("categories", [])
+                    )
+                return category, 0.9
 
-            # ═══════════════════════════════════════════════════════════════════
-            # 4. 🆕 ANALYSE DES COMMENTAIRES (si activée)
-            # ═══════════════════════════════════════════════════════════════════
-            if custom_opts.get("analyze_comments", False):
-                _task_store[task_id]["progress"] = 28
-                _task_store[task_id]["message"] = "💬 Analyse des commentaires YouTube..."
-                
+            async def _analyze_comments_v21():
+                if not custom_opts.get("analyze_comments", False):
+                    return None
                 try:
                     comments_limit = custom_opts.get("comments_limit", 100)
-                    comments_analysis_result = await analyze_comments(
+                    result = await analyze_comments(
                         video_id=video_id,
                         limit=comments_limit,
                         use_ai=True,
@@ -1796,49 +1803,41 @@ async def _analyze_video_background_v2_1(
                         lang=lang,
                         model=model
                     )
-                    print(f"✅ [v2.1] Comments analysis: {comments_analysis_result.analyzed_count} comments", flush=True)
+                    print(f"✅ [v2.1] Comments analysis: {result.analyzed_count} comments", flush=True)
+                    return result
                 except Exception as e:
                     print(f"⚠️ [v2.1] Comments analysis failed: {e}", flush=True)
+                    return None
 
-            # ═══════════════════════════════════════════════════════════════════
-            # 5. 🆕 MÉTADONNÉES ENRICHIES
-            # ═══════════════════════════════════════════════════════════════════
-            _task_store[task_id]["progress"] = 35
-            _task_store[task_id]["message"] = "📊 Extraction des métadonnées enrichies..."
-            
-            try:
-                metadata_enriched_result = await get_enriched_metadata(
-                    video_id=video_id,
-                    title=video_info["title"],
-                    description=video_info.get("description", ""),
-                    transcript=transcript[:5000],
-                    channel=video_info.get("channel", ""),
-                    tags=video_info.get("tags", []),
-                    category=category,
-                    analyze_propaganda=custom_opts.get("detect_propaganda", False),
-                    analyze_intent=custom_opts.get("analyze_publication_intent", False),
-                    extract_figures=custom_opts.get("extract_public_figures", True),
-                    lang=lang
-                )
-                print(f"✅ [v2.1] Metadata enriched: sponsorship={metadata_enriched_result.sponsorship.type.value}", flush=True)
-            except Exception as e:
-                print(f"⚠️ [v2.1] Metadata enrichment failed: {e}", flush=True)
-
-            # ═══════════════════════════════════════════════════════════════════
-            # 6. ENRICHISSEMENT WEB
-            # ═══════════════════════════════════════════════════════════════════
-            web_context = None
-            enrichment_sources = []
-
-            if enrichment_level != EnrichmentLevel.NONE:
-                _task_store[task_id]["progress"] = 42
-                _task_store[task_id]["message"] = f"🌐 Recherche web ({enrichment_level.value})..."
-
+            async def _enrich_metadata_v21():
                 try:
-                    web_context, enrichment_sources, actual_level = await get_pre_analysis_context(
+                    result = await get_enriched_metadata(
+                        video_id=video_id,
+                        title=video_info["title"],
+                        description=video_info.get("description", ""),
+                        transcript=transcript[:5000],
+                        channel=video_info.get("channel", ""),
+                        tags=video_info.get("tags", []),
+                        category=category or "auto",
+                        analyze_propaganda=custom_opts.get("detect_propaganda", False),
+                        analyze_intent=custom_opts.get("analyze_publication_intent", False),
+                        extract_figures=custom_opts.get("extract_public_figures", True),
+                        lang=lang
+                    )
+                    print(f"✅ [v2.1] Metadata enriched", flush=True)
+                    return result
+                except Exception as e:
+                    print(f"⚠️ [v2.1] Metadata enrichment failed: {e}", flush=True)
+                    return None
+
+            async def _enrich_web_v21():
+                if enrichment_level == EnrichmentLevel.NONE:
+                    return None, [], enrichment_level
+                try:
+                    return await get_pre_analysis_context(
                         video_title=video_info["title"],
                         video_channel=video_info.get("channel", ""),
-                        category=category,
+                        category=category or "auto",
                         transcript=transcript,
                         plan=user_plan,
                         lang=lang,
@@ -1846,6 +1845,18 @@ async def _analyze_video_background_v2_1(
                     )
                 except Exception as e:
                     print(f"⚠️ [v2.1] Web enrichment failed: {e}", flush=True)
+                    return None, [], enrichment_level
+
+            # ⚡ Lancer les 4 tâches en parallèle
+            (category, confidence), comments_analysis_result, metadata_enriched_result, (_web_ctx, _enrich_src, _) = await asyncio.gather(
+                _detect_cat_v21(),
+                _analyze_comments_v21(),
+                _enrich_metadata_v21(),
+                _enrich_web_v21()
+            )
+            web_context = _web_ctx
+            enrichment_sources = _enrich_src
+            print(f"⚡ [v2.1.1] Category + comments + metadata + web computed in PARALLEL", flush=True)
 
             # ═══════════════════════════════════════════════════════════════════
             # 7. 🆕 CONSTRUIRE LE PROMPT PERSONNALISÉ
@@ -1958,23 +1969,29 @@ async def _analyze_video_background_v2_1(
                 raise Exception("Failed to generate summary")
 
             # ═══════════════════════════════════════════════════════════════════
-            # 9. EXTRAIRE LES ENTITÉS
+            # 9+10. ⚡ ENTITÉS + FIABILITÉ EN PARALLÈLE (perf v2.1.1)
             # ═══════════════════════════════════════════════════════════════════
+            _task_store[task_id]["progress"] = 75
+            _task_store[task_id]["message"] = "🔍 Extraction des entités & fiabilité..."
+
             entities = None
-            if options.get("include_entities", True):
-                _task_store[task_id]["progress"] = 75
-                _task_store[task_id]["message"] = "🔍 Extraction des entités..."
-                entities = await extract_entities(summary_content, lang=lang)
-
-            # ═══════════════════════════════════════════════════════════════════
-            # 10. CALCULER LA FIABILITÉ
-            # ═══════════════════════════════════════════════════════════════════
             reliability = None
-            if options.get("include_reliability", True):
-                _task_store[task_id]["progress"] = 82
-                _task_store[task_id]["message"] = "⚖️ Calcul du score de fiabilité..."
-                reliability = await calculate_reliability_score(summary_content, entities or {}, lang=lang)
+            _do_entities = options.get("include_entities", True)
+            _do_reliability = options.get("include_reliability", True)
 
+            if _do_entities and _do_reliability:
+                entities, reliability = await asyncio.gather(
+                    extract_entities(summary_content, lang=lang),
+                    calculate_reliability_score(summary_content, {}, lang=lang)
+                )
+                if entities and len(entities) > 5:
+                    reliability = min(98, reliability + 2)
+            elif _do_entities:
+                entities = await extract_entities(summary_content, lang=lang)
+            elif _do_reliability:
+                reliability = await calculate_reliability_score(summary_content, {}, lang=lang)
+
+            if reliability is not None:
                 # Bonus si enrichi avec web
                 if enrichment_sources:
                     reliability_bonus = {
@@ -2566,39 +2583,40 @@ async def _analyze_video_background_v6(
             
             print(f"💾 Summary saved: id={summary_id}", flush=True)
 
-            # 💾 Cache the analysis in global video content cache
-            try:
-                from main import get_video_cache
-                _vcache_post = get_video_cache()
-                if _vcache_post is not None:
-                    await _vcache_post.set_analysis(platform, video_id, mode, lang, {
-                        "summary_content": summary_content,
-                        "video_title": video_info["title"],
-                        "video_channel": video_info.get("channel", "Unknown"),
-                        "video_duration": video_info.get("duration", 0),
-                        "thumbnail_url": default_thumbnail,
-                        "category": category,
-                        "category_confidence": confidence,
-                        "lang": lang,
-                        "mode": mode,
-                        "model_used": model,
-                        "transcript_context": (transcript_timestamped or transcript)[:10000],
-                        "video_upload_date": video_info.get("upload_date"),
-                        "entities_extracted": entities,
-                        "reliability_score": reliability,
-                        "enrichment_data": enrichment_metadata,
-                    })
-                    print(f"💾 [GLOBAL CACHE SET] Analysis cached for {platform}/{video_id} mode={mode} lang={lang}", flush=True)
-            except Exception as _vce:
-                print(f"⚠️ [GLOBAL CACHE] Analysis cache set failed: {_vce}", flush=True)
+            # ⚡ Cache + quota en parallèle (perf v6.2)
+            async def _cache_analysis():
+                try:
+                    from main import get_video_cache
+                    _vcache_post = get_video_cache()
+                    if _vcache_post is not None:
+                        await _vcache_post.set_analysis(platform, video_id, mode, lang, {
+                            "summary_content": summary_content,
+                            "video_title": video_info["title"],
+                            "video_channel": video_info.get("channel", "Unknown"),
+                            "video_duration": video_info.get("duration", 0),
+                            "thumbnail_url": default_thumbnail,
+                            "category": category,
+                            "category_confidence": confidence,
+                            "lang": lang,
+                            "mode": mode,
+                            "model_used": model,
+                            "transcript_context": (transcript_timestamped or transcript)[:10000],
+                            "video_upload_date": video_info.get("upload_date"),
+                            "entities_extracted": entities,
+                            "reliability_score": reliability,
+                            "enrichment_data": enrichment_metadata,
+                        })
+                except Exception as _vce:
+                    print(f"⚠️ [GLOBAL CACHE] Analysis cache set failed: {_vce}", flush=True)
 
-            # 🎫 Incrémenter le compteur quotidien d'analyses
-            try:
-                from core.plan_limits import increment_daily_usage
-                daily_count = await increment_daily_usage(session, user_id)
-                print(f"📊 [QUOTA] User {user_id} daily usage: {daily_count}", flush=True)
-            except Exception as quota_err:
-                print(f"⚠️ [QUOTA] Failed to increment daily usage: {quota_err}", flush=True)
+            async def _increment_quota():
+                try:
+                    from core.plan_limits import increment_daily_usage
+                    await increment_daily_usage(session, user_id)
+                except Exception as quota_err:
+                    print(f"⚠️ [QUOTA] Failed to increment daily usage: {quota_err}", flush=True)
+
+            await asyncio.gather(_cache_analysis(), _increment_quota())
 
             # ═══════════════════════════════════════════════════════════════════
             # 9. MARQUER COMME TERMINÉ
