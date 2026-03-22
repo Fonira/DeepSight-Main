@@ -94,6 +94,15 @@ cd mobile && eas build --platform all --profile production  # Native build
 - Ne jamais deviner le scope, le comportement attendu ou les contraintes — demander
 - Poser des questions précises avec des options concrètes, pas des questions ouvertes vagues
 
+### PowerShell — syntaxe stricte
+- **JAMAIS** utiliser `&&` pour chaîner → utiliser `;` (PS 5.1 par défaut)
+- **JAMAIS** utiliser `==`, `!=`, `&&`, `||` → utiliser `-eq`, `-ne`, `-and`, `-or`
+- **JAMAIS** utiliser `curl` sans `.exe` → écrire `curl.exe` (sinon c'est l'alias Invoke-WebRequest)
+- **TOUJOURS** guillemeter les chemins avec espaces
+- **TOUJOURS** utiliser `-ErrorAction Stop` dans les try/catch
+- Backtick (`` ` ``) pour échapper, pas backslash
+- En cas de doute sur la version → cibler PS 5.1 (le plus répandu)
+
 ## Modes de réflexion
 - `think` : Modifications simples
 - `think hard` : Logique complexe, bugs subtils

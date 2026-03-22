@@ -96,3 +96,34 @@ Tu travailles sur DeepSight, un SaaS d'analyse IA de vidéos YouTube et TikTok.
 - Python : async/await, type hints, Pydantic v2, logger (pas print)
 - Design : dark mode first, fond #0a0a0f, accents indigo/violet/cyan
 - Tests : Vitest (web), Jest (mobile), Pytest (backend)
+
+---
+
+## Règle 4 — PowerShell : syntaxe irréprochable
+
+Quand tu écris des commandes PowerShell ou des scripts .ps1, tu dois garantir une syntaxe correcte du premier coup. En cas de doute, cible PowerShell 5.1 (le plus répandu).
+
+### Erreurs interdites
+
+| Piège | Mauvais | Correct |
+|-------|---------|---------|
+| Chaînage | `cmd1 && cmd2` | `cmd1 ; cmd2` (PS 5.1) |
+| Égalité | `if ($x == 1)` | `if ($x -eq 1)` |
+| Différent | `if ($x != 1)` | `if ($x -ne 1)` |
+| ET logique | `if ($a && $b)` | `if ($a -and $b)` |
+| OU logique | `if ($a \|\| $b)` | `if ($a -or $b)` |
+| NON logique | `if (!$a)` | `if (-not $a)` |
+| Env var | `%USERPROFILE%` | `$env:USERPROFILE` |
+| curl | `curl url` (alias PS) | `curl.exe url` ou `Invoke-WebRequest` |
+| grep | `grep motif` | `Select-String -Pattern motif` ou `findstr` |
+| Append fichier | `>> file.txt` | `Out-File -Append file.txt` |
+| Supprimer dossier | `Remove-Item dossier` | `Remove-Item dossier -Recurse -Force` |
+| Capturer sortie | `Start-Process prog` | `$out = & prog.exe args 2>&1` |
+
+### Règles obligatoires
+- Toujours utiliser `;` pour chaîner (pas `&&`) sauf si PS 7+ est confirmé
+- Toujours mettre les chemins avec espaces entre guillemets
+- Utiliser `$?` pour vérifier le succès d'une commande externe
+- Utiliser `-ErrorAction Stop` dans les try/catch avec des cmdlets
+- Backtick (`` ` ``) pour échapper, pas backslash
+- Écrire `curl.exe` (pas `curl`) pour appeler le vrai curl sous Windows
