@@ -1,11 +1,10 @@
 """
 TTS ROUTER — ElevenLabs Text-to-Speech
-v2.1 — Non-streaming proxy with proper error propagation
+v3.0 — FR metropolitan voices, speed control, text cleanup, premium gate
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
-from typing import Optional
 import httpx
 import logging
 
@@ -13,6 +12,8 @@ from db.database import User
 from auth.dependencies import get_current_user
 from billing.permissions import require_feature
 from core.config import get_elevenlabs_key
+from tts.schemas import TTSRequest
+from tts.service import clean_text_for_tts, get_voice_id, DEFAULT_MODEL_ID
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,6 @@ router = APIRouter()
 
 # ElevenLabs config
 ELEVENLABS_BASE_URL = "https://api.elevenlabs.io/v1"
-DEFAULT_VOICE_ID = "pMsXgVXv3BLzUgSXRplE"  # Voix française
-DEFAULT_MODEL_ID = "eleven_flash_v2_5"       # 75ms latency, supports French
 MAX_TEXT_LENGTH = 5000
 
 # Voices cache
@@ -29,7 +28,7 @@ _voices_cache: dict = {"data": None, "expires": 0}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🎙️ POST /api/tts — Generate TTS audio
+# 🎙️ POST /api/tts — Generate TTS audio (v3)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @router.post("")
@@ -40,39 +39,51 @@ async def tts_generate(
     """
     Generate TTS audio from ElevenLabs.
 
-    Body: { text: string, voice_id?: string, model_id?: string }
+    Body: { text, language?, gender?, speed?, strip_questions? }
     Returns: audio/mpeg response
     """
-    # Feature check
+    # Feature check — premium only
     user_plan = current_user.plan or "free"
     platform = request.query_params.get("platform", "web")
     require_feature(user_plan, "tts", platform, label="Text-to-Speech")
 
     # Parse body
     body = await request.json()
-    text = body.get("text", "").strip()
-    voice_id = body.get("voice_id", DEFAULT_VOICE_ID)
-    model_id = body.get("model_id", DEFAULT_MODEL_ID)
+    try:
+        tts_req = TTSRequest(**body)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    if not text:
-        raise HTTPException(status_code=400, detail="Text is required")
+    # Clean text for TTS
+    cleaned_text = clean_text_for_tts(tts_req.text, strip_questions=tts_req.strip_questions)
 
-    if len(text) > MAX_TEXT_LENGTH:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Text too long. Maximum {MAX_TEXT_LENGTH} characters, got {len(text)}."
-        )
+    if not cleaned_text:
+        raise HTTPException(status_code=400, detail="Text is required (empty after cleanup)")
+
+    # Resolve voice
+    voice_id = tts_req.voice_id or get_voice_id(tts_req.language, tts_req.gender)
+    model_id = tts_req.model_id or DEFAULT_MODEL_ID
 
     # Get API key
     api_key = get_elevenlabs_key()
     if not api_key:
-        raise HTTPException(
-            status_code=503,
-            detail="TTS service not configured"
-        )
+        raise HTTPException(status_code=503, detail="TTS service not configured")
 
-    # Call ElevenLabs (non-streaming for proper error handling)
+    # Call ElevenLabs
     elevenlabs_url = f"{ELEVENLABS_BASE_URL}/text-to-speech/{voice_id}"
+
+    payload = {
+        "text": cleaned_text,
+        "model_id": model_id,
+        "language_code": tts_req.language,
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.75,
+            "style": 0.3,
+            "use_speaker_boost": True,
+            "speed": tts_req.speed,
+        },
+    }
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
@@ -83,14 +94,7 @@ async def tts_generate(
                     "Content-Type": "application/json",
                     "Accept": "audio/mpeg",
                 },
-                json={
-                    "text": text,
-                    "model_id": model_id,
-                    "voice_settings": {
-                        "stability": 0.5,
-                        "similarity_boost": 0.75,
-                    },
-                },
+                json=payload,
             )
 
             if response.status_code == 401:
@@ -119,8 +123,9 @@ async def tts_generate(
                 )
 
             logger.info(
-                "TTS generated: user=%s text_len=%d audio_bytes=%d",
-                current_user.email, len(text), len(audio_bytes),
+                "TTS generated: user=%s lang=%s gender=%s speed=%.1f text_len=%d audio_bytes=%d",
+                current_user.email, tts_req.language, tts_req.gender,
+                tts_req.speed, len(cleaned_text), len(audio_bytes),
             )
 
             return Response(
@@ -147,14 +152,11 @@ async def tts_generate(
 async def list_voices(
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Return available ElevenLabs voices (cached 1h).
-    """
+    """Return available ElevenLabs voices (cached 1h)."""
     import time
 
     now = time.time()
 
-    # Return cached if valid
     if _voices_cache["data"] and _voices_cache["expires"] > now:
         return _voices_cache["data"]
 
@@ -187,9 +189,14 @@ async def list_voices(
                 for v in data.get("voices", [])
             ]
 
-            result = {"voices": voices, "default_voice_id": DEFAULT_VOICE_ID}
+            result = {
+                "voices": voices,
+                "default_voices": {
+                    "fr": {"male": get_voice_id("fr", "male"), "female": get_voice_id("fr", "female")},
+                    "en": {"male": get_voice_id("en", "male"), "female": get_voice_id("en", "female")},
+                },
+            }
 
-            # Cache for 1 hour
             _voices_cache["data"] = result
             _voices_cache["expires"] = now + 3600
 
@@ -216,6 +223,8 @@ async def tts_status():
         "available": bool(api_key),
         "provider": "elevenlabs" if api_key else None,
         "model": DEFAULT_MODEL_ID,
-        "default_voice_id": DEFAULT_VOICE_ID,
         "max_text_length": MAX_TEXT_LENGTH,
+        "supported_languages": ["fr", "en"],
+        "supported_genders": ["male", "female"],
+        "speed_range": {"min": 0.7, "max": 3.0, "default": 1.0},
     }
