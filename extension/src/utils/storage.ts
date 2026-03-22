@@ -1,32 +1,55 @@
-import type { AuthTokens, User, RecentAnalysis, ExtensionSettings, DEFAULT_SETTINGS } from '../types';
+import type { AuthTokens, User, RecentAnalysis, ExtensionSettings } from '../types';
 
 // ── Token Storage ──
 
 export async function getStoredTokens(): Promise<AuthTokens> {
-  const data = await chrome.storage.local.get(['accessToken', 'refreshToken']);
-  return {
-    accessToken: data.accessToken || null,
-    refreshToken: data.refreshToken || null,
-  };
+  try {
+    const data = await chrome.storage.local.get(['accessToken', 'refreshToken']);
+    return {
+      accessToken: data.accessToken || null,
+      refreshToken: data.refreshToken || null,
+    };
+  } catch {
+    return { accessToken: null, refreshToken: null };
+  }
 }
 
 export async function setStoredTokens(accessToken: string, refreshToken: string): Promise<void> {
-  await chrome.storage.local.set({ accessToken, refreshToken });
+  // Bug #10: guard against undefined values
+  const payload: Record<string, string> = { accessToken };
+  if (refreshToken) payload.refreshToken = refreshToken;
+  try {
+    await chrome.storage.local.set(payload);
+  } catch {
+    // Storage quota or permission error — fail silently
+  }
 }
 
 export async function clearStoredAuth(): Promise<void> {
-  await chrome.storage.local.remove(['accessToken', 'refreshToken', 'user']);
+  try {
+    await chrome.storage.local.remove(['accessToken', 'refreshToken', 'user']);
+  } catch {
+    // Ignore errors on clear
+  }
 }
 
 // ── User Storage ──
 
 export async function getStoredUser(): Promise<User | null> {
-  const data = await chrome.storage.local.get(['user']);
-  return data.user || null;
+  try {
+    const data = await chrome.storage.local.get(['user']);
+    return data.user || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function setStoredUser(user: User): Promise<void> {
-  await chrome.storage.local.set({ user });
+  try {
+    await chrome.storage.local.set({ user });
+  } catch {
+    // Storage quota or permission error — fail silently
+  }
 }
 
 // ── Settings Storage ──

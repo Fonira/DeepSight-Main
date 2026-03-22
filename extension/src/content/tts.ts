@@ -95,6 +95,7 @@ export function ttsStop(): void {
   abortController?.abort();
   abortController = null;
   cleanup();
+  activeButtonId = null;
   state.isPlaying = false;
   state.isPaused = false;
   state.isLoading = false;
