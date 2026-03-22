@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, Component } from 'react';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 import { Slot, Stack, useRouter, useSegments } from 'expo-router';
@@ -15,6 +16,48 @@ import { useShareIntent } from '../src/hooks/useShareIntent';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Global error boundary — catches unhandled render errors
+class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean; error: Error | null }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    if (__DEV__) { console.error('[ErrorBoundary] Unhandled render error:', error, info); }
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={ebStyles.container}>
+          <Text style={ebStyles.title}>Une erreur est survenue</Text>
+          <Text style={ebStyles.message}>{this.state.error?.message}</Text>
+          <Pressable
+            style={ebStyles.button}
+            onPress={() => this.setState({ hasError: false, error: null })}
+          >
+            <Text style={ebStyles.buttonText}>Réessayer</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const ebStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0a0a0f', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  title: { color: '#ffffff', fontSize: 18, fontWeight: '600', marginBottom: 8 },
+  message: { color: '#9ca3af', fontSize: 14, textAlign: 'center', marginBottom: 24 },
+  button: { backgroundColor: '#6366f1', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 },
+  buttonText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
+});
 
 const queryClient = createQueryClient();
 
@@ -39,6 +82,7 @@ export default function RootLayout() {
   }
 
   return (
+    <ErrorBoundary>
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
@@ -52,6 +96,7 @@ export default function RootLayout() {
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
 

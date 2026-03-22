@@ -186,14 +186,25 @@ export const secureStorage = {
   },
 };
 
+// Per-key mutex to prevent AsyncStorage race conditions on concurrent writes
+const _storageLocks: Record<string, Promise<unknown>> = {};
+function withStorageLock<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const prev = _storageLocks[key] ?? Promise.resolve();
+  const next = prev.then(fn, fn);
+  _storageLocks[key] = next.catch(() => {});
+  return next;
+}
+
 // Regular storage for non-sensitive data
 export const storage = {
   async setItem(key: string, value: string): Promise<void> {
-    try {
-      await AsyncStorage.setItem(key, value);
-    } catch (error) {
-      if (__DEV__) { console.error('AsyncStorage setItem error:', error); }
-    }
+    return withStorageLock(key, async () => {
+      try {
+        await AsyncStorage.setItem(key, value);
+      } catch (error) {
+        if (__DEV__) { console.error('AsyncStorage setItem error:', error); }
+      }
+    });
   },
 
   async getItem(key: string): Promise<string | null> {
@@ -214,12 +225,14 @@ export const storage = {
   },
 
   async setObject<T>(key: string, value: T): Promise<void> {
-    try {
-      const jsonValue = JSON.stringify(value);
-      await AsyncStorage.setItem(key, jsonValue);
-    } catch (error) {
-      if (__DEV__) { console.error('AsyncStorage setObject error:', error); }
-    }
+    return withStorageLock(key, async () => {
+      try {
+        const jsonValue = JSON.stringify(value);
+        await AsyncStorage.setItem(key, jsonValue);
+      } catch (error) {
+        if (__DEV__) { console.error('AsyncStorage setObject error:', error); }
+      }
+    });
   },
 
   async getObject<T>(key: string): Promise<T | null> {

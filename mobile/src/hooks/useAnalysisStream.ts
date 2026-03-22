@@ -416,10 +416,8 @@ export function useAnalysisStream(
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('No response body');
-      }
+      if (!response.body) throw new Error('Server returned empty response body');
+      const reader = response.body.getReader();
 
       const parser = new EventSourceParser(handleEvent);
       const decoder = new TextDecoder();
@@ -512,17 +510,18 @@ export function useAnalysisStream(
     });
   }, []);
 
-  // Handle app state changes (pause when backgrounded)
+  // Handle app state changes — use a ref for the handler to avoid re-subscribing on status changes
+  const stateStatusRef = useRef(state.status);
+  stateStatusRef.current = state.status;
+
   useEffect(() => {
-    const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      if (nextAppState === 'background' && state.status === 'analyzing') {
-        // Don't pause - keep running in background
-      }
+    const handleAppStateChange = (_nextAppState: AppStateStatus) => {
+      // Keep running in background — stateStatusRef.current reflects latest status without re-subscription
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
-  }, [state.status]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-start if enabled
   useEffect(() => {

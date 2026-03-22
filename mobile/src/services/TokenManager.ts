@@ -291,8 +291,8 @@ class TokenManager {
   /**
    * Handle session expiration
    */
-  private handleSessionExpired(): void {
-    this.clearTokens();
+  private async handleSessionExpired(): Promise<void> {
+    await this.clearTokens();
 
     // Notify all registered callbacks
     this.sessionExpiredCallbacks.forEach(callback => {

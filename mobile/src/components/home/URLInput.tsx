@@ -14,6 +14,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import NetInfo from '@react-native-community/netinfo';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAnalysisStore } from '@/stores/analysisStore';
 import { videoApi } from '@/services/api';
@@ -80,6 +81,13 @@ export const URLInput: React.FC<URLInputProps> = ({ onOptionsPress }) => {
     if (!validation.isValid || isAnalyzing) return;
 
     Keyboard.dismiss();
+
+    const netState = await NetInfo.fetch();
+    if (!netState.isConnected) {
+      setError('Pas de connexion internet. Vérifiez votre réseau.');
+      return;
+    }
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setIsAnalyzing(true);
     setError(null);

@@ -300,6 +300,7 @@ export default function LibraryScreen() {
           data={filteredItems}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
+          estimatedItemSize={120}
           contentContainerStyle={styles.listContent}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}
