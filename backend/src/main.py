@@ -254,6 +254,14 @@ except ImportError as e:
     COMPARISON_ROUTER_AVAILABLE = False
     print(f"⚠️ Comparison router not available: {e}", flush=True)
 
+# 🩺 Health check v2 router (deep health checks)
+try:
+    from health.router import router as health_v1_router
+    HEALTH_V1_ROUTER_AVAILABLE = True
+except ImportError as e:
+    HEALTH_V1_ROUTER_AVAILABLE = False
+    print(f"⚠️ Health v1 router not available: {e}", flush=True)
+
 VERSION = "3.8.1"  # Phase 4.1: Analytics, Store Review, Push i18n
 APP_NAME = "Deep Sight API"
 ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
@@ -585,6 +593,9 @@ if RATE_LIMITER_AVAILABLE:
             "/api/health",
             "/api/health/ping",
             "/api/health/status",
+            "/api/health/deep",
+            "/api/v1/health",
+            "/api/v1/health/deep",
             "/docs",
             "/openapi.json",
             "/redoc",
@@ -692,6 +703,11 @@ if SEARCH_ROUTER_AVAILABLE:
 if COMPARISON_ROUTER_AVAILABLE:
     app.include_router(comparison_router, prefix="/api/comparison", tags=["Comparison"])
     print("🆚 Comparison router loaded (POST /api/comparison/compare)", flush=True)
+
+# 🩺 Health check v1 router (deep health checks)
+if HEALTH_V1_ROUTER_AVAILABLE:
+    app.include_router(health_v1_router, prefix="/api/v1/health", tags=["Health Check"])
+    print("🩺 Health v1 router loaded (GET /api/v1/health, GET /api/v1/health/deep)", flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE

@@ -119,7 +119,7 @@ export function TournesolRecommendations({ language = 'fr', limit = 10, refreshT
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="small" color={palette.yellow} />
+        <ActivityIndicator size="small" color={palette.amber} />
       </View>
     );
   }

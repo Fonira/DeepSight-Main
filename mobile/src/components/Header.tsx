@@ -13,7 +13,6 @@ import Animated, {
   interpolate,
   SharedValue,
 } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -156,7 +155,7 @@ export const Header: React.FC<HeaderProps> = ({
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 action.onPress();
               }}
-              style={[styles.rightAction, { backgroundColor: colors.glassBg }]}
+              style={[styles.rightAction, { backgroundColor: colors.bgCard }]}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Ionicons name={action.icon} size={20} color={colors.textPrimary} />
@@ -167,25 +166,6 @@ export const Header: React.FC<HeaderProps> = ({
     </Animated.View>
   );
 
-  // Use blur background
-  if (!transparent && Platform.OS === 'ios') {
-    return (
-      <>
-        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <Animated.View style={[styles.blurWrapper, animatedBlurStyle]}>
-          <BlurView
-            intensity={isDark ? 40 : 60}
-            tint={isDark ? 'dark' : 'light'}
-            style={StyleSheet.absoluteFill}
-          />
-        </Animated.View>
-        <View style={{ backgroundColor: scrollY ? 'transparent' : `${colors.bgPrimary}E6` }}>
-          {headerContent}
-        </View>
-      </>
-    );
-  }
-
   return (
     <>
       <StatusBar
@@ -193,7 +173,7 @@ export const Header: React.FC<HeaderProps> = ({
         backgroundColor={transparent ? 'transparent' : colors.bgPrimary}
         translucent
       />
-      <View style={{ backgroundColor: transparent ? 'transparent' : `${colors.bgPrimary}F2` }}>
+      <View style={{ backgroundColor: transparent ? 'transparent' : colors.bgPrimary }}>
         {headerContent}
       </View>
     </>
@@ -201,10 +181,6 @@ export const Header: React.FC<HeaderProps> = ({
 };
 
 const styles = StyleSheet.create({
-  blurWrapper: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 0,
-  },
   container: {
     flexDirection: 'row',
     alignItems: 'center',

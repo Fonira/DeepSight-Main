@@ -88,7 +88,8 @@ const ShimmerBlock: React.FC<ShimmerBlockProps> = ({
     transform: [{ translateX: translateX.value * 200 }],
   }));
 
-  const baseBg = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+  const { colors } = useTheme();
+  const baseBg = colors.bgCard;
   const shimmerColors = isDark ? SHIMMER_COLORS_DARK : SHIMMER_COLORS_LIGHT;
 
   return (
@@ -146,8 +147,8 @@ const SkeletonCardInner: React.FC<SkeletonCardProps> = ({
         style={[
           styles.heroCard,
           {
-            backgroundColor: colors.glassBg,
-            borderColor: colors.glassBorder,
+            backgroundColor: colors.bgCard,
+            borderColor: colors.border,
           },
         ]}
         accessibilityLabel="Chargement de l'analyse"
@@ -195,8 +196,8 @@ const SkeletonCardInner: React.FC<SkeletonCardProps> = ({
       style={[
         styles.compactCard,
         {
-          backgroundColor: colors.glassBg,
-          borderColor: colors.glassBorder,
+          backgroundColor: colors.bgCard,
+          borderColor: colors.border,
         },
       ]}
       accessibilityLabel="Chargement de l'analyse"

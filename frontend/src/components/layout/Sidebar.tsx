@@ -352,7 +352,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {!mobileOpen && (
         <button
           onClick={() => setInternalMobileOpen(true)}
-          className="lg:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-lg bg-bg-elevated/90 backdrop-blur-xl border border-border-default flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
+          className="lg:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-lg bg-bg-elevated border border-border-default flex items-center justify-center text-text-secondary hover:text-text-primary transition-colors"
           aria-label="Open menu"
           aria-expanded={false}
         >
@@ -376,7 +376,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </AnimatePresence>
 
       <aside
-        className={`fixed left-0 top-0 h-screen bg-bg-secondary/95 backdrop-blur-xl border-r border-border-subtle flex flex-col z-40 transition-all duration-200 ease-out
+        className={`fixed left-0 top-0 h-screen bg-bg-secondary border-r border-border-subtle flex flex-col z-40 transition-all duration-200 ease-out
           ${collapsed ? 'w-[60px]' : 'w-[240px]'}
           lg:translate-x-0
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}

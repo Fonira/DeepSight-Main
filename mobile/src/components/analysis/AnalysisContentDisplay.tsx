@@ -185,8 +185,8 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
   // ── Colors ─────────────────────────────────────────────────────────────
   const textColor = isDark ? '#FFFFFF' : colors.textPrimary;
   const emphasisColor = isDark ? '#E0E0F0' : colors.textSecondary;
-  const subtleBg = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)';
-  const borderFaint = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+  const subtleBg = isDark ? colors.bgCard : colors.bgSecondary;
+  const borderFaint = colors.border;
 
   // ── Timecode parser ────────────────────────────────────────────────────
   const parseTimecodeToSeconds = (match: string): number => {
@@ -513,7 +513,7 @@ export const AnalysisContentDisplay: React.FC<AnalysisContentDisplayProps> = ({
       <Animated.View style={[copyAnimStyle]} entering={FadeInDown.delay(200).duration(300)}>
         <Pressable
           onPress={handleCopyAnimated}
-          style={[localStyles.copyBtn, { backgroundColor: colors.glassBg, borderColor: colors.glassBorder }]}
+          style={[localStyles.copyBtn, { backgroundColor: colors.bgCard, borderColor: colors.border }]}
           accessibilityLabel="Copier le résumé"
           accessibilityRole="button"
         >

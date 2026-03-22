@@ -1,187 +1,260 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   View,
+  Pressable,
   StyleSheet,
-  TouchableOpacity,
   useWindowDimensions,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
+  withTiming,
+  interpolate,
   interpolateColor,
+  Easing,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { palette } from '@/theme/colors';
-import { sp } from '@/theme/spacing';
+import { fontFamily, fontSize } from '@/theme/typography';
 
-interface TabBarIconProps {
-  name: keyof typeof Ionicons.glyphMap;
+// ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
+
+/** Timing config — fast & intentional, no springy bounce */
+const ANIM_CONFIG = {
+  duration: 180,
+  easing: Easing.bezier(0.4, 0, 0.2, 1),
+} as const;
+
+const ICON_SIZE = 22;
+const TAB_BAR_HEIGHT = 56;
+
+/** Tab definitions — only routes listed here appear in the bar */
+const TAB_META: Record<
+  string,
+  { icon: keyof typeof Ionicons.glyphMap; iconFocused: keyof typeof Ionicons.glyphMap; label: string }
+> = {
+  index: { icon: 'home-outline', iconFocused: 'home', label: 'Accueil' },
+  library: { icon: 'time-outline', iconFocused: 'time', label: 'Historique' },
+  study: { icon: 'book-outline', iconFocused: 'book', label: 'Étude' },
+  subscription: { icon: 'sparkles-outline', iconFocused: 'sparkles', label: 'Abo' },
+  profile: { icon: 'settings-outline', iconFocused: 'settings', label: 'Profil' },
+};
+
+// ---------------------------------------------------------------------------
+// TabItem (each tab icon + label + animations)
+// ---------------------------------------------------------------------------
+
+interface TabItemProps {
+  routeName: string;
   isFocused: boolean;
-  activeColor: string;
-  inactiveColor: string;
+  onPress: () => void;
+  onLongPress: () => void;
+  width: number;
+  isDark: boolean;
 }
 
-function TabBarIcon({ name, isFocused, activeColor, inactiveColor }: TabBarIconProps) {
-  const scale = useSharedValue(isFocused ? 1.15 : 1);
+function TabItem({ routeName, isFocused, onPress, onLongPress, width, isDark }: TabItemProps) {
+  const meta = TAB_META[routeName];
+  if (!meta) return null;
+
+  // Shared value that drives all animations for this tab
   const progress = useSharedValue(isFocused ? 1 : 0);
 
+  // Scale on press (not persistent — just a tap impulse)
+  const scalePress = useSharedValue(1);
+
   React.useEffect(() => {
-    scale.value = withSpring(isFocused ? 1.15 : 1, { damping: 15, stiffness: 400, mass: 0.5 });
-    progress.value = withSpring(isFocused ? 1 : 0, { damping: 18, stiffness: 350, mass: 0.4 });
-  }, [isFocused, scale, progress]);
+    progress.value = withTiming(isFocused ? 1 : 0, ANIM_CONFIG);
+  }, [isFocused, progress]);
 
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const handlePressIn = useCallback(() => {
+    scalePress.value = withTiming(0.88, { duration: 100, easing: Easing.out(Easing.quad) });
+  }, [scalePress]);
 
-  const colorStyle = useAnimatedStyle(() => ({
+  const handlePressOut = useCallback(() => {
+    scalePress.value = withTiming(1, { duration: 140, easing: Easing.out(Easing.quad) });
+  }, [scalePress]);
+
+  // Active gold, inactive muted
+  const activeColor = palette.gold;
+  const inactiveColor = isDark ? 'rgba(245, 240, 232, 0.35)' : 'rgba(42, 36, 32, 0.4)';
+
+  // Icon animated style: scale + color
+  const iconAnimStyle = useAnimatedStyle(() => {
+    const scale = interpolate(progress.value, [0, 1], [1, 1.08]);
+    return {
+      transform: [
+        { scale: scale * scalePress.value },
+      ],
+      opacity: interpolate(progress.value, [0, 1], [0.6, 1]),
+    };
+  });
+
+  const iconColorStyle = useAnimatedStyle(() => ({
     color: interpolateColor(progress.value, [0, 1], [inactiveColor, activeColor]),
   }));
 
+  // Label animated style
+  const labelAnimStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 1], [0.4, 0.9]),
+    color: interpolateColor(progress.value, [0, 1], [inactiveColor, activeColor]),
+    transform: [{ scale: interpolate(progress.value, [0, 1], [0.96, 1]) }],
+  }));
+
+  // Dot indicator
+  const dotStyle = useAnimatedStyle(() => ({
+    opacity: progress.value,
+    transform: [{ scale: progress.value }],
+  }));
+
   return (
-    <Animated.View style={animStyle}>
-      <Animated.Text style={colorStyle}>
-        <Ionicons name={name} size={24} />
+    <Pressable
+      onPress={onPress}
+      onLongPress={onLongPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={[styles.tab, { width }]}
+      hitSlop={{ top: 8, bottom: 8 }}
+      android_ripple={null}
+    >
+      <Animated.View style={[styles.iconContainer, iconAnimStyle]}>
+        <Animated.Text style={iconColorStyle}>
+          <Ionicons
+            name={isFocused ? meta.iconFocused : meta.icon}
+            size={ICON_SIZE}
+          />
+        </Animated.Text>
+      </Animated.View>
+
+      <Animated.Text
+        style={[styles.label, labelAnimStyle]}
+        numberOfLines={1}
+      >
+        {meta.label}
       </Animated.Text>
-    </Animated.View>
+
+      {/* Gold dot under active tab */}
+      <Animated.View style={[styles.dot, dotStyle]} />
+    </Pressable>
   );
 }
 
-// Seules les routes avec une icône sont affichées dans la tab bar
-// Les clés DOIVENT correspondre aux noms de fichiers dans app/(tabs)/
-const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  index: 'home',
-  library: 'time-outline',
-  study: 'book-outline',
-  subscription: 'sparkles-outline',
-  profile: 'settings-outline',
-};
+// ---------------------------------------------------------------------------
+// CustomTabBar
+// ---------------------------------------------------------------------------
 
-interface CustomTabBarProps {
+/**
+ * Props injected by Expo Router's <Tabs tabBar={...} />.
+ * We accept `any` to avoid the duplicate-@react-navigation/core type
+ * mismatch that happens with Expo Router's hoisted dependency graph.
+ * The runtime shape is BottomTabBarProps — we destructure what we need.
+ */
+interface TabBarProps {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   state: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   descriptors: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   navigation: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  insets?: any;
 }
 
-export function CustomTabBar({
-  state,
-  descriptors,
-  navigation,
-}: CustomTabBarProps) {
+export function CustomTabBar({ state, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { colors, isDark } = useTheme();
+  const { isDark } = useTheme();
 
-  // Filtrer : on n'affiche que les 5 routes principales
+  // Only show routes that have a TAB_META entry
   const visibleRoutes = useMemo(
-    () => state.routes.filter((route: any) => route.name in TAB_ICONS),
+    () => (state.routes as Array<{ key: string; name: string }>).filter((route) => route.name in TAB_META),
     [state.routes],
   );
 
   const tabWidth = width / visibleRoutes.length;
 
-  // Index actif parmi les routes visibles uniquement
+  // Find active index among visible routes
   const activeVisibleIndex = useMemo(() => {
     const activeRoute = state.routes[state.index];
-    return visibleRoutes.findIndex((r: any) => r.key === activeRoute?.key);
+    return visibleRoutes.findIndex((r: { key: string }) => r.key === activeRoute?.key);
   }, [state.index, state.routes, visibleRoutes]);
 
-  const indicatorPosition = useSharedValue(
-    Math.max(0, activeVisibleIndex) * tabWidth,
+  const handleTabPress = useCallback(
+    (routeName: string, routeKey: string) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+      const event = navigation.emit({
+        type: 'tabPress',
+        target: routeKey,
+        canPreventDefault: true,
+      });
+
+      if (!event.defaultPrevented) {
+        navigation.navigate(routeName);
+      }
+    },
+    [navigation],
   );
 
-  const indicatorAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: indicatorPosition.value }],
-  }));
-
-  const handleTabPress = (visibleIndex: number, routeName: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    const event = navigation.emit({
-      type: 'tabPress',
-      target: routeName,
-      canPreventDefault: true,
-    });
-
-    if (!event.defaultPrevented) {
-      navigation.navigate(routeName);
-    }
-
-    indicatorPosition.value = withSpring(visibleIndex * tabWidth, {
-      damping: 12,
-      mass: 1,
-      overshootClamping: false,
-    });
-  };
-
-  // Sync indicator quand l'onglet actif change (ex: navigation programmatique)
-  React.useEffect(() => {
-    if (activeVisibleIndex >= 0) {
-      indicatorPosition.value = withSpring(activeVisibleIndex * tabWidth, {
-        damping: 12,
-        mass: 1,
+  const handleTabLongPress = useCallback(
+    (routeKey: string) => {
+      navigation.emit({
+        type: 'tabLongPress',
+        target: routeKey,
       });
-    }
-  }, [activeVisibleIndex, tabWidth, indicatorPosition]);
+    },
+    [navigation],
+  );
+
+  // Bottom padding: safe area on iOS (notch), small fixed on Android
+  const bottomPadding = Platform.select({
+    ios: Math.max(insets.bottom, 0),
+    android: 4,
+    default: 0,
+  });
+
+  const bgColor = isDark ? '#0a0a0f' : '#FAF7F2';
+  const borderColor = isDark
+    ? 'rgba(200, 144, 58, 0.12)'
+    : 'rgba(166, 120, 40, 0.12)';
 
   return (
     <View
       style={[
         styles.container,
         {
-          borderTopColor: colors.border,
+          backgroundColor: bgColor,
+          borderTopColor: borderColor,
+          paddingBottom: bottomPadding,
         },
       ]}
     >
-      <BlurView intensity={isDark ? 85 : 50} tint={isDark ? 'dark' : 'light'} style={styles.blurContainer}>
-        <View style={styles.tabBarContent}>
-          {/* Animated Indicator */}
-          {activeVisibleIndex >= 0 && (
-            <Animated.View
-              style={[
-                styles.indicator,
-                { width: tabWidth },
-                indicatorAnimatedStyle,
-              ]}
-            >
-              <View style={styles.indicatorInner} />
-            </Animated.View>
-          )}
-
-          {/* Tab Items — seulement les routes visibles */}
-          {visibleRoutes.map((route: any, index: number) => {
-            const isFocused = activeVisibleIndex === index;
-            const iconName = TAB_ICONS[route.name];
-
-            return (
-              <TouchableOpacity
-                key={route.key}
-                activeOpacity={1}
-                style={[styles.tab, { width: tabWidth }]}
-                onPress={() => handleTabPress(index, route.name)}
-              >
-                <TabBarIcon
-                  name={iconName}
-                  isFocused={isFocused}
-                  activeColor={palette.indigo}
-                  inactiveColor={isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.35)'}
-                />
-              </TouchableOpacity>
-            );
-          })}
-
-        </View>
-        {/* Safe area spacer — inside BlurView so blur covers the bottom edge */}
-        <View style={{ height: insets.bottom }} />
-      </BlurView>
+      <View style={styles.tabRow}>
+        {visibleRoutes.map((route: { key: string; name: string }, index: number) => (
+          <TabItem
+            key={route.key}
+            routeName={route.name}
+            isFocused={activeVisibleIndex === index}
+            onPress={() => handleTabPress(route.name, route.key)}
+            onLongPress={() => handleTabLongPress(route.key)}
+            width={tabWidth}
+            isDark={isDark}
+          />
+        ))}
+      </View>
     </View>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Styles
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
@@ -189,32 +262,35 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  blurContainer: {
-    overflow: 'hidden',
-  },
-  tabBarContent: {
+  tabRow: {
     flexDirection: 'row',
-    position: 'relative',
-    height: 60,
-  },
-  indicator: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    height: 4,
-    backgroundColor: palette.indigo,
-  },
-  indicatorInner: {
-    flex: 1,
-    backgroundColor: palette.indigo,
-    borderBottomLeftRadius: 2,
-    borderBottomRightRadius: 2,
+    height: TAB_BAR_HEIGHT,
+    alignItems: 'center',
   },
   tab: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    height: TAB_BAR_HEIGHT,
+    gap: 3,
+  },
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 24,
+  },
+  label: {
+    fontFamily: fontFamily.bodyMedium,
+    fontSize: fontSize['2xs'],
+    letterSpacing: 0.1,
+    textAlign: 'center',
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: palette.gold,
+    marginTop: 2,
   },
 });

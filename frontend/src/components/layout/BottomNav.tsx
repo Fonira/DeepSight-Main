@@ -57,7 +57,7 @@ export const BottomNav: React.FC = () => {
 
   return (
     <nav
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-bg-elevated/95 backdrop-blur-xl border-t border-border-subtle pb-safe"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-bg-elevated border-t border-border-subtle pb-safe"
       style={{
         paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))'
       }}

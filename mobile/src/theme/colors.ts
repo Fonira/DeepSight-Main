@@ -2,8 +2,8 @@
  * DeepSight Mobile - Color System
  * Aligned with web design system (dark first)
  *
- * Web reference: #0a0a0f bg, #3b82f6 blue, #8b5cf6 violet, #06b6d4 cyan
- * Glassmorphism: backdrop-blur bg-white/5 border-white/10
+ * Web reference: #0a0a0f bg, #3b82f6 blue info, #9B6B4A warm-amber, #C48B7C sunset
+ * Anti-AI-slop: surfaces solides, palette or gouvernail, pas de glassmorphism
  */
 
 export const palette = {
@@ -178,7 +178,7 @@ export const gradients = {
   secondary: ['#9B6B4A', '#C48B7C'] as const, // ambre → sunset
   accent: ['#C8903A', '#D4A054'] as const, // or → or clair
   warm: ['#f59e0b', '#ef4444'] as const,
-  success: ['#10b981', '#06b6d4'] as const,
+  success: ['#10b981', '#C48B7C'] as const,
   dark: ['#0a0a0f', '#12121a'] as const,
   card: ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.02)'] as const,
 } as const;

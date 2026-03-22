@@ -11,6 +11,7 @@
  */
 
 import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query';
+import { captureError } from '../lib/sentry';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 CONFIGURATION
@@ -68,11 +69,8 @@ function handleQueryError(error: unknown): void {
     code: apiError.code,
   });
   
-  // Envoyer à Sentry si disponible
-  if (typeof window !== 'undefined' && (window as any).Sentry) {
-    (window as any).Sentry.captureException(error, {
-      tags: { type: 'query_error' },
-    });
+  if (error instanceof Error) {
+    captureError(error, { type: 'query_error' });
   }
 }
 
@@ -81,17 +79,15 @@ function handleQueryError(error: unknown): void {
  */
 function handleMutationError(error: unknown): void {
   const apiError = error as ApiError;
-  
+
   console.error('[QueryClient] Mutation error:', {
     message: apiError.message,
     status: apiError.status,
     code: apiError.code,
   });
-  
-  if (typeof window !== 'undefined' && (window as any).Sentry) {
-    (window as any).Sentry.captureException(error, {
-      tags: { type: 'mutation_error' },
-    });
+
+  if (error instanceof Error) {
+    captureError(error, { type: 'mutation_error' });
   }
 }
 

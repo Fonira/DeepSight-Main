@@ -9,6 +9,7 @@ import {
   Animated,
   Keyboard,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -697,7 +698,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
         </View>
       )}
 
-      {/* ? Quick Chat Button — URL mode only */}
+      {/* ? Quick Chat Button ï¿½ URL mode only */}
       {inputMode === 'url' && inputValue.trim().length > 0 && onQuickChat && (
         <TouchableOpacity
           onPress={() => onQuickChat(inputValue.trim())}
@@ -728,7 +729,7 @@ const SmartInputBarComponent: React.FC<SmartInputBarProps> = ({
             fontSize: Typography.fontSize.sm,
           }}>
             {isQuickChatting
-              ? (isEn ? 'Preparing chat...' : 'Préparation...')
+              ? (isEn ? 'Preparing chat...' : 'Prï¿½paration...')
               : (isEn ? 'Quick Chat (free)' : 'Chat direct (gratuit)')
             }
           </Text>

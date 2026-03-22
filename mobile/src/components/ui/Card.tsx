@@ -78,9 +78,9 @@ export const Card: React.FC<CardProps> = ({
       borderColor: colors.borderLight,
     },
     glass: {
-      backgroundColor: colors.glassBg,
+      backgroundColor: colors.bgCard,
       borderWidth: 1,
-      borderColor: colors.glassBorder,
+      borderColor: colors.border,
     },
     gradient: {
       backgroundColor: 'transparent',
@@ -100,7 +100,7 @@ export const Card: React.FC<CardProps> = ({
         colors={isDark ? gradients.card : ['rgba(0,0,0,0.02)', 'rgba(0,0,0,0.005)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.card, { padding: paddingValues[padding], borderWidth: 1, borderColor: colors.glassBorder }]}
+        style={[styles.card, { padding: paddingValues[padding], borderWidth: 1, borderColor: colors.border }]}
       >
         {children}
       </LinearGradient>

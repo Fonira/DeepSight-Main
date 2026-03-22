@@ -42,14 +42,14 @@ export const Card: React.FC<CardProps> = ({
 
   const variants: Record<string, string> = {
     default: 'bg-bg-secondary border border-border-subtle',
-    glass: 'bg-bg-surface backdrop-blur-xl border border-border-subtle',
+    glass: 'bg-bg-tertiary border border-border-default shadow-sm',
     elevated: 'bg-bg-elevated border border-border-default shadow-md',
     interactive: 'bg-bg-secondary border border-border-subtle cursor-pointer',
   };
 
   const hoverClass = hover
     ? variant === 'interactive'
-      ? 'hover:border-border-accent hover:shadow-glow-sm hover:-translate-y-0.5'
+      ? 'hover:border-border-accent hover:shadow-md hover:-translate-y-0.5'
       : 'hover:border-border-default hover:shadow-md hover:-translate-y-0.5'
     : '';
 

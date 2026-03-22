@@ -14,6 +14,7 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { authApi, clearTokens, getAccessToken, getRefreshToken, setTokens, ApiError, User } from '../services/api';
+import { setUser as setSentryUser } from '../lib/sentry';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
@@ -263,7 +264,7 @@ export function useAuth(): UseAuthReturn {
     
     try {
       const user = await authApi.me(force ? { skipCache: true } : undefined);
-      
+
       if (mountedRef.current) {
         setState({
           user,
@@ -272,7 +273,8 @@ export function useAuth(): UseAuthReturn {
           error: null
         });
         setCachedUser(user);
-        
+        setSentryUser(user ? { id: user.id, email: user.email, plan: user.plan } : null);
+
         window.dispatchEvent(new CustomEvent('user:updated', { detail: user }));
       }
     } catch (error) {
@@ -468,7 +470,8 @@ export function useAuth(): UseAuthReturn {
     finally {
       clearTokens();
       setCachedUser(null);
-      
+      setSentryUser(null);
+
       // Arrêter le heartbeat
       if (sessionCheckIntervalRef.current) {
         clearInterval(sessionCheckIntervalRef.current);

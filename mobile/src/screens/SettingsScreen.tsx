@@ -32,6 +32,7 @@ interface SettingItemData {
   key: string;
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  subtitle?: string;
   value?: string;
   type: 'navigate' | 'toggle' | 'info';
   toggleValue?: boolean;

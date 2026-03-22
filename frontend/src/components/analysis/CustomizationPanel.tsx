@@ -81,8 +81,8 @@ function PillSelector<T extends string>({
               ${variant === 'compact' ? 'px-3 py-1.5 text-xs' : 'px-4 py-2 text-sm'}
               ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
               ${isSelected
-                ? 'bg-white/[0.12] text-white ring-1 ring-white/20 shadow-lg shadow-white/5'
-                : 'bg-white/[0.04] text-white/50 hover:bg-white/[0.08] hover:text-white/70'
+                ? 'bg-bg-hover text-white ring-1 ring-accent-primary/30 shadow-md'
+                : 'bg-bg-tertiary text-text-tertiary hover:bg-bg-hover hover:text-text-secondary'
               }
             `}
           >
@@ -174,10 +174,10 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
   if (compact) {
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-white/[0.06] text-white/60 rounded-full text-xs">
+        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-bg-tertiary text-text-tertiary rounded-full text-xs">
           {ANALYSIS_FOCUS_CONFIG[customization.analysisFocus].emoji} {ANALYSIS_FOCUS_CONFIG[customization.analysisFocus].label[language]}
         </span>
-        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-white/[0.06] text-white/60 rounded-full text-xs">
+        <span className="inline-flex items-center gap-1 px-3 py-1.5 bg-bg-tertiary text-text-tertiary rounded-full text-xs">
           {WRITING_TONE_CONFIG[customization.writingTone].emoji} {WRITING_TONE_CONFIG[customization.writingTone].label[language]}
         </span>
         {customization.antiAIDetection && (
@@ -301,8 +301,8 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
                 onChange={(e) => updateCustomization({ outputLanguage: e.target.value as OutputLanguage })}
                 disabled={disabled}
                 className="w-full appearance-none px-3 py-2 pr-8 rounded-full text-xs font-medium
-                  bg-white/[0.06] text-white/70 border border-white/[0.08]
-                  focus:outline-none focus:ring-1 focus:ring-indigo-500/40
+                  bg-bg-tertiary text-text-secondary border border-border-default
+                  focus:outline-none focus:ring-1 focus:ring-accent-primary/40
                   transition-all cursor-pointer disabled:opacity-40"
               >
                 {(Object.keys(OUTPUT_LANGUAGE_CONFIG) as OutputLanguage[]).map((lang) => {
@@ -320,7 +320,7 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
         </div>
 
         {/* ─── MORE OPTIONS ─── */}
-        <div className="pt-3 border-t border-white/[0.05]">
+        <div className="pt-3 border-t border-border-subtle">
           <button
             type="button"
             onClick={() => setShowMore(!showMore)}
@@ -340,9 +340,9 @@ export const CustomizationPanel: React.FC<CustomizationPanelProps> = ({
           >
             <div className="space-y-4">
               {/* Anti-IA */}
-              <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+              <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-bg-tertiary border border-border-default">
                 <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${customization.antiAIDetection ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.05] text-white/25'}`}>
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${customization.antiAIDetection ? 'bg-emerald-500/15 text-emerald-400' : 'bg-bg-hover text-text-muted'}`}>
                     {customization.antiAIDetection ? <ShieldCheck className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
                   </div>
                   <div>

@@ -114,9 +114,8 @@ export const CookieBanner: React.FC = () => {
       <div
         className="
           pointer-events-auto mx-auto max-w-2xl
-          bg-[#12121a]/95 backdrop-blur-xl
-          border border-white/10 rounded-2xl
-          shadow-2xl shadow-black/40
+          bg-bg-secondary border border-border-default rounded-2xl
+          shadow-xl
           p-5 sm:p-6
           animate-in slide-in-from-bottom-4 duration-500
         "
@@ -208,11 +207,11 @@ export const CookieBanner: React.FC = () => {
                 onClick={handleRefuseAll}
                 className="
                   flex-1 sm:flex-none px-5 py-2.5 rounded-xl
-                  bg-white/5 hover:bg-white/10 active:bg-white/15
-                  text-white/70 hover:text-white text-sm font-medium
-                  border border-white/10
+                  bg-bg-tertiary hover:bg-bg-hover active:bg-bg-active
+                  text-text-secondary hover:text-text-primary text-sm font-medium
+                  border border-border-default
                   transition-colors duration-200
-                  focus:outline-none focus:ring-2 focus:ring-white/20
+                  focus:outline-none focus:ring-2 focus:ring-accent-primary/30
                 "
               >
                 Tout refuser

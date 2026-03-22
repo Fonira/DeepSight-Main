@@ -5,15 +5,15 @@
  * Zéro dépendance externe, respecte RGPD (opt-out possible).
  *
  * Événements trackés :
- * - analysis_started / analysis_completed / analysis_failed
+ * - analysis_started / analysis_completed / analysis_failed / analysis_deleted
  * - chat_message_sent
  * - tab_switched (summary/chat/concepts/tools)
  * - share_intent_received (youtube/tiktok)
- * - upgrade_cta_viewed / upgrade_cta_clicked
+ * - upgrade_cta_viewed / upgrade_cta_clicked / upgrade_plan_selected / upgrade_checkout_started
  * - screen_viewed
  * - app_opened / app_backgrounded
  * - search_performed
- * - flashcard_generated / quiz_generated
+ * - flashcard_generated / quiz_generated / study_content_generated
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -31,14 +31,18 @@ export type AnalyticsEventName =
   | 'analysis_started'
   | 'analysis_completed'
   | 'analysis_failed'
+  | 'analysis_deleted'
   | 'chat_message_sent'
   | 'tab_switched'
   | 'share_intent_received'
   | 'upgrade_cta_viewed'
   | 'upgrade_cta_clicked'
+  | 'upgrade_plan_selected'
+  | 'upgrade_checkout_started'
   | 'search_performed'
   | 'flashcard_generated'
   | 'quiz_generated'
+  | 'study_content_generated'
   | 'mindmap_generated'
   | 'factcheck_requested'
   | 'export_requested'

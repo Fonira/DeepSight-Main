@@ -1,6 +1,5 @@
 import React from 'react';
 import { StyleSheet, View, ViewStyle, StyleProp } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { useTheme } from '../../contexts/ThemeContext';
 import { BorderRadius, Spacing } from '../../constants/theme';
 
@@ -13,19 +12,19 @@ interface GlassCardProps {
 }
 
 /**
- * GlassCard - Composant carte avec effet verre dépoli (glass morphism)
+ * GlassCard - Composant carte avec fond solide
  *
- * Utilise expo-blur pour créer un effet de flou derrière le contenu.
+ * Utilise les couleurs du thème pour un rendu solide et performant.
  * S'adapte automatiquement au thème dark/light.
  */
 export const GlassCard: React.FC<GlassCardProps> = ({
   children,
-  intensity = 25,
+  intensity = 25, // Ignoré maintenant
   style,
   padding = 'lg',
   borderRadius = 'lg',
 }) => {
-  const { isDark, colors } = useTheme();
+  const { colors } = useTheme();
 
   const paddingValue = typeof padding === 'number' ? padding : Spacing[padding];
   const borderRadiusValue = typeof borderRadius === 'number' ? borderRadius : BorderRadius[borderRadius];
@@ -36,39 +35,14 @@ export const GlassCard: React.FC<GlassCardProps> = ({
         styles.container,
         {
           borderRadius: borderRadiusValue,
-          borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+          backgroundColor: colors.bgCard,
+          borderColor: colors.border,
+          padding: paddingValue,
         },
         style,
       ]}
     >
-      <BlurView
-        intensity={intensity}
-        tint={isDark ? 'dark' : 'light'}
-        style={[
-          styles.blur,
-          {
-            borderRadius: borderRadiusValue,
-            padding: paddingValue,
-          },
-        ]}
-      >
-        {/* Overlay pour améliorer le contraste */}
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            {
-              backgroundColor: isDark
-                ? 'rgba(17, 17, 19, 0.7)'
-                : 'rgba(255, 255, 255, 0.7)',
-              borderRadius: borderRadiusValue,
-            },
-          ]}
-        />
-        {/* Contenu */}
-        <View style={styles.content}>
-          {children}
-        </View>
-      </BlurView>
+      {children}
     </View>
   );
 };
@@ -77,13 +51,6 @@ const styles = StyleSheet.create({
   container: {
     overflow: 'hidden',
     borderWidth: 1,
-  },
-  blur: {
-    overflow: 'hidden',
-  },
-  content: {
-    position: 'relative',
-    zIndex: 1,
   },
 });
 

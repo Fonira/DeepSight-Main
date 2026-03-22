@@ -494,7 +494,7 @@ export const DashboardScreen: React.FC = () => {
         </Animated.View>
 
         {/* Platform logos banner */}
-        <Animated.View entering={FadeInUp.delay(100).springify().damping(12)} style={styles.platformBanner}>
+        <Animated.View entering={FadeInUp.delay(100).springify().damping(12)} style={[styles.platformBanner, { backgroundColor: colors.bgTertiary, borderColor: colors.border }]}>
           <Image
             source={isDark
               ? require('../assets/platforms/youtube-logo-white.png')
@@ -539,10 +539,10 @@ export const DashboardScreen: React.FC = () => {
                 {
                   backgroundColor: showCustomization
                     ? colors.accentPrimary
-                    : colors.glassBg,
+                    : colors.bgCard,
                   borderColor: showCustomization
                     ? colors.accentPrimary
-                    : colors.glassBorder,
+                    : colors.border,
                 },
               ]}
               onPress={toggleCustomization}
@@ -643,7 +643,7 @@ export const DashboardScreen: React.FC = () => {
         <Animated.View entering={FadeInUp.delay(600).springify().damping(12)} style={styles.statsSection}>
           <SectionHeader title={t.admin.statistics} icon="analytics-outline" />
           <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
               <View style={[styles.statIconWrap, { backgroundColor: `${colors.accentPrimary}15` }]}>
                 <Ionicons name="videocam" size={28} color={colors.accentPrimary} />
               </View>
@@ -654,7 +654,7 @@ export const DashboardScreen: React.FC = () => {
                 {t.admin.videosAnalyzed}
               </Text>
             </View>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: colors.bgCard, borderColor: colors.border }]}>
               <View style={[styles.statIconWrap, { backgroundColor: `${colors.accentSecondary}15` }]}>
                 <Ionicons name="document-text" size={28} color={colors.accentSecondary} />
               </View>
@@ -817,10 +817,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     padding: sp.xl,
-    backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
   },
   statIconWrap: {
     width: 52,
@@ -877,11 +875,9 @@ const styles = StyleSheet.create({
     gap: sp.md,
     marginBottom: sp.lg,
     opacity: 0.5,
-    backgroundColor: 'rgba(255,255,255,0.03)',
     paddingVertical: sp.md,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
   },
   bannerLogoYt: {
     height: 22,

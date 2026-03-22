@@ -1887,9 +1887,29 @@ export const contactApi = {
   },
 };
 
+export interface MemoryUsage {
+  rss_mb: number | null;
+  limit_mb: number;
+  usage_percent: number | null;
+  status: string;
+}
+
+export interface DeepSystemStatus extends SystemStatus {
+  memory?: MemoryUsage;
+}
+
 export const statusApi = {
   async getStatus(): Promise<SystemStatus> {
     return request('/api/health/status', { skipAuth: true });
+  },
+
+  async getDeepStatus(): Promise<DeepSystemStatus> {
+    // Call the Vercel serverless function which proxies to backend with secret
+    const resp = await fetch('/api/status');
+    if (!resp.ok) {
+      throw new Error(`Status check failed: ${resp.status}`);
+    }
+    return resp.json();
   },
 
   async ping(): Promise<{ status: string }> {

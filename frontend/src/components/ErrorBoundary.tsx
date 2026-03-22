@@ -11,6 +11,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home, ChevronDown, ChevronUp } from 'lucide-react';
+import { captureError } from '../lib/sentry';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
@@ -286,15 +287,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     // Call custom error handler
     this.props.onError?.(error, errorInfo);
 
-    // Report to Sentry if available
-    if (typeof window !== 'undefined' && (window as any).Sentry) {
-      (window as any).Sentry.captureException(error, {
-        extra: {
-          componentStack: errorInfo.componentStack,
-          componentName: this.props.componentName,
-        },
-      });
-    }
+    // Report to Sentry
+    captureError(error, {
+      componentStack: errorInfo.componentStack,
+      componentName: this.props.componentName,
+    });
 
     // Log in development
     if (process.env.NODE_ENV === 'development') {

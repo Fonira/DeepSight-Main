@@ -77,8 +77,8 @@ const CarouselItem = React.memo(({ item }: { item: AnalysisSummary }) => {
       style={[
         styles.card,
         {
-          backgroundColor: colors.glassBg,
-          borderColor: colors.glassBorder,
+          backgroundColor: colors.bgCard,
+          borderColor: colors.border,
         },
       ]}
       accessibilityLabel={item.title}
@@ -180,8 +180,8 @@ const EmptyCard: React.FC = () => {
       style={[
         styles.emptyCard,
         {
-          backgroundColor: colors.glassBg,
-          borderColor: colors.glassBorder,
+          backgroundColor: colors.bgCard,
+          borderColor: colors.border,
         },
       ]}
     >

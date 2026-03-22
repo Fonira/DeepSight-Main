@@ -50,3 +50,6 @@ export { Tooltip } from './Tooltip';
 // DataTable
 export { DataTable } from './DataTable';
 export type { Column } from './DataTable';
+
+// GouvernailSpinner
+export { GouvernailSpinner } from './GouvernailSpinner';

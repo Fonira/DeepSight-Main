@@ -191,7 +191,7 @@ const DeepLinkHandler: React.FC = () => {
   const pendingLink = useRef<ParsedLink | null>(null);
 
   // 🔗 Handle share intents (TikTok/YouTube → DeepSight via Share button)
-  useShareIntent(navigation as any, isAuthenticated);
+  useShareIntent();
 
   const navigateToLink = useCallback(
     (parsed: ParsedLink) => {

@@ -26,7 +26,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       {/* Mobile hamburger */}
       <motion.button
         onClick={() => setMobileMenuOpen(true)}
-        className="lg:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-lg bg-bg-elevated/90 backdrop-blur-xl border border-border-default flex items-center justify-center text-text-secondary hover:text-text-primary transition-all shadow-md"
+        className="lg:hidden fixed top-3 left-3 z-50 w-10 h-10 rounded-lg bg-bg-elevated border border-border-default flex items-center justify-center text-text-secondary hover:text-text-primary transition-all shadow-md"
         whileTap={{ scale: 0.95 }}
         aria-label="Open menu"
         aria-expanded={mobileMenuOpen}
