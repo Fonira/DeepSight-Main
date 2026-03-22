@@ -32,6 +32,9 @@ from .plan_config import (
 
 logger = logging.getLogger(__name__)
 
+# Enable automatic Stripe network retries (up to 2 retries on transient errors)
+stripe.max_network_retries = 2
+
 router = APIRouter()
 
 # ---------------------------------------------------------------------------
@@ -456,9 +459,9 @@ async def get_billing_info(
             subscription_active = subscription.status == "active"
             if subscription_active:
                 next_renewal = datetime.fromtimestamp(subscription.current_period_end)
-        except:
-            pass
-    
+        except Exception as e:
+            logger.warning(f"Failed to retrieve Stripe subscription info: {e}")
+
     return BillingInfoResponse(
         plan=current_user.plan or "free",
         credits=current_user.credits or 0,

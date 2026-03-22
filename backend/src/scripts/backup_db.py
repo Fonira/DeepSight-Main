@@ -89,7 +89,16 @@ def dump_database_sql(dsn: str) -> bytes:
     """)
     tables = [row[0] for row in cur.fetchall()]
 
+    # Validate table names to prevent SQL injection via f-string interpolation below.
+    # Table names come from pg_tables but we validate them as an extra safety measure.
+    import re as _re
+    _SAFE_TABLE_NAME = _re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
+
     for table in tables:
+        # Validate table name before using in f-string SQL interpolation
+        if not _SAFE_TABLE_NAME.match(table):
+            raise ValueError(f"Unsafe table name detected, aborting backup: {table!r}")
+
         # Schema: CREATE TABLE via pg_dump-style information_schema query
         cur.execute("""
             SELECT column_name, data_type, character_maximum_length,
@@ -155,6 +164,9 @@ def dump_database_sql(dsn: str) -> bytes:
         WHERE sequence_schema = 'public'
     """)
     for (seq_name,) in cur.fetchall():
+        # Validate sequence name before using in f-string SQL interpolation
+        if not _SAFE_TABLE_NAME.match(seq_name):
+            raise ValueError(f"Unsafe sequence name detected, aborting backup: {seq_name!r}")
         cur.execute(f"SELECT last_value FROM \"{seq_name}\"")
         last_val = cur.fetchone()[0]
         buf.write(f"SELECT setval('\"{seq_name}\"', {last_val}, true);\n")

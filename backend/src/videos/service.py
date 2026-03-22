@@ -1097,7 +1097,7 @@ async def generate_chat_response_stream(
                             content = chunk["choices"][0]["delta"].get("content", "")
                             if content:
                                 yield content
-                        except:
+                        except (json.JSONDecodeError, KeyError, IndexError):
                             continue
     except Exception as e:
         yield f"Error: {e}"

@@ -288,6 +288,19 @@ async def search_history_simple(
     search_pattern = f"%{query.lower()}%"
     
     if include_videos:
+        # COUNT(*) query for accurate total (not limited by pagination)
+        count_video_query = select(func.count()).select_from(
+            select(Summary.id).where(
+                Summary.user_id == user_id,
+                or_(
+                    func.lower(Summary.video_title).like(search_pattern),
+                    func.lower(Summary.video_channel).like(search_pattern)
+                )
+            ).subquery()
+        )
+        total_videos_result = await session.execute(count_video_query)
+        results["total_videos"] = total_videos_result.scalar() or 0
+
         video_query = select(Summary).where(
             Summary.user_id == user_id,
             or_(
@@ -295,20 +308,28 @@ async def search_history_simple(
                 func.lower(Summary.video_channel).like(search_pattern)
             )
         ).order_by(desc(Summary.created_at)).limit(limit)
-        
+
         video_result = await session.execute(video_query)
         results["videos"] = list(video_result.scalars().all())
-        results["total_videos"] = len(results["videos"])
-    
+
     if include_playlists:
+        # COUNT(*) query for accurate total (not limited by pagination)
+        count_playlist_query = select(func.count()).select_from(
+            select(PlaylistAnalysis.id).where(
+                PlaylistAnalysis.user_id == user_id,
+                func.lower(PlaylistAnalysis.playlist_title).like(search_pattern)
+            ).subquery()
+        )
+        total_playlists_result = await session.execute(count_playlist_query)
+        results["total_playlists"] = total_playlists_result.scalar() or 0
+
         playlist_query = select(PlaylistAnalysis).where(
             PlaylistAnalysis.user_id == user_id,
             func.lower(PlaylistAnalysis.playlist_title).like(search_pattern)
         ).order_by(desc(PlaylistAnalysis.created_at)).limit(limit)
-        
+
         playlist_result = await session.execute(playlist_query)
         results["playlists"] = list(playlist_result.scalars().all())
-        results["total_playlists"] = len(results["playlists"])
     
     return results
 

@@ -9,6 +9,8 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +18,8 @@ from sqlalchemy import select
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 from db.database import get_session, User, Summary
 from auth.dependencies import get_current_user
@@ -410,9 +414,9 @@ async def get_quota_info_by_path(
         from videos.web_enrichment import get_enrichment_level
         level = get_enrichment_level(current_user.plan)
         enrichment_level = level.value
-    except:
-        pass
-    
+    except Exception as e:
+        logger.warning(f"Could not determine enrichment level: {e}")
+
     return QuotaInfoResponse(
         can_ask=can_ask,
         reason=reason,
@@ -450,9 +454,9 @@ async def get_quota_info(
         from videos.web_enrichment import get_enrichment_level
         level = get_enrichment_level(current_user.plan)
         enrichment_level = level.value
-    except:
-        pass
-    
+    except Exception as e:
+        logger.warning(f"Could not determine enrichment level: {e}")
+
     return QuotaInfoResponse(
         can_ask=can_ask,
         reason=reason,

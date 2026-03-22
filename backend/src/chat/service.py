@@ -433,7 +433,7 @@ async def get_chat_history(
             if hasattr(m, 'sources_json') and m.sources_json:
                 try:
                     msg_data["sources"] = json.loads(m.sources_json)
-                except:
+                except (json.JSONDecodeError, TypeError):
                     pass
             if hasattr(m, 'enrichment_level') and m.enrichment_level:
                 msg_data["enrichment_level"] = m.enrichment_level
@@ -926,7 +926,7 @@ async def generate_chat_response_stream(
                             content = chunk["choices"][0]["delta"].get("content", "")
                             if content:
                                 yield content
-                        except:
+                        except (json.JSONDecodeError, KeyError, IndexError):
                             continue
     except Exception as e:
         yield f"Error: {e}"

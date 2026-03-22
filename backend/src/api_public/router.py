@@ -22,7 +22,7 @@ from db.database import get_session, User
 # Optional imports - these features may not be available in all deployments
 try:
     from videos.router import (
-        _task_store, _analyze_video_background_v6,
+        get_task_status, set_task_status, _analyze_video_background_v6,
         get_summary_by_video_id
     )
     from transcripts import extract_video_id, get_video_info
@@ -382,8 +382,8 @@ async def analyze_video_api(
     import uuid
     task_id = f"api_{uuid.uuid4().hex[:16]}"
 
-    # Stocker la tâche
-    _task_store[task_id] = {
+    # Stocker la tâche via public API
+    set_task_status(task_id, {
         "status": "pending",
         "progress": 0,
         "message": "Queued via API v1",
@@ -391,7 +391,7 @@ async def analyze_video_api(
         "video_id": video_id,
         "credit_cost": credits_cost,
         "deep_research": False,
-    }
+    })
 
     # Lancer l'analyse en background
     asyncio.ensure_future(
@@ -470,8 +470,8 @@ async def get_api_analysis_status(
             "message": f"Task {task_id} not found"
         })
 
-    # Chercher dans le task store
-    task = _task_store.get(task_id)
+    # Chercher dans le task store via public API
+    task = get_task_status(task_id)
     if not task:
         raise HTTPException(status_code=404, detail={
             "error": "not_found",

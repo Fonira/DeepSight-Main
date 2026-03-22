@@ -121,11 +121,17 @@ async def refresh_token(
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
     
-    user_id = int(payload.get("sub"))
+    sub = payload.get("sub")
+    if sub is None:
+        raise HTTPException(status_code=401, detail="Invalid refresh token payload")
+    try:
+        user_id = int(sub)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=401, detail="Invalid refresh token payload")
     old_session_token = payload.get("session")
-    
+
     user = await get_user_by_id(session, user_id)
-    
+
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
     

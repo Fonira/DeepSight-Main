@@ -12,12 +12,15 @@
 """
 
 import json
+import logging
 import math
 from uuid import uuid4
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, Query, UploadFile, File, Form, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from db.database import get_session, User, Summary
 from auth.dependencies import get_current_user, get_verified_user, require_plan, check_daily_limit, require_feature, get_current_admin
@@ -127,6 +130,15 @@ except ImportError:
 
 router = APIRouter()
 
+# TODO(REDIS-MIGRATION): _task_store and _guest_usage are process-local in-memory stores.
+# With 4 Uvicorn workers, each worker has its own copy, meaning:
+# - Task status updates from worker A are invisible to worker B.
+# - Guest rate limiting (3 analyses/IP/24h) can be bypassed by round-robining across workers.
+# Migration plan:
+#   1. Replace _task_store with Redis HASH (key: task_id, TTL: 24h).
+#   2. Replace _guest_usage with Redis ZSET per IP (trim by time window).
+#   3. Use the existing redis_url from core.config / CACHE_CONFIG.
+#   4. Wrap all read/write in try/except to fall back gracefully if Redis is unavailable.
 # Store en mémoire pour les tâches (en production: Redis)
 _task_store: Dict[str, Dict[str, Any]] = {}
 
@@ -134,6 +146,24 @@ _task_store: Dict[str, Dict[str, Any]] = {}
 _guest_usage: Dict[str, list] = {}  # IP → list of timestamps
 MAX_GUEST_ANALYSES = 3
 MAX_VIDEO_DURATION_GUEST = 300  # 5 minutes
+
+
+def get_task_status(task_id: str) -> Optional[Dict[str, Any]]:
+    """
+    Public accessor for task status from the in-memory _task_store.
+    External modules (e.g. api_public/router.py) should import and use this
+    function instead of directly importing the private _task_store dict.
+    Returns None if the task_id is not found.
+    """
+    return _task_store.get(task_id)
+
+
+def set_task_status(task_id: str, data: Dict[str, Any]) -> None:
+    """
+    Public mutator for task status in the in-memory _task_store.
+    External modules should use this instead of directly accessing _task_store.
+    """
+    _task_store[task_id] = data
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1353,7 +1383,7 @@ async def _analyze_video_background_v2(
             webhook_url = options.get("webhook_url")
             if webhook_url:
                 try:
-                    async with httpx.AsyncClient() as client:
+                    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0)) as client:
                         await client.post(
                             webhook_url,
                             json={
@@ -2158,7 +2188,7 @@ async def _analyze_video_background_v2_1(
             webhook_url = options.get("webhook_url")
             if webhook_url:
                 try:
-                    async with httpx.AsyncClient() as client:
+                    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0)) as client:
                         await client.post(
                             webhook_url,
                             json={
@@ -2710,8 +2740,8 @@ async def _analyze_video_background_v6(
                     progress=0,
                     error=error_msg
                 )
-        except:
-            pass
+        except Exception as e:
+            logger.error(f"Failed to update task status to 'failed' for task {task_id}: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2775,7 +2805,7 @@ async def get_task_status(
     if task_db.result:
         try:
             result = json.loads(task_db.result) if isinstance(task_db.result, str) else task_db.result
-        except:
+        except (json.JSONDecodeError, TypeError):
             pass
     
     return TaskStatusResponse(
@@ -2826,7 +2856,7 @@ async def get_summary(
     if summary.entities_extracted:
         try:
             entities = json.loads(summary.entities_extracted) if isinstance(summary.entities_extracted, str) else summary.entities_extracted
-        except:
+        except (json.JSONDecodeError, TypeError):
             pass
 
     return SummaryResponse(

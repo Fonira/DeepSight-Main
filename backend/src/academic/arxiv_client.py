@@ -31,6 +31,11 @@ ARXIV_CATEGORIES = {
 }
 
 # Rate limiting: 1 request per 3 seconds
+# TODO(REDIS-MIGRATION): _last_request_time is process-local. With multiple Uvicorn workers,
+# each worker tracks its own last request time, meaning the effective rate limit is multiplied
+# by the number of workers (e.g. 4 workers × 1 req/3s = up to 4 req/3s). This may violate
+# arXiv's API rate limit policy. Migration plan: use a Redis atomic counter/TTL key shared
+# across all workers to enforce a global rate limit of 1 request per 3 seconds.
 _last_request_time: float = 0
 
 
