@@ -231,7 +231,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ summaryId, keyboardOffset = 
     <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={keyboardOffset}>
       {messages.length < 3 && <SuggestionsRow />}
       <FlatList
-        data={[...messages].reverse()}
+        data={[...messages].slice(-200).reverse()}
         renderItem={renderMessage}
         keyExtractor={keyExtractor}
         inverted

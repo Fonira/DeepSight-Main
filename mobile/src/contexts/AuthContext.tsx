@@ -156,14 +156,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
 
-    // Safety timeout: ensure loading ends after 5 seconds max
+    // Safety timeout: ensure loading ends after 15 seconds max
     timeoutId = setTimeout(() => {
       if (!cancelled) {
-        if (__DEV__) { console.warn('[Auth] Init timeout (5s) - forcing loading complete'); }
+        if (__DEV__) { console.warn('[Auth] Init timeout (15s) - forcing loading complete'); }
         cancelled = true;
         setIsLoading(false);
       }
-    }, 5000);
+    }, 15000);
 
     init().catch((error) => {
       if (__DEV__) { console.error('[Auth] Init fatal error:', error); }

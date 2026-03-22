@@ -62,18 +62,9 @@ export class ApiError extends Error {
   }
 }
 
-// Token refresh lock
-let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
-
-const onTokenRefreshed = (token: string) => {
-  refreshSubscribers.forEach((callback) => callback(token));
-  refreshSubscribers = [];
-};
-
-const addRefreshSubscriber = (callback: (token: string) => void) => {
-  refreshSubscribers.push(callback);
-};
+// Token refresh lock — shared promise prevents race conditions when multiple
+// requests get 401 simultaneously: all await the same refresh attempt.
+let refreshPromise: Promise<string | null> | null = null;
 
 // Refresh token function
 const refreshAccessToken = async (): Promise<string | null> => {
@@ -159,62 +150,33 @@ const _requestRaw = async <T>(
     clearTimeout(timeoutId);
 
     // Handle 401 - token expired
+    // All concurrent requests share the same refreshPromise to avoid parallel refresh calls.
     if (response.status === 401 && requiresAuth) {
-      if (!isRefreshing) {
-        isRefreshing = true;
-        const newToken = await refreshAccessToken();
-        isRefreshing = false;
+      if (!refreshPromise) {
+        refreshPromise = refreshAccessToken().finally(() => { refreshPromise = null; });
+      }
+      const newToken = await refreshPromise;
 
-        if (newToken) {
-          onTokenRefreshed(newToken);
-          // Retry the original request with new token
-          requestHeaders['Authorization'] = `Bearer ${newToken}`;
-          const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
-            ...requestOptions,
-            headers: requestHeaders,
-          });
-
-          if (!retryResponse.ok) {
-            const errorData = await retryResponse.json().catch(() => ({}));
-            throw new ApiError(
-              errorData.message || 'Request failed',
-              retryResponse.status,
-              errorData.code
-            );
-          }
-
-          return await retryResponse.json();
-        } else {
-          throw new ApiError('Session expired', 401, 'SESSION_EXPIRED');
-        }
-      } else {
-        // Wait for token refresh
-        return new Promise((resolve, reject) => {
-          addRefreshSubscriber(async (token) => {
-            try {
-              requestHeaders['Authorization'] = `Bearer ${token}`;
-              const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
-                ...requestOptions,
-                headers: requestHeaders,
-              });
-
-              // Check if retry response is ok
-              if (!retryResponse.ok) {
-                const errorData = await retryResponse.json().catch(() => ({}));
-                reject(new ApiError(
-                  errorData.message || 'Request failed after token refresh',
-                  retryResponse.status,
-                  errorData.code
-                ));
-                return;
-              }
-
-              resolve(await retryResponse.json());
-            } catch (error) {
-              reject(error);
-            }
-          });
+      if (newToken) {
+        // Retry the original request with new token
+        requestHeaders['Authorization'] = `Bearer ${newToken}`;
+        const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
+          ...requestOptions,
+          headers: requestHeaders,
         });
+
+        if (!retryResponse.ok) {
+          const errorData = await retryResponse.json().catch(() => ({}));
+          throw new ApiError(
+            errorData.message || 'Request failed',
+            retryResponse.status,
+            errorData.code
+          );
+        }
+
+        return await retryResponse.json();
+      } else {
+        throw new ApiError('Session expired', 401, 'SESSION_EXPIRED');
       }
     }
 
@@ -454,6 +416,26 @@ export const userApi = {
         },
         body: formData,
       });
+
+      if (response.status === 401) {
+        // Token expired during upload — refresh and retry once
+        if (!refreshPromise) {
+          refreshPromise = refreshAccessToken().finally(() => { refreshPromise = null; });
+        }
+        const newToken = await refreshPromise;
+        if (!newToken) throw new ApiError('Session expired', 401, 'SESSION_EXPIRED');
+
+        const retryResponse = await fetch(`${API_BASE_URL}/api/profile/avatar`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${newToken}` },
+          body: formData,
+        });
+        if (!retryResponse.ok) {
+          const errorData = await retryResponse.json().catch(() => ({}));
+          throw new ApiError(errorData.message || 'Failed to upload avatar', retryResponse.status, errorData.code);
+        }
+        return retryResponse.json();
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

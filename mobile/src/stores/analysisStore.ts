@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AnalysisSummary } from '../types';
 import type { AnalysisOptionsV2 } from '../types/v2';
 import { DEFAULT_ANALYSIS_OPTIONS } from '../types/v2';
@@ -31,7 +33,7 @@ interface AnalysisStore {
   toggleFavorite: (id: string) => void;
 }
 
-export const useAnalysisStore = create<AnalysisStore>((set) => ({
+export const useAnalysisStore = create<AnalysisStore>()(persist((set) => ({
   currentTaskId: null,
   status: 'idle',
   progress: 0,
@@ -72,4 +74,13 @@ export const useAnalysisStore = create<AnalysisStore>((set) => ({
         ? state.favorites.filter((fid) => fid !== id)
         : [...state.favorites, id],
     })),
+}), {
+  name: 'analysis-store',
+  storage: createJSONStorage(() => AsyncStorage),
+  // Only persist user preferences and cached data, not transient analysis state
+  partialize: (state) => ({
+    options: state.options,
+    recentSummaries: state.recentSummaries,
+    favorites: state.favorites,
+  }),
 }));

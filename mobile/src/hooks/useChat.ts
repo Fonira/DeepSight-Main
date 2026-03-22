@@ -57,8 +57,8 @@ export function useChat(summaryId: string) {
       if (response.messages) {
         setMessages(response.messages);
       }
-    } catch {
-      // Silent fail for history loading
+    } catch (error) {
+      if (__DEV__) { console.warn('[useChat] loadHistory failed:', error); }
     }
   }, [summaryId]);
 

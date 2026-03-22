@@ -48,6 +48,12 @@ export default function LoginScreen() {
   const passwordRef = useRef<TextInput>(null);
 
   // Google OAuth
+  // TODO(SDK-55): Google.useAuthRequest from expo-auth-session/providers/google is deprecated.
+  // Migrate to @react-native-google-signin/google-signin (already in package.json) using:
+  //   GoogleSignin.configure({ webClientId: GOOGLE_CLIENT_ID, iosClientId: GOOGLE_IOS_CLIENT_ID });
+  //   const userInfo = await GoogleSignin.signIn();
+  //   const { idToken } = await GoogleSignin.getTokens();
+  // Then exchange idToken with the backend via authApi.googleTokenLogin(idToken).
   const [, googleResponse, promptAsync] = Google.useAuthRequest({
     clientId: GOOGLE_CLIENT_ID,
     androidClientId: GOOGLE_ANDROID_CLIENT_ID,

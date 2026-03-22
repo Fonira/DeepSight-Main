@@ -75,6 +75,7 @@ export default function AnalysisDetailScreen() {
   }, []);
 
   const [resolvedSummaryId, setResolvedSummaryId] = useState<string | null>(null);
+  const [summaryNotFound, setSummaryNotFound] = useState(false);
 
   // Reset local state when the route param `id` changes (navigating to a different analysis).
   // Without this, resolvedSummaryId from the previous analysis persists and effectiveId
@@ -186,6 +187,8 @@ export default function AnalysisDetailScreen() {
       if (foundId) {
         resetCircuitBreaker(`/api/videos/summary/${foundId}`);
         setResolvedSummaryId(foundId);
+      } else {
+        setSummaryNotFound(true);
       }
       queryClient.invalidateQueries({ queryKey: ['summary'] });
     }
@@ -317,6 +320,28 @@ export default function AnalysisDetailScreen() {
         ) : (
           <AnalysisSkeleton />
         )}
+      </View>
+    );
+  }
+
+  // Summary not found after polling history
+  if (summaryNotFound) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+        {BackHeader}
+        <View style={styles.errorContainer}>
+          <Ionicons name="search-outline" size={48} color={colors.textTertiary} />
+          <Text style={[styles.errorText, { color: colors.textSecondary }]}>Analyse introuvable</Text>
+          <Pressable
+            onPress={handleBack}
+            style={[styles.actionButton, { backgroundColor: colors.accentPrimary }]}
+            accessibilityLabel="Retour"
+            accessibilityRole="button"
+          >
+            <Text style={styles.actionButtonText}>Retour</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
