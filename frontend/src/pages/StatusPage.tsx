@@ -1,6 +1,7 @@
 /**
- * Public status page — no auth required.
- * Polls GET /api/health/status every 30s, shows per-service indicators.
+ * Page de statut interne — accessible aux utilisateurs connectés.
+ * Appelle le proxy Vercel /api/status (deep health check) toutes les 60s.
+ * Fallback public /api/health/status si le proxy échoue.
  */
 
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -16,35 +17,48 @@ import {
   XCircle,
   Clock,
   Activity,
+  Mail,
+  HardDrive,
+  Cpu,
 } from "lucide-react";
-import { statusApi, type SystemStatus, type ServiceStatus } from "../services/api";
+import { statusApi, type DeepSystemStatus, type ServiceStatus } from "../services/api";
 
 // ───────────────────────────────────────────────────────────────────────────
 // Helpers
 // ───────────────────────────────────────────────────────────────────────────
 
-const POLL_INTERVAL = 30; // seconds
+const POLL_INTERVAL = 60; // seconds
 
 const SERVICE_META: Record<string, { icon: typeof Database; label: string; description: string }> = {
   database: {
     icon: Database,
-    label: "Database",
-    description: "PostgreSQL primary store",
+    label: "Base de données",
+    description: "PostgreSQL — stockage principal",
+  },
+  redis: {
+    icon: HardDrive,
+    label: "Redis",
+    description: "Cache et sessions",
   },
   stripe: {
     icon: CreditCard,
     label: "Stripe",
-    description: "Payment processing",
+    description: "Traitement des paiements",
   },
   mistral: {
     icon: Brain,
     label: "Mistral AI",
-    description: "Analysis & chat engine",
+    description: "Analyse et chat IA",
   },
   perplexity: {
     icon: Search,
     label: "Perplexity AI",
-    description: "Fact-checking & web search",
+    description: "Fact-checking et recherche web",
+  },
+  resend: {
+    icon: Mail,
+    label: "Resend",
+    description: "Service d'envoi d'emails",
   },
 };
 
@@ -57,10 +71,7 @@ function statusColor(status: string) {
 function StatusDot({ status }: { status: string }) {
   const color = statusColor(status);
   return (
-    <span
-      className="relative flex h-3 w-3"
-      aria-label={status}
-    >
+    <span className="relative flex h-3 w-3" aria-label={status}>
       {status !== "operational" && (
         <span
           className="absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping"
@@ -82,20 +93,26 @@ function StatusIcon({ status }: { status: string }) {
 }
 
 function formatUptime(seconds: number | null): string {
-  if (seconds == null) return "—";
+  if (seconds == null) return "\u2014";
   const d = Math.floor(seconds / 86400);
   const h = Math.floor((seconds % 86400) / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const parts: string[] = [];
-  if (d > 0) parts.push(`${d}d`);
+  if (d > 0) parts.push(`${d}j`);
   if (h > 0) parts.push(`${h}h`);
   parts.push(`${m}m`);
   return parts.join(" ");
 }
 
 function formatLatency(ms: number | null): string {
-  if (ms == null) return "—";
-  return `${ms.toFixed(0)}ms`;
+  if (ms == null) return "\u2014";
+  return `${ms.toFixed(0)} ms`;
+}
+
+function statusLabel(status: string): string {
+  if (status === "operational") return "Op\u00e9rationnel";
+  if (status === "degraded") return "D\u00e9grad\u00e9";
+  return "Hors service";
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -103,21 +120,30 @@ function formatLatency(ms: number | null): string {
 // ───────────────────────────────────────────────────────────────────────────
 
 export default function StatusPage() {
-  const [data, setData] = useState<SystemStatus | null>(null);
+  const [data, setData] = useState<DeepSystemStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [countdown, setCountdown] = useState(POLL_INTERVAL);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
 
-  const fetchStatus = useCallback(async () => {
+  const fetchStatus = useCallback(async (manual = false) => {
+    if (manual) setRefreshing(true);
     try {
-      const result = await statusApi.getStatus();
+      // Try deep check first (via Vercel proxy), fallback to public endpoint
+      let result: DeepSystemStatus;
+      try {
+        result = await statusApi.getDeepStatus();
+      } catch {
+        result = await statusApi.getStatus();
+      }
       setData(result);
       setError(null);
     } catch {
-      setError("Cannot reach API");
+      setError("Impossible de joindre l'API");
     } finally {
       setLoading(false);
+      setRefreshing(false);
       setCountdown(POLL_INTERVAL);
     }
   }, []);
@@ -125,7 +151,7 @@ export default function StatusPage() {
   // Initial fetch + polling
   useEffect(() => {
     fetchStatus();
-    const poll = setInterval(fetchStatus, POLL_INTERVAL * 1000);
+    const poll = setInterval(() => fetchStatus(), POLL_INTERVAL * 1000);
     return () => clearInterval(poll);
   }, [fetchStatus]);
 
@@ -147,7 +173,7 @@ export default function StatusPage() {
             {error}
           </h1>
           <p className="text-[var(--text-secondary,#a1a1b5)] mb-6">
-            The DeepSight API is not responding.
+            L'API DeepSight ne r&eacute;pond pas.
           </p>
           <button
             onClick={() => { setLoading(true); fetchStatus(); }}
@@ -156,7 +182,7 @@ export default function StatusPage() {
                        hover:opacity-90 transition-opacity"
           >
             <RefreshCw size={16} />
-            Retry
+            R&eacute;essayer
           </button>
         </div>
       </div>
@@ -172,7 +198,7 @@ export default function StatusPage() {
             <div className="h-10 w-64 rounded-lg bg-[var(--bg-tertiary,#1a1a24)]" />
             <div className="h-24 rounded-xl bg-[var(--bg-tertiary,#1a1a24)]" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[1, 2, 3, 4].map((i) => (
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="h-36 rounded-xl bg-[var(--bg-tertiary,#1a1a24)]" />
               ))}
             </div>
@@ -185,10 +211,13 @@ export default function StatusPage() {
   const overallColor = statusColor(data.status);
   const overallLabel =
     data.status === "operational"
-      ? "All Systems Operational"
+      ? "Tout est op\u00e9rationnel"
       : data.status === "degraded"
-        ? "Some Systems Degraded"
-        : "System Outage Detected";
+        ? "Service d\u00e9grad\u00e9"
+        : "Incident en cours";
+
+  const overallEmoji =
+    data.status === "operational" ? "\uD83D\uDFE2" : data.status === "degraded" ? "\uD83D\uDFE1" : "\uD83D\uDD34";
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary,#0a0a0f)] text-[var(--text-primary,#f5f5f7)]">
@@ -197,11 +226,24 @@ export default function StatusPage() {
         <div className="max-w-3xl mx-auto px-4 py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Activity size={24} style={{ color: "var(--accent-primary, #6366f1)" }} />
-            <h1 className="text-xl font-bold">DeepSight Status</h1>
+            <h1 className="text-xl font-bold">Statut DeepSight</h1>
           </div>
-          <span className="text-xs text-[var(--text-tertiary,#6b6b80)] tabular-nums">
-            v{data.version}
-          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => fetchStatus(true)}
+              disabled={refreshing}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium
+                         bg-[var(--bg-tertiary,#1a1a24)] hover:bg-[var(--accent-primary,#6366f1)]/20
+                         text-[var(--text-secondary,#a1a1b5)] hover:text-white
+                         transition-colors disabled:opacity-50"
+            >
+              <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+              Rafra&icirc;chir
+            </button>
+            <span className="text-xs text-[var(--text-tertiary,#6b6b80)] tabular-nums">
+              v{data.version}
+            </span>
+          </div>
         </div>
       </header>
 
@@ -220,7 +262,7 @@ export default function StatusPage() {
           <div className="flex items-center gap-3">
             <StatusIcon status={data.status} />
             <span className="text-lg font-semibold" style={{ color: overallColor }}>
-              {overallLabel}
+              {overallEmoji} {overallLabel}
             </span>
           </div>
 
@@ -228,12 +270,19 @@ export default function StatusPage() {
           <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 text-sm text-[var(--text-secondary,#a1a1b5)]">
             <span className="inline-flex items-center gap-1.5">
               <Clock size={14} />
-              Uptime: {formatUptime(data.uptime_seconds)}
+              Uptime : {formatUptime(data.uptime_seconds)}
             </span>
             <span className="inline-flex items-center gap-1.5">
               <RefreshCw size={14} />
-              Next check in {countdown}s
+              Prochaine v&eacute;rification dans {countdown}s
             </span>
+            {data.memory && data.memory.rss_mb && (
+              <span className="inline-flex items-center gap-1.5">
+                <Cpu size={14} />
+                M&eacute;moire : {data.memory.rss_mb} MB / {data.memory.limit_mb} MB
+                ({data.memory.usage_percent}%)
+              </span>
+            )}
           </div>
         </motion.div>
 
@@ -274,10 +323,10 @@ export default function StatusPage() {
 
                 <div className="flex items-center justify-between text-xs">
                   <span
-                    className="font-medium capitalize"
+                    className="font-medium"
                     style={{ color: statusColor(svc.status) }}
                   >
-                    {svc.status}
+                    {statusLabel(svc.status)}
                   </span>
                   <span className="text-[var(--text-tertiary,#6b6b80)] tabular-nums">
                     {svc.message || formatLatency(svc.latency_ms)}
@@ -291,14 +340,14 @@ export default function StatusPage() {
         {/* Footer */}
         <div className="text-center text-xs text-[var(--text-muted,#45455a)] space-y-1 pt-4">
           <p>
-            Last checked:{" "}
-            {new Date(data.checked_at).toLocaleTimeString(undefined, {
+            Derni&egrave;re v&eacute;rification :{" "}
+            {new Date(data.checked_at).toLocaleTimeString("fr-FR", {
               hour: "2-digit",
               minute: "2-digit",
               second: "2-digit",
             })}
           </p>
-          <p>Powered by DeepSight Monitoring</p>
+          <p>DeepSight Monitoring</p>
         </div>
       </main>
     </div>

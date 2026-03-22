@@ -15,8 +15,8 @@ import * as Sentry from '@sentry/react';
 
 // Configuration
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN || '';
-const ENVIRONMENT = import.meta.env.VITE_ENVIRONMENT || 'development';
-const APP_VERSION = '1.0.0';
+const ENVIRONMENT = import.meta.env.MODE || 'development';
+const APP_VERSION = __APP_VERSION__;
 
 // Flag pour savoir si Sentry est activé
 export const isSentryEnabled = !!SENTRY_DSN;
@@ -57,26 +57,27 @@ export function initSentry(): void {
       // Filtrer certaines erreurs
       beforeSend(event, hint) {
         const error = hint.originalException;
-        
-        // Ignorer les erreurs réseau courantes
+
+        // Ignorer les erreurs de navigation annulée et chunk loading
         if (error instanceof Error) {
           const message = error.message.toLowerCase();
           if (
-            message.includes('network error') ||
-            message.includes('failed to fetch') ||
-            message.includes('load failed') ||
-            message.includes('cancelled')
+            message.includes('cancelled') ||
+            message.includes('aborted') ||
+            message.includes('loading chunk') ||
+            message.includes('loading css chunk') ||
+            message.includes('dynamically imported module')
           ) {
             return null;
           }
         }
-        
+
         // Ignorer les erreurs 401/403 (pas des bugs)
         if (event.exception?.values?.[0]?.value?.includes('401') ||
             event.exception?.values?.[0]?.value?.includes('403')) {
           return null;
         }
-        
+
         return event;
       },
       

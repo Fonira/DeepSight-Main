@@ -1,0 +1,156 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# 🩺 DeepSight Smoke Tests — Scheduled & Manual
+# Runs Playwright monitoring tests against production
+# Schedule: 8h & 20h (heure française / UTC+2)
+# ═══════════════════════════════════════════════════════════════════════════
+
+name: Smoke Tests
+
+on:
+  schedule:
+    # 06:00 UTC = 08:00 CET/CEST
+    - cron: '0 6 * * *'
+    # 18:00 UTC = 20:00 CET/CEST
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+    inputs:
+      run_full_suite:
+        description: 'Run the full test suite (all browsers)'
+        type: boolean
+        default: false
+
+env:
+  BASE_URL: 'https://www.deepsightsynthesis.com'
+  API_URL: ${{ secrets.API_BASE_URL }}
+  HEALTH_CHECK_SECRET: ${{ secrets.HEALTH_CHECK_SECRET }}
+
+jobs:
+  smoke-tests:
+    name: Run Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: monitoring/package-lock.json
+
+      - name: Install dependencies
+        working-directory: monitoring
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: monitoring
+        run: npx playwright install chromium --with-deps
+
+      - name: Run Playwright tests
+        id: tests
+        working-directory: monitoring
+        continue-on-error: true
+        run: npx playwright test --reporter=line 2>&1 | tee test-output.txt
+
+      - name: Parse test results
+        id: parse
+        if: always()
+        working-directory: monitoring
+        run: |
+          PASSED=$(grep -oP '\d+(?= passed)' test-output.txt | tail -1 || echo "0")
+          FAILED=$(grep -oP '\d+(?= failed)' test-output.txt | tail -1 || echo "0")
+          SKIPPED=$(grep -oP '\d+(?= skipped)' test-output.txt | tail -1 || echo "0")
+
+          PASSED=${PASSED:-0}
+          FAILED=${FAILED:-0}
+          SKIPPED=${SKIPPED:-0}
+
+          echo "passed=$PASSED" >> "$GITHUB_OUTPUT"
+          echo "failed=$FAILED" >> "$GITHUB_OUTPUT"
+          echo "skipped=$SKIPPED" >> "$GITHUB_OUTPUT"
+
+          # Extract failed test names
+          FAILED_NAMES=$(grep -E '^\s+\d+\)' test-output.txt | head -20 | sed 's/^[[:space:]]*//' || echo "")
+          # Use a delimiter for multiline
+          {
+            echo "failed_names<<EOF"
+            echo "$FAILED_NAMES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ "$FAILED" != "0" ] && [ "$FAILED" != "" ]; then
+            echo "has_failures=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_failures=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Check if today is Monday (day 1) and current hour is morning run
+          DAY_OF_WEEK=$(date -u +%u)
+          HOUR=$(date -u +%H)
+          if [ "$DAY_OF_WEEK" = "1" ] && [ "$HOUR" -lt "12" ]; then
+            echo "is_monday_morning=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_monday_morning=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Notify Telegram on FAILURE
+        if: always() && steps.parse.outputs.has_failures == 'true'
+        run: |
+          MESSAGE=$(cat <<'MSGEOF'
+          🚨 *DeepSight Smoke Tests FAILED*
+
+          📊 ${{ steps.parse.outputs.passed }}✅  ${{ steps.parse.outputs.failed }}❌  ${{ steps.parse.outputs.skipped }}⏭️
+
+          🔍 *Tests échoués :*
+          ```
+          ${{ steps.parse.outputs.failed_names }}
+          ```
+
+          🔗 [Voir les logs](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          MSGEOF
+          )
+
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="Markdown" \
+            --data-urlencode "text=$MESSAGE"
+
+      - name: Weekly success report (Monday morning only)
+        if: >-
+          always() &&
+          steps.parse.outputs.has_failures == 'false' &&
+          steps.parse.outputs.is_monday_morning == 'true'
+        run: |
+          MESSAGE=$(cat <<'MSGEOF'
+          ✅ *DeepSight — Rapport hebdo*
+
+          Tous les smoke tests passent 🎉
+          📊 ${{ steps.parse.outputs.passed }}✅  0❌
+
+          _Prochain check automatique dans 12h_
+          MSGEOF
+          )
+
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="Markdown" \
+            --data-urlencode "text=$MESSAGE"
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-results-${{ github.run_id }}
+          path: |
+            monitoring/test-results/
+            monitoring/test-output.txt
+            monitoring/test-results.json
+            monitoring/playwright-report/
+          retention-days: 30
+
+      - name: Fail job if tests failed
+        if: steps.parse.outputs.has_failures == 'true'
+        run: exit 1

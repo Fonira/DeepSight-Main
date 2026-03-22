@@ -1,9 +1,10 @@
 """
-Monitoring router — /ping, /status, /db, and CRON endpoints.
+Monitoring router — /ping, /status, /deep, /db, and CRON endpoints.
 
 Mounted at /api/health in main.py so:
   GET /api/health/ping   → lightweight liveness
-  GET /api/health/status  → full service status
+  GET /api/health/status  → full service status (public)
+  GET /api/health/deep    → full status + memory (secret-protected)
   GET /api/health/db      → database version, migrations, size, connections
   POST /api/health/cron/onboarding → trigger onboarding email sequence
 """
@@ -73,6 +74,86 @@ async def status():
         "services": services,
         "checked_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# GET /deep — Secret-protected deep health check
+# ───────────────────────────────────────────────────────────────────────────
+
+@router.get("/deep")
+async def deep_status(secret: str = ""):
+    """
+    Deep health check — returns full status + memory + Redis.
+    Protected by HEALTH_CHECK_SECRET query param.
+    Called by the Vercel serverless proxy to avoid exposing the secret client-side.
+    """
+    from core.config import HEALTH_CHECK_SECRET
+
+    if not HEALTH_CHECK_SECRET or secret != HEALTH_CHECK_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid secret")
+
+    services = await run_all_checks()
+
+    # Also check Redis
+    redis_status = await _check_redis()
+    services.append(redis_status)
+
+    statuses = [s["status"] for s in services]
+    if "down" in statuses:
+        overall = "down"
+    elif "degraded" in statuses:
+        overall = "degraded"
+    else:
+        overall = "operational"
+
+    uptime = None
+    if _startup_time is not None:
+        uptime = round(time.time() - _startup_time, 1)
+
+    return {
+        "status": overall,
+        "version": VERSION,
+        "uptime_seconds": uptime,
+        "memory": get_memory_usage(),
+        "services": services,
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+async def _check_redis():
+    """Check Redis connectivity."""
+    import os
+    redis_url = os.environ.get("REDIS_URL", "")
+    if not redis_url:
+        return {
+            "name": "redis",
+            "status": "degraded",
+            "latency_ms": None,
+            "message": "Not configured",
+            "last_checked": datetime.now(timezone.utc).isoformat(),
+        }
+    try:
+        import redis.asyncio as aioredis
+        start = time.perf_counter()
+        r = aioredis.from_url(redis_url, socket_timeout=5)
+        await r.ping()
+        await r.aclose()
+        latency = (time.perf_counter() - start) * 1000
+        return {
+            "name": "redis",
+            "status": "operational",
+            "latency_ms": round(latency, 2),
+            "message": None,
+            "last_checked": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as e:
+        return {
+            "name": "redis",
+            "status": "down",
+            "latency_ms": None,
+            "message": str(e)[:120],
+            "last_checked": datetime.now(timezone.utc).isoformat(),
+        }
 
 
 # ───────────────────────────────────────────────────────────────────────────

@@ -61,7 +61,10 @@ credentials.json
 play-store-credentials.json
 .secrets/
 extension/node_modules/  
-extension/node_modules/ 
+extension/node_modules/
+monitoring/node_modules/
+monitoring/test-results/
+monitoring/playwright-report/
 
 deepsight-video/
 mobile/nul
