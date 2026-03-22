@@ -1340,9 +1340,9 @@ async def process_chat_message_v4(
         }
     
     # 2. Récupérer le résumé et le contexte
-    result = await session.execute(select(Summary).where(Summary.id == summary_id))
+    result = await session.execute(select(Summary).where(Summary.id == summary_id, Summary.user_id == user_id))
     summary = result.scalar_one_or_none()
-    
+
     if not summary:
         return {
             "response": "❌ Résumé non trouvé",
