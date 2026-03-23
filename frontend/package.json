@@ -19,6 +19,8 @@
     "ps": "node scripts/git-push-status.js"
   },
   "dependencies": {
+    "@elevenlabs/client": "^0.15.2",
+    "@elevenlabs/react": "^0.14.3",
     "@sentry/react": "^8.0.0",
     "@supabase/supabase-js": "^2.57.4",
     "@tanstack/react-query": "^5.17.0",
