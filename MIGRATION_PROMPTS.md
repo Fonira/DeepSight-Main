@@ -9,7 +9,7 @@
 ## TERMINAL A — VPS : Nettoyage + Docker + Sécurité
 
 ```
-Tu es le DevOps de DeepSight. Ta mission : préparer le VPS Hetzner "clawdbot" (89.167.23.214, Tailscale: 100.127.186.126) pour héberger le backend DeepSight.
+Tu es le DevOps de DeepSight. Ta mission : préparer le VPS Hetzner "clawdbot" ($HETZNER_IP, Tailscale: $TAILSCALE_IP) pour héberger le backend DeepSight.
 
 CONTEXTE :
 - VPS Hetzner CX43 : 8 vCPU, 16GB RAM, 40GB disk, Ubuntu, Helsinki
@@ -19,7 +19,7 @@ CONTEXTE :
 
 ÉTAPES À SUIVRE DANS L'ORDRE :
 
-1. SSH sur le VPS via Tailscale (100.127.186.126) ou IP publique (89.167.23.214)
+1. SSH sur le VPS via Tailscale ($TAILSCALE_IP) ou IP publique ($HETZNER_IP)
 
 2. INVENTAIRE - Avant de supprimer quoi que ce soit, lister ce qui tourne :
    - docker ps -a
@@ -89,7 +89,7 @@ CONTEXTE :
 - Backend actuel : Railway (FastAPI Python 3.11, voir backend/nixpacks.toml et backend/requirements.txt)
 - Migration vers : Hetzner VPS Docker (PostgreSQL 16 + Redis 7 + Caddy reverse proxy)
 - Le frontend RESTE sur Vercel
-- Nouveau domaine API : api.deepsightsynthesis.com → 89.167.23.214
+- Nouveau domaine API : api.deepsightsynthesis.com → $HETZNER_IP
 
 FICHIERS À CRÉER (dans le repo, PAS sur le VPS) :
 
@@ -449,7 +449,7 @@ RÈGLES :
 
 ```
 Tu es le DevOps de DeepSight. Les terminaux A et B ont terminé :
-- Le VPS Hetzner (89.167.23.214 / Tailscale 100.127.186.126) est propre avec Docker installé
+- Le VPS Hetzner ($HETZNER_IP / Tailscale $TAILSCALE_IP) est propre avec Docker installé
 - Les fichiers Docker (Dockerfile, docker-compose.yml, Caddyfile, scripts) sont dans le repo sur GitHub
 
 Ta mission : déployer le backend DeepSight sur le VPS et migrer la base de données.
@@ -567,7 +567,7 @@ RÈGLES :
 
 ### DNS (à faire toi-même dans l'interface du registrar)
 ```
-api.deepsightsynthesis.com → A → 89.167.23.214
+api.deepsightsynthesis.com → A → $HETZNER_IP
 TTL : 300 (5 min pour test rapide)
 ```
 
@@ -590,7 +590,7 @@ VITE_API_URL = https://api.deepsightsynthesis.com
 ### GitHub Secrets (Settings → Secrets → Actions)
 ```
 Ajouter :
-- HETZNER_HOST = 89.167.23.214
+- HETZNER_HOST = $HETZNER_IP
 - HETZNER_SSH_KEY = (contenu de la clé privée SSH)
 ```
 
