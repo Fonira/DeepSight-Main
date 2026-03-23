@@ -52,8 +52,6 @@ NE SUPPRIME RIEN sans me montrer d'abord. Affiche le résultat puis passe à la 
 ## PHASE 2 — NETTOYAGE VPS (10 min)
 - Arrêter et supprimer TOUS les containers Docker existants
 - docker system prune -a --volumes -f
-- Supprimer les dossiers OpenClaw (/opt/openclaw, /opt/claude-runner, ou similaire)
-- Supprimer les services systemd liés à OpenClaw
 - Nettoyer les crontabs (sauf Tailscale)
 - NE PAS TOUCHER à Tailscale ni SSH
 - apt update && apt upgrade -y
