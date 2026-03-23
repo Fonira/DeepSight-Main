@@ -15,6 +15,7 @@ import {
   DebateFactCheck,
   DebateStatusTracker,
   DebateSummaryCard,
+  DebateChat,
 } from '../components/debate';
 import { debateApi } from '../services/api';
 import type { DebateAnalysis } from '../types/debate';
@@ -408,7 +409,7 @@ export const DebatePage: React.FC = () => {
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
-                className="rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl p-5"
+                className="rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl p-5 mb-8"
               >
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center">
@@ -420,6 +421,12 @@ export const DebatePage: React.FC = () => {
                   {selectedDebate.debate_summary}
                 </p>
               </motion.div>
+
+              {/* Chat */}
+              <DebateChat
+                debateId={selectedDebate.id}
+                debateTopic={selectedDebate.detected_topic}
+              />
             </>
           )}
         </div>
