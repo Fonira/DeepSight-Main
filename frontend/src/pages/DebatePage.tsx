@@ -1,0 +1,355 @@
+/**
+ * DebatePage — Page principale Débat IA
+ * Affiche le formulaire de création, la liste des débats passés, ou le détail d'un débat
+ */
+
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
+import { Swords, ArrowLeft, FileText } from 'lucide-react';
+import {
+  DebateCreateForm,
+  DebateVSLayout,
+  DebateConvergenceDivergence,
+  DebateFactCheck,
+  DebateStatusTracker,
+  DebateSummaryCard,
+} from '../components/debate';
+import type { DebateAnalysis } from '../types/debate';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// MOCK DATA — Débat réaliste pour démonstration
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const MOCK_DEBATE: DebateAnalysis = {
+  id: 1,
+  video_a_id: 'dQw4w9WgXcQ',
+  video_b_id: 'jNQXAC9IVRw',
+  video_a_title: "Pourquoi l'IA ne remplacera JAMAIS les développeurs",
+  video_b_title: 'Les développeurs vont disparaître d\'ici 5 ans — voici pourquoi',
+  video_a_channel: 'CodeAvecHugo',
+  video_b_channel: 'TechVision FR',
+  video_a_thumbnail: 'https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',
+  video_b_thumbnail: 'https://img.youtube.com/vi/jNQXAC9IVRw/maxresdefault.jpg',
+  detected_topic: "L'intelligence artificielle va-t-elle remplacer les développeurs ?",
+  thesis_a:
+    "L'IA est un outil puissant mais fondamentalement limité : elle ne peut pas comprendre le contexte métier, innover, ni prendre des décisions architecturales complexes. Les développeurs resteront indispensables.",
+  thesis_b:
+    "L'IA progresse de manière exponentielle. Dans 5 ans, 80% du code sera généré automatiquement. Les développeurs qui ne s'adaptent pas seront remplacés par des non-développeurs utilisant l'IA.",
+  arguments_a: [
+    {
+      claim: "L'IA ne comprend pas le contexte métier",
+      evidence:
+        "Les LLMs génèrent du code syntaxiquement correct mais échouent régulièrement sur des règles métier complexes. Étude GitHub 2025 : seuls 37% des suggestions Copilot sont acceptées en production.",
+      strength: 'strong',
+    },
+    {
+      claim: "L'architecture logicielle nécessite une vision humaine",
+      evidence:
+        "Les choix d'architecture (microservices vs monolithe, patterns de scalabilité) dépendent de contraintes organisationnelles, budgétaires et humaines que l'IA ne peut pas évaluer.",
+      strength: 'strong',
+    },
+    {
+      claim: 'Chaque révolution technologique a créé plus d\'emplois qu\'elle n\'en a détruit',
+      evidence:
+        "Historiquement, l'automatisation (industrie, informatique) a toujours déplacé les emplois vers des tâches à plus haute valeur ajoutée. Le même phénomène se reproduira.",
+      strength: 'moderate',
+    },
+    {
+      claim: "Le debugging et la maintenance restent humains",
+      evidence:
+        "Les bugs les plus coûteux sont des erreurs de logique et d'intégration que l'IA peine à identifier. Le debugging nécessite une compréhension globale du système.",
+      strength: 'moderate',
+    },
+  ],
+  arguments_b: [
+    {
+      claim: 'Les progrès de l\'IA sont exponentiels',
+      evidence:
+        "GPT-4 (2023) a passé l'examen du barreau. Claude et Gemini 2.0 résolvent des problèmes de compétition de programmation. La courbe de progression n'est pas linéaire.",
+      strength: 'strong',
+    },
+    {
+      claim: 'Les outils no-code/low-code explosent',
+      evidence:
+        "Le marché no-code atteindra 65 milliards $ en 2027 (Gartner). Des non-développeurs créent déjà des applications complètes avec Cursor, Bolt et Replit Agent.",
+      strength: 'moderate',
+    },
+    {
+      claim: "Les entreprises veulent réduire les coûts de développement",
+      evidence:
+        "McKinsey estime que l'IA générative peut automatiser 70% des tâches de développement d'ici 2030, ce qui pousse les entreprises à investir massivement.",
+      strength: 'moderate',
+    },
+    {
+      claim: 'Les juniors seront les premiers touchés',
+      evidence:
+        "Les tâches juniors (CRUD, intégration API, UI basique) sont déjà automatisables. Le marché de l'emploi junior dev se contracte dans la Silicon Valley depuis 2024.",
+      strength: 'weak',
+    },
+  ],
+  convergence_points: [
+    "L'IA transforme profondément le métier de développeur — les deux vidéos s'accordent sur le fait que le rôle va évoluer significativement.",
+    'Les développeurs qui refusent d\'utiliser l\'IA seront désavantagés. La maîtrise des outils IA devient une compétence essentielle.',
+  ],
+  divergence_points: [
+    {
+      topic: 'Horizon temporel du remplacement',
+      position_a:
+        "Pas de remplacement envisageable, même à long terme. L'IA restera un outil assistant.",
+      position_b:
+        "80% du code sera auto-généré d'ici 2030. Le métier disparaîtra sous sa forme actuelle.",
+      fact_check_verdict:
+        'Les projections varient énormément selon les sources. Pas de consensus scientifique.',
+    },
+    {
+      topic: "Capacité de l'IA à comprendre le contexte",
+      position_a:
+        "L'IA ne peut pas comprendre les nuances métier et les contraintes organisationnelles.",
+      position_b:
+        "Les modèles RAG et agents autonomes comblent rapidement ce fossé de compréhension.",
+    },
+    {
+      topic: 'Impact sur le marché de l\'emploi',
+      position_a:
+        "Création nette d'emplois, comme toute révolution industrielle précédente.",
+      position_b:
+        "Destruction massive d'emplois juniors/mid, concentration sur les profils seniors.",
+      fact_check_verdict:
+        'Les données actuelles montrent un ralentissement des embauches junior mais pas de destruction massive.',
+    },
+  ],
+  fact_check_results: [
+    {
+      claim: '37% des suggestions Copilot sont acceptées en production',
+      source_video: 'a',
+      verdict: 'nuanced',
+      explanation:
+        "Le chiffre exact varie selon les études : GitHub rapporte 30% d'acceptation globale (2024), mais le taux monte à 46% pour les tâches boilerplate. Le chiffre de 37% est plausible mais daté.",
+      sources: ['https://github.blog/2024-copilot-research'],
+    },
+    {
+      claim: 'Le marché no-code atteindra 65 milliards $ en 2027',
+      source_video: 'b',
+      verdict: 'confirmed',
+      explanation:
+        "Gartner prévoit effectivement 65,15 milliards $ pour le marché des plateformes low-code/no-code en 2027, avec un taux de croissance annuel de 20%.",
+      sources: ['https://www.gartner.com/en/newsroom/press-releases/low-code-2027'],
+    },
+    {
+      claim: "McKinsey estime 70% d'automatisation des tâches dev d'ici 2030",
+      source_video: 'b',
+      verdict: 'disputed',
+      explanation:
+        "Le rapport McKinsey 2024 parle de 60-70% de potentiel d'automatisation pour les tâches codage routinières, pas pour l'ensemble du travail de développement. C'est une extrapolation trompeuse.",
+      sources: ['https://www.mckinsey.com/capabilities/quantumblack/our-insights'],
+    },
+    {
+      claim: 'Le marché de l\'emploi junior dev se contracte dans la Silicon Valley',
+      source_video: 'b',
+      verdict: 'nuanced',
+      explanation:
+        "Les offres d'emploi junior ont effectivement baissé de 30% en 2024-2025 en Californie, mais cette baisse est aussi liée aux corrections post-COVID et aux taux d'intérêt, pas uniquement à l'IA.",
+      sources: ['https://www.levels.fyi/2025-report'],
+    },
+  ],
+  debate_summary:
+    "Ce débat révèle un clivage classique entre techno-optimistes et techno-réalistes. Les deux camps s'accordent sur la transformation profonde du métier, mais divergent sur l'ampleur et la vitesse du changement. Les fact-checks montrent que les deux parties utilisent des données partiellement correctes mais souvent extrapolées. La réalité se situe probablement entre les deux : l'IA ne remplacera pas les développeurs, mais transformera radicalement ce que signifie « développer ».",
+  status: 'completed',
+  mode: 'auto',
+  lang: 'fr',
+  created_at: '2026-03-20T14:30:00Z',
+};
+
+const MOCK_IN_PROGRESS: DebateAnalysis = {
+  ...MOCK_DEBATE,
+  id: 2,
+  status: 'comparing',
+  detected_topic: 'Le télétravail est-il plus productif que le présentiel ?',
+  video_a_title: 'Le télétravail, c\'est la liberté : 3 ans de recul',
+  video_b_title: 'Pourquoi les entreprises rappellent tout le monde au bureau',
+  video_a_channel: 'Freelance Life',
+  video_b_channel: 'Management Today FR',
+  created_at: '2026-03-20T16:00:00Z',
+};
+
+const MOCK_DEBATES_LIST: DebateAnalysis[] = [MOCK_DEBATE, MOCK_IN_PROGRESS];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DEBATE PAGE
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const DebatePage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const debateId = searchParams.get('id');
+  const [loading, setLoading] = useState(false);
+
+  // Resolve which debate to display
+  const selectedDebate = debateId
+    ? MOCK_DEBATES_LIST.find((d) => d.id === Number(debateId)) ?? null
+    : null;
+
+  const handleCreateDebate = (data: { mode: 'auto' | 'manual'; urlA: string; urlB?: string }) => {
+    setLoading(true);
+    // Simule un délai puis redirige vers le mock
+    setTimeout(() => {
+      setLoading(false);
+      setSearchParams({ id: '1' });
+    }, 2000);
+  };
+
+  const handleSelectDebate = (id: number) => {
+    setSearchParams({ id: String(id) });
+  };
+
+  const handleBack = () => {
+    setSearchParams({});
+  };
+
+  // ─── Detail view ───
+  if (selectedDebate) {
+    const isInProgress = selectedDebate.status !== 'completed' && selectedDebate.status !== 'failed';
+
+    return (
+      <div className="min-h-screen bg-[#0a0a0f] text-white">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          {/* Back button */}
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Retour aux débats
+          </button>
+
+          {/* Topic header */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center mb-8"
+          >
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 mb-3">
+              <Swords className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="text-xs font-medium text-white/60">Débat IA</span>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight">
+              {selectedDebate.detected_topic}
+            </h1>
+          </motion.div>
+
+          {/* Status tracker (if in progress) */}
+          {isInProgress && (
+            <div className="mb-8">
+              <DebateStatusTracker status={selectedDebate.status} />
+            </div>
+          )}
+
+          {/* VS Layout */}
+          <div className="mb-8">
+            <DebateVSLayout debate={selectedDebate} />
+          </div>
+
+          {/* Convergence / Divergence */}
+          {selectedDebate.status === 'completed' && (
+            <>
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="mb-8"
+              >
+                <DebateConvergenceDivergence
+                  convergencePoints={selectedDebate.convergence_points}
+                  divergencePoints={selectedDebate.divergence_points}
+                />
+              </motion.div>
+
+              {/* Fact Check */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="mb-8"
+              >
+                <DebateFactCheck results={selectedDebate.fact_check_results} />
+              </motion.div>
+
+              {/* Summary */}
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl p-5"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center">
+                    <FileText className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-white">Synthèse du débat</h3>
+                </div>
+                <p className="text-sm text-white/70 leading-relaxed">
+                  {selectedDebate.debate_summary}
+                </p>
+              </motion.div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ─── List / Create view ───
+  return (
+    <div className="min-h-screen bg-[#0a0a0f] text-white">
+      <div className="max-w-3xl mx-auto px-4 py-8">
+        {/* Page header */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-white/10 mb-3">
+            <Swords className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="text-xs font-medium text-white/60">Débat IA</span>
+          </div>
+          <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">
+            Confrontez les points de vue
+          </h1>
+          <p className="text-sm text-white/40 max-w-md mx-auto">
+            Analysez deux vidéos qui défendent des positions opposées. DeepSight compare les arguments, identifie les convergences et vérifie les faits.
+          </p>
+        </motion.div>
+
+        {/* Create form */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-8"
+        >
+          <DebateCreateForm onSubmit={handleCreateDebate} loading={loading} />
+        </motion.div>
+
+        {/* Past debates */}
+        {MOCK_DEBATES_LIST.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <h2 className="text-sm font-semibold text-white/60 mb-3">Débats récents</h2>
+            <div className="space-y-2">
+              {MOCK_DEBATES_LIST.map((debate) => (
+                <DebateSummaryCard
+                  key={debate.id}
+                  debate={debate}
+                  onClick={handleSelectDebate}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </div>
+    </div>
+  );
+};
