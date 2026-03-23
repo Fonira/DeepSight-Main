@@ -408,7 +408,7 @@ async def upgrade_quick_chat(
         from db.database import async_session_maker
         try:
             async with async_session_maker() as bg_session:
-                res = await bg_session.execute(sa_select(Summary).where(Summary.id == request.summary_id))
+                res = await bg_session.execute(sa_select(Summary).where(Summary.id == request.summary_id, Summary.user_id == current_user.id))
                 s = res.scalar_one_or_none()
                 if not s or not s.transcript_context:
                     _task_store[task_id].update({"status": "failed", "message": "Transcript introuvable"})

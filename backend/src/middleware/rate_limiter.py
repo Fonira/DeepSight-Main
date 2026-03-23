@@ -53,6 +53,8 @@ DEFAULT_LIMITS = {
     "api": (100, 60),          # 100 appels API/min
     "export": (20, 60),        # 20 exports/min
     "tts": (10, 60),           # 10 TTS/min
+    "auth_sensitive": (5, 60),      # 5/min — reset-password, verify-email, change-password
+    "auth_email_trigger": (3, 60),  # 3/min — forgot-password, resend-verification (anti-spam email)
 }
 
 # IPs whitelistées (pas de rate limiting)
@@ -71,6 +73,11 @@ PLAN_MULTIPLIERS = {
 ENDPOINT_CATEGORIES = {
     "/api/auth/login": "auth_login",
     "/api/auth/register": "auth_register",
+    "/api/auth/forgot-password": "auth_email_trigger",
+    "/api/auth/resend-verification": "auth_email_trigger",
+    "/api/auth/reset-password": "auth_sensitive",
+    "/api/auth/verify-email": "auth_sensitive",
+    "/api/auth/change-password": "auth_sensitive",
     "/api/videos/analyze": "analysis",
     "/api/videos/stream": "analysis",
     "/api/chat": "chat",

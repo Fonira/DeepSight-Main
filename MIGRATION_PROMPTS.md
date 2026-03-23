@@ -9,17 +9,16 @@
 ## TERMINAL A — VPS : Nettoyage + Docker + Sécurité
 
 ```
-Tu es le DevOps de DeepSight. Ta mission : préparer le VPS Hetzner "clawdbot" (89.167.23.214, Tailscale: 100.127.186.126) pour héberger le backend DeepSight.
+Tu es le DevOps de DeepSight. Ta mission : préparer le VPS Hetzner "clawdbot" ($HETZNER_IP, Tailscale: $TAILSCALE_IP) pour héberger le backend DeepSight.
 
 CONTEXTE :
 - VPS Hetzner CX43 : 8 vCPU, 16GB RAM, 40GB disk, Ubuntu, Helsinki
-- Actuellement utilisé pour OpenClaw (bot Telegram + Claude Runner) → TOUT SUPPRIMER
 - On va y déployer : FastAPI backend + PostgreSQL 16 + Redis 7 + Caddy (reverse proxy SSL)
 - Le frontend RESTE sur Vercel (ne pas toucher)
 
 ÉTAPES À SUIVRE DANS L'ORDRE :
 
-1. SSH sur le VPS via Tailscale (100.127.186.126) ou IP publique (89.167.23.214)
+1. SSH sur le VPS via Tailscale ($TAILSCALE_IP) ou IP publique ($HETZNER_IP)
 
 2. INVENTAIRE - Avant de supprimer quoi que ce soit, lister ce qui tourne :
    - docker ps -a
@@ -29,15 +28,7 @@ CONTEXTE :
    - crontab -l
    Montre-moi le résultat COMPLET avant de supprimer
 
-3. NETTOYAGE OPENCLAW (après validation) :
-   - Arrêter tous les containers Docker liés à OpenClaw
-   - docker system prune -a --volumes (nettoyer TOUT Docker)
-   - Supprimer les dossiers OpenClaw (/opt/openclaw ou similaire)
-   - Supprimer les services systemd OpenClaw
-   - Supprimer les crontabs liées à OpenClaw
-   - NE PAS toucher à Tailscale ni SSH
-
-4. MISE À JOUR SYSTÈME :
+3. MISE À JOUR SYSTÈME :
    - apt update && apt upgrade -y
    - Installer si manquant : curl, git, htop, ufw, fail2ban
 
@@ -71,7 +62,6 @@ CONTEXTE :
    - Confirmer que tout est prêt
 
 RÈGLES :
-- Montre-moi l'inventaire OpenClaw AVANT de supprimer
 - NE TOUCHE PAS à Tailscale
 - Utilise ; au lieu de && pour chaîner les commandes (PowerShell sur le PC, mais SSH c'est bash donc && OK dans le SSH)
 - Affiche chaque résultat de commande
@@ -89,7 +79,7 @@ CONTEXTE :
 - Backend actuel : Railway (FastAPI Python 3.11, voir backend/nixpacks.toml et backend/requirements.txt)
 - Migration vers : Hetzner VPS Docker (PostgreSQL 16 + Redis 7 + Caddy reverse proxy)
 - Le frontend RESTE sur Vercel
-- Nouveau domaine API : api.deepsightsynthesis.com → 89.167.23.214
+- Nouveau domaine API : api.deepsightsynthesis.com → $HETZNER_IP
 
 FICHIERS À CRÉER (dans le repo, PAS sur le VPS) :
 
@@ -449,7 +439,7 @@ RÈGLES :
 
 ```
 Tu es le DevOps de DeepSight. Les terminaux A et B ont terminé :
-- Le VPS Hetzner (89.167.23.214 / Tailscale 100.127.186.126) est propre avec Docker installé
+- Le VPS Hetzner ($HETZNER_IP / Tailscale $TAILSCALE_IP) est propre avec Docker installé
 - Les fichiers Docker (Dockerfile, docker-compose.yml, Caddyfile, scripts) sont dans le repo sur GitHub
 
 Ta mission : déployer le backend DeepSight sur le VPS et migrer la base de données.
@@ -567,7 +557,7 @@ RÈGLES :
 
 ### DNS (à faire toi-même dans l'interface du registrar)
 ```
-api.deepsightsynthesis.com → A → 89.167.23.214
+api.deepsightsynthesis.com → A → $HETZNER_IP
 TTL : 300 (5 min pour test rapide)
 ```
 
@@ -590,7 +580,7 @@ VITE_API_URL = https://api.deepsightsynthesis.com
 ### GitHub Secrets (Settings → Secrets → Actions)
 ```
 Ajouter :
-- HETZNER_HOST = 89.167.23.214
+- HETZNER_HOST = $HETZNER_IP
 - HETZNER_SSH_KEY = (contenu de la clé privée SSH)
 ```
 

@@ -1,5 +1,5 @@
 # DeepSight — Configuration Claude Code & Cowork
-*Mis à jour : 20 Mars 2026*
+*Mis à jour : 23 Mars 2026*
 
 ## Stack Technique
 - **Backend**: FastAPI + Python 3.11 (async, 4 workers Uvicorn)
@@ -50,7 +50,7 @@ cd extension && npm run typecheck # tsc --noEmit
 cd frontend && git push origin main
 
 # Backend → Hetzner VPS
-ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
+ssh -i ~/.ssh/id_hetzner root@$HETZNER_IP \
   "cd /opt/deepsight/repo && git pull && \
    docker build -t deepsight-backend:latest -f deploy/hetzner/Dockerfile ./backend && \
    docker stop repo-backend-1 && docker rm repo-backend-1 && \
@@ -224,25 +224,25 @@ git commit -m "type(scope): description"
 ## 🔴 Réflexe automatique sur erreur signalée
 ```bash
 # Logs backend
-ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
+ssh -i ~/.ssh/id_hetzner root@$HETZNER_IP \
   "docker logs repo-backend-1 --tail 100 2>&1 | grep -i -E 'error|traceback|exception|critical|failed'"
 
 # Health check
-ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
+ssh -i ~/.ssh/id_hetzner root@$HETZNER_IP \
   "docker exec repo-backend-1 curl -s http://localhost:8080/health"
 
 # Status containers
-ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
+ssh -i ~/.ssh/id_hetzner root@$HETZNER_IP \
   "docker ps --format '{{.Names}} {{.Status}}'"
 ```
 
 ## Architecture clé
 
-### 14 Routers Backend
-auth, videos, chat, billing, playlists, exports, history, search, academic, admin, analytics, batch, notifications, tournesol, study
+### 15 Routers Backend
+auth, videos, chat, billing, playlists, exports, history, search, academic, admin, analytics, batch, notifications, tournesol, study, debate
 
-### 23 Tables DB
-User, Summary, RefreshToken, ChatMessage, ChatQuota, PlaylistAnalysis, PlaylistChatMessage, VideoChunk, VideoComparison, AcademicPaper, SharedAnalysis, TranscriptCache, TranscriptCacheChunk, TranscriptEmbedding, DailyQuota, CreditTransaction, WebSearchUsage, TaskStatus, ApiUsage, AnalyticsEvent, PushToken, AdminLog, ApiStatus
+### 25 Tables DB
+User, Summary, RefreshToken, ChatMessage, ChatQuota, PlaylistAnalysis, PlaylistChatMessage, VideoChunk, VideoComparison, AcademicPaper, SharedAnalysis, TranscriptCache, TranscriptCacheChunk, TranscriptEmbedding, DailyQuota, CreditTransaction, WebSearchUsage, TaskStatus, ApiUsage, AnalyticsEvent, PushToken, AdminLog, ApiStatus, Debate, DebateChatMessage
 
 ### Plans tarifaires
 - **free** (0€) → 5 analyses/mois, 250 crédits, 15min max
@@ -253,5 +253,20 @@ User, Summary, RefreshToken, ChatMessage, ChatQuota, PlaylistAnalysis, PlaylistC
 ### Transcript extraction (7 méthodes)
 Supadata → youtube-transcript-api → Invidious → Piped → yt-dlp subs → yt-dlp auto → Audio STT (Groq/OpenAI/Deepgram/AssemblyAI)
 
+## Outils Dev Configurés
+- **GitHub CLI (`gh`)** : installé et authentifié sur machine Windows dev (v2.88.1)
+  - Créer PR : `gh pr create --base main --head branch --title "..." --body "..."`
+  - Merger : `gh pr merge --squash --auto`
+  - Review : `gh pr view`, `gh pr checks`
+  - Note : `gh` n'est PAS disponible dans l'environnement Cowork/Claude Code — utiliser depuis le terminal local Windows
+
+## Déploiement depuis Cowork/Claude Code — Limitations connues
+- **Vercel CLI** (`vercel deploy`) : ÉCHOUE — pas d'accès réseau sortant vers vercel.com depuis cet environnement
+- **Vercel MCP tool** (`deploy_to_vercel`) : ne déploie pas directement, renvoie vers la CLI
+- **`gh` CLI** : non authentifié dans Cowork (pas de token GH_TOKEN)
+- **Seule méthode qui fonctionne** : merger dans `main` via git integration Vercel → déclenche auto-deploy
+  - Soit depuis le terminal Windows local avec `gh pr merge`
+  - Soit via l'UI GitHub / bouton "Créer une PR" de Cowork
+
 # currentDate
-Today's date is 2026-03-20.
+Today's date is 2026-03-23.

@@ -1,8 +1,6 @@
 import React from "react";
-import { Video, BookOpen, History, Gem, Settings, Crown } from "lucide-react";
+import { Video, Swords, History, Gem, Settings, Crown } from "lucide-react";
 import { SidebarNavItem } from "./SidebarNavItem";
-import { useAuth } from "../../hooks/useAuth";
-import { normalizePlanId } from "../../config/planPrivileges";
 
 interface SidebarNavProps {
   isAdmin?: boolean;
@@ -13,13 +11,9 @@ export const SidebarNav: React.FC<SidebarNavProps> = ({
   isAdmin = false,
   onNavigate,
 }) => {
-  const { user } = useAuth();
-  const normalizedPlan = normalizePlanId(user?.plan);
-  const isPaidUser = normalizedPlan !== 'free';
-
   const navItems = [
     { path: "/dashboard", icon: Video, label: "Vidéo" },
-    ...(isPaidUser ? [{ path: "/playlists", icon: BookOpen, label: "Playlist" }] : []),
+    { path: "/debate", icon: Swords, label: "Débat IA" },
     { path: "/history", icon: History, label: "Historique" },
     { path: "/upgrade", icon: Gem, label: "Upgrade" },
     { path: "/settings", icon: Settings, label: "Paramètres" },
