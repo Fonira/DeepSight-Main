@@ -23,7 +23,6 @@ from db.database import get_session, VoiceSession, Summary, User
 from auth.dependencies import get_current_user
 from core.config import (
     VOICE_LIMITS,
-    VOICE_CHAT_CONFIG,
     APP_URL,
     STRIPE_CONFIG,
     FRONTEND_URL,
@@ -45,7 +44,6 @@ from voice.quota import (
     get_voice_quota_info,
     check_voice_quota,
     deduct_voice_usage,
-    get_or_create_voice_quota,
 )
 from voice.elevenlabs import ElevenLabsClient, get_elevenlabs_client
 from voice.tools import search_in_transcript, get_analysis_section, get_sources, get_flashcards

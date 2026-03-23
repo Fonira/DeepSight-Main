@@ -6,7 +6,6 @@
 
 import logging
 from datetime import datetime, date
-from calendar import monthrange
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
