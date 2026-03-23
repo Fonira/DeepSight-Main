@@ -56,9 +56,9 @@ _debate_task_store: Dict[int, Dict[str, Any]] = {}
 # Status messages for UI
 STATUS_MESSAGES = {
     "pending": "Débat en attente de traitement...",
-    "extracting": "Extraction des transcriptions...",
     "searching": "Recherche d'une vidéo avec un point de vue opposé...",
-    "analyzing": "Analyse comparative avec Mistral IA...",
+    "analyzing_b": "Analyse de la vidéo opposée...",
+    "comparing": "Analyse comparative avec Mistral IA...",
     "fact_checking": "Fact-checking croisé en cours...",
     "completed": "Débat terminé !",
     "failed": "Échec de l'analyse.",
@@ -82,6 +82,18 @@ def _parse_json_field(value: Optional[str]) -> Any:
         return []
 
 
+def _normalize_fact_check(value: Optional[str]) -> list:
+    """Ensure fact_check_results is always a list of FactCheckItem dicts."""
+    parsed = _parse_json_field(value)
+    if isinstance(parsed, list):
+        return parsed
+    if isinstance(parsed, dict):
+        if "claims" in parsed and isinstance(parsed["claims"], list):
+            return parsed["claims"]
+        return []
+    return []
+
+
 def _debate_to_result(debate: DebateAnalysis) -> DebateResultResponse:
     """Convert a DebateAnalysis ORM object to a DebateResultResponse."""
     return DebateResultResponse(
@@ -101,7 +113,7 @@ def _debate_to_result(debate: DebateAnalysis) -> DebateResultResponse:
         arguments_b=_parse_json_field(debate.arguments_b),
         convergence_points=_parse_json_field(debate.convergence_points),
         divergence_points=_parse_json_field(debate.divergence_points),
-        fact_check_results=_parse_json_field(debate.fact_check_results) or {},
+        fact_check_results=_normalize_fact_check(debate.fact_check_results),
         debate_summary=debate.debate_summary,
         status=debate.status,
         mode=debate.mode or "auto",
@@ -259,7 +271,7 @@ async def _run_debate_pipeline(
     async with async_session_maker() as session:
         try:
             # ── Step 1: Get video A info + transcript ──
-            _debate_task_store[debate_id] = {"status": "extracting", "message": "Extraction vidéo A..."}
+            _debate_task_store[debate_id] = {"status": "pending", "message": "Extraction vidéo A..."}
 
             result = await session.execute(
                 select(DebateAnalysis).where(DebateAnalysis.id == debate_id)
@@ -269,7 +281,7 @@ async def _run_debate_pipeline(
                 logger.error("Debate %d not found in DB", debate_id)
                 return
 
-            debate.status = "extracting"
+            debate.status = "pending"
             await session.commit()
 
             video_a_info = await get_video_info(video_a_id)
@@ -291,14 +303,14 @@ async def _run_debate_pipeline(
             transcript_a_short = transcript_a[:8000]
 
             # ── Step 2: Detect topic + thesis A via Mistral ──
-            _debate_task_store[debate_id] = {"status": "analyzing", "message": "Détection du sujet et de la thèse A..."}
+            _debate_task_store[debate_id] = {"status": "pending", "message": "Détection du sujet et de la thèse A..."}
 
             topic_prompt = [
                 {"role": "system", "content": (
                     "Tu es un analyste expert en argumentation. "
                     "Extrais le sujet principal et la thèse défendue dans cette transcription vidéo. "
                     "Réponds UNIQUEMENT en JSON valide avec le format : "
-                    '{"topic": "...", "thesis": "...", "key_arguments": ["arg1", "arg2", "arg3"]}'
+                    '{"topic": "...", "thesis": "...", "key_arguments": [{"claim": "...", "evidence": "...", "strength": "strong|moderate|weak"}, ...]}'
                 )},
                 {"role": "user", "content": f"Transcription de la vidéo :\n\n{transcript_a_short}"},
             ]
