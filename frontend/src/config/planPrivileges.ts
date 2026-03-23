@@ -44,6 +44,10 @@ export interface PlanLimits {
   academicSearch: boolean;          // Recherche de sources académiques
   academicPapersPerAnalysis: number; // Nombre max de papiers (backend contrôle aussi)
   bibliographyExport: boolean;      // Export bibliographie (BibTeX, APA, etc.)
+
+  // Voice Chat
+  voiceChatEnabled: boolean;        // Activer le chat vocal
+  voiceChatMonthlyMinutes: number;  // Minutes mensuelles, 0 = désactivé
 }
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
@@ -70,6 +74,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicSearch: true,
     academicPapersPerAnalysis: 3,
     bibliographyExport: false,
+    voiceChatEnabled: false,
+    voiceChatMonthlyMinutes: 0,
   },
 
   etudiant: {
@@ -95,6 +101,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicSearch: true,
     academicPapersPerAnalysis: 10,
     bibliographyExport: true,
+    voiceChatEnabled: true,
+    voiceChatMonthlyMinutes: 5,
   },
 
   starter: {
@@ -120,6 +128,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicSearch: true,
     academicPapersPerAnalysis: 20,
     bibliographyExport: true,
+    voiceChatEnabled: true,
+    voiceChatMonthlyMinutes: 15,
   },
 
   pro: {
@@ -145,6 +155,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicSearch: true,
     academicPapersPerAnalysis: 50,
     bibliographyExport: true,
+    voiceChatEnabled: true,
+    voiceChatMonthlyMinutes: 45,
   },
 };
 
@@ -164,13 +176,14 @@ export interface PlanFeatures {
   prioritySupport: boolean;
   academicSearch: boolean;
   bibliographyExport: boolean;
+  voiceChat: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
-  free: { flashcards: false, mindmap: false, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: false, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: false },
-  etudiant: { flashcards: true, mindmap: true, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true },
-  starter: { flashcards: true, mindmap: true, webSearch: true, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true },
-  pro: { flashcards: true, mindmap: true, webSearch: true, playlists: true, exportPdf: true, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: true, academicSearch: true, bibliographyExport: true },
+  free: { flashcards: false, mindmap: false, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: false, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: false, voiceChat: false },
+  etudiant: { flashcards: true, mindmap: true, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true, voiceChat: true },
+  starter: { flashcards: true, mindmap: true, webSearch: true, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true, voiceChat: true },
+  pro: { flashcards: true, mindmap: true, webSearch: true, playlists: true, exportPdf: true, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: true, academicSearch: true, bibliographyExport: true, voiceChat: true },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
