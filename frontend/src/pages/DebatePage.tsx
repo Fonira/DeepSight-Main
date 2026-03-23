@@ -343,6 +343,34 @@ export const DebatePage: React.FC = () => {
     setSearchParams({});
   };
 
+  // ─── Loading skeleton while debate is being fetched ───
+  if (debateLoading && !selectedDebate && debateId) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0f] text-white">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <button
+            onClick={handleBack}
+            className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Retour aux débats
+          </button>
+          <div className="animate-pulse space-y-6">
+            <div className="flex flex-col items-center gap-3">
+              <div className="h-6 w-24 rounded-full bg-white/5" />
+              <div className="h-8 w-96 max-w-full rounded-lg bg-white/5" />
+            </div>
+            <div className="h-40 rounded-xl bg-white/5" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="h-60 rounded-xl bg-white/5" />
+              <div className="h-60 rounded-xl bg-white/5" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ─── Detail view ───
   if (selectedDebate) {
     const isInProgress = selectedDebate.status !== 'completed' && selectedDebate.status !== 'failed';
@@ -379,6 +407,25 @@ export const DebatePage: React.FC = () => {
             <div className="mb-8">
               <DebateStatusTracker status={selectedDebate.status} />
             </div>
+          )}
+
+          {/* Failed state */}
+          {selectedDebate.status === 'failed' && (
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8 p-4 rounded-xl bg-red-500/10 border border-red-500/20"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-red-400" />
+                <h3 className="text-sm font-semibold text-red-400">Le débat a échoué</h3>
+              </div>
+              {selectedDebate.debate_summary && (
+                <p className="text-sm text-red-300/70 leading-relaxed">
+                  {selectedDebate.debate_summary}
+                </p>
+              )}
+            </motion.div>
           )}
 
           {/* VS Layout */}

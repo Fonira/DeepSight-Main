@@ -71,17 +71,8 @@ export const DebateFactCheck: React.FC<DebateFactCheckProps> = ({ results }) => 
               transition={{ delay: 0.08 * i, duration: 0.3 }}
               className={`rounded-lg bg-white/[0.03] border ${verdict.bgClassName} p-3.5 space-y-2`}
             >
-              {/* Header: source badge + verdict */}
-              <div className="flex items-center justify-between gap-2">
-                <span
-                  className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
-                    item.source_video === 'a'
-                      ? 'bg-indigo-500/15 text-indigo-400 border-indigo-500/25'
-                      : 'bg-violet-500/15 text-violet-400 border-violet-500/25'
-                  }`}
-                >
-                  Vidéo {item.source_video.toUpperCase()}
-                </span>
+              {/* Header: verdict badge */}
+              <div className="flex items-center justify-end gap-2">
                 <span
                   className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${verdict.className}`}
                 >
@@ -92,7 +83,7 @@ export const DebateFactCheck: React.FC<DebateFactCheckProps> = ({ results }) => 
 
               {/* Claim */}
               <p className="text-sm text-white/90 font-medium leading-snug">
-                « {item.claim} »
+                &laquo; {item.claim} &raquo;
               </p>
 
               {/* Explanation */}
@@ -100,21 +91,18 @@ export const DebateFactCheck: React.FC<DebateFactCheckProps> = ({ results }) => 
                 {item.explanation}
               </p>
 
-              {/* Sources */}
-              {item.sources.length > 0 && (
+              {/* Source */}
+              {item.source && (
                 <div className="flex flex-wrap gap-1.5 pt-1">
-                  {item.sources.map((source, j) => (
-                    <a
-                      key={j}
-                      href={source}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[10px] text-cyan-400/70 hover:text-cyan-400 transition-colors"
-                    >
-                      <ExternalLink className="w-2.5 h-2.5" />
-                      Source {j + 1}
-                    </a>
-                  ))}
+                  <a
+                    href={item.source}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[10px] text-cyan-400/70 hover:text-cyan-400 transition-colors"
+                  >
+                    <ExternalLink className="w-2.5 h-2.5" />
+                    Source
+                  </a>
                 </div>
               )}
             </motion.div>
