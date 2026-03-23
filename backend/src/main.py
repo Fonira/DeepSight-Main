@@ -603,7 +603,10 @@ app = FastAPI(
     version=VERSION,
     description="API Backend pour Deep Sight - Analyse YouTube avec IA",
     redirect_slashes=False,  # Évite les redirections 307 qui perdent les headers
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs" if ENVIRONMENT != "production" else None,
+    redoc_url="/redoc" if ENVIRONMENT != "production" else None,
+    openapi_url="/openapi.json" if ENVIRONMENT != "production" else None,
 )
 
 
@@ -790,6 +793,8 @@ if VIDEO_CACHE_AVAILABLE:
 @app.get("/")
 async def root():
     """Page d'accueil de l'API"""
+    if ENVIRONMENT == "production":
+        return {"status": "ok"}
     return {
         "name": APP_NAME,
         "version": VERSION,
