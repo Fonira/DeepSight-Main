@@ -35,6 +35,8 @@ export interface PlanFeatures {
   webEnrichEnabled: boolean;
   academicSearchEnabled: boolean;
   ttsEnabled: boolean;
+  voiceChatEnabled: boolean;
+  voiceChatMonthlyMinutes: number;
   historyDays: number;
   apiAccess: boolean;
 }
@@ -64,6 +66,8 @@ function buildPlanFeatures(planId: PlanId): PlanFeatures {
     webEnrichEnabled: f.chatWebSearch,
     academicSearchEnabled: f.academicSearch,
     ttsEnabled: f.ttsAudio,
+    voiceChatEnabled: planId !== 'free',
+    voiceChatMonthlyMinutes: ({ free: 0, student: 5, starter: 15, pro: 45 } as Record<PlanId, number>)[planId],
     historyDays: l.historyDays,
     apiAccess: f.apiAccess,
   };
@@ -315,6 +319,16 @@ export const useFeatureGate = (feature: keyof PlanFeatures) => {
   return {
     ...checkFeature(feature),
     canUse: canUseFeature(feature),
+  };
+};
+
+// Hook for voice chat feature gating
+export const useVoiceChatGate = () => {
+  const { features } = usePlan();
+  return {
+    enabled: features.voiceChatEnabled,
+    monthlyMinutes: features.voiceChatMonthlyMinutes,
+    requiresUpgrade: !features.voiceChatEnabled,
   };
 };
 
