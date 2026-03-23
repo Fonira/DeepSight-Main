@@ -539,6 +539,8 @@ VOICE_LIMITS: Dict[str, Dict[str, Any]] = {
     "etudiant":  {"enabled": True,  "monthly_minutes": 5,   "max_session_minutes": 10},
     "starter":   {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},
     "pro":       {"enabled": True,  "monthly_minutes": 45,  "max_session_minutes": 10},
+    "expert":    {"enabled": True,  "monthly_minutes": 90,  "max_session_minutes": 15},
+    "unlimited": {"enabled": True,  "monthly_minutes": 999, "max_session_minutes": 30},
 }
 
 VOICE_CHAT_CONFIG: Dict[str, Any] = {
