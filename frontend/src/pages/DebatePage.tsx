@@ -194,6 +194,7 @@ export const DebatePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDebate, setSelectedDebate] = useState<DebateAnalysis | null>(null);
+  const [debateLoading, setDebateLoading] = useState(false);
   const [debatesList, setDebatesList] = useState<DebateAnalysis[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [useMock, setUseMock] = useState(false);
@@ -233,6 +234,7 @@ export const DebatePage: React.FC = () => {
       return;
     }
 
+    setDebateLoading(true);
     try {
       const result = await debateApi.getResult(Number(id));
       setSelectedDebate(result);
@@ -246,6 +248,8 @@ export const DebatePage: React.FC = () => {
       // Fallback to mock
       const mock = MOCK_DEBATES_LIST.find((d) => d.id === Number(id)) ?? null;
       setSelectedDebate(mock);
+    } finally {
+      setDebateLoading(false);
     }
   }, [useMock]);
 
@@ -276,9 +280,16 @@ export const DebatePage: React.FC = () => {
           setSelectedDebate(result);
           loadHistory(); // Refresh list
         } else {
-          // Update status in current debate
+          // Update status and video titles from polling response
           setSelectedDebate((prev) =>
-            prev ? { ...prev, status: statusRes.status as DebateAnalysis['status'] } : prev
+            prev
+              ? {
+                  ...prev,
+                  status: statusRes.status as DebateAnalysis['status'],
+                  ...(statusRes.video_a_title && { video_a_title: statusRes.video_a_title }),
+                  ...(statusRes.video_b_title && { video_b_title: statusRes.video_b_title }),
+                }
+              : prev
           );
         }
       } catch {
