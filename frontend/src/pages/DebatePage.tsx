@@ -1,12 +1,13 @@
 /**
  * DebatePage — Page principale Débat IA
  * Affiche le formulaire de création, la liste des débats passés, ou le détail d'un débat
+ * Connecté à l'API /api/debate/* avec fallback mock pour le dev
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useSearchParams } from 'react-router-dom';
-import { Swords, ArrowLeft, FileText } from 'lucide-react';
+import { useSearchParams, useParams } from 'react-router-dom';
+import { Swords, ArrowLeft, FileText, Loader2 } from 'lucide-react';
 import {
   DebateCreateForm,
   DebateVSLayout,
@@ -15,10 +16,11 @@ import {
   DebateStatusTracker,
   DebateSummaryCard,
 } from '../components/debate';
+import { debateApi } from '../services/api';
 import type { DebateAnalysis } from '../types/debate';
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// MOCK DATA — Débat réaliste pour démonstration
+// MOCK DATA — Fallback pour dev quand l'API n'est pas dispo
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const MOCK_DEBATE: DebateAnalysis = {
@@ -176,26 +178,148 @@ const MOCK_IN_PROGRESS: DebateAnalysis = {
 const MOCK_DEBATES_LIST: DebateAnalysis[] = [MOCK_DEBATE, MOCK_IN_PROGRESS];
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// POLLING INTERVAL
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const POLL_INTERVAL_MS = 3000;
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // DEBATE PAGE
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const DebatePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const debateId = searchParams.get('id');
+  const { id: routeId } = useParams<{ id?: string }>();
+
+  // Debate ID from either route param (/debate/:id) or search param (?id=X)
+  const debateId = routeId || searchParams.get('id');
+
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedDebate, setSelectedDebate] = useState<DebateAnalysis | null>(null);
+  const [debatesList, setDebatesList] = useState<DebateAnalysis[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [useMock, setUseMock] = useState(false);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Resolve which debate to display
-  const selectedDebate = debateId
-    ? MOCK_DEBATES_LIST.find((d) => d.id === Number(debateId)) ?? null
-    : null;
+  // ─── Cleanup polling on unmount ───
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
 
-  const handleCreateDebate = (data: { mode: 'auto' | 'manual'; urlA: string; urlB?: string }) => {
+  // ─── Load history ───
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await debateApi.getHistory(1, 20);
+      setDebatesList(res.debates);
+      setUseMock(false);
+    } catch {
+      // API not available — fallback to mock
+      setDebatesList(MOCK_DEBATES_LIST);
+      setUseMock(true);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  // ─── Load selected debate when debateId changes ───
+  const loadDebate = useCallback(async (id: string) => {
+    if (useMock) {
+      const mock = MOCK_DEBATES_LIST.find((d) => d.id === Number(id)) ?? null;
+      setSelectedDebate(mock);
+      return;
+    }
+
+    try {
+      const result = await debateApi.getResult(Number(id));
+      setSelectedDebate(result);
+
+      // Start polling if still in progress
+      const isInProgress = result.status !== 'completed' && result.status !== 'failed';
+      if (isInProgress) {
+        startPolling(Number(id));
+      }
+    } catch {
+      // Fallback to mock
+      const mock = MOCK_DEBATES_LIST.find((d) => d.id === Number(id)) ?? null;
+      setSelectedDebate(mock);
+    }
+  }, [useMock]);
+
+  useEffect(() => {
+    if (debateId) {
+      loadDebate(debateId);
+    } else {
+      setSelectedDebate(null);
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    }
+  }, [debateId, loadDebate]);
+
+  // ─── Polling for in-progress debates ───
+  const startPolling = useCallback((id: number) => {
+    if (pollingRef.current) clearInterval(pollingRef.current);
+
+    pollingRef.current = setInterval(async () => {
+      try {
+        const statusRes = await debateApi.getStatus(id);
+        if (statusRes.status === 'completed' || statusRes.status === 'failed') {
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          pollingRef.current = null;
+          // Fetch the full result
+          const result = await debateApi.getResult(id);
+          setSelectedDebate(result);
+          loadHistory(); // Refresh list
+        } else {
+          // Update status in current debate
+          setSelectedDebate((prev) =>
+            prev ? { ...prev, status: statusRes.status as DebateAnalysis['status'] } : prev
+          );
+        }
+      } catch {
+        // Stop polling on error
+        if (pollingRef.current) clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+    }, POLL_INTERVAL_MS);
+  }, [loadHistory]);
+
+  // ─── Create debate ───
+  const handleCreateDebate = async (data: { mode: 'auto' | 'manual'; urlA: string; urlB?: string }) => {
     setLoading(true);
-    // Simule un délai puis redirige vers le mock
-    setTimeout(() => {
+    setError(null);
+
+    if (useMock) {
+      // Mock fallback
+      setTimeout(() => {
+        setLoading(false);
+        setSearchParams({ id: '1' });
+      }, 2000);
+      return;
+    }
+
+    try {
+      const res = await debateApi.create({
+        url_a: data.urlA,
+        url_b: data.urlB,
+        mode: data.mode,
+        platform: 'web',
+      });
       setLoading(false);
-      setSearchParams({ id: '1' });
-    }, 2000);
+      setSearchParams({ id: String(res.debate_id) });
+    } catch (err: unknown) {
+      setLoading(false);
+      const message = err instanceof Error ? err.message : 'Erreur lors de la création du débat';
+      setError(message);
+    }
   };
 
   const handleSelectDebate = (id: number) => {
@@ -203,6 +327,11 @@ export const DebatePage: React.FC = () => {
   };
 
   const handleBack = () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    setSelectedDebate(null);
     setSearchParams({});
   };
 
@@ -320,6 +449,17 @@ export const DebatePage: React.FC = () => {
           </p>
         </motion.div>
 
+        {/* Error message */}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400"
+          >
+            {error}
+          </motion.div>
+        )}
+
         {/* Create form */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -331,15 +471,19 @@ export const DebatePage: React.FC = () => {
         </motion.div>
 
         {/* Past debates */}
-        {MOCK_DEBATES_LIST.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <h2 className="text-sm font-semibold text-white/60 mb-3">Débats récents</h2>
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <h2 className="text-sm font-semibold text-white/60 mb-3">Débats récents</h2>
+          {historyLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-5 h-5 text-white/30 animate-spin" />
+            </div>
+          ) : debatesList.length > 0 ? (
             <div className="space-y-2">
-              {MOCK_DEBATES_LIST.map((debate) => (
+              {debatesList.map((debate) => (
                 <DebateSummaryCard
                   key={debate.id}
                   debate={debate}
@@ -347,9 +491,15 @@ export const DebatePage: React.FC = () => {
                 />
               ))}
             </div>
-          </motion.div>
-        )}
+          ) : (
+            <p className="text-sm text-white/30 text-center py-8">
+              Aucun débat pour le moment. Lancez votre premier !
+            </p>
+          )}
+        </motion.div>
       </div>
     </div>
   );
 };
+
+export default DebatePage;

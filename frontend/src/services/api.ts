@@ -2058,6 +2058,76 @@ export const videoCacheApi = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// ⚔️ DEBATE API — Débat IA entre vidéos
+// ═══════════════════════════════════════════════════════════════════════════════
+
+import type { DebateAnalysis } from '../types/debate';
+
+export interface DebateCreateRequest {
+  url_a: string;
+  url_b?: string;
+  mode: 'auto' | 'manual';
+  lang?: string;
+  platform?: string;
+}
+
+export interface DebateStatusResponse {
+  debate_id: number;
+  status: string;
+  progress?: number;
+  message?: string;
+}
+
+export interface DebateChatMessage {
+  id: number;
+  debate_id: number;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+}
+
+export const debateApi = {
+  async create(data: DebateCreateRequest): Promise<{ debate_id: number; status: string }> {
+    return request('/api/debate/create', {
+      method: 'POST',
+      body: data as unknown as Record<string, unknown>,
+      timeout: 60000,
+    });
+  },
+
+  async getStatus(debateId: number): Promise<DebateStatusResponse> {
+    return request(`/api/debate/status/${debateId}`);
+  },
+
+  async getResult(debateId: number): Promise<DebateAnalysis> {
+    return request(`/api/debate/${debateId}`);
+  },
+
+  async getHistory(page?: number, limit?: number): Promise<{ debates: DebateAnalysis[]; total: number }> {
+    const params = new URLSearchParams();
+    if (page !== undefined) params.set('page', String(page));
+    if (limit !== undefined) params.set('limit', String(limit));
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return request(`/api/debate/history${query}`);
+  },
+
+  async delete(debateId: number): Promise<{ success: boolean }> {
+    return request(`/api/debate/${debateId}`, { method: 'DELETE' });
+  },
+
+  async sendChat(data: { debate_id: number; message: string }): Promise<DebateChatMessage> {
+    return request('/api/debate/chat', {
+      method: 'POST',
+      body: data as unknown as Record<string, unknown>,
+    });
+  },
+
+  async getChatHistory(debateId: number): Promise<{ messages: DebateChatMessage[] }> {
+    return request(`/api/debate/chat/history/${debateId}`);
+  },
+};
+
 // Export par défaut
 export default {
   auth: authApi,
@@ -2078,4 +2148,5 @@ export default {
   trending: trendingApi,
   search: searchApi,
   videoCache: videoCacheApi,
+  debate: debateApi,
 };

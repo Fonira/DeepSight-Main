@@ -3,17 +3,16 @@
  *
  * Barre de navigation fixe en bas de l'écran pour mobile.
  * Style app native avec icônes et indicateur de page active.
- * Playlists masqué pour les plans non-Pro.
+ * Débat IA accessible à tous les plans.
  */
 
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
-  FolderOpen,
+  Swords,
   Clock,
   User,
-  CreditCard,
   GraduationCap,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
@@ -31,7 +30,7 @@ const navItems: NavItem[] = [
   { path: '/dashboard', icon: <Home className="w-5 h-5" />, label: 'Accueil' },
   { path: '/history', icon: <Clock className="w-5 h-5" />, label: 'Historique' },
   { path: '/study', icon: <GraduationCap className="w-5 h-5" />, label: 'Révision', requiresPro: true },
-  { path: '/playlists', icon: <FolderOpen className="w-5 h-5" />, label: 'Playlists', requiresPro: true },
+  { path: '/debate', icon: <Swords className="w-5 h-5" />, label: 'Débat IA' },
   { path: '/settings', icon: <User className="w-5 h-5" />, label: 'Profil' },
 ];
 
