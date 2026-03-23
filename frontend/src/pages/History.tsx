@@ -1389,6 +1389,24 @@ export const History: React.FC = () => {
                       provider={detailConceptsProvider}
                       categories={detailConceptsCategories}
                     />
+                    <VoiceModal
+                      isOpen={isVoiceModalOpen}
+                      onClose={() => {
+                        setIsVoiceModalOpen(false);
+                        voiceChat.stop();
+                      }}
+                      videoTitle={selectedVideoDetail.video_title || 'Vidéo'}
+                      channelName={selectedVideoDetail.video_channel || ''}
+                      voiceStatus={voiceChat.status}
+                      isSpeaking={voiceChat.isSpeaking}
+                      messages={voiceChat.messages}
+                      elapsedSeconds={voiceChat.elapsedSeconds}
+                      remainingMinutes={voiceChat.remainingMinutes}
+                      onStart={voiceChat.start}
+                      onStop={voiceChat.stop}
+                      onMuteToggle={voiceChat.toggleMute}
+                      isMuted={voiceChat.isMuted}
+                    />
                   </>
                 )}
               </section>
