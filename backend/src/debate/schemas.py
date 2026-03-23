@@ -95,3 +95,21 @@ class DebateListItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class DebateHistoryResponse(BaseModel):
+    """Réponse paginée de l'historique des débats"""
+    debates: list[DebateListItem]
+    total: int
+
+
+class DebateChatMessageResponse(BaseModel):
+    """Message de chat dans un débat"""
+    id: int
+    debate_id: int
+    role: str
+    content: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
