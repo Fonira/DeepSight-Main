@@ -38,5 +38,20 @@
       "Bash(done)",
       "Bash(python3 -c \"import sys; sys.path.insert\\(0, ''.''\\); exec\\(open\\(''main.py''\\).read\\(\\).split\\(''if __name__''\\)[0]\\)\")"
     ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "type": "command",
+        "command": "bash .claude/scripts/auto-learn.sh"
+      }
+    ],
+    "PostToolCall": [
+      {
+        "type": "command",
+        "command": "bash .claude/scripts/post-tool-learn.sh",
+        "toolNames": ["Bash"]
+      }
+    ]
   }
 }
