@@ -1193,8 +1193,15 @@ async def stripe_health():
 
 async def handle_checkout_completed(session: AsyncSession, data: dict):
     """Gère la complétion d'un checkout"""
-    user_id = data.get("metadata", {}).get("user_id")
-    plan = data.get("metadata", {}).get("plan")
+    metadata = data.get("metadata", {})
+
+    # ── Voice addon (one-time payment) ────────────────────────────────
+    if metadata.get("type") == "voice_addon":
+        await _handle_voice_addon_checkout(session, data, metadata)
+        return
+
+    user_id = metadata.get("user_id")
+    plan = metadata.get("plan")
     customer_id = data.get("customer")
     subscription_id = data.get("subscription")
 
@@ -1268,6 +1275,61 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
         )
     except Exception as e:
         logger.info(f"📧 Payment success email error: {e}")
+
+
+async def _handle_voice_addon_checkout(
+    session: AsyncSession, data: dict, metadata: dict
+):
+    """Handle a completed voice add-on one-time payment."""
+    minutes = int(metadata.get("minutes", 0))
+    user_id_str = metadata.get("user_id", "0")
+    pack_id = metadata.get("pack_id", "unknown")
+
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError):
+        logger.warning("Voice addon: invalid user_id in metadata: %s", user_id_str)
+        return
+
+    if minutes <= 0 or user_id <= 0:
+        logger.warning("Voice addon: invalid minutes=%s or user_id=%s", minutes, user_id)
+        return
+
+    # DB-level idempotency: check if this payment was already processed
+    payment_id = data.get("payment_intent") or data.get("id")
+    if payment_id:
+        existing = await session.execute(
+            select(CreditTransaction).where(CreditTransaction.stripe_payment_id == payment_id)
+        )
+        if existing.scalar_one_or_none():
+            logger.info("Voice addon checkout %s already processed — skipping", payment_id)
+            return
+
+    user = await session.get(User, user_id)
+    if not user:
+        logger.warning("Voice addon: user %s not found", user_id)
+        return
+
+    # Add bonus voice seconds
+    user.voice_bonus_seconds = (user.voice_bonus_seconds or 0) + (minutes * 60)
+
+    # Record transaction for idempotency + audit trail
+    transaction = CreditTransaction(
+        user_id=user.id,
+        amount=0,
+        balance_after=user.credits or 0,
+        transaction_type="voice_addon",
+        type="voice_addon",
+        stripe_payment_id=payment_id,
+        description=f"Voice pack: {pack_id} (+{minutes}min)",
+    )
+    session.add(transaction)
+
+    await session.commit()
+    logger.info(
+        "Voice addon: +%dmin for user %s (pack=%s, total_bonus=%ds)",
+        minutes, user_id, pack_id, user.voice_bonus_seconds,
+    )
 
 
 async def handle_subscription_created(session: AsyncSession, data: dict):

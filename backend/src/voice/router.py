@@ -14,6 +14,7 @@ import hmac
 import logging
 from datetime import datetime, timezone
 
+import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -24,6 +25,9 @@ from core.config import (
     VOICE_LIMITS,
     VOICE_CHAT_CONFIG,
     APP_URL,
+    STRIPE_CONFIG,
+    FRONTEND_URL,
+    get_stripe_key,
 )
 
 from voice.schemas import (
@@ -520,3 +524,132 @@ async def get_voice_transcript(
         duration_seconds=voice_session.duration_seconds or 0,
         transcript=voice_session.conversation_transcript,
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /addon/packs — Available voice minute packs
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Pack definitions (id → {name, minutes, price_cents, currency})
+VOICE_ADDON_PACKS = {
+    "voice_10": {"name": "Pack Découverte", "minutes": 10, "price_cents": 199, "currency": "eur"},
+    "voice_30": {"name": "Pack Standard", "minutes": 30, "price_cents": 499, "currency": "eur"},
+    "voice_60": {"name": "Pack Pro", "minutes": 60, "price_cents": 899, "currency": "eur"},
+}
+
+
+@router.get("/addon/packs")
+async def get_voice_addon_packs(
+    current_user: User = Depends(get_current_user),
+):
+    """Retourne les packs de minutes vocales disponibles."""
+    packs = [
+        {"id": pack_id, **pack_info}
+        for pack_id, pack_info in VOICE_ADDON_PACKS.items()
+    ]
+    return {"packs": packs}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# POST /addon/checkout — Create Stripe checkout for voice pack
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _init_stripe() -> bool:
+    """Initialise Stripe avec la bonne clé."""
+    key = get_stripe_key()
+    if key:
+        stripe.api_key = key
+        return True
+    return False
+
+
+@router.post("/addon/checkout")
+async def create_voice_addon_checkout(
+    pack_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Crée une session Stripe Checkout pour l'achat d'un pack vocal."""
+    # Validate pack_id
+    pack = VOICE_ADDON_PACKS.get(pack_id)
+    if not pack:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "invalid_pack",
+                "message": f"Unknown voice pack: {pack_id}. Valid packs: {', '.join(VOICE_ADDON_PACKS.keys())}",
+            },
+        )
+
+    if not STRIPE_CONFIG.get("ENABLED"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "stripe_disabled", "message": "Stripe is not enabled."},
+        )
+
+    if not _init_stripe():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"code": "stripe_not_configured", "message": "Stripe is not configured."},
+        )
+
+    # Create or retrieve Stripe customer
+    if current_user.stripe_customer_id:
+        customer_id = current_user.stripe_customer_id
+    else:
+        customer = stripe.Customer.create(
+            email=current_user.email,
+            name=current_user.username or current_user.email,
+            metadata={"user_id": str(current_user.id)},
+        )
+        customer_id = customer.id
+        current_user.stripe_customer_id = customer_id
+        await db.commit()
+
+    success_url = f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&type=voice_addon&pack={pack_id}"
+    cancel_url = f"{FRONTEND_URL}/payment/cancel"
+
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            customer=customer_id,
+            payment_method_types=["card"],
+            line_items=[{
+                "price_data": {
+                    "currency": pack["currency"],
+                    "unit_amount": pack["price_cents"],
+                    "product_data": {
+                        "name": f"DeepSight — {pack['name']}",
+                        "description": f"{pack['minutes']} minutes de chat vocal",
+                    },
+                },
+                "quantity": 1,
+            }],
+            mode="payment",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            metadata={
+                "type": "voice_addon",
+                "minutes": str(pack["minutes"]),
+                "user_id": str(current_user.id),
+                "pack_id": pack_id,
+            },
+        )
+
+        logger.info(
+            "Voice addon checkout created",
+            extra={
+                "user_id": current_user.id,
+                "pack_id": pack_id,
+                "minutes": pack["minutes"],
+                "session_id": checkout_session.id,
+            },
+        )
+
+        return {"checkout_url": checkout_session.url, "session_id": checkout_session.id}
+
+    except stripe.error.StripeError as e:
+        logger.error("Stripe error creating voice addon checkout: %s", e)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "stripe_error", "message": str(e)},
+        )
