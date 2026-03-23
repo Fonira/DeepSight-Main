@@ -969,11 +969,13 @@ async def run_schema_migrations():
 
 async def init_db():
     """Initialise la base de données et crée les tables"""
+    # Appliquer les migrations de schéma D'ABORD (CREATE TABLE IF NOT EXISTS)
+    # pour éviter les conflits avec create_all sur les tables existantes
+    await run_schema_migrations()
+
+    # Puis create_all pour les nouvelles tables déclarées via modèles SQLAlchemy
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-
-    # Appliquer les migrations de schéma (ALTER TABLE pour colonnes manquantes)
-    await run_schema_migrations()
 
     # Appliquer la migration CASCADE delete
     await run_cascade_migration()
