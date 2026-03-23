@@ -289,11 +289,10 @@ const ApiDocsPage = lazyWithRetry(() => import("./pages/ApiDocsPage"));
 const PREFETCH_MAP: Record<string, string[]> = {
   '/': ['/dashboard', '/login'],
   '/login': ['/dashboard'],
-  '/dashboard': ['/history', '/settings', '/playlists', '/analytics', '/chat', '/study', '/about', '/debate'],
+  '/dashboard': ['/history', '/settings', '/debate', '/analytics', '/chat', '/study', '/about'],
   '/history': ['/dashboard', '/analytics'],
   '/settings': ['/account'],
-  '/playlists': ['/dashboard', '/playlist'],
-  '/playlist': ['/playlists', '/dashboard'],
+  '/debate': ['/dashboard', '/history'],
   '/upgrade': ['/dashboard', '/payment/success'],
   '/analytics': ['/dashboard', '/history'],
 };
@@ -302,8 +301,7 @@ const PAGE_LOADERS: Record<string, () => Promise<any>> = {
   '/dashboard': () => import("./pages/DashboardPage"),
   '/history': () => import("./pages/History"),
   '/settings': () => import("./pages/Settings"),
-  '/playlists': () => import("./pages/PlaylistPage"),
-  '/playlist': () => import("./pages/PlaylistDetailPage"),
+  '/debate': () => import("./pages/DebatePage"),
   '/account': () => import("./pages/MyAccount"),
   '/login': () => import("./pages/Login"),
   '/upgrade': () => import("./pages/UpgradePage"),
@@ -312,7 +310,6 @@ const PAGE_LOADERS: Record<string, () => Promise<any>> = {
   '/chat': () => import("./pages/ChatPage"),
   '/study': () => import("./pages/StudyHubPage"),
   '/about': () => import("./pages/AboutPage"),
-  '/debate': () => import("./pages/DebatePage"),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -538,13 +535,7 @@ const AppRoutes = () => {
                     </RouteErrorBoundary>
                   } />
 
-                  <Route path="/playlists" element={
-                    <RouteErrorBoundary variant="full" componentName="PlaylistPage">
-                      <Suspense fallback={<PageSkeleton variant="full" />}>
-                        <PlaylistPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  } />
+                  <Route path="/playlists" element={<Navigate to="/debate" replace />} />
                   
                   <Route path="/playlist/:id" element={
                     <Suspense fallback={<PageSkeleton variant="dashboard" />}>

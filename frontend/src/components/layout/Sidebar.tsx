@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   History,
-  ListVideo,
+  Swords,
   Settings,
   CreditCard,
   LogOut,
@@ -411,7 +411,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {/* ── Analyse ── */}
           <NavItem to="/dashboard" icon={LayoutDashboard} label={t.nav.analysis} collapsed={collapsed} />
           <NavItem to="/history" icon={History} label={t.nav.history} collapsed={collapsed} />
-          <NavItem to="/playlists" icon={ListVideo} label={t.nav.playlists} collapsed={collapsed} {...getBadge(minPlanPlaylists)} />
+          <NavItem to="/debate" icon={Swords} label={language === 'fr' ? 'Débat IA' : 'AI Debate'} collapsed={collapsed} />
 
           {/* ── Révision & IA ── */}
           <SectionLabel label={t.nav.studySection} icon={Brain} collapsed={collapsed} />

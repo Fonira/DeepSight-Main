@@ -15,7 +15,7 @@ interface HeaderProps {
 
 const pageIcons: Record<string, React.ReactNode> = {
   "/dashboard": <Video className="w-6 h-6" />,
-  "/playlist": <BookOpen className="w-6 h-6" />,
+  "/debate": <BookOpen className="w-6 h-6" />,
   "/history": <History className="w-6 h-6" />,
   "/upgrade": <Gem className="w-6 h-6" />,
   "/settings": <Settings className="w-6 h-6" />,

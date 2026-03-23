@@ -4,17 +4,12 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import React from 'react';
 import { VoiceWaveform } from '../VoiceWaveform';
 
 describe('VoiceWaveform', () => {
-  let rafSpy: ReturnType<typeof vi.spyOn>;
-
   beforeEach(() => {
     // Mock requestAnimationFrame to trigger synchronously
-    let callback: FrameRequestCallback | null = null;
-    rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
-      callback = cb;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb: FrameRequestCallback) => {
       // Call once immediately with a fake timestamp to populate bars
       setTimeout(() => cb(performance.now()), 0);
       return 1;
@@ -67,19 +62,19 @@ describe('VoiceWaveform', () => {
 
   it('adapte la hauteur max selon la taille sm', () => {
     const { container } = render(<VoiceWaveform mode="idle" size="sm" />);
-    const wrapper = container.querySelector('[role="img"]');
+    const wrapper = container.querySelector('[role="img"]') as HTMLElement;
     expect(wrapper?.style.height).toBe('24px');
   });
 
   it('adapte la hauteur max selon la taille md (défaut)', () => {
     const { container } = render(<VoiceWaveform mode="idle" />);
-    const wrapper = container.querySelector('[role="img"]');
+    const wrapper = container.querySelector('[role="img"]') as HTMLElement;
     expect(wrapper?.style.height).toBe('48px');
   });
 
   it('adapte la hauteur max selon la taille lg', () => {
     const { container } = render(<VoiceWaveform mode="idle" size="lg" />);
-    const wrapper = container.querySelector('[role="img"]');
+    const wrapper = container.querySelector('[role="img"]') as HTMLElement;
     expect(wrapper?.style.height).toBe('80px');
   });
 

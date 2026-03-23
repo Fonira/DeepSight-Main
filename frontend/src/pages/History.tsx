@@ -19,7 +19,7 @@ import {
   ChevronRight, Clock, Video, Layers,
   Grid, List, RefreshCw, BarChart2,
   AlertCircle, X, ArrowLeft, BookOpen,
-  Maximize2, ExternalLink, Share2,
+  Maximize2, ExternalLink, Share2, Mic,
   // 🆕 Toolbar icons
   Copy, Check, GraduationCap, Brain, Tags,
   Download, FileText, FileDown, ChevronDown
@@ -44,7 +44,9 @@ import { StudyToolsModal } from "../components/StudyToolsModal";
 import { KeywordsModal } from "../components/KeywordsModal";
 import { videoApi, shareApi, reliabilityApi, chatApi } from "../services/api";
 import type { Summary, ReliabilityResult, EnrichedConcept } from "../services/api";
-import { normalizePlanId } from "../config/planPrivileges";
+import { normalizePlanId, PLAN_LIMITS } from "../config/planPrivileges";
+import { VoiceModal } from "../components/voice/VoiceModal";
+import { useVoiceChat } from "../components/voice/useVoiceChat";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🌐 API CONFIGURATION
@@ -447,6 +449,11 @@ export const History: React.FC = () => {
   const [detailConceptsLoading, setDetailConceptsLoading] = useState(false);
   const [detailConceptsProvider, setDetailConceptsProvider] = useState<string>('none');
   const [detailConceptsCategories, setDetailConceptsCategories] = useState<Record<string, { label: string; icon: string; count: number }>>({});
+
+  // 🎙️ Voice Chat
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const voiceChat = useVoiceChat({ summaryId: selectedVideoDetail?.id ?? 0 });
+  const voiceEnabled = PLAN_LIMITS[normalizePlanId(user?.plan)].voiceChatEnabled;
 
   // 🗑️ Clear History Modal
   const [showClearModal, setShowClearModal] = useState(false);
@@ -1282,6 +1289,15 @@ export const History: React.FC = () => {
                           <Tags className="w-4 h-4" />
                           <span className="hidden sm:inline">{language === 'fr' ? 'Mots-clés' : 'Keywords'}</span>
                         </button>
+                        {voiceEnabled && (
+                          <button
+                            onClick={() => setIsVoiceModalOpen(true)}
+                            className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
+                          >
+                            <Mic className="w-4 h-4" />
+                            <span className="hidden sm:inline">{language === 'fr' ? 'Vocal' : 'Voice'}</span>
+                          </button>
+                        )}
                         <div className="relative flex-shrink-0">
                           <button onClick={() => setDetailShowExportMenu(!detailShowExportMenu)} className="btn btn-ghost text-xs min-h-[36px] sm:min-h-[32px]" disabled={detailExporting}>
                             {detailExporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
@@ -1480,9 +1496,9 @@ export const History: React.FC = () => {
                   <p className="text-text-secondary text-sm mb-4">
                     {language === 'fr' ? 'Analysez votre première playlist YouTube pour une méta-analyse complète !' : 'Analyze your first YouTube playlist for a complete meta-analysis!'}
                   </p>
-                  <button onClick={() => navigate('/playlists')} className="btn bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90">
+                  <button onClick={() => navigate('/debate')} className="btn bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90">
                     <Layers className="w-4 h-4 mr-2" />
-                    {language === 'fr' ? 'Analyser une playlist' : 'Analyze a playlist'}
+                    {language === 'fr' ? 'Lancer un Débat IA' : 'Start an AI Debate'}
                   </button>
                 </div>
               ) : (

@@ -997,16 +997,16 @@ export const DashboardPage: React.FC = () => {
                     </h3>
                     <p className="text-text-secondary text-sm mb-4">
                       {language === 'fr'
-                        ? "Cette URL correspond à une playlist YouTube. Pour analyser plusieurs vidéos d'une playlist, utilisez la page dédiée aux playlists."
-                        : "This URL corresponds to a YouTube playlist. To analyze multiple videos from a playlist, use the dedicated playlists page."}
+                        ? "Cette URL correspond à une playlist YouTube. Essayez le Débat IA pour confronter deux vidéos de cette playlist !"
+                        : "This URL corresponds to a YouTube playlist. Try AI Debate to compare two videos from this playlist!"}
                     </p>
                     <div className="flex flex-wrap items-center gap-3">
                       <button
-                        onClick={() => navigate('/playlists')}
+                        onClick={() => navigate('/debate')}
                         className="btn btn-primary"
                       >
                         <ListVideo className="w-4 h-4" />
-                        {language === 'fr' ? 'Aller aux Playlists' : 'Go to Playlists'}
+                        {language === 'fr' ? 'Aller au Débat IA' : 'Go to AI Debate'}
                       </button>
                       <button
                         onClick={() => setPlaylistDetected(false)}
@@ -1280,76 +1280,11 @@ export const DashboardPage: React.FC = () => {
         videoDurationSeconds={lastAnalysisTimeSaved}
       />
 
-      {/* 🆕 CSS pour animations (shimmer + FAB pulse) */}
+      {/* CSS pour animations (shimmer) */}
       <style>{`
         @keyframes shimmer {
           0% { transform: translateX(-100%); }
           100% { transform: translateX(100%); }
-        }
-
-        /* ═══ FAB Chat IA ═══ */
-        @keyframes fab-pulse-glow-teal {
-          0%, 100% { box-shadow: 0 4px 20px rgba(0, 188, 212, 0.4); }
-          50%      { box-shadow: 0 4px 30px rgba(0, 188, 212, 0.7), 0 0 60px rgba(0, 188, 212, 0.15); }
-        }
-        @keyframes fab-pulse-glow-violet {
-          0%, 100% { box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4); }
-          50%      { box-shadow: 0 4px 30px rgba(139, 92, 246, 0.7), 0 0 60px rgba(139, 92, 246, 0.15); }
-        }
-
-        .fab-chat-ia {
-          position: fixed;
-          bottom: 24px;
-          right: 24px;
-          z-index: 9999;
-          height: 52px;
-          padding: 0 20px;
-          border-radius: 26px;
-          border: none;
-          outline: none;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          color: #fff;
-          font-weight: 700;
-          font-size: 14px;
-          font-family: inherit;
-          letter-spacing: 0.01em;
-          transition: transform 0.2s cubic-bezier(0.4,0,0.2,1),
-                      box-shadow 0.2s cubic-bezier(0.4,0,0.2,1),
-                      opacity 0.3s ease;
-        }
-
-        /* Teal variant (default — video) */
-        .fab-chat-ia.fab-teal {
-          background: linear-gradient(135deg, #00BCD4, #00ACC1);
-          box-shadow: 0 4px 20px rgba(0, 188, 212, 0.4);
-          animation: fab-pulse-glow-teal 2.5s ease-in-out infinite;
-        }
-        .fab-chat-ia.fab-teal:hover {
-          transform: scale(1.05);
-          animation: none;
-          box-shadow: 0 6px 28px rgba(0, 188, 212, 0.6);
-        }
-
-        /* Violet variant (playlist) */
-        .fab-chat-ia.fab-violet {
-          background: linear-gradient(135deg, #8B5CF6, #7C3AED);
-          box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
-          animation: fab-pulse-glow-violet 2.5s ease-in-out infinite;
-        }
-        .fab-chat-ia.fab-violet:hover {
-          transform: scale(1.05);
-          animation: none;
-          box-shadow: 0 6px 28px rgba(139, 92, 246, 0.6);
-        }
-
-        /* Hidden state (chat open) */
-        .fab-chat-ia.fab-hidden {
-          opacity: 0;
-          pointer-events: none;
-          transform: scale(0.8);
         }
       `}</style>
 
