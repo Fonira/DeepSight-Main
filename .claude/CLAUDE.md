@@ -260,5 +260,13 @@ Supadata → youtube-transcript-api → Invidious → Piped → yt-dlp subs → 
   - Review : `gh pr view`, `gh pr checks`
   - Note : `gh` n'est PAS disponible dans l'environnement Cowork/Claude Code — utiliser depuis le terminal local Windows
 
+## Déploiement depuis Cowork/Claude Code — Limitations connues
+- **Vercel CLI** (`vercel deploy`) : ÉCHOUE — pas d'accès réseau sortant vers vercel.com depuis cet environnement
+- **Vercel MCP tool** (`deploy_to_vercel`) : ne déploie pas directement, renvoie vers la CLI
+- **`gh` CLI** : non authentifié dans Cowork (pas de token GH_TOKEN)
+- **Seule méthode qui fonctionne** : merger dans `main` via git integration Vercel → déclenche auto-deploy
+  - Soit depuis le terminal Windows local avec `gh pr merge`
+  - Soit via l'UI GitHub / bouton "Créer une PR" de Cowork
+
 # currentDate
 Today's date is 2026-03-23.
