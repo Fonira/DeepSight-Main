@@ -19,7 +19,7 @@ interface VoiceButtonProps {
   disabled?: boolean;
 }
 
-type VoiceState = 'idle' | 'locked' | 'active';
+type VoiceState = 'idle' | 'locked';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Animation variants
@@ -48,7 +48,8 @@ const pulseVariants: Variants = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const VoiceButton: React.FC<VoiceButtonProps> = ({
-  summaryId,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  summaryId: _summaryId,
   onOpen,
   disabled = false,
 }) => {
@@ -79,7 +80,6 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
   );
 
   const isLocked = state === 'locked';
-  const isActive = state === 'active';
 
   return (
     <motion.div
@@ -88,9 +88,7 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
       aria-label={
         isLocked
           ? 'Chat vocal — Disponible à partir du plan Étudiant'
-          : isActive
-            ? 'Chat vocal actif — cliquez pour fermer'
-            : 'Ouvrir le chat vocal'
+          : 'Ouvrir le chat vocal'
       }
       aria-disabled={isLocked || disabled}
       className={`
@@ -102,11 +100,9 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
         outline-none
         focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0f]
         ${
-          isActive
-            ? 'bg-gradient-to-br from-indigo-500 to-violet-500 border border-indigo-400/30'
-            : isLocked
-              ? 'bg-white/5 border border-white/10 cursor-not-allowed opacity-60'
-              : 'bg-white/5 border border-white/10 hover:bg-white/[0.08]'
+          isLocked
+            ? 'bg-white/5 border border-white/10 cursor-not-allowed opacity-60'
+            : 'bg-white/5 border border-white/10 hover:bg-white/[0.08]'
         }
         group
       `}
@@ -115,17 +111,13 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
       whileHover={!isLocked && !disabled ? { scale: 1.05 } : undefined}
       whileTap={!isLocked && !disabled ? { scale: 0.95 } : undefined}
       variants={pulseVariants}
-      animate={isActive ? 'active' : 'idle'}
+      animate="idle"
     >
       {/* Icon */}
       {isLocked ? (
         <Lock className="w-5 h-5 md:w-6 md:h-6 text-white/40" />
       ) : (
-        <Mic
-          className={`w-5 h-5 md:w-6 md:h-6 ${
-            isActive ? 'text-white' : 'text-white/60'
-          }`}
-        />
+        <Mic className="w-5 h-5 md:w-6 md:h-6 text-white/60" />
       )}
 
       {/* Locked tooltip */}

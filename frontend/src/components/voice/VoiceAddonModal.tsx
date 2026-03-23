@@ -61,7 +61,8 @@ const VOICE_PACKS: VoicePack[] = [
 export const VoiceAddonModal: React.FC<VoiceAddonModalProps> = ({
   isOpen,
   onClose,
-  currentPlan,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  currentPlan: _currentPlan,
   minutesRemaining,
 }) => {
   const [loadingPack, setLoadingPack] = useState<string | null>(null);

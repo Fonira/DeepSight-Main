@@ -1954,7 +1954,7 @@ export const shareApi = {
   async createShareLink(videoId: string): Promise<{ share_url: string; share_token: string }> {
     return request('/api/share', {
       method: 'POST',
-      body: JSON.stringify({ video_id: videoId }),
+      body: { video_id: videoId },
     });
   },
 
@@ -2029,7 +2029,7 @@ export const searchApi = {
   ): Promise<SemanticSearchResponse> {
     return request('/api/search/semantic', {
       method: 'POST',
-      body: JSON.stringify({ query, limit, category }),
+      body: { query, limit, category },
     });
   },
 };

@@ -211,6 +211,7 @@ const INITIAL_STATE: AnalysisState = {
 export const useAnalysisStore = create<AnalysisStore>()(
   devtools(
     persist(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       immer((set, _get) => ({
         ...INITIAL_STATE,
 
@@ -218,6 +219,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
         // 🎬 ANALYSIS ACTIONS
         // ═══════════════════════════════════════════════════════════════════════
         
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         startAnalysis: (_videoId: string) => {
           set((state) => {
             state.status = 'loading';
