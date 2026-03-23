@@ -270,6 +270,14 @@ except ImportError as e:
     VIDEO_CACHE_AVAILABLE = False
     print(f"⚠️ Video content cache not available: {e}", flush=True)
 
+# 🎙️ Voice chat router (ElevenLabs Conversational AI)
+try:
+    from voice.router import router as voice_router
+    VOICE_ROUTER_AVAILABLE = True
+except ImportError as e:
+    VOICE_ROUTER_AVAILABLE = False
+    print(f"⚠️ Voice router not available: {e}", flush=True)
+
 # Global video cache instance
 _video_cache: "VideoContentCacheService | None" = None
 
@@ -769,6 +777,11 @@ if HEALTH_V1_ROUTER_AVAILABLE:
 if VIDEO_CACHE_AVAILABLE:
     app.include_router(cache_router, tags=["Video Cache"])
     print("💾 Video cache router loaded (GET /api/v1/cache/video/{platform}/{video_id}, GET /api/v1/cache/stats)", flush=True)
+
+# 🎙️ Voice chat router
+if VOICE_ROUTER_AVAILABLE:
+    app.include_router(voice_router, prefix="/api/voice", tags=["Voice"])
+    print("🎙️ Voice router loaded (GET /api/voice/quota, POST /api/voice/session, POST /api/voice/webhook)", flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE
