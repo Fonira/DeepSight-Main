@@ -168,7 +168,10 @@ async def get_voice_quota_info(
     else:
         reset_date = date(year, month + 1, 1)
 
-    total_seconds_remaining = max(quota.seconds_limit - quota.seconds_used, 0)
+    user = await db.get(User, user_id)
+    bonus = user.voice_bonus_seconds if user else 0
+    total_available = quota.seconds_limit + bonus
+    total_seconds_remaining = max(total_available - quota.seconds_used, 0)
     minutes_remaining = total_seconds_remaining / 60
 
     return {

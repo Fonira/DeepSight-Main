@@ -2140,6 +2140,17 @@ export const voiceApi = {
   async getTranscript(summaryId: number, sessionId: string): Promise<VoiceTranscript> {
     return request(`/api/voice/history/${summaryId}/${sessionId}/transcript`);
   },
+
+  /**
+   * 🎙️ Crée un checkout Stripe pour un pack de minutes vocales
+   * Endpoint: POST /api/voice/addon/checkout
+   */
+  async createAddonCheckout(packId: string): Promise<{ checkout_url: string }> {
+    return request('/api/voice/addon/checkout', {
+      method: 'POST',
+      body: { pack_id: packId },
+    });
+  },
 };
 
 // Export par défaut

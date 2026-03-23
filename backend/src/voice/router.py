@@ -30,6 +30,8 @@ from core.config import (
     get_stripe_key,
 )
 
+from pydantic import BaseModel
+
 from voice.schemas import (
     VoiceSessionRequest,
     VoiceSessionResponse,
@@ -46,10 +48,15 @@ from voice.quota import (
     get_or_create_voice_quota,
 )
 from voice.elevenlabs import ElevenLabsClient, get_elevenlabs_client
+from voice.tools import search_in_transcript, get_analysis_section, get_sources, get_flashcards
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+class AddonCheckoutRequest(BaseModel):
+    pack_id: str
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -109,8 +116,8 @@ async def create_voice_session(
         )
 
     # Check voice quota
-    can_use, quota_info = await check_voice_quota(current_user.id, plan, db)
-    if not can_use:
+    quota_info = await check_voice_quota(current_user.id, plan, db)
+    if not quota_info["can_use"]:
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail={
@@ -565,11 +572,12 @@ def _init_stripe() -> bool:
 
 @router.post("/addon/checkout")
 async def create_voice_addon_checkout(
-    pack_id: str,
+    request: AddonCheckoutRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
     """Crée une session Stripe Checkout pour l'achat d'un pack vocal."""
+    pack_id = request.pack_id
     # Validate pack_id
     pack = VOICE_ADDON_PACKS.get(pack_id)
     if not pack:
@@ -653,3 +661,46 @@ async def create_voice_addon_checkout(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "stripe_error", "message": str(e)},
         )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# POST /tools/* — ElevenLabs webhook tool endpoints (public, no auth)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/tools/search-transcript")
+async def tool_search_transcript(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: search in video transcript."""
+    body = await request.json()
+    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
+    query = body.get("query") or body.get("parameters", {}).get("query", "")
+    result = await search_in_transcript(summary_id, query, db)
+    return {"result": result}
+
+
+@router.post("/tools/analysis-section")
+async def tool_analysis_section(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: get a specific analysis section."""
+    body = await request.json()
+    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
+    section = body.get("section") or body.get("parameters", {}).get("section", "resume")
+    result = await get_analysis_section(summary_id, section, db)
+    return {"result": result}
+
+
+@router.post("/tools/sources")
+async def tool_sources(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: get sources and fact-check info."""
+    body = await request.json()
+    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
+    result = await get_sources(summary_id, db)
+    return {"result": result}
+
+
+@router.post("/tools/flashcards")
+async def tool_flashcards(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: get flashcards for a video."""
+    body = await request.json()
+    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
+    count = body.get("count") or body.get("parameters", {}).get("count", 5)
+    result = await get_flashcards(summary_id, int(count), db)
+    return {"result": result}

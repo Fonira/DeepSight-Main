@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mic, Sparkles, ArrowRight, Loader2, Star, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../../hooks/useTranslation';
+import { voiceApi } from '../../services/api';
 
 interface VoiceAddonModalProps {
   isOpen: boolean;
@@ -57,8 +58,6 @@ const VOICE_PACKS: VoicePack[] = [
   },
 ];
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://api.deepsightsynthesis.com';
-
 export const VoiceAddonModal: React.FC<VoiceAddonModalProps> = ({
   isOpen,
   onClose,
@@ -80,24 +79,7 @@ export const VoiceAddonModal: React.FC<VoiceAddonModalProps> = ({
     setError(null);
 
     try {
-      const token = localStorage.getItem('access_token');
-      const res = await fetch(`${API_URL}/api/voice/addon/checkout`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ pack_id: pack.id }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        throw new Error(
-          data?.detail || tr('Erreur lors de la création du paiement', 'Payment creation failed')
-        );
-      }
-
-      const data = await res.json();
+      const data = await voiceApi.createAddonCheckout(pack.id);
 
       if (data.checkout_url) {
         window.location.href = data.checkout_url;
