@@ -245,6 +245,14 @@ except ImportError as e:
     SEARCH_ROUTER_AVAILABLE = False
     print(f"⚠️ Search router not available: {e}", flush=True)
 
+# 🎭 Debate router (AI Debate — confrontation de perspectives)
+try:
+    from debate.router import router as debate_router
+    DEBATE_ROUTER_AVAILABLE = True
+except ImportError as e:
+    DEBATE_ROUTER_AVAILABLE = False
+    print(f"⚠️ Debate router not available: {e}", flush=True)
+
 # 🆚 Comparison router (Video VS Mode)
 try:
     from comparison.router import router as comparison_router
@@ -754,6 +762,11 @@ if TRENDING_ROUTER_AVAILABLE:
 if SEARCH_ROUTER_AVAILABLE:
     app.include_router(search_router, prefix="/api/search", tags=["Search"])
     print("🔍 Search router loaded (POST /api/search/semantic)", flush=True)
+
+# 🎭 Debate router (AI Debate — confrontation de perspectives)
+if DEBATE_ROUTER_AVAILABLE:
+    app.include_router(debate_router, prefix="/api/debate", tags=["Debate"])
+    print("🎭 Debate router loaded (POST /api/debate/create)", flush=True)
 
 # 🆚 Comparison router (Video VS Mode)
 if COMPARISON_ROUTER_AVAILABLE:
