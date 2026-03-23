@@ -1,22 +1,33 @@
 ---
-allowed-tools: Read, Grep, Glob
-description: Tech stack et bibliothèques autorisées par plateforme DeepSight
+description: "Tech stack exact et bibliothèques autorisées pour chaque plateforme DeepSight. TOUJOURS consulter cette skill avant d'installer une dépendance, importer une librairie, ou choisir un outil/composant."
 ---
 
-# Tech Stack DeepSight
+Tech Stack DeepSight — Référentiel des librairies
+Frontend Web (/frontend)
+CatégorieLibrairieNotesFrameworkNext.js 14+ (App Router)Pages dans app/, pas pages/LangageTypeScript strictStylingTailwind CSSClasses utilitaires uniquementComposants UIshadcn/uiComposants copiés, pas installésIcônesLucide ReactCohérence avec shadcnState globalZustandLéger, pas de ReduxRequêtes APIfetch natif ou axiosAvec intercepteurs authFormulairesReact Hook Form + ZodValidation type-safeAnimationsFramer MotionSi nécessaireChartsRechartsPour les visualisationsPaiements@stripe/stripe-jsCheckout côté clientToast/NotifssonnerVia shadcn
+Interdit en Frontend : fs, path, child_process, toute lib Node-only.
+Mobile (/mobile)
+CatégorieLibrairieNotesFrameworkExpo SDK (dernière stable)Managed workflowLangageTypeScript strictNavigationReact Navigation (Stack + Tab)@react-navigation/*StylingStyleSheet.create()PAS de CSS, PAS de Tailwind natif sauf NativeWind si configuréStockage localexpo-secure-storePour tokensAsync storage@react-native-async-storagePour prefs non-sensiblesRequêtes APIfetch natif ou axiosIcônes@expo/vector-iconsIonicons, MaterialIconsAnimationsreact-native-reanimatedSi nécessaireNotificationsexpo-notificationsPush notifications
+Composants natifs UNIQUEMENT :
 
-Vérifier la lib / proposer une alternative pour : $ARGUMENTS
+✅ <View>, <Text>, <ScrollView>, <TouchableOpacity>, <FlatList>, <Image>, <TextInput>
+❌ JAMAIS <div>, <span>, <p>, <button>, <input> (crash fatal)
 
-## Frontend Web : Next.js 14+ (App Router), TypeScript strict, Tailwind, shadcn/ui, Lucide React, Zustand, React Hook Form + Zod, Framer Motion, Recharts, @stripe/stripe-js, sonner
-Interdit : fs, path, child_process, toute lib Node-only.
+Backend (/backend)
+CatégorieLibrairieNotesFrameworkFastAPIAsync par défautServeurUvicornORMSQLAlchemy 2.0+ (async)Avec Alembic pour migrationsBDDPostgreSQLVia RailwayCacheRedisVia Hetzner VPSAuthpython-jose (JWT)Tokens signésValidationPydantic v2Modèles de requête/réponseIA SynthèseMistral AI SDKFact-checkPerplexity API + Brave SearchPipeline dualEmailsResendVérification, transactionnelPaiementsstripe (Python)Webhooks + checkoutTestsPytest + pytest-asyncioTâches bgCelery ou ARQAvec Redis broker
+Convention Python :
 
-## Mobile : Expo SDK (dernière stable), TypeScript strict, React Navigation, StyleSheet.create(), expo-secure-store, @react-native-async-storage, @expo/vector-icons, react-native-reanimated, expo-notifications
-Composants : ✅ View/Text/ScrollView/TouchableOpacity/FlatList/Image/TextInput ❌ JAMAIS div/span/p/button/input
+snake_case partout (variables, fonctions, endpoints)
+Type hints obligatoires
+Docstrings sur les endpoints
+async def par défaut pour les routes
 
-## Backend : FastAPI, Uvicorn, SQLAlchemy 2.0+ (async) + Alembic, PostgreSQL, Redis, python-jose (JWT), Pydantic v2, Mistral AI SDK, Perplexity + Brave Search, Resend, stripe, Pytest + pytest-asyncio, Celery/ARQ
-Convention : snake_case, type hints, docstrings, async def.
+Extension Chrome (/extension)
+CatégorieOutilNotesManifestV3Obligatoire Chrome Web StoreLangageTypeScript/JavaScriptBuildWebpack ou ViteBundle pour ChromeAPIschrome.runtime, chrome.tabsManifest V3 APIsCommunicationMessages entre content/background/popup
+Règle critique Extension : L'extraction de transcripts YouTube se fait côté BACKEND (pas côté extension) pour conformité Chrome Web Store.
+Règle d'or
+Avant de proposer un npm install X ou pip install Y :
 
-## Extension Chrome : MV3, TypeScript/JS, Webpack/Vite, chrome.runtime/tabs/storage
-Règle : transcripts extraits côté BACKEND.
-
-## Règle d'or : avant npm/pip install → vérifier dans ce référentiel → si absent, proposer avec justification → installer dans le BON dossier
+Vérifier que la lib est dans ce référentiel
+Si elle n'y est pas, la proposer avec justification et demander confirmation
+Vérifier qu'on l'installe dans le BON dossier (frontend/mobile/backend/extension)

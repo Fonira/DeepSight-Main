@@ -1,41 +1,110 @@
 ---
-allowed-tools: Read, Edit, Write, Grep, Glob
-description: Système de souscription DeepSight — 5 plans, matrice features, is_feature_available(), Stripe
+description: "Référence complète du système de souscription DeepSight : 5 plans, matrice de features, is_feature_available(), gestion Stripe, et règles d'affichage UI."
 ---
 
-# Système de Souscription
+# Système de Souscription DeepSight — SSOT
 
-Implémenter / vérifier pour : $ARGUMENTS
+## Les 5 plans
 
-## 5 Plans : decouverte (gratuit), etudiant (2.99), starter (5.99), pro (12.99), equipe (29.99)
+| Plan | Prix | Cible |
+|------|------|-------|
+| `decouverte` | Gratuit | Acquisition |
+| `etudiant` | 2.99€/mois | Étudiants |
+| `starter` | 5.99€/mois | Usage régulier |
+| `pro` | 12.99€/mois | Professionnels |
+| `equipe` | 29.99€/mois | Teams |
 
-## Matrice features
+## Matrice des features
+
 | Feature | decouverte | etudiant | starter | pro | equipe |
 |---------|:---:|:---:|:---:|:---:|:---:|
-| analyses/mois | 3 | 20 | 50 | ∞ | ∞ |
-| modes | accessible | +standard | +expert | tous | tous |
-| flashcards/quiz | ❌ | ✅ | ✅ | ✅ | ✅ |
-| mindmap/factcheck | ❌ | ❌ | ✅ | ✅ | ✅ |
+| analyses_per_month | 3 | 20 | 50 | ∞ | ∞ |
+| analysis_modes | accessible | +standard | +expert | tous | tous |
+| flashcards | ❌ | ✅ | ✅ | ✅ | ✅ |
+| quiz | ❌ | ✅ | ✅ | ✅ | ✅ |
+| mindmap | ❌ | ❌ | ✅ | ✅ | ✅ |
+| factcheck | ❌ | ❌ | ✅ | ✅ | ✅ |
 | compare_videos | ❌ | ❌ | ❌ | ✅ | ✅ |
+| export_pdf | ❌ | ❌ | ✅ | ✅ | ✅ |
 | team_workspace | ❌ | ❌ | ❌ | ❌ | ✅ |
+| api_access | ❌ | ❌ | ❌ | ✅ | ✅ |
 
-## Backend SSOT
+## Backend — is_feature_available()
+
 ```python
+PLAN_HIERARCHY = ["decouverte", "etudiant", "starter", "pro", "equipe"]
+
+FEATURE_REQUIREMENTS = {
+    "create_analysis":    {"min_plan": "decouverte", "platforms": ["web", "mobile", "extension"]},
+    "flashcards":         {"min_plan": "etudiant",   "platforms": ["web", "mobile"]},
+    "quiz":               {"min_plan": "etudiant",   "platforms": ["web", "mobile"]},
+    "mindmap":            {"min_plan": "starter",    "platforms": ["web", "mobile"]},
+    "factcheck":          {"min_plan": "starter",    "platforms": ["web", "mobile"]},
+    "compare_videos":     {"min_plan": "pro",        "platforms": ["web"]},
+    "export_pdf":         {"min_plan": "starter",    "platforms": ["web", "mobile"]},
+    "team_workspace":     {"min_plan": "equipe",     "platforms": ["web"]},
+    "api_access":         {"min_plan": "pro",        "platforms": ["web"]},
+}
+
 def is_feature_available(plan, feature, platform="web") -> bool:
-    # Vérifie plan >= min_plan requis ET platform supportée
+    req = FEATURE_REQUIREMENTS[feature]
+    if platform not in req["platforms"]: return False
+    return PLAN_HIERARCHY.index(plan) >= PLAN_HIERARCHY.index(req["min_plan"])
 ```
-Erreur 403 avec `{"code": "INSUFFICIENT_PLAN", "required_plan": "pro", "current_plan": user.plan}`
 
-## Frontend (UI only, pas sécurité)
+### Usage dans les endpoints
+```python
+if not is_feature_available(user.plan, "compare_videos", platform="web"):
+    raise HTTPException(status_code=403, detail={
+        "code": "INSUFFICIENT_PLAN",
+        "required_plan": "pro",
+        "current_plan": user.plan,
+    })
+```
+
+## Frontend — Hook useFeatureAccess
+
 ```typescript
-const { hasAccess, requiredPlan } = useFeatureAccess(feature)
-// <FeatureGate feature="compare_videos"><CompareButton /></FeatureGate>
+export function useFeatureAccess(feature: string) {
+  const { user } = useUser()
+  const currentPlan = user?.plan ?? 'decouverte'
+  const requiredPlan = FEATURE_MIN_PLAN[feature] ?? null
+  const hasAccess = PLAN_HIERARCHY.indexOf(currentPlan) >= PLAN_HIERARCHY.indexOf(requiredPlan)
+  return { hasAccess, requiredPlan, currentPlan }
+}
 ```
 
-## Stripe : checkout.session.completed → upgrade, customer.subscription.deleted → downgrade decouverte
+## Composant FeatureGate
+
+```typescript
+export function FeatureGate({ feature, children, fallback }) {
+  const { hasAccess, requiredPlan } = useFeatureAccess(feature)
+  if (!hasAccess) return fallback ?? <UpgradePrompt requiredPlan={requiredPlan} feature={feature} />
+  return <>{children}</>
+}
+// Usage: <FeatureGate feature="compare_videos"><CompareButton /></FeatureGate>
+```
+
+## Stripe — Checkout et Webhook
+
+```python
+@router.post("/api/v1/billing/checkout")
+async def create_checkout_session(plan: str, user: User = Depends(get_current_user)):
+    session = stripe.checkout.Session.create(
+        customer_email=user.email,
+        line_items=[{"price": price_ids[plan], "quantity": 1}],
+        mode="subscription",
+        metadata={"user_id": str(user.id), "plan": plan}
+    )
+    return {"data": {"checkout_url": session.url}}
+```
+
+Webhook events : `checkout.session.completed` → upgrade plan, `customer.subscription.deleted` → downgrade decouverte.
 
 ## Règles absolues
-1. Vérification TOUJOURS côté backend
-2. L'UI cache mais ne sécurise pas
-3. Tout changement = webhook Stripe
-4. 403 avec required_plan dans la réponse
+
+1. **Jamais vérifier les droits côté client seul**
+2. **Backend = seul SSOT** via `is_feature_available()`
+3. **L'UI cache des features (UX) mais ne les sécurise pas**
+4. **Tout changement de plan passe par le webhook Stripe**
+5. **Erreur 403 avec `required_plan`** dans la réponse
