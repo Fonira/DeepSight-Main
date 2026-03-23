@@ -466,6 +466,82 @@ async def init_cache(redis_url: Optional[str] = None):
     await cache_service.init_redis(redis_url)
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📊 TRANSCRIPT CACHE METRICS (Redis-backed counters for Supadata cost tracking)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class TranscriptCacheMetrics:
+    """
+    Compteurs Redis dédiés aux métriques de cache transcript.
+    Permet de tracker le hit rate et les économies Supadata.
+    """
+
+    KEYS = {
+        "l1_hits": "stats:transcript_cache:l1_hits",
+        "l2_hits": "stats:transcript_cache:l2_hits",
+        "misses": "stats:transcript_cache:misses",
+        "supadata_calls": "stats:transcript_cache:supadata_calls",
+        "supadata_successes": "stats:transcript_cache:supadata_successes",
+    }
+
+    SUPADATA_COST_PER_CALL = 0.01  # $0.01 per Supadata API call
+
+    async def increment(self, key: str, amount: int = 1) -> None:
+        """Incrémente un compteur. Fonctionne en Redis ou fallback silencieux."""
+        redis_key = self.KEYS.get(key)
+        if not redis_key:
+            return
+        try:
+            if cache_service.is_redis:
+                await cache_service.backend.redis.incrby(
+                    f"deepsight:{redis_key}", amount
+                )
+            else:
+                # Fallback in-memory: store in cache_service
+                current = await cache_service.get(redis_key) or 0
+                await cache_service.set(redis_key, current + amount, ttl=86400 * 30)
+        except Exception as e:
+            logger.debug(f"Metrics increment error for {key}: {e}")
+
+    async def get_all(self) -> dict:
+        """Récupère toutes les métriques de cache transcript."""
+        metrics = {}
+        for name, redis_key in self.KEYS.items():
+            try:
+                if cache_service.is_redis:
+                    val = await cache_service.backend.redis.get(
+                        f"deepsight:{redis_key}"
+                    )
+                    metrics[name] = int(val) if val else 0
+                else:
+                    metrics[name] = await cache_service.get(redis_key) or 0
+            except Exception:
+                metrics[name] = 0
+
+        # Computed metrics
+        total_lookups = metrics["l1_hits"] + metrics["l2_hits"] + metrics["misses"]
+        total_hits = metrics["l1_hits"] + metrics["l2_hits"]
+
+        metrics["total_lookups"] = total_lookups
+        metrics["total_hits"] = total_hits
+        metrics["hit_rate_percent"] = round(
+            (total_hits / total_lookups * 100) if total_lookups > 0 else 0, 1
+        )
+        metrics["supadata_calls_avoided"] = total_hits
+        metrics["estimated_cost_saved_usd"] = round(
+            total_hits * self.SUPADATA_COST_PER_CALL, 2
+        )
+        metrics["estimated_cost_spent_usd"] = round(
+            metrics["supadata_calls"] * self.SUPADATA_COST_PER_CALL, 2
+        )
+
+        return metrics
+
+
+# Instance singleton
+transcript_metrics = TranscriptCacheMetrics()
+
+
 # Export pour documentation
 __all__ = [
     "cache_service",
@@ -474,4 +550,6 @@ __all__ = [
     "hash_query",
     "CacheService",
     "DEFAULT_TTLS",
+    "transcript_metrics",
+    "TranscriptCacheMetrics",
 ]

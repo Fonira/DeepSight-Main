@@ -59,10 +59,11 @@ from core.config import (
 
 # 💾 Cache pour les transcripts (TTL 24h)
 try:
-    from core.cache import cache_service, make_cache_key
+    from core.cache import cache_service, make_cache_key, transcript_metrics
     CACHE_AVAILABLE = True
 except ImportError:
     CACHE_AVAILABLE = False
+    transcript_metrics = None
     print("⚠️ [YOUTUBE] Cache not available, transcripts won't be cached", flush=True)
 
 # 💾 DB Cache L2 (persistent, cross-user)
@@ -2034,11 +2035,13 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
         try:
             cached = await cache_service.get(cache_key)
             if cached and isinstance(cached, dict):
-                print(f"💾 Cache HIT for transcript:{video_id}", flush=True)
+                print(f"💾 Cache L1 HIT for transcript:{video_id}", flush=True)
                 print(f"{'='*70}", flush=True)
+                if transcript_metrics:
+                    await transcript_metrics.increment("l1_hits")
                 return cached.get("simple"), cached.get("timestamped"), cached.get("lang")
             else:
-                print(f"💾 Cache MISS for transcript:{video_id}", flush=True)
+                print(f"💾 Cache L1 MISS for transcript:{video_id}", flush=True)
         except Exception as e:
             print(f"⚠️ Cache error (continuing without cache): {e}", flush=True)
 
@@ -2050,8 +2053,10 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
             db_cached = await get_cached_transcript(video_id)
             if db_cached:
                 simple, timestamped, lang = db_cached
-                print(f"🗄️ DB Cache HIT for {video_id} ({len(simple)} chars)", flush=True)
+                print(f"🗄️ DB Cache L2 HIT for {video_id} ({len(simple)} chars)", flush=True)
                 print(f"{'='*70}", flush=True)
+                if transcript_metrics:
+                    await transcript_metrics.increment("l2_hits")
                 # Populate Redis L1 for faster subsequent access
                 if CACHE_AVAILABLE:
                     try:
@@ -2061,7 +2066,9 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
                         pass
                 return simple, timestamped, lang
             else:
-                print(f"🗄️ DB Cache MISS for {video_id}", flush=True)
+                print(f"🗄️ DB Cache L2 MISS for {video_id}", flush=True)
+                if transcript_metrics:
+                    await transcript_metrics.increment("misses")
         except Exception as e:
             print(f"⚠️ DB Cache error (continuing): {e}", flush=True)
 
@@ -2092,9 +2099,13 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
     if supadata_cb.can_execute():
         for attempt in range(2):
             try:
+                if transcript_metrics:
+                    await transcript_metrics.increment("supadata_calls")
                 simple, timestamped, lang = await get_transcript_supadata(video_id, supadata_key)
                 if simple and timestamped:
                     supadata_cb.record_success()
+                    if transcript_metrics:
+                        await transcript_metrics.increment("supadata_successes")
                     print(f"✅ SUCCESS with Supadata API (Phase 0 - Priority)", flush=True)
                     print(f"{'='*70}", flush=True)
                     await _cache_success(video_id, simple, timestamped, lang, "Supadata API")

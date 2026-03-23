@@ -4,12 +4,15 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, date, timedelta
+
+logger = logging.getLogger(__name__)
 
 from db.database import (
     get_session, User, Summary, CreditTransaction,
@@ -59,6 +62,20 @@ class AddCreditsRequest(BaseModel):
     reason: str = "Admin bonus"
 
 
+class TranscriptCacheStatsResponse(BaseModel):
+    l1_hits: int = 0
+    l2_hits: int = 0
+    misses: int = 0
+    supadata_calls: int = 0
+    supadata_successes: int = 0
+    total_lookups: int = 0
+    total_hits: int = 0
+    hit_rate_percent: float = 0.0
+    supadata_calls_avoided: int = 0
+    estimated_cost_saved_usd: float = 0.0
+    estimated_cost_spent_usd: float = 0.0
+
+
 class StatsResponse(BaseModel):
     total_users: int
     total_videos: int
@@ -67,6 +84,7 @@ class StatsResponse(BaseModel):
     new_users_today: int
     new_users_week: int
     revenue_estimate: float
+    transcript_cache: Optional[TranscriptCacheStatsResponse] = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -130,6 +148,15 @@ async def get_admin_stats(
         plan_count = plan_count_result.scalar() or 0
         revenue += plan_count * (limits.get("price", 0) / 100)  # centimes -> euros
     
+    # Transcript cache metrics
+    transcript_cache_stats = None
+    try:
+        from core.cache import transcript_metrics
+        cache_data = await transcript_metrics.get_all()
+        transcript_cache_stats = TranscriptCacheStatsResponse(**cache_data)
+    except Exception as e:
+        logger.warning(f"Failed to get transcript cache stats: {e}")
+
     return StatsResponse(
         total_users=total_users,
         total_videos=total_videos,
@@ -137,7 +164,8 @@ async def get_admin_stats(
         active_subscriptions=active_subscriptions,
         new_users_today=new_users_today,
         new_users_week=new_users_week,
-        revenue_estimate=revenue
+        revenue_estimate=revenue,
+        transcript_cache=transcript_cache_stats
     )
 
 

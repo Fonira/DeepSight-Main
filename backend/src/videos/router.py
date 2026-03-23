@@ -173,16 +173,35 @@ def set_task_status(task_id: str, data: Dict[str, Any]) -> None:
 @router.get("/check-cache/{video_id}")
 async def check_video_cache(video_id: str):
     """
-    Public endpoint — check if a video transcript is cached and return metadata.
+    Public endpoint — check if a video transcript is cached (L1 Redis or L2 DB).
+    Returns cache source and metadata if available.
     """
+    # L1: Check Redis first (fastest)
+    try:
+        from core.cache import cache_service, make_cache_key
+        cache_key = make_cache_key("transcript", video_id)
+        cached = await cache_service.get(cache_key)
+        if cached and isinstance(cached, dict):
+            return {
+                "cached": True,
+                "source": "redis",
+                "video_id": video_id,
+                "lang": cached.get("lang"),
+                "char_count": len(cached.get("simple", "")) if cached.get("simple") else 0,
+            }
+    except Exception:
+        pass
+
+    # L2: Check DB (persistent, with full metadata)
     try:
         from transcripts.cache_db import check_transcript_cached
         result = await check_transcript_cached(video_id)
         if result:
-            return {"cached": True, **result}
-        return {"cached": False, "video_id": video_id}
-    except ImportError:
-        return {"cached": False, "video_id": video_id, "error": "Cache module not available"}
+            return {"cached": True, "source": "db", **result}
+    except Exception:
+        pass
+
+    return {"cached": False, "video_id": video_id}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
