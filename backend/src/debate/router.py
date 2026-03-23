@@ -376,7 +376,7 @@ async def _run_debate_pipeline(
                 return
 
             # ── Step 4: Get video B transcript ──
-            _debate_task_store[debate_id] = {"status": "extracting", "message": "Extraction vidéo B..."}
+            _debate_task_store[debate_id] = {"status": "analyzing_b", "message": "Analyse de la vidéo opposée..."}
 
             video_b_info = await get_video_info(actual_video_b_id)
             if video_b_info:
@@ -398,8 +398,8 @@ async def _run_debate_pipeline(
             transcript_b_short = transcript_b[:8000]
 
             # ── Step 5: Comparative analysis via Mistral ──
-            _debate_task_store[debate_id] = {"status": "analyzing", "message": "Analyse comparative en cours..."}
-            debate.status = "analyzing"
+            _debate_task_store[debate_id] = {"status": "comparing", "message": "Analyse comparative en cours..."}
+            debate.status = "comparing"
             await session.commit()
 
             compare_prompt = [
@@ -410,7 +410,7 @@ async def _run_debate_pipeline(
                     "Réponds UNIQUEMENT en JSON valide avec ce format :\n"
                     "{\n"
                     '  "thesis_b": "Thèse défendue par la vidéo B",\n'
-                    '  "arguments_b": ["arg1", "arg2", "arg3"],\n'
+                    '  "arguments_b": [{"claim": "...", "evidence": "...", "strength": "strong|moderate|weak"}, ...],\n'
                     '  "convergence_points": ["point commun 1", "point commun 2"],\n'
                     '  "divergence_points": ["désaccord 1", "désaccord 2", "désaccord 3"],\n'
                     '  "summary": "Synthèse nuancée du débat en 3-5 paragraphes"\n'
@@ -457,7 +457,7 @@ async def _run_debate_pipeline(
             debate.status = "fact_checking"
             await session.commit()
 
-            fact_check_results = {}
+            fact_check_results = []
             perplexity_key = get_perplexity_key()
             if perplexity_key:
                 fact_prompt = (
@@ -469,8 +469,8 @@ async def _run_debate_pipeline(
                     f"Arguments B : {', '.join(arguments_b[:3])}\n\n"
                     f"Pour chaque affirmation clé, indique si elle est VRAIE, PARTIELLEMENT VRAIE, "
                     f"NON VÉRIFIABLE, ou FAUSSE, avec une source. "
-                    f"Réponds en JSON : "
-                    f'{{"claims": [{{"claim": "...", "verdict": "...", "source": "...", "explanation": "..."}}]}}'
+                    f"Réponds UNIQUEMENT avec un tableau JSON (pas d'objet englobant) : "
+                    f'[{{"claim": "...", "verdict": "...", "source": "...", "explanation": "..."}}]'
                 )
                 fact_result = await _call_perplexity(fact_prompt)
                 if fact_result:
@@ -480,10 +480,17 @@ async def _run_debate_pipeline(
                             clean = clean.split("```")[1]
                             if clean.startswith("json"):
                                 clean = clean[4:]
-                        fact_check_results = json.loads(clean.strip())
+                        parsed = json.loads(clean.strip())
+                        # Normalize to list
+                        if isinstance(parsed, list):
+                            fact_check_results = parsed
+                        elif isinstance(parsed, dict) and "claims" in parsed:
+                            fact_check_results = parsed["claims"]
+                        else:
+                            fact_check_results = []
                     except (json.JSONDecodeError, IndexError):
                         logger.warning("Failed to parse fact-check: %s", fact_result[:300])
-                        fact_check_results = {"raw": fact_result[:2000]}
+                        fact_check_results = []
 
             debate.fact_check_results = json.dumps(fact_check_results, ensure_ascii=False)
             debate.model_used = model
@@ -601,7 +608,7 @@ async def get_debate_status(
 ):
     """
     Récupère le statut d'un débat en cours.
-    Statuts : pending → extracting → searching → analyzing → fact_checking → completed/failed
+    Statuts : pending → searching → analyzing_b → comparing → fact_checking → completed/failed
     """
     debate = await _get_debate_owned(db, debate_id, current_user.id)
 
