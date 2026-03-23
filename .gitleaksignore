@@ -1,0 +1,16 @@
+# Gitleaks ignore file — false positives
+# Format: fingerprint (from gitleaks report)
+
+# CLAUDE.md — OpenClaw Gateway token (internal dev instructions, consider rotating)
+CLAUDE.md:generic-api-key:538
+
+# ApiDocsPage.tsx — placeholder "ds_live_YOUR_KEY" (not a real secret)
+frontend/src/pages/ApiDocsPage.tsx:curl-auth-header:51
+frontend/src/pages/ApiDocsPage.tsx:curl-auth-header:67
+frontend/src/pages/ApiDocsPage.tsx:curl-auth-header:79
+frontend/src/pages/ApiDocsPage.tsx:curl-auth-header:94
+frontend/src/pages/ApiDocsPage.tsx:curl-auth-header:107
+frontend/src/pages/ApiDocsPage.tsx:curl-auth-header:116
+frontend/src/pages/ApiDocsPage.tsx:curl-auth-header:128
+frontend/src/pages/ApiDocsPage.tsx:curl-auth-header:141
+frontend/src/pages/ApiDocsPage.tsx:curl-auth-header:331
