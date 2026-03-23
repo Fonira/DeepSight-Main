@@ -1,5 +1,19 @@
 # DeepSight — Configuration Claude Code & Cowork
-*Mis à jour : 20 Mars 2026*
+*Mis à jour : 23 Mars 2026*
+
+## Système d'apprentissage (OBLIGATOIRE)
+
+**AVANT toute action non triviale** (deploy, fix, refactor, infra) :
+1. Lire `.claude/LEARNINGS.md`
+2. Vérifier si le problème ou une approche similaire est documenté
+3. Si une approche est en BLACKLIST → ne PAS la tenter, utiliser l'alternative documentée
+4. Si une solution validée existe → l'appliquer directement
+
+**APRÈS résolution d'un problème non trivial** :
+- Utiliser `/learn` pour enregistrer ce qui a fonctionné et ce qui a échoué
+- Particulièrement si > 2 tentatives ont été nécessaires
+
+**Principe** : Ne jamais perdre 2 fois du temps sur le même problème.
 
 ## Stack Technique
 - **Backend**: FastAPI + Python 3.11 (async, 4 workers Uvicorn)
