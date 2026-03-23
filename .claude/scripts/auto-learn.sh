@@ -39,8 +39,12 @@ Fais une auto-évaluation rapide (ne réponds PAS à l'utilisateur avec ça, c'e
 3. As-tu utilisé une approche qui pourrait échouer dans un autre contexte ?
 
 Si OUI à l'une de ces questions → mets à jour `.claude/LEARNINGS.md` silencieusement :
-- Ajoute en BLACKLIST les approches échouées
-- Ajoute en SOLUTIONS VALIDÉES ce qui a fonctionné
+- Ajoute en `À ÉVITER` les approches échouées, avec le format QUAND/ALORS/PARCE QUE/EXPIRE/SCOPE
+- Ajoute en `SOLUTIONS VALIDÉES` ce qui a fonctionné
+- ⚠️ ANTI-DÉRIVE : ne JAMAIS écrire d'interdiction absolue. Toujours contextualiser :
+  - Inclure le QUAND (conditions précises)
+  - Inclure le SCOPE (environnement/projet/global)
+  - Inclure le "⚠️ Ne s'applique PAS" pour les cas où ça marche
 - N'en parle PAS à l'utilisateur sauf s'il demande
 
 Si NON → ne fais rien, continue normalement.

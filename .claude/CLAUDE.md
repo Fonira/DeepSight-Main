@@ -6,14 +6,27 @@
 **AVANT toute action non triviale** (deploy, fix, refactor, infra) :
 1. Lire `.claude/LEARNINGS.md`
 2. Vérifier si le problème ou une approche similaire est documenté
-3. Si une approche est en BLACKLIST → ne PAS la tenter, utiliser l'alternative documentée
-4. Si une solution validée existe → l'appliquer directement
+3. Si une approche est dans `À ÉVITER` → **vérifier que le contexte actuel correspond** :
+   - Même environnement ? (OS, filesystem, machine)
+   - Même conditions ? (locks présents, IP spécifique, etc.)
+   - L'entrée a-t-elle expiré ? (vérifier le champ EXPIRE)
+   - Si contexte différent → l'approche PEUT être tentée
+   - Si contexte identique → utiliser l'alternative documentée
+4. Si une solution validée existe → l'appliquer EN PRIORITÉ
 
 **APRÈS résolution d'un problème non trivial** :
-- Utiliser `/learn` pour enregistrer ce qui a fonctionné et ce qui a échoué
+- Utiliser `/learn` pour enregistrer avec le format QUAND/ALORS/PARCE QUE/EXPIRE/SCOPE
 - Particulièrement si > 2 tentatives ont été nécessaires
+- **Toujours inclure** : les conditions précises, pas des interdictions absolues
 
-**Principe** : Ne jamais perdre 2 fois du temps sur le même problème.
+**ANTI-DÉRIVE** :
+- Un learning n'est JAMAIS une interdiction globale, c'est un "dans CE contexte, préférer CECI"
+- Scope `environnement` = ne s'applique qu'à ce setup précis
+- Scope `projet` = s'applique à tout DeepSight
+- Scope `global` = bonne pratique universelle
+- En cas de doute sur l'applicabilité d'un learning → le tester plutôt que l'éviter aveuglément
+
+**Principe** : Ne jamais perdre 2 fois du temps sur le même problème. Mais ne jamais s'interdire quelque chose qui marche ailleurs.
 
 ## Stack Technique
 - **Backend**: FastAPI + Python 3.11 (async, 4 workers Uvicorn)

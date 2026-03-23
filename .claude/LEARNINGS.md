@@ -6,49 +6,59 @@
 ## RÈGLE ABSOLUE POUR CLAUDE
 
 **Avant de tenter une solution, TOUJOURS consulter ce fichier.**
-- Si une approche est dans `BLACKLIST` → NE JAMAIS la retenter, même partiellement
+- Si une approche est dans `À ÉVITER` → vérifier si le contexte correspond EXACTEMENT
+  - Si le contexte actuel ≠ contexte documenté → l'approche peut être tentée
+  - Si le contexte actuel = contexte documenté → utiliser l'alternative documentée
 - Si une solution est dans `SOLUTIONS VALIDÉES` → l'utiliser EN PRIORITÉ
 - Après chaque résolution non triviale → enregistrer via `/learn`
 - En cas de doute entre 2 approches → vérifier ici d'abord
 
+### Format obligatoire des learnings
+Chaque entrée DOIT contenir :
+- **QUAND** : conditions précises où le problème survient (environnement, OS, setup)
+- **ALORS** : ce qu'il faut faire (ou ne pas faire)
+- **PARCE QUE** : explication causale (pas juste "ça marche pas")
+- **EXPIRE** : quand réévaluer (date, ou condition comme "si changement de setup")
+- **SCOPE** : `projet` | `environnement` | `global`
+
 ---
 
-## BLACKLIST — Approches qui NE FONCTIONNENT PAS
+## À ÉVITER — Approches problématiques dans un contexte précis
 
-### [DEPLOY] Git merge/stash depuis Windows avec filesystem monté
+### [DEPLOY] Git merge/stash sur filesystem Windows monté
+- **QUAND** : opérations git (merge, stash, checkout) sur ce repo depuis Windows quand le filesystem est monté via WSL/réseau ET que des .lock files existent
+- **ALORS** : ne pas insister, basculer sur VPS SSH ou GitHub CLI
+- **PARCE QUE** : le filesystem monté crée des .lock files que git ne peut pas supprimer. Les process git peuvent rester zombies. C'est un problème d'I/O filesystem, pas de git lui-même.
+- **EXPIRE** : si changement de setup (ex: repo cloné en natif sur Windows, ou abandon du montage réseau)
+- **SCOPE** : `environnement` (spécifique à ce PC avec ce montage)
 - **Date**: 2026-03-23
-- **Contexte**: Merge branche feature dans main + push + deploy
-- **Approches tentées (TOUTES échouées)** :
-  1. `git stash` sur Windows → échoue (permissions lock sur .lock files)
-  2. `git checkout -- <file>` sur Windows → échoue (filesystem monté, locks)
-  3. Windows-MCP pour supprimer les locks → ne résout pas le problème de fond
-  4. PowerShell direct sur PC MSI → git bloqué (process git zombie)
-  5. Tuer les process git + retry → timeout, instable
-- **Pourquoi ça échoue** : Le filesystem Windows monté (WSL/réseau) crée des .lock files que git ne peut pas gérer. Les process git peuvent rester zombies.
-- **Ne jamais retenter** : toute opération git merge/stash/checkout sur ce repo depuis Windows quand il y a des locks
+- **⚠️ Ne s'applique PAS** : git merge depuis Linux, VPS, ou un clone local natif → fonctionne normalement
 
 ### [DEPLOY] Merge sur le VPS de production directement
+- **QUAND** : on veut merger des branches en utilisant le VPS de production comme machine de développement
+- **ALORS** : acceptable en urgence, mais préférer GitHub CLI pour les merges
+- **PARCE QUE** : mélange les responsabilités (deploy ≠ dev). Risque de laisser le repo prod dans un état sale.
+- **EXPIRE** : jamais (bonne pratique permanente)
+- **SCOPE** : `global`
 - **Date**: 2026-03-23
-- **Contexte**: Alternative tentée pendant le debug deploy
-- **Pourquoi c'est risqué** : Le VPS ne devrait servir qu'au déploiement, pas aux merges. Ça mélange les responsabilités. Acceptable en urgence mais pas en workflow normal.
 
 ### [BACKEND] YouTube direct fetch depuis Hetzner VPS
+- **QUAND** : appel direct youtube-transcript-api / yt-dlp depuis le VPS Hetzner (IP spécifique)
+- **ALORS** : utiliser Supadata API en priorité (Phase 0 de la chaîne)
+- **PARCE QUE** : IP Hetzner bannie par YouTube. Rate limiting agressif sur les IPs de datacenters.
+- **EXPIRE** : si changement de VPS/IP, ou si proxy Webshare configuré et fonctionnel
+- **SCOPE** : `environnement` (spécifique à cette IP Hetzner)
 - **Date**: 2026-03-20
-- **Contexte**: Extraction de transcripts YouTube
-- **Approche tentée**: Appel direct youtube-transcript-api / yt-dlp depuis le VPS
-- **Pourquoi ça échoue**: IP Hetzner bannie par YouTube. Rate limiting agressif.
-- **Solution alternative**: Supadata API en priorité (voir SOLUTIONS VALIDÉES)
 
 ---
 
 ## SOLUTIONS VALIDÉES — Patterns qui fonctionnent
 
 ### [DEPLOY] Merge + Push + Deploy — Workflow fiable
-- **Date**: 2026-03-23
-- **Problème**: Merger une branche feature dans main et déployer
-- **Solution en 3 étapes** :
-  1. **Merge via GitHub** : `gh pr merge <PR> --merge` (ou créer PR + merge si pas de PR)
-  2. **Si merge local nécessaire** : le faire depuis le VPS Hetzner (repo propre, pas de locks)
+- **QUAND** : besoin de merger une branche feature dans main et déployer
+- **ALORS** :
+  1. **Merge via GitHub** : `gh pr merge <PR> --merge` (préféré)
+  2. **Si merge local nécessaire** : depuis le VPS Hetzner (repo propre)
      ```bash
      ssh VPS "cd /opt/deepsight/repo && git fetch origin && git checkout main && git merge origin/<branch> && git push origin main"
      ```
@@ -56,34 +66,40 @@
      ```bash
      ssh VPS "cd /opt/deepsight/repo && git pull && docker build -t deepsight-backend:latest -f deploy/hetzner/Dockerfile ./backend && docker stop repo-backend-1 && docker rm repo-backend-1 && docker run -d --name repo-backend-1 ..."
      ```
+- **PARCE QUE** : GitHub CLI contourne tous les problèmes de filesystem local. Le VPS a un clone propre.
 - **Ordre de préférence** : GitHub CLI > VPS SSH > Local (dernier recours)
-- **Fichiers**: `deploy/hetzner/Dockerfile`, `deploy/hetzner/docker-compose.yml`
+- **SCOPE** : `projet`
+- **Date**: 2026-03-23
 
 ### [DEPLOY] Résoudre les locks git sur Windows
-- **Date**: 2026-03-23
-- **Problème**: Fichiers .lock qui bloquent les opérations git
-- **Solution rapide** : Ne pas insister. Basculer immédiatement sur VPS ou GitHub CLI.
+- **QUAND** : fichiers .lock bloquent les opérations git en local
+- **ALORS** : ne pas insister. Basculer sur VPS ou GitHub CLI.
 - **Si absolument nécessaire en local** :
   ```bash
-  # Tuer tous les process git
   taskkill /F /IM git.exe 2>nul
-  # Supprimer les locks
   del /F .git\index.lock 2>nul
   del /F .git\refs\heads\*.lock 2>nul
   # Attendre 2s puis retenter UNE seule fois
   ```
+- **PARCE QUE** : les locks viennent de process git zombies sur le filesystem monté
+- **SCOPE** : `environnement`
+- **Date**: 2026-03-23
 
 ### [BACKEND] Transcripts YouTube fiables
-- **Date**: 2026-03-20
-- **Problème**: Extraction transcripts depuis VPS Hetzner (IP bannie YouTube)
-- **Solution**: Chaîne 7 méthodes avec Supadata en priorité (Phase 0). Fallback circuit breaker.
+- **QUAND** : extraction de transcripts YouTube
+- **ALORS** : chaîne 7 méthodes avec Supadata en priorité (Phase 0). Fallback circuit breaker.
+- **PARCE QUE** : aucune méthode seule n'est fiable à 100%. Supadata est payant mais le plus stable.
+- **SCOPE** : `projet`
 - **Fichiers**: `backend/src/transcripts/youtube.py`
+- **Date**: 2026-03-20
 
 ### [FRONTEND] Build Vite avec code splitting
-- **Date**: 2026-03-20
-- **Problème**: Bundle trop gros
-- **Solution**: Lazy loading React Router + dynamic imports pour les pages lourdes
+- **QUAND** : bundle frontend trop gros
+- **ALORS** : lazy loading React Router + dynamic imports pour les pages lourdes
+- **PARCE QUE** : réduit le bundle initial de ~60%
+- **SCOPE** : `projet`
 - **Fichiers**: `frontend/src/App.tsx`, routes config
+- **Date**: 2026-03-20
 
 ---
 
@@ -134,5 +150,4 @@
 - **Tâche**: Merge feature branch + deploy backend
 - **Problème rencontré**: Locks git Windows, stash impossible, process zombies
 - **Solution finale**: Merge depuis VPS Hetzner via SSH
-- **Apprentissage enregistré**: BLACKLIST Windows git ops + SOLUTION VPS merge
-
+- **Apprentissage enregistré**: À ÉVITER Windows git ops + SOLUTION VPS merge
