@@ -159,40 +159,49 @@ const ThinkingDots: React.FC<{ color: string }> = ({ color }) => {
   );
 };
 
+/** Single animated bar — extracted to respect Rules of Hooks */
+const WaveformBar: React.FC<{ targetHeight: number; color: string; index: number }> = ({
+  targetHeight,
+  color,
+  index,
+}) => {
+  const barScale = useSharedValue(targetHeight);
+
+  useEffect(() => {
+    barScale.value = withDelay(
+      index * 80,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration: 400 + index * 40, easing: Easing.inOut(Easing.ease) }),
+          withTiming(targetHeight * 0.4, {
+            duration: 400 + index * 40,
+            easing: Easing.inOut(Easing.ease),
+          }),
+        ),
+        -1,
+        true,
+      ),
+    );
+  }, [barScale, targetHeight, index]);
+
+  const barStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleY: barScale.value }],
+  }));
+
+  return (
+    <Animated.View style={[styles.waveBar, { backgroundColor: color }, barStyle]} />
+  );
+};
+
 /** Simple waveform placeholder for "speaking" state */
 const WaveformPlaceholder: React.FC<{ color: string }> = ({ color }) => {
   const bars = [0.4, 0.7, 1, 0.6, 0.9, 0.5, 0.8, 0.3];
 
   return (
     <View style={styles.waveRow}>
-      {bars.map((h, i) => {
-        const barScale = useSharedValue(h);
-
-        useEffect(() => {
-          barScale.value = withDelay(
-            i * 80,
-            withRepeat(
-              withSequence(
-                withTiming(1, { duration: 400 + i * 40, easing: Easing.inOut(Easing.ease) }),
-                withTiming(h * 0.4, { duration: 400 + i * 40, easing: Easing.inOut(Easing.ease) }),
-              ),
-              -1,
-              true,
-            ),
-          );
-        }, [barScale, h, i]);
-
-        const barStyle = useAnimatedStyle(() => ({
-          transform: [{ scaleY: barScale.value }],
-        }));
-
-        return (
-          <Animated.View
-            key={i}
-            style={[styles.waveBar, { backgroundColor: color }, barStyle]}
-          />
-        );
-      })}
+      {bars.map((h, i) => (
+        <WaveformBar key={i} targetHeight={h} color={color} index={i} />
+      ))}
     </View>
   );
 };
