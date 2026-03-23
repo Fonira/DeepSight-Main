@@ -34,8 +34,8 @@ Copie-colle le bloc ci-dessous **en entier** dans la session Remote Control depu
 Tu es le DevOps senior de DeepSight. Ta mission : exécuter la migration COMPLÈTE du backend depuis Railway vers le VPS Hetzner. Mode FULL AUTO — exécute tout sans demander confirmation sauf pour les secrets que tu ne connais pas.
 
 ## INFRA
-- VPS Hetzner "clawdbot" : 89.167.23.214 (Tailscale: 100.127.186.126)
-- SSH : root@100.127.186.126 (via Tailscale, clé SSH déjà configurée sur ce PC)
+- VPS Hetzner "clawdbot" : $HETZNER_IP (Tailscale: $TAILSCALE_IP)
+- SSH : root@$TAILSCALE_IP (via Tailscale, clé SSH déjà configurée sur ce PC)
 - Repo local : C:\Users\33667\DeepSight-Main
 - Fichiers Docker DÉJÀ PRÊTS dans deploy/hetzner/ (Dockerfile, docker-compose.yml, caddy/Caddyfile)
 - Template env : .env.production.example à la racine
@@ -182,7 +182,7 @@ Affiche un rapport complet :
 - Nombre d'users et summaries dans la DB
 - URL du health check interne
 - Prochaines étapes manuelles :
-  1. DNS : api.deepsightsynthesis.com → A → 89.167.23.214 (chez le registrar)
+  1. DNS : api.deepsightsynthesis.com → A → $HETZNER_IP (chez le registrar)
   2. Vercel : changer VITE_API_URL → https://api.deepsightsynthesis.com
   3. Stripe : ajouter webhook https://api.deepsightsynthesis.com/api/billing/webhook
   4. Mobile : modifier config.ts + EAS build
@@ -206,7 +206,7 @@ Une fois le rapport final reçu, tu devras faire manuellement :
 
 ### DNS (chez ton registrar)
 ```
-api.deepsightsynthesis.com → A → 89.167.23.214
+api.deepsightsynthesis.com → A → $HETZNER_IP
 TTL : 300
 ```
 
@@ -223,12 +223,12 @@ Events : checkout.session.completed, customer.subscription.updated,
          customer.subscription.deleted, invoice.payment_succeeded,
          invoice.payment_failed
 → Copier le whsec_... dans .env.production sur le VPS
-→ Redémarrer le backend : ssh root@100.127.186.126 "cd /opt/deepsight/repo && docker compose restart backend"
+→ Redémarrer le backend : ssh root@$TAILSCALE_IP "cd /opt/deepsight/repo && docker compose restart backend"
 ```
 
 ### GitHub Secrets
 ```
-HETZNER_HOST = 89.167.23.214
+HETZNER_HOST = $HETZNER_IP
 HETZNER_SSH_KEY = (contenu clé privée SSH)
 ```
 

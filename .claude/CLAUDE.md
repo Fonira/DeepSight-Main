@@ -50,7 +50,7 @@ cd extension && npm run typecheck # tsc --noEmit
 cd frontend && git push origin main
 
 # Backend → Hetzner VPS
-ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
+ssh -i ~/.ssh/id_hetzner root@$HETZNER_IP \
   "cd /opt/deepsight/repo && git pull && \
    docker build -t deepsight-backend:latest -f deploy/hetzner/Dockerfile ./backend && \
    docker stop repo-backend-1 && docker rm repo-backend-1 && \
@@ -224,15 +224,15 @@ git commit -m "type(scope): description"
 ## 🔴 Réflexe automatique sur erreur signalée
 ```bash
 # Logs backend
-ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
+ssh -i ~/.ssh/id_hetzner root@$HETZNER_IP \
   "docker logs repo-backend-1 --tail 100 2>&1 | grep -i -E 'error|traceback|exception|critical|failed'"
 
 # Health check
-ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
+ssh -i ~/.ssh/id_hetzner root@$HETZNER_IP \
   "docker exec repo-backend-1 curl -s http://localhost:8080/health"
 
 # Status containers
-ssh -i ~/.ssh/id_hetzner root@89.167.23.214 \
+ssh -i ~/.ssh/id_hetzner root@$HETZNER_IP \
   "docker ps --format '{{.Names}} {{.Status}}'"
 ```
 

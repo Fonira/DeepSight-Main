@@ -387,7 +387,7 @@ LEGAL_CONFIG = {
 | # | Action | Commande |
 |---|--------|----------|
 | 11 | Push code | `git push origin main` |
-| 12 | Pull sur VPS | `ssh root@89.167.23.214 "cd /opt/deepsight/repo && git pull"` |
+| 12 | Pull sur VPS | `ssh root@$HETZNER_IP "cd /opt/deepsight/repo && git pull"` |
 | 13 | Rebuild Docker | `docker build -t deepsight-backend:latest -f deploy/hetzner/Dockerfile ./backend` |
 | 14 | Recréer container | (voir commande docker run standard) |
 | 15 | Health check | `curl https://api.deepsightsynthesis.com/health` |
