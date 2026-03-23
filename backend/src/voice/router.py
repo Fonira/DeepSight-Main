@@ -250,7 +250,8 @@ async def create_voice_session(
 
     # Compute quota remaining
     max_session_minutes = plan_limits.get("max_session_minutes", 10)
-    quota_remaining_minutes = quota_info.get("minutes_remaining", 0.0) if isinstance(quota_info, dict) else 0.0
+    quota_remaining_seconds = quota_info.get("seconds_remaining", 0) if isinstance(quota_info, dict) else 0
+    quota_remaining_minutes = round(quota_remaining_seconds / 60.0, 2)
 
     return VoiceSessionResponse(
         session_id=voice_session.id,
