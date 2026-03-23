@@ -13,7 +13,8 @@ import {
   Star, Crown, ListVideo, Briefcase,
   AlertTriangle, Lightbulb,
   Globe, Smartphone, Puzzle,
-  Clipboard, Loader2, ExternalLink, Lock
+  Clipboard, Loader2, ExternalLink, Lock,
+  Swords, CheckCircle2, GitMerge, Scale
 } from "lucide-react";
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
@@ -189,6 +190,7 @@ const PLANS: PlanConfig[] = [
       { text: { fr: 'Outils d\'étude', en: 'Study tools' }, included: false },
       { text: { fr: 'Recherche web', en: 'Web search' }, included: false },
       { text: { fr: 'Export PDF', en: 'PDF export' }, included: false },
+      { text: { fr: `${PLAN_LIMITS.free.debateMonthly} débat IA / mois`, en: `${PLAN_LIMITS.free.debateMonthly} AI debate / month` }, included: true },
     ],
   },
   {
@@ -208,6 +210,7 @@ const PLANS: PlanConfig[] = [
       { text: { fr: 'Export Markdown', en: 'Markdown export' }, included: true },
       { text: { fr: 'Lecture audio TTS', en: 'TTS audio' }, included: true },
       { text: { fr: 'Recherche web', en: 'Web search' }, included: false },
+      { text: { fr: `${PLAN_LIMITS.etudiant.debateMonthly} débats IA / mois`, en: `${PLAN_LIMITS.etudiant.debateMonthly} AI debates / month` }, included: true },
     ],
   },
   {
@@ -228,6 +231,7 @@ const PLANS: PlanConfig[] = [
       { text: { fr: `Recherche web (${PLAN_LIMITS.starter.webSearchMonthly}/mois)`, en: `Web search (${PLAN_LIMITS.starter.webSearchMonthly}/mo)` }, included: true, highlight: true },
       { text: { fr: 'Export Markdown', en: 'Markdown export' }, included: true },
       { text: { fr: 'Playlists', en: 'Playlists' }, included: false },
+      { text: { fr: `${PLAN_LIMITS.starter.debateMonthly} débats IA / mois`, en: `${PLAN_LIMITS.starter.debateMonthly} AI debates / month` }, included: true },
     ],
   },
   {
@@ -248,6 +252,7 @@ const PLANS: PlanConfig[] = [
       { text: { fr: `Recherche web (${PLAN_LIMITS.pro.webSearchMonthly}/mois)`, en: `Web search (${PLAN_LIMITS.pro.webSearchMonthly}/mo)` }, included: true },
       { text: { fr: 'Export PDF & Markdown', en: 'PDF & Markdown export' }, included: true },
       { text: { fr: 'Support prioritaire', en: 'Priority support' }, included: true },
+      { text: { fr: `${PLAN_LIMITS.pro.debateMonthly} débats IA / mois + fact-check approfondi`, en: `${PLAN_LIMITS.pro.debateMonthly} AI debates / month + deep fact-check` }, included: true, highlight: true },
     ],
   },
 ];
@@ -291,6 +296,13 @@ const getFeatures = (language: string) => [
     description: language === 'fr'
       ? 'Analysez des playlists entières en une seule opération. Comparez les thèses entre vidéos et construisez une vision de corpus.'
       : 'Analyze entire playlists in a single operation. Compare theses across videos and build a corpus-level view.',
+  },
+  {
+    icon: Swords,
+    title: language === 'fr' ? 'Débat IA' : 'AI Debate',
+    description: language === 'fr'
+      ? 'Confrontez automatiquement deux points de vue sur un même sujet avec fact-checking croisé.'
+      : 'Automatically confront two viewpoints on the same topic with cross-referenced fact-checking.',
   },
 ];
 
@@ -1156,6 +1168,164 @@ const LandingPage: React.FC = () => {
               </StaggerItem>
             ))}
           </StaggerReveal>
+        </div>
+      </section>
+
+      {/* ─── DÉBAT IA ─── */}
+      <section className="py-16 sm:py-24 px-4 sm:px-6 relative">
+        <div className="max-w-5xl mx-auto">
+          <ScrollReveal className="text-center mb-12 sm:mb-16 relative">
+            {/* Badge "Nouveau" */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-indigo-500/20 to-violet-500/20 border border-indigo-500/30 mb-6"
+            >
+              <Sparkles className="w-3 h-3 text-indigo-400" />
+              <span className="text-xs font-semibold bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+                {language === 'fr' ? 'Nouveau' : 'New'}
+              </span>
+            </motion.div>
+
+            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-text-primary mb-3">
+              {language === 'fr' ? 'Débat IA — Confrontez les perspectives' : 'AI Debate — Confront perspectives'}
+            </h2>
+            <p className="text-text-secondary text-sm sm:text-base max-w-2xl mx-auto">
+              {language === 'fr'
+                ? 'Collez une URL, notre IA trouve automatiquement une vidéo avec un point de vue opposé et génère une analyse comparative sourcée.'
+                : 'Paste a URL, our AI automatically finds a video with an opposing viewpoint and generates a sourced comparative analysis.'}
+            </p>
+          </ScrollReveal>
+
+          {/* Mock debate layout */}
+          <ScrollReveal>
+            <div className="rounded-2xl border border-border-subtle bg-white/[0.03] backdrop-blur-xl p-6 sm:p-8 overflow-hidden relative">
+              {/* Gradient glow behind */}
+              <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+                <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-48 h-48 bg-indigo-500/10 rounded-full blur-[80px]" />
+                <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-48 h-48 bg-violet-500/10 rounded-full blur-[80px]" />
+              </div>
+
+              {/* VS Layout */}
+              <div className="relative grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-6 lg:gap-4 items-start">
+                {/* Video A */}
+                <motion.div
+                  initial={{ opacity: 0, x: -30 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+                  className="rounded-xl bg-white/5 border border-indigo-500/20 p-5 space-y-3"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center">
+                      <span className="text-[10px] font-bold text-indigo-400">A</span>
+                    </div>
+                    <span className="text-xs text-indigo-400 font-medium">{language === 'fr' ? 'Vidéo A' : 'Video A'}</span>
+                  </div>
+                  <div className="w-full aspect-video rounded-lg bg-gradient-to-br from-indigo-500/10 to-indigo-500/5 border border-white/5 flex items-center justify-center">
+                    <div className="text-center px-4">
+                      <p className="text-xs text-white/40 mb-1">TechVision — 24 min</p>
+                      <p className="text-sm font-medium text-white/80">{language === 'fr' ? 'L\'IA va augmenter les développeurs' : 'AI will augment developers'}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-indigo-500/5 border border-indigo-500/15 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wider text-indigo-400/70 mb-1">{language === 'fr' ? 'Thèse' : 'Thesis'}</p>
+                    <p className="text-xs text-white/70 leading-relaxed">
+                      {language === 'fr'
+                        ? '« L\'IA est un outil de productivité qui augmente les capacités des développeurs sans les remplacer. »'
+                        : '"AI is a productivity tool that augments developer capabilities without replacing them."'}
+                    </p>
+                  </div>
+                </motion.div>
+
+                {/* VS Circle */}
+                <div className="flex items-center justify-center lg:pt-16">
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    whileInView={{ scale: 1, rotate: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.3, duration: 0.5, type: 'spring', stiffness: 200 }}
+                    className="relative"
+                  >
+                    <motion.div
+                      className="absolute inset-0 rounded-full bg-white/10"
+                      animate={{ scale: [1, 1.5, 1], opacity: [0.3, 0, 0.3] }}
+                      transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                    <div className="relative w-14 h-14 lg:w-16 lg:h-16 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 border border-white/10">
+                      <span className="text-white font-bold text-lg lg:text-xl tracking-tight">VS</span>
+                    </div>
+                  </motion.div>
+                </div>
+
+                {/* Video B */}
+                <motion.div
+                  initial={{ opacity: 0, x: 30 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
+                  className="rounded-xl bg-white/5 border border-violet-500/20 p-5 space-y-3"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-6 h-6 rounded-full bg-violet-500/20 flex items-center justify-center">
+                      <span className="text-[10px] font-bold text-violet-400">B</span>
+                    </div>
+                    <span className="text-xs text-violet-400 font-medium">{language === 'fr' ? 'Vidéo B' : 'Video B'}</span>
+                  </div>
+                  <div className="w-full aspect-video rounded-lg bg-gradient-to-br from-violet-500/10 to-violet-500/5 border border-white/5 flex items-center justify-center">
+                    <div className="text-center px-4">
+                      <p className="text-xs text-white/40 mb-1">FutureTech — 18 min</p>
+                      <p className="text-sm font-medium text-white/80">{language === 'fr' ? 'L\'IA va remplacer les développeurs' : 'AI will replace developers'}</p>
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-violet-500/5 border border-violet-500/15 px-3 py-2">
+                    <p className="text-[10px] uppercase tracking-wider text-violet-400/70 mb-1">{language === 'fr' ? 'Thèse' : 'Thesis'}</p>
+                    <p className="text-xs text-white/70 leading-relaxed">
+                      {language === 'fr'
+                        ? '« Les agents IA autonomes rendront la majorité des postes de développeurs obsolètes d\'ici 5 ans. »'
+                        : '"Autonomous AI agents will make most developer jobs obsolete within 5 years."'}
+                    </p>
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Mini badges */}
+              <div className="relative flex flex-wrap items-center justify-center gap-3 mt-8">
+                {[
+                  { icon: CheckCircle2, label: language === 'fr' ? 'Fact-check croisé' : 'Cross fact-check', color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+                  { icon: GitMerge, label: language === 'fr' ? 'Points de convergence' : 'Convergence points', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+                  { icon: Scale, label: language === 'fr' ? 'Synthèse nuancée' : 'Nuanced synthesis', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+                ].map((badge) => (
+                  <motion.div
+                    key={badge.label}
+                    initial={{ opacity: 0, y: 8 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.4, duration: 0.4 }}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium ${badge.color}`}
+                  >
+                    <badge.icon className="w-3.5 h-3.5" />
+                    {badge.label}
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* CTA */}
+          <ScrollReveal delay={0.2} className="text-center mt-8">
+            <motion.button
+              onClick={() => navigate('/debate')}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-medium hover:opacity-90 transition-opacity shadow-lg shadow-indigo-500/25"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Swords className="w-4 h-4" />
+              {language === 'fr' ? 'Essayer le Débat IA' : 'Try AI Debate'}
+              <ArrowRight className="w-4 h-4" />
+            </motion.button>
+          </ScrollReveal>
         </div>
       </section>
 

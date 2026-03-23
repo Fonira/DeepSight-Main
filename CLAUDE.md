@@ -78,7 +78,7 @@ Chaque requête API porte le header : `?platform=web|mobile|extension`
 DeepSight-Main/
 ├── backend/                    # FastAPI Python backend
 │   ├── src/
-│   │   ├── main.py            # Entry point + 14 routers (1081 lines)
+│   │   ├── main.py            # Entry point + 15 routers (1081 lines)
 │   │   ├── core/              # Config, security, credits, logging
 │   │   ├── db/                # SQLAlchemy models (23 tables)
 │   │   ├── auth/              # JWT + Google OAuth + sessions
@@ -88,6 +88,7 @@ DeepSight-Main/
 │   │   ├── playlists/         # Playlist analysis v4.1 + corpus
 │   │   ├── transcripts/       # YouTube extraction 7-method multi-fallback
 │   │   ├── study/             # Flashcards, quiz, mind maps, spaced repetition
+│   │   ├── debate/            # AI Debate — confrontation de perspectives vidéo
 │   │   ├── academic/          # Papers search (arXiv, Crossref, Semantic Scholar, OpenAlex)
 │   │   ├── tournesol/         # Proxy API Tournesol (CORS contournement)
 │   │   ├── history/           # Paginated history + semantic search
@@ -206,7 +207,7 @@ DeepSight-Main/
 
 ---
 
-## API Endpoints (14 routers, 100+ endpoints)
+## API Endpoints (15 routers, 100+ endpoints)
 
 ### Auth (`/api/auth`)
 ```
@@ -315,6 +316,16 @@ GET    /recommendations/raw        # Proxy passthrough (CORS)
 GET    /batch                      # Batch scores (max 20)
 ```
 
+### Debate (`/api/debate`)
+```
+POST   /create                     # Créer un débat (2 vidéos)
+GET    /status/{debate_id}         # Poll status
+GET    /{debate_id}                # Get débat complet
+POST   /{debate_id}/chat           # Chat dans le débat
+GET    /history                    # Historique débats
+DELETE /{debate_id}                # Supprimer
+```
+
 ### Autres
 ```
 POST   /api/analytics/events       # Tracking
@@ -325,7 +336,7 @@ POST   /api/search/semantic         # Semantic search
 
 ---
 
-## Database Models (23 tables)
+## Database Models (25 tables)
 
 ### Core
 | Table | Rôle |
@@ -345,6 +356,8 @@ POST   /api/search/semantic         # Semantic search
 | **VideoComparison** | Comparaisons 2 vidéos |
 | **AcademicPaper** | Papiers académiques (arxiv_id, metadata) |
 | **SharedAnalysis** | Analyses partagées (share_token) |
+| **Debate** | Débats IA (video_a, video_b, status, results) |
+| **DebateChatMessage** | Messages chat dans un débat |
 
 ### Transcripts & Search
 | Table | Rôle |
@@ -435,7 +448,7 @@ POST   /api/search/semantic         # Semantic search
 ### Backend
 | Fichier | Rôle | Taille |
 |---------|------|--------|
-| `backend/src/main.py` | Entry point + 14 routers | 1081 lines |
+| `backend/src/main.py` | Entry point + 15 routers | 1081 lines |
 | `backend/src/core/config.py` | Settings, plans, quotas, API keys, models Mistral | — |
 | `backend/src/db/database.py` | SQLAlchemy models (23 tables) | — |
 | `backend/src/videos/router.py` | Analysis v6, streaming, discovery | 3959 lines |
@@ -694,6 +707,9 @@ export const GOOGLE_IOS_CLIENT_ID = 'ios-client-id';
 - Spaced repetition UI fine-tuning
 
 ### ✅ Résolu récemment (Mars 2026)
+- AI Debate feature : confrontation de perspectives entre 2 vidéos (backend + frontend)
+- Security hardening : IDOR patch chat v4, rate limits auth, Gitleaks CI/CD, credential redaction
+- GitHub CLI (`gh`) configuré sur machine dev Windows (PR creation, merge via CLI)
 - Migration Railway → Hetzner VPS complète
 - Clé Supadata renouvelée
 - Section Tournesol remplace Tendances DeepSight (privacy)
@@ -724,6 +740,7 @@ export const GOOGLE_IOS_CLIENT_ID = 'ios-client-id';
 | Tournesol | ✅ | ✅ | ❌ |
 | History | ✅ | ✅ | ✅ (local) |
 | Billing/Upgrade | ✅ Stripe | ✅ | Link to web |
+| AI Debate | ✅ Pro | ❌ CTA | ❌ CTA |
 | Guest mode | ❌ | ❌ | ✅ (1 analyse) |
 
 ---
@@ -738,4 +755,4 @@ export const GOOGLE_IOS_CLIENT_ID = 'ios-client-id';
 
 ---
 
-*Last updated: March 20, 2026 — Version 3.0*
+*Last updated: March 23, 2026 — Version 3.1*

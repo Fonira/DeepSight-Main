@@ -642,6 +642,76 @@ class TranscriptEmbedding(Base):
     )
 
 
+class DebateAnalysis(Base):
+    """Table des débats IA — confrontation de perspectives vidéo"""
+    __tablename__ = "debate_analyses"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Vidéo A (source)
+    video_a_id = Column(String(100), nullable=False)
+    video_a_title = Column(String(500))
+    video_a_channel = Column(String(255))
+    video_a_thumbnail = Column(Text)
+
+    # Vidéo B (opposée, peut être trouvée automatiquement)
+    video_b_id = Column(String(100))
+    video_b_title = Column(String(500))
+    video_b_channel = Column(String(255))
+    video_b_thumbnail = Column(Text)
+
+    # Analyse
+    detected_topic = Column(String(500))
+    thesis_a = Column(Text)
+    thesis_b = Column(Text)
+    arguments_a = Column(Text)  # JSON list
+    arguments_b = Column(Text)  # JSON list
+    convergence_points = Column(Text)  # JSON list
+    divergence_points = Column(Text)  # JSON list
+    fact_check_results = Column(Text)  # JSON dict
+    debate_summary = Column(Text)
+
+    # Métadonnées
+    status = Column(String(20), default="pending")  # pending/searching/analyzing_b/comparing/fact_checking/completed/failed
+    mode = Column(String(10), default="auto")  # auto / manual
+    platform = Column(String(20), default="web")
+    model_used = Column(String(50))
+    credits_used = Column(Integer, default=0)
+    lang = Column(String(5), default="fr")
+
+    # Timestamps
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    # Relations
+    chat_messages = relationship("DebateChatMessage", back_populates="debate", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index('idx_debate_analyses_user', 'user_id'),
+        Index('idx_debate_analyses_user_created', 'user_id', 'created_at'),
+    )
+
+
+class DebateChatMessage(Base):
+    """Messages de chat dans le contexte d'un débat"""
+    __tablename__ = "debate_chat_messages"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    debate_id = Column(Integer, ForeignKey("debate_analyses.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    role = Column(String(20), nullable=False)  # user / assistant
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=func.now())
+
+    # Relations
+    debate = relationship("DebateAnalysis", back_populates="chat_messages")
+
+    __table_args__ = (
+        Index('idx_debate_chat_messages_debate', 'debate_id'),
+    )
+
+
 class SharedAnalysis(Base):
     """Table des analyses partagées (liens publics)"""
     __tablename__ = "shared_analyses"
@@ -841,6 +911,52 @@ async def run_schema_migrations():
         )
         """,
         "CREATE INDEX IF NOT EXISTS idx_comparisons_user ON video_comparisons(user_id)",
+        # 🎭 DebateAnalysis table (Mar 2026)
+        """
+        CREATE TABLE IF NOT EXISTS debate_analyses (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            video_a_id VARCHAR(100) NOT NULL,
+            video_a_title VARCHAR(500),
+            video_a_channel VARCHAR(255),
+            video_a_thumbnail TEXT,
+            video_b_id VARCHAR(100),
+            video_b_title VARCHAR(500),
+            video_b_channel VARCHAR(255),
+            video_b_thumbnail TEXT,
+            detected_topic VARCHAR(500),
+            thesis_a TEXT,
+            thesis_b TEXT,
+            arguments_a TEXT,
+            arguments_b TEXT,
+            convergence_points TEXT,
+            divergence_points TEXT,
+            fact_check_results TEXT,
+            debate_summary TEXT,
+            status VARCHAR(20) DEFAULT 'pending',
+            mode VARCHAR(10) DEFAULT 'auto',
+            platform VARCHAR(20) DEFAULT 'web',
+            model_used VARCHAR(50),
+            credits_used INTEGER DEFAULT 0,
+            lang VARCHAR(5) DEFAULT 'fr',
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_debate_analyses_user ON debate_analyses(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_debate_analyses_user_created ON debate_analyses(user_id, created_at)",
+        # 🎭 DebateChatMessage table (Mar 2026)
+        """
+        CREATE TABLE IF NOT EXISTS debate_chat_messages (
+            id SERIAL PRIMARY KEY,
+            debate_id INTEGER NOT NULL REFERENCES debate_analyses(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            role VARCHAR(20) NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_debate_chat_messages_debate ON debate_chat_messages(debate_id)",
     ]
     async with engine.begin() as conn:
         for sql in migrations:

@@ -44,6 +44,12 @@ export interface PlanLimits {
   academicSearch: boolean;          // Recherche de sources académiques
   academicPapersPerAnalysis: number; // Nombre max de papiers (backend contrôle aussi)
   bibliographyExport: boolean;      // Export bibliographie (BibTeX, APA, etc.)
+
+  // Débat IA (confrontation de 2 vidéos)
+  debateEnabled: boolean;           // Feature activée
+  debateMonthly: number;            // Débats par mois (0 = désactivé, -1 = illimité)
+  debateCreditsPerDebate: number;   // Crédits consommés par débat
+  debateChatDaily: number;          // Chat débat par jour (-1 = illimité)
 }
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
@@ -70,6 +76,10 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicSearch: true,
     academicPapersPerAnalysis: 3,
     bibliographyExport: false,
+    debateEnabled: true,
+    debateMonthly: 1,
+    debateCreditsPerDebate: 10,
+    debateChatDaily: 3,
   },
 
   etudiant: {
@@ -95,6 +105,10 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicSearch: true,
     academicPapersPerAnalysis: 10,
     bibliographyExport: true,
+    debateEnabled: true,
+    debateMonthly: 5,
+    debateCreditsPerDebate: 8,
+    debateChatDaily: 10,
   },
 
   starter: {
@@ -120,6 +134,10 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicSearch: true,
     academicPapersPerAnalysis: 20,
     bibliographyExport: true,
+    debateEnabled: true,
+    debateMonthly: 15,
+    debateCreditsPerDebate: 6,
+    debateChatDaily: 20,
   },
 
   pro: {
@@ -145,6 +163,10 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicSearch: true,
     academicPapersPerAnalysis: 50,
     bibliographyExport: true,
+    debateEnabled: true,
+    debateMonthly: 50,
+    debateCreditsPerDebate: 4,
+    debateChatDaily: -1,
   },
 };
 
@@ -164,13 +186,14 @@ export interface PlanFeatures {
   prioritySupport: boolean;
   academicSearch: boolean;
   bibliographyExport: boolean;
+  debate: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
-  free: { flashcards: false, mindmap: false, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: false, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: false },
-  etudiant: { flashcards: true, mindmap: true, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true },
-  starter: { flashcards: true, mindmap: true, webSearch: true, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true },
-  pro: { flashcards: true, mindmap: true, webSearch: true, playlists: true, exportPdf: true, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: true, academicSearch: true, bibliographyExport: true },
+  free: { flashcards: false, mindmap: false, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: false, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: false, debate: true },
+  etudiant: { flashcards: true, mindmap: true, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true, debate: true },
+  starter: { flashcards: true, mindmap: true, webSearch: true, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true, debate: true },
+  pro: { flashcards: true, mindmap: true, webSearch: true, playlists: true, exportPdf: true, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: true, academicSearch: true, bibliographyExport: true, debate: true },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
