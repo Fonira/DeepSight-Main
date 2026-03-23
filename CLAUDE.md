@@ -534,8 +534,6 @@ eas submit --platform android
 | Service | Détail |
 |---------|--------|
 | **VPS Hetzner** | clawdbot — (voir .env.production pour IP) |
-| **MSI-PC (local)** | Claude Runner — (réseau Tailscale interne) |
-| **OpenClaw Gateway** | VPS port 18789, token: (voir .env.production) |
 | **API publique** | https://api.deepsightsynthesis.com (Caddy reverse proxy + auto-SSL) |
 | **Frontend** | Vercel — auto-deploy on `main` push |
 | **Mobile** | EAS Build — App Store (ascAppId: 6740487498) + Play Store |

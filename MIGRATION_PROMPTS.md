@@ -13,7 +13,6 @@ Tu es le DevOps de DeepSight. Ta mission : préparer le VPS Hetzner "clawdbot" (
 
 CONTEXTE :
 - VPS Hetzner CX43 : 8 vCPU, 16GB RAM, 40GB disk, Ubuntu, Helsinki
-- Actuellement utilisé pour OpenClaw (bot Telegram + Claude Runner) → TOUT SUPPRIMER
 - On va y déployer : FastAPI backend + PostgreSQL 16 + Redis 7 + Caddy (reverse proxy SSL)
 - Le frontend RESTE sur Vercel (ne pas toucher)
 
@@ -29,15 +28,7 @@ CONTEXTE :
    - crontab -l
    Montre-moi le résultat COMPLET avant de supprimer
 
-3. NETTOYAGE OPENCLAW (après validation) :
-   - Arrêter tous les containers Docker liés à OpenClaw
-   - docker system prune -a --volumes (nettoyer TOUT Docker)
-   - Supprimer les dossiers OpenClaw (/opt/openclaw ou similaire)
-   - Supprimer les services systemd OpenClaw
-   - Supprimer les crontabs liées à OpenClaw
-   - NE PAS toucher à Tailscale ni SSH
-
-4. MISE À JOUR SYSTÈME :
+3. MISE À JOUR SYSTÈME :
    - apt update && apt upgrade -y
    - Installer si manquant : curl, git, htop, ufw, fail2ban
 
@@ -71,7 +62,6 @@ CONTEXTE :
    - Confirmer que tout est prêt
 
 RÈGLES :
-- Montre-moi l'inventaire OpenClaw AVANT de supprimer
 - NE TOUCHE PAS à Tailscale
 - Utilise ; au lieu de && pour chaîner les commandes (PowerShell sur le PC, mais SSH c'est bash donc && OK dans le SSH)
 - Affiche chaque résultat de commande
