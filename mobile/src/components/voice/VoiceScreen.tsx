@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
+  type SharedValue,
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
@@ -128,7 +129,7 @@ const ThinkingDots: React.FC<{ color: string }> = ({ color }) => {
   const dot3 = useSharedValue(0);
 
   useEffect(() => {
-    const bounce = (sv: Animated.SharedValue<number>, delay: number) => {
+    const bounce = (sv: SharedValue<number>, delay: number) => {
       sv.value = withDelay(
         delay,
         withRepeat(

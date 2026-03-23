@@ -231,23 +231,9 @@ export function useVoiceChat({
       return;
     }
 
-    // 3. Charger le SDK ElevenLabs React Native et démarrer la session
+    // 3. Charger le SDK ElevenLabs et démarrer la session
     try {
-      // TODO: Quand @elevenlabs/react-native sera installé, remplacer par :
-      // import { Conversation } from '@elevenlabs/react-native';
-      let Conversation: unknown;
-      try {
-        const elevenLabsModule = await import('@elevenlabs/react-native');
-        Conversation = (elevenLabsModule as { Conversation: unknown }).Conversation;
-      } catch {
-        // Fallback : tenter le client web (certaines API sont compatibles RN)
-        try {
-          const clientModule = await import('@elevenlabs/client');
-          Conversation = (clientModule as { Conversation: unknown }).Conversation;
-        } catch {
-          throw new Error('ElevenLabs SDK not available');
-        }
-      }
+      const { Conversation } = await import('@elevenlabs/client');
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const conversation = await (Conversation as any).startSession({

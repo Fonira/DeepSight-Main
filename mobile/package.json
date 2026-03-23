@@ -24,6 +24,7 @@
     "test:coverage": "jest --coverage"
   },
   "dependencies": {
+    "@elevenlabs/client": "^0.15.2",
     "@elevenlabs/react-native": "^0.5.12",
     "@expo/vector-icons": "^15.0.3",
     "@gorhom/bottom-sheet": "^5.2.8",
@@ -40,6 +41,7 @@
     "expo": "^54.0.32",
     "expo-audio": "^1.1.1",
     "expo-auth-session": "~7.0.10",
+    "expo-av": "~16.0.8",
     "expo-blur": "~15.0.8",
     "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.13",
