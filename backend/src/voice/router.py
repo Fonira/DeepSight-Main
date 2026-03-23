@@ -130,7 +130,7 @@ async def create_voice_session(
         user_id=current_user.id,
         summary_id=request.summary_id,
         status="pending",
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.utcnow(),
     )
     db.add(voice_session)
     await db.commit()
@@ -369,7 +369,7 @@ async def voice_webhook(
     voice_session.elevenlabs_conversation_id = payload.conversation_id
     voice_session.duration_seconds = payload.duration_seconds
     voice_session.status = payload.status or "completed"
-    voice_session.ended_at = datetime.now(timezone.utc)
+    voice_session.ended_at = datetime.utcnow()
     if payload.transcript:
         voice_session.conversation_transcript = payload.transcript
 
