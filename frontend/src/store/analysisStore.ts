@@ -65,12 +65,26 @@ export interface AnalysisPreferences {
   webEnrich: boolean;
 }
 
-export type AnalysisStatus = 
-  | 'idle' 
-  | 'loading' 
-  | 'streaming' 
-  | 'complete' 
+export type AnalysisStatus =
+  | 'idle'
+  | 'loading'
+  | 'streaming'
+  | 'complete'
   | 'error';
+
+export type VoiceStatus = 'idle' | 'connecting' | 'active' | 'error';
+
+export interface VoiceQuota {
+  secondsUsed: number;
+  secondsLimit: number;
+  minutesRemaining: number;
+  warningLevel: number | null;
+}
+
+export interface VoiceMessage {
+  text: string;
+  source: 'user' | 'ai';
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 ANALYSIS STORE
@@ -102,6 +116,14 @@ interface AnalysisState {
   chatOpen: boolean;
   playerVisible: boolean;
   playerStartTime: number;
+
+  // Voice
+  voiceStatus: VoiceStatus;
+  voiceSessionId: string | null;
+  voiceQuota: VoiceQuota | null;
+  voiceMessages: VoiceMessage[];
+  voiceElapsedSeconds: number;
+  isMuted: boolean;
 }
 
 interface AnalysisActions {
@@ -135,6 +157,16 @@ interface AnalysisActions {
   // Preferences actions
   setPreferences: (prefs: Partial<AnalysisPreferences>) => void;
   resetPreferences: () => void;
+
+  // Voice actions
+  setVoiceStatus: (status: VoiceStatus) => void;
+  setVoiceSessionId: (id: string | null) => void;
+  setVoiceQuota: (quota: VoiceQuota | null) => void;
+  addVoiceMessage: (message: VoiceMessage) => void;
+  clearVoiceMessages: () => void;
+  setVoiceElapsedSeconds: (seconds: number) => void;
+  setIsMuted: (muted: boolean) => void;
+  resetVoiceState: () => void;
 }
 
 type AnalysisStore = AnalysisState & AnalysisActions;
@@ -168,6 +200,12 @@ const INITIAL_STATE: AnalysisState = {
   chatOpen: false,
   playerVisible: false,
   playerStartTime: 0,
+  voiceStatus: 'idle',
+  voiceSessionId: null,
+  voiceQuota: null,
+  voiceMessages: [],
+  voiceElapsedSeconds: 0,
+  isMuted: false,
 };
 
 export const useAnalysisStore = create<AnalysisStore>()(
@@ -380,6 +418,63 @@ export const useAnalysisStore = create<AnalysisStore>()(
             state.preferences = DEFAULT_PREFERENCES;
           });
         },
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // 🎙️ VOICE ACTIONS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        setVoiceStatus: (status: VoiceStatus) => {
+          set((state) => {
+            state.voiceStatus = status;
+          });
+        },
+
+        setVoiceSessionId: (id: string | null) => {
+          set((state) => {
+            state.voiceSessionId = id;
+          });
+        },
+
+        setVoiceQuota: (quota: VoiceQuota | null) => {
+          set((state) => {
+            state.voiceQuota = quota;
+          });
+        },
+
+        addVoiceMessage: (message: VoiceMessage) => {
+          set((state) => {
+            state.voiceMessages.push(message);
+          });
+        },
+
+        clearVoiceMessages: () => {
+          set((state) => {
+            state.voiceMessages = [];
+          });
+        },
+
+        setVoiceElapsedSeconds: (seconds: number) => {
+          set((state) => {
+            state.voiceElapsedSeconds = seconds;
+          });
+        },
+
+        setIsMuted: (muted: boolean) => {
+          set((state) => {
+            state.isMuted = muted;
+          });
+        },
+
+        resetVoiceState: () => {
+          set((state) => {
+            state.voiceStatus = 'idle';
+            state.voiceSessionId = null;
+            state.voiceQuota = null;
+            state.voiceMessages = [];
+            state.voiceElapsedSeconds = 0;
+            state.isMuted = false;
+          });
+        },
       })),
       {
         name: 'deepsight-analysis-store',
@@ -424,8 +519,18 @@ export const useCanStartNewAnalysis = () => useAnalysisStore((state) =>
   state.status === 'idle' || state.status === 'complete' || state.status === 'error'
 );
 
-export const useFavoriteCount = () => useAnalysisStore((state) => 
+export const useFavoriteCount = () => useAnalysisStore((state) =>
   state.favoriteSummaries.length
+);
+
+// Voice selectors
+export const useVoiceStatus = () => useAnalysisStore((state) => state.voiceStatus);
+export const useVoiceMessages = () => useAnalysisStore((state) => state.voiceMessages);
+export const useVoiceQuota = () => useAnalysisStore((state) => state.voiceQuota);
+export const useVoiceElapsedSeconds = () => useAnalysisStore((state) => state.voiceElapsedSeconds);
+export const useIsMuted = () => useAnalysisStore((state) => state.isMuted);
+export const useIsVoiceActive = () => useAnalysisStore((state) =>
+  state.voiceStatus === 'active' || state.voiceStatus === 'connecting'
 );
 
 // ═══════════════════════════════════════════════════════════════════════════════
