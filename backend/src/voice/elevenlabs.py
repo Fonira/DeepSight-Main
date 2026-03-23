@@ -1,0 +1,322 @@
+"""
+ElevenLabs Conversational AI Client — DeepSight Voice Chat
+Phase 2 kickstart — API client for agent creation and signed URL generation.
+
+Uses the ElevenLabs Conversational AI API:
+https://elevenlabs.io/docs/api-reference/conversational-ai
+"""
+
+from __future__ import annotations
+
+from typing import Optional
+
+import httpx
+
+from core.logging import logger
+
+
+class ElevenLabsClient:
+    """Async client for the ElevenLabs Conversational AI API."""
+
+    BASE_URL = "https://api.elevenlabs.io/v1"
+
+    def __init__(self, api_key: str) -> None:
+        self._api_key = api_key
+        self._client = httpx.AsyncClient(
+            base_url=self.BASE_URL,
+            headers={"xi-api-key": api_key},
+            timeout=30.0,
+        )
+
+    async def __aenter__(self) -> "ElevenLabsClient":
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        await self.close()
+
+    async def close(self) -> None:
+        """Close the underlying HTTP client."""
+        await self._client.aclose()
+
+    # ------------------------------------------------------------------
+    # Agent lifecycle
+    # ------------------------------------------------------------------
+
+    async def create_conversation_agent(
+        self,
+        system_prompt: str,
+        tools: list[dict],
+        voice_id: str,
+        first_message: Optional[str] = None,
+        language: str = "fr",
+    ) -> str:
+        """Create a conversational AI agent and return its agent_id.
+
+        Raises:
+            ValueError: on 401 (invalid API key).
+            httpx.HTTPStatusError: on 429 (rate limit) or 5xx.
+        """
+        body: dict = {
+            "conversation_config": {
+                "agent": {
+                    "prompt": {"prompt": system_prompt},
+                    "first_message": first_message,
+                    "language": language,
+                },
+                "tts": {
+                    "voice_id": voice_id,
+                    "model_id": "eleven_flash_v2_5",
+                },
+            },
+            "tools": tools,
+        }
+
+        logger.info(
+            "elevenlabs.create_agent",
+            extra={"voice_id": voice_id, "language": language},
+        )
+
+        response = await self._client.post("/convai/agents/create", json=body)
+
+        if response.status_code == 401:
+            raise ValueError("ElevenLabs API key is invalid or expired")
+        if response.status_code == 429:
+            raise httpx.HTTPStatusError(
+                "ElevenLabs rate limit exceeded — retry later",
+                request=response.request,
+                response=response,
+            )
+        response.raise_for_status()
+
+        data = response.json()
+        agent_id: str = data["agent_id"]
+        logger.info("elevenlabs.agent_created", extra={"agent_id": agent_id})
+        return agent_id
+
+    async def get_signed_url(self, agent_id: str) -> tuple[str, str]:
+        """Get a signed WebSocket URL for a conversation session.
+
+        Returns:
+            (signed_url, expires_at_iso)
+        """
+        logger.info("elevenlabs.get_signed_url", extra={"agent_id": agent_id})
+
+        response = await self._client.get(
+            "/convai/conversation/get-signed-url",
+            params={"agent_id": agent_id},
+        )
+        response.raise_for_status()
+
+        data = response.json()
+        return data["signed_url"], data.get("expires_at", "")
+
+    async def delete_agent(self, agent_id: str) -> bool:
+        """Delete a conversational AI agent. Returns True on success, False otherwise."""
+        logger.info("elevenlabs.delete_agent", extra={"agent_id": agent_id})
+        try:
+            response = await self._client.delete(f"/convai/agents/{agent_id}")
+            if response.is_success:
+                logger.info("elevenlabs.agent_deleted", extra={"agent_id": agent_id})
+                return True
+            logger.warning(
+                "elevenlabs.delete_agent_failed",
+                extra={"agent_id": agent_id, "status": response.status_code},
+            )
+            return False
+        except httpx.HTTPError as exc:
+            logger.warning(
+                "elevenlabs.delete_agent_error",
+                extra={"agent_id": agent_id, "error": str(exc)},
+            )
+            return False
+
+    # ------------------------------------------------------------------
+    # Prompt & tool builders (static)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def build_system_prompt(
+        video_title: str,
+        channel_name: str,
+        duration: str,
+        summary_content: str,
+        language: str = "fr",
+    ) -> str:
+        """Build the system prompt injected into the ElevenLabs agent."""
+
+        if language == "fr":
+            return (
+                "Tu es l'assistant vocal DeepSight. Tu aides l'utilisateur "
+                "à comprendre une vidéo YouTube.\n\n"
+                "## Vidéo\n"
+                f"Titre : {video_title}\n"
+                f"Chaîne : {channel_name}\n"
+                f"Durée : {duration}\n\n"
+                "## Résumé\n"
+                f"{summary_content}\n\n"
+                "## Règles\n"
+                "- Réponses courtes (2-4 phrases) sauf si on te demande de détailler\n"
+                "- N'invente JAMAIS de contenu — utilise les tools pour vérifier\n"
+                "- Si hors sujet → ramène vers la vidéo\n"
+                "- Utilise search_in_transcript pour les citations exactes\n"
+                "- Utilise get_sources pour les questions de fiabilité\n"
+                "- Si \"interroge-moi\" → utilise get_flashcards\n"
+                "- Ton naturel, expert mais accessible"
+            )
+
+        # English fallback
+        return (
+            "You are the DeepSight voice assistant. You help the user "
+            "understand a YouTube video.\n\n"
+            "## Video\n"
+            f"Title: {video_title}\n"
+            f"Channel: {channel_name}\n"
+            f"Duration: {duration}\n\n"
+            "## Summary\n"
+            f"{summary_content}\n\n"
+            "## Rules\n"
+            "- Keep answers short (2-4 sentences) unless asked to elaborate\n"
+            "- NEVER make up content — use tools to verify\n"
+            "- If off-topic → steer back to the video\n"
+            "- Use search_in_transcript for exact quotes\n"
+            "- Use get_sources for reliability questions\n"
+            '- If "quiz me" → use get_flashcards\n'
+            "- Natural tone, expert but approachable"
+        )
+
+    @staticmethod
+    def build_tools_config(webhook_base_url: str, api_token: str) -> list[dict]:
+        """Return the ElevenLabs server-tool definitions (webhook format).
+
+        Each tool calls back into the DeepSight API with the user's JWT.
+        """
+        auth_header = {"Authorization": f"Bearer {api_token}"}
+
+        return [
+            {
+                "type": "webhook",
+                "name": "search_in_transcript",
+                "description": (
+                    "Search the video transcript for an exact passage or keyword. "
+                    "Returns matching excerpts with timestamps."
+                ),
+                "api_schema": {
+                    "url": f"{webhook_base_url}/api/voice/tools/search-transcript",
+                    "method": "POST",
+                    "headers": auth_header,
+                },
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The search query (keyword or phrase)",
+                        },
+                        "summary_id": {
+                            "type": "string",
+                            "description": "The analysis / summary ID",
+                        },
+                    },
+                    "required": ["query", "summary_id"],
+                },
+            },
+            {
+                "type": "webhook",
+                "name": "get_analysis_section",
+                "description": (
+                    "Retrieve a specific section of the video analysis "
+                    "(e.g. key_points, arguments, conclusion)."
+                ),
+                "api_schema": {
+                    "url": f"{webhook_base_url}/api/voice/tools/analysis-section",
+                    "method": "POST",
+                    "headers": auth_header,
+                },
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "section": {
+                            "type": "string",
+                            "description": "Section name (key_points, arguments, conclusion, context, etc.)",
+                        },
+                        "summary_id": {
+                            "type": "string",
+                            "description": "The analysis / summary ID",
+                        },
+                    },
+                    "required": ["section", "summary_id"],
+                },
+            },
+            {
+                "type": "webhook",
+                "name": "get_sources",
+                "description": (
+                    "Get fact-check sources and reliability information "
+                    "for the claims made in the video."
+                ),
+                "api_schema": {
+                    "url": f"{webhook_base_url}/api/voice/tools/sources",
+                    "method": "POST",
+                    "headers": auth_header,
+                },
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "claim": {
+                            "type": "string",
+                            "description": "The specific claim to verify (optional, returns all if omitted)",
+                        },
+                        "summary_id": {
+                            "type": "string",
+                            "description": "The analysis / summary ID",
+                        },
+                    },
+                    "required": ["summary_id"],
+                },
+            },
+            {
+                "type": "webhook",
+                "name": "get_flashcards",
+                "description": (
+                    "Get study flashcards generated from the video analysis. "
+                    "Use when the user wants to be quizzed or review key concepts."
+                ),
+                "api_schema": {
+                    "url": f"{webhook_base_url}/api/voice/tools/flashcards",
+                    "method": "POST",
+                    "headers": auth_header,
+                },
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "summary_id": {
+                            "type": "string",
+                            "description": "The analysis / summary ID",
+                        },
+                        "count": {
+                            "type": "integer",
+                            "description": "Number of flashcards to return (default 5)",
+                        },
+                    },
+                    "required": ["summary_id"],
+                },
+            },
+        ]
+
+
+# =========================================================================
+# Module-level factory
+# =========================================================================
+
+
+def get_elevenlabs_client() -> ElevenLabsClient:
+    """Instantiate an ElevenLabsClient using the project-wide settings."""
+    from core.config import get_elevenlabs_key
+
+    api_key = get_elevenlabs_key()
+    if not api_key:
+        raise ValueError(
+            "ELEVENLABS_API_KEY is not configured — "
+            "set it in .env or environment variables"
+        )
+    return ElevenLabsClient(api_key=api_key)

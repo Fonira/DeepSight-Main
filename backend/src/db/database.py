@@ -151,10 +151,13 @@ class User(Base):
     api_key_created_at = Column(DateTime)
     api_key_last_used = Column(DateTime)
     
+    # Voice
+    voice_bonus_seconds = Column(Integer, default=0)
+
     # Timestamps
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
-    
+
     # Relations
     summaries = relationship("Summary", back_populates="user", cascade="all, delete-orphan")
     chat_messages = relationship("ChatMessage", back_populates="user", cascade="all, delete-orphan")
@@ -730,6 +733,54 @@ class SharedAnalysis(Base):
     __table_args__ = (
         Index('idx_shared_analyses_token', 'share_token'),
         Index('idx_shared_analyses_user_video', 'user_id', 'video_id'),
+    )
+
+
+class VoiceSession(Base):
+    """🎙️ Sessions de conversation vocale avec l'IA (ElevenLabs)"""
+    __tablename__ = "voice_sessions"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(__import__('uuid').uuid4()))
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    summary_id = Column(Integer, ForeignKey("summaries.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # ElevenLabs
+    elevenlabs_agent_id = Column(String(100), nullable=True)
+    elevenlabs_conversation_id = Column(String(100), nullable=True, index=True)
+
+    # Timing
+    started_at = Column(DateTime, default=func.now(), nullable=False)
+    ended_at = Column(DateTime, nullable=True)
+    duration_seconds = Column(Integer, default=0)
+
+    # Status: pending, active, completed, failed, timeout
+    status = Column(String(20), default="pending", nullable=False, index=True)
+
+    # Contenu
+    conversation_transcript = Column(Text, nullable=True)
+    language = Column(String(5), default="fr")
+    platform = Column(String(20), default="web")
+
+    # Relations
+    user = relationship("User")
+    summary = relationship("Summary")
+
+
+class VoiceQuota(Base):
+    """🎙️ Quotas mensuels de conversation vocale"""
+    __tablename__ = "voice_quotas"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    year = Column(Integer, nullable=False)
+    month = Column(Integer, nullable=False)
+    seconds_used = Column(Integer, default=0)
+    seconds_limit = Column(Integer, nullable=False)
+    sessions_count = Column(Integer, default=0)
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "year", "month", name="uq_voice_quota_user_month"),
+        Index("ix_voice_quota_user_period", "user_id", "year", "month"),
     )
 
 

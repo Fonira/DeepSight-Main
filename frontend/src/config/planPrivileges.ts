@@ -45,6 +45,10 @@ export interface PlanLimits {
   academicPapersPerAnalysis: number; // Nombre max de papiers (backend contrôle aussi)
   bibliographyExport: boolean;      // Export bibliographie (BibTeX, APA, etc.)
 
+  // Voice Chat
+  voiceChatEnabled: boolean;        // Activer le chat vocal
+  voiceChatMonthlyMinutes: number;  // Minutes mensuelles, 0 = désactivé
+
   // Débat IA (confrontation de 2 vidéos)
   debateEnabled: boolean;           // Feature activée
   debateMonthly: number;            // Débats par mois (0 = désactivé, -1 = illimité)
@@ -76,6 +80,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicSearch: true,
     academicPapersPerAnalysis: 3,
     bibliographyExport: false,
+    voiceChatEnabled: false,
+    voiceChatMonthlyMinutes: 0,
     debateEnabled: true,
     debateMonthly: 1,
     debateCreditsPerDebate: 10,
@@ -105,6 +111,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicSearch: true,
     academicPapersPerAnalysis: 10,
     bibliographyExport: true,
+    voiceChatEnabled: true,
+    voiceChatMonthlyMinutes: 5,
     debateEnabled: true,
     debateMonthly: 5,
     debateCreditsPerDebate: 8,
@@ -134,6 +142,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicSearch: true,
     academicPapersPerAnalysis: 20,
     bibliographyExport: true,
+    voiceChatEnabled: true,
+    voiceChatMonthlyMinutes: 15,
     debateEnabled: true,
     debateMonthly: 15,
     debateCreditsPerDebate: 6,
@@ -163,6 +173,8 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     academicSearch: true,
     academicPapersPerAnalysis: 50,
     bibliographyExport: true,
+    voiceChatEnabled: true,
+    voiceChatMonthlyMinutes: 45,
     debateEnabled: true,
     debateMonthly: 50,
     debateCreditsPerDebate: 4,
@@ -186,14 +198,15 @@ export interface PlanFeatures {
   prioritySupport: boolean;
   academicSearch: boolean;
   bibliographyExport: boolean;
+  voiceChat: boolean;
   debate: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
-  free: { flashcards: false, mindmap: false, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: false, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: false, debate: true },
-  etudiant: { flashcards: true, mindmap: true, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true, debate: true },
-  starter: { flashcards: true, mindmap: true, webSearch: true, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true, debate: true },
-  pro: { flashcards: true, mindmap: true, webSearch: true, playlists: true, exportPdf: true, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: true, academicSearch: true, bibliographyExport: true, debate: true },
+  free: { flashcards: false, mindmap: false, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: false, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: false, voiceChat: false, debate: true },
+  etudiant: { flashcards: true, mindmap: true, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true, voiceChat: true, debate: true },
+  starter: { flashcards: true, mindmap: true, webSearch: true, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true, voiceChat: true, debate: true },
+  pro: { flashcards: true, mindmap: true, webSearch: true, playlists: true, exportPdf: true, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: true, academicSearch: true, bibliographyExport: true, voiceChat: true, debate: true },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════

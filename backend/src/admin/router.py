@@ -12,8 +12,8 @@ from typing import Optional, List
 from datetime import datetime, date, timedelta
 
 from db.database import (
-    get_session, User, Summary, CreditTransaction, 
-    PlaylistAnalysis, AdminLog
+    get_session, User, Summary, CreditTransaction,
+    PlaylistAnalysis, AdminLog, VoiceSession, VoiceQuota
 )
 from auth.dependencies import get_current_admin
 from core.config import PLAN_LIMITS
@@ -499,3 +499,99 @@ async def reset_monthly_credits(
     await session.commit()
     
     return {"success": True, "users_updated": count}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎙️ VOICE CHAT STATS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/voice-stats")
+async def get_voice_stats(
+    admin: User = Depends(get_current_admin),
+    session: AsyncSession = Depends(get_session),
+):
+    """Statistiques d'utilisation du voice chat."""
+    now = datetime.now()
+    current_year = now.year
+    current_month_num = now.month
+    current_month = now.strftime("%Y-%m")
+
+    # Total minutes ce mois (depuis VoiceSession)
+    total_seconds_result = await session.execute(
+        select(func.coalesce(func.sum(VoiceSession.duration_seconds), 0)).where(
+            func.extract("year", VoiceSession.started_at) == current_year,
+            func.extract("month", VoiceSession.started_at) == current_month_num,
+        )
+    )
+    total_seconds = total_seconds_result.scalar() or 0
+    total_minutes = round(total_seconds / 60, 2)
+
+    # Nombre d'utilisateurs actifs voice ce mois
+    active_users_result = await session.execute(
+        select(func.count(func.distinct(VoiceSession.user_id))).where(
+            func.extract("year", VoiceSession.started_at) == current_year,
+            func.extract("month", VoiceSession.started_at) == current_month_num,
+        )
+    )
+    active_users = active_users_result.scalar() or 0
+
+    # Nombre de sessions ce mois
+    total_sessions_result = await session.execute(
+        select(func.count(VoiceSession.id)).where(
+            func.extract("year", VoiceSession.started_at) == current_year,
+            func.extract("month", VoiceSession.started_at) == current_month_num,
+        )
+    )
+    total_sessions = total_sessions_result.scalar() or 0
+
+    # Moyenne minutes/user
+    avg_minutes = round(total_minutes / active_users, 2) if active_users > 0 else 0.0
+
+    # Nombre de quotas atteints (seconds_used >= seconds_limit)
+    quota_reached_result = await session.execute(
+        select(func.count(VoiceQuota.id)).where(
+            VoiceQuota.year == current_year,
+            VoiceQuota.month == current_month_num,
+            VoiceQuota.seconds_used >= VoiceQuota.seconds_limit,
+        )
+    )
+    quota_reached = quota_reached_result.scalar() or 0
+
+    # Stats par plan
+    plan_stats_result = await session.execute(
+        select(
+            User.plan,
+            func.count(func.distinct(VoiceSession.user_id)).label("users"),
+            func.coalesce(func.sum(VoiceSession.duration_seconds), 0).label("seconds"),
+        )
+        .join(User, VoiceSession.user_id == User.id)
+        .where(
+            func.extract("year", VoiceSession.started_at) == current_year,
+            func.extract("month", VoiceSession.started_at) == current_month_num,
+        )
+        .group_by(User.plan)
+    )
+    plan_rows = plan_stats_result.all()
+
+    by_plan = {}
+    for row in plan_rows:
+        plan_name = row.plan or "free"
+        plan_users = row.users
+        plan_seconds = row.seconds
+        plan_minutes = round(plan_seconds / 60, 2)
+        by_plan[plan_name] = {
+            "users": plan_users,
+            "minutes": plan_minutes,
+            "avg_minutes_per_user": round(plan_minutes / plan_users, 2) if plan_users > 0 else 0.0,
+        }
+
+    return {
+        "month": current_month,
+        "total_voice_minutes": total_minutes,
+        "total_voice_cost_estimated": round(total_minutes * 0.12, 2),
+        "active_voice_users": active_users,
+        "total_sessions": total_sessions,
+        "avg_minutes_per_user": avg_minutes,
+        "quota_reached_count": quota_reached,
+        "by_plan": by_plan,
+    }

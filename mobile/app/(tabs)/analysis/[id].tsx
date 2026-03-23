@@ -34,6 +34,9 @@ import { ActionBar } from '@/components/analysis/ActionBar';
 import { QuickChatScreen } from '@/components/analysis/QuickChatScreen';
 import { DoodleBackground } from '@/components/ui/DoodleBackground';
 import { DeepSightSpinner } from '@/components/ui/DeepSightSpinner';
+import { VoiceButton } from '@/components/voice/VoiceButton';
+import { VoiceScreen } from '@/components/voice/VoiceScreen';
+import { useVoiceChat } from '@/components/voice/useVoiceChat';
 
 const TAB_LABELS = ['Résumé', 'Chat'] as const;
 const TAB_BAR_HEIGHT = 60;
@@ -62,6 +65,7 @@ export default function AnalysisDetailScreen() {
   );
   const [activeTab, setActiveTab] = useState(initialTabIndex);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isVoiceVisible, setIsVoiceVisible] = useState(false);
   const scrollY = useSharedValue(0);
   const tabIndicatorX = useSharedValue(initialTabIndex);
 
@@ -117,6 +121,7 @@ export default function AnalysisDetailScreen() {
   });
 
   const [isFavorite, setIsFavorite] = useState(summary?.isFavorite ?? false);
+  const voiceChat = useVoiceChat({ summaryId: id as string });
 
   React.useEffect(() => {
     if (summary) setIsFavorite(summary.isFavorite);
@@ -445,6 +450,36 @@ export default function AnalysisDetailScreen() {
             onFavoriteChange={setIsFavorite}
           />
         </View>
+      )}
+
+      {/* Voice Chat */}
+      {summary && (
+        <>
+          <VoiceButton
+            summaryId={id as string}
+            videoTitle={summary.title || 'Vidéo'}
+            onSessionStart={() => setIsVoiceVisible(true)}
+          />
+          <VoiceScreen
+            visible={isVoiceVisible}
+            onClose={() => {
+              setIsVoiceVisible(false);
+              voiceChat.stop();
+            }}
+            videoTitle={summary.title || 'Vidéo'}
+            channelName={summary.channel}
+            voiceStatus={voiceChat.status}
+            isSpeaking={voiceChat.isSpeaking}
+            messages={voiceChat.messages}
+            elapsedSeconds={voiceChat.elapsedSeconds}
+            remainingMinutes={voiceChat.remainingMinutes}
+            onStart={voiceChat.start}
+            onStop={voiceChat.stop}
+            onMuteToggle={voiceChat.toggleMute}
+            isMuted={voiceChat.isMuted}
+            error={voiceChat.error ?? undefined}
+          />
+        </>
       )}
 
       {/* ── MODE FULLSCREEN ──────────────────────────────── */}

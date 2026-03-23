@@ -1687,6 +1687,63 @@ export const shareApi = {
   },
 };
 
+// ============================================
+// Voice Chat API
+// ============================================
+export const voiceApi = {
+  async getQuota(): Promise<{
+    plan: string;
+    voice_enabled: boolean;
+    seconds_used: number;
+    seconds_limit: number;
+    minutes_remaining: number;
+    max_session_minutes: number;
+    sessions_this_month: number;
+    reset_date: string;
+  }> {
+    return request('/api/voice/quota');
+  },
+
+  async createSession(summaryId: number, language: string = 'fr'): Promise<{
+    session_id: string;
+    signed_url: string;
+    expires_at: string;
+    quota_remaining_minutes: number;
+    max_session_minutes: number;
+  }> {
+    return request('/api/voice/session', {
+      method: 'POST',
+      body: { summary_id: summaryId, language },
+    });
+  },
+
+  async getHistory(summaryId: number): Promise<{
+    summary_id: number;
+    video_title: string;
+    sessions: Array<{
+      session_id: string;
+      started_at: string;
+      ended_at: string | null;
+      duration_seconds: number;
+      status: string;
+      has_transcript: boolean;
+    }>;
+    total_minutes: number;
+  }> {
+    return request(`/api/voice/history/${summaryId}`);
+  },
+
+  async getTranscript(summaryId: number, sessionId: string): Promise<{
+    session_id: string;
+    summary_id: number;
+    started_at: string;
+    duration_seconds: number;
+    transcript: string;
+  }> {
+    return request(`/api/voice/history/${summaryId}/${sessionId}/transcript`);
+  },
+};
+
 export default {
   authApi,
   userApi,
@@ -1700,5 +1757,6 @@ export default {
   contactApi,
   notificationsApi,
   shareApi,
+  voiceApi,
   ApiError,
 };

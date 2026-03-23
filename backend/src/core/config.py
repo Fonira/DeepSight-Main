@@ -108,6 +108,10 @@ class _DeepSightSettings(BaseSettings):
     # -- TTS --
     TTS_PROVIDER: str = "openai"
     ELEVENLABS_API_KEY: str = ""
+    ELEVENLABS_AGENT_TEMPLATE_ID: str = ""
+    ELEVENLABS_WEBHOOK_SECRET: str = ""
+    ELEVENLABS_VOICE_ID: str = ""
+    ELEVENLABS_MODEL_ID: str = "eleven_flash_v2_5"
 
     # -- Legal --
     LEGAL_OWNER_NAME: str = "LEPARC Maxime Bertrand"
@@ -358,7 +362,9 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "academic_papers_per_analysis": 3,
         "bibliography_export": False,
         "academic_full_text": False,
-        "blocked_features": ["playlists", "export_csv", "export_excel", "batch_api", "tts", "deep_research"],
+        "voice_chat_enabled": False,
+        "voice_monthly_minutes": 0,
+        "blocked_features": ["playlists", "export_csv", "export_excel", "batch_api", "tts", "deep_research", "voice_chat"],
         "upgrade_prompt": {
             "fr": "Passez \u00e0 Starter pour d\u00e9bloquer plus d'analyses et de fonctionnalit\u00e9s !",
             "en": "Upgrade to Starter to unlock more analyses and features!"
@@ -388,6 +394,8 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "academic_papers_per_analysis": 15,
         "bibliography_export": True,
         "academic_full_text": False,
+        "voice_chat_enabled": True,
+        "voice_monthly_minutes": 15,
         "blocked_features": ["playlists", "batch_api", "deep_research"],
         "upgrade_prompt": {
             "fr": "Passez \u00e0 Pro pour les playlists et le chat illimit\u00e9 !",
@@ -419,6 +427,8 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "academic_papers_per_analysis": 30,
         "bibliography_export": True,
         "academic_full_text": True,
+        "voice_chat_enabled": True,
+        "voice_monthly_minutes": 45,
         "blocked_features": ["batch_api", "deep_research"],
         "upgrade_prompt": {
             "fr": "Passez \u00e0 Expert pour la recherche approfondie et l'API !",
@@ -450,6 +460,8 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "academic_papers_per_analysis": 50,
         "bibliography_export": True,
         "academic_full_text": True,
+        "voice_chat_enabled": True,
+        "voice_monthly_minutes": 45,
         "blocked_features": [],
         "upgrade_prompt": {
             "fr": "Vous avez le plan Expert, toutes les fonctionnalit\u00e9s sont d\u00e9bloqu\u00e9es !",
@@ -480,6 +492,8 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "academic_papers_per_analysis": 100,
         "bibliography_export": True,
         "academic_full_text": True,
+        "voice_chat_enabled": True,
+        "voice_monthly_minutes": -1,
         "blocked_features": [],
         "upgrade_prompt": {
             "fr": "Compte administrateur - acc\u00e8s illimit\u00e9",
@@ -514,6 +528,26 @@ R2_CONFIG = {
     "BUCKET": _settings.R2_BUCKET_NAME,
     "PUBLIC_DOMAIN": _settings.R2_PUBLIC_DOMAIN,
     "ENABLED": _settings.R2_ENABLED,
+}
+
+# =============================================================================
+# VOICE CHAT LIMITS
+# =============================================================================
+
+VOICE_LIMITS: Dict[str, Dict[str, Any]] = {
+    "free":      {"enabled": False, "monthly_minutes": 0,   "max_session_minutes": 0},
+    "etudiant":  {"enabled": True,  "monthly_minutes": 5,   "max_session_minutes": 10},
+    "starter":   {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},
+    "pro":       {"enabled": True,  "monthly_minutes": 45,  "max_session_minutes": 10},
+}
+
+VOICE_CHAT_CONFIG: Dict[str, Any] = {
+    "max_session_duration_seconds": 600,
+    "min_billable_seconds": 5,
+    "silence_timeout_seconds": 30,
+    "quota_warning_thresholds": [50, 80, 95, 100],
+    "grace_period_seconds": 15,
+    "max_sessions_per_day": 50,
 }
 
 # =============================================================================

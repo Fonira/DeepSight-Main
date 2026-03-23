@@ -1954,7 +1954,7 @@ export const shareApi = {
   async createShareLink(videoId: string): Promise<{ share_url: string; share_token: string }> {
     return request('/api/share', {
       method: 'POST',
-      body: JSON.stringify({ video_id: videoId }),
+      body: { video_id: videoId },
     });
   },
 
@@ -2029,7 +2029,7 @@ export const searchApi = {
   ): Promise<SemanticSearchResponse> {
     return request('/api/search/semantic', {
       method: 'POST',
-      body: JSON.stringify({ query, limit, category }),
+      body: { query, limit, category },
     });
   },
 };
@@ -2055,6 +2055,101 @@ export interface VideoCacheInfo {
 export const videoCacheApi = {
   async checkCache(videoId: string): Promise<VideoCacheInfo> {
     return request(`/api/videos/check-cache/${videoId}`, { skipAuth: true });
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎙️ VOICE CHAT API — Sessions vocales temps réel
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface VoiceQuota {
+  plan: string;
+  voice_enabled: boolean;
+  seconds_used: number;
+  seconds_limit: number;
+  minutes_remaining: number;
+  max_session_minutes: number;
+  sessions_this_month: number;
+  reset_date: string;
+}
+
+export interface VoiceSession {
+  session_id: string;
+  signed_url: string;
+  expires_at: string;
+  quota_remaining_minutes: number;
+  max_session_minutes: number;
+}
+
+export interface VoiceSessionSummary {
+  session_id: string;
+  started_at: string;
+  ended_at: string | null;
+  duration_seconds: number;
+  status: string;
+  has_transcript: boolean;
+}
+
+export interface VoiceHistoryResponse {
+  summary_id: number;
+  video_title: string;
+  sessions: VoiceSessionSummary[];
+  total_minutes: number;
+}
+
+export interface VoiceTranscript {
+  session_id: string;
+  summary_id: number;
+  started_at: string;
+  duration_seconds: number;
+  transcript: string;
+}
+
+export const voiceApi = {
+  /**
+   * 🎙️ Récupère le quota vocal de l'utilisateur
+   * Endpoint: GET /api/voice/quota
+   */
+  async getQuota(): Promise<VoiceQuota> {
+    return request('/api/voice/quota');
+  },
+
+  /**
+   * 🎙️ Crée une nouvelle session vocale
+   * Endpoint: POST /api/voice/session
+   */
+  async createSession(summaryId: number, language: string = 'fr'): Promise<VoiceSession> {
+    return request('/api/voice/session', {
+      method: 'POST',
+      body: { summary_id: summaryId, language },
+    });
+  },
+
+  /**
+   * 🎙️ Récupère l'historique des sessions vocales pour une analyse
+   * Endpoint: GET /api/voice/history/{summaryId}
+   */
+  async getHistory(summaryId: number): Promise<VoiceHistoryResponse> {
+    return request(`/api/voice/history/${summaryId}`);
+  },
+
+  /**
+   * 🎙️ Récupère le transcript d'une session vocale
+   * Endpoint: GET /api/voice/history/{summaryId}/{sessionId}/transcript
+   */
+  async getTranscript(summaryId: number, sessionId: string): Promise<VoiceTranscript> {
+    return request(`/api/voice/history/${summaryId}/${sessionId}/transcript`);
+  },
+
+  /**
+   * 🎙️ Crée un checkout Stripe pour un pack de minutes vocales
+   * Endpoint: POST /api/voice/addon/checkout
+   */
+  async createAddonCheckout(packId: string): Promise<{ checkout_url: string }> {
+    return request('/api/voice/addon/checkout', {
+      method: 'POST',
+      body: { pack_id: packId },
+    });
   },
 };
 
@@ -2149,5 +2244,6 @@ export default {
   trending: trendingApi,
   search: searchApi,
   videoCache: videoCacheApi,
+  voice: voiceApi,
   debate: debateApi,
 };
