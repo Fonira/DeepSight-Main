@@ -52,6 +52,10 @@ import { CustomizationPanel } from "../components/analysis/CustomizationPanel";
 import { AnalysisCustomization, DEFAULT_CUSTOMIZATION, customizationToApiParams } from "../types/analysis";
 // 📊 AnalysisHub — Panel intelligent à onglets
 import { AnalysisHub } from "../components/AnalysisHub";
+// 🎙️ Voice Chat
+import VoiceButton from "../components/voice/VoiceButton";
+import { VoiceModal } from "../components/voice/VoiceModal";
+import { useVoiceChat } from "../components/voice/useVoiceChat";
 
 interface ChatMessage {
   id: string;
@@ -155,6 +159,10 @@ export const DashboardPage: React.FC = () => {
 
   // 🆕 État pour détection de playlist
   const [playlistDetected, setPlaylistDetected] = useState(false);
+
+  // 🎙️ Voice Chat
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const voiceChat = useVoiceChat({ summaryId: selectedSummary?.id ?? 0 });
 
   // 🕐 États Freshness & Fact-Check LITE
   const [reliabilityData, setReliabilityData] = useState<ReliabilityResult | null>(null);
@@ -1344,6 +1352,35 @@ export const DashboardPage: React.FC = () => {
           transform: scale(0.8);
         }
       `}</style>
+
+      {/* 🎙️ Voice Chat */}
+      {selectedSummary && (
+        <>
+          <VoiceButton
+            summaryId={selectedSummary.id}
+            onOpen={() => setIsVoiceModalOpen(true)}
+          />
+          <VoiceModal
+            isOpen={isVoiceModalOpen}
+            onClose={() => {
+              setIsVoiceModalOpen(false);
+              voiceChat.stop();
+            }}
+            videoTitle={selectedSummary.video_title}
+            channelName={selectedSummary.video_channel}
+            voiceStatus={voiceChat.status}
+            isSpeaking={voiceChat.isSpeaking}
+            messages={voiceChat.messages}
+            elapsedSeconds={voiceChat.elapsedSeconds}
+            remainingMinutes={voiceChat.remainingMinutes}
+            onStart={voiceChat.start}
+            onStop={voiceChat.stop}
+            onMuteToggle={voiceChat.toggleMute}
+            isMuted={voiceChat.isMuted}
+            error={voiceChat.error ?? undefined}
+          />
+        </>
+      )}
     </div>
   );
 };
