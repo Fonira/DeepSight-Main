@@ -2075,8 +2075,9 @@ export interface DebateCreateRequest {
 export interface DebateStatusResponse {
   debate_id: number;
   status: string;
-  progress?: number;
-  message?: string;
+  progress_message: string;
+  video_a_title?: string;
+  video_b_title?: string;
 }
 
 export interface DebateChatMessage {

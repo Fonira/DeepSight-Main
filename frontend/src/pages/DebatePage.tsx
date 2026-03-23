@@ -7,7 +7,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams, useParams } from 'react-router-dom';
-import { Swords, ArrowLeft, FileText, Loader2 } from 'lucide-react';
+import { Swords, ArrowLeft, FileText, Loader2, AlertTriangle } from 'lucide-react';
 import {
   DebateCreateForm,
   DebateVSLayout,
@@ -125,35 +125,31 @@ const MOCK_DEBATE: DebateAnalysis = {
   fact_check_results: [
     {
       claim: '37% des suggestions Copilot sont acceptées en production',
-      source_video: 'a',
       verdict: 'nuanced',
+      source: 'https://github.blog/2024-copilot-research',
       explanation:
         "Le chiffre exact varie selon les études : GitHub rapporte 30% d'acceptation globale (2024), mais le taux monte à 46% pour les tâches boilerplate. Le chiffre de 37% est plausible mais daté.",
-      sources: ['https://github.blog/2024-copilot-research'],
     },
     {
       claim: 'Le marché no-code atteindra 65 milliards $ en 2027',
-      source_video: 'b',
       verdict: 'confirmed',
+      source: 'https://www.gartner.com/en/newsroom/press-releases/low-code-2027',
       explanation:
         "Gartner prévoit effectivement 65,15 milliards $ pour le marché des plateformes low-code/no-code en 2027, avec un taux de croissance annuel de 20%.",
-      sources: ['https://www.gartner.com/en/newsroom/press-releases/low-code-2027'],
     },
     {
       claim: "McKinsey estime 70% d'automatisation des tâches dev d'ici 2030",
-      source_video: 'b',
       verdict: 'disputed',
+      source: 'https://www.mckinsey.com/capabilities/quantumblack/our-insights',
       explanation:
         "Le rapport McKinsey 2024 parle de 60-70% de potentiel d'automatisation pour les tâches codage routinières, pas pour l'ensemble du travail de développement. C'est une extrapolation trompeuse.",
-      sources: ['https://www.mckinsey.com/capabilities/quantumblack/our-insights'],
     },
     {
       claim: 'Le marché de l\'emploi junior dev se contracte dans la Silicon Valley',
-      source_video: 'b',
       verdict: 'nuanced',
+      source: 'https://www.levels.fyi/2025-report',
       explanation:
         "Les offres d'emploi junior ont effectivement baissé de 30% en 2024-2025 en Californie, mais cette baisse est aussi liée aux corrections post-COVID et aux taux d'intérêt, pas uniquement à l'IA.",
-      sources: ['https://www.levels.fyi/2025-report'],
     },
   ],
   debate_summary:

@@ -33,10 +33,9 @@ export interface DivergencePoint {
 
 export interface FactCheckItem {
   claim: string;
-  source_video: 'a' | 'b';
   verdict: 'confirmed' | 'nuanced' | 'disputed' | 'unverifiable';
+  source: string;
   explanation: string;
-  sources: string[];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
