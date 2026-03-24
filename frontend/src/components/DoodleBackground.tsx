@@ -13,7 +13,8 @@
  * - Grid-jitter placement for even distribution
  */
 
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo, useEffect, useState, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -133,6 +134,134 @@ const ICONS_ABSTRACT = [
   'M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42', // Sun rays
 ];
 
+// ─── DETAILED OBJECTS (complex illustrative doodles, WhatsApp-style) ─────────
+const ICONS_OBJECTS = [
+  // Coffee cup with steam curls
+  'M5 12h14a1 1 0 011 1v1a6 6 0 01-6 6H10a6 6 0 01-6-6v-1a1 1 0 011-1zM20 13h1a2 2 0 010 4h-1M8 6c0-1 .5-2 1.5-2s1 1 0 2-.5 2-1.5 2S8 7 8 6zM12 5c0-1 .5-2 1.5-2s1 1 0 2-.5 2-1.5 2S12 6 12 5zM16 6c0-1 .5-2 1.5-2s1 1 0 2-.5 2-1.5 2S16 7 16 6z',
+  // Rocket with flames
+  'M12 2c-2 0-4 3-4 8v4l-3 3h14l-3-3v-4c0-5-2-8-4-8zM12 2c1 0 2.5 2 3 5M12 2c-1 0-2.5 2-3 5M9 17l-1 3c-.5 1.5.5 2.5 1.5 1.5l2.5-3M15 17l1 3c.5 1.5-.5 2.5-1.5 1.5L12 18.5M12 8v4M10 10h4',
+  // Camera with lens detail
+  'M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2zM12 17a5 5 0 100-10 5 5 0 000 10zM12 15a3 3 0 100-6 3 3 0 000 6zM12 13a1 1 0 100-2 1 1 0 000 2z',
+  // Cassette tape
+  'M4 5h16a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V7a2 2 0 012-2zM8 19l1.5-4h5L16 19M8 10a2 2 0 100-4 2 2 0 000 4zM16 10a2 2 0 100-4 2 2 0 000 4zM10 8h4M4 14h16',
+  // Vinyl record with grooves
+  'M12 2a10 10 0 100 20 10 10 0 000-20zM12 8a4 4 0 100 8 4 4 0 000-8zM12 11a1 1 0 100 2 1 1 0 000-2zM5 12a7 7 0 010-3M19 12a7 7 0 000-3',
+  // Polaroid camera
+  'M4 4h16a2 2 0 012 2v14a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2zM2 17h20M12 14a4 4 0 100-8 4 4 0 000 8zM12 12a2 2 0 100-4 2 2 0 000 4zM4 2h4M16 2h4',
+  // Hot air balloon
+  'M12 2c-4 0-7 4-7 8 0 3 1.5 5.5 3.5 7l3.5 2v2h0a1 1 0 002 0v-2l3.5-2c2-1.5 3.5-4 3.5-7 0-4-3-8-7-8zM9 21h6M8 10c0-2 1.8-4 4-4M12 2v2M7 6l-1-1M17 6l1-1',
+  // Lighthouse
+  'M10 22h4M9 17h6v5H9zM10 2h4l1 5H9zM7 7h10l1 10H6zM3 7h18M12 2v-1M5 3l-2-1M19 3l2-1M4 12h1M19 12h1M12 7v4',
+  // Anchor
+  'M12 8a3 3 0 100-6 3 3 0 000 6zM12 8v14M5 12H2l3.5 9L12 22M19 12h3l-3.5 9L12 22M8 12h8',
+  // Hourglass
+  'M5 3h14M5 21h14M6 3v3a6 6 0 003 5.2L12 12l-3 .8A6 6 0 006 18v3M18 3v3a6 6 0 01-3 5.2L12 12l3 .8A6 6 0 0118 18v3M9 3v2M15 3v2M9 21v-2M15 21v-2',
+  // Telescope
+  'M21 3l-8 8M6 13l5 5M2 22l4-4M10 18l3-3M7 15l3-3M13 5l6-3M21 3l-3 6M13 11a2 2 0 100-4 2 2 0 000 4z',
+  // Binoculars
+  'M7 14a4 4 0 100-8 4 4 0 000 8zM17 14a4 4 0 100-8 4 4 0 000 8zM10 10h4M7 14v4a3 3 0 006 0v-4M17 14v4a3 3 0 01-6 0v-4M4 10V6M20 10V6M4 6h3M17 6h3',
+  // Typewriter
+  'M4 10h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2v-8a2 2 0 012-2zM8 10V6a2 2 0 012-2h4a2 2 0 012 2v4M7 14h2M11 14h2M15 14h2M7 18h10M3 7l4-5M21 7l-4-5',
+  // Compass rose
+  'M12 2v4M12 18v4M2 12h4M18 12h4M12 2l2 6-2 4-2-4 2-6zM22 12l-6 2-4-2 4-2 6 2zM12 22l-2-6 2-4 2 4-2 6zM2 12l6-2 4 2-4 2-6-2z',
+  // DNA double helix
+  'M6 3c0 3 2 5 6 6s6 3 6 6-2 5-6 6-6 3-6 6M18 3c0 3-2 5-6 6s-6 3-6 6 2 5 6 6 6 3 6 6M9 6h6M8 9h8M9 12h6M8 15h8M9 18h6',
+  // Satellite
+  'M12 2l2 2-6 6-2-2zM18 8l2 2-6 6-2-2zM4.93 19.07l-1.41-1.41M7.76 16.24l-1.41-1.41M16 16a4 4 0 100-8M2 22l2-2',
+];
+
+// ─── WHIMSICAL & FUN (playful illustrative doodles) ─────────────────────────
+const ICONS_WHIMSICAL = [
+  // Planet with ring (Saturn)
+  'M12 12a5 5 0 100-10 5 5 0 000 10zM3.6 15.4C2 14.3 1.3 13 2 12c1.2-2 5.5-2.5 9.8-.8M20.4 8.6C22 9.7 22.7 11 22 12c-1.2 2-5.5 2.5-9.8.8',
+  // Constellation (connected stars)
+  'M3 5l1-1 1 1-1 1zM10 3l1-1 1 1-1 1zM18 7l1-1 1 1-1 1zM14 13l1-1 1 1-1 1zM20 17l1-1 1 1-1 1zM7 15l1-1 1 1-1 1zM4 6l5-2M11 4l6 4M19 8l-4 4M15 14l4 4M8 16l6-2',
+  // Paint palette with dots
+  'M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10a2 2 0 002-2c0-.5-.2-1-.5-1.4-.3-.4-.5-.8-.5-1.3a2 2 0 012-2h2.4A6 6 0 0022 9.5C22 5.4 17.5 2 12 2zM7.5 10.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM12 8a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM16.5 10.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z',
+  // Clapperboard
+  'M4 6h16a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2zM2 10h20M7 2l3 4M12 2l3 4M17 2l3 4',
+  // Megaphone with sound waves
+  'M3 11v2a1 1 0 001 1h2l5 5V5L6 10H4a1 1 0 00-1 1zM15 8a4 4 0 010 8M18 5a8 8 0 010 14',
+  // Paper airplane detailed
+  'M22 2L11 13M22 2l-7 20-4-9-9-4zM11 13l-2.5 2.5M13 3.5l3 1',
+  // Magic crystal ball
+  'M12 22a8 8 0 100-16 8 8 0 000 16zM7 22h10M8 8c0 1 1.5 2.5 4 2.5S16 9 16 8M12 6v1M9 7l.5.5M15 7l-.5.5',
+  // Feather quill with inkwell
+  'M20.24 12.24a6 6 0 00-8.49-8.49L5 10.5V19h8.5zM16 8l-2 2M2 22v-3a2 2 0 012-2h3M2 22h5',
+  // Treasure chest
+  'M3 11h18v8a2 2 0 01-2 2H5a2 2 0 01-2-2zM3 11l2-6h14l2 6M12 11v4M10 15h4M7 5v6M17 5v6',
+  // Crown with jewels
+  'M2 17l3-7 4 4 3-9 3 9 4-4 3 7zM2 17h20M4 20h16M9 13a1 1 0 100-2 1 1 0 000 2zM15 13a1 1 0 100-2 1 1 0 000 2zM12 7a1 1 0 100-2 1 1 0 000 2z',
+  // Open book with pages
+  'M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2zm20 0h-6a4 4 0 00-4 4v14a3 3 0 013-3h7zM6 7h2M6 11h2M6 15h3M16 7h2M16 11h2M16 15h3',
+  // Envelope with heart seal
+  'M4 4h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6a2 2 0 012-2zM22 6l-10 7L2 6M12 11l-.9.9a2 2 0 000 2.8l.9.9.9-.9a2 2 0 000-2.8z',
+  // Shooting star with trail
+  'M12 2l2.4 7.4h7.6l-6 4.6 2.4 7.4-6.4-4.8-6.4 4.8 2.4-7.4-6-4.6h7.6zM2 2l3 3M5 1l1 2M1 5l2 1',
+  // Lantern / lamp
+  'M10 2h4M12 2v2M8 4h8l1 3H7zM7 7h10v6a5 5 0 01-10 0zM9 18h6M10 18v2M14 18v2M8 21h8',
+  // Potion bottle
+  'M9 2h6v4l3 6v6a3 3 0 01-3 3H9a3 3 0 01-3-3v-6l3-6zM9 2h6M7 14h10M9 17h6M12 6v3',
+  // Globe with airplane
+  'M12 2a10 10 0 100 20 10 10 0 000-20zM2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10M7 5l3 2-1 2M17 17l-3-1 1-2',
+];
+
+// ─── SCIENCE & NATURE (educational/discovery doodles) ───────────────────────
+const ICONS_SCIENCE = [
+  // Atom with orbiting electrons
+  'M12 12m-2 0a2 2 0 104 0 2 2 0 10-4 0M12 2c-5 0-8 5-8 10s3 10 8 10 8-5 8-10-3-10-8-10zM4.93 4.93c3.13-1.56 7.88.94 10.61 5.57 2.73 4.63 2.73 9.44-.4 10.99M19.07 4.93c-3.13-1.56-7.88.94-10.61 5.57-2.73 4.63-2.73 9.44.4 10.99',
+  // Microscope
+  'M12 4a2 2 0 00-2 2v6a2 2 0 004 0V6a2 2 0 00-2-2zM14 12l4 4M8 22h8M12 18v4M6 22c0-3 2.5-5 6-5s6 2 6 5',
+  // Beaker with bubbles
+  'M9 2h6v4l3 8v4a3 3 0 01-3 3H9a3 3 0 01-3-3v-4l3-8zM9 2h6M7 14h10M10 17a1 1 0 100-2 1 1 0 000 2zM14 16a1 1 0 100-2 1 1 0 000 2zM12 19a1 1 0 100-2 1 1 0 000 2z',
+  // Leaf with veins
+  'M12 22V8M12 2c4 0 8 3 8 8s-3 9-8 12c-5-3-8-7-8-12s4-8 8-8zM8 10l4 4M16 10l-4 4M10 6l2 2M14 6l-2 2',
+  // Wave / ocean
+  'M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0M2 16c2-3 4-3 6 0s4 3 6 0 4-3 6 0M2 8c2-3 4-3 6 0s4 3 6 0 4-3 6 0',
+  // Mountain with sun
+  'M2 20l5-8 3 3 4-7 4 7 3-3 5 8zM17 5a2 2 0 100-4 2 2 0 000 4zM17 1v1M21 5h-1M17 9v-1M13 5h1M19.5 2.5l-.7.7M14.5 7.5l.7-.7M14.5 2.5l.7.7M19.5 7.5l-.7-.7',
+  // Snowflake
+  'M12 2v20M2 12h20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07M12 2l2 4-2 2-2-2zM12 22l2-4-2-2-2 2zM2 12l4 2 2-2-2-2zM22 12l-4 2-2-2 2-2z',
+  // Butterfly
+  'M12 4v18M8 8C4 4 1 8 3 12s6 6 9 4M16 8c4-4 7 0 5 4s-6 6-9 4M10 14c-2 2-5 4-7 2M14 14c2 2 5 4 7 2M12 4a1 1 0 100-2 1 1 0 000 2z',
+  // Rainbow arc
+  'M2 18a10 10 0 0120 0M4 18a8 8 0 0116 0M6 18a6 6 0 0112 0M8 18a4 4 0 018 0',
+  // Flame / fire
+  'M12 22c-4 0-7-3-7-7 0-3 2-5 3-8 .5-1.5 1-3.5 1-5 0 2.5 2 5 4 7 1 1 2 1.5 2 3 0 1-.5 2-2 2-2.5 0-4.5-3-4.5-5 4 2 6 5 6 8s-3 5-7 5z',
+  // Prism / light refraction
+  'M5 20L12 4l7 16zM3 14h8M13 14l8 2M13 14l4-6',
+  // Magnifying glass with details
+  'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 8v4M8 10h4',
+];
+
+// ─── HAND-DRAWN GEOMETRIC (organic, imperfect shapes) ───────────────────────
+const SHAPES_ORGANIC = [
+  // Wobbly circle
+  'M12.3 2.1c5.4.2 9.8 4.3 10.1 9.7.3 5.6-4.1 10.2-9.7 10.5-5.6.3-10.2-4.1-10.5-9.7C1.9 7.2 6 2.4 11.3 2.1z',
+  // Sketchy square
+  'M4.2 4.5h15.3c.3 0 .5.4.5.6v14.5c-.1.3-.3.5-.7.5H4.5c-.4-.1-.6-.4-.5-.8V5c0-.3.1-.5.5-.5z',
+  // Imperfect triangle
+  'M11.8 3.2l8.5 16.3c.2.3 0 .7-.4.7H4.3c-.4 0-.6-.3-.5-.6L11.2 3.3c.2-.3.5-.3.6-.1z',
+  // Organic blob 1
+  'M15.5 5.5c3.5 2 5 6 4 10s-4.5 7-8 7.5-7-1-9-4.5-1.5-8 1.5-11S12 3.5 15.5 5.5z',
+  // Organic blob 2
+  'M18 8c2 3 2 7 0 10s-5 5-8 5-6.5-1-8.5-4S0 12 1 9s3.5-5 6.5-6S16 5 18 8z',
+  // Spiral
+  'M12 12c0-1 .8-2 2-2s2.5 1 2.5 2.5-1.5 3-3 3-3.5-1.5-3.5-3.5 2-4 4-4 4.5 2 4.5 4.5-2.5 5-5 5-5.5-2.5-5.5-5.5c0-3.3 3-6 6-6',
+  // Wavy line horizontal
+  'M2 12c1.5-2 3-2 4.5 0s3 2 4.5 0 3-2 4.5 0 3 2 4.5 0',
+  // Squiggly underline
+  'M3 18c1-1 2-1 3 0s2 1 3 0 2-1 3 0 2 1 3 0 2-1 3 0 2 1 3 0',
+  // Dotted arc
+  'M4 16a8 8 0 0116 0M6 14a6 6 0 0112 0',
+  // Hand-drawn star
+  'M12.2 2.5l2.3 7.2 7.3.2-5.8 4.5 2.1 7.2-6.1-4.6-6.2 4.5 2.3-7.1-5.7-4.7 7.3-.3z',
+  // Sketchy heart
+  'M12 21.4C5 16 2 12.5 2 9c0-3.5 2.5-6 5.5-6 2 0 3.5 1 4.5 2.5C13 4 14.5 3 16.5 3 19.5 3 22 5.5 22 9c0 3.5-3 7-10 12.4z',
+  // Cross-hatch texture
+  'M2 4l20 16M6 2l16 20M2 8l20 16M2 12l16 12M2 16l12 8M22 8L6 22M22 4L2 20M22 12L10 22',
+];
+
 // Small decorative fills + geometric mixed-media elements
 const SHAPES_DECORATIVE = [
   'M12 10a2 2 0 100 4 2 2 0 000-4z',                       // Dot
@@ -165,15 +294,16 @@ const getIconPool = (variant: DoodleVariant): string[] => {
   const all = [
     ...ICONS_VIDEO, ...ICONS_STUDY, ...ICONS_TECH,
     ...ICONS_ANALYTICS, ...ICONS_AI, ...ICONS_CREATIVE, ...ICONS_ABSTRACT,
+    ...ICONS_OBJECTS, ...ICONS_WHIMSICAL, ...ICONS_SCIENCE,
   ];
 
   const emphasis: Record<DoodleVariant, string[]> = {
-    default: [...ICONS_ABSTRACT, ...ICONS_ABSTRACT],
-    video: [...ICONS_VIDEO, ...ICONS_VIDEO, ...ICONS_VIDEO],
-    academic: [...ICONS_STUDY, ...ICONS_STUDY, ...ICONS_STUDY],
-    analysis: [...ICONS_ANALYTICS, ...ICONS_ANALYTICS, ...ICONS_ANALYTICS],
-    tech: [...ICONS_TECH, ...ICONS_TECH, ...ICONS_TECH, ...ICONS_ABSTRACT],
-    creative: [...ICONS_CREATIVE, ...ICONS_CREATIVE, ...ICONS_CREATIVE, ...ICONS_ABSTRACT],
+    default: [...ICONS_ABSTRACT, ...ICONS_OBJECTS, ...ICONS_WHIMSICAL],
+    video: [...ICONS_VIDEO, ...ICONS_VIDEO, ...ICONS_VIDEO, ...ICONS_OBJECTS],
+    academic: [...ICONS_STUDY, ...ICONS_STUDY, ...ICONS_STUDY, ...ICONS_SCIENCE],
+    analysis: [...ICONS_ANALYTICS, ...ICONS_ANALYTICS, ...ICONS_ANALYTICS, ...ICONS_SCIENCE],
+    tech: [...ICONS_TECH, ...ICONS_TECH, ...ICONS_TECH, ...ICONS_OBJECTS],
+    creative: [...ICONS_CREATIVE, ...ICONS_CREATIVE, ...ICONS_CREATIVE, ...ICONS_WHIMSICAL],
   };
 
   return [...all, ...emphasis[variant]];
@@ -225,6 +355,15 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
     return () => window.removeEventListener('resize', checkShouldDisable);
   }, []);
 
+  // 🎲 Seed dynamique : change à chaque navigation (nouveau pathname)
+  const location = useLocation();
+  const navCountRef = useRef(0);
+  const [navSeed, setNavSeed] = useState(0);
+  useEffect(() => {
+    navCountRef.current += 1;
+    setNavSeed(navCountRef.current * 7919); // prime multiplier for spread
+  }, [location.pathname]);
+
   if (isMobileOrReduced) return null;
 
   const accentPrimary = isDark ? '#D4A054' : '#C8903A';
@@ -248,8 +387,8 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
     const rot = (seed: number) =>
       ROTATIONS[Math.floor(seededRandom(seed) * ROTATIONS.length)];
 
-    // Variant seed offset so each variant produces a unique arrangement
-    const vo = { default: 0, video: 1000, academic: 2000, analysis: 3000, tech: 4000, creative: 5000 }[variant];
+    // Variant seed offset + navigation seed for unique arrangement per page visit
+    const vo = { default: 0, video: 1000, academic: 2000, analysis: 3000, tech: 4000, creative: 5000 }[variant] + navSeed;
 
     // Helper: variable strokeWidth (0.8–2.0) per element for mixed-media feel
     const sw = (seed: number, base: number) => {
@@ -372,9 +511,25 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
       });
     }
 
+    // ── Layer 8: Organic hand-drawn shapes (stroked, large, subtle) — 12 items
+    for (let i = 0; i < 12; i++) {
+      const s = vo + 2500 + i * 53;
+      items.push({
+        path: pick(SHAPES_ORGANIC, s),
+        x: seededRandom(s + 1) * TILE,
+        y: seededRandom(s + 2) * TILE,
+        rotation: seededRandom(s + 3) * 360,
+        scale: 0.7 + seededRandom(s + 4) * 0.5,
+        color: pickColor(s + 9),
+        opacity: isDark ? 0.06 + seededRandom(s + 5) * 0.04 : 0.08 + seededRandom(s + 5) * 0.05,
+        strokeWidth: sw(s + 10, 1.0),
+        fill: false,
+      });
+    }
+
     return items;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [variant, isDark, iconPool, accentPrimary, accentSecondary]);
+  }, [variant, isDark, iconPool, accentPrimary, accentSecondary, navSeed]);
 
   // Build the tiled SVG data URI
   const patternSvg = useMemo(() => {
