@@ -70,16 +70,26 @@ const StudyHubPage: React.FC = () => {
     if (canStudy) fetchAll();
   }, [canStudy]);
 
+  // Auto-switch to 'videos' tab when overview is empty but videos exist
+  useEffect(() => {
+    if (
+      activeTab === 'overview' &&
+      stats &&
+      (stats.total_cards_reviewed ?? 0) === 0 &&
+      videoMastery?.videos &&
+      videoMastery.videos.length > 0
+    ) {
+      setActiveTab('videos');
+    }
+  }, [stats, videoMastery, activeTab]);
+
   // ── Derived data ──
   const totalDue = useMemo(
-    () => videoMastery?.videos.reduce((s, v) => s + v.due_cards, 0) ?? 0,
+    () => videoMastery?.videos.reduce((s, v) => s + (v.due_cards ?? 0), 0) ?? 0,
     [videoMastery],
   );
-  const totalNew = useMemo(
-    () => videoMastery?.videos.reduce((s, v) => s + v.new_cards, 0) ?? 0,
-    [videoMastery],
-  );
-  const estimatedMinutes = Math.max(1, Math.ceil((totalDue + totalNew) * 0.5));
+  const totalVideos = videoMastery?.videos.length ?? 0;
+  const estimatedMinutes = Math.max(1, Math.ceil(totalVideos * 2));
 
   const accuracy = useMemo(() => {
     if (!stats || stats.total_cards_reviewed === 0) return 0;
@@ -96,9 +106,11 @@ const StudyHubPage: React.FC = () => {
 
   // ── Navigation handlers ──
   const handleStartSession = () => {
-    const firstDue = videoMastery?.videos.find(v => v.due_cards > 0);
-    if (firstDue) {
-      navigate(`/study/${firstDue.summary_id}?session=true`);
+    // Prioritize videos with due cards, fallback to first video
+    const firstDue = videoMastery?.videos.find(v => (v.due_cards ?? 0) > 0);
+    const target = firstDue ?? videoMastery?.videos?.[0];
+    if (target) {
+      navigate(`/study/${target.summary_id}?session=true`);
     }
   };
 
@@ -268,7 +280,7 @@ const StudyHubPage: React.FC = () => {
                     <div className="mb-6">
                       <DailySessionCard
                         totalDue={totalDue}
-                        totalNew={totalNew}
+                        totalNew={totalVideos}
                         estimatedMinutes={estimatedMinutes}
                         onStart={handleStartSession}
                       />

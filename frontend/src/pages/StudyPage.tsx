@@ -178,14 +178,14 @@ export const StudyPage: React.FC = () => {
   // EFFECTS
   // ═════════════════════════════════════════════════════════════════════════════
 
-  // Fetch due cards for FSRS mode
+  // ── FSRS-first flow: fetch due cards, auto-start session ──
   useEffect(() => {
     if (summaryId) {
       fetchDueCards(parseInt(summaryId));
     }
   }, [summaryId]);
 
-  // Auto-start session if ?session=true
+  // Auto-start FSRS session if ?session=true
   useEffect(() => {
     if (
       autoSession &&
@@ -199,11 +199,32 @@ export const StudyPage: React.FC = () => {
       resetSession();
       startSession(parseInt(summaryId), 'flashcards');
       setIsSessionMode(true);
+      setIsLoading(false);
+    }
+    // If autoSession but no cards after loading, exit loading state
+    if (autoSession && dueCards && !storeLoading && allSessionCards.length === 0) {
+      setIsLoading(false);
     }
   }, [autoSession, dueCards, storeLoading, allSessionCards.length, summaryId]);
 
-  // Fetch study data based on selected tab (existing logic)
+  // ── Tab-based generation (only when NOT in autoSession mode) ──
   useEffect(() => {
+    // Skip expensive tab-based generation when entering via session mode
+    if (autoSession) {
+      // Still fetch video title for display
+      if (summaryId && !studyData) {
+        videoApi.getSummary(parseInt(summaryId)).then(summary => {
+          setStudyData({
+            flashcards: [],
+            quiz: [],
+            videoTitle: summary.video_title || 'Untitled',
+            videoId: summaryId,
+          });
+        }).catch(() => {});
+      }
+      return;
+    }
+
     if (!summaryId) {
       setError(texts.noId);
       setIsLoading(false);
@@ -259,7 +280,7 @@ export const StudyPage: React.FC = () => {
     if (needsGeneration || !studyData) {
       loadData();
     }
-  }, [summaryId, activeTab, hasGeneratedFlashcards, hasGeneratedQuiz]);
+  }, [summaryId, activeTab, hasGeneratedFlashcards, hasGeneratedQuiz, autoSession]);
 
   // ── Keyboard shortcuts for session mode ──
   useEffect(() => {
@@ -360,22 +381,26 @@ export const StudyPage: React.FC = () => {
   // RENDER — Loading state
   // ═════════════════════════════════════════════════════════════════════════════
 
-  if (isLoading && !studyData) {
-    const loadingMessage = isGenerating
-      ? (activeTab === 'flashcards'
-        ? (language === 'fr' ? 'Génération des flashcards...' : 'Generating flashcards...')
-        : (language === 'fr' ? 'Génération du quiz...' : 'Generating quiz...'))
-      : texts.loading;
+  if ((isLoading || (autoSession && storeLoading)) && !studyData && !isSessionMode) {
+    const loadingMessage = autoSession
+      ? (language === 'fr' ? 'Préparation de la session de révision...' : 'Preparing study session...')
+      : isGenerating
+        ? (activeTab === 'flashcards'
+          ? (language === 'fr' ? 'Génération des flashcards...' : 'Generating flashcards...')
+          : (language === 'fr' ? 'Génération du quiz...' : 'Generating quiz...'))
+        : texts.loading;
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <Loader2 className="w-12 h-12 text-amber-400 animate-spin mx-auto mb-4" />
+            <Loader2 className="w-12 h-12 text-indigo-400 animate-spin mx-auto mb-4" />
             <p className="text-gray-400">{loadingMessage}</p>
-            <p className="text-gray-500 text-sm mt-2">
-              {language === 'fr' ? 'Coût: 1 crédit' : 'Cost: 1 credit'}
-            </p>
+            {!autoSession && (
+              <p className="text-gray-500 text-sm mt-2">
+                {language === 'fr' ? 'Coût: 1 crédit' : 'Cost: 1 credit'}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -386,7 +411,7 @@ export const StudyPage: React.FC = () => {
   // RENDER — Error state
   // ═════════════════════════════════════════════════════════════════════════════
 
-  if (error || !studyData) {
+  if ((error || !studyData) && !isSessionMode && !autoSession) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
         <div className="relative z-10 flex items-center justify-center min-h-screen">
