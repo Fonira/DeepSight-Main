@@ -15,7 +15,7 @@ from typing import Any, Optional, Set
 from datetime import datetime, timezone
 from collections import OrderedDict
 
-from db.database import get_session, User, CreditTransaction, Summary, ChatMessage
+from db.database import get_session, User, CreditTransaction, Summary, ChatMessage, AdminLog
 from auth.dependencies import get_current_user, get_current_user_optional
 from core.config import STRIPE_CONFIG, FRONTEND_URL, get_stripe_key
 from .plan_config import (
@@ -85,6 +85,26 @@ class BillingInfoResponse(BaseModel):
     stripe_customer_id: Optional[str]
     subscription_active: bool
     next_renewal: Optional[datetime]
+
+
+class UpgradeRequest(BaseModel):
+    """Requête pour upgrade Pro → Expert"""
+    target_plan: str = "expert"
+
+
+class DowngradeRequest(BaseModel):
+    """Requête pour downgrade Expert → Pro"""
+    target_plan: str = "pro"
+
+
+class CancelRequest(BaseModel):
+    """Requête pour annuler un abonnement"""
+    immediate: bool = False  # True = annulation immédiate, False = fin de période
+
+
+class RefundRequest(BaseModel):
+    """Requête pour un remboursement (14 jours max)"""
+    reason: Optional[str] = None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -478,54 +498,80 @@ async def create_checkout_session(
     session: AsyncSession = Depends(get_session)
 ):
     """
-    Crée une session de paiement Stripe Checkout.
-    Retourne l'URL de redirection vers Stripe.
+    Crée une session de paiement Stripe Checkout pour Pro ou Expert.
+    Ajoute trial_period_days=7 pour les nouveaux abonnés (jamais eu de trial).
     """
     if not STRIPE_CONFIG.get("ENABLED"):
         raise HTTPException(status_code=400, detail="Stripe not enabled")
-    
+
     if not init_stripe():
         raise HTTPException(status_code=500, detail="Stripe not configured")
-    
+
+    # Valider le plan
+    if request.plan not in ("pro", "expert"):
+        raise HTTPException(status_code=400, detail=f"Invalid plan: {request.plan}. Must be 'pro' or 'expert'.")
+
     price_id = get_price_id(request.plan)
     if not price_id:
         raise HTTPException(status_code=400, detail=f"Invalid plan: {request.plan}")
-    
+
     # Créer ou récupérer le client Stripe
-    if current_user.stripe_customer_id:
-        customer_id = current_user.stripe_customer_id
-    else:
-        customer = stripe.Customer.create(
-            email=current_user.email,
-            metadata={"user_id": str(current_user.id)}
+    try:
+        customer_id = await get_or_create_stripe_customer(current_user, session)
+    except stripe.error.StripeError as e:
+        logger.error(f"Error creating Stripe customer: {e}")
+        raise HTTPException(status_code=500, detail="Erreur lors de la création du client Stripe")
+
+    # Vérifier l'éligibilité au trial 7j (jamais eu de trial/achat)
+    trial_eligible = False
+    if current_user.plan == "free" and not current_user.stripe_subscription_id:
+        result = await session.execute(
+            select(CreditTransaction)
+            .where(CreditTransaction.user_id == current_user.id)
+            .where(CreditTransaction.transaction_type.in_(["purchase", "trial", "upgrade"]))
+            .limit(1)
         )
-        customer_id = customer.id
-        current_user.stripe_customer_id = customer_id
-        await session.commit()
-    
+        trial_eligible = result.scalar_one_or_none() is None
+
     # URLs de retour (avec plan pour affichage immédiat)
     success_url = request.success_url or f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan={request.plan}"
     cancel_url = request.cancel_url or f"{FRONTEND_URL}/payment/cancel"
-    
+
     try:
-        checkout_session = stripe.checkout.Session.create(
-            customer=customer_id,
-            payment_method_types=["card"],
-            line_items=[{
-                "price": price_id,
-                "quantity": 1
-            }],
-            mode="subscription",
-            success_url=success_url,
-            cancel_url=cancel_url,
-            metadata={
+        checkout_params = {
+            "customer": customer_id,
+            "payment_method_types": ["card"],
+            "line_items": [{"price": price_id, "quantity": 1}],
+            "mode": "subscription",
+            "success_url": success_url,
+            "cancel_url": cancel_url,
+            "allow_promotion_codes": True,
+            "metadata": {
                 "user_id": str(current_user.id),
-                "plan": request.plan
+                "plan": request.plan,
+            },
+        }
+
+        # Ajouter le trial 7j pour les nouveaux abonnés éligibles
+        if trial_eligible:
+            checkout_params["subscription_data"] = {
+                "trial_period_days": 7,
+                "metadata": {
+                    "user_id": str(current_user.id),
+                    "is_trial": "true",
+                },
             }
-        )
-        
-        return {"checkout_url": checkout_session.url, "session_id": checkout_session.id}
-        
+            checkout_params["metadata"]["is_trial"] = "true"
+            logger.info(f"Trial 7j enabled for user {current_user.id} on plan {request.plan}")
+
+        checkout_session = stripe.checkout.Session.create(**checkout_params)
+
+        return {
+            "checkout_url": checkout_session.url,
+            "session_id": checkout_session.id,
+            "trial_applied": trial_eligible,
+        }
+
     except stripe.error.StripeError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -817,6 +863,195 @@ async def change_subscription_plan(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# ⬆️ UPGRADE — Pro → Expert (proration immédiate)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/upgrade")
+async def upgrade_subscription(
+    request: UpgradeRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    ⬆️ Upgrade de plan (Pro → Expert).
+    Utilise stripe.Subscription.modify() avec proration immédiate.
+    """
+    if not STRIPE_CONFIG.get("ENABLED"):
+        raise HTTPException(status_code=400, detail="Stripe not enabled")
+    if not init_stripe():
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+
+    current_plan = current_user.plan or "free"
+    target = request.target_plan.lower()
+
+    # Valider que c'est bien un upgrade
+    if target not in ("pro", "expert"):
+        raise HTTPException(status_code=400, detail=f"Invalid target plan: {target}")
+
+    if not plan_is_upgrade(current_plan, target):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot upgrade from {current_plan} to {target}. This is not an upgrade."
+        )
+
+    if not current_user.stripe_subscription_id:
+        raise HTTPException(status_code=400, detail="No active subscription. Use /checkout to subscribe first.")
+
+    # Récupérer l'abonnement actuel
+    try:
+        subscription = stripe.Subscription.retrieve(current_user.stripe_subscription_id)
+    except stripe.error.StripeError as e:
+        logger.error(f"Error retrieving subscription: {e}")
+        raise HTTPException(status_code=400, detail="Subscription not found")
+
+    if subscription.status not in ("active", "trialing"):
+        raise HTTPException(status_code=400, detail="Subscription is not active")
+
+    new_price_id = get_price_id(target)
+    if not new_price_id:
+        raise HTTPException(status_code=400, detail=f"Price not configured for plan: {target}")
+
+    try:
+        subscription_item_id = subscription["items"]["data"][0]["id"]
+
+        updated_subscription = stripe.Subscription.modify(
+            current_user.stripe_subscription_id,
+            items=[{
+                "id": subscription_item_id,
+                "price": new_price_id,
+            }],
+            proration_behavior="create_prorations",
+            payment_behavior="error_if_incomplete",
+        )
+
+        # Mise à jour immédiate du plan et crédits
+        new_plan_limits = get_limits(target)
+        old_plan_limits = get_limits(current_plan)
+        credits_bonus = new_plan_limits.get("monthly_credits", 0) - old_plan_limits.get("monthly_credits", 0)
+
+        current_user.plan = target
+        if credits_bonus > 0:
+            current_user.credits = (current_user.credits or 0) + credits_bonus
+            transaction = CreditTransaction(
+                user_id=current_user.id,
+                amount=credits_bonus,
+                balance_after=current_user.credits,
+                transaction_type="upgrade",
+                type="upgrade",
+                description=f"Upgrade: {current_plan} → {target}"
+            )
+            session.add(transaction)
+
+        await session.commit()
+
+        logger.info(f"User {current_user.id} upgraded from {current_plan} to {target}")
+
+        return {
+            "success": True,
+            "message": f"Upgrade réussi ! Vous êtes maintenant sur le plan {target.capitalize()}.",
+            "action": "upgraded",
+            "old_plan": current_plan,
+            "new_plan": target,
+            "credits_bonus": max(credits_bonus, 0),
+            "effective_date": "immediate",
+        }
+
+    except stripe.error.CardError as e:
+        logger.error(f"Card error during upgrade: {e}")
+        raise HTTPException(status_code=400, detail="Erreur de paiement. Veuillez vérifier votre carte.")
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error during upgrade: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# ⬇️ DOWNGRADE — Expert → Pro (fin de période)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/downgrade")
+async def downgrade_subscription(
+    request: DowngradeRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    ⬇️ Downgrade de plan (Expert → Pro).
+    Le changement est programmé à la fin de la période de facturation (pas de prorata inverse).
+    """
+    if not STRIPE_CONFIG.get("ENABLED"):
+        raise HTTPException(status_code=400, detail="Stripe not enabled")
+    if not init_stripe():
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+
+    current_plan = current_user.plan or "free"
+    target = request.target_plan.lower()
+
+    if target not in ("free", "pro", "expert"):
+        raise HTTPException(status_code=400, detail=f"Invalid target plan: {target}")
+
+    # Valider que c'est bien un downgrade
+    if plan_is_upgrade(current_plan, target) or current_plan == target:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot downgrade from {current_plan} to {target}. This is not a downgrade."
+        )
+
+    if not current_user.stripe_subscription_id:
+        raise HTTPException(status_code=400, detail="No active subscription")
+
+    # Si downgrade vers free → utiliser /cancel
+    if target == "free":
+        raise HTTPException(
+            status_code=400,
+            detail="To cancel your subscription, use POST /api/billing/cancel instead."
+        )
+
+    try:
+        subscription = stripe.Subscription.retrieve(current_user.stripe_subscription_id)
+    except stripe.error.StripeError as e:
+        logger.error(f"Error retrieving subscription: {e}")
+        raise HTTPException(status_code=400, detail="Subscription not found")
+
+    if subscription.status not in ("active", "trialing"):
+        raise HTTPException(status_code=400, detail="Subscription is not active")
+
+    new_price_id = get_price_id(target)
+    if not new_price_id:
+        raise HTTPException(status_code=400, detail=f"Price not configured for plan: {target}")
+
+    try:
+        subscription_item_id = subscription["items"]["data"][0]["id"]
+
+        # Downgrade programmé à la fin de la période (pas de prorata)
+        updated_subscription = stripe.Subscription.modify(
+            current_user.stripe_subscription_id,
+            items=[{
+                "id": subscription_item_id,
+                "price": new_price_id,
+            }],
+            proration_behavior="none",
+            billing_cycle_anchor="unchanged",
+        )
+
+        end_date = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc)
+
+        logger.info(f"User {current_user.id} downgrade scheduled: {current_plan} → {target} at {end_date}")
+
+        return {
+            "success": True,
+            "message": f"Votre plan passera à {target.capitalize()} le {end_date.strftime('%d/%m/%Y')}. Vous gardez vos avantages actuels jusqu'à cette date.",
+            "action": "downgrade_scheduled",
+            "old_plan": current_plan,
+            "new_plan": target,
+            "effective_date": end_date.isoformat(),
+        }
+
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe error during downgrade: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 class ConfirmCheckoutRequest(BaseModel):
     """Requête pour confirmer un checkout"""
     session_id: str
@@ -931,36 +1166,60 @@ async def confirm_checkout(
 
 @router.post("/cancel")
 async def cancel_subscription(
+    request: CancelRequest = CancelRequest(),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session)
 ):
     """
     🗑️ Annule l'abonnement de l'utilisateur.
-    L'abonnement reste actif jusqu'à la fin de la période payée.
+
+    - immediate=False (défaut) : l'accès reste jusqu'à la fin de la période payée
+    - immediate=True : annulation immédiate, accès coupé tout de suite
     """
     if not init_stripe():
         raise HTTPException(status_code=500, detail="Stripe not configured")
-    
+
     if not current_user.stripe_subscription_id:
         raise HTTPException(status_code=400, detail="No active subscription")
-    
+
     try:
-        # Annuler à la fin de la période (pas immédiatement)
-        subscription = stripe.Subscription.modify(
-            current_user.stripe_subscription_id,
-            cancel_at_period_end=True
-        )
-        
-        end_date = datetime.fromtimestamp(subscription.current_period_end)
-        
-        logger.info(f"Subscription canceled for user {current_user.id}, effective {end_date}")
-        
-        return {
-            "success": True,
-            "message": f"Votre abonnement sera annulé le {end_date.strftime('%d/%m/%Y')}. Vous gardez vos avantages jusqu'à cette date.",
-            "end_date": end_date.isoformat()
-        }
-        
+        if request.immediate:
+            # Annulation immédiate — supprime l'abonnement tout de suite
+            subscription = stripe.Subscription.cancel(
+                current_user.stripe_subscription_id,
+            )
+
+            old_plan = current_user.plan
+            current_user.plan = "free"
+            current_user.stripe_subscription_id = None
+            await session.commit()
+
+            logger.info(f"Subscription immediately canceled for user {current_user.id} (was {old_plan})")
+
+            return {
+                "success": True,
+                "message": "Votre abonnement a été annulé immédiatement.",
+                "immediate": True,
+                "old_plan": old_plan,
+            }
+        else:
+            # Annuler à la fin de la période (pas immédiatement)
+            subscription = stripe.Subscription.modify(
+                current_user.stripe_subscription_id,
+                cancel_at_period_end=True
+            )
+
+            end_date = datetime.fromtimestamp(subscription.current_period_end, tz=timezone.utc)
+
+            logger.info(f"Subscription canceled for user {current_user.id}, effective {end_date}")
+
+            return {
+                "success": True,
+                "message": f"Votre abonnement sera annulé le {end_date.strftime('%d/%m/%Y')}. Vous gardez vos avantages jusqu'à cette date.",
+                "immediate": False,
+                "end_date": end_date.isoformat(),
+            }
+
     except stripe.error.StripeError as e:
         logger.error(f"Error canceling subscription: {e}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -996,6 +1255,135 @@ async def reactivate_subscription(
     except stripe.error.StripeError as e:
         logger.error(f"Error reactivating subscription: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 💸 REFUND — Remboursement dans les 14 premiers jours
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/refund")
+async def request_refund(
+    request: RefundRequest = RefundRequest(),
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session)
+):
+    """
+    💸 Demander un remboursement dans les 14 premiers jours de l'abonnement.
+
+    Vérifie que l'abonnement a moins de 14 jours (subscription.created).
+    Crée un Stripe Refund complet + annule l'abonnement + log admin.
+    """
+    if not init_stripe():
+        raise HTTPException(status_code=500, detail="Stripe not configured")
+
+    if not current_user.stripe_subscription_id:
+        raise HTTPException(status_code=400, detail="No active subscription")
+
+    # Récupérer l'abonnement Stripe
+    try:
+        subscription = stripe.Subscription.retrieve(
+            current_user.stripe_subscription_id,
+            expand=["latest_invoice"],
+        )
+    except stripe.error.StripeError as e:
+        logger.error(f"Error retrieving subscription for refund: {e}")
+        raise HTTPException(status_code=400, detail="Subscription not found")
+
+    # Vérifier que l'abonnement a moins de 14 jours
+    sub_created = datetime.fromtimestamp(subscription.created, tz=timezone.utc)
+    now = datetime.now(tz=timezone.utc)
+    days_since_creation = (now - sub_created).days
+
+    if days_since_creation > 14:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "refund_period_expired",
+                "message": f"La période de remboursement de 14 jours est expirée. Abonnement créé il y a {days_since_creation} jours.",
+                "days_since_creation": days_since_creation,
+            }
+        )
+
+    # Trouver le payment_intent de la dernière facture pour rembourser
+    latest_invoice = subscription.get("latest_invoice")
+    payment_intent_id = None
+
+    if isinstance(latest_invoice, dict):
+        payment_intent_id = latest_invoice.get("payment_intent")
+    elif isinstance(latest_invoice, str):
+        # Si c'est un ID, récupérer la facture
+        try:
+            invoice = stripe.Invoice.retrieve(latest_invoice)
+            payment_intent_id = invoice.get("payment_intent")
+        except stripe.error.StripeError:
+            pass
+
+    if not payment_intent_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Aucun paiement trouvé à rembourser (période d'essai en cours ?)"
+        )
+
+    try:
+        # Créer le remboursement Stripe
+        refund = stripe.Refund.create(
+            payment_intent=payment_intent_id,
+            reason="requested_by_customer",
+        )
+
+        # Annuler l'abonnement immédiatement
+        stripe.Subscription.cancel(current_user.stripe_subscription_id)
+
+        old_plan = current_user.plan
+        current_user.plan = "free"
+        current_user.stripe_subscription_id = None
+
+        # Enregistrer la transaction
+        transaction = CreditTransaction(
+            user_id=current_user.id,
+            amount=0,
+            balance_after=current_user.credits or 0,
+            transaction_type="refund",
+            type="refund",
+            stripe_payment_id=payment_intent_id,
+            description=f"Refund: {old_plan} (day {days_since_creation}/14). Reason: {request.reason or 'N/A'}"
+        )
+        session.add(transaction)
+
+        # Log admin pour traçabilité
+        admin_log = AdminLog(
+            admin_id=current_user.id,
+            action="refund_requested",
+            target_user_id=current_user.id,
+            details=(
+                f"Self-service refund: {old_plan} plan, "
+                f"day {days_since_creation}/14, "
+                f"refund_id={refund.id}, "
+                f"payment_intent={payment_intent_id}, "
+                f"reason={request.reason or 'N/A'}"
+            )
+        )
+        session.add(admin_log)
+
+        await session.commit()
+
+        logger.info(
+            f"Refund processed for user {current_user.id}: "
+            f"plan={old_plan}, refund_id={refund.id}, day={days_since_creation}"
+        )
+
+        return {
+            "success": True,
+            "message": "Remboursement effectué avec succès. Votre abonnement a été annulé.",
+            "refund_id": refund.id,
+            "old_plan": old_plan,
+            "amount_refunded": refund.amount,
+            "currency": refund.currency,
+        }
+
+    except stripe.error.StripeError as e:
+        logger.error(f"Stripe refund error for user {current_user.id}: {e}")
+        raise HTTPException(status_code=400, detail=f"Erreur lors du remboursement: {str(e)}")
 
 
 @router.get("/subscription-status")
@@ -1144,6 +1532,9 @@ async def stripe_webhook(
 
     elif event_type == "customer.subscription.deleted":
         await handle_subscription_deleted(session, data)
+
+    elif event_type == "customer.subscription.trial_will_end":
+        await handle_trial_will_end(session, data)
 
     elif event_type in ("invoice.paid", "invoice.payment_succeeded"):
         await handle_invoice_paid(session, data)
@@ -1512,6 +1903,46 @@ async def handle_payment_failed(session: AsyncSession, data: dict):
             )
         except Exception as e:
             logger.info(f"📧 Payment failed email error: {e}")
+
+
+async def handle_trial_will_end(session: AsyncSession, data: dict):
+    """
+    Gère l'événement trial_will_end (3 jours avant la fin de l'essai).
+    Envoie un email de rappel à l'utilisateur.
+    """
+    customer_id = data.get("customer")
+    trial_end = data.get("trial_end")
+
+    if not customer_id:
+        logger.warning("trial_will_end: no customer_id")
+        return
+
+    result = await session.execute(
+        select(User).where(User.stripe_customer_id == customer_id)
+    )
+    user = result.scalar_one_or_none()
+
+    if not user:
+        logger.warning(f"trial_will_end: user not found for customer {customer_id}")
+        return
+
+    trial_end_date = datetime.fromtimestamp(trial_end, tz=timezone.utc) if trial_end else None
+    formatted_date = trial_end_date.strftime("%d/%m/%Y") if trial_end_date else "bientôt"
+
+    logger.info(f"Trial ending for user {user.id} ({user.email}) on {formatted_date}")
+
+    try:
+        from services.email_service import email_service
+        await email_service.send_trial_ending_reminder(
+            to=user.email,
+            username=user.username,
+            trial_end_date=formatted_date,
+            plan=user.plan or "pro",
+        )
+        logger.info(f"Trial ending reminder sent to {user.email}")
+    except Exception as e:
+        # L'email est optionnel — ne pas bloquer le webhook
+        logger.info(f"Trial ending email error (non-blocking): {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
