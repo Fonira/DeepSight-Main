@@ -74,7 +74,9 @@ export const MyAccount: React.FC = () => {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const isProUser = normalizePlanId(user?.plan) === 'pro';
+  const normalizedPlan = normalizePlanId(user?.plan);
+  const isExpertUser = normalizedPlan === 'expert';
+  const isPaidUser = normalizedPlan !== 'free';
 
   // Plan data from API
   const [myPlan, setMyPlan] = useState<ApiBillingMyPlan | null>(null);
@@ -112,7 +114,7 @@ export const MyAccount: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!isProUser) return;
+    if (!isExpertUser) return;
     
     const fetchStatus = async () => {
       try {
@@ -129,7 +131,7 @@ export const MyAccount: React.FC = () => {
     
     setApiKey(prev => ({ ...prev, loading: true }));
     fetchStatus();
-  }, [isProUser, tr]);
+  }, [isExpertUser, tr]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 📋 Fetch My Plan (billing/my-plan)
@@ -151,6 +153,29 @@ export const MyAccount: React.FC = () => {
       showToast(tr('Erreur lors de l\'accès au portail', 'Error accessing portal'), 'error');
     } finally {
       setPortalLoading(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // ❌ Cancel Subscription
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  const handleCancelSubscription = async () => {
+    setCancelLoading(true);
+    try {
+      await billingApi.cancelSubscription();
+      showToast(
+        tr('Abonnement annulé. Accès maintenu jusqu\'à la fin de la période payée.', 'Subscription cancelled. Access kept until paid period ends.'),
+        'success'
+      );
+      setShowCancelConfirm(false);
+      // Refresh plan data
+      billingApi.getMyPlan('web').then(setMyPlan).catch(() => {});
+    } catch (error: any) {
+      const message = error?.message || tr('Erreur lors de l\'annulation', 'Error cancelling subscription');
+      showToast(message, 'error');
+    } finally {
+      setCancelLoading(false);
     }
   };
 
@@ -247,16 +272,18 @@ export const MyAccount: React.FC = () => {
     navigate('/');
   };
 
-  // Plan info - v4.0 (Free, Etudiant, Starter, Pro)
+  // Plan info - v5.0 (Free, Pro, Expert)
   const planConfig: Record<string, { label: string; color: string; bgColor: string; icon: string }> = {
     free: { label: tr('Gratuit', 'Free'), color: 'text-gray-400', bgColor: 'bg-gray-500/10', icon: '🆓' },
-    etudiant: { label: 'Starter', color: 'text-blue-400', bgColor: 'bg-blue-500/10', icon: '⚡' },
-    starter: { label: 'Standard', color: 'text-blue-400', bgColor: 'bg-blue-500/10', icon: '⭐' },
-    pro: { label: 'Pro', color: 'text-violet-400', bgColor: 'bg-violet-500/10', icon: '⭐' },
-    unlimited: { label: 'Pro (Unlimited)', color: 'text-amber-400', bgColor: 'bg-amber-500/10', icon: '👑' },
+    pro: { label: 'Pro', color: 'text-blue-400', bgColor: 'bg-blue-500/10', icon: '⭐' },
+    expert: { label: 'Expert', color: 'text-amber-400', bgColor: 'bg-amber-500/10', icon: '👑' },
   };
 
-  const currentPlan = planConfig[user?.plan || 'free'] || planConfig['pro'];
+  const currentPlan = planConfig[normalizedPlan] || planConfig['free'];
+
+  // État pour l'annulation d'abonnement
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   // Helpers pour lire les limites/features du plan depuis l'API
   const getLimitVal = (...keys: string[]): number => {
@@ -660,6 +687,47 @@ export const MyAccount: React.FC = () => {
                     <ChevronRight className="w-4 h-4" />
                   </Link>
                 </div>
+
+                {/* Bouton Annuler l'abonnement */}
+                {isPaidUser && myPlan?.subscription?.status === 'active' && (
+                  <div className="mt-4 pt-4 border-t border-border-subtle">
+                    {!showCancelConfirm ? (
+                      <button
+                        onClick={() => setShowCancelConfirm(true)}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 transition-colors text-sm text-red-400 font-medium"
+                      >
+                        <AlertCircle className="w-4 h-4" />
+                        {tr('Annuler mon abonnement', 'Cancel my subscription')}
+                      </button>
+                    ) : (
+                      <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                        <p className="text-sm text-red-400 mb-3 flex items-start gap-2">
+                          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                          {tr(
+                            'Êtes-vous sûr de vouloir annuler ? Vous garderez vos avantages jusqu\'à la fin de la période payée.',
+                            'Are you sure you want to cancel? You\'ll keep your benefits until the end of the paid period.'
+                          )}
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleCancelSubscription}
+                            disabled={cancelLoading}
+                            className="px-4 py-2 rounded-lg bg-red-500 text-white text-sm font-medium hover:bg-red-600 disabled:opacity-50 flex items-center gap-2"
+                          >
+                            {cancelLoading && <DeepSightSpinnerMicro />}
+                            {tr('Confirmer l\'annulation', 'Confirm cancellation')}
+                          </button>
+                          <button
+                            onClick={() => setShowCancelConfirm(false)}
+                            className="px-4 py-2 rounded-lg bg-bg-tertiary text-sm hover:bg-bg-hover transition-colors"
+                          >
+                            {tr('Non, garder mon plan', 'No, keep my plan')}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </section>
 
@@ -669,21 +737,21 @@ export const MyAccount: React.FC = () => {
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
                   <Key className="w-5 h-5 text-accent-primary" />
                   {tr('Clés API', 'API Keys')}
-                  {isProUser && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-violet-500/10 text-violet-400">Pro</span>}
+                  {isExpertUser && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400">Expert</span>}
                 </h2>
               </div>
               <div className="panel-body">
-                {!isProUser ? (
+                {!isExpertUser ? (
                   <div className="text-center py-6">
                     <div className="w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center mx-auto mb-3">
                       <Lock className="w-6 h-6 text-violet-400" />
                     </div>
                     <p className="text-text-secondary mb-3">
-                      {tr('L\'accès API est réservé aux abonnés Pro (12.99€/mois).', 'API access is available for Pro subscribers (€12.99/mo).')}
+                      {tr('L\'accès API est réservé aux abonnés Expert (9,99€/mois).', 'API access is available for Expert subscribers (€9.99/mo).')}
                     </p>
-                    <Link to="/upgrade" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-500/10 text-violet-400 text-sm font-medium hover:bg-violet-500/20 transition-colors">
+                    <Link to="/upgrade" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/10 text-amber-400 text-sm font-medium hover:bg-amber-500/20 transition-colors">
                       <Users className="w-4 h-4" />
-                      {tr('Passer à Pro', 'Upgrade to Pro')}
+                      {tr('Passer à Expert', 'Upgrade to Expert')}
                     </Link>
                   </div>
                 ) : (

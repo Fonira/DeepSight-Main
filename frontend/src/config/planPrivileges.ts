@@ -4,9 +4,9 @@
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type PlanId = 'free' | 'etudiant' | 'starter' | 'pro';
+export type PlanId = 'free' | 'pro' | 'expert';
 
-export const PLAN_HIERARCHY: PlanId[] = ['free', 'etudiant', 'starter', 'pro'];
+export const PLAN_HIERARCHY: PlanId[] = ['free', 'pro', 'expert'];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LIMITES PAR PLAN
@@ -64,7 +64,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     priorityQueue: false,
     chatQuestionsPerVideo: 5,
     chatDailyLimit: 10,
-    flashcardsEnabled: false,
+    flashcardsEnabled: true,         // ✅ Gratuit désormais
     mindmapEnabled: false,
     webSearchEnabled: false,
     webSearchMonthly: 0,
@@ -88,38 +88,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     debateChatDaily: 3,
   },
 
-  etudiant: {
-    monthlyAnalyses: 20,
-    maxVideoLengthMin: 45,
-    concurrentAnalyses: 1,
-    priorityQueue: false,
-    chatQuestionsPerVideo: 15,
-    chatDailyLimit: 40,
-    flashcardsEnabled: true,
-    mindmapEnabled: true,
-    webSearchEnabled: false,
-    webSearchMonthly: 0,
-    playlistsEnabled: false,
-    maxPlaylists: 0,
-    maxPlaylistVideos: 0,
-    exportFormats: ['txt', 'md'],
-    exportMarkdown: true,
-    exportPdf: false,
-    historyRetentionDays: -1,
-    allowedModels: ['mistral-small-2603'],
-    defaultModel: 'mistral-small-2603',
-    academicSearch: true,
-    academicPapersPerAnalysis: 10,
-    bibliographyExport: true,
-    voiceChatEnabled: true,
-    voiceChatMonthlyMinutes: 5,
-    debateEnabled: true,
-    debateMonthly: 5,
-    debateCreditsPerDebate: 8,
-    debateChatDaily: 10,
-  },
-
-  starter: {
+  pro: {
     monthlyAnalyses: 50,
     maxVideoLengthMin: 120,
     concurrentAnalyses: 1,
@@ -129,7 +98,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     flashcardsEnabled: true,
     mindmapEnabled: true,
     webSearchEnabled: true,
-    webSearchMonthly: 20,
+    webSearchMonthly: 30,
     playlistsEnabled: false,
     maxPlaylists: 0,
     maxPlaylistVideos: 0,
@@ -145,12 +114,12 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     voiceChatEnabled: true,
     voiceChatMonthlyMinutes: 15,
     debateEnabled: true,
-    debateMonthly: 15,
+    debateMonthly: 10,
     debateCreditsPerDebate: 6,
-    debateChatDaily: 20,
+    debateChatDaily: 15,
   },
 
-  pro: {
+  expert: {
     monthlyAnalyses: 200,
     maxVideoLengthMin: 240,
     concurrentAnalyses: 2,
@@ -203,10 +172,9 @@ export interface PlanFeatures {
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
-  free: { flashcards: false, mindmap: false, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: false, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: false, voiceChat: false, debate: true },
-  etudiant: { flashcards: true, mindmap: true, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true, voiceChat: true, debate: true },
-  starter: { flashcards: true, mindmap: true, webSearch: true, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true, voiceChat: true, debate: true },
-  pro: { flashcards: true, mindmap: true, webSearch: true, playlists: true, exportPdf: true, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: true, academicSearch: true, bibliographyExport: true, voiceChat: true, debate: true },
+  free:   { flashcards: true, mindmap: false, webSearch: false, playlists: false, exportPdf: false, exportMarkdown: false, ttsAudio: false, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: false, voiceChat: false, debate: true },
+  pro:    { flashcards: true, mindmap: true, webSearch: true, playlists: false, exportPdf: false, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: false, academicSearch: true, bibliographyExport: true, voiceChat: true, debate: true },
+  expert: { flashcards: true, mindmap: true, webSearch: true, playlists: true, exportPdf: true, exportMarkdown: true, ttsAudio: true, apiAccess: false, prioritySupport: true, academicSearch: true, bibliographyExport: true, voiceChat: true, debate: true },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -245,43 +213,30 @@ export const PLANS_INFO: Record<PlanId, PlanInfo> = {
     popular: false,
   },
 
-  etudiant: {
-    id: 'etudiant',
-    name: 'Starter',
-    nameEn: 'Starter',
-    description: 'YouTube & TikTok — Découvrez les essentiels',
-    descriptionEn: 'YouTube & TikTok — Discover the essentials',
-    priceMonthly: 299,
-    color: '#10B981',
-    icon: '⭐',
-    badge: null,
-    popular: false,
-  },
-
-  starter: {
-    id: 'starter',
-    name: 'Standard',
-    nameEn: 'Standard',
-    description: 'YouTube & TikTok — Pour les utilisateurs réguliers',
-    descriptionEn: 'YouTube & TikTok — For regular users',
-    priceMonthly: 599,
-    color: '#3B82F6',
-    icon: '⭐',
-    badge: { text: 'Populaire étudiants', color: '#10B981' },
-    popular: false,
-  },
-
   pro: {
     id: 'pro',
     name: 'Pro',
     nameEn: 'Pro',
+    description: 'YouTube & TikTok — Pour les utilisateurs réguliers',
+    descriptionEn: 'YouTube & TikTok — For regular users',
+    priceMonthly: 399,
+    color: '#3B82F6',
+    icon: '⭐',
+    badge: { text: 'Le plus populaire', color: '#3B82F6' },
+    popular: true,
+  },
+
+  expert: {
+    id: 'expert',
+    name: 'Expert',
+    nameEn: 'Expert',
     description: 'YouTube & TikTok — Créateurs & professionnels',
     descriptionEn: 'YouTube & TikTok — Creators & professionals',
-    priceMonthly: 1299,
-    color: '#8B5CF6',
+    priceMonthly: 999,
+    color: '#F59E0B',
     icon: 'Crown',
-    badge: { text: 'Populaire', color: '#8B5CF6' },
-    popular: true,
+    badge: null,
+    popular: false,
   },
 };
 
@@ -321,7 +276,7 @@ export function getMinPlanForFeature(feature: keyof PlanLimits): PlanId {
       return plan;
     }
   }
-  return 'pro';
+  return 'expert';
 }
 
 export function formatLimit(value: number, unit?: string): string {
@@ -339,24 +294,27 @@ export const CONVERSION_TRIGGERS = {
   trialPlan: 'pro' as PlanId,
 };
 
-/** Normalise les alias de plans (student→etudiant, team→pro, etc.) */
+/** Normalise les alias de plans (etudiant→pro, starter→pro, etc.) */
 export function normalizePlanId(raw: string | undefined | null): PlanId {
   if (!raw) return 'free';
   const lower = raw.toLowerCase().trim();
   const aliases: Record<string, PlanId> = {
     free: 'free',
     gratuit: 'free',
-    student: 'etudiant',
-    etudiant: 'etudiant',
-    'étudiant': 'etudiant',
-    starter: 'starter',
+    // Anciens plans → pro
+    student: 'pro',
+    etudiant: 'pro',
+    'étudiant': 'pro',
+    starter: 'pro',
+    // Nouveaux plans
     pro: 'pro',
-    team: 'pro',
-    equipe: 'pro',
-    'équipe': 'pro',
-    unlimited: 'pro',
-    admin: 'pro',
-    expert: 'pro',
+    expert: 'expert',
+    // Legacy aliases
+    team: 'expert',
+    equipe: 'expert',
+    'équipe': 'expert',
+    unlimited: 'expert',
+    admin: 'expert',
   };
   return aliases[lower] ?? 'free';
 }
@@ -382,7 +340,7 @@ export const TESTIMONIALS: Testimonial[] = [
       fr: 'Les flashcards automatiques ont transformé mes révisions. Je retiens 3x mieux.',
       en: 'Auto flashcards transformed my study sessions. I retain 3x better.',
     },
-    plan: 'etudiant',
+    plan: 'pro',
   },
   {
     avatar: '🎬',
@@ -392,7 +350,7 @@ export const TESTIMONIALS: Testimonial[] = [
       fr: 'J\'analyse les vidéos YouTube et TikTok de mes concurrents en quelques minutes. Un gain de temps fou.',
       en: 'I analyze competitor YouTube and TikTok videos in minutes. Incredible time saver.',
     },
-    plan: 'pro',
+    plan: 'expert',
   },
   {
     avatar: '📚',
@@ -402,7 +360,7 @@ export const TESTIMONIALS: Testimonial[] = [
       fr: 'Je crée des supports de cours à partir de documentaires en un clic.',
       en: 'I create course materials from documentaries in one click.',
     },
-    plan: 'starter',  // Standard plan
+    plan: 'pro',
   },
 ];
 

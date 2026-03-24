@@ -36,18 +36,14 @@ import {
 
 const PLAN_ICON_MAP: Record<string, React.ElementType> = {
   free: Zap,
-  etudiant: Star,
-  student: Star,
-  starter: GraduationCap,
-  pro: Crown,
+  pro: Star,
+  expert: Crown,
 };
 
 const PLAN_GRADIENT_MAP: Record<string, string> = {
   free: 'from-gray-500 to-gray-600',
-  etudiant: 'from-emerald-500 to-green-600',
-  student: 'from-emerald-500 to-green-600',
-  starter: 'from-blue-500 to-blue-600',
-  pro: 'from-violet-500 to-purple-600',
+  pro: 'from-blue-500 to-blue-600',
+  expert: 'from-amber-500 to-yellow-600',
 };
 
 function formatPriceFr(cents: number): string {
@@ -213,7 +209,7 @@ const BillingToggle: React.FC<BillingToggleProps> = ({ period, onChange, lang })
     >
       {lang === 'fr' ? 'Annuel' : 'Annual'}
       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">
-        -20%
+        {lang === 'fr' ? '2 mois offerts' : '2 months free'}
       </span>
     </span>
   </div>
@@ -266,7 +262,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
       transition={{ duration: 0.4 }}
       className={`card relative overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex flex-col ${
         isCurrent ? 'ring-2 ring-green-500/50' : ''
-      } ${plan.popular ? 'ring-2 ring-violet-500/50 shadow-xl shadow-violet-500/10' : ''}`}
+      } ${plan.popular ? 'ring-2 ring-blue-500/50 shadow-xl shadow-blue-500/10' : ''}`}
       style={plan.popular ? { animation: 'glow-pulse 3s ease-in-out infinite' } : undefined}
     >
       {/* Badge */}
@@ -281,7 +277,13 @@ const PlanCard: React.FC<PlanCardProps> = ({
         </div>
       )}
       {plan.popular && !isCurrent && (
-        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500" />
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-500" />
+      )}
+      {/* Bandeau essai gratuit 7 jours — Pro uniquement */}
+      {plan.id === 'pro' && !isCurrent && trialEligible && (
+        <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] font-bold text-center py-1">
+          {lang === 'fr' ? '🎁 Essai gratuit 7 jours' : '🎁 7-day free trial'}
+        </div>
       )}
       {isCurrent && (
         <div className="absolute top-2 left-2 z-10">
@@ -365,7 +367,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
             <button
               onClick={onStartTrial}
               disabled={trialLoading}
-              className="w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:opacity-90 shadow-lg min-h-[44px] active:scale-95"
+              className="w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:opacity-90 shadow-lg min-h-[44px] active:scale-95"
             >
               {trialLoading ? (
                 <DeepSightSpinnerMicro />
@@ -572,7 +574,7 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
           return (
             <div
               key={plan.id}
-              className={`text-center ${plan.is_current ? 'bg-green-500/5 -mx-1 px-1 py-2 rounded-lg' : ''} ${plan.popular ? 'bg-violet-500/5 -mx-1 px-1 py-2 rounded-lg' : ''}`}
+              className={`text-center ${plan.is_current ? 'bg-green-500/5 -mx-1 px-1 py-2 rounded-lg' : ''} ${plan.popular ? 'bg-blue-500/5 -mx-1 px-1 py-2 rounded-lg' : ''}`}
             >
               <div className={`inline-flex w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} items-center justify-center mb-1 shadow-lg`}>
                 <Icon className="w-4 h-4 text-white" />
@@ -935,7 +937,7 @@ export const UpgradePage: React.FC = () => {
     <div className="min-h-screen bg-bg-primary relative">
       <SEO
         title="Mon plan"
-        description="Découvrez les plans Deep Sight : Gratuit, Starter, Standard, Pro. Analysez vos vidéos YouTube et TikTok avec l'IA."
+        description="Découvrez les plans DeepSight : Gratuit, Pro (3,99€/mois) et Expert (9,99€/mois). Analysez vos vidéos YouTube et TikTok avec l'IA."
         path="/upgrade"
       />
       <DoodleBackground variant="creative" />
@@ -1015,37 +1017,37 @@ export const UpgradePage: React.FC = () => {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="card p-4 sm:p-6 mb-6 sm:mb-8 bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-fuchsia-500/10 border-violet-500/30 overflow-hidden relative"
+                className="card p-4 sm:p-6 mb-6 sm:mb-8 bg-gradient-to-r from-blue-500/10 via-blue-400/10 to-cyan-500/10 border-blue-500/30 overflow-hidden relative"
               >
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-violet-500/20 rounded-full blur-3xl hidden sm:block" />
-                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-fuchsia-500/20 rounded-full blur-3xl hidden sm:block" />
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl hidden sm:block" />
+                <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-cyan-500/20 rounded-full blur-3xl hidden sm:block" />
                 <div className="relative flex flex-col items-center gap-4 sm:gap-6 md:flex-row">
                   <div className="flex-shrink-0">
-                    <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-xl shadow-violet-500/30">
+                    <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl shadow-blue-500/30">
                       <Gift className="w-7 h-7 sm:w-10 sm:h-10 text-white" />
                     </div>
                   </div>
                   <div className="flex-1 text-center md:text-left">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/20 text-violet-400 text-xs font-semibold mb-2">
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-semibold mb-2">
                       <Sparkles className="w-3 h-3" />
-                      {lang === 'fr' ? 'Offre limitée' : 'Limited offer'}
+                      {lang === 'fr' ? 'Essai gratuit 7 jours' : '7-day free trial'}
                     </div>
                     <h2 className="text-lg sm:text-2xl font-bold text-text-primary mb-2">
                       {lang === 'fr' ? 'Essayez Pro gratuitement pendant 7 jours' : 'Try Pro free for 7 days'}
                     </h2>
                     <p className="text-text-secondary text-xs sm:text-base mb-4 max-w-xl">
                       {lang === 'fr'
-                        ? 'Accédez à toutes les fonctionnalités Pro. Sans engagement.'
-                        : 'Access all Pro features. No commitment.'}
+                        ? 'Accédez à toutes les fonctionnalités Pro — 3,99€/mois après l\'essai. Sans engagement.'
+                        : 'Access all Pro features — €3.99/mo after trial. No commitment.'}
                     </p>
                     <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 justify-center md:justify-start">
                       {[
-                        { icon: Crown, text: lang === 'fr' ? '200 analyses' : '200 analyses' },
+                        { icon: Crown, text: lang === 'fr' ? '50 analyses' : '50 analyses' },
                         { icon: InfinityIcon, text: lang === 'fr' ? 'Chat illimité' : 'Unlimited chat' },
                         { icon: Clock, text: lang === 'fr' ? '7 jours gratuits' : '7 days free' },
                       ].map((item, idx) => (
                         <div key={idx} className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-bg-tertiary/50 text-text-secondary text-[10px] sm:text-xs">
-                          <item.icon className="w-3 h-3 text-violet-400" />
+                          <item.icon className="w-3 h-3 text-blue-400" />
                           {item.text}
                         </div>
                       ))}
@@ -1055,7 +1057,7 @@ export const UpgradePage: React.FC = () => {
                     <button
                       onClick={handleStartTrial}
                       disabled={trialLoading}
-                      className="w-full md:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold text-sm sm:text-lg shadow-xl shadow-violet-500/30 hover:opacity-90 transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-95"
+                      className="w-full md:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm sm:text-lg shadow-xl shadow-blue-500/30 hover:opacity-90 transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-95"
                     >
                       {trialLoading ? (
                         <DeepSightSpinnerMicro />
@@ -1115,13 +1117,13 @@ export const UpgradePage: React.FC = () => {
                 >
                   {/* Plan Cards */}
                   {plansLoading ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8 sm:mb-12">
-                      {[1, 2, 3, 4, 5].map((i) => (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8 sm:mb-12">
+                      {[1, 2, 3].map((i) => (
                         <SkeletonCard key={i} />
                       ))}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-8 sm:mb-12">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-8 sm:mb-12">
                       {plans.map((plan, idx) => (
                         <motion.div
                           key={plan.id}
@@ -1234,6 +1236,21 @@ export const UpgradePage: React.FC = () => {
               </a>
             </motion.div>
 
+            {/* Garantie */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.55 }}
+              className="text-center mb-6 sm:mb-8"
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20">
+                <Check className="w-4 h-4 text-green-400" />
+                <span className="text-sm text-green-400 font-medium">
+                  {lang === 'fr' ? 'Garantie satisfait ou remboursé 14 jours' : '14-day money-back guarantee'}
+                </span>
+              </div>
+            </motion.div>
+
             {/* Contact */}
             <div className="text-center text-xs sm:text-sm text-text-tertiary pb-4">
               {lang === 'fr' ? 'Questions ? ' : 'Questions? '}
@@ -1261,8 +1278,8 @@ export const UpgradePage: React.FC = () => {
       {/* Glow pulse animation for popular plan */}
       <style>{`
         @keyframes glow-pulse {
-          0%, 100% { box-shadow: 0 0 15px rgba(139, 92, 246, 0.15); }
-          50% { box-shadow: 0 0 30px rgba(139, 92, 246, 0.3); }
+          0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.15); }
+          50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.3); }
         }
       `}</style>
     </div>
