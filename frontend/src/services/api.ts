@@ -2157,7 +2157,7 @@ export const voiceApi = {
 // ⚔️ DEBATE API — Débat IA entre vidéos
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import type { DebateAnalysis } from '../types/debate';
+import type { DebateAnalysis, DebateListItem } from '../types/debate';
 
 export interface DebateCreateRequest {
   url_a: string;
@@ -2200,7 +2200,7 @@ export const debateApi = {
     return request(`/api/debate/${debateId}`);
   },
 
-  async getHistory(page?: number, limit?: number): Promise<{ debates: DebateAnalysis[]; total: number }> {
+  async getHistory(page?: number, limit?: number): Promise<{ debates: DebateListItem[]; total: number }> {
     const params = new URLSearchParams();
     if (page !== undefined) params.set('page', String(page));
     if (limit !== undefined) params.set('limit', String(limit));

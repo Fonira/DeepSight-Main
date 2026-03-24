@@ -18,7 +18,7 @@ import {
   DebateChat,
 } from '../components/debate';
 import { debateApi } from '../services/api';
-import type { DebateAnalysis } from '../types/debate';
+import type { DebateAnalysis, DebateListItem } from '../types/debate';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MOCK DATA — Fallback pour dev quand l'API n'est pas dispo
@@ -172,7 +172,28 @@ const MOCK_IN_PROGRESS: DebateAnalysis = {
   created_at: '2026-03-20T16:00:00Z',
 };
 
-const MOCK_DEBATES_LIST: DebateAnalysis[] = [MOCK_DEBATE, MOCK_IN_PROGRESS];
+const MOCK_DEBATES_LIST: DebateListItem[] = [
+  {
+    id: MOCK_DEBATE.id,
+    detected_topic: MOCK_DEBATE.detected_topic,
+    video_a_title: MOCK_DEBATE.video_a_title,
+    video_b_title: MOCK_DEBATE.video_b_title,
+    video_a_thumbnail: MOCK_DEBATE.video_a_thumbnail,
+    video_b_thumbnail: MOCK_DEBATE.video_b_thumbnail,
+    status: MOCK_DEBATE.status,
+    created_at: MOCK_DEBATE.created_at,
+  },
+  {
+    id: MOCK_IN_PROGRESS.id,
+    detected_topic: MOCK_IN_PROGRESS.detected_topic,
+    video_a_title: MOCK_IN_PROGRESS.video_a_title,
+    video_b_title: MOCK_IN_PROGRESS.video_b_title,
+    video_a_thumbnail: MOCK_IN_PROGRESS.video_a_thumbnail,
+    video_b_thumbnail: MOCK_IN_PROGRESS.video_b_thumbnail,
+    status: MOCK_IN_PROGRESS.status,
+    created_at: MOCK_IN_PROGRESS.created_at,
+  },
+];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // POLLING INTERVAL
@@ -195,7 +216,7 @@ export const DebatePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedDebate, setSelectedDebate] = useState<DebateAnalysis | null>(null);
   const [debateLoading, setDebateLoading] = useState(false);
-  const [debatesList, setDebatesList] = useState<DebateAnalysis[]>([]);
+  const [debatesList, setDebatesList] = useState<DebateListItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [useMock, setUseMock] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -229,8 +250,7 @@ export const DebatePage: React.FC = () => {
   // ─── Load selected debate when debateId changes ───
   const loadDebate = useCallback(async (id: string) => {
     if (useMock) {
-      const mock = MOCK_DEBATES_LIST.find((d) => d.id === Number(id)) ?? null;
-      setSelectedDebate(mock);
+      setSelectedDebate(MOCK_DEBATE);
       return;
     }
 
@@ -246,8 +266,7 @@ export const DebatePage: React.FC = () => {
       }
     } catch {
       // Fallback to mock
-      const mock = MOCK_DEBATES_LIST.find((d) => d.id === Number(id)) ?? null;
-      setSelectedDebate(mock);
+      setSelectedDebate(MOCK_DEBATE);
     } finally {
       setDebateLoading(false);
     }
@@ -479,7 +498,7 @@ export const DebatePage: React.FC = () => {
               {/* Chat */}
               <DebateChat
                 debateId={selectedDebate.id}
-                debateTopic={selectedDebate.detected_topic}
+                debateTopic={selectedDebate.detected_topic ?? undefined}
               />
             </>
           )}

@@ -64,7 +64,7 @@ class DebateResultResponse(BaseModel):
     arguments_b: Optional[list] = None
     convergence_points: Optional[list] = None
     divergence_points: Optional[list] = None
-    fact_check_results: Optional[dict] = None
+    fact_check_results: Optional[list] = None
     debate_summary: Optional[str] = None
     status: str
     mode: str
@@ -90,6 +90,8 @@ class DebateListItem(BaseModel):
     detected_topic: Optional[str] = None
     video_a_title: Optional[str] = None
     video_b_title: Optional[str] = None
+    video_a_thumbnail: Optional[str] = None
+    video_b_thumbnail: Optional[str] = None
     status: str
     created_at: datetime
 

@@ -60,7 +60,7 @@ export const DebateFactCheck: React.FC<DebateFactCheckProps> = ({ results }) => 
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {results.map((item, i) => {
-          const verdict = VERDICT_CONFIG[item.verdict];
+          const verdict = VERDICT_CONFIG[item.verdict] ?? VERDICT_CONFIG.unverifiable;
           const VerdictIcon = verdict.icon;
 
           return (
