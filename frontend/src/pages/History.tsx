@@ -1406,6 +1406,7 @@ export const History: React.FC = () => {
                       onStop={voiceChat.stop}
                       onMuteToggle={voiceChat.toggleMute}
                       isMuted={voiceChat.isMuted}
+                      error={voiceChat.error ?? undefined}
                     />
                   </>
                 )}
