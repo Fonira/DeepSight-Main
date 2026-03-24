@@ -29,7 +29,7 @@ from transcripts.audio_utils import (
     compress_audio,
     executor as audio_executor,
 )
-from core.config import get_supadata_key
+from core.config import get_supadata_key, get_mistral_key
 
 logger = logging.getLogger(__name__)
 
@@ -649,8 +649,27 @@ async def get_tiktok_transcript(
             await _cache_result(result, "tiktok-phase4-direct")
             return result
 
+    # ─── Phase 5 : Visual OCR fallback (TikTok slides avec texte) ─────
+    logger.info(f"[TIKTOK] Phase 5: Visual OCR fallback for {vid}")
+    if get_mistral_key():
+        try:
+            from transcripts.visual_ocr import extract_text_from_video_frames
+
+            # Télécharger la vidéo complète (pas juste l'audio)
+            video_data = await _download_video_bytes(url, vid)
+            if video_data:
+                ocr_text, ocr_lang = await extract_text_from_video_frames(video_data, vid)
+                if ocr_text:
+                    logger.info(f"[TIKTOK] Visual OCR success for {vid}: {len(ocr_text)} chars")
+                    _circuit_breaker.record_success()
+                    result = (ocr_text, None, ocr_lang or "fr")
+                    await _cache_result(result, "tiktok-phase5-visual-ocr")
+                    return result
+        except Exception as e:
+            logger.warning(f"[TIKTOK] Visual OCR failed: {e}")
+
     _circuit_breaker.record_failure()
-    logger.error(f"[TIKTOK] All phases failed for {vid}")
+    logger.error(f"[TIKTOK] All phases (including visual OCR) failed for {vid}")
     return None, None, None
 
 
@@ -833,6 +852,75 @@ async def _extract_audio_ffmpeg(video_data: bytes) -> Tuple[Optional[bytes], str
         logger.error(f"[TIKTOK] ffmpeg extraction failed: {e}")
 
     return None, ".mp3"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📹 TÉLÉCHARGEMENT VIDÉO COMPLÈTE (pour Visual OCR — Phase 5)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def _download_video_bytes(url: str, video_id: str) -> Optional[bytes]:
+    """
+    Télécharge la vidéo TikTok complète (pas juste l'audio).
+    Nécessaire pour extraire les frames visuelles (slides OCR).
+
+    Essaie d'abord les APIs tierces (tikwm), puis yt-dlp.
+    """
+    import tempfile
+    from pathlib import Path
+
+    # 1. Essayer les APIs tierces (plus rapide, pas de yt-dlp)
+    resolved_url = await _resolve_short_url(url)
+    target_url = resolved_url or url
+
+    for api in TIKTOK_DOWNLOAD_APIS:
+        try:
+            media_url = await _get_media_url_from_api(target_url, api)
+            if not media_url:
+                continue
+            video_data = await _download_media_bytes(media_url, api["name"])
+            if video_data and len(video_data) > 1000:
+                logger.info(f"[TIKTOK] Video downloaded via {api['name']}: {len(video_data)/1024:.0f}KB")
+                return video_data
+        except Exception as e:
+            logger.warning(f"[TIKTOK] Video download via {api['name']} failed: {e}")
+
+    # 2. Fallback yt-dlp (téléchargement vidéo, pas audio)
+    try:
+        loop = asyncio.get_event_loop()
+
+        def _dl():
+            with tempfile.TemporaryDirectory() as tmpdir:
+                video_path = f"{tmpdir}/video.mp4"
+                cmd = [
+                    "yt-dlp",
+                    "-f", "best[ext=mp4]/best",
+                    "-o", video_path,
+                    "--no-warnings", "--no-playlist",
+                    "--retries", "2",
+                    url,
+                ]
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                if result.returncode == 0:
+                    for f in Path(tmpdir).iterdir():
+                        if f.suffix in [".mp4", ".webm", ".mkv"]:
+                            data = f.read_bytes()
+                            if data:
+                                return data
+                return None
+
+        video_data = await asyncio.wait_for(
+            loop.run_in_executor(audio_executor, _dl),
+            timeout=60,
+        )
+        if video_data:
+            logger.info(f"[TIKTOK] Video downloaded via yt-dlp: {len(video_data)/1024:.0f}KB")
+            return video_data
+    except asyncio.TimeoutError:
+        logger.warning(f"[TIKTOK] yt-dlp video download timeout for {video_id}")
+    except Exception as e:
+        logger.warning(f"[TIKTOK] yt-dlp video download failed for {video_id}: {e}")
+
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

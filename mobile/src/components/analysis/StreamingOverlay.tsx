@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -21,6 +21,10 @@ import { useAnalysisStore } from '../../stores/analysisStore';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
+// DeepSight spinner assets
+const SPINNER_COSMIC = require('../../../assets/images/spinner-cosmic.jpg');
+const SPINNER_WHEEL = require('../../../assets/images/spinner-wheel.jpg');
+
 interface StreamingOverlayProps {
   taskId: string;
   onCancel: () => void;
@@ -41,10 +45,12 @@ const STEPS: StepConfig[] = [
   { label: 'Terminé !', icon: 'checkmark-circle-outline', targetProgress: 100 },
 ];
 
-const CIRCLE_SIZE = 140;
-const STROKE_WIDTH = 8;
-const RADIUS = (CIRCLE_SIZE - STROKE_WIDTH) / 2;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+// Spinner dimensions
+const SPINNER_SIZE = 180;
+const RING_SIZE = SPINNER_SIZE + 16;
+const RING_STROKE = 3;
+const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 // Fake progress curve — fast at start, slows down, never reaches 95% until real completion
 const FAKE_PROGRESS_TIMELINE = [
@@ -106,7 +112,8 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
   const animProgress = useSharedValue(0);
   const fadeAnim = useSharedValue(1);
   const scaleAnim = useSharedValue(1);
-  const pulseAnim = useSharedValue(1);
+  const wheelRotation = useSharedValue(0);
+  const cosmicPulse = useSharedValue(1);
 
   const [displayProgress, setDisplayProgress] = useState(0);
   const [messageIndex, setMessageIndex] = useState(0);
@@ -121,17 +128,22 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
   const completedRef = useRef(false);
   const summaryIdRef = useRef<string | undefined>(undefined);
 
-  // Pulse animation
+  // Wheel rotation animation (continuous spin)
   useEffect(() => {
-    pulseAnim.value = withRepeat(
+    wheelRotation.value = withRepeat(
+      withTiming(360, { duration: 5000, easing: Easing.linear }),
+      -1,
+      false
+    );
+    cosmicPulse.value = withRepeat(
       withSequence(
-        withTiming(1.05, { duration: 800 }),
-        withTiming(1, { duration: 800 })
+        withTiming(1.03, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+        withTiming(0.97, { duration: 1200, easing: Easing.inOut(Easing.ease) })
       ),
       -1,
       true
     );
-  }, [pulseAnim]);
+  }, [wheelRotation, cosmicPulse]);
 
   // Rotate motivational messages
   useEffect(() => {
@@ -292,12 +304,16 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
     transform: [{ scale: scaleAnim.value }],
   }));
 
-  const circleProps = useAnimatedProps(() => ({
-    strokeDashoffset: CIRCUMFERENCE * (1 - animProgress.value),
+  const ringProps = useAnimatedProps(() => ({
+    strokeDashoffset: RING_CIRCUMFERENCE * (1 - animProgress.value),
   }));
 
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: pulseAnim.value }],
+  const wheelStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${wheelRotation.value}deg` }],
+  }));
+
+  const cosmicStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: cosmicPulse.value }],
   }));
 
   // ── Écran d'erreur définitif (après 3 sondages 'failed') ──────────────────
@@ -331,39 +347,59 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
         containerStyle,
       ]}
     >
-      {/* Progress Circle */}
-      <Animated.View style={pulseStyle}>
-        <View style={styles.circleContainer}>
-          <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
-            <Circle
-              cx={CIRCLE_SIZE / 2}
-              cy={CIRCLE_SIZE / 2}
-              r={RADIUS}
-              stroke={colors.border}
-              strokeWidth={STROKE_WIDTH}
-              fill="none"
-            />
-            <AnimatedCircle
-              cx={CIRCLE_SIZE / 2}
-              cy={CIRCLE_SIZE / 2}
-              r={RADIUS}
-              stroke={isCompleted ? palette.green : palette.indigo}
-              strokeWidth={STROKE_WIDTH}
-              fill="none"
-              strokeDasharray={CIRCUMFERENCE}
-              animatedProps={circleProps}
-              strokeLinecap="round"
-              rotation="-90"
-              origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`}
-            />
-          </Svg>
-          <View style={styles.circleTextContainer}>
-            <Text style={[styles.progressText, { color: colors.textPrimary }]}>
-              {displayProgress}%
-            </Text>
-          </View>
+      {/* DeepSight Spinner + Progress Ring */}
+      <View style={styles.spinnerWrapper}>
+        {/* Thin progress ring around the spinner */}
+        <Svg width={RING_SIZE} height={RING_SIZE} style={styles.progressRing}>
+          <Circle
+            cx={RING_SIZE / 2}
+            cy={RING_SIZE / 2}
+            r={RING_RADIUS}
+            stroke={colors.border}
+            strokeWidth={RING_STROKE}
+            fill="none"
+            opacity={0.4}
+          />
+          <AnimatedCircle
+            cx={RING_SIZE / 2}
+            cy={RING_SIZE / 2}
+            r={RING_RADIUS}
+            stroke={isCompleted ? palette.green : colors.accentPrimary}
+            strokeWidth={RING_STROKE}
+            fill="none"
+            strokeDasharray={RING_CIRCUMFERENCE}
+            animatedProps={ringProps}
+            strokeLinecap="round"
+            rotation="-90"
+            origin={`${RING_SIZE / 2}, ${RING_SIZE / 2}`}
+          />
+        </Svg>
+
+        {/* Cosmic background (fixed, pulsing) */}
+        <Animated.View style={[styles.spinnerImageWrapper, cosmicStyle]}>
+          <Image
+            source={SPINNER_COSMIC}
+            style={styles.spinnerCosmic}
+            resizeMode="cover"
+          />
+        </Animated.View>
+
+        {/* Wheel overlay (rotating) */}
+        <Animated.View style={[styles.spinnerImageWrapper, wheelStyle]}>
+          <Image
+            source={SPINNER_WHEEL}
+            style={styles.spinnerWheel}
+            resizeMode="cover"
+          />
+        </Animated.View>
+
+        {/* Percentage overlay */}
+        <View style={styles.percentageContainer}>
+          <Text style={styles.progressText}>
+            {displayProgress}%
+          </Text>
         </View>
-      </Animated.View>
+      </View>
 
       {/* Motivational message */}
       <Text style={[styles.motivationalText, { color: colors.textTertiary }]}>
@@ -437,20 +473,47 @@ const styles = StyleSheet.create({
     zIndex: 10,
     paddingHorizontal: sp['3xl'],
   },
-  circleContainer: {
-    width: CIRCLE_SIZE,
-    height: CIRCLE_SIZE,
+  spinnerWrapper: {
+    width: RING_SIZE,
+    height: RING_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  circleTextContainer: {
-    ...StyleSheet.absoluteFillObject,
+  progressRing: {
+    position: 'absolute',
+  },
+  spinnerImageWrapper: {
+    position: 'absolute',
+    width: SPINNER_SIZE,
+    height: SPINNER_SIZE,
+    borderRadius: SPINNER_SIZE / 2,
+    overflow: 'hidden',
+  },
+  spinnerCosmic: {
+    width: SPINNER_SIZE,
+    height: SPINNER_SIZE,
+    borderRadius: SPINNER_SIZE / 2,
+  },
+  spinnerWheel: {
+    width: SPINNER_SIZE,
+    height: SPINNER_SIZE,
+    borderRadius: SPINNER_SIZE / 2,
+    opacity: 0.7,
+  },
+  percentageContainer: {
+    position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
+    width: SPINNER_SIZE,
+    height: SPINNER_SIZE,
   },
   progressText: {
     fontFamily: fontFamily.bodySemiBold,
-    fontSize: fontSize['2xl'],
+    fontSize: fontSize['3xl'],
+    color: '#ffffff',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   motivationalText: {
     fontFamily: fontFamily.body,
