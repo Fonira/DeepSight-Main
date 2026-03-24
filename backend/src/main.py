@@ -479,6 +479,7 @@ async def initialize_database_background():
         # Étape 7: Seed gamification badges
         try:
             from gamification.badges import seed_badges
+            from db.database import async_session_maker
             async with async_session_maker() as badge_session:
                 await seed_badges(badge_session)
             logger.info("Gamification badges seeded")
