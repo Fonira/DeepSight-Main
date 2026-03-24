@@ -162,7 +162,11 @@ class User(Base):
     summaries = relationship("Summary", back_populates="user", cascade="all, delete-orphan")
     chat_messages = relationship("ChatMessage", back_populates="user", cascade="all, delete-orphan")
     api_usage = relationship("ApiUsage", back_populates="user", cascade="all, delete-orphan")
-    
+    flashcard_reviews = relationship("FlashcardReview", back_populates="user", cascade="all, delete-orphan")
+    study_sessions = relationship("StudySession", back_populates="user", cascade="all, delete-orphan")
+    study_stats = relationship("UserStudyStats", back_populates="user", uselist=False, cascade="all, delete-orphan")
+    user_badges = relationship("UserBadge", back_populates="user", cascade="all, delete-orphan")
+
     def __repr__(self):
         return f"<User {self.username}>"
 
@@ -225,20 +229,6 @@ class Summary(Base):
 
     # 🆕 Duration Router v1.0 (Mar 2026) — Index structuré (table des matières temporelle)
     structured_index = Column(Text, nullable=True)  # JSON: [{ts, t, title, summary, kw}]
-
-    # 📊 Engagement metadata (Mar 2026)
-    view_count = Column(Integer, nullable=True)
-    like_count = Column(Integer, nullable=True)
-    comment_count = Column(Integer, nullable=True)
-    share_count = Column(Integer, nullable=True)           # TikTok
-    channel_follower_count = Column(Integer, nullable=True)
-    content_type = Column(String(20), default="video", server_default="video")  # video, carousel, short, live
-    source_tags_json = Column(Text, nullable=True)         # JSON: original video tags (≠ AI-extracted Summary.tags)
-    video_description = Column(Text, nullable=True)        # Source video description
-    channel_id = Column(String(100), nullable=True)
-    music_title = Column(String(255), nullable=True)       # TikTok sound
-    music_author = Column(String(255), nullable=True)      # TikTok sound author
-    carousel_images_json = Column(Text, nullable=True)     # JSON: carousel image URLs
 
     # Relations
     user = relationship("User", back_populates="summaries")
@@ -802,6 +792,138 @@ class VoiceQuota(Base):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 📚 GAMIFICATION & SPACED REPETITION (Mar 2026)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class FlashcardReview(Base):
+    """Stocke chaque review FSRS d'une flashcard par un utilisateur"""
+    __tablename__ = "flashcard_reviews"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    summary_id = Column(Integer, ForeignKey("summaries.id", ondelete="CASCADE"), nullable=False, index=True)
+    card_index = Column(Integer, nullable=False)  # Index de la flashcard dans le set
+    card_front = Column(Text, nullable=False)  # Front de la carte (pour identification)
+
+    # FSRS parameters
+    stability = Column(Float, default=0.0)  # Stabilité mémoire (jours)
+    difficulty = Column(Float, default=0.3)  # Difficulté 0-1
+    elapsed_days = Column(Integer, default=0)
+    scheduled_days = Column(Integer, default=0)
+    reps = Column(Integer, default=0)  # Nombre de répétitions
+    lapses = Column(Integer, default=0)  # Nombre d'oublis
+    state = Column(Integer, default=0)  # 0=New, 1=Learning, 2=Review, 3=Relearning
+    last_rating = Column(Integer, nullable=True)  # 1=Again, 2=Hard, 3=Good, 4=Easy
+    due_date = Column(DateTime, nullable=True)  # Prochaine date de révision
+    last_review = Column(DateTime, nullable=True)
+
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="flashcard_reviews")
+
+    __table_args__ = (
+        Index('idx_review_user_summary', 'user_id', 'summary_id'),
+        Index('idx_review_due', 'user_id', 'due_date'),
+    )
+
+
+class StudySession(Base):
+    """Historique des sessions de révision"""
+    __tablename__ = "study_sessions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    summary_id = Column(Integer, ForeignKey("summaries.id", ondelete="CASCADE"), nullable=True)
+    session_type = Column(String(20), default="flashcards")  # flashcards, quiz, mixed
+    cards_reviewed = Column(Integer, default=0)
+    cards_correct = Column(Integer, default=0)
+    xp_earned = Column(Integer, default=0)
+    duration_seconds = Column(Integer, default=0)
+    started_at = Column(DateTime, default=func.now())
+    completed_at = Column(DateTime, nullable=True)
+
+    user = relationship("User", back_populates="study_sessions")
+
+    __table_args__ = (
+        Index('idx_session_user_date', 'user_id', 'started_at'),
+    )
+
+
+class UserStudyStats(Base):
+    """Stats agrégées de gamification par utilisateur (singleton par user)"""
+    __tablename__ = "user_study_stats"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
+    total_xp = Column(Integer, default=0)
+    level = Column(Integer, default=1)
+    current_streak = Column(Integer, default=0)
+    longest_streak = Column(Integer, default=0)
+    last_study_date = Column(Date, nullable=True)
+    streak_freeze_available = Column(Integer, default=1)  # Freeze gratuits restants
+    total_cards_reviewed = Column(Integer, default=0)
+    total_cards_mastered = Column(Integer, default=0)  # mastery >= 90%
+    total_sessions = Column(Integer, default=0)
+    total_time_seconds = Column(Integer, default=0)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    user = relationship("User", back_populates="study_stats")
+
+
+class Badge(Base):
+    """Définitions des badges (statique, remplie au démarrage)"""
+    __tablename__ = "badges"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String(50), unique=True, nullable=False, index=True)  # "first_flip", "streak_7"
+    name = Column(String(100), nullable=False)
+    description = Column(String(255), nullable=False)
+    icon = Column(String(10), nullable=False)  # Emoji
+    rarity = Column(String(20), default="common")  # common, rare, epic, legendary
+    category = Column(String(30), default="general")  # general, streak, mastery, speed, quiz
+    condition_type = Column(String(30), nullable=False)  # threshold, event, compound
+    condition_value = Column(Integer, default=1)  # Ex: 7 pour streak_7
+    created_at = Column(DateTime, default=func.now())
+
+
+class UserBadge(Base):
+    """Badges débloqués par un utilisateur"""
+    __tablename__ = "user_badges"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    badge_id = Column(Integer, ForeignKey("badges.id", ondelete="CASCADE"), nullable=False, index=True)
+    earned_at = Column(DateTime, default=func.now())
+
+    user = relationship("User", back_populates="user_badges")
+    badge = relationship("Badge")
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'badge_id', name='uq_user_badge'),
+    )
+
+
+class StudyDailyActivity(Base):
+    """Pour le heat map (1 row par jour par user)"""
+    __tablename__ = "study_daily_activities"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    date = Column(Date, nullable=False)
+    cards_reviewed = Column(Integer, default=0)
+    xp_earned = Column(Integer, default=0)
+    sessions_count = Column(Integer, default=0)
+    time_seconds = Column(Integer, default=0)
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'date', name='uq_daily_activity'),
+        Index('idx_daily_user_date', 'user_id', 'date'),
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 FONCTIONS DATABASE
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -892,19 +1014,6 @@ async def run_schema_migrations():
         "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS platform VARCHAR(20) DEFAULT 'youtube'",
         # 🆕 Duration Router v1.0 — structured_index (Mar 2026)
         "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS structured_index TEXT",
-        # 📊 Engagement metadata (Mar 2026)
-        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS view_count INTEGER",
-        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS like_count INTEGER",
-        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS comment_count INTEGER",
-        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS share_count INTEGER",
-        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS channel_follower_count INTEGER",
-        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS content_type VARCHAR(20) DEFAULT 'video'",
-        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS source_tags_json TEXT",
-        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS video_description TEXT",
-        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS channel_id VARCHAR(100)",
-        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS music_title VARCHAR(255)",
-        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS music_author VARCHAR(255)",
-        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS carousel_images_json TEXT",
         # VideoChunks table (créée par create_all si absente, mais on sécurise)
         """
         CREATE TABLE IF NOT EXISTS video_chunks (

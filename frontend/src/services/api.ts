@@ -8,6 +8,7 @@
  */
 
 import { translateApiError } from '../utils/errorMessages';
+import type { StudyStats, HeatMapData, BadgesData, VideoMasteryData, DueCardsData, ReviewResult, StudySessionData, SessionEndResult } from '../types/gamification';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ⚙️ CONFIGURATION
@@ -1882,6 +1883,52 @@ export const studyApi = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// 🎮 GAMIFICATION API — XP, Badges, Streaks, FSRS Reviews
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export const gamificationApi = {
+  /** Get study stats (XP, level, streak) */
+  async getStats(): Promise<StudyStats> {
+    return request('/api/gamification/stats');
+  },
+
+  /** Get heat map data */
+  async getHeatMap(days: number = 35): Promise<HeatMapData> {
+    return request(`/api/gamification/heat-map?days=${days}`);
+  },
+
+  /** Get badges (earned + locked) */
+  async getBadges(): Promise<BadgesData> {
+    return request('/api/gamification/badges');
+  },
+
+  /** Get video mastery list */
+  async getVideoMastery(): Promise<VideoMasteryData> {
+    return request('/api/gamification/video-mastery');
+  },
+
+  /** Get due cards for a summary */
+  async getDueCards(summaryId: number): Promise<DueCardsData> {
+    return request(`/api/study/review/due/${summaryId}`);
+  },
+
+  /** Submit a card review (FSRS rating) */
+  async submitReview(data: { summary_id: number; card_index: number; card_front: string; rating: number }): Promise<ReviewResult> {
+    return request('/api/study/review/submit', { method: 'POST', body: data });
+  },
+
+  /** Start a study session */
+  async startSession(data: { summary_id?: number; session_type?: string }): Promise<StudySessionData> {
+    return request('/api/study/review/session/start', { method: 'POST', body: data });
+  },
+
+  /** End a study session */
+  async endSession(data: { session_id: number; cards_reviewed: number; cards_correct: number; duration_seconds: number }): Promise<SessionEndResult> {
+    return request('/api/study/review/session/end', { method: 'POST', body: data });
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // 🩺 STATUS API — Public monitoring endpoints
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -2248,6 +2295,7 @@ export default {
   admin: adminApi,
   academic: academicApi,
   study: studyApi,
+  gamification: gamificationApi,
   contact: contactApi,
   status: statusApi,
   share: shareApi,

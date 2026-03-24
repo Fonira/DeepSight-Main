@@ -1,24 +1,32 @@
 /**
  * DEEP SIGHT — Study Page
- * Page d'étude avec Flashcards et Quiz
- * 
+ * Page d'étude avec Flashcards, Quiz et Mode Session FSRS
+ *
  * FONCTIONNALITÉS:
- * - 📚 Tabs: Flashcards | Quiz
+ * - 📚 Tabs: Flashcards | Quiz (génération initiale)
+ * - 🧠 Mode Session FSRS: flip 3D + ConfidenceButtons (1-4) + XP
+ * - ⌨️ Raccourcis clavier: Espace = flip, 1-4 = rating
  * - 📊 Progression en temps réel
- * - 🏆 Score final
+ * - 🏆 Score final / SessionResults
  * - 🔙 Navigation vers l'analyse
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   BookOpen, Brain, ChevronLeft, Loader2, AlertCircle,
-  BookMarked, HelpCircle
+  BookMarked, HelpCircle, Star, Zap,
 } from 'lucide-react';
-import { FlashcardDeck, QuizQuestion, StudyProgress, ScoreCard } from '../components/Study';
+import {
+  FlashcardDeck, QuizQuestion, StudyProgress, ScoreCard,
+  ConfidenceButtons, SessionResults,
+} from '../components/Study';
 import type { Flashcard, FlashcardStats, QuizQuestionData } from '../components/Study';
 import { useTranslation } from '../hooks/useTranslation';
 import { studyApi, videoApi } from '../services/api';
+import { useStudyStore } from '../store/studyStore';
+import type { SessionEndResult } from '../types/gamification';
 import DoodleBackground from '../components/DoodleBackground';
 import { SEO } from '../components/SEO';
 
@@ -42,7 +50,7 @@ interface StudyData {
 const fetchStudyData = async (summaryId: string, generateFlashcards: boolean, generateQuiz: boolean): Promise<StudyData> => {
   // First get the summary info for the title
   const summary = await videoApi.getSummary(parseInt(summaryId));
-  
+
   let flashcards: Flashcard[] = [];
   let quiz: QuizQuestionData[] = [];
 
@@ -73,7 +81,7 @@ const fetchStudyData = async (summaryId: string, generateFlashcards: boolean, ge
       console.error('Error generating quiz:', err);
     }
   }
-  
+
   return {
     flashcards,
     quiz,
@@ -91,16 +99,18 @@ export const StudyPage: React.FC = () => {
   const { summaryId: paramSummaryId } = useParams<{ summaryId: string }>();
   const navigate = useNavigate();
   const { language } = useTranslation();
-  
+
   // Support both route param and query param for backwards compatibility
   const summaryId = paramSummaryId || searchParams.get('id');
   const initialTab = (searchParams.get('tab') as TabType) || 'flashcards';
+  const autoSession = searchParams.get('session') === 'true';
 
+  // ── Existing state ──
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [studyData, setStudyData] = useState<StudyData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Progress tracking
   const [flashcardProgress, setFlashcardProgress] = useState({ current: 0, total: 0 });
   const [flashcardStats, setFlashcardStats] = useState<FlashcardStats | null>(null);
@@ -108,6 +118,37 @@ export const StudyPage: React.FC = () => {
   const [showResults, setShowResults] = useState(false);
   const [finalScore, setFinalScore] = useState({ correct: 0, incorrect: 0 });
 
+  // State for tracking if content has been generated
+  const [hasGeneratedFlashcards, setHasGeneratedFlashcards] = useState(false);
+  const [hasGeneratedQuiz, setHasGeneratedQuiz] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  // ── Session FSRS state ──
+  const [isSessionMode, setIsSessionMode] = useState(false);
+  const [sessionIndex, setSessionIndex] = useState(0);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [isRating, setIsRating] = useState(false);
+  const [isStartingSession, setIsStartingSession] = useState(false);
+  const [sessionEndResult, setSessionEndResult] = useState<SessionEndResult | null>(null);
+  const autoStartRef = useRef(false);
+
+  // ── Store access ──
+  const {
+    dueCards, loading: storeLoading, sessionXP,
+    sessionCards: sessionCardCount, sessionCorrect,
+    fetchDueCards, startSession, submitReview, endSession, resetSession,
+  } = useStudyStore();
+
+  // ── Derived session data ──
+  const allSessionCards = useMemo(() => {
+    if (!dueCards) return [];
+    return [...(dueCards.due_cards || []), ...(dueCards.new_cards || [])];
+  }, [dueCards]);
+
+  const currentCard = allSessionCards[sessionIndex] ?? null;
+  const hasDueCards = allSessionCards.length > 0;
+
+  // ── Localized texts ──
   const texts = {
     fr: {
       title: 'Mode Étude',
@@ -133,12 +174,35 @@ export const StudyPage: React.FC = () => {
     },
   }[language];
 
-  // State for tracking if content has been generated
-  const [hasGeneratedFlashcards, setHasGeneratedFlashcards] = useState(false);
-  const [hasGeneratedQuiz, setHasGeneratedQuiz] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  // ═════════════════════════════════════════════════════════════════════════════
+  // EFFECTS
+  // ═════════════════════════════════════════════════════════════════════════════
 
-  // Fetch study data based on selected tab
+  // Fetch due cards for FSRS mode
+  useEffect(() => {
+    if (summaryId) {
+      fetchDueCards(parseInt(summaryId));
+    }
+  }, [summaryId]);
+
+  // Auto-start session if ?session=true
+  useEffect(() => {
+    if (
+      autoSession &&
+      !autoStartRef.current &&
+      dueCards &&
+      !storeLoading &&
+      allSessionCards.length > 0 &&
+      summaryId
+    ) {
+      autoStartRef.current = true;
+      resetSession();
+      startSession(parseInt(summaryId), 'flashcards');
+      setIsSessionMode(true);
+    }
+  }, [autoSession, dueCards, storeLoading, allSessionCards.length, summaryId]);
+
+  // Fetch study data based on selected tab (existing logic)
   useEffect(() => {
     if (!summaryId) {
       setError(texts.noId);
@@ -150,14 +214,14 @@ export const StudyPage: React.FC = () => {
       setIsLoading(true);
       setIsGenerating(true);
       setError(null);
-      
+
       try {
         // Generate content for the active tab
         const generateFlash = activeTab === 'flashcards' && !hasGeneratedFlashcards;
         const generateQ = activeTab === 'quiz' && !hasGeneratedQuiz;
-        
+
         const data = await fetchStudyData(summaryId, generateFlash, generateQ);
-        
+
         // Merge with existing data
         setStudyData(prev => ({
           flashcards: generateFlash ? data.flashcards : (prev?.flashcards || []),
@@ -165,7 +229,7 @@ export const StudyPage: React.FC = () => {
           videoTitle: data.videoTitle,
           videoId: data.videoId,
         }));
-        
+
         if (generateFlash) {
           setHasGeneratedFlashcards(true);
           setFlashcardProgress({ current: 0, total: data.flashcards.length });
@@ -188,16 +252,38 @@ export const StudyPage: React.FC = () => {
     };
 
     // Only load if we need to generate content for the active tab
-    const needsGeneration = 
+    const needsGeneration =
       (activeTab === 'flashcards' && !hasGeneratedFlashcards) ||
       (activeTab === 'quiz' && !hasGeneratedQuiz);
-    
+
     if (needsGeneration || !studyData) {
       loadData();
     }
   }, [summaryId, activeTab, hasGeneratedFlashcards, hasGeneratedQuiz]);
 
-  // Handlers
+  // ── Keyboard shortcuts for session mode ──
+  useEffect(() => {
+    if (!isSessionMode || sessionEndResult) return;
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setIsFlipped(prev => !prev);
+      }
+      if (isFlipped && !isRating && e.key >= '1' && e.key <= '4') {
+        e.preventDefault();
+        handleRate(parseInt(e.key) as 1 | 2 | 3 | 4);
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [isSessionMode, isFlipped, isRating, sessionEndResult]);
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // HANDLERS (existing)
+  // ═════════════════════════════════════════════════════════════════════════════
+
   const handleFlashcardProgress = useCallback((current: number, total: number, stats: FlashcardStats) => {
     setFlashcardProgress({ current, total });
     setFlashcardStats(stats);
@@ -227,17 +313,62 @@ export const StudyPage: React.FC = () => {
     navigate(`/dashboard?id=${summaryId}`);
   };
 
-  // Loading state
+  // ═════════════════════════════════════════════════════════════════════════════
+  // HANDLERS (session FSRS)
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  const handleStartSession = useCallback(async () => {
+    if (!summaryId) return;
+    setIsStartingSession(true);
+    setSessionIndex(0);
+    setIsFlipped(false);
+    setSessionEndResult(null);
+    resetSession();
+    await fetchDueCards(parseInt(summaryId));
+    await startSession(parseInt(summaryId), 'flashcards');
+    setIsStartingSession(false);
+    setIsSessionMode(true);
+  }, [summaryId, fetchDueCards, startSession, resetSession]);
+
+  const handleRate = useCallback(async (rating: 1 | 2 | 3 | 4) => {
+    if (!summaryId || !currentCard || isRating) return;
+    setIsRating(true);
+    try {
+      await submitReview(parseInt(summaryId), currentCard.card_index, currentCard.front, rating);
+      setIsFlipped(false);
+      const next = sessionIndex + 1;
+      if (next >= allSessionCards.length) {
+        const result = await endSession();
+        setSessionEndResult(result);
+      } else {
+        setSessionIndex(next);
+      }
+    } finally {
+      setIsRating(false);
+    }
+  }, [summaryId, currentCard, sessionIndex, allSessionCards.length, submitReview, endSession, isRating]);
+
+  const handleExitSession = useCallback(() => {
+    setIsSessionMode(false);
+    setSessionEndResult(null);
+    setSessionIndex(0);
+    setIsFlipped(false);
+    resetSession();
+  }, [resetSession]);
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // RENDER — Loading state
+  // ═════════════════════════════════════════════════════════════════════════════
+
   if (isLoading && !studyData) {
-    const loadingMessage = isGenerating 
-      ? (activeTab === 'flashcards' 
+    const loadingMessage = isGenerating
+      ? (activeTab === 'flashcards'
         ? (language === 'fr' ? 'Génération des flashcards...' : 'Generating flashcards...')
         : (language === 'fr' ? 'Génération du quiz...' : 'Generating quiz...'))
       : texts.loading;
-    
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-        {/* Background handled by CSS design system v8.0 */}
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="text-center">
             <Loader2 className="w-12 h-12 text-amber-400 animate-spin mx-auto mb-4" />
@@ -251,11 +382,13 @@ export const StudyPage: React.FC = () => {
     );
   }
 
-  // Error state
+  // ═════════════════════════════════════════════════════════════════════════════
+  // RENDER — Error state
+  // ═════════════════════════════════════════════════════════════════════════════
+
   if (error || !studyData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-        {/* Background handled by CSS design system v8.0 */}
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="text-center glass-panel rounded-2xl p-8 max-w-md">
             <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
@@ -263,7 +396,7 @@ export const StudyPage: React.FC = () => {
             <p className="text-gray-400 mb-6">{error || texts.noData}</p>
             <button
               onClick={() => navigate('/dashboard')}
-              className="flex items-center gap-2 px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 
+              className="flex items-center gap-2 px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30
                        text-amber-400 rounded-lg transition-colors mx-auto"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -279,6 +412,10 @@ export const StudyPage: React.FC = () => {
   const hasFlashcards = studyData.flashcards.length > 0;
   const hasQuiz = studyData.quiz.length > 0;
 
+  // ═════════════════════════════════════════════════════════════════════════════
+  // RENDER — Main
+  // ═════════════════════════════════════════════════════════════════════════════
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       <SEO title="Révision" path="/study" />
@@ -288,18 +425,31 @@ export const StudyPage: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <button
-            onClick={handleBack}
+            onClick={isSessionMode ? handleExitSession : handleBack}
             className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
           >
             <ChevronLeft className="w-5 h-5" />
-            <span className="text-sm">{texts.backToAnalysis}</span>
+            <span className="text-sm">
+              {isSessionMode
+                ? (language === 'fr' ? 'Quitter la session' : 'Exit session')
+                : texts.backToAnalysis}
+            </span>
           </button>
-          
+
           <div className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-amber-400" />
-            <h1 className="text-lg font-semibold text-white">{texts.title}</h1>
+            {isSessionMode ? (
+              <>
+                <Star className="w-5 h-5 text-amber-400" />
+                <span className="text-lg font-semibold text-amber-400">+{sessionXP} XP</span>
+              </>
+            ) : (
+              <>
+                <BookOpen className="w-5 h-5 text-amber-400" />
+                <h1 className="text-lg font-semibold text-white">{texts.title}</h1>
+              </>
+            )}
           </div>
-          
+
           <div className="w-24" /> {/* Spacer */}
         </div>
 
@@ -308,95 +458,257 @@ export const StudyPage: React.FC = () => {
           {studyData.videoTitle}
         </h2>
 
-        {/* Tabs */}
-        <div className="flex justify-center gap-2 mb-6">
-          <button
-            onClick={() => { setActiveTab('flashcards'); setShowResults(false); }}
-            disabled={!hasFlashcards}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all
-                      ${activeTab === 'flashcards'
-                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
-                        : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50'
-                      } ${!hasFlashcards ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <BookMarked className="w-5 h-5" />
-            {texts.flashcards}
-            {hasFlashcards && (
-              <span className="ml-1 px-2 py-0.5 rounded-full bg-gray-700 text-xs">
-                {studyData.flashcards.length}
-              </span>
-            )}
-          </button>
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {/* SESSION FSRS MODE                                                */}
+        {/* ══════════════════════════════════════════════════════════════════ */}
+        {isSessionMode ? (
+          <div className="max-w-xl mx-auto">
+            {/* Session Results */}
+            {sessionEndResult ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+              >
+                <SessionResults
+                  cardsReviewed={sessionCardCount}
+                  xpEarned={sessionEndResult.xp_earned}
+                  accuracy={sessionCardCount > 0 ? Math.round((sessionCorrect / sessionCardCount) * 100) : 0}
+                  newBadges={sessionEndResult.new_badges}
+                  onClose={handleExitSession}
+                />
+              </motion.div>
+            ) : currentCard ? (
+              <>
+                {/* Progress header */}
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-sm text-gray-400">
+                    {sessionIndex + 1} / {allSessionCards.length}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {language === 'fr' ? 'Session FSRS' : 'FSRS Session'}
+                  </span>
+                </div>
 
-          <button
-            onClick={() => { setActiveTab('quiz'); setShowResults(false); }}
-            disabled={!hasQuiz}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all
-                      ${activeTab === 'quiz'
-                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
-                        : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50'
-                      } ${!hasQuiz ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <HelpCircle className="w-5 h-5" />
-            {texts.quiz}
-            {hasQuiz && (
-              <span className="ml-1 px-2 py-0.5 rounded-full bg-gray-700 text-xs">
-                {studyData.quiz.length}
-              </span>
-            )}
-          </button>
-        </div>
+                {/* Progress bar */}
+                <div className="h-1.5 rounded-full bg-white/5 mb-8 overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(sessionIndex / allSessionCards.length) * 100}%` }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                  />
+                </div>
 
-        {/* Progress bar (when not showing results) */}
-        {!showResults && currentProgress.total > 0 && (
-          <div className="mb-6">
-            <StudyProgress
-              current={currentProgress.current}
-              total={currentProgress.total}
-              correct={activeTab === 'flashcards' ? flashcardStats?.known || 0 : quizProgress.score}
-              incorrect={activeTab === 'flashcards' ? flashcardStats?.unknown || 0 : currentProgress.current - quizProgress.score}
-              mode={activeTab === 'flashcards' ? 'flashcard' : 'quiz'}
-              language={language}
-            />
+                {/* 3D Flip Card */}
+                <div style={{ perspective: 1000 }} className="mb-6">
+                  <motion.div
+                    key={sessionIndex}
+                    initial={{ opacity: 0, x: 30 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div
+                      onClick={() => setIsFlipped(!isFlipped)}
+                      className="relative w-full cursor-pointer"
+                      style={{
+                        minHeight: 260,
+                        transformStyle: 'preserve-3d',
+                        transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0)',
+                        transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+                      }}
+                    >
+                      {/* FRONT */}
+                      <div
+                        className="absolute inset-0 flex flex-col items-center justify-center p-8 rounded-2xl bg-gradient-to-br from-indigo-500/[0.08] to-violet-500/[0.04] border border-indigo-500/20"
+                        style={{ backfaceVisibility: 'hidden' }}
+                      >
+                        <span className="text-[10px] font-semibold tracking-widest text-indigo-400 uppercase mb-4">
+                          Question
+                        </span>
+                        <p className="text-lg text-white text-center leading-relaxed font-medium">
+                          {currentCard.front}
+                        </p>
+                        <p className="text-[11px] text-gray-500 mt-6">
+                          {language === 'fr' ? 'Cliquer ou Espace pour révéler' : 'Click or Space to reveal'}
+                        </p>
+                      </div>
+
+                      {/* BACK */}
+                      <div
+                        className="absolute inset-0 flex flex-col items-center justify-center p-8 rounded-2xl bg-gradient-to-br from-emerald-500/[0.08] to-cyan-500/[0.04] border border-emerald-500/20"
+                        style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+                      >
+                        <span className="text-[10px] font-semibold tracking-widest text-emerald-400 uppercase mb-4">
+                          {language === 'fr' ? 'Réponse' : 'Answer'}
+                        </span>
+                        <p className="text-base text-gray-200 text-center leading-relaxed">
+                          {currentCard.back}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                </div>
+
+                {/* Confidence Buttons (only when flipped) */}
+                <AnimatePresence>
+                  {isFlipped && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ConfidenceButtons onRate={handleRate} disabled={isRating} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Keyboard hint */}
+                <p className="text-center text-[11px] text-gray-600 mt-6">
+                  {language === 'fr'
+                    ? 'Espace = retourner · 1-4 = noter la difficulté'
+                    : 'Space = flip · 1-4 = rate difficulty'}
+                </p>
+              </>
+            ) : (
+              /* Loading cards */
+              <div className="text-center py-16">
+                <Loader2 className="w-8 h-8 text-indigo-400 animate-spin mx-auto mb-4" />
+                <p className="text-gray-400">
+                  {language === 'fr' ? 'Chargement des cartes...' : 'Loading cards...'}
+                </p>
+              </div>
+            )}
           </div>
-        )}
+        ) : (
+          <>
+            {/* ══════════════════════════════════════════════════════════════ */}
+            {/* MODE SESSION BUTTON (visible when not in session)             */}
+            {/* ══════════════════════════════════════════════════════════════ */}
+            {hasDueCards && (
+              <motion.div
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex justify-center mb-4"
+              >
+                <button
+                  onClick={handleStartSession}
+                  disabled={isStartingSession}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium text-sm
+                           bg-gradient-to-r from-indigo-500/20 to-violet-500/20
+                           text-indigo-400 border border-indigo-500/30
+                           hover:from-indigo-500/30 hover:to-violet-500/30
+                           disabled:opacity-50 transition-all"
+                >
+                  {isStartingSession ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Zap className="w-4 h-4" />
+                  )}
+                  {language === 'fr' ? 'Mode Session' : 'Session Mode'}
+                  <span className="ml-1 px-2 py-0.5 rounded-full bg-indigo-500/20 text-[11px]">
+                    {allSessionCards.length} {language === 'fr' ? 'dues' : 'due'}
+                  </span>
+                </button>
+              </motion.div>
+            )}
 
-        {/* Content */}
-        <div className="glass-panel rounded-2xl p-6 min-h-[500px]">
-          {showResults ? (
-            <ScoreCard
-              score={finalScore.correct}
-              total={activeTab === 'flashcards' ? studyData.flashcards.length : studyData.quiz.length}
-              correct={finalScore.correct}
-              incorrect={finalScore.incorrect}
-              mode={activeTab === 'flashcards' ? 'flashcard' : 'quiz'}
-              onRetry={handleRetry}
-              language={language}
-            />
-          ) : activeTab === 'flashcards' ? (
-            hasFlashcards ? (
-              <FlashcardDeck
-                flashcards={studyData.flashcards}
-                onProgress={handleFlashcardProgress}
-                onComplete={handleFlashcardComplete}
-                language={language}
-              />
-            ) : (
-              <EmptyState type="flashcards" language={language} />
-            )
-          ) : (
-            hasQuiz ? (
-              <QuizQuestion
-                questions={studyData.quiz}
-                onProgress={handleQuizProgress}
-                onComplete={handleQuizComplete}
-                language={language}
-              />
-            ) : (
-              <EmptyState type="quiz" language={language} />
-            )
-          )}
-        </div>
+            {/* ══════════════════════════════════════════════════════════════ */}
+            {/* EXISTING TABS + CONTENT                                       */}
+            {/* ══════════════════════════════════════════════════════════════ */}
+
+            {/* Tabs */}
+            <div className="flex justify-center gap-2 mb-6">
+              <button
+                onClick={() => { setActiveTab('flashcards'); setShowResults(false); }}
+                disabled={!hasFlashcards}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all
+                          ${activeTab === 'flashcards'
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
+                            : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50'
+                          } ${!hasFlashcards ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <BookMarked className="w-5 h-5" />
+                {texts.flashcards}
+                {hasFlashcards && (
+                  <span className="ml-1 px-2 py-0.5 rounded-full bg-gray-700 text-xs">
+                    {studyData.flashcards.length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => { setActiveTab('quiz'); setShowResults(false); }}
+                disabled={!hasQuiz}
+                className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all
+                          ${activeTab === 'quiz'
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
+                            : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50'
+                          } ${!hasQuiz ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <HelpCircle className="w-5 h-5" />
+                {texts.quiz}
+                {hasQuiz && (
+                  <span className="ml-1 px-2 py-0.5 rounded-full bg-gray-700 text-xs">
+                    {studyData.quiz.length}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Progress bar (when not showing results) */}
+            {!showResults && currentProgress.total > 0 && (
+              <div className="mb-6">
+                <StudyProgress
+                  current={currentProgress.current}
+                  total={currentProgress.total}
+                  correct={activeTab === 'flashcards' ? flashcardStats?.known || 0 : quizProgress.score}
+                  incorrect={activeTab === 'flashcards' ? flashcardStats?.unknown || 0 : currentProgress.current - quizProgress.score}
+                  mode={activeTab === 'flashcards' ? 'flashcard' : 'quiz'}
+                  language={language}
+                />
+              </div>
+            )}
+
+            {/* Content */}
+            <div className="glass-panel rounded-2xl p-6 min-h-[500px]">
+              {showResults ? (
+                <ScoreCard
+                  score={finalScore.correct}
+                  total={activeTab === 'flashcards' ? studyData.flashcards.length : studyData.quiz.length}
+                  correct={finalScore.correct}
+                  incorrect={finalScore.incorrect}
+                  mode={activeTab === 'flashcards' ? 'flashcard' : 'quiz'}
+                  onRetry={handleRetry}
+                  language={language}
+                />
+              ) : activeTab === 'flashcards' ? (
+                hasFlashcards ? (
+                  <FlashcardDeck
+                    flashcards={studyData.flashcards}
+                    onProgress={handleFlashcardProgress}
+                    onComplete={handleFlashcardComplete}
+                    language={language}
+                  />
+                ) : (
+                  <EmptyState type="flashcards" language={language} />
+                )
+              ) : (
+                hasQuiz ? (
+                  <QuizQuestion
+                    questions={studyData.quiz}
+                    onProgress={handleQuizProgress}
+                    onComplete={handleQuizComplete}
+                    language={language}
+                  />
+                ) : (
+                  <EmptyState type="quiz" language={language} />
+                )
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

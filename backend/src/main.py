@@ -286,6 +286,22 @@ except ImportError as e:
     VOICE_ROUTER_AVAILABLE = False
     print(f"⚠️ Voice router not available: {e}", flush=True)
 
+# 🎮 Gamification router (XP, badges, streaks, heat-map)
+try:
+    from gamification.router import router as gamification_router
+    GAMIFICATION_ROUTER_AVAILABLE = True
+except ImportError as e:
+    GAMIFICATION_ROUTER_AVAILABLE = False
+    print(f"⚠️ Gamification router not available: {e}", flush=True)
+
+# 📖 Study Review router (FSRS spaced-repetition)
+try:
+    from study.review_router import router as study_review_router
+    STUDY_REVIEW_ROUTER_AVAILABLE = True
+except ImportError as e:
+    STUDY_REVIEW_ROUTER_AVAILABLE = False
+    print(f"⚠️ Study review router not available: {e}", flush=True)
+
 # Global video cache instance
 _video_cache: "VideoContentCacheService | None" = None
 
@@ -459,6 +475,15 @@ async def initialize_database_background():
             except Exception as vc_err:
                 logger.warning(f"Video content cache init failed (non-blocking): {vc_err}")
                 _video_cache = None
+
+        # Étape 7: Seed gamification badges
+        try:
+            from gamification.badges import seed_badges
+            async with async_session_maker() as badge_session:
+                await seed_badges(badge_session)
+            logger.info("Gamification badges seeded")
+        except Exception as badge_err:
+            logger.warning(f"Badge seeding failed (non-blocking): {badge_err}")
 
         # Marquer l'app comme prête
         _app_state["ready"] = True
@@ -798,6 +823,16 @@ if VIDEO_CACHE_AVAILABLE:
 if VOICE_ROUTER_AVAILABLE:
     app.include_router(voice_router, prefix="/api/voice", tags=["Voice"])
     print("🎙️ Voice router loaded (GET /api/voice/quota, POST /api/voice/session, POST /api/voice/webhook)", flush=True)
+
+# 🎮 Gamification router (XP, badges, streaks)
+if GAMIFICATION_ROUTER_AVAILABLE:
+    app.include_router(gamification_router, prefix="/api/gamification", tags=["Gamification"])
+    print("🎮 Gamification router loaded (GET /api/gamification/stats, badges, heat-map)", flush=True)
+
+# 📖 Study Review router (FSRS spaced-repetition)
+if STUDY_REVIEW_ROUTER_AVAILABLE:
+    app.include_router(study_review_router, prefix="/api/study/review", tags=["Study Review"])
+    print("📖 Study review router loaded (POST /api/study/review/submit, GET /due)", flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE
