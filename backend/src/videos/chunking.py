@@ -59,7 +59,7 @@ SYNTHESIS_MODEL = "mistral-large-2512"   # Quality → full digest assembly
 
 MAX_CHUNK_CHARS = 15000        # Max chars per chunk before truncation
 MIN_CHUNK_CHARS = 500          # Min chars for a chunk to be worth summarizing
-MAX_DIGEST_CHARS = 800         # Target chars per chunk digest
+MAX_DIGEST_CHARS = 1000        # Target chars per chunk digest (with timestamps)
 MAX_FULL_DIGEST_CHARS = 10000  # Target chars for assembled full digest
 MAX_CONCURRENT_DIGESTS = 5     # Parallel Mistral calls limit
 
@@ -367,23 +367,28 @@ SEGMENT:
 {text}
 
 CONSIGNES:
-- Résumé DENSE en 3-6 phrases (max 800 caractères)
+- Résumé DENSE en 3-8 phrases (max 1000 caractères)
+- OBLIGATOIRE : Commence par le timestamp [{_format_time(chunk.start_seconds)}] pour ancrer temporellement
+- Inclus 1-2 timecodes intermédiaires [{_format_time(chunk.start_seconds)}]-[{_format_time(chunk.end_seconds)}] quand un nouveau sujet apparaît
 - Capture les idées clés, arguments, données factuelles
 - Mentionne les intervenants ou sources cités si pertinent
 - Conserve la terminologie technique importante
-- Ne commence PAS par "Ce segment parle de..." — va droit au contenu"""
+- Ne commence PAS par "Ce segment parle de..." — va droit au contenu
+
+EXEMPLE DE FORMAT:
+[{_format_time(chunk.start_seconds)}] L'auteur explique que... Puis vers [{_format_time((chunk.start_seconds + chunk.end_seconds) // 2)}], il aborde..."""
 
     try:
         response = await client.chat.complete_async(
             model=DIGEST_MODEL,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=500,
+            max_tokens=700,
             temperature=0.3,
         )
         digest = response.choices[0].message.content.strip()
         logger.info(
             f"Chunk digest complete",
-            extra={"chunk_index": chunk.index, "digest_chars": len(digest)}
+            extra={"chunk_index": chunk.index, "digest_chars": len(digest), "time_range": time_range}
         )
         return digest
     except Exception as e:
@@ -450,10 +455,16 @@ CONSIGNES:
 - Synthèse structurée et fluide de 1500-2500 mots (~6000-10000 caractères)
 - Couvre l'INTÉGRALITÉ du contenu, du début à la fin
 - Organise par thèmes/arguments principaux, pas chronologiquement
+- CONSERVE LES TIMECODES [MM:SS] dans la synthèse — ils sont essentiels pour la navigation
+- Pour chaque thème majeur, indique le timecode de référence entre crochets [MM:SS]
 - Conserve les données chiffrées, noms propres, sources citées
 - Utilise les marqueurs épistémiques: [SOLIDE], [PLAUSIBLE], [INCERTAIN], [À VÉRIFIER]
 - Inclus une section "Points clés" avec 5-8 bullet points en fin
-- Ne perds aucune idée importante — c'est la base pour la méta-analyse"""
+- Ne perds aucune idée importante — c'est la base pour la méta-analyse
+
+EXEMPLE de conservation des timecodes:
+"L'auteur expose sa thèse sur l'IA générative [3:20] avant d'aborder les implications économiques [15:45]..."
+"""
 
     client = Mistral(api_key=get_mistral_key())
     

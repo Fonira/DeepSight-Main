@@ -223,6 +223,9 @@ class Summary(Base):
     # Hierarchical Digest Pipeline (Feb 2026)
     full_digest = Column(Text, nullable=True)  # Assembled full digest from chunk digests (~6-10K chars)
 
+    # 🆕 Duration Router v1.0 (Mar 2026) — Index structuré (table des matières temporelle)
+    structured_index = Column(Text, nullable=True)  # JSON: [{ts, t, title, summary, kw}]
+
     # Relations
     user = relationship("User", back_populates="summaries")
     chat_messages = relationship("ChatMessage", back_populates="summary", cascade="all, delete-orphan")
@@ -873,6 +876,8 @@ async def run_schema_migrations():
         "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS full_digest TEXT",
         # 🎵 TikTok support (Mar 2026)
         "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS platform VARCHAR(20) DEFAULT 'youtube'",
+        # 🆕 Duration Router v1.0 — structured_index (Mar 2026)
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS structured_index TEXT",
         # VideoChunks table (créée par create_all si absente, mais on sécurise)
         """
         CREATE TABLE IF NOT EXISTS video_chunks (

@@ -148,6 +148,44 @@ MAX_GUEST_ANALYSES = 3
 MAX_VIDEO_DURATION_GUEST = 300  # 5 minutes
 
 
+async def _save_structured_index(
+    session: AsyncSession,
+    summary_id: int,
+    video_duration: int,
+    transcript: str,
+    transcript_timestamped: Optional[str],
+) -> None:
+    """
+    🆕 v4.0: Génère et sauvegarde l'index structuré (table des matières temporelle).
+    Non-bloquant — en cas d'erreur, l'analyse est déjà sauvegardée.
+    """
+    try:
+        from videos.duration_router import categorize_video, build_structured_index, serialize_index
+        ts_source = transcript_timestamped or transcript
+        profile = categorize_video(video_duration, ts_source, transcript_timestamped)
+
+        if profile.tier.value != "short" and transcript_timestamped:
+            index_entries = build_structured_index(
+                transcript_timestamped, video_duration, profile.tier
+            )
+            if index_entries:
+                index_json = serialize_index(index_entries)
+                from sqlalchemy import update as sql_update
+                await session.execute(
+                    sql_update(Summary)
+                    .where(Summary.id == summary_id)
+                    .values(structured_index=index_json)
+                )
+                await session.commit()
+                print(f"📑 [v4.0] Structured index saved: {len(index_entries)} entries for summary_id={summary_id}, tier={profile.tier.value}", flush=True)
+            else:
+                print(f"📑 [v4.0] No index entries generated for summary_id={summary_id}", flush=True)
+        else:
+            print(f"📑 [v4.0] No index needed (tier={profile.tier.value}) for summary_id={summary_id}", flush=True)
+    except Exception as e:
+        print(f"⚠️ [v4.0] Structured index failed (non-blocking): {e}", flush=True)
+
+
 def get_task_status(task_id: str) -> Optional[Dict[str, Any]]:
     """
     Public accessor for task status from the in-memory _task_store.
@@ -1348,6 +1386,13 @@ async def _analyze_video_background_v2(
                 platform=platform
             )
 
+            # 🆕 v4.0: Générer et sauvegarder l'index structuré
+            await _save_structured_index(
+                session, summary_id,
+                video_info.get("duration", 0),
+                transcript, transcript_timestamped
+            )
+
             # Incrémenter le quota quotidien
             try:
                 from core.plan_limits import increment_daily_usage
@@ -2111,6 +2156,13 @@ async def _analyze_video_background_v2_1(
                 platform=platform
             )
 
+            # 🆕 v4.0: Index structuré
+            await _save_structured_index(
+                session, summary_id,
+                video_info.get("duration", 0),
+                transcript, transcript_timestamped
+            )
+
             # Incrémenter le quota
             try:
                 from core.plan_limits import increment_daily_usage
@@ -2631,6 +2683,13 @@ async def _analyze_video_background_v6(
             )
             
             print(f"💾 Summary saved: id={summary_id}", flush=True)
+
+            # 🆕 v4.0: Index structuré
+            await _save_structured_index(
+                session, summary_id,
+                video_info.get("duration", 0),
+                transcript, transcript_timestamped
+            )
 
             # ⚡ Cache + quota en parallèle (perf v6.2)
             async def _cache_analysis():

@@ -215,11 +215,14 @@ async def stream_mistral_analysis(
     lang: str = "fr",
     model: str = "mistral-small-2603",
     web_context: str = None,
+    video_duration: int = 0,
+    transcript_timestamped: str = None,
 ) -> AsyncGenerator[str, None]:
     """
     Stream les tokens d'analyse depuis Mistral AI.
     🆕 v3.0: Supporte le contexte web pré-analyse (Perplexity)
-    
+    🆕 v4.0: Utilise le duration_router pour adapter le transcript selon la durée
+
     Yields:
         Tokens individuels de la réponse
     """
@@ -311,15 +314,51 @@ Structure your response with:
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 🎬 v4.0: ROUTAGE PAR DURÉE — transcript adaptatif
+    # ═══════════════════════════════════════════════════════════════════════════
+    try:
+        from videos.duration_router import categorize_video, build_structured_index, format_index_for_prompt, prepare_transcript_for_analysis
+        profile = categorize_video(video_duration, transcript, transcript_timestamped)
+
+        # Construire l'index structuré pour les vidéos MEDIUM+
+        index_entries = []
+        index_section = ""
+        if transcript_timestamped and profile.tier.value != "short":
+            index_entries = build_structured_index(
+                transcript_timestamped, video_duration, profile.tier
+            )
+            if index_entries:
+                index_section = format_index_for_prompt(index_entries, lang) + "\n\n"
+
+        # Préparer le transcript adapté au tier
+        adapted_transcript = prepare_transcript_for_analysis(
+            profile, transcript, transcript_timestamped, index_entries
+        )
+
+        print(f"🎬 [STREAMING] Duration router: tier={profile.tier.value}, "
+              f"duration={video_duration}s, transcript={len(adapted_transcript)} chars "
+              f"(original: {len(transcript)} chars), index_entries={len(index_entries)}", flush=True)
+    except Exception as e:
+        print(f"⚠️ [STREAMING] Duration router fallback: {e}", flush=True)
+        # Fallback : limitation intelligente basée sur la durée
+        if video_duration > 1800:  # >30min
+            adapted_transcript = transcript[:80000]
+        else:
+            adapted_transcript = transcript[:50000]
+        index_section = ""
+
     user_prompt = f"""Analyse cette vidéo YouTube:
 
 **Titre:** {title}
 **Chaîne:** {channel}
+**Durée:** {video_duration // 60} minutes
 {web_section}
-**Transcription:**
-{transcript[:40000]}
+{index_section}**Transcription:**
+{adapted_transcript}
 
-Génère une analyse complète et rigoureuse en {"français" if lang == "fr" else "anglais"}."""
+Génère une analyse complète et rigoureuse en {"français" if lang == "fr" else "anglais"}.
+{"IMPORTANT : La vidéo dure " + str(video_duration // 60) + " minutes. Assure-toi de couvrir le contenu de TOUTE la vidéo, pas seulement le début. Répartis tes timecodes sur l'ensemble de la durée." if video_duration > 1800 else ""}"""
 
     # Tokens dynamiques selon mode
     max_tokens_map = {
@@ -664,6 +703,8 @@ async def analysis_stream_generator(
             lang=lang,
             model=model,
             web_context=web_context,
+            video_duration=metadata.get("duration", 0),
+            transcript_timestamped=transcript if "[" in transcript[:200] else None,
         ):
             if session.cancelled:
                 yield format_sse_event(StreamEventType.ERROR, {
