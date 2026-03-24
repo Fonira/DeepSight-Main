@@ -14,6 +14,7 @@
 
 import json
 import logging
+import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -142,29 +143,48 @@ async def _get_debate_owned(
 
 
 async def _call_mistral(
-    messages: list, model: str = "mistral-small-2603", temperature: float = 0.4
+    messages: list,
+    model: str = "mistral-small-2603",
+    temperature: float = 0.4,
+    max_tokens: int = 4096,
 ) -> Optional[str]:
     """Call Mistral AI chat completions API."""
     api_key = get_mistral_key()
     if not api_key:
+        logger.error("[DEBATE] No Mistral API key configured")
         return None
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        resp = await client.post(
-            MISTRAL_CHAT_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": model,
-                "messages": messages,
-                "temperature": temperature,
-                "top_p": 0.9,
-            },
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            resp = await client.post(
+                MISTRAL_CHAT_URL,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": model,
+                    "messages": messages,
+                    "temperature": temperature,
+                    "top_p": 0.9,
+                    "max_tokens": max_tokens,
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            content = data["choices"][0]["message"]["content"]
+            finish_reason = data["choices"][0].get("finish_reason", "unknown")
+            if finish_reason == "length":
+                logger.warning("[DEBATE] Mistral response truncated (finish_reason=length), model=%s", model)
+            return content
+    except httpx.TimeoutException:
+        logger.error("[DEBATE] Mistral API timeout (120s), model=%s", model)
+        return None
+    except httpx.HTTPStatusError as e:
+        logger.error("[DEBATE] Mistral API HTTP error %d: %s", e.response.status_code, str(e)[:200])
+        return None
+    except Exception as e:
+        logger.error("[DEBATE] Mistral API unexpected error: %s", str(e)[:300])
+        return None
 
 
 async def _call_perplexity(query: str, context: str = "") -> Optional[str]:
@@ -186,7 +206,36 @@ async def _call_perplexity(query: str, context: str = "") -> Optional[str]:
         return None
 
 
-import re
+def _extract_json(raw: str) -> Optional[dict]:
+    """Extract JSON from Mistral response, handling markdown code blocks and extra text."""
+    if not raw:
+        return None
+    clean = raw.strip()
+
+    # Try 1: Direct JSON parse
+    try:
+        return json.loads(clean)
+    except json.JSONDecodeError:
+        pass
+
+    # Try 2: Extract from ```json ... ``` code block
+    json_block = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", clean, re.DOTALL)
+    if json_block:
+        try:
+            return json.loads(json_block.group(1).strip())
+        except json.JSONDecodeError:
+            pass
+
+    # Try 3: Find first { ... } block (greedy)
+    brace_match = re.search(r"\{.*\}", clean, re.DOTALL)
+    if brace_match:
+        try:
+            return json.loads(brace_match.group(0))
+        except json.JSONDecodeError:
+            pass
+
+    return None
+
 
 async def _search_opposing_video(
     topic: str, thesis_a: str, lang: str = "fr", model: str = "mistral-small-2603"
@@ -329,17 +378,10 @@ async def _run_debate_pipeline(
             ]
 
             topic_result = await _call_mistral(topic_prompt, model=model)
-            topic_data = {}
-            if topic_result:
-                try:
-                    clean = topic_result.strip()
-                    if "```" in clean:
-                        clean = clean.split("```")[1]
-                        if clean.startswith("json"):
-                            clean = clean[4:]
-                    topic_data = json.loads(clean.strip())
-                except (json.JSONDecodeError, IndexError):
-                    logger.warning("Failed to parse topic detection: %s", topic_result[:200])
+            topic_data = _extract_json(topic_result) if topic_result else None
+            if not topic_data:
+                logger.warning("[DEBATE] Failed to parse topic detection, raw=%s", (topic_result or "")[:300])
+                topic_data = {}
 
             detected_topic = topic_data.get("topic", "Sujet non détecté")
             thesis_a = topic_data.get("thesis", "Thèse non identifiée")
@@ -439,18 +481,30 @@ async def _run_debate_pipeline(
                 )},
             ]
 
-            compare_result = await _call_mistral(compare_prompt, model=model, temperature=0.3)
-            compare_data = {}
-            if compare_result:
-                try:
-                    clean = compare_result.strip()
-                    if "```" in clean:
-                        clean = clean.split("```")[1]
-                        if clean.startswith("json"):
-                            clean = clean[4:]
-                    compare_data = json.loads(clean.strip())
-                except (json.JSONDecodeError, IndexError):
-                    logger.warning("Failed to parse comparison: %s", compare_result[:300])
+            # Retry up to 2 times if Mistral returns invalid JSON
+            compare_data = None
+            for attempt in range(2):
+                compare_result = await _call_mistral(
+                    compare_prompt, model=model, temperature=0.3, max_tokens=4096
+                )
+                if not compare_result:
+                    logger.warning("[DEBATE] Mistral returned None for comparison (attempt %d)", attempt + 1)
+                    continue
+
+                compare_data = _extract_json(compare_result)
+                if compare_data and compare_data.get("thesis_b"):
+                    logger.info("[DEBATE] Comparative analysis parsed OK (attempt %d)", attempt + 1)
+                    break
+
+                logger.warning(
+                    "[DEBATE] Failed to parse comparison (attempt %d), raw response (%d chars): %s",
+                    attempt + 1, len(compare_result), compare_result[:500]
+                )
+                compare_data = None
+
+            if not compare_data:
+                compare_data = {}
+                logger.error("[DEBATE] All comparison attempts failed for debate_id=%d", debate_id)
 
             thesis_b = compare_data.get("thesis_b", "Thèse non identifiée")
             arguments_b = compare_data.get("arguments_b", [])
@@ -494,20 +548,21 @@ async def _run_debate_pipeline(
                 )
                 fact_result = await _call_perplexity(fact_prompt)
                 if fact_result:
-                    try:
-                        clean = fact_result.strip()
-                        if "```" in clean:
-                            clean = clean.split("```")[1]
-                            if clean.startswith("json"):
-                                clean = clean[4:]
-                        parsed = json.loads(clean.strip())
+                    parsed = _extract_json(fact_result)
+                    if parsed is None:
+                        # Try parsing as JSON array directly
+                        array_match = re.search(r"\[.*\]", fact_result, re.DOTALL)
+                        if array_match:
+                            try:
+                                parsed = json.loads(array_match.group(0))
+                            except json.JSONDecodeError:
+                                pass
+                    if parsed is not None:
                         # Normalize to list
                         if isinstance(parsed, list):
                             fact_check_results = parsed
                         elif isinstance(parsed, dict) and "claims" in parsed:
                             fact_check_results = parsed["claims"]
-                        else:
-                            fact_check_results = []
                         # Normalize verdicts to frontend-expected values
                         verdict_map = {"vraie": "confirmed", "vrai": "confirmed", "confirmé": "confirmed",
                                        "partiellement vraie": "nuanced", "nuancé": "nuanced",
@@ -517,9 +572,8 @@ async def _run_debate_pipeline(
                             if isinstance(item, dict) and "verdict" in item:
                                 v = item["verdict"].strip().lower()
                                 item["verdict"] = verdict_map.get(v, v if v in ("confirmed", "nuanced", "disputed", "unverifiable") else "unverifiable")
-                    except (json.JSONDecodeError, IndexError):
-                        logger.warning("Failed to parse fact-check: %s", fact_result[:300])
-                        fact_check_results = []
+                    else:
+                        logger.warning("[DEBATE] Failed to parse fact-check: %s", fact_result[:300])
 
             debate.fact_check_results = json.dumps(fact_check_results, ensure_ascii=False)
             debate.model_used = model
