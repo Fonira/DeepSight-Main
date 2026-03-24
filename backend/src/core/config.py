@@ -71,8 +71,6 @@ class _DeepSightSettings(BaseSettings):
     STRIPE_PUBLISHABLE_KEY_TEST: str = ""
     STRIPE_PUBLISHABLE_KEY_LIVE: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
-    STRIPE_PRICE_STARTER_TEST: str = ""
-    STRIPE_PRICE_STARTER_LIVE: str = ""
     STRIPE_PRICE_PRO_TEST: str = ""
     STRIPE_PRICE_PRO_LIVE: str = ""
     STRIPE_PRICE_EXPERT_TEST: str = ""
@@ -263,20 +261,15 @@ STRIPE_CONFIG = {
     "PUBLISHABLE_KEY_LIVE": _settings.STRIPE_PUBLISHABLE_KEY_LIVE,
     "WEBHOOK_SECRET": _settings.STRIPE_WEBHOOK_SECRET,
     "PRICES": {
-        "starter": {
-            "test": _settings.STRIPE_PRICE_STARTER_TEST,
-            "live": _settings.STRIPE_PRICE_STARTER_LIVE,
-            "amount": 499, "credits": 50, "name": "Starter"
-        },
         "pro": {
             "test": _settings.STRIPE_PRICE_PRO_TEST,
             "live": _settings.STRIPE_PRICE_PRO_LIVE,
-            "amount": 999, "credits": 200, "name": "Pro"
+            "amount": 399, "credits": 50, "name": "Pro"
         },
         "expert": {
             "test": _settings.STRIPE_PRICE_EXPERT_TEST,
             "live": _settings.STRIPE_PRICE_EXPERT_LIVE,
-            "amount": 1499, "credits": 500, "name": "Expert"
+            "amount": 999, "credits": 200, "name": "Expert"
         }
     },
 }
@@ -339,18 +332,18 @@ LEGAL_CONFIG = {
 
 PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
     "free": {
-        "monthly_credits": 500,
+        "monthly_credits": 250,
         "daily_analyses": 5,
         "can_use_playlists": False,
         "max_playlist_videos": 0,
-        "history_days": 7,
+        "history_days": 60,
         "models": ["mistral-small-2603"],
         "default_model": "mistral-small-2603",
         "name": {"fr": "GRATUIT", "en": "FREE"},
-        "color": "#888888",
+        "color": "#6B7280",
         "price": 0,
         "price_display": {"fr": "0\u20ac", "en": "Free"},
-        "chat_daily_limit": 20,
+        "chat_daily_limit": 10,
         "chat_per_video_limit": 5,
         "chat_playlist_enabled": False,
         "chat_corpus_daily": 0,
@@ -359,35 +352,36 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "web_search_enabled": False,
         "deep_research_enabled": False,
         "deep_research_credits_cost": 0,
-        "academic_papers_per_analysis": 3,
+        "academic_papers_per_analysis": 0,
         "bibliography_export": False,
         "academic_full_text": False,
         "voice_chat_enabled": False,
         "voice_monthly_minutes": 0,
-        "blocked_features": ["playlists", "export_csv", "export_excel", "batch_api", "tts", "deep_research", "voice_chat"],
+        "blocked_features": ["playlists", "export_csv", "export_excel", "batch_api", "tts", "deep_research", "voice_chat", "mindmap"],
         "upgrade_prompt": {
-            "fr": "Passez \u00e0 Starter pour d\u00e9bloquer plus d'analyses et de fonctionnalit\u00e9s !",
-            "en": "Upgrade to Starter to unlock more analyses and features!"
+            "fr": "Passez \u00e0 Pro pour d\u00e9bloquer plus d'analyses et de fonctionnalit\u00e9s !",
+            "en": "Upgrade to Pro to unlock more analyses and features!"
         }
     },
-    "starter": {
+    "pro": {
         "monthly_credits": 5000,
-        "daily_analyses": 20,
-        "can_use_playlists": False,
-        "max_playlist_videos": 0,
-        "history_days": 60,
-        "models": ["mistral-small-2603"],
-        "default_model": "mistral-small-2603",
-        "name": {"fr": "STARTER", "en": "STARTER"},
-        "color": "#00D4AA",
-        "price": 499,
-        "price_display": {"fr": "4.99\u20ac/mois", "en": "\u20ac4.99/mo"},
-        "chat_daily_limit": 100,
-        "chat_per_video_limit": 20,
-        "chat_playlist_enabled": False,
-        "chat_corpus_daily": 0,
-        "web_search_monthly": 20,
-        "web_search_per_video": 3,
+        "daily_analyses": 50,
+        "can_use_playlists": True,
+        "max_playlist_videos": 10,
+        "history_days": -1,
+        "models": ["mistral-small-2603", "mistral-medium-2508"],
+        "default_model": "mistral-medium-2508",
+        "name": {"fr": "PRO", "en": "PRO"},
+        "color": "#3B82F6",
+        "price": 399,
+        "price_display": {"fr": "3.99\u20ac/mois", "en": "\u20ac3.99/mo"},
+        "playlist_credits_per_3_videos": 1,
+        "chat_daily_limit": -1,
+        "chat_per_video_limit": 30,
+        "chat_playlist_enabled": True,
+        "chat_corpus_daily": -1,
+        "web_search_monthly": 30,
+        "web_search_per_video": 5,
         "web_search_enabled": True,
         "deep_research_enabled": False,
         "deep_research_credits_cost": 0,
@@ -396,22 +390,22 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "academic_full_text": False,
         "voice_chat_enabled": True,
         "voice_monthly_minutes": 15,
-        "blocked_features": ["playlists", "batch_api", "deep_research"],
+        "blocked_features": ["batch_api", "deep_research"],
         "upgrade_prompt": {
-            "fr": "Passez \u00e0 Pro pour les playlists et le chat illimit\u00e9 !",
-            "en": "Upgrade to Pro for playlists and unlimited chat!"
+            "fr": "Passez \u00e0 Expert pour la recherche approfondie et le chat illimit\u00e9 !",
+            "en": "Upgrade to Expert for deep research and unlimited chat!"
         }
     },
-    "pro": {
-        "monthly_credits": 25000,
-        "daily_analyses": 50,
+    "expert": {
+        "monthly_credits": 15000,
+        "daily_analyses": 200,
         "can_use_playlists": True,
-        "max_playlist_videos": 10,
-        "history_days": 180,
-        "models": ["mistral-small-2603", "mistral-medium-2508"],
-        "default_model": "mistral-medium-2508",
-        "name": {"fr": "PRO", "en": "PRO"},
-        "color": "#D4A574",
+        "max_playlist_videos": 20,
+        "history_days": -1,
+        "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
+        "default_model": "mistral-large-2512",
+        "name": {"fr": "EXPERT", "en": "EXPERT"},
+        "color": "#F59E0B",
         "price": 999,
         "price_display": {"fr": "9.99\u20ac/mois", "en": "\u20ac9.99/mo"},
         "playlist_credits_per_3_videos": 1,
@@ -421,39 +415,6 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "chat_corpus_daily": -1,
         "web_search_monthly": 100,
         "web_search_per_video": 10,
-        "web_search_enabled": True,
-        "deep_research_enabled": False,
-        "deep_research_credits_cost": 0,
-        "academic_papers_per_analysis": 30,
-        "bibliography_export": True,
-        "academic_full_text": True,
-        "voice_chat_enabled": True,
-        "voice_monthly_minutes": 45,
-        "blocked_features": ["batch_api", "deep_research"],
-        "upgrade_prompt": {
-            "fr": "Passez \u00e0 Expert pour la recherche approfondie et l'API !",
-            "en": "Upgrade to Expert for deep research and API access!"
-        }
-    },
-    "expert": {
-        "monthly_credits": 100000,
-        "daily_analyses": 200,
-        "can_use_playlists": True,
-        "max_playlist_videos": 50,
-        "history_days": -1,
-        "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
-        "default_model": "mistral-large-2512",
-        "name": {"fr": "EXPERT", "en": "EXPERT"},
-        "color": "#F4D03F",
-        "price": 1499,
-        "price_display": {"fr": "14.99\u20ac/mois", "en": "\u20ac14.99/mo"},
-        "playlist_credits_per_3_videos": 1,
-        "chat_daily_limit": -1,
-        "chat_per_video_limit": -1,
-        "chat_playlist_enabled": True,
-        "chat_corpus_daily": -1,
-        "web_search_monthly": 500,
-        "web_search_per_video": 20,
         "web_search_enabled": True,
         "deep_research_enabled": True,
         "deep_research_credits_cost": 50,
@@ -536,10 +497,8 @@ R2_CONFIG = {
 
 VOICE_LIMITS: Dict[str, Dict[str, Any]] = {
     "free":      {"enabled": False, "monthly_minutes": 0,   "max_session_minutes": 0},
-    "etudiant":  {"enabled": True,  "monthly_minutes": 5,   "max_session_minutes": 10},
-    "starter":   {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},
-    "pro":       {"enabled": True,  "monthly_minutes": 45,  "max_session_minutes": 10},
-    "expert":    {"enabled": True,  "monthly_minutes": 90,  "max_session_minutes": 15},
+    "pro":       {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},
+    "expert":    {"enabled": True,  "monthly_minutes": 45,  "max_session_minutes": 15},
     "unlimited": {"enabled": True,  "monthly_minutes": 999, "max_session_minutes": 30},
 }
 
@@ -569,7 +528,7 @@ MISTRAL_MODELS = {
         "quality": "adequate",
         "cost_input_per_1m": 0.10,
         "cost_output_per_1m": 0.10,
-        "plans": ["free", "starter", "pro", "expert", "unlimited"],
+        "plans": ["free", "pro", "expert", "unlimited"],
         "internal_only": True,
         "use_cases": ["entity_extraction", "flashcards", "classification", "study_tools"],
         "description": {
@@ -586,14 +545,14 @@ MISTRAL_MODELS = {
         "quality": "good",
         "cost_input_per_1m": 0.10,
         "cost_output_per_1m": 0.30,
-        "plans": ["free", "starter", "pro", "expert", "unlimited"],
+        "plans": ["free", "pro", "expert", "unlimited"],
         "description": {
             "fr": "Rapide et intelligent, idéal pour les analyses courantes",
             "en": "Fast and smart, ideal for standard analyses"
         }
     },
 
-    # ── Tier 2 : Avancé (Pro) ──
+    # ── Tier 2 : Avancé (Pro + Expert) ──
     "mistral-medium-2508": {
         "name": "Mistral Medium 3.1",
         "context": 131000,

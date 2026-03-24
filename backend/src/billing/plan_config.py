@@ -19,25 +19,24 @@ logger = logging.getLogger(__name__)
 
 class PlanId(str, Enum):
     FREE = "free"
-    ETUDIANT = "etudiant"
-    STARTER = "starter"
     PRO = "pro"
+    EXPERT = "expert"
 
 
 PLAN_HIERARCHY: list[PlanId] = [
     PlanId.FREE,
-    PlanId.ETUDIANT,
-    PlanId.STARTER,
     PlanId.PRO,
+    PlanId.EXPERT,
 ]
 
 # Aliases rétrocompatibilité — anciens plan IDs → plan valide actuel
 PLAN_ALIASES: dict[str, str] = {
-    "equipe": "pro",
-    "team": "pro",
-    "expert": "pro",
-    "unlimited": "pro",
-    "student": "etudiant",
+    "etudiant": "pro",
+    "starter": "pro",
+    "student": "pro",
+    "equipe": "expert",
+    "team": "expert",
+    "unlimited": "expert",
 }
 
 
@@ -81,8 +80,11 @@ PLANS: dict[str, dict[str, Any]] = {
             "priority_queue": False,
             "chat_questions_per_video": 5,
             "chat_daily_limit": 10,
-            "flashcards_enabled": False,
+            "flashcards_enabled": True,
+            "quiz_enabled": True,
             "mindmap_enabled": False,
+            "factcheck_enabled": False,
+            "deep_research_enabled": False,
             "web_search_enabled": False,
             "web_search_monthly": 0,
             "playlists_enabled": False,
@@ -94,189 +96,146 @@ PLANS: dict[str, dict[str, Any]] = {
             "history_retention_days": 60,
             "allowed_models": ["mistral-small-2603"],
             "default_model": "mistral-small-2603",
+            "voice_chat_enabled": False,
+            "voice_monthly_minutes": 0,
+            "academic_papers_per_analysis": 0,
+            "bibliography_export": False,
+            "academic_full_text": False,
         },
         "features_display": [
             {"text": "5 analyses / mois", "icon": "📊"},
             {"text": "Vidéos jusqu'à 15 min", "icon": "⏱️"},
             {"text": "Chat IA (5 questions/vidéo)", "icon": "💬"},
+            {"text": "Flashcards & Quiz", "icon": "🧠"},
             {"text": "Export texte", "icon": "📄"},
             {"text": "Historique 60 jours", "icon": "🗂️"},
         ],
         "features_locked": [
-            {"text": "Flashcards & cartes mentales", "unlock_plan": "etudiant"},
-            {"text": "Recherche web IA", "unlock_plan": "starter"},
+            {"text": "Cartes mentales & Fact-check", "unlock_plan": "pro"},
+            {"text": "Recherche web IA", "unlock_plan": "pro"},
             {"text": "Playlists", "unlock_plan": "pro"},
-            {"text": "Export PDF", "unlock_plan": "pro"},
+            {"text": "Export PDF & Markdown", "unlock_plan": "pro"},
+            {"text": "Chat vocal", "unlock_plan": "pro"},
         ],
         "platforms": {
             "web": {
-                "analyse": True, "chat": True, "tts": False, "flashcards": False,
-                "mindmap": False, "web_search": False, "export_md": False,
-                "export_pdf": False, "playlists": False, "history": True,
+                "analyse": True, "chat": True, "tts": False, "flashcards": True,
+                "quiz": True, "mindmap": False, "web_search": False,
+                "export_md": False, "export_pdf": False, "playlists": False,
+                "history": True, "voice_chat": False,
             },
             "mobile": {
-                "analyse": True, "chat": True, "tts": False, "flashcards": False,
-                "mindmap": False, "web_search": False, "export_md": False,
-                "export_pdf": False, "playlists": False, "history": True,
+                "analyse": True, "chat": True, "tts": False, "flashcards": True,
+                "quiz": True, "mindmap": False, "web_search": False,
+                "export_md": False, "export_pdf": False, "playlists": False,
+                "history": True, "voice_chat": False,
             },
             "extension": {
                 "analyse": True, "chat": True, "tts": False, "flashcards": False,
-                "mindmap": False, "web_search": False, "export_md": False,
-                "export_pdf": False, "playlists": False, "history": True,
+                "quiz": False, "mindmap": False, "web_search": False,
+                "export_md": False, "export_pdf": False, "playlists": False,
+                "history": True, "voice_chat": False,
             },
         },
     },
 
-    # ─── ÉTUDIANT (affiché "Starter") ────────────────────────────────────
-    PlanId.ETUDIANT: {
-        "name": "Starter",
-        "name_en": "Starter",
-        "description": "Découvrez DeepSight avec les essentiels",
-        "description_en": "Discover DeepSight with the essentials",
-        "price_monthly_cents": 299,
-        "stripe_price_id_test": None,
-        "stripe_price_id_live": None,
-        "color": "#10B981",
-        "icon": "🎓",
-        "badge": None,
-        "popular": False,
-        "limits": {
-            "monthly_credits": 2000,
-            "monthly_analyses": 20,
-            "max_video_length_min": 45,
-            "concurrent_analyses": 1,
-            "priority_queue": False,
-            "chat_questions_per_video": 15,
-            "chat_daily_limit": 40,
-            "flashcards_enabled": True,
-            "mindmap_enabled": True,
-            "web_search_enabled": False,
-            "web_search_monthly": 0,
-            "playlists_enabled": False,
-            "max_playlists": 0,
-            "max_playlist_videos": 0,
-            "export_formats": ["txt", "md"],
-            "export_markdown": True,
-            "export_pdf": False,
-            "history_retention_days": -1,
-            "allowed_models": ["mistral-small-2603"],
-            "default_model": "mistral-small-2603",
-        },
-        "features_display": [
-            {"text": "20 analyses / mois", "icon": "📊"},
-            {"text": "Vidéos jusqu'à 45 min", "icon": "⏱️"},
-            {"text": "Chat IA (15 questions/vidéo)", "icon": "💬"},
-            {"text": "Flashcards & cartes mentales", "icon": "🧠", "highlight": True},
-            {"text": "Export Markdown", "icon": "📝"},
-            {"text": "Historique permanent", "icon": "♾️"},
-        ],
-        "features_locked": [
-            {"text": "Recherche web IA", "unlock_plan": "starter"},
-            {"text": "Playlists", "unlock_plan": "pro"},
-            {"text": "Export PDF", "unlock_plan": "pro"},
-            {"text": "Chat illimité", "unlock_plan": "pro"},
-        ],
-        "platforms": {
-            "web": {
-                "analyse": True, "chat": True, "tts": True, "flashcards": True,
-                "mindmap": True, "web_search": False, "export_md": True,
-                "export_pdf": False, "playlists": False, "history": True,
-            },
-            "mobile": {
-                "analyse": True, "chat": True, "tts": True, "flashcards": True,
-                "mindmap": False, "web_search": False, "export_md": False,
-                "export_pdf": False, "playlists": False, "history": True,
-            },
-            "extension": {
-                "analyse": True, "chat": True, "tts": True, "flashcards": False,
-                "mindmap": False, "web_search": False, "export_md": False,
-                "export_pdf": False, "playlists": False, "history": True,
-            },
-        },
-    },
-
-    # ─── STARTER (affiché "Standard") ─────────────────────────────────────
-    PlanId.STARTER: {
-        "name": "Standard",
-        "name_en": "Standard",
-        "description": "Pour les utilisateurs réguliers et étudiants",
-        "description_en": "For regular users and students",
-        "price_monthly_cents": 599,
+    # ─── PRO (3.99€/mois) ──────────────────────────────────────────────
+    PlanId.PRO: {
+        "name": "Pro",
+        "name_en": "Pro",
+        "description": "Pour les étudiants et utilisateurs réguliers",
+        "description_en": "For students and regular users",
+        "price_monthly_cents": 399,
         "stripe_price_id_test": None,
         "stripe_price_id_live": None,
         "color": "#3B82F6",
         "icon": "⭐",
-        "badge": {"text": "Populaire étudiants", "color": "#10B981"},
-        "popular": False,
+        "badge": {"text": "Le plus populaire", "color": "#EF4444"},
+        "popular": True,
         "limits": {
-            "monthly_credits": 3000,
+            "monthly_credits": 5000,
             "monthly_analyses": 50,
             "max_video_length_min": 120,
             "concurrent_analyses": 1,
             "priority_queue": False,
-            "chat_questions_per_video": 25,
-            "chat_daily_limit": 80,
+            "chat_questions_per_video": 30,
+            "chat_daily_limit": -1,
             "flashcards_enabled": True,
+            "quiz_enabled": True,
             "mindmap_enabled": True,
+            "factcheck_enabled": True,
+            "deep_research_enabled": False,
             "web_search_enabled": True,
-            "web_search_monthly": 20,
-            "playlists_enabled": False,
-            "max_playlists": 0,
-            "max_playlist_videos": 0,
-            "export_formats": ["txt", "md"],
+            "web_search_monthly": 30,
+            "playlists_enabled": True,
+            "max_playlists": 5,
+            "max_playlist_videos": 10,
+            "export_formats": ["txt", "md", "pdf"],
             "export_markdown": True,
-            "export_pdf": False,
+            "export_pdf": True,
             "history_retention_days": -1,
             "allowed_models": ["mistral-small-2603", "mistral-medium-2508"],
             "default_model": "mistral-medium-2508",
+            "voice_chat_enabled": True,
+            "voice_monthly_minutes": 15,
+            "academic_papers_per_analysis": 15,
+            "bibliography_export": True,
+            "academic_full_text": False,
         },
         "features_display": [
             {"text": "50 analyses / mois", "icon": "📊"},
             {"text": "Vidéos jusqu'à 2h", "icon": "⏱️"},
-            {"text": "Chat IA (25 questions/vidéo)", "icon": "💬"},
-            {"text": "Flashcards & cartes mentales", "icon": "🧠"},
-            {"text": "Recherche web IA (20/mois)", "icon": "🔍", "highlight": True},
-            {"text": "Modèle Mistral Medium", "icon": "🤖", "highlight": True},
+            {"text": "Chat IA (30/vidéo, illimité/jour)", "icon": "💬"},
+            {"text": "Flashcards, Quiz, Mindmap, Fact-check", "icon": "🧠", "highlight": True},
+            {"text": "Recherche web IA (30/mois)", "icon": "🔍", "highlight": True},
+            {"text": "Playlists (5 max, 10 vidéos)", "icon": "📋", "highlight": True},
+            {"text": "Chat vocal (15 min/mois)", "icon": "🎙️", "highlight": True},
+            {"text": "Export PDF + Markdown", "icon": "📄"},
+            {"text": "Papers académiques (15/analyse)", "icon": "📚"},
+            {"text": "Modèle Mistral Medium", "icon": "🤖"},
             {"text": "Historique permanent", "icon": "♾️"},
         ],
         "features_locked": [
-            {"text": "Playlists", "unlock_plan": "pro"},
-            {"text": "Export PDF", "unlock_plan": "pro"},
-            {"text": "Chat illimité", "unlock_plan": "pro"},
-            {"text": "File prioritaire", "unlock_plan": "pro"},
+            {"text": "Deep Research", "unlock_plan": "expert"},
+            {"text": "Chat IA illimité", "unlock_plan": "expert"},
+            {"text": "3 analyses simultanées", "unlock_plan": "expert"},
+            {"text": "Modèle Mistral Large", "unlock_plan": "expert"},
         ],
         "platforms": {
             "web": {
                 "analyse": True, "chat": True, "tts": True, "flashcards": True,
-                "mindmap": True, "web_search": True, "export_md": True,
-                "export_pdf": False, "playlists": False, "history": True,
+                "quiz": True, "mindmap": True, "web_search": True,
+                "export_md": True, "export_pdf": True, "playlists": True,
+                "history": True, "voice_chat": True,
             },
             "mobile": {
                 "analyse": True, "chat": True, "tts": True, "flashcards": True,
-                "mindmap": False, "web_search": False, "export_md": False,
-                "export_pdf": False, "playlists": False, "history": True,
+                "quiz": True, "mindmap": False, "web_search": False,
+                "export_md": False, "export_pdf": False, "playlists": True,
+                "history": True, "voice_chat": True,
             },
             "extension": {
                 "analyse": True, "chat": True, "tts": True, "flashcards": False,
-                "mindmap": False, "web_search": False, "export_md": False,
-                "export_pdf": False, "playlists": False, "history": True,
+                "quiz": False, "mindmap": False, "web_search": False,
+                "export_md": False, "export_pdf": False, "playlists": False,
+                "history": True, "voice_chat": False,
             },
         },
     },
 
-    # ─── PRO ──────────────────────────────────────────────────────────────
-    PlanId.PRO: {
-        "name": "Pro",
-        "name_en": "Pro",
+    # ─── EXPERT (9.99€/mois) ──────────────────────────────────────────
+    PlanId.EXPERT: {
+        "name": "Expert",
+        "name_en": "Expert",
         "description": "Pour les professionnels et créateurs de contenu",
         "description_en": "For professionals and content creators",
-        "price_monthly_cents": 1299,
+        "price_monthly_cents": 999,
         "stripe_price_id_test": None,
         "stripe_price_id_live": None,
         "color": "#F59E0B",
         "icon": "🚀",
-        "badge": {"text": "Populaire", "color": "#EF4444"},
-        "popular": True,
+        "badge": None,
+        "popular": False,
         "limits": {
             "monthly_credits": 15000,
             "monthly_analyses": 200,
@@ -286,7 +245,10 @@ PLANS: dict[str, dict[str, Any]] = {
             "chat_questions_per_video": -1,
             "chat_daily_limit": -1,
             "flashcards_enabled": True,
+            "quiz_enabled": True,
             "mindmap_enabled": True,
+            "factcheck_enabled": True,
+            "deep_research_enabled": True,
             "web_search_enabled": True,
             "web_search_monthly": 100,
             "playlists_enabled": True,
@@ -298,6 +260,11 @@ PLANS: dict[str, dict[str, Any]] = {
             "history_retention_days": -1,
             "allowed_models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
             "default_model": "mistral-large-2512",
+            "voice_chat_enabled": True,
+            "voice_monthly_minutes": 45,
+            "academic_papers_per_analysis": 50,
+            "bibliography_export": True,
+            "academic_full_text": True,
         },
         "features_display": [
             {"text": "200 analyses / mois", "icon": "📊"},
@@ -305,9 +272,12 @@ PLANS: dict[str, dict[str, Any]] = {
             {"text": "Chat IA illimité", "icon": "💬", "highlight": True},
             {"text": "3 analyses simultanées", "icon": "⚡", "highlight": True},
             {"text": "File prioritaire", "icon": "🏃"},
-            {"text": "Playlists (10 max, 20 vidéos)", "icon": "📋", "highlight": True},
+            {"text": "Deep Research", "icon": "🔬", "highlight": True},
+            {"text": "Playlists (10 max, 20 vidéos)", "icon": "📋"},
             {"text": "Recherche web IA (100/mois)", "icon": "🔍"},
+            {"text": "Chat vocal (45 min/mois)", "icon": "🎙️"},
             {"text": "Export PDF + Markdown", "icon": "📄"},
+            {"text": "Papers académiques (50/analyse, full text)", "icon": "📚"},
             {"text": "Modèle Mistral Large", "icon": "🤖"},
             {"text": "Historique permanent", "icon": "♾️"},
         ],
@@ -315,18 +285,21 @@ PLANS: dict[str, dict[str, Any]] = {
         "platforms": {
             "web": {
                 "analyse": True, "chat": True, "tts": True, "flashcards": True,
-                "mindmap": True, "web_search": True, "export_md": True,
-                "export_pdf": True, "playlists": True, "history": True,
+                "quiz": True, "mindmap": True, "web_search": True,
+                "export_md": True, "export_pdf": True, "playlists": True,
+                "history": True, "voice_chat": True,
             },
             "mobile": {
                 "analyse": True, "chat": True, "tts": True, "flashcards": True,
-                "mindmap": False, "web_search": False, "export_md": False,
-                "export_pdf": False, "playlists": True, "history": True,
+                "quiz": True, "mindmap": False, "web_search": False,
+                "export_md": False, "export_pdf": False, "playlists": True,
+                "history": True, "voice_chat": True,
             },
             "extension": {
                 "analyse": True, "chat": True, "tts": True, "flashcards": False,
-                "mindmap": False, "web_search": False, "export_md": False,
-                "export_pdf": False, "playlists": False, "history": True,
+                "quiz": False, "mindmap": False, "web_search": False,
+                "export_md": False, "export_pdf": False, "playlists": False,
+                "history": True, "voice_chat": False,
             },
         },
     },
@@ -383,14 +356,12 @@ def init_stripe_prices() -> None:
     """Charge les stripe_price_id depuis les variables d'environnement.
 
     Env vars attendues :
-      STRIPE_PRICE_ETUDIANT_TEST / STRIPE_PRICE_ETUDIANT_LIVE
-      STRIPE_PRICE_STARTER_TEST  / STRIPE_PRICE_STARTER_LIVE
-      STRIPE_PRICE_PRO_TEST      / STRIPE_PRICE_PRO_LIVE
+      STRIPE_PRICE_PRO_TEST    / STRIPE_PRICE_PRO_LIVE
+      STRIPE_PRICE_EXPERT_TEST / STRIPE_PRICE_EXPERT_LIVE
     """
     mapping = {
-        PlanId.ETUDIANT: "ETUDIANT",
-        PlanId.STARTER: "STARTER",
         PlanId.PRO: "PRO",
+        PlanId.EXPERT: "EXPERT",
     }
     for plan_id, env_key in mapping.items():
         test_id = os.environ.get(f"STRIPE_PRICE_{env_key}_TEST", "")
@@ -458,7 +429,7 @@ def get_minimum_plan_for(feature: str) -> str:
         web = PLANS[plan_id]["platforms"]["web"]
         if feature in web and web[feature]:
             return plan_id.value
-    return PlanId.PRO.value
+    return PlanId.EXPERT.value
 
 
 def get_price_id(plan_id: str, test_mode: bool = True) -> Optional[str]:
