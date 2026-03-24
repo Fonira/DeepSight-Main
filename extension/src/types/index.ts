@@ -70,6 +70,10 @@ export interface Summary {
   facts_to_verify?: string[];
   created_at: string;
   tournesol?: TournesolData;
+  // 📊 Engagement metadata
+  view_count?: number;
+  like_count?: number;
+  content_type?: 'video' | 'carousel' | 'short' | 'live';
 }
 
 export interface Concept {

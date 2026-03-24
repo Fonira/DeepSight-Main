@@ -85,6 +85,19 @@ export interface AnalysisSummary {
   deep_research?: boolean;
   enrichment_sources?: string;  // JSON string: [{title, url, snippet}]
   enrichment_data?: string;     // JSON string
+
+  // 📊 Engagement metadata
+  view_count?: number;
+  like_count?: number;
+  comment_count?: number;
+  share_count?: number;
+  channel_follower_count?: number;
+  engagement_rate?: number;
+  content_type?: 'video' | 'carousel' | 'short' | 'live';
+  music_title?: string;
+  music_author?: string;
+  source_tags?: string[];
+  carousel_images?: string[];
 }
 
 export interface AnalysisRequest {

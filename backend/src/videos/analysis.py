@@ -1047,7 +1047,13 @@ def build_analysis_prompt(
     upload_date: str = "",
     view_count: int = 0,
     like_count: int = 0,
-    channel_follower_count: int = 0
+    channel_follower_count: int = 0,
+    # 📊 New metadata params
+    comment_count: int = 0,
+    share_count: int = 0,
+    engagement_rate: float = 0.0,
+    content_type: str = "video",
+    chapters: list = None,
 ) -> Tuple[str, str]:
     """
     Construit le prompt système et utilisateur pour l'analyse.
@@ -1127,6 +1133,8 @@ This video was published on {readable_date} ({human_age}).
         views_str = _format_view_count(view_count) if view_count else ""
         likes_str = _format_view_count(like_count) if like_count else ""
         subs_str = _format_view_count(channel_follower_count) if channel_follower_count else ""
+        comments_str = _format_view_count(comment_count) if comment_count else ""
+        shares_str = _format_view_count(share_count) if share_count else ""
 
         meta_parts_fr = [f"📅 PUBLIÉ LE : {readable_date} ({human_age})"]
         meta_parts_en = [f"📅 PUBLISHED: {readable_date} ({human_age})"]
@@ -1135,12 +1143,18 @@ This video was published on {readable_date} ({human_age}).
             stats_parts.append(f"👁️ {views_str} vues")
         if likes_str:
             stats_parts.append(f"👍 {likes_str} likes")
+        if comments_str:
+            stats_parts.append(f"💬 {comments_str} commentaires")
+        if shares_str:
+            stats_parts.append(f"🔄 {shares_str} partages")
         if subs_str:
             stats_parts.append(f"👤 {subs_str} abonnés")
+        if engagement_rate and engagement_rate > 0:
+            stats_parts.append(f"📊 Engagement: {engagement_rate}%")
         if stats_parts:
             stats_line = "  |  ".join(stats_parts)
             meta_parts_fr.append(stats_line)
-            meta_parts_en.append(stats_line.replace("vues", "views").replace("abonnés", "subscribers"))
+            meta_parts_en.append(stats_line.replace("vues", "views").replace("abonnés", "subscribers").replace("commentaires", "comments").replace("partages", "shares"))
 
         metadata_block_fr = "\n".join(meta_parts_fr)
         metadata_block_en = "\n".join(meta_parts_en)
@@ -1196,6 +1210,25 @@ C'est une fonctionnalité ESSENTIELLE de Deep Sight. Sans [[concepts]], la répo
 """
         
         platform_label = "TikTok" if platform == "tiktok" else "YouTube"
+
+        # 📊 Optional blocks
+        desc_block_fr = ""
+        if description and len(description.strip()) > 20:
+            desc_block_fr = f"\n📝 DESCRIPTION : {description[:200]}{'...' if len(description) > 200 else ''}"
+
+        chapters_block_fr = ""
+        if chapters and isinstance(chapters, list) and len(chapters) > 0:
+            ch_lines = [f"  • [{int(ch.get('start_time', 0)) // 60}:{int(ch.get('start_time', 0)) % 60:02d}] {ch.get('title', '')}" for ch in chapters[:15]]
+            chapters_block_fr = "\n📑 CHAPITRES :\n" + "\n".join(ch_lines)
+
+        # 📸 Carousel-specific content label
+        if content_type == "carousel":
+            content_label_fr = "📸 CONTENU DU CARROUSEL"
+            content_instruction_fr = "Analyse ce carrousel d'images TikTok (Photo Mode). Synthétise le texte extrait et les descriptions visuelles de chaque slide."
+        else:
+            content_label_fr = "📝 TRANSCRIPTION"
+            content_instruction_fr = f"Génère une synthèse {mode} complète avec timecodes."
+
         user_prompt = f"""Analyse cette vidéo {platform_label} :
 
 📺 TITRE : {title}
@@ -1203,12 +1236,12 @@ C'est une fonctionnalité ESSENTIELLE de Deep Sight. Sans [[concepts]], la répo
 ⏱️ DURÉE : {duration // 60} minutes
 📁 CATÉGORIE : {category}
 🎬 PLATEFORME : {platform_label}
-{metadata_block_fr}
+{metadata_block_fr}{desc_block_fr}{chapters_block_fr}
 
-📝 TRANSCRIPTION :
+{content_label_fr} :
 {transcript[:transcript_limit]}
 
-Génère une synthèse {mode} complète avec timecodes."""
+{content_instruction_fr}"""
 
     else:
         system_prompt = f"""You are Deep Sight, expert in critical analysis and video content synthesis.
@@ -1250,6 +1283,25 @@ RESPOND ENTIRELY IN ENGLISH.
 """
         
         platform_label = "TikTok" if platform == "tiktok" else "YouTube"
+
+        # 📊 Optional blocks
+        desc_block_en = ""
+        if description and len(description.strip()) > 20:
+            desc_block_en = f"\n📝 DESCRIPTION: {description[:200]}{'...' if len(description) > 200 else ''}"
+
+        chapters_block_en = ""
+        if chapters and isinstance(chapters, list) and len(chapters) > 0:
+            ch_lines = [f"  • [{int(ch.get('start_time', 0)) // 60}:{int(ch.get('start_time', 0)) % 60:02d}] {ch.get('title', '')}" for ch in chapters[:15]]
+            chapters_block_en = "\n📑 CHAPTERS:\n" + "\n".join(ch_lines)
+
+        # 📸 Carousel-specific content label
+        if content_type == "carousel":
+            content_label_en = "📸 CAROUSEL CONTENT"
+            content_instruction_en = "Analyze this TikTok image carousel (Photo Mode). Synthesize the extracted text and visual descriptions from each slide."
+        else:
+            content_label_en = "📝 TRANSCRIPT"
+            content_instruction_en = f"Generate a complete {mode} synthesis with timecodes."
+
         user_prompt = f"""Analyze this {platform_label} video:
 
 📺 TITLE: {title}
@@ -1257,12 +1309,12 @@ RESPOND ENTIRELY IN ENGLISH.
 ⏱️ DURATION: {duration // 60} minutes
 📁 CATEGORY: {category}
 🎬 PLATFORM: {platform_label}
-{metadata_block_en}
+{metadata_block_en}{desc_block_en}{chapters_block_en}
 
-📝 TRANSCRIPT:
+{content_label_en}:
 {transcript[:transcript_limit]}
 
-Generate a complete {mode} synthesis with timecodes."""
+{content_instruction_en}"""
 
     return system_prompt, user_prompt
 
@@ -1291,6 +1343,12 @@ async def generate_summary(
     view_count: int = 0,
     like_count: int = 0,
     channel_follower_count: int = 0,
+    # 📊 New metadata params
+    comment_count: int = 0,
+    share_count: int = 0,
+    engagement_rate: float = 0.0,
+    content_type: str = "video",
+    chapters: list = None,
 ) -> Optional[str]:
     """
     Génère un résumé avec Mistral AI.
@@ -1334,7 +1392,12 @@ async def generate_summary(
         upload_date=upload_date,
         view_count=view_count,
         like_count=like_count,
-        channel_follower_count=channel_follower_count
+        channel_follower_count=channel_follower_count,
+        comment_count=comment_count,
+        share_count=share_count,
+        engagement_rate=engagement_rate,
+        content_type=content_type,
+        chapters=chapters,
     )
     
     # 🆕 v3.0: Injecter le contexte web dans le prompt utilisateur

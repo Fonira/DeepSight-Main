@@ -1,12 +1,14 @@
 /**
- * 🎬 VIDEO PLAYER v1.0 — Multi-plateforme (YouTube + TikTok)
+ * 🎬 VIDEO PLAYER v1.1 — Multi-plateforme (YouTube + TikTok + Carousel)
  * ═══════════════════════════════════════════════════════════════════════════════
- * Wrapper qui dispatche vers YouTubePlayer ou TikTok embed iframe.
+ * Wrapper qui dispatche vers YouTubePlayer, TikTok embed iframe,
+ * ou CarouselGallery pour les posts TikTok en mode photo.
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 import { forwardRef } from "react";
 import { YouTubePlayer, YouTubePlayerRef } from "./YouTubePlayer";
+import { CarouselGallery } from "./CarouselGallery";
 import { ExternalLink } from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -24,6 +26,9 @@ export interface VideoPlayerRef {
 interface VideoPlayerProps {
   videoId: string;
   platform?: 'youtube' | 'tiktok';
+  contentType?: string;
+  carouselImages?: string[];
+  videoTitle?: string;
   initialTime?: number;
   onClose?: () => void;
   onTimeUpdate?: (time: number) => void;
@@ -70,7 +75,19 @@ const TikTokPlayer: React.FC<{
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
-  ({ videoId, platform = 'youtube', initialTime = 0, onClose, onTimeUpdate, className = "" }, ref) => {
+  ({ videoId, platform = 'youtube', contentType, carouselImages, videoTitle, initialTime = 0, onClose, onTimeUpdate, className = "" }, ref) => {
+    // TikTok carousel (photo mode) → render gallery instead of embed
+    if (platform === 'tiktok' && contentType === 'carousel' && carouselImages && carouselImages.length > 0) {
+      return (
+        <div className={`w-full ${className}`}>
+          <CarouselGallery
+            images={carouselImages}
+            title={videoTitle}
+          />
+        </div>
+      );
+    }
+
     if (platform === 'tiktok') {
       // TikTok n'a pas de seekTo/play/pause API → pas de ref
       return (

@@ -231,20 +231,33 @@ class SummaryResponse(BaseModel):
     lang: str
     mode: str
     model_used: str
-    
+
     summary_content: str
     word_count: int
     reliability_score: Optional[float] = None
-    
+
     entities: Optional[Dict[str, List[str]]] = None
     fact_check: Optional[str] = None
     tags: Optional[str] = None
-    
+
     is_favorite: bool = False
     notes: Optional[str] = None
-    
+
     created_at: datetime
-    
+
+    # 📊 Engagement metadata
+    view_count: Optional[int] = None
+    like_count: Optional[int] = None
+    comment_count: Optional[int] = None
+    share_count: Optional[int] = None
+    channel_follower_count: Optional[int] = None
+    engagement_rate: Optional[float] = None  # Calculated on-the-fly
+    content_type: Optional[str] = Field(default="video", description="video, carousel, short, live")
+    music_title: Optional[str] = None
+    music_author: Optional[str] = None
+    source_tags: Optional[List[str]] = None
+    carousel_images: Optional[List[str]] = None
+
     class Config:
         from_attributes = True
 
@@ -264,7 +277,11 @@ class SummaryListItem(BaseModel):
     reliability_score: Optional[float] = None
     is_favorite: bool = False
     created_at: datetime
-    
+    # 📊 Engagement (léger pour la liste)
+    view_count: Optional[int] = None
+    like_count: Optional[int] = None
+    content_type: Optional[str] = Field(default="video")
+
     class Config:
         from_attributes = True
 
