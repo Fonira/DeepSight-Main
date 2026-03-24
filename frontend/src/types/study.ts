@@ -82,7 +82,7 @@ export type StudyMode = 'flashcards' | 'quiz';
 // ═══════════════════════════════════════════════════
 export type {
   FSRSRating, FSRSState, FSRSCardState, ReviewResult,
-  DueCardsData, StudyStats, HeatMapData, BadgesData,
-  VideoMastery, VideoMasteryData, BadgeEarned, BadgeLocked,
+  DueCardsData, StudyStats, HeatMapData, BadgesData, BadgeItem,
+  VideoMastery, VideoMasteryData,
   SessionEndResult, StudySessionData
 } from './gamification';

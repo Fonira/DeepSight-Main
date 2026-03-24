@@ -17,9 +17,12 @@ export const VideoMasteryRow: React.FC<VideoMasteryRowProps> = ({
   video,
   onStart,
 }) => {
-  const hasDue = video.cards_due > 0;
+  const dueCards = video.due_cards ?? 0;
+  const hasDue = dueCards > 0;
+  const title = video.title ?? `Vidéo #${video.summary_id}`;
+  const channel = video.channel ?? '';
 
-  const formatDate = (dateStr: string | null): string => {
+  const formatDate = (dateStr: string | null | undefined): string => {
     if (!dateStr) return 'Jamais';
     const d = new Date(dateStr);
     return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
@@ -38,14 +41,14 @@ export const VideoMasteryRow: React.FC<VideoMasteryRowProps> = ({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-white truncate">{video.video_title}</p>
+        <p className="text-sm font-medium text-white truncate">{title}</p>
         <div className="flex items-center gap-2 mt-0.5">
-          {video.channel_name && (
-            <span className="text-[11px] text-white/40 truncate">{video.channel_name}</span>
+          {channel && (
+            <span className="text-[11px] text-white/40 truncate">{channel}</span>
           )}
-          <span className="text-[10px] text-white/25">·</span>
+          {channel && <span className="text-[10px] text-white/25">·</span>}
           <span className="text-[11px] text-white/30">
-            {video.total_cards} cartes
+            {video.total_cards ?? 0} cartes
           </span>
           <span className="text-[10px] text-white/25">·</span>
           <span className="text-[11px] text-white/30">
@@ -56,13 +59,13 @@ export const VideoMasteryRow: React.FC<VideoMasteryRowProps> = ({
 
       {/* Mastery ring */}
       <div className="flex-shrink-0">
-        <MasteryRing percent={Math.round(video.mastery_percent)} size={40} strokeWidth={4} />
+        <MasteryRing percent={Math.round(video.mastery_percent ?? 0)} size={40} strokeWidth={4} />
       </div>
 
       {/* Due badge */}
       {hasDue && (
         <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-indigo-500/15 text-[11px] font-medium text-indigo-300">
-          {video.cards_due} dues
+          {dueCards} dues
         </span>
       )}
 
@@ -75,7 +78,7 @@ export const VideoMasteryRow: React.FC<VideoMasteryRowProps> = ({
             ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30'
             : 'border border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70'
         }`}
-        aria-label={hasDue ? `Réviser ${video.video_title}` : `Revoir ${video.video_title}`}
+        aria-label={hasDue ? `Réviser ${title}` : `Revoir ${title}`}
       >
         {hasDue ? (
           <>

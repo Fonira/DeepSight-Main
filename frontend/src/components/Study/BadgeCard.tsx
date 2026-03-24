@@ -5,27 +5,25 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
-import type { BadgeEarned, BadgeLocked } from '../../types/gamification';
+import type { BadgeItem } from '../../types/gamification';
 import { RARITY_COLORS } from '../../types/gamification';
 
 interface BadgeCardProps {
-  badge: BadgeEarned | BadgeLocked;
-  isEarned: boolean;
+  badge: BadgeItem;
+  isEarned?: boolean;
 }
 
-const isEarnedBadge = (badge: BadgeEarned | BadgeLocked): badge is BadgeEarned =>
-  'earned_at' in badge;
-
 export const BadgeCard: React.FC<BadgeCardProps> = ({ badge, isEarned }) => {
+  const earned = isEarned ?? badge.earned;
   const rarity = badge.rarity;
-  const rarityColor = RARITY_COLORS[rarity] ?? '#6366f1';
-  const earned = isEarned && isEarnedBadge(badge);
+  const colors = RARITY_COLORS[rarity];
+  const rarityColor = colors?.text ?? '#6366f1';
 
   return (
     <motion.div
       className="relative flex flex-col items-center gap-2 p-4 rounded-xl border bg-white/5 backdrop-blur-xl transition-all duration-200"
       style={{
-        borderColor: earned ? `${rarityColor}30` : 'rgba(255,255,255,0.05)',
+        borderColor: earned ? colors?.border ?? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.05)',
         opacity: earned ? 1 : 0.5,
       }}
       whileHover={{ y: -3, opacity: 1 }}
@@ -60,7 +58,7 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({ badge, isEarned }) => {
       </span>
 
       {/* Earned date or progress */}
-      {earned ? (
+      {earned && badge.earned_at ? (
         <span className="text-[10px] text-white/30">
           {new Date(badge.earned_at).toLocaleDateString('fr-FR', {
             day: 'numeric',
@@ -68,7 +66,7 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({ badge, isEarned }) => {
           })}
         </span>
       ) : (
-        !isEarned && 'progress' in badge && typeof badge.progress === 'number' && (
+        !earned && badge.progress != null && badge.progress > 0 && (
           <div className="w-full mt-1">
             <div className="h-1 rounded-full bg-white/5 overflow-hidden">
               <div

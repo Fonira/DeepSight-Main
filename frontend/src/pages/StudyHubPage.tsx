@@ -91,8 +91,8 @@ const StudyHubPage: React.FC = () => {
     [badges],
   );
 
-  const badgeCount = badges?.earned.length ?? 0;
-  const badgeTotal = badgeCount + (badges?.locked.length ?? 0);
+  const badgeCount = badges?.earned?.length ?? 0;
+  const badgeTotal = badges?.total_count ?? (badgeCount + (badges?.locked?.length ?? 0));
 
   // ── Navigation handlers ──
   const handleStartSession = () => {
@@ -318,7 +318,7 @@ const StudyHubPage: React.FC = () => {
                         <h3 className="text-sm font-medium text-white/50 mb-3">
                           {fr ? 'Activité' : 'Activity'}
                         </h3>
-                        <HeatMap activities={heatMap?.activities ?? []} />
+                        <HeatMap activities={heatMap?.activities ?? heatMap?.days ?? []} />
                       </div>
 
                       {/* Recent Badges */}

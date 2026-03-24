@@ -3,9 +3,65 @@ import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type {
   StudyStats, HeatMapData, BadgesData, VideoMasteryData,
-  DueCardsData, ReviewResult, SessionEndResult,
+  DueCardsData, ReviewResult, SessionEndResult, BadgeItem,
 } from '../types/gamification';
+import { XP_PER_LEVEL } from '../types/gamification';
 import { gamificationApi } from '../services/api';
+
+// ── Helpers: normalize API responses ──
+
+function normalizeStats(raw: any): StudyStats {
+  const totalXp = raw?.total_xp ?? 0;
+  const level = raw?.level ?? 1;
+  const xpForNext = raw?.xp_for_next_level ?? XP_PER_LEVEL;
+  const xpInLevel = totalXp - ((level - 1) * XP_PER_LEVEL);
+  return {
+    ...raw,
+    total_xp: totalXp,
+    level,
+    xp_for_next_level: xpForNext,
+    xp_progress: Math.max(0, Math.min(xpInLevel, xpForNext)),
+    current_streak: raw?.current_streak ?? 0,
+    longest_streak: raw?.longest_streak ?? 0,
+    total_cards_mastered: raw?.total_cards_mastered ?? 0,
+    total_cards_reviewed: raw?.total_cards_reviewed ?? 0,
+    total_sessions: raw?.total_sessions ?? 0,
+    total_time_seconds: raw?.total_time_seconds ?? 0,
+  };
+}
+
+function normalizeHeatMap(raw: any): HeatMapData {
+  // Backend sends { days: [...] }, frontend uses activities
+  const activities = raw?.days ?? raw?.activities ?? [];
+  return { days: activities, activities };
+}
+
+function normalizeBadges(raw: any): BadgesData {
+  // Backend sends { badges: [...flat list...], earned_count, total_count }
+  // Frontend wants { earned: [...], locked: [...] }
+  const allBadges: BadgeItem[] = raw?.badges ?? [];
+  const earned = allBadges.filter((b: BadgeItem) => b.earned);
+  const locked = allBadges.filter((b: BadgeItem) => !b.earned);
+  return {
+    earned,
+    locked,
+    earned_count: raw?.earned_count ?? earned.length,
+    total_count: raw?.total_count ?? allBadges.length,
+  };
+}
+
+function normalizeVideoMastery(raw: any): VideoMasteryData {
+  const videos = (raw?.videos ?? []).map((v: any) => ({
+    ...v,
+    due_cards: v.due_cards ?? 0,
+    new_cards: v.new_cards ?? 0,
+    title: v.title ?? `Vidéo #${v.summary_id}`,
+    channel: v.channel ?? '',
+    mastery_percent: v.mastery_percent ?? 0,
+    total_cards: v.total_cards ?? 0,
+  }));
+  return { videos };
+}
 
 interface StudyStore {
   // State
@@ -63,8 +119,8 @@ export const useStudyStore = create<StudyStore>()(
 
       fetchStats: async () => {
         try {
-          const data = await gamificationApi.getStats();
-          set({ stats: data });
+          const raw = await gamificationApi.getStats();
+          set({ stats: normalizeStats(raw) });
         } catch (error) {
           console.error('[StudyStore] Failed to fetch stats:', error);
         }
@@ -72,8 +128,8 @@ export const useStudyStore = create<StudyStore>()(
 
       fetchHeatMap: async (days = 35) => {
         try {
-          const data = await gamificationApi.getHeatMap(days);
-          set({ heatMap: data });
+          const raw = await gamificationApi.getHeatMap(days);
+          set({ heatMap: normalizeHeatMap(raw) });
         } catch (error) {
           console.error('[StudyStore] Failed to fetch heat map:', error);
         }
@@ -81,8 +137,8 @@ export const useStudyStore = create<StudyStore>()(
 
       fetchBadges: async () => {
         try {
-          const data = await gamificationApi.getBadges();
-          set({ badges: data });
+          const raw = await gamificationApi.getBadges();
+          set({ badges: normalizeBadges(raw) });
         } catch (error) {
           console.error('[StudyStore] Failed to fetch badges:', error);
         }
@@ -90,8 +146,8 @@ export const useStudyStore = create<StudyStore>()(
 
       fetchVideoMastery: async () => {
         try {
-          const data = await gamificationApi.getVideoMastery();
-          set({ videoMastery: data });
+          const raw = await gamificationApi.getVideoMastery();
+          set({ videoMastery: normalizeVideoMastery(raw) });
         } catch (error) {
           console.error('[StudyStore] Failed to fetch video mastery:', error);
         }
@@ -110,12 +166,16 @@ export const useStudyStore = create<StudyStore>()(
 
       fetchAll: async () => {
         set({ loading: true });
-        await Promise.all([
-          get().fetchStats(),
-          get().fetchHeatMap(),
-          get().fetchBadges(),
-          get().fetchVideoMastery(),
-        ]);
+        try {
+          await Promise.allSettled([
+            get().fetchStats(),
+            get().fetchHeatMap(),
+            get().fetchBadges(),
+            get().fetchVideoMastery(),
+          ]);
+        } catch (error) {
+          console.error('[StudyStore] fetchAll error:', error);
+        }
         set({ loading: false });
       },
 
@@ -143,7 +203,7 @@ export const useStudyStore = create<StudyStore>()(
             rating,
           });
           set((state) => {
-            state.sessionXP += result.xp_earned;
+            state.sessionXP += result.xp_earned ?? 0;
             state.sessionCards += 1;
             if (rating >= 3) state.sessionCorrect += 1;
           });
@@ -167,7 +227,7 @@ export const useStudyStore = create<StudyStore>()(
             duration_seconds: duration,
           });
           set({
-            stats: result.stats,
+            stats: normalizeStats(result.stats),
             currentSessionId: null,
             sessionStartTime: null,
           });
