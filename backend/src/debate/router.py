@@ -202,22 +202,29 @@ async def _call_perplexity(query: str, context: str = "") -> Optional[str]:
     if not api_key:
         return None
     prompt = f"{query}\n\nContexte : {context}" if context else query
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(
-            PERPLEXITY_CHAT_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": "sonar",
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.3,
-            },
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                PERPLEXITY_CHAT_URL,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "sonar",
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.3,
+                },
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            return data["choices"][0]["message"]["content"]
+    except httpx.HTTPStatusError as e:
+        logger.warning("Perplexity API error %s: %s", e.response.status_code, str(e)[:200])
+        return None
+    except Exception as e:
+        logger.warning("Perplexity call failed: %s", str(e)[:200])
+        return None
 
 
 async def _search_opposing_video(
@@ -236,21 +243,28 @@ async def _search_opposing_video(
         f'{{"url": "https://www.youtube.com/watch?v=...", "title": "...", "channel": "..."}}'
     )
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post(
-            PERPLEXITY_CHAT_URL,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": "sonar",
-                "messages": [{"role": "user", "content": search_prompt}],
-                "temperature": 0.3,
-            },
-        )
-        resp.raise_for_status()
-        content = resp.json()["choices"][0]["message"]["content"]
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                PERPLEXITY_CHAT_URL,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "sonar",
+                    "messages": [{"role": "user", "content": search_prompt}],
+                    "temperature": 0.3,
+                },
+            )
+            resp.raise_for_status()
+            content = resp.json()["choices"][0]["message"]["content"]
+    except httpx.HTTPStatusError as e:
+        logger.warning("Perplexity search error %s: %s", e.response.status_code, str(e)[:200])
+        return None
+    except Exception as e:
+        logger.warning("Perplexity search failed: %s", str(e)[:200])
+        return None
 
     # Try to parse JSON from the response
     try:
