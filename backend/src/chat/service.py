@@ -1351,10 +1351,11 @@ async def process_chat_message_v4(
         from chat.context_builder import build_rich_context
         rich_ctx = await build_rich_context(summary, session, include_transcript=True, include_academic=True)
 
-        # 🆕 v5.2: Pour les vidéos longues, rechercher les passages pertinents par rapport à la question
-        if rich_ctx.video_tier == "long" and rich_ctx.full_transcript:
+        # 🆕 v5.3: Per-question chunk search pour MEDIUM, LONG, EXTENDED, MARATHON
+        # Les vidéos MICRO/SHORT utilisent le transcript complet tel quel
+        if rich_ctx.video_tier in ("medium", "long", "extended", "marathon") and rich_ctx.full_transcript:
             enriched_transcript = rich_ctx.search_relevant_passages(question, lang=summary.lang or "fr")
-            print(f"🔍 [CHAT v5.2] Per-question chunk search for LONG video: {len(enriched_transcript)} chars", flush=True)
+            print(f"🔍 [CHAT v5.3] Per-question chunk search for {rich_ctx.video_tier.upper()} video: {len(enriched_transcript)} chars", flush=True)
         else:
             enriched_transcript = rich_ctx.transcript or summary.transcript_context or ""
 

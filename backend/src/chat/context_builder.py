@@ -232,10 +232,23 @@ async def build_rich_context(
         ctx.structured_index = summary.structured_index if hasattr(summary, 'structured_index') and summary.structured_index else ""
         try:
             from videos.duration_router import categorize_video
-            profile = categorize_video(ctx.duration_seconds, ctx.full_transcript)
+            profile = categorize_video(ctx.duration_seconds, ctx.full_transcript, ctx.full_transcript)
             ctx.video_tier = profile.tier.value
         except Exception:
-            ctx.video_tier = "medium" if ctx.transcript_total_chars > 25_000 else "short"
+            # Fallback compatible v2.0 : estimation par durée
+            dur = ctx.duration_seconds
+            if dur <= 60:
+                ctx.video_tier = "micro"
+            elif dur <= 300:
+                ctx.video_tier = "short"
+            elif dur <= 900:
+                ctx.video_tier = "medium"
+            elif dur <= 2700:
+                ctx.video_tier = "long"
+            elif dur <= 7200:
+                ctx.video_tier = "extended"
+            else:
+                ctx.video_tier = "marathon"
 
     # ── Fact-check ──────────────────────────────────────────────────────
     ctx.fact_check = _extract_fact_check(summary)
