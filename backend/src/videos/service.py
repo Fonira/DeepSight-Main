@@ -191,7 +191,7 @@ async def save_summary(
         # 2. Extraire les noms propres (mots avec majuscule au milieu du texte)
         if len(extracted_tags) < 5:
             # Pattern pour noms propres: mots capitalisés qui ne sont pas en début de phrase
-            proper_nouns = re.findall(r'(?<=[.!?]\s|:\s|,\s|\n)([A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+)*)', summary_content)
+            proper_nouns = re.findall(r'(?:(?<=[.!?]\s)|(?<=:\s)|(?<=,\s)|(?<=\n))([A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+)*)', summary_content)
             # Aussi chercher les groupes de mots capitalisés
             proper_nouns += re.findall(r'\b([A-ZÀ-Ü][a-zà-ü]+(?:\s+[A-ZÀ-Ü][a-zà-ü]+)+)\b', summary_content)
 

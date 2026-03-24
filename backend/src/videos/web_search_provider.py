@@ -305,13 +305,38 @@ async def web_search_and_synthesize(
         )
     
     model = mistral_model or "mistral-small-2603"
-    
+
+    # Si la query est très longue (prompt complet), extraire une query courte pour Brave
+    # et garder le texte complet comme contexte pour Mistral
+    brave_query = query
+    full_prompt_for_mistral = query
+    if len(query) > 300:
+        # Extraire les termes-clés : première ligne ou premier segment avant les instructions
+        lines = query.strip().split("\n")
+        # Chercher une ligne significative (pas une instruction JSON/format)
+        short_parts = []
+        for line in lines:
+            line = line.strip()
+            if not line or line.startswith("{") or line.startswith("⚠") or line.startswith("📚") or line.startswith("IMPORTANT"):
+                continue
+            if "JSON" in line or "format exact" in line or "Réponds" in line or "Reply" in line:
+                continue
+            if line.startswith("- ") and len(line) < 80:
+                # C'est un terme à définir
+                short_parts.append(line.lstrip("- ").strip())
+            elif len(line) > 10 and len(short_parts) == 0:
+                short_parts.append(line[:150])
+                break
+        brave_query = " ".join(short_parts[:10]) if short_parts else query[:300]
+        brave_query = brave_query[:400]
+        print(f"📝 [WEB_SEARCH] Long query detected, using short Brave query: '{brave_query[:100]}...'", flush=True)
+
     try:
         # --- ÉTAPE 1: Recherche Brave ---
-        print(f"🦁 [WEB_SEARCH] Step 1: Brave Search for '{query}'", flush=True)
-        
+        print(f"🦁 [WEB_SEARCH] Step 1: Brave Search for '{brave_query[:100]}'", flush=True)
+
         brave_result = await asyncio.wait_for(
-            _call_brave_api(query, count=max_sources),
+            _call_brave_api(brave_query, count=max_sources),
             timeout=timeout * 0.4
         )
         
