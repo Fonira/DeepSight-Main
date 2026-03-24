@@ -147,6 +147,7 @@ async def _call_mistral(
     model: str = "mistral-small-2603",
     temperature: float = 0.4,
     max_tokens: int = 4096,
+    json_mode: bool = False,
 ) -> Optional[str]:
     """Call Mistral AI chat completions API."""
     api_key = get_mistral_key()
@@ -154,6 +155,15 @@ async def _call_mistral(
         logger.error("[DEBATE] No Mistral API key configured")
         return None
     try:
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "top_p": 0.9,
+            "max_tokens": max_tokens,
+        }
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
         async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
                 MISTRAL_CHAT_URL,
@@ -161,13 +171,7 @@ async def _call_mistral(
                     "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
-                json={
-                    "model": model,
-                    "messages": messages,
-                    "temperature": temperature,
-                    "top_p": 0.9,
-                    "max_tokens": max_tokens,
-                },
+                json=payload,
             )
             resp.raise_for_status()
             data = resp.json()
@@ -377,7 +381,7 @@ async def _run_debate_pipeline(
                 {"role": "user", "content": f"Transcription de la vidéo :\n\n{transcript_a_short}"},
             ]
 
-            topic_result = await _call_mistral(topic_prompt, model=model)
+            topic_result = await _call_mistral(topic_prompt, model=model, json_mode=True)
             topic_data = _extract_json(topic_result) if topic_result else None
             if not topic_data:
                 logger.warning("[DEBATE] Failed to parse topic detection, raw=%s", (topic_result or "")[:300])
@@ -485,20 +489,27 @@ async def _run_debate_pipeline(
             compare_data = None
             for attempt in range(2):
                 compare_result = await _call_mistral(
-                    compare_prompt, model=model, temperature=0.3, max_tokens=4096
+                    compare_prompt, model=model, temperature=0.3, max_tokens=4096, json_mode=True
                 )
                 if not compare_result:
                     logger.warning("[DEBATE] Mistral returned None for comparison (attempt %d)", attempt + 1)
                     continue
 
-                compare_data = _extract_json(compare_result)
+                # With json_mode=True, Mistral should return pure JSON
+                try:
+                    compare_data = json.loads(compare_result)
+                except json.JSONDecodeError as e:
+                    logger.warning("[DEBATE] JSON decode error (attempt %d): %s", attempt + 1, str(e))
+                    # Fallback to _extract_json for robustness
+                    compare_data = _extract_json(compare_result)
+
                 if compare_data and compare_data.get("thesis_b"):
-                    logger.info("[DEBATE] Comparative analysis parsed OK (attempt %d)", attempt + 1)
+                    logger.info("[DEBATE] Comparative analysis parsed OK (attempt %d), keys=%s", attempt + 1, list(compare_data.keys()))
                     break
 
                 logger.warning(
-                    "[DEBATE] Failed to parse comparison (attempt %d), raw response (%d chars): %s",
-                    attempt + 1, len(compare_result), compare_result[:500]
+                    "[DEBATE] Failed to parse comparison (attempt %d), raw response (%d chars), first 800: %s",
+                    attempt + 1, len(compare_result), compare_result[:800]
                 )
                 compare_data = None
 
