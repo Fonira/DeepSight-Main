@@ -223,6 +223,9 @@ class Summary(Base):
     # Hierarchical Digest Pipeline (Feb 2026)
     full_digest = Column(Text, nullable=True)  # Assembled full digest from chunk digests (~6-10K chars)
 
+    # 🆕 Duration Router v1.0 (Mar 2026) — Index structuré (table des matières temporelle)
+    structured_index = Column(Text, nullable=True)  # JSON: [{ts, t, title, summary, kw}]
+
     # 📊 Engagement metadata (Mar 2026)
     view_count = Column(Integer, nullable=True)
     like_count = Column(Integer, nullable=True)
@@ -887,6 +890,21 @@ async def run_schema_migrations():
         "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS full_digest TEXT",
         # 🎵 TikTok support (Mar 2026)
         "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS platform VARCHAR(20) DEFAULT 'youtube'",
+        # 🆕 Duration Router v1.0 — structured_index (Mar 2026)
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS structured_index TEXT",
+        # 📊 Engagement metadata (Mar 2026)
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS view_count INTEGER",
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS like_count INTEGER",
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS comment_count INTEGER",
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS share_count INTEGER",
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS channel_follower_count INTEGER",
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS content_type VARCHAR(20) DEFAULT 'video'",
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS source_tags_json TEXT",
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS video_description TEXT",
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS channel_id VARCHAR(100)",
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS music_title VARCHAR(255)",
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS music_author VARCHAR(255)",
+        "ALTER TABLE summaries ADD COLUMN IF NOT EXISTS carousel_images_json TEXT",
         # VideoChunks table (créée par create_all si absente, mais on sécurise)
         """
         CREATE TABLE IF NOT EXISTS video_chunks (

@@ -85,8 +85,13 @@ class RichContext:
     transcript: str = ""              # Transcript (complet ou tronqué)
     transcript_strategy: str = ""     # "full" | "digest_plus_segments" | "digest_only"
     transcript_total_chars: int = 0   # Taille originale complète
+    full_transcript: str = ""         # 🆕 Transcript COMPLET (non tronqué) pour recherche
     summary_content: str = ""         # Analyse markdown
     full_digest: str = ""             # Pipeline hiérarchique
+
+    # 🆕 v4.0: Index structuré pour navigation
+    structured_index: str = ""        # JSON index sérialisé
+    video_tier: str = ""              # "short" | "medium" | "long"
 
     # Fact-check & enrichissement
     fact_check: str = ""
@@ -110,6 +115,50 @@ class RichContext:
         # En mode expert, on peut envoyer plus de contexte
         max_chars = MAX_CONTEXT_CHAT if mode == "expert" else 35_000
         return _format_context(self, max_chars=max_chars, language=language, mode="chat")
+
+    def search_relevant_passages(self, query: str, lang: str = "fr") -> str:
+        """
+        🆕 v4.0: Recherche les passages pertinents pour une question spécifique.
+
+        Pour les vidéos longues, utilise l'index structuré et le transcript complet
+        pour trouver les passages les plus pertinents au lieu du simple intro+outro.
+
+        Args:
+            query: Question de l'utilisateur
+            lang: Langue
+
+        Returns:
+            Texte des passages pertinents, prêt pour injection dans le prompt
+        """
+        if not self.full_transcript or not query:
+            return ""
+
+        try:
+            from videos.duration_router import (
+                categorize_video, deserialize_index, search_relevant_chunks,
+                prepare_transcript_for_chat,
+            )
+
+            profile = categorize_video(
+                self.duration_seconds, self.full_transcript, self.full_transcript
+            )
+
+            # Désérialiser l'index
+            index_entries = deserialize_index(self.structured_index) if self.structured_index else []
+
+            # Utiliser le routeur pour préparer le contexte optimisé
+            return prepare_transcript_for_chat(
+                profile=profile,
+                full_transcript=self.full_transcript,
+                query=query,
+                index_entries=index_entries,
+                full_digest=self.full_digest,
+                summary_content=self.summary_content,
+            )
+        except Exception as e:
+            logger.warning(f"search_relevant_passages fallback: {e}")
+            # Fallback : ancien comportement
+            return self.transcript
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -169,6 +218,37 @@ async def build_rich_context(
         ctx.transcript, ctx.transcript_strategy, ctx.transcript_total_chars = (
             await _load_transcript_adaptive(summary, db)
         )
+        # 🆕 v4.0: Stocker le transcript complet pour recherche per-question
+        if ctx.transcript_strategy != "full":
+            # Charger le transcript complet non tronqué pour la recherche
+            full_raw = await _get_full_transcript_from_cache(summary.video_id, db)
+            if not full_raw and summary.transcript_context:
+                full_raw = summary.transcript_context
+            ctx.full_transcript = full_raw or ctx.transcript
+        else:
+            ctx.full_transcript = ctx.transcript
+
+        # 🆕 v4.0: Charger l'index structuré et le tier
+        ctx.structured_index = summary.structured_index if hasattr(summary, 'structured_index') and summary.structured_index else ""
+        try:
+            from videos.duration_router import categorize_video
+            profile = categorize_video(ctx.duration_seconds, ctx.full_transcript, ctx.full_transcript)
+            ctx.video_tier = profile.tier.value
+        except Exception:
+            # Fallback compatible v2.0 : estimation par durée
+            dur = ctx.duration_seconds
+            if dur <= 60:
+                ctx.video_tier = "micro"
+            elif dur <= 300:
+                ctx.video_tier = "short"
+            elif dur <= 900:
+                ctx.video_tier = "medium"
+            elif dur <= 2700:
+                ctx.video_tier = "long"
+            elif dur <= 7200:
+                ctx.video_tier = "extended"
+            else:
+                ctx.video_tier = "marathon"
 
     # ── Fact-check ──────────────────────────────────────────────────────
     ctx.fact_check = _extract_fact_check(summary)

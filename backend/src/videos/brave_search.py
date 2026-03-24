@@ -107,6 +107,10 @@ async def _call_brave_api(query: str, count: int = 5) -> BraveSearchResult:
             error="BRAVE_SEARCH_API_KEY not configured"
         )
     
+    # Brave Search limite la query à ~400 caractères
+    if len(query) > 400:
+        query = query[:397] + "..."
+
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(

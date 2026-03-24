@@ -1350,11 +1350,18 @@ async def process_chat_message_v4(
     try:
         from chat.context_builder import build_rich_context
         rich_ctx = await build_rich_context(summary, session, include_transcript=True, include_academic=True)
-        # Utiliser le transcript enrichi (complet ou chunké selon la durée)
-        enriched_transcript = rich_ctx.transcript or summary.transcript_context or ""
+
+        # 🆕 v5.3: Per-question chunk search pour MEDIUM, LONG, EXTENDED, MARATHON
+        # Les vidéos MICRO/SHORT utilisent le transcript complet tel quel
+        if rich_ctx.video_tier in ("medium", "long", "extended", "marathon") and rich_ctx.full_transcript:
+            enriched_transcript = rich_ctx.search_relevant_passages(question, lang=summary.lang or "fr")
+            print(f"🔍 [CHAT v5.3] Per-question chunk search for {rich_ctx.video_tier.upper()} video: {len(enriched_transcript)} chars", flush=True)
+        else:
+            enriched_transcript = rich_ctx.transcript or summary.transcript_context or ""
+
         # Assembler un contexte étendu pour le summary (analyse + digest + fact-check + enrichment)
         enriched_summary = rich_ctx.format_for_chat(language=summary.lang or "fr", mode=mode)
-        print(f"🧠 [CHAT v5.1] Rich context: transcript={rich_ctx.transcript_strategy} ({len(enriched_transcript)} chars), context={len(enriched_summary)} chars", flush=True)
+        print(f"🧠 [CHAT v5.2] Rich context: tier={rich_ctx.video_tier}, transcript={rich_ctx.transcript_strategy} ({len(enriched_transcript)} chars), context={len(enriched_summary)} chars", flush=True)
     except Exception as e:
         print(f"⚠️ [CHAT v5.1] Rich context fallback: {e}", flush=True)
         enriched_transcript = summary.transcript_context or ""

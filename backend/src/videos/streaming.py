@@ -215,11 +215,17 @@ async def stream_mistral_analysis(
     lang: str = "fr",
     model: str = "mistral-small-2603",
     web_context: str = None,
+    video_duration: int = 0,
+    transcript_timestamped: str = None,
+    video_description: str = "",
+    video_tags: list = None,
 ) -> AsyncGenerator[str, None]:
     """
     Stream les tokens d'analyse depuis Mistral AI.
     🆕 v3.0: Supporte le contexte web pré-analyse (Perplexity)
-    
+    🆕 v4.0: Utilise le duration_router pour adapter le transcript selon la durée
+    🆕 v4.1: Enrichissement avec description et tags vidéo pour contexte chaîne
+
     Yields:
         Tokens individuels de la réponse
     """
@@ -311,15 +317,75 @@ Structure your response with:
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
+    # ═══════════════════════════════════════════════════════════════════════════
+    # 🎬 v4.0: ROUTAGE PAR DURÉE — transcript adaptatif
+    # ═══════════════════════════════════════════════════════════════════════════
+    try:
+        from videos.duration_router import categorize_video, build_structured_index, format_index_for_prompt, prepare_transcript_for_analysis
+        profile = categorize_video(video_duration, transcript, transcript_timestamped)
+
+        # Construire l'index structuré pour les vidéos MEDIUM+
+        index_entries = []
+        index_section = ""
+        if transcript_timestamped and profile.tier.value != "short":
+            index_entries = build_structured_index(
+                transcript_timestamped, video_duration, profile.tier
+            )
+            if index_entries:
+                index_section = format_index_for_prompt(index_entries, lang) + "\n\n"
+
+        # Préparer le transcript adapté au tier
+        adapted_transcript = prepare_transcript_for_analysis(
+            profile, transcript, transcript_timestamped, index_entries
+        )
+
+        print(f"🎬 [STREAMING] Duration router: tier={profile.tier.value}, "
+              f"duration={video_duration}s, transcript={len(adapted_transcript)} chars "
+              f"(original: {len(transcript)} chars), index_entries={len(index_entries)}", flush=True)
+    except Exception as e:
+        print(f"⚠️ [STREAMING] Duration router fallback: {e}", flush=True)
+        # Fallback : limitation intelligente basée sur la durée
+        if video_duration > 1800:  # >30min
+            adapted_transcript = transcript[:80000]
+        else:
+            adapted_transcript = transcript[:50000]
+        index_section = ""
+
+    # Section métadonnées enrichies (description + tags pour comprendre le contexte)
+    meta_section = ""
+    if video_description and len(video_description.strip()) > 20:
+        desc_clean = video_description.strip()[:1500]
+        meta_section += f"\n**Description de la vidéo:** {desc_clean}"
+    if video_tags:
+        tags_str = ", ".join(str(t) for t in video_tags[:15])
+        if tags_str:
+            meta_section += f"\n**Tags:** {tags_str}"
+
+    # Instruction de couverture temporelle
+    duration_instruction = ""
+    if video_duration > 2700:  # >45min
+        duration_instruction = (
+            f"\n\nIMPORTANT : La vidéo dure {video_duration // 60} minutes. "
+            "Assure-toi de couvrir le contenu de TOUTE la vidéo, pas seulement le début. "
+            "Répartis tes timecodes de manière homogène sur l'ensemble de la durée. "
+            "Chaque tiers de la vidéo (début/milieu/fin) doit être représenté dans ton analyse."
+        )
+    elif video_duration > 900:  # >15min
+        duration_instruction = (
+            f"\n\nNote : La vidéo dure {video_duration // 60} minutes. "
+            "Couvre le contenu sur toute sa durée, avec des timecodes répartis."
+        )
+
     user_prompt = f"""Analyse cette vidéo YouTube:
 
 **Titre:** {title}
 **Chaîne:** {channel}
+**Durée:** {video_duration // 60} minutes{meta_section}
 {web_section}
-**Transcription:**
-{transcript[:40000]}
+{index_section}**Transcription:**
+{adapted_transcript}
 
-Génère une analyse complète et rigoureuse en {"français" if lang == "fr" else "anglais"}."""
+Génère une analyse complète et rigoureuse en {"français" if lang == "fr" else "anglais"}.{duration_instruction}"""
 
     # Tokens dynamiques selon mode
     max_tokens_map = {
@@ -664,6 +730,10 @@ async def analysis_stream_generator(
             lang=lang,
             model=model,
             web_context=web_context,
+            video_duration=metadata.get("duration", 0),
+            transcript_timestamped=transcript if "[" in transcript[:200] else None,
+            video_description=metadata.get("description", ""),
+            video_tags=metadata.get("tags", []),
         ):
             if session.cancelled:
                 yield format_sse_event(StreamEventType.ERROR, {
