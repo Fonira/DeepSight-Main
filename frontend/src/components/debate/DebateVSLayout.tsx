@@ -23,10 +23,10 @@ export const DebateVSLayout: React.FC<DebateVSLayoutProps> = ({ debate }) => {
       >
         <DebateVideoCard
           side="a"
-          title={debate.video_a_title}
-          channel={debate.video_a_channel}
-          thumbnail={debate.video_a_thumbnail}
-          thesis={debate.thesis_a}
+          title={debate.video_a_title ?? 'Vidéo A'}
+          channel={debate.video_a_channel ?? ''}
+          thumbnail={debate.video_a_thumbnail ?? ''}
+          thesis={debate.thesis_a ?? ''}
           arguments={debate.arguments_a}
         />
       </motion.div>
@@ -61,10 +61,10 @@ export const DebateVSLayout: React.FC<DebateVSLayoutProps> = ({ debate }) => {
       >
         <DebateVideoCard
           side="b"
-          title={debate.video_b_title}
-          channel={debate.video_b_channel}
-          thumbnail={debate.video_b_thumbnail}
-          thesis={debate.thesis_b}
+          title={debate.video_b_title ?? 'Vidéo B'}
+          channel={debate.video_b_channel ?? ''}
+          thumbnail={debate.video_b_thumbnail ?? ''}
+          thesis={debate.thesis_b ?? ''}
           arguments={debate.arguments_b}
         />
       </motion.div>

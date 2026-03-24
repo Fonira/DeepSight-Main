@@ -62,22 +62,37 @@ export interface DebateAnalysis {
   video_a_id: string;
   video_b_id: string | null;
   video_a_title: string;
-  video_b_title: string;
-  video_a_channel: string;
-  video_b_channel: string;
-  video_a_thumbnail: string;
-  video_b_thumbnail: string;
-  detected_topic: string;
-  thesis_a: string;
-  thesis_b: string;
+  video_b_title: string | null;
+  video_a_channel: string | null;
+  video_b_channel: string | null;
+  video_a_thumbnail: string | null;
+  video_b_thumbnail: string | null;
+  detected_topic: string | null;
+  thesis_a: string | null;
+  thesis_b: string | null;
   arguments_a: DebateArgument[];
   arguments_b: DebateArgument[];
   convergence_points: string[];
   divergence_points: DivergencePoint[];
   fact_check_results: FactCheckItem[];
-  debate_summary: string;
+  debate_summary: string | null;
   status: DebateStatus;
   mode: DebateMode;
   lang: string;
+  created_at: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// 📋 DEBATE LIST ITEM — Item léger pour l'historique
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface DebateListItem {
+  id: number;
+  detected_topic: string | null;
+  video_a_title: string | null;
+  video_b_title: string | null;
+  video_a_thumbnail: string | null;
+  video_b_thumbnail: string | null;
+  status: DebateStatus;
   created_at: string;
 }

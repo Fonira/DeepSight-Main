@@ -28,6 +28,7 @@ from core.credits import deduct_credits
 from db.database import (
     DebateAnalysis,
     DebateChatMessage,
+    Summary,
     User,
     async_session_maker,
     get_session,
@@ -66,6 +67,35 @@ STATUS_MESSAGES = {
 
 MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions"
 PERPLEXITY_CHAT_URL = "https://api.perplexity.ai/chat/completions"
+
+# Mapping French verdicts → English (for frontend compatibility)
+_VERDICT_MAP = {
+    "vraie": "confirmed",
+    "vrai": "confirmed",
+    "confirmé": "confirmed",
+    "confirmée": "confirmed",
+    "confirmed": "confirmed",
+    "partiellement vraie": "nuanced",
+    "partiellement vrai": "nuanced",
+    "nuancé": "nuanced",
+    "nuancée": "nuanced",
+    "nuanced": "nuanced",
+    "fausse": "disputed",
+    "faux": "disputed",
+    "disputed": "disputed",
+    "contesté": "disputed",
+    "contestée": "disputed",
+    "non vérifiable": "unverifiable",
+    "non verifiable": "unverifiable",
+    "invérifiable": "unverifiable",
+    "unverifiable": "unverifiable",
+}
+
+
+def _normalize_verdict(verdict: str) -> str:
+    """Normalize a fact-check verdict to frontend-expected values."""
+    normalized = verdict.strip().lower()
+    return _VERDICT_MAP.get(normalized, "unverifiable")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -412,7 +442,7 @@ async def _run_debate_pipeline(
                     '  "thesis_b": "Thèse défendue par la vidéo B",\n'
                     '  "arguments_b": [{"claim": "...", "evidence": "...", "strength": "strong|moderate|weak"}, ...],\n'
                     '  "convergence_points": ["point commun 1", "point commun 2"],\n'
-                    '  "divergence_points": ["désaccord 1", "désaccord 2", "désaccord 3"],\n'
+                    '  "divergence_points": [{"topic": "sujet du désaccord", "position_a": "position vidéo A", "position_b": "position vidéo B"}, ...],\n'
                     '  "summary": "Synthèse nuancée du débat en 3-5 paragraphes"\n'
                     "}"
                 )},
@@ -442,7 +472,14 @@ async def _run_debate_pipeline(
             thesis_b = compare_data.get("thesis_b", "Thèse non identifiée")
             arguments_b = compare_data.get("arguments_b", [])
             convergence = compare_data.get("convergence_points", [])
-            divergence = compare_data.get("divergence_points", [])
+            divergence_raw = compare_data.get("divergence_points", [])
+            # Normalize divergence_points: ensure each item is a dict
+            divergence = []
+            for item in divergence_raw:
+                if isinstance(item, dict):
+                    divergence.append(item)
+                elif isinstance(item, str):
+                    divergence.append({"topic": item, "position_a": "", "position_b": ""})
             summary = compare_data.get("summary", "")
 
             debate.thesis_b = thesis_b
@@ -465,12 +502,12 @@ async def _run_debate_pipeline(
                     f"Sujet : {detected_topic}\n"
                     f"Thèse A : {thesis_a}\n"
                     f"Thèse B : {thesis_b}\n"
-                    f"Arguments A : {', '.join(arguments_a[:3])}\n"
-                    f"Arguments B : {', '.join(arguments_b[:3])}\n\n"
-                    f"Pour chaque affirmation clé, indique si elle est VRAIE, PARTIELLEMENT VRAIE, "
-                    f"NON VÉRIFIABLE, ou FAUSSE, avec une source. "
+                    f"Arguments A : {', '.join(a.get('claim', str(a)) if isinstance(a, dict) else str(a) for a in arguments_a[:3])}\n"
+                    f"Arguments B : {', '.join(a.get('claim', str(a)) if isinstance(a, dict) else str(a) for a in arguments_b[:3])}\n\n"
+                    f"Pour chaque affirmation clé, vérifie sa véracité avec une source. "
+                    f"Le verdict DOIT être exactement l'un de : confirmed, nuanced, disputed, unverifiable. "
                     f"Réponds UNIQUEMENT avec un tableau JSON (pas d'objet englobant) : "
-                    f'[{{"claim": "...", "verdict": "...", "source": "...", "explanation": "..."}}]'
+                    f'[{{"claim": "...", "verdict": "confirmed|nuanced|disputed|unverifiable", "source": "...", "explanation": "..."}}]'
                 )
                 fact_result = await _call_perplexity(fact_prompt)
                 if fact_result:
@@ -488,6 +525,10 @@ async def _run_debate_pipeline(
                             fact_check_results = parsed["claims"]
                         else:
                             fact_check_results = []
+                        # Normalize verdicts to frontend-expected values
+                        for item in fact_check_results:
+                            if isinstance(item, dict) and "verdict" in item:
+                                item["verdict"] = _normalize_verdict(item["verdict"])
                     except (json.JSONDecodeError, IndexError):
                         logger.warning("Failed to parse fact-check: %s", fact_result[:300])
                         fact_check_results = []
@@ -668,6 +709,8 @@ async def get_debate_history(
             detected_topic=d.detected_topic,
             video_a_title=d.video_a_title,
             video_b_title=d.video_b_title,
+            video_a_thumbnail=d.video_a_thumbnail,
+            video_b_thumbnail=d.video_b_thumbnail,
             status=d.status,
             created_at=d.created_at or datetime.now(timezone.utc),
         )
@@ -741,18 +784,127 @@ async def debate_chat(
         extra={"user_id": current_user.id, "debate_id": request.debate_id},
     )
 
-    # Build context from debate data
-    context = (
-        f"Sujet du débat : {debate.detected_topic}\n\n"
-        f"Vidéo A ({debate.video_a_title}) — Thèse : {debate.thesis_a}\n"
-        f"Arguments A : {debate.arguments_a}\n\n"
-        f"Vidéo B ({debate.video_b_title}) — Thèse : {debate.thesis_b}\n"
-        f"Arguments B : {debate.arguments_b}\n\n"
-        f"Points de convergence : {debate.convergence_points}\n"
-        f"Points de divergence : {debate.divergence_points}\n\n"
-        f"Fact-check : {debate.fact_check_results}\n\n"
-        f"Synthèse : {debate.debate_summary}"
-    )
+    # ── Build enriched context from debate data ──
+    # Decode JSON fields into readable text
+    def _format_arguments(raw: str | None, label: str) -> str:
+        if not raw:
+            return f"Arguments {label} : aucun\n"
+        try:
+            args = json.loads(raw) if isinstance(raw, str) else raw
+        except (json.JSONDecodeError, TypeError):
+            return f"Arguments {label} : {raw}\n"
+        lines = []
+        for i, arg in enumerate(args, 1):
+            if isinstance(arg, dict):
+                claim = arg.get("claim", "?")
+                evidence = arg.get("evidence", "")
+                strength = arg.get("strength", "")
+                lines.append(f"  {i}. {claim} (force: {strength})\n     Preuve : {evidence}")
+            else:
+                lines.append(f"  {i}. {arg}")
+        return f"Arguments {label} :\n" + "\n".join(lines)
+
+    def _format_list(raw: str | None, label: str) -> str:
+        if not raw:
+            return f"{label} : aucun\n"
+        try:
+            items = json.loads(raw) if isinstance(raw, str) else raw
+        except (json.JSONDecodeError, TypeError):
+            return f"{label} : {raw}\n"
+        if isinstance(items, list):
+            lines = []
+            for item in items:
+                if isinstance(item, dict):
+                    lines.append(f"  • {item.get('topic', item.get('claim', str(item)))}")
+                else:
+                    lines.append(f"  • {item}")
+            return f"{label} :\n" + "\n".join(lines)
+        return f"{label} : {items}\n"
+
+    def _format_fact_checks(raw: str | None) -> str:
+        if not raw:
+            return "Résultats fact-check : aucun\n"
+        try:
+            items = json.loads(raw) if isinstance(raw, str) else raw
+        except (json.JSONDecodeError, TypeError):
+            return f"Résultats fact-check : {raw}\n"
+        if not isinstance(items, list):
+            return f"Résultats fact-check : {items}\n"
+        lines = []
+        for item in items:
+            if isinstance(item, dict):
+                verdict = item.get("verdict", "?")
+                claim = item.get("claim", "?")
+                explanation = item.get("explanation", "")
+                source = item.get("source", "")
+                lines.append(f"  • [{verdict.upper()}] « {claim} » — {explanation}" + (f" (source: {source})" if source else ""))
+            else:
+                lines.append(f"  • {item}")
+        return "Résultats fact-check :\n" + "\n".join(lines)
+
+    # Fetch original summaries/transcripts for deeper context
+    transcript_a = ""
+    transcript_b = ""
+    summary_a_text = ""
+    summary_b_text = ""
+    try:
+        if debate.video_a_id:
+            result_a = await db.execute(
+                select(Summary)
+                .where(Summary.video_id == debate.video_a_id, Summary.user_id == current_user.id)
+                .order_by(Summary.created_at.desc())
+                .limit(1)
+            )
+            summary_a = result_a.scalar_one_or_none()
+            if summary_a:
+                summary_a_text = (summary_a.summary_content or "")[:4000]
+                transcript_a = (summary_a.transcript_context or "")[:8000]
+
+        if debate.video_b_id:
+            result_b = await db.execute(
+                select(Summary)
+                .where(Summary.video_id == debate.video_b_id, Summary.user_id == current_user.id)
+                .order_by(Summary.created_at.desc())
+                .limit(1)
+            )
+            summary_b = result_b.scalar_one_or_none()
+            if summary_b:
+                summary_b_text = (summary_b.summary_content or "")[:4000]
+                transcript_b = (summary_b.transcript_context or "")[:8000]
+    except Exception as e:
+        logger.warning("Failed to fetch summaries for debate chat: %s", e)
+
+    # Assemble structured context
+    context_parts = [
+        f"═══ SUJET DU DÉBAT ═══\n{debate.detected_topic}\n",
+        f"═══ VIDÉO A : {debate.video_a_title} ═══",
+        f"Thèse A : {debate.thesis_a}",
+        _format_arguments(debate.arguments_a, "A"),
+    ]
+    if summary_a_text:
+        context_parts.append(f"Analyse complète vidéo A :\n{summary_a_text}\n")
+    if transcript_a:
+        context_parts.append(f"Extraits transcription vidéo A :\n{transcript_a}\n")
+
+    context_parts.extend([
+        f"\n═══ VIDÉO B : {debate.video_b_title} ═══",
+        f"Thèse B : {debate.thesis_b}",
+        _format_arguments(debate.arguments_b, "B"),
+    ])
+    if summary_b_text:
+        context_parts.append(f"Analyse complète vidéo B :\n{summary_b_text}\n")
+    if transcript_b:
+        context_parts.append(f"Extraits transcription vidéo B :\n{transcript_b}\n")
+
+    context_parts.extend([
+        f"\n═══ ANALYSE COMPARATIVE ═══",
+        _format_list(debate.convergence_points, "Points de convergence"),
+        _format_list(debate.divergence_points, "Points de divergence"),
+        _format_fact_checks(debate.fact_check_results),
+        f"\n═══ SYNTHÈSE ═══\n{debate.debate_summary or ''}",
+    ])
+
+    context = "\n".join(context_parts)
 
     # Get recent chat history for context
     history_result = await db.execute(
@@ -766,13 +918,21 @@ async def debate_chat(
     )
     recent_messages = list(reversed(history_result.scalars().all()))
 
-    # Build messages for Mistral
+    lang = debate.lang or "fr"
+    # Build messages for Mistral with enriched system prompt
     messages = [
         {"role": "system", "content": (
-            "Tu es un assistant expert en analyse de débats. "
-            "Tu réponds aux questions de l'utilisateur en te basant sur le contexte du débat ci-dessous. "
-            "Sois équilibré, nuancé et cite les arguments des deux côtés. "
-            f"Langue : {debate.lang or 'fr'}.\n\n"
+            "Tu es un assistant expert en analyse de débats et esprit critique. "
+            "Tu as accès au contexte complet du débat : thèses, arguments, analyses, "
+            "transcriptions et fact-check des deux vidéos.\n\n"
+            "RÈGLES :\n"
+            "• Réponds de manière équilibrée et nuancée, en citant les arguments des deux côtés\n"
+            "• Quand tu cites un argument, précise de quelle vidéo il vient (A ou B)\n"
+            "• Si l'utilisateur demande des détails, réfère-toi aux transcriptions et analyses complètes\n"
+            "• Si un fait est contesté par le fact-check, mentionne-le\n"
+            "• Utilise des timecodes **(MM:SS)** quand disponibles dans la transcription\n"
+            "• Formate tes réponses avec du markdown pour la lisibilité\n"
+            f"• Langue : {lang}\n\n"
             f"CONTEXTE DU DÉBAT :\n{context}"
         )},
     ]
