@@ -1360,17 +1360,31 @@ async def process_chat_message_v4(
     
     # 4. Récupérer l'historique
     chat_history = await get_chat_history(session, summary_id, user_id, limit=10)
-    
+
     # 5. Déterminer le modèle selon le plan
     plan_limits = PLAN_LIMITS.get(user_plan, PLAN_LIMITS["free"])
     model = plan_limits.get("default_model", "mistral-small-2603")
-    
+
+    # 5.5 🆕 Assembler le contexte riche (transcript complet + fact-check + enrichment)
+    try:
+        from chat.context_builder import build_rich_context
+        rich_ctx = await build_rich_context(summary, session, include_transcript=True, include_academic=True)
+        # Utiliser le transcript enrichi (complet ou chunké selon la durée)
+        enriched_transcript = rich_ctx.transcript or summary.transcript_context or ""
+        # Assembler un contexte étendu pour le summary (analyse + digest + fact-check + enrichment)
+        enriched_summary = rich_ctx.format_for_chat(language=summary.lang or "fr", mode=mode)
+        print(f"🧠 [CHAT v5.1] Rich context: transcript={rich_ctx.transcript_strategy} ({len(enriched_transcript)} chars), context={len(enriched_summary)} chars", flush=True)
+    except Exception as e:
+        print(f"⚠️ [CHAT v5.1] Rich context fallback: {e}", flush=True)
+        enriched_transcript = summary.transcript_context or ""
+        enriched_summary = summary.summary_content or ""
+
     # 6. Générer la réponse avec enrichissement v4.0
     response, sources, web_search_used = await generate_chat_response_v4(
         question=question,
         video_title=summary.video_title,
-        transcript=summary.transcript_context or "",
-        summary=summary.summary_content or "",
+        transcript=enriched_transcript,
+        summary=enriched_summary,
         chat_history=chat_history,
         user_plan=user_plan,
         mode=mode,

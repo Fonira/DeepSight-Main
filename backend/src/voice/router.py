@@ -147,24 +147,30 @@ async def create_voice_session(
 
     # Generate signed URL via ElevenLabs Conversational AI API
     try:
-        # Load video context for the system prompt
-        video_title = summary.video_title or "Vidéo sans titre"
-        channel_name = summary.video_channel or "Chaîne inconnue"
-        duration_secs = summary.video_duration or 0
-        duration_str = f"{duration_secs // 60}min{duration_secs % 60:02d}s" if duration_secs else "inconnue"
-        summary_content = summary.summary_content or ""
-
-        # Truncate summary to avoid prompt overflow (keep first ~3000 chars)
-        if len(summary_content) > 3000:
-            summary_content = summary_content[:3000] + "\n\n[… résumé tronqué]"
-
         language = request.language or "fr"
 
+        # ── Assembler le contexte riche (transcript + fact-check + enrichment + metadata) ──
+        from chat.context_builder import build_rich_context
+
+        rich_ctx = await build_rich_context(summary, db, include_transcript=True, include_academic=True)
+        context_block = rich_ctx.format_for_voice(language=language)
+
+        logger.info(
+            "Voice session: rich context assembled",
+            extra={
+                "summary_id": request.summary_id,
+                "transcript_strategy": rich_ctx.transcript_strategy,
+                "transcript_chars": len(rich_ctx.transcript),
+                "total_context_chars": rich_ctx.total_chars,
+                "formatted_chars": len(context_block),
+            },
+        )
+
         system_prompt = ElevenLabsClient.build_system_prompt(
-            video_title=video_title,
-            channel_name=channel_name,
-            duration=duration_str,
-            summary_content=summary_content,
+            video_title=rich_ctx.video_title,
+            channel_name=rich_ctx.channel_name,
+            duration=rich_ctx.duration_str,
+            context_block=context_block,
             language=language,
         )
 
@@ -180,10 +186,10 @@ async def create_voice_session(
         voice_id = _settings.ELEVENLABS_VOICE_ID or "21m00Tcm4TlvDq8ikWAM"  # Default: Rachel
 
         first_message = (
-            f"Salut ! Je suis prêt à discuter de la vidéo « {video_title} ». "
+            f"Salut ! Je suis prêt à discuter de la vidéo « {rich_ctx.video_title} ». "
             "Qu'est-ce que tu veux savoir ?"
         ) if language == "fr" else (
-            f"Hi! I'm ready to discuss the video \"{video_title}\". "
+            f"Hi! I'm ready to discuss the video \"{rich_ctx.video_title}\". "
             "What would you like to know?"
         )
 

@@ -72,7 +72,12 @@ async def search_in_transcript(
     query: str,
     db: AsyncSession,
 ) -> str:
-    """Recherche des passages pertinents dans le transcript de la vidéo."""
+    """Recherche des passages pertinents dans le transcript de la vidéo.
+
+    Stratégie de chargement :
+    1. TranscriptCache (transcript complet depuis le cache persistant)
+    2. Fallback : summary.transcript_context (peut être tronqué)
+    """
     logger.info(
         "search_in_transcript called",
         extra={"summary_id": summary_id, "query": query},
@@ -87,7 +92,26 @@ async def search_in_transcript(
         if summary is None:
             return "Analyse introuvable pour cet identifiant."
 
-        transcript = summary.transcript_context
+        # ── Charger le transcript complet (priorité au cache) ───────────
+        transcript = ""
+
+        # 1. Essayer TranscriptCache (transcript complet cross-user)
+        if summary.video_id:
+            try:
+                from chat.context_builder import _get_full_transcript_from_cache
+                transcript = await _get_full_transcript_from_cache(summary.video_id, db)
+                if transcript:
+                    logger.info(
+                        "search_in_transcript: using TranscriptCache (%d chars)",
+                        len(transcript),
+                    )
+            except Exception as e:
+                logger.warning("search_in_transcript: TranscriptCache fallback: %s", e)
+
+        # 2. Fallback : transcript_context du Summary
+        if not transcript or not transcript.strip():
+            transcript = summary.transcript_context or ""
+
         if not transcript or not transcript.strip():
             return "Aucun transcript disponible pour cette vidéo."
 
@@ -99,16 +123,32 @@ async def search_in_transcript(
         if not query_words:
             return "La requête de recherche est vide."
 
+        # ── Scoring amélioré : intersection + bonus phrase exacte ───────
+        query_lower = query.lower()
         scored: list[tuple[float, int, str]] = []
         for idx, segment in enumerate(segments):
-            segment_words = set(segment.lower().split())
+            segment_lower = segment.lower()
+            segment_words = set(segment_lower.split())
             intersection = query_words & segment_words
-            score = len(intersection) / len(query_words)
-            if score > 0.3:
-                scored.append((score, idx, segment))
+            base_score = len(intersection) / len(query_words)
+
+            # Bonus si la phrase exacte (ou sous-chaîne significative) est trouvée
+            if query_lower in segment_lower:
+                base_score += 0.5
+            elif len(query_lower) > 10:
+                # Bonus partiel pour sous-phrases de 3+ mots
+                query_parts = query_lower.split()
+                for i in range(len(query_parts) - 2):
+                    sub = " ".join(query_parts[i:i+3])
+                    if sub in segment_lower:
+                        base_score += 0.2
+                        break
+
+            if base_score > 0.25:
+                scored.append((base_score, idx, segment))
 
         scored.sort(key=lambda x: x[0], reverse=True)
-        top = scored[:3]
+        top = scored[:5]  # Top 5 pour meilleure couverture
 
         if not top:
             return (
@@ -119,7 +159,7 @@ async def search_in_transcript(
         parts: list[str] = []
         for score, idx, segment in top:
             # Tronquer si trop long pour la lecture vocale
-            display = segment[:500] + "..." if len(segment) > 500 else segment
+            display = segment[:600] + "..." if len(segment) > 600 else segment
             parts.append(f"[Segment {idx + 1}] {display}")
 
         return "\n\n".join(parts)

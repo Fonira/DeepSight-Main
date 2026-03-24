@@ -139,49 +139,76 @@ class ElevenLabsClient:
         video_title: str,
         channel_name: str,
         duration: str,
-        summary_content: str,
+        context_block: str = "",
         language: str = "fr",
+        # Legacy compat — ignored if context_block is provided
+        summary_content: str = "",
     ) -> str:
-        """Build the system prompt injected into the ElevenLabs agent."""
+        """Build the system prompt injected into the ElevenLabs agent.
+
+        Args:
+            context_block: Rich context assembled by context_builder.build_rich_context().
+                           Contains: metadata, full analysis, transcript (adaptive),
+                           fact-check, enrichment, academic papers, entities.
+            summary_content: DEPRECATED — legacy fallback if context_block is empty.
+        """
+        # Fallback : si pas de context_block, utiliser l'ancien format
+        if not context_block:
+            context_block = (
+                f"## Vidéo\n"
+                f"Titre : {video_title}\n"
+                f"Chaîne : {channel_name}\n"
+                f"Durée : {duration}\n\n"
+                f"## Résumé\n"
+                f"{summary_content}"
+            )
 
         if language == "fr":
             return (
                 "Tu es l'assistant vocal DeepSight. Tu aides l'utilisateur "
-                "à comprendre une vidéo YouTube.\n\n"
-                "## Vidéo\n"
-                f"Titre : {video_title}\n"
-                f"Chaîne : {channel_name}\n"
-                f"Durée : {duration}\n\n"
-                "## Résumé\n"
-                f"{summary_content}\n\n"
-                "## Règles\n"
+                "à comprendre et explorer en profondeur le contenu d'une vidéo.\n\n"
+                "# TON CONTEXTE COMPLET\n"
+                "Tu as accès à TOUTES les données suivantes sur la vidéo. "
+                "Utilise-les pour répondre avec précision. "
+                "Tu connais le transcript, l'analyse, les vérifications de faits, "
+                "les recherches complémentaires et les références académiques.\n\n"
+                f"{context_block}\n\n"
+                "# RÈGLES DE COMPORTEMENT\n"
                 "- Réponses courtes (2-4 phrases) sauf si on te demande de détailler\n"
-                "- N'invente JAMAIS de contenu — utilise les tools pour vérifier\n"
-                "- Si hors sujet → ramène vers la vidéo\n"
-                "- Utilise search_in_transcript pour les citations exactes\n"
-                "- Utilise get_sources pour les questions de fiabilité\n"
-                "- Si \"interroge-moi\" → utilise get_flashcards\n"
-                "- Ton naturel, expert mais accessible"
+                "- N'invente JAMAIS de contenu. Tu as le transcript et l'analyse — cite-les.\n"
+                "- Si on te pose une question factuelle, cherche d'abord dans le transcript et l'analyse ci-dessus.\n"
+                "- Utilise search_in_transcript UNIQUEMENT si tu as besoin d'un passage précis non présent dans ton contexte.\n"
+                "- Utilise get_sources pour les questions de fiabilité ou de fact-check.\n"
+                "- Si \"interroge-moi\" ou \"quiz\" → utilise get_flashcards.\n"
+                "- Si hors sujet → ramène vers la vidéo.\n"
+                "- Ton naturel, expert mais accessible. Tutoie l'utilisateur.\n"
+                "- Si le transcript est partiel (vidéo longue), dis-le et propose d'utiliser search_in_transcript.\n"
+                "- Cite les timecodes quand c'est pertinent.\n"
+                "- Compatible YouTube, TikTok et texte collé."
             )
 
         # English fallback
         return (
             "You are the DeepSight voice assistant. You help the user "
-            "understand a YouTube video.\n\n"
-            "## Video\n"
-            f"Title: {video_title}\n"
-            f"Channel: {channel_name}\n"
-            f"Duration: {duration}\n\n"
-            "## Summary\n"
-            f"{summary_content}\n\n"
-            "## Rules\n"
+            "understand and deeply explore video content.\n\n"
+            "# YOUR FULL CONTEXT\n"
+            "You have access to ALL of the following data about the video. "
+            "Use it to answer accurately. "
+            "You know the transcript, analysis, fact-checks, "
+            "complementary research, and academic references.\n\n"
+            f"{context_block}\n\n"
+            "# BEHAVIOR RULES\n"
             "- Keep answers short (2-4 sentences) unless asked to elaborate\n"
-            "- NEVER make up content — use tools to verify\n"
-            "- If off-topic → steer back to the video\n"
-            "- Use search_in_transcript for exact quotes\n"
-            "- Use get_sources for reliability questions\n"
-            '- If "quiz me" → use get_flashcards\n'
-            "- Natural tone, expert but approachable"
+            "- NEVER make up content. You have the transcript and analysis — cite them.\n"
+            "- For factual questions, search your context (transcript + analysis) first.\n"
+            "- Use search_in_transcript ONLY if you need a specific passage not in your context.\n"
+            "- Use get_sources for reliability or fact-check questions.\n"
+            '- If "quiz me" → use get_flashcards.\n'
+            "- If off-topic → steer back to the video.\n"
+            "- Natural tone, expert but approachable.\n"
+            "- If transcript is partial (long video), say so and offer to use search_in_transcript.\n"
+            "- Cite timecodes when relevant.\n"
+            "- Compatible with YouTube, TikTok, and pasted text."
         )
 
     @staticmethod
