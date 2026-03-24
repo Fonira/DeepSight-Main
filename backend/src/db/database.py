@@ -223,6 +223,20 @@ class Summary(Base):
     # Hierarchical Digest Pipeline (Feb 2026)
     full_digest = Column(Text, nullable=True)  # Assembled full digest from chunk digests (~6-10K chars)
 
+    # 📊 Engagement metadata (Mar 2026)
+    view_count = Column(Integer, nullable=True)
+    like_count = Column(Integer, nullable=True)
+    comment_count = Column(Integer, nullable=True)
+    share_count = Column(Integer, nullable=True)           # TikTok
+    channel_follower_count = Column(Integer, nullable=True)
+    content_type = Column(String(20), default="video", server_default="video")  # video, carousel, short, live
+    source_tags_json = Column(Text, nullable=True)         # JSON: original video tags (≠ AI-extracted Summary.tags)
+    video_description = Column(Text, nullable=True)        # Source video description
+    channel_id = Column(String(100), nullable=True)
+    music_title = Column(String(255), nullable=True)       # TikTok sound
+    music_author = Column(String(255), nullable=True)      # TikTok sound author
+    carousel_images_json = Column(Text, nullable=True)     # JSON: carousel image URLs
+
     # Relations
     user = relationship("User", back_populates="summaries")
     chat_messages = relationship("ChatMessage", back_populates="summary", cascade="all, delete-orphan")

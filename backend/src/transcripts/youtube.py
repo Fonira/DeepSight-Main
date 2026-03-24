@@ -430,18 +430,35 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
                     duration = data.get("duration", 0) or 0
                     if duration > 0:
                         print(f"  ✅ [SUPADATA] Metadata OK - Duration: {duration}s", flush=True)
+                        # 📊 Support both new unified format (author/stats objects)
+                        # and legacy flat format (viewCount, likeCount, etc.)
+                        author = data.get("author", {})
+                        stats = data.get("stats", {})
+                        # Channel: new format has author.displayName, legacy has channel/author string
+                        raw_channel = data.get("channel", data.get("author", "Unknown"))
+                        if isinstance(raw_channel, dict):
+                            channel_name = raw_channel.get("displayName") or raw_channel.get("name") or raw_channel.get("username") or "Unknown"
+                        elif isinstance(author, dict) and author.get("displayName"):
+                            channel_name = author.get("displayName") or author.get("username") or "Unknown"
+                        else:
+                            channel_name = str(raw_channel) if raw_channel else "Unknown"
                         return {
                             "video_id": video_id,
                             "title": data.get("title", "Unknown"),
-                            "channel": data.get("channel", data.get("author", "Unknown")),
+                            "channel": channel_name,
                             "thumbnail_url": data.get("thumbnail", f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"),
                             "duration": duration,
-                            "upload_date": data.get("uploadDate"),
+                            "upload_date": data.get("uploadDate") or data.get("createdAt"),
                             "description": (data.get("description", "") or "")[:2000],
                             "tags": data.get("tags", []),
-                            "categories": [],
-                            "view_count": data.get("viewCount"),
-                            "like_count": data.get("likeCount"),
+                            "categories": data.get("categories", []),
+                            # Engagement: new stats object OR legacy flat fields
+                            "view_count": stats.get("views") or data.get("viewCount"),
+                            "like_count": stats.get("likes") or data.get("likeCount"),
+                            "comment_count": stats.get("comments") or data.get("commentCount"),
+                            "channel_id": (author.get("id") if isinstance(author, dict) else None) or data.get("channelId"),
+                            "channel_follower_count": data.get("channelFollowerCount"),
+                            "content_type": "video",
                         }
                     else:
                         print(f"  ⚠️ [SUPADATA] Metadata OK but no duration", flush=True)
@@ -558,15 +575,18 @@ async def get_video_info_ytdlp(video_id: str) -> Optional[Dict[str, Any]]:
                 "upload_date": data.get("upload_date"),
                 "view_count": data.get("view_count"),
                 # 🆕 Métadonnées enrichies pour la détection de catégorie
-                "description": data.get("description", "")[:2000],  # Plus de description
-                "tags": data.get("tags", []),  # Tags YouTube
-                "categories": data.get("categories", []),  # Catégories YouTube natives
+                "description": data.get("description", "")[:2000],
+                "tags": data.get("tags", []),
+                "categories": data.get("categories", []),
                 "like_count": data.get("like_count"),
                 "comment_count": data.get("comment_count"),
                 "channel_id": data.get("channel_id"),
                 "channel_url": data.get("channel_url", data.get("uploader_url")),
                 "channel_follower_count": data.get("channel_follower_count"),
                 "language": data.get("language"),
+                # 📊 Additional metadata
+                "chapters": data.get("chapters", []),
+                "content_type": "video",
             }
     except Exception as e:
         print(f"⚠️ yt-dlp info error: {e}", flush=True)

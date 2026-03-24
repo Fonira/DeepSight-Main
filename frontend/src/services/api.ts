@@ -117,11 +117,21 @@ export interface Summary {
   web_enriched?: boolean;
   fact_check_results?: FactCheckResult[];
   detected_category?: string;
-  content_type?: string;
+  content_type?: 'video' | 'carousel' | 'short' | 'live' | string;
   view_count?: number;
   like_count?: number;
   publish_date?: string;
   concepts?: Concept[];
+
+  // 📊 Engagement metadata
+  comment_count?: number;
+  share_count?: number;
+  channel_follower_count?: number;
+  engagement_rate?: number;
+  music_title?: string;
+  music_author?: string;
+  source_tags?: string[];
+  carousel_images?: string[];
 
   // 🔬 Deep Research (Mar 2026)
   deep_research?: boolean;

@@ -325,7 +325,20 @@ async def quick_chat_prepare(
 
     # 4. Extraire le transcript
     try:
-        if platform == "tiktok":
+        if platform == "tiktok" and video_info.get("content_type") == "carousel":
+            # 📸 Carousel pipeline for Quick Chat
+            from transcripts.carousel import get_carousel_transcript
+            carousel_images = video_info.get("carousel_images", [])
+            if not carousel_images:
+                raise ValueError("Carousel détecté mais aucune image trouvée")
+            carousel_result = await get_carousel_transcript(
+                images=carousel_images,
+                title=title,
+                description=video_info.get("description", ""),
+                lang=request.lang,
+            )
+            transcript_text = carousel_result[0] if isinstance(carousel_result, tuple) else carousel_result
+        elif platform == "tiktok":
             tiktok_result = await get_tiktok_transcript(resolved_url)
             # get_tiktok_transcript returns (full_text, timestamped_text, lang)
             transcript_text = tiktok_result[0] if isinstance(tiktok_result, tuple) else tiktok_result
@@ -370,7 +383,20 @@ async def quick_chat_prepare(
             category="general", category_confidence=0.0,
             lang=request.lang, mode="quick_chat", model_used="none",
             summary_content="", transcript_context=transcript_text,
-            video_upload_date=upload_date, platform=platform
+            video_upload_date=upload_date, platform=platform,
+            # 📊 Engagement metadata from video_info
+            view_count=video_info.get("view_count"),
+            like_count=video_info.get("like_count"),
+            comment_count=video_info.get("comment_count"),
+            share_count=video_info.get("share_count"),
+            channel_follower_count=video_info.get("channel_follower_count"),
+            content_type=video_info.get("content_type", "video"),
+            source_tags=video_info.get("tags", []),
+            video_description=video_info.get("description"),
+            channel_id=video_info.get("channel_id"),
+            music_title=video_info.get("music_title"),
+            music_author=video_info.get("music_author"),
+            carousel_images=video_info.get("carousel_images"),
         )
     except Exception as e:
         print(f"[QUICK CHAT] Failed to save: {e}", flush=True)
@@ -1129,7 +1155,20 @@ async def _analyze_video_background_v2(
             _task_store[task_id]["progress"] = 20
             _task_store[task_id]["message"] = "📝 Extraction du transcript..."
 
-            if platform == "tiktok":
+            if platform == "tiktok" and video_info.get("content_type") == "carousel":
+                # 📸 Carousel pipeline: Vision analysis instead of audio transcript
+                _task_store[task_id]["message"] = "📸 Analyse des images du carrousel..."
+                from transcripts.carousel import get_carousel_transcript
+                carousel_images = video_info.get("carousel_images", [])
+                if not carousel_images:
+                    raise Exception("Carousel détecté mais aucune image trouvée")
+                transcript, transcript_timestamped, detected_lang = await get_carousel_transcript(
+                    images=carousel_images,
+                    title=video_info.get("title", ""),
+                    description=video_info.get("description", ""),
+                    lang=lang,
+                )
+            elif platform == "tiktok":
                 transcript, transcript_timestamped, detected_lang = await get_tiktok_transcript(url, video_id)
             else:
                 _duration = int(video_info.get("duration", 0) or 0)
@@ -1247,6 +1286,13 @@ async def _analyze_video_background_v2(
                     view_count=video_info.get("view_count") or 0
                 )
             else:
+                # 📊 Calculate engagement rate for prompt
+                _vi_vc = video_info.get("view_count") or 0
+                _vi_lc = video_info.get("like_count") or 0
+                _vi_cc = video_info.get("comment_count") or 0
+                _vi_sc = video_info.get("share_count") or 0
+                _vi_er = round((_vi_lc + _vi_cc + _vi_sc) / _vi_vc * 100, 2) if _vi_vc > 0 else 0.0
+
                 summary_content = await generate_summary(
                     title=video_info["title"],
                     transcript=transcript_to_analyze,
@@ -1262,9 +1308,14 @@ async def _analyze_video_background_v2(
                     force_refresh=force_refresh,
                     target_length=options.get("summary_length", "standard"),
                     upload_date=video_info.get("upload_date", ""),
-                    view_count=video_info.get("view_count") or 0,
-                    like_count=video_info.get("like_count") or 0,
+                    view_count=_vi_vc,
+                    like_count=_vi_lc,
                     channel_follower_count=video_info.get("channel_follower_count") or 0,
+                    comment_count=_vi_cc,
+                    share_count=_vi_sc,
+                    engagement_rate=_vi_er,
+                    content_type=video_info.get("content_type", "video"),
+                    chapters=video_info.get("chapters"),
                 )
 
             if not summary_content:
@@ -1345,7 +1396,20 @@ async def _analyze_video_background_v2(
                 entities_extracted=entities,
                 reliability_score=reliability,
                 enrichment_data=enrichment_metadata,
-                platform=platform
+                platform=platform,
+                # 📊 Engagement metadata
+                view_count=video_info.get("view_count"),
+                like_count=video_info.get("like_count"),
+                comment_count=video_info.get("comment_count"),
+                share_count=video_info.get("share_count"),
+                channel_follower_count=video_info.get("channel_follower_count"),
+                content_type=video_info.get("content_type", "video"),
+                source_tags=video_info.get("tags", []),
+                video_description=video_info.get("description"),
+                channel_id=video_info.get("channel_id"),
+                music_title=video_info.get("music_title"),
+                music_author=video_info.get("music_author"),
+                carousel_images=video_info.get("carousel_images"),
             )
 
             # Incrémenter le quota quotidien
@@ -1808,7 +1872,20 @@ async def _analyze_video_background_v2_1(
             _task_store[task_id]["progress"] = 15
             _task_store[task_id]["message"] = "📝 Extraction du transcript..."
 
-            if platform == "tiktok":
+            if platform == "tiktok" and video_info.get("content_type") == "carousel":
+                # 📸 Carousel pipeline
+                _task_store[task_id]["message"] = "📸 Analyse des images du carrousel..."
+                from transcripts.carousel import get_carousel_transcript
+                carousel_images = video_info.get("carousel_images", [])
+                if not carousel_images:
+                    raise Exception("Carousel détecté mais aucune image trouvée")
+                transcript, transcript_timestamped, detected_lang = await get_carousel_transcript(
+                    images=carousel_images,
+                    title=video_info.get("title", ""),
+                    description=video_info.get("description", ""),
+                    lang=lang,
+                )
+            elif platform == "tiktok":
                 transcript, transcript_timestamped, detected_lang = await get_tiktok_transcript(url, video_id)
             else:
                 _duration = int(video_info.get("duration", 0) or 0)
@@ -1994,6 +2071,13 @@ async def _analyze_video_background_v2_1(
                     view_count=video_info.get("view_count") or 0
                 )
             else:
+                # 📊 Calculate engagement rate for prompt
+                _vi_vc2 = video_info.get("view_count") or 0
+                _vi_lc2 = video_info.get("like_count") or 0
+                _vi_cc2 = video_info.get("comment_count") or 0
+                _vi_sc2 = video_info.get("share_count") or 0
+                _vi_er2 = round((_vi_lc2 + _vi_cc2 + _vi_sc2) / _vi_vc2 * 100, 2) if _vi_vc2 > 0 else 0.0
+
                 summary_content = await generate_summary(
                     title=video_info["title"],
                     transcript=transcript_to_analyze,
@@ -2009,9 +2093,14 @@ async def _analyze_video_background_v2_1(
                     force_refresh=force_refresh,
                     target_length=options.get("summary_length", "standard"),
                     upload_date=video_info.get("upload_date", ""),
-                    view_count=video_info.get("view_count") or 0,
-                    like_count=video_info.get("like_count") or 0,
+                    view_count=_vi_vc2,
+                    like_count=_vi_lc2,
                     channel_follower_count=video_info.get("channel_follower_count") or 0,
+                    comment_count=_vi_cc2,
+                    share_count=_vi_sc2,
+                    engagement_rate=_vi_er2,
+                    content_type=video_info.get("content_type", "video"),
+                    chapters=video_info.get("chapters"),
                 )
 
             if not summary_content:
@@ -2108,7 +2197,20 @@ async def _analyze_video_background_v2_1(
                 entities_extracted=entities,
                 reliability_score=reliability,
                 enrichment_data=enrichment_metadata,
-                platform=platform
+                platform=platform,
+                # 📊 Engagement metadata
+                view_count=video_info.get("view_count"),
+                like_count=video_info.get("like_count"),
+                comment_count=video_info.get("comment_count"),
+                share_count=video_info.get("share_count"),
+                channel_follower_count=video_info.get("channel_follower_count"),
+                content_type=video_info.get("content_type", "video"),
+                source_tags=video_info.get("tags", []),
+                video_description=video_info.get("description"),
+                channel_id=video_info.get("channel_id"),
+                music_title=video_info.get("music_title"),
+                music_author=video_info.get("music_author"),
+                carousel_images=video_info.get("carousel_images"),
             )
 
             # Incrémenter le quota
@@ -2352,7 +2454,20 @@ async def _analyze_video_background_v6(
 
             # Extract if not found in cache
             if not transcript:
-                if platform == "tiktok":
+                if platform == "tiktok" and video_info.get("content_type") == "carousel":
+                    # 📸 Carousel pipeline
+                    _task_store[task_id]["message"] = "📸 Analyse des images du carrousel..."
+                    from transcripts.carousel import get_carousel_transcript
+                    carousel_images = video_info.get("carousel_images", [])
+                    if not carousel_images:
+                        raise Exception("Carousel détecté mais aucune image trouvée")
+                    transcript, transcript_timestamped, detected_lang = await get_carousel_transcript(
+                        images=carousel_images,
+                        title=video_info.get("title", ""),
+                        description=video_info.get("description", ""),
+                        lang=lang,
+                    )
+                elif platform == "tiktok":
                     transcript, transcript_timestamped, detected_lang = await get_tiktok_transcript(url, video_id)
                 else:
                     _duration = int(video_info.get("duration", 0) or 0)
@@ -2508,6 +2623,10 @@ async def _analyze_video_background_v6(
                         view_count=video_info.get("view_count") or 0,
                         like_count=video_info.get("like_count") or 0,
                         channel_follower_count=video_info.get("channel_follower_count") or 0,
+                        comment_count=video_info.get("comment_count") or 0,
+                        share_count=video_info.get("share_count") or 0,
+                        content_type=video_info.get("content_type", "video"),
+                        chapters=video_info.get("chapters"),
                     )
             else:
                 # ════════════════════════════════════════════════════════════
@@ -2538,11 +2657,15 @@ async def _analyze_video_background_v6(
                     view_count=video_info.get("view_count") or 0,
                     like_count=video_info.get("like_count") or 0,
                     channel_follower_count=video_info.get("channel_follower_count") or 0,
+                    comment_count=video_info.get("comment_count") or 0,
+                    share_count=video_info.get("share_count") or 0,
+                    content_type=video_info.get("content_type", "video"),
+                    chapters=video_info.get("chapters"),
                 )
 
             if not summary_content:
                 raise Exception("Failed to generate summary")
-            
+
             final_word_count = len(summary_content.split())
             print(f"✅ Summary generated: {final_word_count} words", flush=True)
             
@@ -2628,8 +2751,21 @@ async def _analyze_video_background_v6(
                 # 🆕 Métadonnées d'enrichissement
                 enrichment_data=enrichment_metadata,
                 platform=platform,
+                # 📊 Engagement metadata
+                view_count=video_info.get("view_count"),
+                like_count=video_info.get("like_count"),
+                comment_count=video_info.get("comment_count"),
+                share_count=video_info.get("share_count"),
+                channel_follower_count=video_info.get("channel_follower_count"),
+                content_type=video_info.get("content_type", "video"),
+                source_tags=video_info.get("tags", []),
+                video_description=video_info.get("description"),
+                channel_id=video_info.get("channel_id"),
+                music_title=video_info.get("music_title"),
+                music_author=video_info.get("music_author"),
+                carousel_images=video_info.get("carousel_images"),
             )
-            
+
             print(f"💾 Summary saved: id={summary_id}", flush=True)
 
             # ⚡ Cache + quota en parallèle (perf v6.2)
@@ -2878,6 +3014,28 @@ async def get_summary(
         except (json.JSONDecodeError, TypeError):
             pass
 
+    # 📊 Calculate engagement rate on-the-fly
+    engagement_rate = None
+    _vc = getattr(summary, 'view_count', None)
+    if _vc and _vc > 0:
+        _total = (getattr(summary, 'like_count', 0) or 0) + (getattr(summary, 'comment_count', 0) or 0) + (getattr(summary, 'share_count', 0) or 0)
+        engagement_rate = round(_total / _vc * 100, 2)
+
+    # Deserialize JSON fields
+    _source_tags = None
+    if getattr(summary, 'source_tags_json', None):
+        try:
+            _source_tags = json.loads(summary.source_tags_json)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    _carousel_images = None
+    if getattr(summary, 'carousel_images_json', None):
+        try:
+            _carousel_images = json.loads(summary.carousel_images_json)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
     return SummaryResponse(
         id=summary.id,
         video_id=summary.video_id,
@@ -2899,7 +3057,19 @@ async def get_summary(
         tags=summary.tags,
         entities=entities,
         transcript_context=summary.transcript_context,
-        created_at=summary.created_at.isoformat() if summary.created_at else None
+        created_at=summary.created_at.isoformat() if summary.created_at else None,
+        # 📊 Engagement metadata
+        view_count=getattr(summary, 'view_count', None),
+        like_count=getattr(summary, 'like_count', None),
+        comment_count=getattr(summary, 'comment_count', None),
+        share_count=getattr(summary, 'share_count', None),
+        channel_follower_count=getattr(summary, 'channel_follower_count', None),
+        engagement_rate=engagement_rate,
+        content_type=getattr(summary, 'content_type', None) or "video",
+        music_title=getattr(summary, 'music_title', None),
+        music_author=getattr(summary, 'music_author', None),
+        source_tags=_source_tags,
+        carousel_images=_carousel_images,
     )
 
 

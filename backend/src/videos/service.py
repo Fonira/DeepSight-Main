@@ -136,7 +136,20 @@ async def save_summary(
     reliability_score: Optional[float] = None,
     fact_check_result: Optional[str] = None,
     enrichment_data: Optional[Dict] = None,
-    platform: str = "youtube"  # 🎵 TikTok support
+    platform: str = "youtube",  # 🎵 TikTok support
+    # 📊 Engagement metadata (Mar 2026)
+    view_count: Optional[int] = None,
+    like_count: Optional[int] = None,
+    comment_count: Optional[int] = None,
+    share_count: Optional[int] = None,
+    channel_follower_count: Optional[int] = None,
+    content_type: str = "video",
+    source_tags: Optional[List] = None,
+    video_description: Optional[str] = None,
+    channel_id: Optional[str] = None,
+    music_title: Optional[str] = None,
+    music_author: Optional[str] = None,
+    carousel_images: Optional[List[str]] = None,
 ) -> int:
     """Sauvegarde un nouveau résumé et retourne son ID"""
     print(f"💾 [save_summary v2] Saving video_id={video_id}, user_id={user_id}", flush=True)
@@ -248,7 +261,20 @@ async def save_summary(
         entities_extracted=json.dumps(entities_extracted) if entities_extracted else None,
         reliability_score=reliability_score,
         tags=','.join(extracted_tags) if extracted_tags else None,  # 🏷️ Stocker les concepts
-        is_favorite=False
+        is_favorite=False,
+        # 📊 Engagement metadata
+        view_count=view_count,
+        like_count=like_count,
+        comment_count=comment_count,
+        share_count=share_count,
+        channel_follower_count=channel_follower_count,
+        content_type=content_type or "video",
+        source_tags_json=json.dumps(source_tags, ensure_ascii=False) if source_tags else None,
+        video_description=(video_description[:2000] if video_description else None),
+        channel_id=channel_id,
+        music_title=music_title,
+        music_author=music_author,
+        carousel_images_json=json.dumps(carousel_images, ensure_ascii=False) if carousel_images else None,
     )
     
     # Ajouter enrichment_data si le modèle le supporte

@@ -190,6 +190,11 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
                     data = resp.json()
                     vid = data.get("id", extract_tiktok_video_id(url) or "unknown")
                     duration = data.get("duration", 0) or 0
+                    # 📊 Support both new unified format (author/stats objects)
+                    # and legacy flat format (likeCount, viewCount, etc.)
+                    author = data.get("author", {})
+                    stats = data.get("stats", {})
+                    additional = data.get("additionalData", {})
                     # ⚠️ Supadata peut retourner channel comme dict {"name": "...", "id": "..."}
                     raw_channel = data.get("channel", data.get("author", "Unknown"))
                     if isinstance(raw_channel, dict):
@@ -200,23 +205,47 @@ async def get_tiktok_video_info(url: str) -> Optional[Dict[str, Any]]:
                             or raw_channel.get("title")
                             or "Unknown"
                         )
+                    elif isinstance(author, dict) and author.get("displayName"):
+                        channel_str = author.get("displayName") or author.get("username") or "Unknown"
                     else:
                         channel_str = str(raw_channel) if raw_channel else "Unknown"
-                    logger.info(f"[TIKTOK] Supadata metadata OK: {data.get('title', '')[:50]} ({duration}s)")
+
+                    # 📸 Carousel detection: Supadata returns type: "carousel"
+                    content_type = data.get("type", "video") or "video"
+                    carousel_images = []
+                    if content_type == "carousel":
+                        media = data.get("media", {})
+                        items = media.get("items", []) if isinstance(media, dict) else []
+                        carousel_images = [item.get("url") for item in items if item.get("url")]
+                        logger.info(f"[TIKTOK] 📸 Carousel detected: {len(carousel_images)} images")
+
+                    # 🎵 Music info from additionalData
+                    music_data = additional.get("music", {}) if isinstance(additional, dict) else {}
+
+                    logger.info(f"[TIKTOK] Supadata metadata OK: {data.get('title', '')[:50]} ({duration}s, type={content_type})")
                     return {
                         "video_id": str(vid),
                         "title": (data.get("title", "TikTok Video") or "TikTok Video")[:500],
                         "channel": channel_str,
                         "thumbnail_url": data.get("thumbnail", ""),
                         "duration": duration,
-                        "upload_date": data.get("uploadDate"),
+                        "upload_date": data.get("uploadDate") or data.get("createdAt"),
                         "description": (data.get("description", "") or "")[:2000],
                         "platform": "tiktok",
-                        "like_count": data.get("likeCount", 0),
-                        "comment_count": data.get("commentCount", 0),
-                        "view_count": data.get("viewCount", 0),
+                        # Engagement: new stats object OR legacy flat fields
+                        "like_count": stats.get("likes") or data.get("likeCount", 0),
+                        "comment_count": stats.get("comments") or data.get("commentCount", 0),
+                        "view_count": stats.get("views") or data.get("viewCount", 0),
+                        "share_count": stats.get("shares") or data.get("shareCount", 0),
                         "tags": data.get("tags", []),
                         "categories": ["Social Media"],
+                        # 📊 New metadata
+                        "content_type": content_type,
+                        "carousel_images": carousel_images,
+                        "channel_id": (author.get("id") if isinstance(author, dict) else None) or data.get("channelId"),
+                        "creator_verified": author.get("verified", False) if isinstance(author, dict) else False,
+                        "music_title": music_data.get("title") if isinstance(music_data, dict) else None,
+                        "music_author": music_data.get("author") if isinstance(music_data, dict) else None,
                     }
                 else:
                     logger.warning(f"[TIKTOK] Supadata metadata error {resp.status_code}")
