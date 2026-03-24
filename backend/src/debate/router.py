@@ -14,7 +14,7 @@
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -121,7 +121,7 @@ def _debate_to_result(debate: DebateAnalysis) -> DebateResultResponse:
         model_used=debate.model_used,
         credits_used=debate.credits_used or 0,
         lang=debate.lang or "fr",
-        created_at=debate.created_at or datetime.now(timezone.utc),
+        created_at=debate.created_at or datetime.utcnow(),
         updated_at=debate.updated_at,
     )
 
@@ -404,7 +404,7 @@ async def _run_debate_pipeline(
                     '  "thesis_b": "Thèse défendue par la vidéo B",\n'
                     '  "arguments_b": [{"claim": "...", "evidence": "...", "strength": "strong|moderate|weak"}, ...],\n'
                     '  "convergence_points": ["point commun 1", "point commun 2"],\n'
-                    '  "divergence_points": ["désaccord 1", "désaccord 2", "désaccord 3"],\n'
+                    '  "divergence_points": [{"topic": "sujet du désaccord", "position_a": "position vidéo A", "position_b": "position vidéo B"}, ...],\n'
                     '  "summary": "Synthèse nuancée du débat en 3-5 paragraphes"\n'
                     "}"
                 )},
@@ -434,7 +434,14 @@ async def _run_debate_pipeline(
             thesis_b = compare_data.get("thesis_b", "Thèse non identifiée")
             arguments_b = compare_data.get("arguments_b", [])
             convergence = compare_data.get("convergence_points", [])
-            divergence = compare_data.get("divergence_points", [])
+            divergence_raw = compare_data.get("divergence_points", [])
+            # Normalize divergence_points: ensure each item is a dict
+            divergence = []
+            for item in divergence_raw:
+                if isinstance(item, dict):
+                    divergence.append(item)
+                elif isinstance(item, str):
+                    divergence.append({"topic": item, "position_a": "", "position_b": ""})
             summary = compare_data.get("summary", "")
 
             debate.thesis_b = thesis_b
@@ -457,12 +464,12 @@ async def _run_debate_pipeline(
                     f"Sujet : {detected_topic}\n"
                     f"Thèse A : {thesis_a}\n"
                     f"Thèse B : {thesis_b}\n"
-                    f"Arguments A : {', '.join(arguments_a[:3])}\n"
-                    f"Arguments B : {', '.join(arguments_b[:3])}\n\n"
-                    f"Pour chaque affirmation clé, indique si elle est VRAIE, PARTIELLEMENT VRAIE, "
-                    f"NON VÉRIFIABLE, ou FAUSSE, avec une source. "
+                    f"Arguments A : {', '.join(a.get('claim', str(a)) if isinstance(a, dict) else str(a) for a in arguments_a[:3])}\n"
+                    f"Arguments B : {', '.join(a.get('claim', str(a)) if isinstance(a, dict) else str(a) for a in arguments_b[:3])}\n\n"
+                    f"Pour chaque affirmation clé, vérifie sa véracité avec une source. "
+                    f"Le verdict DOIT être exactement l'un de : confirmed, nuanced, disputed, unverifiable. "
                     f"Réponds UNIQUEMENT avec un tableau JSON (pas d'objet englobant) : "
-                    f'[{{"claim": "...", "verdict": "...", "source": "...", "explanation": "..."}}]'
+                    f'[{{"claim": "...", "verdict": "confirmed|nuanced|disputed|unverifiable", "source": "...", "explanation": "..."}}]'
                 )
                 fact_result = await _call_perplexity(fact_prompt)
                 if fact_result:
@@ -480,6 +487,15 @@ async def _run_debate_pipeline(
                             fact_check_results = parsed["claims"]
                         else:
                             fact_check_results = []
+                        # Normalize verdicts to frontend-expected values
+                        verdict_map = {"vraie": "confirmed", "vrai": "confirmed", "confirmé": "confirmed",
+                                       "partiellement vraie": "nuanced", "nuancé": "nuanced",
+                                       "fausse": "disputed", "faux": "disputed", "contesté": "disputed",
+                                       "non vérifiable": "unverifiable", "invérifiable": "unverifiable"}
+                        for item in fact_check_results:
+                            if isinstance(item, dict) and "verdict" in item:
+                                v = item["verdict"].strip().lower()
+                                item["verdict"] = verdict_map.get(v, v if v in ("confirmed", "nuanced", "disputed", "unverifiable") else "unverifiable")
                     except (json.JSONDecodeError, IndexError):
                         logger.warning("Failed to parse fact-check: %s", fact_result[:300])
                         fact_check_results = []
@@ -562,7 +578,7 @@ async def create_debate(
         mode=mode,
         platform=request.platform,
         lang=request.lang,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.utcnow(),
     )
     db.add(debate)
     await db.flush()
@@ -660,8 +676,10 @@ async def get_debate_history(
             detected_topic=d.detected_topic,
             video_a_title=d.video_a_title,
             video_b_title=d.video_b_title,
+            video_a_thumbnail=d.video_a_thumbnail,
+            video_b_thumbnail=d.video_b_thumbnail,
             status=d.status,
-            created_at=d.created_at or datetime.now(timezone.utc),
+            created_at=d.created_at or datetime.utcnow(),
         )
         for d in debates
     ]
@@ -786,14 +804,14 @@ async def debate_chat(
         user_id=current_user.id,
         role="user",
         content=request.message,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.utcnow(),
     )
     assistant_msg = DebateChatMessage(
         debate_id=request.debate_id,
         user_id=current_user.id,
         role="assistant",
         content=response_text,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.utcnow(),
     )
     db.add(user_msg)
     db.add(assistant_msg)
@@ -834,7 +852,7 @@ async def get_debate_chat_history(
                 debate_id=m.debate_id,
                 role=m.role,
                 content=m.content,
-                created_at=m.created_at or datetime.now(timezone.utc),
+                created_at=m.created_at or datetime.utcnow(),
             ).model_dump()
             for m in messages
         ],
