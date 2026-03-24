@@ -1166,8 +1166,11 @@ async def init_db():
     await run_schema_migrations()
 
     # Puis create_all pour les nouvelles tables déclarées via modèles SQLAlchemy
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all, checkfirst=True)
+    except Exception as e:
+        print(f'⚠️ create_all warning (tables may already exist): {e}', flush=True)
 
     # Appliquer la migration CASCADE delete
     await run_cascade_migration()

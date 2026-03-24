@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.database import get_session, User, Badge, UserBadge
+from db.database import get_session, User, Badge, UserBadge, UserStudyStats
 from auth.dependencies import get_current_user
 from gamification.service import (
     get_or_create_stats,
