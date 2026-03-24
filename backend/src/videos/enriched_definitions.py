@@ -16,7 +16,7 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 import os
 
-from core.config import get_perplexity_key, get_mistral_key
+from core.config import get_mistral_key
 from core.config import MISTRAL_INTERNAL_MODEL
 
 
@@ -218,11 +218,11 @@ async def enrich_with_perplexity(
     """
     Utilise Perplexity pour enrichir les définitions avec des sources web.
     """
-    api_key = get_perplexity_key()
-    if not api_key or not terms:
+    from core.config import is_web_search_available
+    if not is_web_search_available() or not terms:
         return {}
-    
-    terms = terms[:20]  # Augmenté de 15 → 20 (Perplexity reste limité pour le coût)
+
+    terms = terms[:20]
     
     prompt = f"""Tu es un assistant de recherche. Pour chaque terme, donne UNIQUEMENT des informations VÉRIFIABLES:
 1. Une définition FACTUELLE et PRÉCISE (2-3 phrases max)
@@ -265,75 +265,57 @@ IMPORTANT:
 - JSON uniquement"""
 
     try:
-        async with httpx.AsyncClient(timeout=45.0) as client:
-            response = await client.post(
-                "https://api.perplexity.ai/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "sonar",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "Tu fournis des définitions précises, factuelles et VÉRIFIABLES. N'invente jamais de faits. Fournis toujours une source Wikipedia ou fiable quand elle existe. Réponds uniquement en JSON valide."
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-                    "max_tokens": 3500,
-                    "temperature": 0.1
-                }
-            )
-            
-            if response.status_code != 200:
-                print(f"❌ [Perplexity] Error: {response.status_code}")
-                return {}
-            
-            data = response.json()
-            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            
-            # Extraire les citations si disponibles (Perplexity peut retourner une liste ou un dict)
-            raw_citations = data.get("citations", [])
-            citations = list(raw_citations.values()) if isinstance(raw_citations, dict) else raw_citations if isinstance(raw_citations, list) else []
-            
-            # Nettoyer le JSON
-            content = content.strip()
-            if content.startswith("```"):
-                content = re.sub(r'^```\w*\n?', '', content)
-                content = re.sub(r'\n?```$', '', content)
-            
-            parsed = json.loads(content)
-            definitions = parsed.get("definitions", [])
-            
-            output = {}
-            for i, item in enumerate(definitions):
-                term = item.get("term", "")
-                if term:
-                    # Associer des sources si disponibles
-                    term_sources = citations[i:i+2] if citations and i < len(citations) else []
+        from videos.web_search_provider import web_search_and_synthesize
+        result = await web_search_and_synthesize(
+            query=prompt,
+            context="Définitions de concepts pour analyse vidéo",
+            purpose="enrichment",
+            lang="fr",
+            max_sources=5,
+            max_tokens=3500
+        )
 
-                    output[term.lower()] = {
-                        "term": term,
-                        "category": item.get("category", "other"),
-                        "definition": item.get("definition", ""),
-                        "context_relevance": item.get("context_relevance", ""),
-                        "sources": term_sources,
-                        "wiki_url": item.get("wiki_url"),
-                        "source": "perplexity"
-                    }
-            
-            print(f"✅ [Perplexity] Enriched {len(output)} definitions")
-            return output
-            
+        if not result.success:
+            print(f"❌ [WEB_SEARCH] Enriched definitions error: {result.error}")
+            return {}
+
+        content = result.content
+        citations = [s.get("url", "") for s in result.sources] if result.sources else []
+
+        # Nettoyer le JSON
+        content = content.strip()
+        if content.startswith("```"):
+            content = re.sub(r'^```\w*\n?', '', content)
+            content = re.sub(r'\n?```$', '', content)
+
+        parsed = json.loads(content)
+        definitions = parsed.get("definitions", [])
+
+        output = {}
+        for i, item in enumerate(definitions):
+            term = item.get("term", "")
+            if term:
+                # Associer des sources si disponibles
+                term_sources = citations[i:i+2] if citations and i < len(citations) else []
+
+                output[term.lower()] = {
+                    "term": term,
+                    "category": item.get("category", "other"),
+                    "definition": item.get("definition", ""),
+                    "context_relevance": item.get("context_relevance", ""),
+                    "sources": term_sources,
+                    "wiki_url": item.get("wiki_url"),
+                    "source": "brave_search"
+                }
+
+        print(f"✅ [WebSearch] Enriched {len(output)} definitions")
+        return output
+
     except json.JSONDecodeError as e:
-        print(f"❌ [Perplexity] JSON error: {e}")
+        print(f"❌ [WebSearch] JSON error: {e}")
         return {}
     except Exception as e:
-        print(f"❌ [Perplexity] Error: {e}")
+        print(f"❌ [WebSearch] Error: {e}")
         return {}
 
 
@@ -396,7 +378,7 @@ async def get_enriched_definitions(
             print(f"⚠️ [Mistral] Exception: {mistral_results}")
             mistral_results = {}
         if isinstance(perplexity_results, Exception):
-            print(f"⚠️ [Perplexity] Exception: {perplexity_results}")
+            print(f"⚠️ [WebSearch] Exception: {perplexity_results}")
             perplexity_results = {}
     else:
         mistral_results = await categorize_with_mistral(terms, context, language)
@@ -420,7 +402,7 @@ async def get_enriched_definitions(
                 context_relevance=perplexity_data.get("context_relevance", mistral_data.get("relevance", "")),
                 sources=perplexity_data.get("sources", []),
                 confidence=0.9,
-                provider="perplexity",
+                provider="brave_search",
                 wiki_url=perplexity_data.get("wiki_url") or mistral_data.get("wiki_url")
             ))
         elif mistral_data:

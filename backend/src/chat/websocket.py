@@ -382,67 +382,42 @@ class ChatService:
         return "\n".join(context_parts)
     
     async def _enrich_with_web(
-        self, 
-        query: str, 
+        self,
+        query: str,
         level: EnrichmentLevel
     ) -> Optional[Dict[str, Any]]:
-        """Enrichit la réponse avec une recherche web via Perplexity"""
-        import httpx
-        import os
-        
-        api_key = os.environ.get("PERPLEXITY_API_KEY")
-        if not api_key:
-            return None
-        
-        # Configurer le niveau de recherche
-        search_config = {
-            EnrichmentLevel.LIGHT: {"search_domain_filter": [], "search_recency_filter": "week"},
-            EnrichmentLevel.FULL: {"search_domain_filter": [], "search_recency_filter": "month"},
-            EnrichmentLevel.DEEP: {"search_domain_filter": [], "search_recency_filter": "year"},
-        }
-        
-        config = search_config.get(level, search_config[EnrichmentLevel.LIGHT])
-        
+        """Enrichit la réponse avec une recherche web via Brave Search + Mistral"""
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(
-                    "https://api.perplexity.ai/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json",
-                    },
-                    json={
-                        "model": "llama-3.1-sonar-small-128k-online",
-                        "messages": [
-                            {
-                                "role": "system",
-                                "content": "Tu es un assistant de recherche. Fournis des informations factuelles et cite tes sources."
-                            },
-                            {
-                                "role": "user",
-                                "content": query
-                            }
-                        ],
-                        "return_citations": True,
-                        **config,
-                    }
-                )
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                    citations = data.get("citations", [])
-                    
-                    return {
-                        "context": content,
-                        "sources": [
-                            {"url": c, "title": c.split("/")[-1] if "/" in c else c}
-                            for c in citations[:5]
-                        ],
-                    }
+            from videos.web_search_provider import web_search_and_synthesize
+
+            # Map enrichment level to max_sources
+            sources_by_level = {
+                EnrichmentLevel.LIGHT: 3,
+                EnrichmentLevel.FULL: 5,
+                EnrichmentLevel.DEEP: 8,
+            }
+            max_sources = sources_by_level.get(level, 5)
+
+            result = await web_search_and_synthesize(
+                query=query,
+                context="Chat contextuel sur une vidéo YouTube",
+                purpose="chat",
+                lang="fr",
+                max_sources=max_sources,
+                max_tokens=2000,
+            )
+
+            if result.success and result.content:
+                return {
+                    "context": result.content,
+                    "sources": [
+                        {"url": s.get("url", ""), "title": s.get("title", s.get("url", "").split("/")[-1])}
+                        for s in (result.sources or [])[:5]
+                    ],
+                }
         except Exception as e:
             print(f"⚠️ [CHAT] Web enrichment failed: {e}", flush=True)
-        
+
         return None
     
     async def _generate_response_stream(

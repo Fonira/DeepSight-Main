@@ -17,7 +17,8 @@ from enum import Enum
 from dataclasses import dataclass
 from datetime import datetime
 
-from core.config import get_perplexity_key, PLAN_LIMITS
+from core.config import PLAN_LIMITS
+from videos.web_search_provider import web_search_and_synthesize, web_search_batch, WebSearchResult
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -622,7 +623,7 @@ class EnrichmentResult:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🌐 APPEL API PERPLEXITY
+# 🌐 WEB SEARCH (Brave Search + Mistral) — remplace Perplexity
 # ═══════════════════════════════════════════════════════════════════════════════
 
 async def call_perplexity(
@@ -630,117 +631,57 @@ async def call_perplexity(
     level: EnrichmentLevel
 ) -> EnrichmentResult:
     """
-    Appelle l'API Perplexity avec le bon modèle selon le niveau.
+    Wrapper de compatibilité : redirige vers web_search_and_synthesize().
+    Le nom est gardé pour ne pas casser les appelants existants.
     """
-    api_key = get_perplexity_key()
-    if not api_key:
-        print("❌ [PERPLEXITY] API key not configured", flush=True)
-        return EnrichmentResult(
-            success=False,
-            content="",
-            sources=[],
-            level=level,
-            error="API key not configured"
-        )
-    
     config = ENRICHMENT_CONFIG.get(level, ENRICHMENT_CONFIG[EnrichmentLevel.FULL])
-    model = config.get("model", "sonar")
     max_tokens = config.get("max_tokens", 1500)
-    
-    print(f"🌐 [PERPLEXITY] Calling API: model={model}, level={level.value}", flush=True)
-    
+    max_sources = config.get("max_sources", 5)
+
+    # Mapper le niveau d'enrichissement vers un purpose
+    purpose_map = {
+        EnrichmentLevel.NONE: "enrichment",
+        EnrichmentLevel.FULL: "enrichment",
+        EnrichmentLevel.DEEP: "deep_research",
+        EnrichmentLevel.DEEP_RESEARCH: "deep_research",
+    }
+    purpose = purpose_map.get(level, "enrichment")
+
+    print(f"🌐 [WEB_SEARCH] Calling Brave+Mistral: level={level.value}, purpose={purpose}", flush=True)
+
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.perplexity.ai/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": max_tokens,
-                    "temperature": 0.2
-                },
-                timeout=60
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                content = data["choices"][0]["message"]["content"]
-                sources = []
-                
-                # Extraire les citations si disponibles
-                citations = data.get("citations", [])
-                
-                if citations:
-                    for i, url in enumerate(citations[:config.get("max_sources", 5)]):
-                        if isinstance(url, str):
-                            try:
-                                # Extraire le nom de domaine proprement
-                                domain = url.split("/")[2] if "/" in url else url[:30]
-                                # Nettoyer le domaine pour un affichage lisible
-                                site_name = _extract_site_name(domain)
-                            except (IndexError, AttributeError):
-                                domain = "source"
-                                site_name = f"Source {i+1}"
-                            sources.append({
-                                "title": site_name,
-                                "url": url,
-                                "domain": domain
-                            })
-                        elif isinstance(url, dict):
-                            # Si c'est un dict, utiliser le titre ou extraire du domaine
-                            url_str = url.get("url", "")
-                            title = url.get("title", "")
-                            if not title and url_str:
-                                try:
-                                    domain = url_str.split("/")[2]
-                                    title = _extract_site_name(domain)
-                                except (IndexError, AttributeError):
-                                    title = f"Source {i+1}"
-                            sources.append({
-                                "title": title or f"Source {i+1}",
-                                "url": url_str,
-                                "snippet": url.get("snippet", "")[:200]
-                            })
-                
-                tokens_used = len(prompt.split()) + len(content.split())
-                
-                print(f"✅ [PERPLEXITY] Success: {len(content)} chars, {len(sources)} sources", flush=True)
-                
-                return EnrichmentResult(
-                    success=True,
-                    content=content,
-                    sources=sources,
-                    level=level,
-                    tokens_used=tokens_used
-                )
-            else:
-                error_msg = f"API error: {response.status_code}"
-                print(f"❌ [PERPLEXITY] {error_msg}", flush=True)
-                
-                return EnrichmentResult(
-                    success=False,
-                    content="",
-                    sources=[],
-                    level=level,
-                    error=error_msg
-                )
-                
-    except httpx.TimeoutException:
-        print(f"❌ [PERPLEXITY] Timeout after 60s", flush=True)
-        return EnrichmentResult(
-            success=False,
-            content="",
-            sources=[],
-            level=level,
-            error="Request timeout"
+        result = await web_search_and_synthesize(
+            query=prompt,
+            context="",
+            purpose=purpose,
+            lang="fr",
+            max_sources=max_sources,
+            max_tokens=max_tokens,
+            timeout=30.0
         )
+
+        if result.success:
+            print(f"✅ [WEB_SEARCH] Success: {len(result.content)} chars, {len(result.sources)} sources", flush=True)
+            return EnrichmentResult(
+                success=True,
+                content=result.content,
+                sources=result.sources,
+                level=level,
+                tokens_used=result.tokens_used
+            )
+        else:
+            error_msg = result.error or "Unknown error"
+            print(f"❌ [WEB_SEARCH] {error_msg}", flush=True)
+            return EnrichmentResult(
+                success=False,
+                content="",
+                sources=[],
+                level=level,
+                error=error_msg
+            )
     except Exception as e:
         error_msg = str(e)
-        print(f"❌ [PERPLEXITY] Exception: {error_msg}", flush=True)
+        print(f"❌ [WEB_SEARCH] Exception: {error_msg}", flush=True)
         return EnrichmentResult(
             success=False,
             content="",
@@ -1050,11 +991,7 @@ async def get_deep_research_context(
     brave_sources: "List[Dict[str, str]]",
     lang: str = "fr"
 ) -> "Tuple[Optional[str], List[Dict[str, str]]]": 
-    api_key = get_perplexity_key()
-    if not api_key:
-        print("❌ [DEEP_RESEARCH] No Perplexity API key", flush=True)
-        return None, brave_sources
-
+    # Note: Plus besoin de vérifier Perplexity — web_search_provider gère la dispo
     brave_context = brave_results_text[:4000] if brave_results_text else ""
     sources_summary = ""
     if brave_sources:

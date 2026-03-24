@@ -18,7 +18,6 @@ from fastapi.responses import JSONResponse
 from core.config import (
     HEALTH_CHECK_SECRET,
     MISTRAL_API_KEY,
-    PERPLEXITY_API_KEY,
     BRAVE_SEARCH_API_KEY,
     EMAIL_CONFIG,
 )
@@ -138,25 +137,20 @@ async def _check_mistral() -> Dict[str, Any]:
     return {"status": "error", "error": f"HTTP {resp.status_code}"}
 
 
-async def _check_perplexity() -> Dict[str, Any]:
-    if not PERPLEXITY_API_KEY:
-        return {"status": "error", "error": "PERPLEXITY_API_KEY not configured"}
+async def _check_web_search() -> Dict[str, Any]:
+    """Check Brave Search API availability (Mistral is checked separately)."""
+    if not BRAVE_SEARCH_API_KEY:
+        return {"status": "error", "error": "BRAVE_SEARCH_API_KEY not configured"}
+    if not MISTRAL_API_KEY:
+        return {"status": "error", "error": "MISTRAL_API_KEY not configured (needed for web search synthesis)"}
 
     async with httpx.AsyncClient(timeout=CHECK_TIMEOUT) as client:
-        resp = await client.post(
-            "https://api.perplexity.ai/chat/completions",
-            headers={
-                "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": "sonar",
-                "messages": [{"role": "user", "content": "ping"}],
-                "max_tokens": 1,
-            },
+        resp = await client.get(
+            "https://api.search.brave.com/res/v1/web/search",
+            params={"q": "test", "count": "1"},
+            headers={"X-Subscription-Token": BRAVE_SEARCH_API_KEY},
         )
-    # 200 = OK, 422 = validation error but API is up
-    if resp.status_code in (200, 422):
+    if resp.status_code == 200:
         return {"status": "ok"}
     return {"status": "error", "error": f"HTTP {resp.status_code}"}
 
@@ -187,21 +181,6 @@ async def _check_resend() -> Dict[str, Any]:
         resp = await client.get(
             "https://api.resend.com/domains",
             headers={"Authorization": f"Bearer {api_key}"},
-        )
-    if resp.status_code == 200:
-        return {"status": "ok"}
-    return {"status": "error", "error": f"HTTP {resp.status_code}"}
-
-
-async def _check_brave() -> Dict[str, Any]:
-    if not BRAVE_SEARCH_API_KEY:
-        return {"status": "error", "error": "BRAVE_API_KEY not configured"}
-
-    async with httpx.AsyncClient(timeout=CHECK_TIMEOUT) as client:
-        resp = await client.get(
-            "https://api.search.brave.com/res/v1/web/search",
-            params={"q": "test", "count": "1"},
-            headers={"X-Subscription-Token": BRAVE_SEARCH_API_KEY},
         )
     if resp.status_code == 200:
         return {"status": "ok"}
@@ -279,10 +258,9 @@ async def health_deep(secret: str = Query(default="")):
         "database": _check_database(),
         "redis": _check_redis(),
         "mistral": _check_mistral(),
-        "perplexity": _check_perplexity(),
+        "web_search": _check_web_search(),
         "stripe": _check_stripe(),
         "resend": _check_resend(),
-        "brave_search": _check_brave(),
         "frontend": _check_frontend(),
     }
 

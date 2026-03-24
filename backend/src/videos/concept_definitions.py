@@ -18,7 +18,7 @@ from datetime import datetime
 
 logger = logging.getLogger("deepsight.concepts")
 
-from core.config import get_perplexity_key, get_mistral_key
+from core.config import get_mistral_key
 from core.config import MISTRAL_INTERNAL_MODEL
 
 
@@ -111,13 +111,12 @@ async def get_definitions_from_perplexity(
     Returns:
         Dictionnaire {terme: ConceptDefinition}
     """
-    api_key = get_perplexity_key()
-    if not api_key or not concepts:
+    if not concepts:
         return {}
-    
-    # Limiter à 20 concepts max pour Perplexity (coût + longueur réponse)
+
+    # Limiter à 20 concepts max (coût + longueur réponse)
     concepts = concepts[:20]
-    
+
     # Construire le prompt
     if language == "fr":
         prompt = f"""Donne une définition COURTE et VÉRIFIABLE (1-2 phrases max, moins de 50 mots) pour chaque terme ci-dessous.
@@ -195,68 +194,53 @@ IMPORTANT:
 - Verify Wikipedia URLs are plausible (correct format)"""
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                "https://api.perplexity.ai/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "sonar",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "Tu es un assistant qui fournit des définitions courtes, précises et VÉRIFIABLES. N'invente jamais de faits. Fournis toujours une source Wikipedia ou fiable quand elle existe. Réponds uniquement en JSON valide."
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-                    "max_tokens": 2500,
-                    "temperature": 0.1
-                }
-            )
-            
-            if response.status_code != 200:
-                print(f"❌ [Concepts] Perplexity error: {response.status_code}")
-                return {}
-            
-            data = response.json()
-            content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            
-            # Parser le JSON
-            # Nettoyer le contenu (enlever les ```json si présent)
-            content = content.strip()
-            if content.startswith("```"):
-                content = re.sub(r'^```\w*\n?', '', content)
-                content = re.sub(r'\n?```$', '', content)
-            
-            parsed = json.loads(content)
-            definitions = parsed.get("definitions", [])
-            
-            # Convertir en dictionnaire de ConceptDefinition
-            result = {}
-            for item in definitions:
-                term = item.get("term", "")
-                if term:
-                    result[term.lower()] = ConceptDefinition(
-                        term=term,
-                        definition=item.get("definition", ""),
-                        category=item.get("category", "other"),
-                        source="perplexity",
-                        wiki_url=item.get("wiki_url")
-                    )
-            
-            print(f"✅ [Concepts] Got {len(result)} definitions from Perplexity")
-            return result
-            
+        from videos.web_search_provider import web_search_and_synthesize
+
+        result = await web_search_and_synthesize(
+            query=prompt,
+            context=context if context else "YouTube video concept definitions",
+            purpose="enrichment",
+            lang=language,
+            max_sources=5,
+            max_tokens=2500,
+        )
+
+        if not result.success:
+            logger.warning(f"[Concepts] Web search error: {result.error}")
+            return {}
+
+        content = result.content
+
+        # Nettoyer le contenu (enlever les ```json si présent)
+        content = content.strip()
+        if content.startswith("```"):
+            content = re.sub(r'^```\w*\n?', '', content)
+            content = re.sub(r'\n?```$', '', content)
+
+        parsed = json.loads(content)
+        definitions = parsed.get("definitions", [])
+
+        # Convertir en dictionnaire de ConceptDefinition
+        result_dict = {}
+        for item in definitions:
+            term = item.get("term", "")
+            if term:
+                result_dict[term.lower()] = ConceptDefinition(
+                    term=term,
+                    definition=item.get("definition", ""),
+                    category=item.get("category", "other"),
+                    source="brave_search",
+                    wiki_url=item.get("wiki_url")
+                )
+
+        logger.info(f"[Concepts] Got {len(result_dict)} definitions from Brave+Mistral")
+        return result_dict
+
     except json.JSONDecodeError as e:
-        print(f"❌ [Concepts] JSON parse error: {e}")
+        logger.warning(f"[Concepts] JSON parse error: {e}")
         return {}
     except Exception as e:
-        print(f"❌ [Concepts] Error: {e}")
+        logger.warning(f"[Concepts] Error: {e}")
         return {}
 
 

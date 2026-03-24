@@ -162,7 +162,22 @@ async def save_summary(
 
         # 1. Utiliser les entités extraites si disponibles
         if entities_extracted:
-            for entity in entities_extracted[:10]:
+            # Normaliser: dict → list de valeurs, list → utiliser tel quel
+            if isinstance(entities_extracted, dict):
+                entity_list = []
+                for v in entities_extracted.values():
+                    if isinstance(v, list):
+                        entity_list.extend(v)
+                    elif isinstance(v, str):
+                        entity_list.append(v)
+                    elif isinstance(v, dict):
+                        entity_list.append(v)
+            elif isinstance(entities_extracted, list):
+                entity_list = entities_extracted
+            else:
+                entity_list = []
+
+            for entity in entity_list[:10]:
                 if isinstance(entity, dict):
                     name = entity.get('name', entity.get('term', ''))
                 elif isinstance(entity, str):
@@ -1338,41 +1353,22 @@ async def search_with_perplexity(
     context: str,
     lang: str = "fr"
 ) -> Optional[str]:
-    """Fait une recherche web avec Perplexity (Legacy - utilisé pour le chat explicite)"""
-    api_key = get_perplexity_key()
-    if not api_key:
-        return None
-    
-    prompt = f"""Recherche des informations actuelles sur cette question en lien avec le contexte suivant.
-
-Contexte: {context[:2000]}
-
-Question: {question}
-
-Réponds en {"français" if lang == "fr" else "anglais"} avec des sources web récentes."""
-    
+    """Recherche web avec Brave+Mistral. Nom gardé pour compatibilité."""
+    from videos.web_search_provider import web_search_and_synthesize
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.perplexity.ai/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "llama-3.1-sonar-small-128k-online",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 1500,
-                    "temperature": 0.2
-                },
-                timeout=30
-            )
-            
-            if response.status_code == 200:
-                return response.json()["choices"][0]["message"]["content"]
-            return None
+        result = await web_search_and_synthesize(
+            query=question,
+            context=context[:2000],
+            purpose="chat",
+            lang=lang,
+            max_sources=5,
+            max_tokens=1500
+        )
+        if result.success:
+            return result.content
+        return None
     except Exception as e:
-        print(f"❌ Perplexity error: {e}", flush=True)
+        print(f"❌ [WEB_SEARCH] Error: {e}", flush=True)
         return None
 
 

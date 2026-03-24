@@ -33,7 +33,8 @@ from db.database import (
     get_session, User, Summary, PlaylistAnalysis, PlaylistChatMessage, VideoChunk
 )
 from auth.dependencies import get_current_user
-from core.config import PLAN_LIMITS, get_mistral_key, get_perplexity_key
+from core.config import PLAN_LIMITS, get_mistral_key
+from videos.web_search_provider import web_search_and_synthesize, WebSearchResult
 from videos.analysis import generate_summary, detect_category
 from transcripts import (
     extract_video_id, extract_playlist_id,
@@ -382,7 +383,7 @@ class TTLCache:
 
 
 _chat_cache = TTLCache(max_size=200, ttl_seconds=1800)
-_perplexity_cache = TTLCache(max_size=50, ttl_seconds=3600)
+_web_search_cache = TTLCache(max_size=50, ttl_seconds=3600)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1967,7 +1968,7 @@ QUESTION: {question}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# 🌐 PERPLEXITY v4.0 — Recherche contextuelle avec cache
+# 🌐 WEB SEARCH v5.0 — Brave+Mistral avec cache (remplace Perplexity)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 async def _perplexity_chat_corpus_v4(
@@ -1975,79 +1976,54 @@ async def _perplexity_chat_corpus_v4(
     playlist_title: str,
     dominant_category: str = None
 ) -> Optional[Dict]:
-    """Recherche Perplexity optimisée avec contexte corpus."""
-    api_key = get_perplexity_key()
-    if not api_key:
-        return None
-    
-    cache_key = _perplexity_cache._make_key(question, playlist_title)
-    cached = _perplexity_cache.get(cache_key)
+    """Recherche web (Brave+Mistral) optimisée avec contexte corpus. Nom gardé pour compat."""
+    cache_key = _web_search_cache._make_key(question, playlist_title)
+    cached = _web_search_cache.get(cache_key)
     if cached:
-        print(f"[PERPLEXITY] 💾 Cache hit!", flush=True)
+        print(f"[WEB_SEARCH] 💾 Cache hit!", flush=True)
         return cached
-    
+
     context_hint = f"corpus vidéo '{playlist_title}'"
     if dominant_category:
         context_hint += f" (thème: {dominant_category})"
-    
-    prompt = f"""Dans le contexte d'une analyse de {context_hint}, recherche des informations complémentaires RÉCENTES et VÉRIFIABLES sur:
 
-{question}
-
-Instructions:
-1. Priorise les sources officielles et récentes (< 6 mois)
-2. Indique clairement les dates des informations
-3. Signale si l'information est sujette à changement rapide
-4. Fournis des faits vérifiables, pas des opinions
-
-Réponds de manière concise et factuelle."""
-    
     try:
-        print(f"[PERPLEXITY] 🔮 Query: {question[:50]}...", flush=True)
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.perplexity.ai/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "llama-3.1-sonar-small-128k-online",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 1500,
-                    "temperature": 0.2
-                },
-                timeout=45
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                citations = data.get("citations", [])
-                
-                sources = []
-                if citations:
-                    answer += "\n\n**🔍 Sources:**\n"
-                    for url in citations[:5]:
-                        try:
-                            domain = url.split("/")[2] if len(url.split("/")) > 2 else url[:40]
-                            answer += f"- [{domain}]({url})\n"
-                            sources.append({"url": url, "domain": domain})
-                        except (IndexError, AttributeError):
-                            pass
-                
-                result = {"answer": answer, "sources": sources}
-                _perplexity_cache.set(cache_key, result)
-                
-                print(f"[PERPLEXITY] ✅ {len(answer)} chars, {len(citations)} sources", flush=True)
-                return result
-            else:
-                print(f"[PERPLEXITY] ❌ HTTP {response.status_code}", flush=True)
-                return None
-                
+        print(f"[WEB_SEARCH] 🔮 Query: {question[:50]}...", flush=True)
+
+        result = await web_search_and_synthesize(
+            query=question,
+            context=context_hint,
+            purpose="chat",
+            lang="fr",
+            max_sources=5,
+            max_tokens=1500
+        )
+
+        if result.success:
+            answer = result.content
+            sources = result.sources or []
+
+            if sources:
+                answer += "\n\n**🔍 Sources:**\n"
+                for src in sources[:5]:
+                    try:
+                        url = src.get("url", "")
+                        domain = url.split("/")[2] if len(url.split("/")) > 2 else url[:40]
+                        answer += f"- [{domain}]({url})\n"
+                    except (IndexError, AttributeError):
+                        pass
+
+            response_dict = {"answer": answer, "sources": sources}
+            _web_search_cache.set(cache_key, response_dict)
+
+            print(f"[WEB_SEARCH] ✅ {len(answer)} chars, {len(sources)} sources", flush=True)
+            return response_dict
+        else:
+            print(f"[WEB_SEARCH] ❌ {result.error}", flush=True)
+            return None
+
     except Exception as e:
-        print(f"[PERPLEXITY] ❌ Exception: {e}", flush=True)
+        print(f"[WEB_SEARCH] ❌ Exception: {e}", flush=True)
         return None
 
 

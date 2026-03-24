@@ -710,7 +710,13 @@ def is_api_configured() -> bool:
 
 
 def is_perplexity_available() -> bool:
+    """DEPRECATED: Use is_web_search_available() instead."""
     return bool(PERPLEXITY_API_KEY)
+
+
+def is_web_search_available() -> bool:
+    """Check if Web Search (Brave + Mistral) is available."""
+    return bool(BRAVE_SEARCH_API_KEY and MISTRAL_API_KEY)
 
 
 def get_plan_limits(plan: str) -> Dict[str, Any]:
@@ -787,8 +793,7 @@ if __name__ != "__main__":
     print(f"  Google OAuth: {GOOGLE_OAUTH_CONFIG['ENABLED']}", flush=True)
     print(f"  Email: {EMAIL_CONFIG['ENABLED']}", flush=True)
     print(f"  Mistral: {'yes' if MISTRAL_API_KEY else 'no'}", flush=True)
-    print(f"  Perplexity: {'yes' if PERPLEXITY_API_KEY else 'no'}", flush=True)
-    print(f"  Brave Search: {'yes' if BRAVE_SEARCH_API_KEY else 'no'}", flush=True)
+    print(f"  Web Search (Brave+Mistral): {'yes' if is_web_search_available() else 'no'}", flush=True)
     print(f"  Supadata: {'yes' if SUPADATA_API_KEY else 'no'}", flush=True)
     print(f"  YouTube Proxy: {'yes' if YOUTUBE_PROXY else 'no (direct)'}", flush=True)
     print(f"  Audio: Groq={'yes' if get_groq_key() else 'no'}"

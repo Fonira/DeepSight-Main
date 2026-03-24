@@ -14,7 +14,7 @@
 
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -23,12 +23,12 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.dependencies import get_current_user, require_credits
-from core.config import get_brave_key, get_mistral_key, get_perplexity_key, PLAN_LIMITS
+from core.config import get_mistral_key, PLAN_LIMITS
+from videos.web_search_provider import web_search_and_synthesize, WebSearchResult
 from core.credits import deduct_credits
 from db.database import (
     DebateAnalysis,
     DebateChatMessage,
-    Summary,
     User,
     async_session_maker,
     get_session,
@@ -66,36 +66,7 @@ STATUS_MESSAGES = {
 }
 
 MISTRAL_CHAT_URL = "https://api.mistral.ai/v1/chat/completions"
-PERPLEXITY_CHAT_URL = "https://api.perplexity.ai/chat/completions"
-
-# Mapping French verdicts → English (for frontend compatibility)
-_VERDICT_MAP = {
-    "vraie": "confirmed",
-    "vrai": "confirmed",
-    "confirmé": "confirmed",
-    "confirmée": "confirmed",
-    "confirmed": "confirmed",
-    "partiellement vraie": "nuanced",
-    "partiellement vrai": "nuanced",
-    "nuancé": "nuanced",
-    "nuancée": "nuanced",
-    "nuanced": "nuanced",
-    "fausse": "disputed",
-    "faux": "disputed",
-    "disputed": "disputed",
-    "contesté": "disputed",
-    "contestée": "disputed",
-    "non vérifiable": "unverifiable",
-    "non verifiable": "unverifiable",
-    "invérifiable": "unverifiable",
-    "unverifiable": "unverifiable",
-}
-
-
-def _normalize_verdict(verdict: str) -> str:
-    """Normalize a fact-check verdict to frontend-expected values."""
-    normalized = verdict.strip().lower()
-    return _VERDICT_MAP.get(normalized, "unverifiable")
+# PERPLEXITY_CHAT_URL supprimé — migré vers web_search_provider
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -150,7 +121,7 @@ def _debate_to_result(debate: DebateAnalysis) -> DebateResultResponse:
         model_used=debate.model_used,
         credits_used=debate.credits_used or 0,
         lang=debate.lang or "fr",
-        created_at=debate.created_at or datetime.utcnow(),
+        created_at=debate.created_at or datetime.now(timezone.utc),
         updated_at=debate.updated_at,
     )
 
@@ -197,44 +168,28 @@ async def _call_mistral(
 
 
 async def _call_perplexity(query: str, context: str = "") -> Optional[str]:
-    """Call Perplexity AI for fact-checking with web search."""
-    api_key = get_perplexity_key()
-    if not api_key:
-        return None
-    prompt = f"{query}\n\nContexte : {context}" if context else query
+    """Recherche web (Brave+Mistral) pour fact-checking. Nom gardé pour compat."""
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                PERPLEXITY_CHAT_URL,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "sonar",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.3,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data["choices"][0]["message"]["content"]
-    except httpx.HTTPStatusError as e:
-        logger.warning("Perplexity API error %s: %s", e.response.status_code, str(e)[:200])
+        result = await web_search_and_synthesize(
+            query=query,
+            context=context,
+            purpose="debate",
+            lang="fr",
+            max_sources=5,
+            max_tokens=1500
+        )
+        if result.success:
+            return result.content
         return None
     except Exception as e:
-        logger.warning("Perplexity call failed: %s", str(e)[:200])
+        logger.warning(f"[WEB_SEARCH] Debate fact-check failed: {e}")
         return None
 
 
 async def _search_opposing_video(
     topic: str, thesis_a: str, lang: str = "fr"
 ) -> Optional[Dict[str, str]]:
-    """Use Perplexity to find a YouTube video with an opposing viewpoint."""
-    api_key = get_perplexity_key()
-    if not api_key:
-        return None
-
+    """Use Brave Search + Mistral to find a YouTube video with an opposing viewpoint."""
     search_prompt = (
         f"Trouve une vidéo YouTube qui défend un point de vue OPPOSÉ à cette thèse :\n"
         f"Sujet : {topic}\n"
@@ -244,96 +199,32 @@ async def _search_opposing_video(
     )
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            resp = await client.post(
-                PERPLEXITY_CHAT_URL,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "sonar",
-                    "messages": [{"role": "user", "content": search_prompt}],
-                    "temperature": 0.3,
-                },
-            )
-            resp.raise_for_status()
-            content = resp.json()["choices"][0]["message"]["content"]
-    except httpx.HTTPStatusError as e:
-        logger.warning("Perplexity search error %s: %s", e.response.status_code, str(e)[:200])
-        return None
+        result = await web_search_and_synthesize(
+            query=search_prompt,
+            context=f"Topic: {topic}, Thesis: {thesis_a}",
+            purpose="debate",
+            lang=lang,
+            max_sources=10,
+            max_tokens=500
+        )
+
+        if not result.success:
+            return None
+
+        content = result.content
+        # Try to parse JSON from the response
+        try:
+            if "```" in content:
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+            return json.loads(content.strip())
+        except (json.JSONDecodeError, IndexError):
+            logger.warning("Failed to parse opposing video search result: %s", content[:200])
+            return None
     except Exception as e:
-        logger.warning("Perplexity search failed: %s", str(e)[:200])
+        logger.warning(f"[WEB_SEARCH] Search opposing video failed: {e}")
         return None
-
-    # Try to parse JSON from the response
-    try:
-        # Handle markdown code blocks
-        if "```" in content:
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        return json.loads(content.strip())
-    except (json.JSONDecodeError, IndexError):
-        logger.warning("Failed to parse opposing video search result: %s", content[:200])
-        return None
-
-
-import re
-
-async def _search_opposing_video_fallback(
-    topic: str, thesis_a: str, lang: str = "fr", model: str = "mistral-small-2603"
-) -> Optional[Dict[str, str]]:
-    """Fallback: use Mistral to generate search query + Brave Search to find opposing YouTube video."""
-    brave_key = get_brave_key()
-    if not brave_key:
-        logger.warning("No Brave Search key for opposing video fallback")
-        return None
-
-    # Step 1: Ask Mistral for optimal YouTube search query
-    query_prompt = [
-        {"role": "system", "content": (
-            "Tu es un expert en recherche YouTube. "
-            "Génère une requête de recherche YouTube (en 5-10 mots) pour trouver une vidéo "
-            "qui défend un point de vue OPPOSÉ à la thèse ci-dessous. "
-            "Réponds UNIQUEMENT avec la requête, sans guillemets ni explication."
-        )},
-        {"role": "user", "content": f"Sujet : {topic}\nThèse à contredire : {thesis_a}"},
-    ]
-    search_query = await _call_mistral(query_prompt, model=model, temperature=0.5)
-    if not search_query:
-        return None
-    search_query = search_query.strip().strip('"').strip("'")
-
-    # Step 2: Search YouTube via Brave Search API
-    try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.get(
-                "https://api.search.brave.com/res/v1/web/search",
-                headers={"X-Subscription-Token": brave_key, "Accept": "application/json"},
-                params={"q": f"site:youtube.com {search_query}", "count": 5},
-            )
-            resp.raise_for_status()
-            results = resp.json().get("web", {}).get("results", [])
-    except Exception as e:
-        logger.warning("Brave Search fallback failed: %s", str(e)[:200])
-        return None
-
-    # Step 3: Extract first YouTube video URL
-    yt_pattern = re.compile(r"youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})")
-    for result in results:
-        url = result.get("url", "")
-        match = yt_pattern.search(url)
-        if match:
-            video_id = match.group(1)
-            return {
-                "url": f"https://www.youtube.com/watch?v={video_id}",
-                "title": result.get("title", ""),
-                "channel": "",
-            }
-
-    logger.warning("No YouTube video found via Brave for query: %s", search_query)
-    return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -447,13 +338,7 @@ async def _run_debate_pipeline(
                 debate.status = "searching"
                 await session.commit()
 
-                # Try Perplexity first, then Brave Search fallback
                 opposing = await _search_opposing_video(detected_topic, thesis_a, lang)
-                if not opposing or not opposing.get("url"):
-                    logger.info("Perplexity search failed, trying Brave fallback for debate %d", debate_id)
-                    _debate_task_store[debate_id] = {"status": "searching", "message": "Recherche alternative en cours..."}
-                    opposing = await _search_opposing_video_fallback(detected_topic, thesis_a, lang, model)
-
                 if opposing and opposing.get("url"):
                     try:
                         actual_platform_b, actual_video_b_id = extract_video_id(opposing["url"])
@@ -519,7 +404,7 @@ async def _run_debate_pipeline(
                     '  "thesis_b": "Thèse défendue par la vidéo B",\n'
                     '  "arguments_b": [{"claim": "...", "evidence": "...", "strength": "strong|moderate|weak"}, ...],\n'
                     '  "convergence_points": ["point commun 1", "point commun 2"],\n'
-                    '  "divergence_points": [{"topic": "sujet du désaccord", "position_a": "position vidéo A", "position_b": "position vidéo B"}, ...],\n'
+                    '  "divergence_points": ["désaccord 1", "désaccord 2", "désaccord 3"],\n'
                     '  "summary": "Synthèse nuancée du débat en 3-5 paragraphes"\n'
                     "}"
                 )},
@@ -549,14 +434,7 @@ async def _run_debate_pipeline(
             thesis_b = compare_data.get("thesis_b", "Thèse non identifiée")
             arguments_b = compare_data.get("arguments_b", [])
             convergence = compare_data.get("convergence_points", [])
-            divergence_raw = compare_data.get("divergence_points", [])
-            # Normalize divergence_points: ensure each item is a dict
-            divergence = []
-            for item in divergence_raw:
-                if isinstance(item, dict):
-                    divergence.append(item)
-                elif isinstance(item, str):
-                    divergence.append({"topic": item, "position_a": "", "position_b": ""})
+            divergence = compare_data.get("divergence_points", [])
             summary = compare_data.get("summary", "")
 
             debate.thesis_b = thesis_b
@@ -572,19 +450,19 @@ async def _run_debate_pipeline(
             await session.commit()
 
             fact_check_results = []
-            perplexity_key = get_perplexity_key()
-            if perplexity_key:
+            from core.config import is_web_search_available
+            if is_web_search_available():
                 fact_prompt = (
                     f"Fact-check les affirmations principales de ce débat.\n\n"
                     f"Sujet : {detected_topic}\n"
                     f"Thèse A : {thesis_a}\n"
                     f"Thèse B : {thesis_b}\n"
-                    f"Arguments A : {', '.join(a.get('claim', str(a)) if isinstance(a, dict) else str(a) for a in arguments_a[:3])}\n"
-                    f"Arguments B : {', '.join(a.get('claim', str(a)) if isinstance(a, dict) else str(a) for a in arguments_b[:3])}\n\n"
-                    f"Pour chaque affirmation clé, vérifie sa véracité avec une source. "
-                    f"Le verdict DOIT être exactement l'un de : confirmed, nuanced, disputed, unverifiable. "
+                    f"Arguments A : {', '.join(arguments_a[:3])}\n"
+                    f"Arguments B : {', '.join(arguments_b[:3])}\n\n"
+                    f"Pour chaque affirmation clé, indique si elle est VRAIE, PARTIELLEMENT VRAIE, "
+                    f"NON VÉRIFIABLE, ou FAUSSE, avec une source. "
                     f"Réponds UNIQUEMENT avec un tableau JSON (pas d'objet englobant) : "
-                    f'[{{"claim": "...", "verdict": "confirmed|nuanced|disputed|unverifiable", "source": "...", "explanation": "..."}}]'
+                    f'[{{"claim": "...", "verdict": "...", "source": "...", "explanation": "..."}}]'
                 )
                 fact_result = await _call_perplexity(fact_prompt)
                 if fact_result:
@@ -602,10 +480,6 @@ async def _run_debate_pipeline(
                             fact_check_results = parsed["claims"]
                         else:
                             fact_check_results = []
-                        # Normalize verdicts to frontend-expected values
-                        for item in fact_check_results:
-                            if isinstance(item, dict) and "verdict" in item:
-                                item["verdict"] = _normalize_verdict(item["verdict"])
                     except (json.JSONDecodeError, IndexError):
                         logger.warning("Failed to parse fact-check: %s", fact_result[:300])
                         fact_check_results = []
@@ -688,7 +562,7 @@ async def create_debate(
         mode=mode,
         platform=request.platform,
         lang=request.lang,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(debate)
     await db.flush()
@@ -786,10 +660,8 @@ async def get_debate_history(
             detected_topic=d.detected_topic,
             video_a_title=d.video_a_title,
             video_b_title=d.video_b_title,
-            video_a_thumbnail=d.video_a_thumbnail,
-            video_b_thumbnail=d.video_b_thumbnail,
             status=d.status,
-            created_at=d.created_at or datetime.utcnow(),
+            created_at=d.created_at or datetime.now(timezone.utc),
         )
         for d in debates
     ]
@@ -861,127 +733,18 @@ async def debate_chat(
         extra={"user_id": current_user.id, "debate_id": request.debate_id},
     )
 
-    # ── Build enriched context from debate data ──
-    # Decode JSON fields into readable text
-    def _format_arguments(raw: str | None, label: str) -> str:
-        if not raw:
-            return f"Arguments {label} : aucun\n"
-        try:
-            args = json.loads(raw) if isinstance(raw, str) else raw
-        except (json.JSONDecodeError, TypeError):
-            return f"Arguments {label} : {raw}\n"
-        lines = []
-        for i, arg in enumerate(args, 1):
-            if isinstance(arg, dict):
-                claim = arg.get("claim", "?")
-                evidence = arg.get("evidence", "")
-                strength = arg.get("strength", "")
-                lines.append(f"  {i}. {claim} (force: {strength})\n     Preuve : {evidence}")
-            else:
-                lines.append(f"  {i}. {arg}")
-        return f"Arguments {label} :\n" + "\n".join(lines)
-
-    def _format_list(raw: str | None, label: str) -> str:
-        if not raw:
-            return f"{label} : aucun\n"
-        try:
-            items = json.loads(raw) if isinstance(raw, str) else raw
-        except (json.JSONDecodeError, TypeError):
-            return f"{label} : {raw}\n"
-        if isinstance(items, list):
-            lines = []
-            for item in items:
-                if isinstance(item, dict):
-                    lines.append(f"  • {item.get('topic', item.get('claim', str(item)))}")
-                else:
-                    lines.append(f"  • {item}")
-            return f"{label} :\n" + "\n".join(lines)
-        return f"{label} : {items}\n"
-
-    def _format_fact_checks(raw: str | None) -> str:
-        if not raw:
-            return "Résultats fact-check : aucun\n"
-        try:
-            items = json.loads(raw) if isinstance(raw, str) else raw
-        except (json.JSONDecodeError, TypeError):
-            return f"Résultats fact-check : {raw}\n"
-        if not isinstance(items, list):
-            return f"Résultats fact-check : {items}\n"
-        lines = []
-        for item in items:
-            if isinstance(item, dict):
-                verdict = item.get("verdict", "?")
-                claim = item.get("claim", "?")
-                explanation = item.get("explanation", "")
-                source = item.get("source", "")
-                lines.append(f"  • [{verdict.upper()}] « {claim} » — {explanation}" + (f" (source: {source})" if source else ""))
-            else:
-                lines.append(f"  • {item}")
-        return "Résultats fact-check :\n" + "\n".join(lines)
-
-    # Fetch original summaries/transcripts for deeper context
-    transcript_a = ""
-    transcript_b = ""
-    summary_a_text = ""
-    summary_b_text = ""
-    try:
-        if debate.video_a_id:
-            result_a = await db.execute(
-                select(Summary)
-                .where(Summary.video_id == debate.video_a_id, Summary.user_id == current_user.id)
-                .order_by(Summary.created_at.desc())
-                .limit(1)
-            )
-            summary_a = result_a.scalar_one_or_none()
-            if summary_a:
-                summary_a_text = (summary_a.summary_content or "")[:4000]
-                transcript_a = (summary_a.transcript_context or "")[:8000]
-
-        if debate.video_b_id:
-            result_b = await db.execute(
-                select(Summary)
-                .where(Summary.video_id == debate.video_b_id, Summary.user_id == current_user.id)
-                .order_by(Summary.created_at.desc())
-                .limit(1)
-            )
-            summary_b = result_b.scalar_one_or_none()
-            if summary_b:
-                summary_b_text = (summary_b.summary_content or "")[:4000]
-                transcript_b = (summary_b.transcript_context or "")[:8000]
-    except Exception as e:
-        logger.warning("Failed to fetch summaries for debate chat: %s", e)
-
-    # Assemble structured context
-    context_parts = [
-        f"═══ SUJET DU DÉBAT ═══\n{debate.detected_topic}\n",
-        f"═══ VIDÉO A : {debate.video_a_title} ═══",
-        f"Thèse A : {debate.thesis_a}",
-        _format_arguments(debate.arguments_a, "A"),
-    ]
-    if summary_a_text:
-        context_parts.append(f"Analyse complète vidéo A :\n{summary_a_text}\n")
-    if transcript_a:
-        context_parts.append(f"Extraits transcription vidéo A :\n{transcript_a}\n")
-
-    context_parts.extend([
-        f"\n═══ VIDÉO B : {debate.video_b_title} ═══",
-        f"Thèse B : {debate.thesis_b}",
-        _format_arguments(debate.arguments_b, "B"),
-    ])
-    if summary_b_text:
-        context_parts.append(f"Analyse complète vidéo B :\n{summary_b_text}\n")
-    if transcript_b:
-        context_parts.append(f"Extraits transcription vidéo B :\n{transcript_b}\n")
-
-    context_parts.extend([
-        f"\n═══ ANALYSE COMPARATIVE ═══",
-        _format_list(debate.convergence_points, "Points de convergence"),
-        _format_list(debate.divergence_points, "Points de divergence"),
-        _format_fact_checks(debate.fact_check_results),
-        f"\n═══ SYNTHÈSE ═══\n{debate.debate_summary or ''}",
-    ])
-
-    context = "\n".join(context_parts)
+    # Build context from debate data
+    context = (
+        f"Sujet du débat : {debate.detected_topic}\n\n"
+        f"Vidéo A ({debate.video_a_title}) — Thèse : {debate.thesis_a}\n"
+        f"Arguments A : {debate.arguments_a}\n\n"
+        f"Vidéo B ({debate.video_b_title}) — Thèse : {debate.thesis_b}\n"
+        f"Arguments B : {debate.arguments_b}\n\n"
+        f"Points de convergence : {debate.convergence_points}\n"
+        f"Points de divergence : {debate.divergence_points}\n\n"
+        f"Fact-check : {debate.fact_check_results}\n\n"
+        f"Synthèse : {debate.debate_summary}"
+    )
 
     # Get recent chat history for context
     history_result = await db.execute(
@@ -995,21 +758,13 @@ async def debate_chat(
     )
     recent_messages = list(reversed(history_result.scalars().all()))
 
-    lang = debate.lang or "fr"
-    # Build messages for Mistral with enriched system prompt
+    # Build messages for Mistral
     messages = [
         {"role": "system", "content": (
-            "Tu es un assistant expert en analyse de débats et esprit critique. "
-            "Tu as accès au contexte complet du débat : thèses, arguments, analyses, "
-            "transcriptions et fact-check des deux vidéos.\n\n"
-            "RÈGLES :\n"
-            "• Réponds de manière équilibrée et nuancée, en citant les arguments des deux côtés\n"
-            "• Quand tu cites un argument, précise de quelle vidéo il vient (A ou B)\n"
-            "• Si l'utilisateur demande des détails, réfère-toi aux transcriptions et analyses complètes\n"
-            "• Si un fait est contesté par le fact-check, mentionne-le\n"
-            "• Utilise des timecodes **(MM:SS)** quand disponibles dans la transcription\n"
-            "• Formate tes réponses avec du markdown pour la lisibilité\n"
-            f"• Langue : {lang}\n\n"
+            "Tu es un assistant expert en analyse de débats. "
+            "Tu réponds aux questions de l'utilisateur en te basant sur le contexte du débat ci-dessous. "
+            "Sois équilibré, nuancé et cite les arguments des deux côtés. "
+            f"Langue : {debate.lang or 'fr'}.\n\n"
             f"CONTEXTE DU DÉBAT :\n{context}"
         )},
     ]
@@ -1031,14 +786,14 @@ async def debate_chat(
         user_id=current_user.id,
         role="user",
         content=request.message,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     assistant_msg = DebateChatMessage(
         debate_id=request.debate_id,
         user_id=current_user.id,
         role="assistant",
         content=response_text,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     db.add(user_msg)
     db.add(assistant_msg)
@@ -1079,7 +834,7 @@ async def get_debate_chat_history(
                 debate_id=m.debate_id,
                 role=m.role,
                 content=m.content,
-                created_at=m.created_at or datetime.utcnow(),
+                created_at=m.created_at or datetime.now(timezone.utc),
             ).model_dump()
             for m in messages
         ],

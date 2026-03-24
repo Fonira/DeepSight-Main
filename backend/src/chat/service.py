@@ -1,12 +1,12 @@
 ﻿"""
 ╔════════════════════════════════════════════════════════════════════════════════════╗
-║  💬 CHAT SERVICE v4.0 — ENRICHISSEMENT PERPLEXITY PROGRESSIF                       ║
+║  💬 CHAT SERVICE v5.0 — ENRICHISSEMENT WEB (Brave Search + Mistral)                ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
-║  NOUVEAUTÉS v4.0:                                                                  ║
-║  • 🌐 Enrichissement Perplexity automatique selon le plan                          ║
+║  NOUVEAUTÉS v5.0:                                                                  ║
+║  • 🌐 Enrichissement web automatique selon le plan (Brave + Mistral)               ║
 ║  • 🔍 Vérification des faits en temps réel                                         ║
 ║  • 📊 Sources web intégrées dans les réponses                                      ║
-║  • 🎯 Fusion intelligente Mistral + Perplexity                                     ║
+║  • 🎯 Fusion intelligente Mistral base + Mistral web synthesis                     ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -18,7 +18,8 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.database import ChatMessage, ChatQuota, Summary, User, WebSearchUsage
-from core.config import get_mistral_key, get_perplexity_key, get_openai_key, is_openai_available, PLAN_LIMITS
+from core.config import get_mistral_key, get_openai_key, is_openai_available, PLAN_LIMITS
+from videos.web_search_provider import web_search_and_synthesize, WebSearchResult
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1265,41 +1266,21 @@ async def search_with_perplexity(
     context: str,
     lang: str = "fr"
 ) -> Optional[str]:
-    """Fait une recherche web avec Perplexity (Legacy - utilisé pour le chat explicite)"""
-    api_key = get_perplexity_key()
-    if not api_key:
-        return None
-    
-    prompt = f"""Recherche des informations actuelles sur cette question en lien avec le contexte suivant.
-
-Contexte: {context[:2000]}
-
-Question: {question}
-
-Réponds en {"français" if lang == "fr" else "anglais"} avec des sources web récentes."""
-    
+    """Recherche web avec Brave+Mistral. Nom gardé pour compatibilité avec chat/router.py."""
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.perplexity.ai/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "llama-3.1-sonar-small-128k-online",
-                    "messages": [{"role": "user", "content": prompt}],
-                    "max_tokens": 2500,
-                    "temperature": 0.2
-                },
-                timeout=30
-            )
-            
-            if response.status_code == 200:
-                return response.json()["choices"][0]["message"]["content"]
-            return None
+        result = await web_search_and_synthesize(
+            query=question,
+            context=context[:2000],
+            purpose="chat",
+            lang=lang,
+            max_sources=5,
+            max_tokens=2500
+        )
+        if result.success:
+            return result.content
+        return None
     except Exception as e:
-        print(f"❌ Perplexity error: {e}", flush=True)
+        print(f"❌ [WEB_SEARCH] Chat search error: {e}", flush=True)
         return None
 
 

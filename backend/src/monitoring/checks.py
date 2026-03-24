@@ -138,46 +138,47 @@ async def check_mistral() -> ServiceStatus:
         }
 
 
-async def check_perplexity() -> ServiceStatus:
-    """POST completions with max_tokens=1 — validates key + connectivity."""
+async def check_web_search() -> ServiceStatus:
+    """Validate Brave Search API connectivity (replaces Perplexity check)."""
     try:
-        from core.config import PERPLEXITY_API_KEY
+        from core.config import BRAVE_SEARCH_API_KEY, MISTRAL_API_KEY
 
-        if not PERPLEXITY_API_KEY:
+        if not BRAVE_SEARCH_API_KEY:
             return {
-                "name": "perplexity",
+                "name": "web_search",
                 "status": "degraded",
                 "latency_ms": None,
-                "message": "API key not configured",
+                "message": "BRAVE_SEARCH_API_KEY not configured",
+                "last_checked": _now_iso(),
+            }
+        if not MISTRAL_API_KEY:
+            return {
+                "name": "web_search",
+                "status": "degraded",
+                "latency_ms": None,
+                "message": "MISTRAL_API_KEY not configured (needed for web search synthesis)",
                 "last_checked": _now_iso(),
             }
 
         start = time.perf_counter()
         async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(
-                "https://api.perplexity.ai/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {PERPLEXITY_API_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "sonar",
-                    "messages": [{"role": "user", "content": "ping"}],
-                    "max_tokens": 1,
-                },
+            resp = await client.get(
+                "https://api.search.brave.com/res/v1/web/search",
+                params={"q": "test", "count": "1"},
+                headers={"X-Subscription-Token": BRAVE_SEARCH_API_KEY},
             )
         latency = (time.perf_counter() - start) * 1000
 
         if resp.status_code == 200:
             return {
-                "name": "perplexity",
+                "name": "web_search",
                 "status": "operational",
                 "latency_ms": round(latency, 2),
                 "message": None,
                 "last_checked": _now_iso(),
             }
         return {
-            "name": "perplexity",
+            "name": "web_search",
             "status": "degraded",
             "latency_ms": round(latency, 2),
             "message": f"HTTP {resp.status_code}",
@@ -185,7 +186,7 @@ async def check_perplexity() -> ServiceStatus:
         }
     except Exception as e:
         return {
-            "name": "perplexity",
+            "name": "web_search",
             "status": "down",
             "latency_ms": None,
             "message": str(e)[:120],
@@ -288,13 +289,13 @@ async def run_all_checks() -> List[ServiceStatus]:
         check_database(),
         check_stripe(),
         check_mistral(),
-        check_perplexity(),
+        check_web_search(),
         check_resend(),
         return_exceptions=True,
     )
 
     sanitized: List[ServiceStatus] = []
-    names = ["database", "stripe", "mistral", "perplexity", "resend"]
+    names = ["database", "stripe", "mistral", "web_search", "resend"]
     for i, result in enumerate(results):
         if isinstance(result, Exception):
             sanitized.append({
