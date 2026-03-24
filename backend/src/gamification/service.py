@@ -15,6 +15,7 @@ from db.database import (
     StudyDailyActivity,
     FlashcardReview,
     StudySession,
+    Summary,
 )
 
 logger = logging.getLogger(__name__)
@@ -134,35 +135,81 @@ async def get_video_mastery(
     user_id: int,
 ) -> List[Dict[str, Any]]:
     """
-    Calculate mastery percentage per video (summary_id).
+    Return all analyzed videos for the user with their mastery data.
+    Includes videos with NO flashcard reviews (mastery = 0%).
     A card is "mastered" if state >= 2 (Review or above).
     """
-    # Total cards and mastered cards per summary
-    result = await session.execute(
+    from sqlalchemy.orm import aliased
+    from datetime import datetime as dt
+
+    # ── Subquery: flashcard stats per summary ──
+    review_stats = (
         select(
             FlashcardReview.summary_id,
-            func.count(FlashcardReview.id).label("total"),
+            func.count(FlashcardReview.id).label("total_cards"),
             func.sum(
                 case(
                     (FlashcardReview.state >= 2, 1),
                     else_=0,
                 )
-            ).label("mastered"),
+            ).label("mastered_cards"),
+            func.sum(
+                case(
+                    (FlashcardReview.due_date <= func.now(), 1),
+                    else_=0,
+                )
+            ).label("due_cards"),
+            func.max(FlashcardReview.last_review).label("last_studied"),
         )
         .where(FlashcardReview.user_id == user_id)
         .group_by(FlashcardReview.summary_id)
+        .subquery("review_stats")
+    )
+
+    # ── Main query: all user summaries LEFT JOIN review stats ──
+    result = await session.execute(
+        select(
+            Summary.id.label("summary_id"),
+            Summary.video_title,
+            Summary.video_channel,
+            Summary.thumbnail_url,
+            Summary.created_at,
+            review_stats.c.total_cards,
+            review_stats.c.mastered_cards,
+            review_stats.c.due_cards,
+            review_stats.c.last_studied,
+        )
+        .outerjoin(review_stats, Summary.id == review_stats.c.summary_id)
+        .where(Summary.user_id == user_id)
+        .order_by(Summary.created_at.desc())
     )
 
     rows = result.all()
     mastery = []
     for row in rows:
-        total = row.total or 1
-        mastered = row.mastered or 0
+        total = row.total_cards or 0
+        mastered = row.mastered_cards or 0
+        due = row.due_cards or 0
+        pct = round((mastered / total) * 100, 1) if total > 0 else 0.0
+
+        last_studied = None
+        if row.last_studied:
+            last_studied = (
+                row.last_studied.isoformat()
+                if hasattr(row.last_studied, "isoformat")
+                else str(row.last_studied)
+            )
+
         mastery.append({
             "summary_id": row.summary_id,
+            "title": row.video_title or f"Vidéo #{row.summary_id}",
+            "channel": row.video_channel or "",
+            "thumbnail": row.thumbnail_url,
             "total_cards": total,
             "mastered_cards": mastered,
-            "mastery_percent": round((mastered / total) * 100, 1),
+            "due_cards": due,
+            "mastery_percent": pct,
+            "last_studied": last_studied,
         })
 
     return mastery

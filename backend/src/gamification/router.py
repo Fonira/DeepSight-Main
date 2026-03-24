@@ -76,9 +76,14 @@ class BadgesResponse(BaseModel):
 
 class VideoMasteryItem(BaseModel):
     summary_id: int
-    total_cards: int
-    mastered_cards: int
-    mastery_percent: float
+    title: str = ""
+    channel: str = ""
+    thumbnail: Optional[str] = None
+    total_cards: int = 0
+    mastered_cards: int = 0
+    due_cards: int = 0
+    mastery_percent: float = 0.0
+    last_studied: Optional[str] = None
 
 
 class VideoMasteryResponse(BaseModel):
