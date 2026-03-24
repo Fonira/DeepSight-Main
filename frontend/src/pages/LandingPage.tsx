@@ -177,82 +177,59 @@ interface PlanConfig {
 const PLANS: PlanConfig[] = [
   {
     id: 'free',
-    name: { fr: PLANS_INFO.free.name, en: PLANS_INFO.free.nameEn },
-    description: { fr: PLANS_INFO.free.description, en: PLANS_INFO.free.descriptionEn },
-    price: PLANS_INFO.free.priceMonthly / 100,
+    name: { fr: 'Gratuit', en: 'Free' },
+    description: { fr: 'Découvrez DeepSight', en: 'Discover DeepSight' },
+    price: 0,
     icon: Zap,
     color: 'text-gray-400',
     gradient: 'from-gray-500 to-gray-600',
     features: [
       { text: { fr: `${PLAN_LIMITS.free.monthlyAnalyses} analyses/mois`, en: `${PLAN_LIMITS.free.monthlyAnalyses} analyses/month` }, included: true },
-      { text: { fr: `Chat (${PLAN_LIMITS.free.chatQuestionsPerVideo} q/vidéo)`, en: `Chat (${PLAN_LIMITS.free.chatQuestionsPerVideo} q/video)` }, included: true },
-      { text: { fr: `Historique ${PLAN_LIMITS.free.historyRetentionDays} jours`, en: `${PLAN_LIMITS.free.historyRetentionDays} days history` }, included: true },
-      { text: { fr: 'Outils d\'étude', en: 'Study tools' }, included: false },
-      { text: { fr: 'Recherche web', en: 'Web search' }, included: false },
+      { text: { fr: 'Chat IA basique', en: 'Basic AI Chat' }, included: true },
+      { text: { fr: 'Flashcards & Quiz', en: 'Flashcards & Quiz' }, included: true },
+      { text: { fr: 'Export texte', en: 'Text export' }, included: true },
+      { text: { fr: 'Mindmap', en: 'Mindmap' }, included: false },
+      { text: { fr: 'Fact-check', en: 'Fact-check' }, included: false },
       { text: { fr: 'Export PDF', en: 'PDF export' }, included: false },
-      { text: { fr: `${PLAN_LIMITS.free.debateMonthly} débat IA / mois`, en: `${PLAN_LIMITS.free.debateMonthly} AI debate / month` }, included: true },
-    ],
-  },
-  {
-    id: 'etudiant',
-    name: { fr: PLANS_INFO.etudiant.name, en: PLANS_INFO.etudiant.nameEn },
-    description: { fr: PLANS_INFO.etudiant.description, en: PLANS_INFO.etudiant.descriptionEn },
-    price: PLANS_INFO.etudiant.priceMonthly / 100,
-    icon: GraduationCap,
-    color: 'text-emerald-400',
-    gradient: 'from-emerald-500 to-green-600',
-    badge: null,
-    badgeColor: undefined,
-    features: [
-      { text: { fr: `${PLAN_LIMITS.etudiant.monthlyAnalyses} analyses/mois`, en: `${PLAN_LIMITS.etudiant.monthlyAnalyses} analyses/month` }, included: true },
-      { text: { fr: `Chat (${PLAN_LIMITS.etudiant.chatQuestionsPerVideo} q/vidéo)`, en: `Chat (${PLAN_LIMITS.etudiant.chatQuestionsPerVideo} q/video)` }, included: true },
-      { text: { fr: 'Flashcards & Cartes mentales', en: 'Flashcards & Mind maps' }, included: true, highlight: true },
-      { text: { fr: 'Export Markdown', en: 'Markdown export' }, included: true },
-      { text: { fr: 'Lecture audio TTS', en: 'TTS audio' }, included: true },
-      { text: { fr: 'Recherche web', en: 'Web search' }, included: false },
-      { text: { fr: `${PLAN_LIMITS.etudiant.debateMonthly} débats IA / mois`, en: `${PLAN_LIMITS.etudiant.debateMonthly} AI debates / month` }, included: true },
-    ],
-  },
-  {
-    id: 'starter',
-    name: { fr: PLANS_INFO.starter.name, en: PLANS_INFO.starter.nameEn },
-    description: { fr: PLANS_INFO.starter.description, en: PLANS_INFO.starter.descriptionEn },
-    price: PLANS_INFO.starter.priceMonthly / 100,
-    icon: Star,
-    color: 'text-blue-400',
-    gradient: 'from-blue-500 to-blue-600',
-    recommended: true,
-    badge: { fr: 'Populaire étudiants', en: 'Popular with students' },
-    badgeColor: 'bg-blue-500',
-    features: [
-      { text: { fr: `${PLAN_LIMITS.starter.monthlyAnalyses} analyses/mois`, en: `${PLAN_LIMITS.starter.monthlyAnalyses} analyses/month` }, included: true },
-      { text: { fr: `Chat (${PLAN_LIMITS.starter.chatQuestionsPerVideo} q/vidéo)`, en: `Chat (${PLAN_LIMITS.starter.chatQuestionsPerVideo} q/video)` }, included: true },
-      { text: { fr: 'Flashcards & Cartes mentales', en: 'Flashcards & Mind maps' }, included: true },
-      { text: { fr: `Recherche web (${PLAN_LIMITS.starter.webSearchMonthly}/mois)`, en: `Web search (${PLAN_LIMITS.starter.webSearchMonthly}/mo)` }, included: true, highlight: true },
-      { text: { fr: 'Export Markdown', en: 'Markdown export' }, included: true },
-      { text: { fr: 'Playlists', en: 'Playlists' }, included: false },
-      { text: { fr: `${PLAN_LIMITS.starter.debateMonthly} débats IA / mois`, en: `${PLAN_LIMITS.starter.debateMonthly} AI debates / month` }, included: true },
     ],
   },
   {
     id: 'pro',
-    name: { fr: PLANS_INFO.pro.name, en: PLANS_INFO.pro.nameEn },
-    description: { fr: PLANS_INFO.pro.description, en: PLANS_INFO.pro.descriptionEn },
+    name: { fr: 'Pro', en: 'Pro' },
+    description: { fr: 'Pour les utilisateurs réguliers', en: 'For regular users' },
     price: PLANS_INFO.pro.priceMonthly / 100,
-    icon: Crown,
-    color: 'text-violet-400',
-    gradient: 'from-violet-500 to-purple-600',
+    icon: Star,
+    color: 'text-blue-400',
+    gradient: 'from-blue-500 to-indigo-600',
     popular: true,
-    badge: { fr: 'Populaire', en: 'Popular' },
-    badgeColor: 'bg-violet-500',
+    badge: { fr: 'Le plus populaire', en: 'Most popular' },
+    badgeColor: 'bg-blue-500',
     features: [
       { text: { fr: `${PLAN_LIMITS.pro.monthlyAnalyses} analyses/mois`, en: `${PLAN_LIMITS.pro.monthlyAnalyses} analyses/month` }, included: true },
       { text: { fr: 'Chat illimité', en: 'Unlimited chat' }, included: true, highlight: true },
-      { text: { fr: `Playlists (${PLAN_LIMITS.pro.maxPlaylistVideos} vidéos)`, en: `Playlists (${PLAN_LIMITS.pro.maxPlaylistVideos} videos)` }, included: true, highlight: true },
-      { text: { fr: `Recherche web (${PLAN_LIMITS.pro.webSearchMonthly}/mois)`, en: `Web search (${PLAN_LIMITS.pro.webSearchMonthly}/mo)` }, included: true },
-      { text: { fr: 'Export PDF & Markdown', en: 'PDF & Markdown export' }, included: true },
-      { text: { fr: 'Support prioritaire', en: 'Priority support' }, included: true },
-      { text: { fr: `${PLAN_LIMITS.pro.debateMonthly} débats IA / mois + fact-check approfondi`, en: `${PLAN_LIMITS.pro.debateMonthly} AI debates / month + deep fact-check` }, included: true, highlight: true },
+      { text: { fr: 'Mindmap', en: 'Mindmap' }, included: true, highlight: true },
+      { text: { fr: 'Fact-check', en: 'Fact-check' }, included: true, highlight: true },
+      { text: { fr: 'Web Search IA', en: 'AI Web Search' }, included: true, highlight: true },
+      { text: { fr: 'Export PDF', en: 'PDF export' }, included: true },
+      { text: { fr: `Chat vocal ${PLAN_LIMITS.pro.voiceChatMonthlyMinutes} min`, en: `Voice chat ${PLAN_LIMITS.pro.voiceChatMonthlyMinutes} min` }, included: true },
+      { text: { fr: 'Playlists', en: 'Playlists' }, included: true },
+    ],
+  },
+  {
+    id: 'expert',
+    name: { fr: 'Expert', en: 'Expert' },
+    description: { fr: 'Créateurs & professionnels', en: 'Creators & professionals' },
+    price: PLANS_INFO.expert.priceMonthly / 100,
+    icon: Crown,
+    color: 'text-amber-400',
+    gradient: 'from-amber-500 to-orange-600',
+    features: [
+      { text: { fr: `${PLAN_LIMITS.expert.monthlyAnalyses} analyses/mois`, en: `${PLAN_LIMITS.expert.monthlyAnalyses} analyses/month` }, included: true },
+      { text: { fr: 'Mistral Large (262K context)', en: 'Mistral Large (262K context)' }, included: true, highlight: true },
+      { text: { fr: 'Deep Research', en: 'Deep Research' }, included: true, highlight: true },
+      { text: { fr: `Chat vocal ${PLAN_LIMITS.expert.voiceChatMonthlyMinutes} min`, en: `Voice chat ${PLAN_LIMITS.expert.voiceChatMonthlyMinutes} min` }, included: true, highlight: true },
+      { text: { fr: `${PLAN_LIMITS.expert.concurrentAnalyses + 1} analyses simultanées`, en: `${PLAN_LIMITS.expert.concurrentAnalyses + 1} concurrent analyses` }, included: true },
+      { text: { fr: 'Tout le plan Pro inclus', en: 'Everything in Pro included' }, included: true },
     ],
   },
 ];
@@ -1348,23 +1325,17 @@ const LandingPage: React.FC = () => {
             </p>
           </ScrollReveal>
 
-          <StaggerReveal className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5">
+          <StaggerReveal className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6 max-w-4xl mx-auto">
             {PLANS.map((plan) => {
               const Icon = plan.icon;
               const isPopular = plan.popular;
-              const isRecommended = plan.recommended;
-              const hasBadge = !!plan.badge;
 
               return (
                 <StaggerItem key={plan.id}>
                   <div
-                    className={`relative p-5 rounded-xl border transition-all h-full flex flex-col overflow-hidden ${
+                    className={`relative p-6 rounded-xl border transition-all h-full flex flex-col overflow-hidden ${
                       isPopular
-                        ? 'border-violet-500/40 bg-violet-500/[0.06] shadow-lg shadow-violet-500/10'
-                        : isRecommended
-                        ? 'border-blue-500/40 bg-blue-500/[0.06] shadow-lg shadow-blue-500/10 scale-[1.02] ring-1 ring-blue-500/20'
-                        : hasBadge
-                        ? 'border-emerald-500/30 bg-emerald-500/[0.04]'
+                        ? 'border-blue-500/50 bg-blue-500/[0.06] shadow-xl shadow-blue-500/15 scale-[1.03] ring-1 ring-blue-500/25 z-10'
                         : 'border-border-subtle bg-bg-secondary/40 hover:border-border-default'
                     }`}
                   >
@@ -1438,21 +1409,19 @@ const LandingPage: React.FC = () => {
                       onClick={() => navigate('/login')}
                       className={`w-full py-2.5 rounded-lg font-medium text-sm transition-all ${
                         isPopular
-                          ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:opacity-90 shadow-lg'
-                          : isRecommended
-                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 shadow-lg'
-                          : plan.id === 'etudiant'
-                          ? 'bg-gradient-to-r from-emerald-500 to-green-600 text-white hover:opacity-90 shadow-lg'
-                          : plan.id === 'starter'
-                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:opacity-90 shadow-lg'
+                          ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-90 shadow-lg'
+                          : plan.id === 'expert'
+                          ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:opacity-90 shadow-lg'
                           : 'bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-border-subtle'
                       }`}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      {plan.price === 0
+                      {plan.id === 'free'
                         ? (language === 'fr' ? 'Commencer gratuitement' : 'Start for free')
-                        : (language === 'fr' ? `Choisir ${plan.name.fr}` : `Choose ${plan.name.en}`)}
+                        : plan.id === 'pro'
+                        ? (language === 'fr' ? 'Essayer 7 jours gratuitement' : 'Try 7 days free')
+                        : (language === 'fr' ? 'Commencer' : 'Get started')}
                     </motion.button>
                   </div>
                 </StaggerItem>
@@ -1461,12 +1430,12 @@ const LandingPage: React.FC = () => {
           </StaggerReveal>
 
           {/* Guarantee */}
-          <ScrollReveal delay={0.2} className="text-center mt-8">
-            <p className="text-xs text-text-tertiary">
-              {language === 'fr'
-                ? 'Sans engagement · Annulation facile · Paiement sécurisé Stripe'
-                : 'No commitment · Easy cancellation · Secure Stripe payment'}
-            </p>
+          <ScrollReveal delay={0.2} className="text-center mt-10">
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-text-secondary">
+              <span>✓ {language === 'fr' ? 'Annulation à tout moment' : 'Cancel anytime'}</span>
+              <span>✓ {language === 'fr' ? 'Remboursement 14 jours' : '14-day refund'}</span>
+              <span>✓ {language === 'fr' ? 'Données hébergées en Europe' : 'Data hosted in Europe'} 🇪🇺</span>
+            </div>
           </ScrollReveal>
 
           {/* B2B Contact */}
