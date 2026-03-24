@@ -186,45 +186,66 @@ async def _call_perplexity(query: str, context: str = "") -> Optional[str]:
         return None
 
 
+import re
+
 async def _search_opposing_video(
-    topic: str, thesis_a: str, lang: str = "fr"
+    topic: str, thesis_a: str, lang: str = "fr", model: str = "mistral-small-2603"
 ) -> Optional[Dict[str, str]]:
-    """Use Brave Search + Mistral to find a YouTube video with an opposing viewpoint."""
-    search_prompt = (
-        f"Trouve une vidéo YouTube qui défend un point de vue OPPOSÉ à cette thèse :\n"
-        f"Sujet : {topic}\n"
-        f"Thèse : {thesis_a}\n\n"
-        f"Retourne UNIQUEMENT un JSON avec ce format exact (pas de texte autour) :\n"
-        f'{{"url": "https://www.youtube.com/watch?v=...", "title": "...", "channel": "..."}}'
-    )
+    """Find opposing YouTube video: Mistral generates search query → Brave Search finds YouTube results."""
+    from core.config import get_brave_key
 
-    try:
-        result = await web_search_and_synthesize(
-            query=search_prompt,
-            context=f"Topic: {topic}, Thesis: {thesis_a}",
-            purpose="debate",
-            lang=lang,
-            max_sources=10,
-            max_tokens=500
-        )
-
-        if not result.success:
-            return None
-
-        content = result.content
-        # Try to parse JSON from the response
-        try:
-            if "```" in content:
-                content = content.split("```")[1]
-                if content.startswith("json"):
-                    content = content[4:]
-            return json.loads(content.strip())
-        except (json.JSONDecodeError, IndexError):
-            logger.warning("Failed to parse opposing video search result: %s", content[:200])
-            return None
-    except Exception as e:
-        logger.warning(f"[WEB_SEARCH] Search opposing video failed: {e}")
+    brave_key = get_brave_key()
+    if not brave_key:
+        logger.warning("No Brave Search key for opposing video search")
         return None
+
+    # Step 1: Ask Mistral for optimal YouTube search query
+    query_prompt = [
+        {"role": "system", "content": (
+            "Tu es un expert en recherche YouTube. "
+            "Génère une requête de recherche YouTube (5-10 mots) pour trouver une vidéo "
+            "qui défend un point de vue OPPOSÉ à la thèse ci-dessous. "
+            "Réponds UNIQUEMENT avec la requête, sans guillemets ni explication."
+        )},
+        {"role": "user", "content": f"Sujet : {topic}\nThèse à contredire : {thesis_a}"},
+    ]
+    search_query = await _call_mistral(query_prompt, model=model, temperature=0.5)
+    if not search_query:
+        logger.warning("Mistral failed to generate search query for opposing video")
+        return None
+    search_query = search_query.strip().strip('"').strip("'")[:100]
+    logger.info("Opposing video search query: %s", search_query)
+
+    # Step 2: Search YouTube via Brave Search API
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(
+                "https://api.search.brave.com/res/v1/web/search",
+                headers={"X-Subscription-Token": brave_key, "Accept": "application/json"},
+                params={"q": f"site:youtube.com {search_query}", "count": 5},
+            )
+            resp.raise_for_status()
+            results = resp.json().get("web", {}).get("results", [])
+    except Exception as e:
+        logger.warning("Brave Search failed for opposing video: %s", str(e)[:200])
+        return None
+
+    # Step 3: Extract first YouTube video URL
+    yt_pattern = re.compile(r"youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})")
+    for result in results:
+        url = result.get("url", "")
+        match = yt_pattern.search(url)
+        if match:
+            video_id = match.group(1)
+            logger.info("Found opposing video: %s — %s", video_id, result.get("title", ""))
+            return {
+                "url": f"https://www.youtube.com/watch?v={video_id}",
+                "title": result.get("title", ""),
+                "channel": "",
+            }
+
+    logger.warning("No YouTube video found via Brave for query: %s", search_query)
+    return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
