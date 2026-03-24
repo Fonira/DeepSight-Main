@@ -6,6 +6,7 @@ import { Slot, Stack, useRouter, useSegments } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Updates from 'expo-updates';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from '../src/contexts/AuthContext';
 import { ThemeProvider } from '../src/contexts/ThemeContext';
@@ -76,6 +77,22 @@ export default function RootLayout() {
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded]);
+
+  // Check for OTA updates on launch
+  useEffect(() => {
+    if (__DEV__) return; // Skip in dev mode
+    (async () => {
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        }
+      } catch (e) {
+        // Silent fail — non-blocking
+      }
+    })();
+  }, []);
 
   if (!fontsLoaded) {
     return null;
