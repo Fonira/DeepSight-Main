@@ -35,8 +35,8 @@ interface VoiceModalProps {
   /** Minutes restantes dans le quota */
   remainingMinutes: number;
   /** Callbacks */
-  onStart: () => void;
-  onStop: () => void;
+  onStart: () => void | Promise<void>;
+  onStop: () => void | Promise<void>;
   onMuteToggle: () => void;
   isMuted: boolean;
   /** Erreur eventuelle */
@@ -130,6 +130,15 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
     [language]
   );
 
+  // Wrap async callbacks to prevent unhandled promise rejections
+  const safeStart = useCallback(() => {
+    try { Promise.resolve(onStart()).catch(() => {}); } catch { /* handled internally */ }
+  }, [onStart]);
+
+  const safeStop = useCallback(() => {
+    try { Promise.resolve(onStop()).catch(() => {}); } catch { /* handled internally */ }
+  }, [onStop]);
+
   const isActive = voiceStatus === 'listening' || voiceStatus === 'thinking' || voiceStatus === 'speaking';
   const remainingFormatted = formatTime(remainingMinutes * 60);
 
@@ -192,7 +201,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
       case 'idle':
         return (
           <motion.button
-            onClick={onStart}
+            onClick={safeStart}
             className="px-8 py-4 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-semibold text-lg shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 transition-shadow focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0f]"
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
@@ -254,7 +263,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
               {error || tr('Une erreur est survenue', 'An error occurred')}
             </p>
             <button
-              onClick={onStart}
+              onClick={safeStart}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition-colors text-sm focus-visible:ring-2 focus-visible:ring-indigo-400"
             >
               <RotateCcw className="w-4 h-4" />
@@ -420,7 +429,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
 
                 {/* End call */}
                 <button
-                  onClick={onStop}
+                  onClick={safeStop}
                   className="w-11 h-11 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-red-400"
                   aria-label={tr('Terminer la conversation', 'End conversation')}
                 >
