@@ -23,7 +23,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.dependencies import get_current_user, require_credits
-from core.config import get_mistral_key, get_perplexity_key, PLAN_LIMITS
+from core.config import get_brave_key, get_mistral_key, get_perplexity_key, PLAN_LIMITS
 from core.credits import deduct_credits
 from db.database import (
     DebateAnalysis,
@@ -279,6 +279,63 @@ async def _search_opposing_video(
         return None
 
 
+import re
+
+async def _search_opposing_video_fallback(
+    topic: str, thesis_a: str, lang: str = "fr", model: str = "mistral-small-2603"
+) -> Optional[Dict[str, str]]:
+    """Fallback: use Mistral to generate search query + Brave Search to find opposing YouTube video."""
+    brave_key = get_brave_key()
+    if not brave_key:
+        logger.warning("No Brave Search key for opposing video fallback")
+        return None
+
+    # Step 1: Ask Mistral for optimal YouTube search query
+    query_prompt = [
+        {"role": "system", "content": (
+            "Tu es un expert en recherche YouTube. "
+            "Génère une requête de recherche YouTube (en 5-10 mots) pour trouver une vidéo "
+            "qui défend un point de vue OPPOSÉ à la thèse ci-dessous. "
+            "Réponds UNIQUEMENT avec la requête, sans guillemets ni explication."
+        )},
+        {"role": "user", "content": f"Sujet : {topic}\nThèse à contredire : {thesis_a}"},
+    ]
+    search_query = await _call_mistral(query_prompt, model=model, temperature=0.5)
+    if not search_query:
+        return None
+    search_query = search_query.strip().strip('"').strip("'")
+
+    # Step 2: Search YouTube via Brave Search API
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.get(
+                "https://api.search.brave.com/res/v1/web/search",
+                headers={"X-Subscription-Token": brave_key, "Accept": "application/json"},
+                params={"q": f"site:youtube.com {search_query}", "count": 5},
+            )
+            resp.raise_for_status()
+            results = resp.json().get("web", {}).get("results", [])
+    except Exception as e:
+        logger.warning("Brave Search fallback failed: %s", str(e)[:200])
+        return None
+
+    # Step 3: Extract first YouTube video URL
+    yt_pattern = re.compile(r"youtube\.com/watch\?v=([a-zA-Z0-9_-]{11})")
+    for result in results:
+        url = result.get("url", "")
+        match = yt_pattern.search(url)
+        if match:
+            video_id = match.group(1)
+            return {
+                "url": f"https://www.youtube.com/watch?v={video_id}",
+                "title": result.get("title", ""),
+                "channel": "",
+            }
+
+    logger.warning("No YouTube video found via Brave for query: %s", search_query)
+    return None
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔄 BACKGROUND TASK — Main debate analysis pipeline
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -390,7 +447,13 @@ async def _run_debate_pipeline(
                 debate.status = "searching"
                 await session.commit()
 
+                # Try Perplexity first, then Brave Search fallback
                 opposing = await _search_opposing_video(detected_topic, thesis_a, lang)
+                if not opposing or not opposing.get("url"):
+                    logger.info("Perplexity search failed, trying Brave fallback for debate %d", debate_id)
+                    _debate_task_store[debate_id] = {"status": "searching", "message": "Recherche alternative en cours..."}
+                    opposing = await _search_opposing_video_fallback(detected_topic, thesis_a, lang, model)
+
                 if opposing and opposing.get("url"):
                     try:
                         actual_platform_b, actual_video_b_id = extract_video_id(opposing["url"])
