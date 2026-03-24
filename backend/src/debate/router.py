@@ -14,7 +14,7 @@
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -150,7 +150,7 @@ def _debate_to_result(debate: DebateAnalysis) -> DebateResultResponse:
         model_used=debate.model_used,
         credits_used=debate.credits_used or 0,
         lang=debate.lang or "fr",
-        created_at=debate.created_at or datetime.now(timezone.utc),
+        created_at=debate.created_at or datetime.utcnow(),
         updated_at=debate.updated_at,
     )
 
@@ -611,7 +611,7 @@ async def create_debate(
         mode=mode,
         platform=request.platform,
         lang=request.lang,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.utcnow(),
     )
     db.add(debate)
     await db.flush()
@@ -712,7 +712,7 @@ async def get_debate_history(
             video_a_thumbnail=d.video_a_thumbnail,
             video_b_thumbnail=d.video_b_thumbnail,
             status=d.status,
-            created_at=d.created_at or datetime.now(timezone.utc),
+            created_at=d.created_at or datetime.utcnow(),
         )
         for d in debates
     ]
@@ -954,14 +954,14 @@ async def debate_chat(
         user_id=current_user.id,
         role="user",
         content=request.message,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.utcnow(),
     )
     assistant_msg = DebateChatMessage(
         debate_id=request.debate_id,
         user_id=current_user.id,
         role="assistant",
         content=response_text,
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.utcnow(),
     )
     db.add(user_msg)
     db.add(assistant_msg)
@@ -1002,7 +1002,7 @@ async def get_debate_chat_history(
                 debate_id=m.debate_id,
                 role=m.role,
                 content=m.content,
-                created_at=m.created_at or datetime.now(timezone.utc),
+                created_at=m.created_at or datetime.utcnow(),
             ).model_dump()
             for m in messages
         ],
