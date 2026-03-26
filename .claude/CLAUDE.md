@@ -244,11 +244,10 @@ auth, videos, chat, billing, playlists, exports, history, search, academic, admi
 ### 25 Tables DB
 User, Summary, RefreshToken, ChatMessage, ChatQuota, PlaylistAnalysis, PlaylistChatMessage, VideoChunk, VideoComparison, AcademicPaper, SharedAnalysis, TranscriptCache, TranscriptCacheChunk, TranscriptEmbedding, DailyQuota, CreditTransaction, WebSearchUsage, TaskStatus, ApiUsage, AnalyticsEvent, PushToken, AdminLog, ApiStatus, Debate, DebateChatMessage
 
-### Plans tarifaires
-- **free** (0€) → 5 analyses/mois, 250 crédits, 15min max
-- **etudiant** (2.99€) → 20 analyses, 2000 crédits, flashcards
-- **starter** (5.99€) → 50 analyses, 3000 crédits, web search
-- **pro** (12.99€) → 200 analyses, 15000 crédits, playlists, PDF export
+### Plans tarifaires (3 plans — Mars 2026)
+- **free** (0€) → 5 analyses/mois, 15min max, flashcards
+- **pro** (5.99€) → 30 analyses, 2h max, mind maps, web search 20/mois, playlists 3
+- **expert** (14.99€) → 100 analyses, 4h max, web search 60/mois, playlists 10, priority queue
 
 ### Transcript extraction (7 méthodes)
 Supadata → youtube-transcript-api → Invidious → Piped → yt-dlp subs → yt-dlp auto → Audio STT (Groq/OpenAI/Deepgram/AssemblyAI)

@@ -385,19 +385,18 @@ POST   /api/search/semantic         # Semantic search
 
 ---
 
-## Pricing Plans (4 tiers actifs)
+## Pricing Plans (3 tiers — Mars 2026)
 
-| Plan | ID interne | Prix | Analyses/mois | Crédits | Max durée | Chat/vidéo | Features clés |
-|------|-----------|------|---------------|---------|-----------|------------|---------------|
-| Gratuit | free | 0€ | 5 | 250 | 15min | 5 | Historique 60j |
-| Étudiant | etudiant | 2.99€ | 20 | 2000 | 45min | 15 | Flashcards, mind maps |
-| Starter | starter | 5.99€ | 50 | 3000 | 2h | 25 | Recherche web IA |
-| Pro | pro | 12.99€ | 200 | 15000 | 4h | illimité | Playlists, export PDF, web search illimité |
+| Plan | ID interne | Prix | Analyses/mois | Max durée | Chat/vidéo | Features clés |
+|------|-----------|------|---------------|-----------|------------|---------------|
+| Gratuit | free | 0€ | 5 | 15min | 5 | Flashcards, historique 60j |
+| Pro | pro | 5.99€ | 30 | 2h | 25 | Mind maps, web search (20/mois), playlists (3), export PDF |
+| Expert | expert | 14.99€ | 100 | 4h | illimité | Web search (60/mois), playlists (10), priority queue, voice chat 20min |
 
 ### Modèles Mistral par plan
-- **Free/Étudiant** : mistral-small-2603
+- **Free** : mistral-small-2603
 - **Pro** : mistral-medium-2508
-- **Expert (legacy)** : mistral-large-2512 (262K context)
+- **Expert** : mistral-large-2512 (262K context)
 
 ---
 
