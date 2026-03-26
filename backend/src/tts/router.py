@@ -226,7 +226,14 @@ async def generate_audio_summary(
     # ── Parse optional body ──────────────────────────────────────────────
     try:
         body = await request.json()
+        # Handle double-stringified JSON from frontend
+        if isinstance(body, str):
+            import json as json_module
+            body = json_module.loads(body)
     except Exception:
+        body = {}
+
+    if not isinstance(body, dict):
         body = {}
 
     language = body.get("language", "fr")
