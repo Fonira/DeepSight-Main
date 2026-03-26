@@ -99,8 +99,8 @@ def build_podcast_script(
     parts: list[str] = []
 
     # ── 1. Introduction ──────────────────────────────────────────────────
-    title = summary.title or "cette vidéo"
-    channel = summary.channel_name or "un créateur"
+    title = getattr(summary, 'video_title', None) or getattr(summary, 'title', None) or "cette vidéo"
+    channel = getattr(summary, 'video_channel', None) or getattr(summary, 'channel_name', None) or "un créateur"
 
     if language == "fr":
         parts.append(
