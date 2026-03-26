@@ -519,4 +519,17 @@ async def tts_status():
         "active_provider": active_provider,
         "providers": {
             "elevenlabs": {
+                "available": elevenlabs_available,
+                "model": "eleven_multilingual_v2",
+            },
+            "openai": {
+                "available": openai_available,
+                "model": "tts-1",
+            },
+        },
+        "max_text_length": MAX_TEXT_LENGTH,
+        "supported_languages": ["fr", "en"],
+        "supported_genders": ["male", "female"],
+        "speed_range": {"min": 0.7, "max": 3.0, "default": 1.0},
+    }
            
