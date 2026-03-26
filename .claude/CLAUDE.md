@@ -244,11 +244,10 @@ auth, videos, chat, billing, playlists, exports, history, search, academic, admi
 ### 25 Tables DB
 User, Summary, RefreshToken, ChatMessage, ChatQuota, PlaylistAnalysis, PlaylistChatMessage, VideoChunk, VideoComparison, AcademicPaper, SharedAnalysis, TranscriptCache, TranscriptCacheChunk, TranscriptEmbedding, DailyQuota, CreditTransaction, WebSearchUsage, TaskStatus, ApiUsage, AnalyticsEvent, PushToken, AdminLog, ApiStatus, Debate, DebateChatMessage
 
-### Plans tarifaires
-- **free** (0€) → 5 analyses/mois, 250 crédits, 15min max
-- **etudiant** (2.99€) → 20 analyses, 2000 crédits, flashcards
-- **starter** (5.99€) → 50 analyses, 3000 crédits, web search
-- **pro** (12.99€) → 200 analyses, 15000 crédits, playlists, PDF export
+### Plans tarifaires (3 plans — Mars 2026)
+- **free** (0€) → 5 analyses/mois, 15min max, flashcards
+- **pro** (5.99€) → 30 analyses, 2h max, mind maps, web search 20/mois, playlists 3
+- **expert** (14.99€) → 100 analyses, 4h max, web search 60/mois, playlists 10, priority queue
 
 ### Transcript extraction (7 méthodes)
 Supadata → youtube-transcript-api → Invidious → Piped → yt-dlp subs → yt-dlp auto → Audio STT (Groq/OpenAI/Deepgram/AssemblyAI)
@@ -270,3 +269,60 @@ Supadata → youtube-transcript-api → Invidious → Piped → yt-dlp subs → 
 
 # currentDate
 Today's date is 2026-03-23.
+
+
+---
+
+## 🔌 INTÉGRATIONS TIERCES ACTIVES (État Mars 2026)
+
+### Services IA
+| Service | Module backend | Usage | Status |
+|---------|---------------|-------|--------|
+| **Mistral AI** | `core/config.py` | 4 modèles (ministral-8b, small-2603, medium-2508, large-2512) + modération | ✅ Production |
+| **Perplexity AI** | `chat/service.py` | Enrichissement chat v4.0 | ✅ Production |
+| **Brave Search** | `chat/service.py` | Fact-check web search | ✅ Production |
+| **OpenAI** | `tts/service.py` | TTS (text-to-speech) + Whisper STT fallback | ✅ Production |
+| **ElevenLabs** | `voice/` | Agent vocal conversationnel (4 tools: search_in_transcript, get_analysis_section, get_sources, get_flashcards) | ✅ Production |
+| **Groq** | `transcripts/` | Whisper STT fallback | ✅ Production |
+| **Deepgram** | `transcripts/` | Nova-2 STT fallback | ✅ Production |
+| **AssemblyAI** | `transcripts/` | STT fallback | ✅ Production |
+
+### Services Infrastructure
+| Service | Module | Usage | Status |
+|---------|--------|-------|--------|
+| **Stripe** | `billing/` | Paiements (checkout, webhooks, portal, API keys, addons voix) | ✅ Live |
+| **Resend** | `services/email_*` | Emails transactionnels + onboarding séquentiel | ✅ Production |
+| **Sentry** | `core/sentry.py` | Error tracking + performance monitoring | ✅ Production |
+| **PostHog** | Frontend only | Analytics produit RGPD | ✅ Production |
+| **Cloudflare R2** | `storage/r2.py` | Stockage thumbnails | ✅ Production |
+| **AWS S3** | `scripts/backup_db.py` | Backups DB automatiques (cron daily) | ✅ Production |
+| **Supadata** | `transcripts/youtube.py` | Extraction transcripts YouTube (prioritaire) | ✅ Production |
+| **Google OAuth** | `auth/router.py` | Auth Google (Web + Mobile) | ✅ Production |
+| **Tournesol API** | `tournesol/router.py` | Recommandations vidéo éthiques (proxy CORS) | ✅ Production |
+
+### Recherche Académique (4 sources parallèles)
+| Source | Client | Usage |
+|--------|--------|-------|
+| **arXiv** | `academic/arxiv_client.py` | Papers scientifiques open-access |
+| **Crossref** | `academic/crossref_client.py` | DOI, métadonnées académiques |
+| **Semantic Scholar** | `academic/semantic_scholar.py` | Citations, graphe de connaissances |
+| **OpenAlex** | `academic/openalex.py` | Open bibliographic catalog |
+
+### Modules implémentés par plateforme
+| Feature | Backend | Web | Mobile | Extension |
+|---------|---------|-----|--------|-----------|
+| Voice Chat (ElevenLabs) | `voice/` | VoiceModal, VoiceButton | VoiceScreen, VoiceButton | ❌ |
+| TTS (OpenAI) | `tts/` | TTSToolbar, TTSContext | TTSToolbar | ❌ |
+| AI Debate | `debate/` | DebatePage | ❌ CTA | ❌ CTA |
+| Study/FSRS | `study/` | StudyPage, AnalysisHub | StudyScreen | StudyTab (mini) |
+| Gamification | `gamification/` | BadgeGrid, XPBar, HeatMap | ❌ partiel | ❌ |
+| Academic | `academic/` | AcademicSourcesPanel | components/academic | ❌ |
+| Playlists | `playlists/` | PlaylistPage | PlaylistDetailScreen | ❌ |
+| Batch API | `batch/` | ❌ | ❌ | ❌ |
+| API Publique | `api_public/` | ApiDocsPage | ❌ | ❌ |
+| Notifications | `notifications/` | NotificationBell (SSE) | expo-notifications | ❌ |
+| Tournesol | `tournesol/` | TournesolTrendingSection | components/tournesol | TournesolTab |
+| Export | `exports/` | PDF/DOCX/MD/XLSX | ❌ CTA | ❌ |
+| Share | `share/` | SharedAnalysisPage | ❌ | ❌ |
+
+*Last updated: March 26, 2026*

@@ -2304,4 +2304,98 @@ export default {
   videoCache: videoCacheApi,
   voice: voiceApi,
   debate: debateApi,
+
+  // ── Audio Summaries (Podcast Mode) ──────────────────────────────────
+  async generateAudioSummary(
+    summaryId: number,
+    options: {
+      language?: 'fr' | 'en';
+      gender?: 'male' | 'female';
+      speed?: number;
+      force_regenerate?: boolean;
+    } = {},
+  ): Promise<{
+    audio_url: string;
+    duration_estimate: number;
+    script_chars: number;
+    cached: boolean;
+    language: string;
+    gender: string;
+  }> {
+    return request(`/api/tts/summary/${summaryId}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        language: options.language || 'fr',
+        gender: options.gender || 'female',
+        speed: options.speed || 1.0,
+        force_regenerate: options.force_regenerate || false,
+      }),
+    });
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 🌍 DUBBING — Audio traduit dans une autre langue
+  // ═══════════════════════════════════════════════════════════════════
+
+  async generateDubbedAudio(
+    summaryId: number,
+    options: {
+      target_language: string;
+      gender?: 'male' | 'female';
+      speed?: number;
+      force_regenerate?: boolean;
+    },
+  ): Promise<{
+    audio_url: string;
+    duration_estimate: number;
+    script_chars: number;
+    cached: boolean;
+    source_language: string;
+    target_language: string;
+    gender: string;
+  }> {
+    return request(`/api/tts/dub/${summaryId}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        target_language: options.target_language,
+        gender: options.gender || 'female',
+        speed: options.speed || 1.0,
+        force_regenerate: options.force_regenerate || false,
+      }),
+    });
+  },
+
+  async getDubbingLanguages(): Promise<{
+    languages: { code: string; name_fr: string; name_en: string }[];
+  }> {
+    return request('/api/tts/dub/languages');
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 🎙️ VOICE AGENTS — Types d'agents vocaux disponibles
+  // ═══════════════════════════════════════════════════════════════════
+
+  async getVoiceAgentTypes(): Promise<{
+    agents: {
+      type: string;
+      display_name: string;
+      description: string;
+      plan_minimum: string;
+      available_tools: string[];
+    }[];
+  }> {
+    return request('/api/voice/agents/types');
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 🔊 TTS STATUS — État des providers TTS
+  // ═══════════════════════════════════════════════════════════════════
+
+  async getTTSStatus(): Promise<{
+    elevenlabs: { available: boolean; circuit_breaker: string };
+    openai: { available: boolean };
+    active_provider: string;
+  }> {
+    return request('/api/tts/status');
+  },
 };

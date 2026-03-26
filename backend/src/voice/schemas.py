@@ -14,8 +14,9 @@ from pydantic import BaseModel, Field
 
 class VoiceSessionRequest(BaseModel):
     """Requete de creation de session voice chat."""
-    summary_id: int = Field(..., description="ID de l'analyse video")
+    summary_id: Optional[int] = Field(default=None, description="ID de l'analyse video (optional for onboarding)")
     language: str = Field(default="fr", description="Langue (fr, en)")
+    agent_type: str = Field(default="explorer", description="Type d'agent vocal (explorer, tutor, debate_moderator, quiz_coach, onboarding)")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

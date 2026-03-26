@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from '../ui';
 import { AudioPlayerButton } from '../AudioPlayerButton';
+import { AudioSummaryButton } from '../AudioSummaryButton';
 import { EnrichedMarkdown } from '../EnrichedMarkdown';
 import { DeepResearchSources } from '../SummaryReader';
 import { ConceptsGlossary } from '../ConceptsGlossary';
@@ -41,6 +42,7 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
   const [exporting, setExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showCitationModal, setShowCitationModal] = useState(false);
+
 
   const handleCopy = async () => {
     if (!selectedSummary?.summary_content) return;
@@ -102,6 +104,14 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
             <GraduationCap className="w-4 h-4" />
             <span className="hidden sm:inline">{language === 'fr' ? 'Citer' : 'Cite'}</span>
           </button>
+
+          {/* Audio Summary — Podcast Mode */}
+          <AudioSummaryButton
+            summaryId={selectedSummary.id}
+            videoTitle={selectedSummary.video_title || ''}
+            language={language}
+            compact
+          />
 
           {/* Export */}
           <div className="relative flex-shrink-0">

@@ -47,6 +47,7 @@ from voice.quota import (
 )
 from voice.elevenlabs import ElevenLabsClient, get_elevenlabs_client
 from voice.tools import search_in_transcript, get_analysis_section, get_sources, get_flashcards
+from voice.agent_types import get_agent_config, list_agent_types, AGENT_REGISTRY
 
 logger = logging.getLogger(__name__)
 
@@ -81,8 +82,30 @@ async def create_voice_session(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    """Create a new voice chat session linked to a video analysis."""
+    """Create a new voice chat session linked to a video analysis.
+
+    Supports multiple agent types: explorer, tutor, debate_moderator, quiz_coach, onboarding.
+    Agent type determines the system prompt, tools, and voice style.
+    """
     plan = current_user.plan or "free"
+
+    # ── Resolve agent configuration ──────────────────────────────────────
+    agent_config = get_agent_config(request.agent_type)
+
+    # Check plan minimum for this agent type
+    plan_order = {"free": 0, "pro": 1, "expert": 2}
+    user_plan_level = plan_order.get(plan, 0)
+    required_level = plan_order.get(agent_config.plan_minimum, 0)
+    if user_plan_level < required_level:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "agent_plan_required",
+                "message": f"L'agent '{agent_config.display_name_fr}' nécessite le plan {agent_config.plan_minimum}+.",
+                "action": "upgrade",
+                "required_plan": agent_config.plan_minimum,
+            },
+        )
 
     # Check plan has voice enabled
     plan_limits = VOICE_LIMITS.get(plan, VOICE_LIMITS.get("free", {}))
@@ -96,22 +119,32 @@ async def create_voice_session(
             },
         )
 
-    # Verify summary ownership
-    result = await db.execute(
-        select(Summary).where(
-            Summary.id == request.summary_id,
-            Summary.user_id == current_user.id,
+    # ── Verify summary ownership (skip for onboarding which has no summary) ──
+    summary = None
+    if agent_config.requires_summary:
+        if not request.summary_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "code": "summary_required",
+                    "message": f"L'agent '{agent_config.display_name_fr}' nécessite un summary_id.",
+                },
+            )
+        result = await db.execute(
+            select(Summary).where(
+                Summary.id == request.summary_id,
+                Summary.user_id == current_user.id,
+            )
         )
-    )
-    summary = result.scalar_one_or_none()
-    if not summary:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "code": "summary_not_found",
-                "message": "Analysis not found or does not belong to you.",
-            },
-        )
+        summary = result.scalar_one_or_none()
+        if not summary:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "code": "summary_not_found",
+                    "message": "Analysis not found or does not belong to you.",
+                },
+            )
 
     # Check voice quota
     quota_info = await check_voice_quota(current_user.id, plan, db)
@@ -149,49 +182,78 @@ async def create_voice_session(
     try:
         language = request.language or "fr"
 
-        # ── Assembler le contexte riche (transcript + fact-check + enrichment + metadata) ──
-        from chat.context_builder import build_rich_context
+        # ── Build context depending on agent type ────────────────────────
+        context_block = ""
+        rich_ctx = None
 
-        rich_ctx = await build_rich_context(summary, db, include_transcript=True, include_academic=True)
-        context_block = rich_ctx.format_for_voice(language=language)
+        if summary:
+            from chat.context_builder import build_rich_context
 
-        logger.info(
-            "Voice session: rich context assembled",
-            extra={
-                "summary_id": request.summary_id,
-                "transcript_strategy": rich_ctx.transcript_strategy,
-                "transcript_chars": len(rich_ctx.transcript),
-                "total_context_chars": rich_ctx.total_chars,
-                "formatted_chars": len(context_block),
-            },
-        )
+            rich_ctx = await build_rich_context(summary, db, include_transcript=True, include_academic=True)
+            context_block = rich_ctx.format_for_voice(language=language)
 
-        system_prompt = ElevenLabsClient.build_system_prompt(
-            video_title=rich_ctx.video_title,
-            channel_name=rich_ctx.channel_name,
-            duration=rich_ctx.duration_str,
-            context_block=context_block,
-            language=language,
-        )
+            logger.info(
+                "Voice session: rich context assembled",
+                extra={
+                    "summary_id": request.summary_id,
+                    "agent_type": agent_config.agent_type,
+                    "transcript_strategy": rich_ctx.transcript_strategy,
+                    "transcript_chars": len(rich_ctx.transcript),
+                    "total_context_chars": rich_ctx.total_chars,
+                    "formatted_chars": len(context_block),
+                },
+            )
 
-        # Build webhook tools — use APP_URL as the base for tool callbacks
+        # ── Build system prompt from agent config + video context ────────
+        if rich_ctx:
+            # Agent with video context: combine agent prompt + video data
+            system_prompt = (
+                f"{agent_config.system_prompt}\n\n"
+                f"--- CONTEXTE VIDÉO ---\n"
+                f"Titre : {rich_ctx.video_title}\n"
+                f"Chaîne : {rich_ctx.channel_name}\n"
+                f"Durée : {rich_ctx.duration_str}\n\n"
+                f"{context_block}"
+            )
+        else:
+            # Agent without video context (onboarding)
+            system_prompt = agent_config.system_prompt
+
+        # Build webhook tools — filter to agent's allowed tools
         webhook_base_url = APP_URL.rstrip("/")
         tools_config = ElevenLabsClient.build_tools_config(
             webhook_base_url=webhook_base_url,
-            api_token=str(request.summary_id),  # Session context for tool calls
+            api_token=str(request.summary_id or 0),
         )
+        # Filter tools to only those allowed for this agent type
+        if agent_config.tools:
+            allowed_tool_names = set(agent_config.tools)
+            tools_config = [
+                t for t in tools_config
+                if t.get("name", "") in allowed_tool_names
+            ]
 
         # Get voice ID from config
         from core.config import _settings
         voice_id = _settings.ELEVENLABS_VOICE_ID or "21m00Tcm4TlvDq8ikWAM"  # Default: Rachel
 
-        first_message = (
-            f"Salut ! Je suis prêt à discuter de la vidéo « {rich_ctx.video_title} ». "
-            "Qu'est-ce que tu veux savoir ?"
-        ) if language == "fr" else (
-            f"Hi! I'm ready to discuss the video \"{rich_ctx.video_title}\". "
-            "What would you like to know?"
-        )
+        # ── Build first message from agent config ────────────────────────
+        if language == "fr":
+            first_message = agent_config.first_message_fr
+        else:
+            first_message = agent_config.first_message
+
+        # Inject video title into first message if available
+        if rich_ctx and rich_ctx.video_title and "{video_title}" not in first_message:
+            # For explorer agent, personalize with video title
+            if agent_config.agent_type == "explorer":
+                first_message = (
+                    f"Salut ! Je suis prêt à discuter de la vidéo « {rich_ctx.video_title} ». "
+                    "Qu'est-ce que tu veux savoir ?"
+                ) if language == "fr" else (
+                    f"Hi! I'm ready to discuss the video \"{rich_ctx.video_title}\". "
+                    "What would you like to know?"
+                )
 
         async with get_elevenlabs_client() as client:
             # Create the agent
@@ -709,3 +771,16 @@ async def tool_flashcards(request: Request, db: AsyncSession = Depends(get_sessi
     count = body.get("count") or body.get("parameters", {}).get("count", 5)
     result = await get_flashcards(summary_id, int(count), db)
     return {"result": result}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /agents/types — List available agent types
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/agents/types")
+async def get_agent_types():
+    """Return all available voice agent types with their descriptions and plan requirements."""
+    return {
+        "agent_types": list_agent_types(),
+        "default": "explorer",
+    }

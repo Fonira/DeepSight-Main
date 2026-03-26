@@ -56,6 +56,7 @@ import { AnalysisHub } from "../components/AnalysisHub";
 import VoiceButton from "../components/voice/VoiceButton";
 import { VoiceModal } from "../components/voice/VoiceModal";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
+import { OnboardingVoice } from "../components/voice/OnboardingVoice";
 
 interface ChatMessage {
   id: string;
@@ -163,6 +164,12 @@ export const DashboardPage: React.FC = () => {
   // 🎙️ Voice Chat
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const voiceChat = useVoiceChat({ summaryId: selectedSummary?.id ?? 0 });
+
+  // 🎙️ Onboarding Voice — show for users who haven't dismissed it yet
+  const [showOnboardingVoice, setShowOnboardingVoice] = useState(() => {
+    try { return !window.sessionStorage?.getItem?.('ds_onboarding_voice_dismissed'); } catch { return true; }
+  });
+  const isNewUser = !selectedSummary && user?.credits !== undefined && (user.credits ?? 0) >= 4;
 
   // 🕐 États Freshness & Fact-Check LITE
   const [reliabilityData, setReliabilityData] = useState<ReliabilityResult | null>(null);
@@ -1315,6 +1322,23 @@ export const DashboardPage: React.FC = () => {
             error={voiceChat.error ?? undefined}
           />
         </>
+      )}
+
+      {/* 🎙️ Onboarding Voice — Guide interactif pour nouveaux utilisateurs */}
+      {showOnboardingVoice && isNewUser && normalizedPlan !== 'free' && (
+        <OnboardingVoice
+          isNewUser={true}
+          onDismiss={() => {
+            setShowOnboardingVoice(false);
+            try { window.sessionStorage?.setItem?.('ds_onboarding_voice_dismissed', '1'); } catch {}
+          }}
+          onStartSession={() => {
+            setShowOnboardingVoice(false);
+            try { window.sessionStorage?.setItem?.('ds_onboarding_voice_dismissed', '1'); } catch {}
+            // Ouvrir le voice modal en mode onboarding
+            setIsVoiceModalOpen(true);
+          }}
+        />
       )}
     </div>
   );
