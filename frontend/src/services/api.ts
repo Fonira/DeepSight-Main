@@ -8,7 +8,6 @@
  */
 
 import { translateApiError } from '../utils/errorMessages';
-import type { StudyStats, HeatMapData, BadgesData, VideoMasteryData, DueCardsData, ReviewResult, StudySessionData, SessionEndResult } from '../types/gamification';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ⚙️ CONFIGURATION
@@ -118,21 +117,11 @@ export interface Summary {
   web_enriched?: boolean;
   fact_check_results?: FactCheckResult[];
   detected_category?: string;
-  content_type?: 'video' | 'carousel' | 'short' | 'live' | string;
+  content_type?: string;
   view_count?: number;
   like_count?: number;
   publish_date?: string;
   concepts?: Concept[];
-
-  // 📊 Engagement metadata
-  comment_count?: number;
-  share_count?: number;
-  channel_follower_count?: number;
-  engagement_rate?: number;
-  music_title?: string;
-  music_author?: string;
-  source_tags?: string[];
-  carousel_images?: string[];
 
   // 🔬 Deep Research (Mar 2026)
   deep_research?: boolean;
@@ -186,7 +175,7 @@ export interface TaskStatus {
   status: 'pending' | 'processing' | 'completed' | 'failed' | 'redirect' | 'screenshot_detected';
   progress?: number;
   message?: string;
-  platform?: 'youtube' | 'tiktok' | 'text' | 'images';
+  platform?: 'youtube' | 'tiktok' | 'text';
   result?: {
     summary_id?: number;
     summary?: Summary;
@@ -195,7 +184,8 @@ export interface TaskStatus {
     new_task_id?: string;
     video_url?: string;
     platform?: string;
-    content_type?: 'video' | 'short' | 'tiktok_slideshow' | string;
+    content_type?: "video" | "short" | "tiktok_slideshow" | string;
+    search_query?: string;
   };
   error?: string;
 }
@@ -232,7 +222,7 @@ export function getVideoUrl(videoId: string, platform?: VideoPlatform): string {
 
 export interface PlaylistTaskStatus {
   task_id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'redirect' | 'screenshot_detected';
   
   // Progression (les deux noms pour compatibilité backend)
   progress?: number;
@@ -907,36 +897,6 @@ export const videoApi = {
       method: 'POST',
       body,
       timeout: 300000,
-    });
-  },
-
-  /**
-   * Analyse d'images collées/uploadées par l'utilisateur.
-   * Utilise Mistral Vision pour OCR + description + liens entre images.
-   *
-   * Endpoint: POST /api/videos/analyze/images
-   */
-  async analyzeImages(params: {
-    images: Array<{ data: string; mime_type: string; filename?: string }>;
-    title?: string;
-    context?: string;
-    mode?: string;
-    lang?: string;
-    model?: string;
-    category?: string;
-  }): Promise<{ task_id: string; status: string; image_count: number; cost: number }> {
-    return request('/api/videos/analyze/images', {
-      method: 'POST',
-      body: {
-        images: params.images,
-        title: params.title || null,
-        context: params.context || null,
-        mode: params.mode || 'standard',
-        lang: params.lang || 'fr',
-        model: params.model || null,
-        category: params.category || null,
-      },
-      timeout: 120000,
     });
   },
 
@@ -1919,52 +1879,6 @@ export const studyApi = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🎮 GAMIFICATION API — XP, Badges, Streaks, FSRS Reviews
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export const gamificationApi = {
-  /** Get study stats (XP, level, streak) */
-  async getStats(): Promise<StudyStats> {
-    return request('/api/gamification/stats');
-  },
-
-  /** Get heat map data */
-  async getHeatMap(days: number = 35): Promise<HeatMapData> {
-    return request(`/api/gamification/heat-map?days=${days}`);
-  },
-
-  /** Get badges (earned + locked) */
-  async getBadges(): Promise<BadgesData> {
-    return request('/api/gamification/badges');
-  },
-
-  /** Get video mastery list */
-  async getVideoMastery(): Promise<VideoMasteryData> {
-    return request('/api/gamification/video-mastery');
-  },
-
-  /** Get due cards for a summary */
-  async getDueCards(summaryId: number): Promise<DueCardsData> {
-    return request(`/api/study/review/due/${summaryId}`);
-  },
-
-  /** Submit a card review (FSRS rating) */
-  async submitReview(data: { summary_id: number; card_index: number; card_front: string; rating: number }): Promise<ReviewResult> {
-    return request('/api/study/review/submit', { method: 'POST', body: data });
-  },
-
-  /** Start a study session */
-  async startSession(data: { summary_id?: number; session_type?: string }): Promise<StudySessionData> {
-    return request('/api/study/review/session/start', { method: 'POST', body: data });
-  },
-
-  /** End a study session */
-  async endSession(data: { session_id: number; cards_reviewed: number; cards_correct: number; duration_seconds: number }): Promise<SessionEndResult> {
-    return request('/api/study/review/session/end', { method: 'POST', body: data });
-  },
-};
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // 🩺 STATUS API — Public monitoring endpoints
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -2198,56 +2112,6 @@ export interface VoiceTranscript {
   transcript: string;
 }
 
-export interface VoicePreferences {
-  voice_id: string | null;
-  voice_name: string | null;
-  speed: number;
-  stability: number;
-  similarity_boost: number;
-  style: number;
-  use_speaker_boost: boolean;
-  tts_model: string;
-  voice_chat_model: string;
-  language: string;
-  gender: string;
-}
-
-export interface VoiceCatalogEntry {
-  voice_id: string;
-  name: string;
-  description_fr: string;
-  description_en: string;
-  gender: string;
-  accent: string;
-  language: string;
-  use_case: string;
-  recommended: boolean;
-  preview_url: string;
-}
-
-export interface VoiceSpeedPreset {
-  id: string;
-  label_fr: string;
-  label_en: string;
-  value: number;
-  icon: string;
-}
-
-export interface VoiceModel {
-  id: string;
-  name: string;
-  description_fr: string;
-  description_en: string;
-  latency: string;
-  recommended_for: string;
-}
-
-export interface VoiceCatalog {
-  voices: VoiceCatalogEntry[];
-  speed_presets: VoiceSpeedPreset[];
-  models: VoiceModel[];
-}
-
 export const voiceApi = {
   /**
    * 🎙️ Récupère le quota vocal de l'utilisateur
@@ -2294,40 +2158,13 @@ export const voiceApi = {
       body: { pack_id: packId },
     });
   },
-
-  /**
-   * 🎙️ Récupère les préférences vocales de l'utilisateur
-   * Endpoint: GET /api/voice/preferences
-   */
-  async getPreferences(): Promise<VoicePreferences> {
-    return request('/api/voice/preferences');
-  },
-
-  /**
-   * 🎙️ Met à jour les préférences vocales de l'utilisateur
-   * Endpoint: PUT /api/voice/preferences
-   */
-  async updatePreferences(prefs: Partial<VoicePreferences>): Promise<VoicePreferences> {
-    return request('/api/voice/preferences', {
-      method: 'PUT',
-      body: prefs as unknown as Record<string, unknown>,
-    });
-  },
-
-  /**
-   * 🎙️ Récupère le catalogue des voix disponibles + speed presets + modèles
-   * Endpoint: GET /api/voice/catalog
-   */
-  async getCatalog(): Promise<VoiceCatalog> {
-    return request('/api/voice/catalog');
-  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ⚔️ DEBATE API — Débat IA entre vidéos
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import type { DebateAnalysis, DebateListItem } from '../types/debate';
+import type { DebateAnalysis } from '../types/debate';
 
 export interface DebateCreateRequest {
   url_a: string;
@@ -2370,7 +2207,7 @@ export const debateApi = {
     return request(`/api/debate/${debateId}`);
   },
 
-  async getHistory(page?: number, limit?: number): Promise<{ debates: DebateListItem[]; total: number }> {
+  async getHistory(page?: number, limit?: number): Promise<{ debates: DebateAnalysis[]; total: number }> {
     const params = new URLSearchParams();
     if (page !== undefined) params.set('page', String(page));
     if (limit !== undefined) params.set('limit', String(limit));
@@ -2408,7 +2245,6 @@ export default {
   admin: adminApi,
   academic: academicApi,
   study: studyApi,
-  gamification: gamificationApi,
   contact: contactApi,
   status: statusApi,
   share: shareApi,
@@ -2417,73 +2253,4 @@ export default {
   videoCache: videoCacheApi,
   voice: voiceApi,
   debate: debateApi,
-
-  // ── Audio Summaries (Podcast Mode) ──────────────────────────────────
-  async generateAudioSummary(
-    summaryId: number,
-    options: {
-      language?: 'fr' | 'en';
-      gender?: 'male' | 'female';
-      speed?: number;
-      force_regenerate?: boolean;
-    } = {},
-  ): Promise<{
-    audio_url: string;
-    duration_estimate: number;
-    script_chars: number;
-    cached: boolean;
-    language: string;
-    gender: string;
-  }> {
-    return request(`/api/tts/summary/${summaryId}`, {
-      method: 'POST',
-      body: JSON.stringify({
-        language: options.language || 'fr',
-        gender: options.gender || 'female',
-        speed: options.speed || 1.0,
-        force_regenerate: options.force_regenerate || false,
-      }),
-    });
-  },
-
-  // ═══════════════════════════════════════════════════════════════════
-  // 🌍 DUBBING — Audio traduit dans une autre langue
-  // ═══════════════════════════════════════════════════════════════════
-
-  async generateDubbedAudio(
-    summaryId: number,
-    options: {
-      target_language: string;
-      gender?: 'male' | 'female';
-      speed?: number;
-      force_regenerate?: boolean;
-    },
-  ): Promise<{
-    audio_url: string;
-    duration_estimate: number;
-    script_chars: number;
-    cached: boolean;
-    source_language: string;
-    target_language: string;
-    gender: string;
-  }> {
-    return request(`/api/tts/dub/${summaryId}`, {
-      method: 'POST',
-      body: JSON.stringify({
-        target_language: options.target_language,
-        gender: options.gender || 'female',
-        speed: options.speed || 1.0,
-        force_regenerate: options.force_regenerate || false,
-      }),
-    });
-  },
-
-  async getDubbingLanguages(): Promise<{
-    languages: { code: string; name_fr: string; name_en: string }[];
-  }> {
-    return request('/api/tts/dub/languages');
-  },
-
-  // ═══════════════════════════════════════════════════════════════════
-  // 🎙️ VOICE AGENTS — Types d'agents vocaux disponibles
-  // ══════════════════�
+};
