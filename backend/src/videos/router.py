@@ -4461,6 +4461,83 @@ async def analyze_images(
     )
 
 
+async def _mistral_vision_request(
+    api_key: str,
+    messages: list,
+    model: str = "mistral-small-2603",
+    max_tokens: int = 4000,
+    temperature: float = 0.1,
+    response_format: Optional[Dict] = None,
+    timeout: float = 120.0,
+    max_retries: int = 3,
+    fallback_models: Optional[list] = None,
+) -> Optional[str]:
+    """
+    Appel Mistral Vision avec model fallback sur 429 (rate limit).
+
+    Stratégie : si le modèle principal est rate-limité, essayer les fallback models
+    immédiatement au lieu d'attendre. Chaque modèle a son propre rate limit.
+    """
+    import httpx as httpx_client
+    import asyncio
+
+    models_to_try = [model] + (fallback_models or [])
+
+    for model_idx, current_model in enumerate(models_to_try):
+        for attempt in range(max_retries):
+            try:
+                payload: Dict[str, Any] = {
+                    "model": current_model,
+                    "messages": messages,
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                }
+                if response_format:
+                    payload["response_format"] = response_format
+
+                async with httpx_client.AsyncClient(timeout=timeout) as client:
+                    response = await client.post(
+                        "https://api.mistral.ai/v1/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json=payload,
+                    )
+
+                    if response.status_code == 200:
+                        if model_idx > 0:
+                            logger.info(f"[MISTRAL_VISION] Success with fallback model: {current_model}")
+                        return response.json()["choices"][0]["message"]["content"].strip()
+
+                    if response.status_code == 429:
+                        # Try next model immediately instead of waiting
+                        if model_idx < len(models_to_try) - 1:
+                            logger.warning(f"[MISTRAL_VISION] {current_model} rate-limited, trying {models_to_try[model_idx + 1]}")
+                            break  # Break inner retry loop → next model
+                        # Last model: wait and retry
+                        wait = min(5 * (attempt + 1), 20)
+                        logger.warning(f"[MISTRAL_VISION] {current_model} rate-limited, retry {attempt + 1}/{max_retries} in {wait}s")
+                        await asyncio.sleep(wait)
+                        continue
+
+                    logger.error(f"[MISTRAL_VISION] {current_model} error {response.status_code}: {response.text[:200]}")
+                    # Non-429 error: try next model
+                    if model_idx < len(models_to_try) - 1:
+                        break
+                    return None
+
+            except Exception as e:
+                logger.error(f"[MISTRAL_VISION] {current_model} request error: {e}")
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(2)
+                    continue
+                break  # Try next model
+
+    logger.error(f"[MISTRAL_VISION] All models exhausted: {models_to_try}")
+    return None
+
+
 async def _detect_video_screenshot(
     image: Any,
     api_key: str,
@@ -4499,32 +4576,24 @@ async def _detect_video_screenshot(
     )
 
     try:
-        async with httpx_client.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "mistral-small-2603",
-                    "messages": [
-                        {"role": "user", "content": [
-                            {"type": "image_url", "image_url": data_uri},
-                            {"type": "text", "text": detection_prompt},
-                        ]},
-                    ],
-                    "max_tokens": 300,
-                    "temperature": 0.0,
-                    "response_format": {"type": "json_object"},
-                },
-            )
+        text = await _mistral_vision_request(
+            api_key=api_key,
+            messages=[
+                {"role": "user", "content": [
+                    {"type": "image_url", "image_url": data_uri},
+                    {"type": "text", "text": detection_prompt},
+                ]},
+            ],
+            max_tokens=300,
+            temperature=0.0,
+            response_format={"type": "json_object"},
+            timeout=30.0,
+            max_retries=1,
+            fallback_models=["pixtral-large-2411", "mistral-medium-2508"],
+        )
 
-            if response.status_code != 200:
-                logger.warning(f"[SCREENSHOT_DETECT] Mistral error: {response.status_code}")
-                return None
-
-            text = response.json()["choices"][0]["message"]["content"].strip()
+        if not text:
+            return None
 
             # Parser le JSON
             import json as json_module
@@ -4825,29 +4894,22 @@ async def _analyze_images_background(
             f"Réponds en {'français' if lang == 'fr' else 'anglais'}."
         )
 
-        import httpx as httpx_client
-        async with httpx_client.AsyncClient(timeout=120.0) as client:
-            response = await client.post(
-                "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": vision_model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": content},
-                    ],
-                    "max_tokens": 6000,
-                    "temperature": 0.1,
-                },
-            )
+        vision_result = await _mistral_vision_request(
+            api_key=api_key,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": content},
+            ],
+            model=vision_model,
+            max_tokens=6000,
+            temperature=0.1,
+            timeout=120.0,
+            max_retries=2,
+            fallback_models=["pixtral-large-2411", "mistral-medium-2508"],
+        )
 
-            if response.status_code != 200:
-                raise Exception(f"Mistral Vision error: {response.status_code} - {response.text[:300]}")
-
-            vision_result = response.json()["choices"][0]["message"]["content"].strip()
+        if not vision_result:
+            raise Exception("Mistral Vision : l'API est temporairement surchargée. Réessayez dans 1-2 minutes.")
 
         print(f"📸 [IMAGES] Vision analysis complete: {len(vision_result)} chars", flush=True)
 
