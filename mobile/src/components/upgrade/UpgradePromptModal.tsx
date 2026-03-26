@@ -116,9 +116,9 @@ const LIMIT_CONFIG: Record<LimitType, {
     titleEn: 'Limited exports',
     descriptionFr: 'Accédez à plus de formats d\'export.',
     descriptionEn: 'Access more export formats.',
-    featuresFr: getLimitFeatures('starter', 'fr'),
-    featuresEn: getLimitFeatures('starter', 'en'),
-    recommendedPlan: 'starter',
+    featuresFr: getLimitFeatures('pro', 'fr'),
+    featuresEn: getLimitFeatures('pro', 'en'),
+    recommendedPlan: 'pro',
   },
   webSearch: {
     icon: 'globe-outline',

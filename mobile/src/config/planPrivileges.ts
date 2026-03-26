@@ -1,16 +1,15 @@
 /**
  * Plan Privileges Configuration for DeepSight Mobile
  *
- * SYNCHRONIZED WITH: frontend/src/config/planPrivileges.ts
+ * ⚠️ SYNCHRONIZED WITH:
+ *   - backend/src/billing/plan_config.py  (SSOT)
+ *   - frontend/src/config/planPrivileges.ts
  *
- * Strategy:
- * - Free: Maximum friction for conversion (5 analyses/mois)
- * - Student (Starter): Education-focused with study tools (2.99/mo)
- * - Starter (Standard): Individual power users & students (5.99/mo)
- * - Pro: Creators & professionals (12.99/mo) - POPULAR
+ * Architecture: 3 plans — Free / Pro (5.99€) / Expert (14.99€)
+ * Dernière synchro: 26 Mars 2026
  */
 
-export type PlanId = 'free' | 'student' | 'starter' | 'pro';
+export type PlanId = 'free' | 'pro' | 'expert';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PLAN LIMITS
@@ -34,7 +33,11 @@ export interface PlanLimits {
   studyCanGenerateMore: boolean;
   studyDailyLimit: number;        // -1 = unlimited
   // Academic sources
-  academicPapersPerAnalysis: number;  // Max papers shown per analysis
+  academicPapersPerAnalysis: number;
+  // Voice chat
+  voiceChatMonthlyMinutes: number; // 0 = disabled
+  // Debate
+  debateMonthly: number;          // 0 = disabled, -1 = unlimited
 }
 
 // Type for numeric-only limits (excludes boolean properties)
@@ -42,19 +45,19 @@ export type NumericPlanLimits = {
   [K in keyof PlanLimits as PlanLimits[K] extends number ? K : never]: PlanLimits[K];
 };
 
-// ⚠️ SYNCED WITH: frontend/src/config/planPrivileges.ts + backend plan_config.py
+// ⚠️ SYNCED WITH: backend/src/billing/plan_config.py (SSOT)
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   free: {
     monthlyAnalyses: 5,
     monthlyCredits: 250,
-    maxVideoDuration: 900,        // 15 min max (synced w/ frontend)
-    chatQuestionsPerVideo: 5,     // synced (was 3)
+    maxVideoDuration: 900,          // 15 min
+    chatQuestionsPerVideo: 5,
     chatDailyLimit: 10,
     maxPlaylistVideos: 0,
     maxPlaylists: 0,
     maxExportsPerDay: 0,
     webSearchMonthly: 0,
-    historyDays: 60,              // synced (was 3)
+    historyDays: 60,
     apiRequestsDaily: 0,
     teamMembers: 1,
     studyQuizQuestions: 3,
@@ -62,37 +65,21 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyCanGenerateMore: false,
     studyDailyLimit: 2,
     academicPapersPerAnalysis: 3,
+    voiceChatMonthlyMinutes: 0,
+    debateMonthly: 1,
   },
-  student: {
-    monthlyAnalyses: 20,          // synced (was 40)
-    monthlyCredits: 2000,
-    maxVideoDuration: 2700,       // 45 min max (synced, was 7200)
-    chatQuestionsPerVideo: 15,
-    chatDailyLimit: 40,           // synced (was 50)
-    maxPlaylistVideos: 0,
-    maxPlaylists: 0,
-    maxExportsPerDay: 10,
-    webSearchMonthly: 0,          // synced (was 10) — web search starts at Starter
-    historyDays: -1,              // synced (was 90) — permanent dès Student
-    apiRequestsDaily: 0,
-    teamMembers: 1,
-    studyQuizQuestions: 5,
-    studyMindmapDepth: 3,
-    studyCanGenerateMore: false,
-    studyDailyLimit: 5,
-    academicPapersPerAnalysis: 10,
-  },
-  starter: {
-    monthlyAnalyses: 50,          // synced (was 60)
+
+  pro: {
+    monthlyAnalyses: 30,
     monthlyCredits: 3000,
-    maxVideoDuration: 7200,       // 2h max
-    chatQuestionsPerVideo: 25,    // synced (was 20)
-    chatDailyLimit: 80,           // synced (was 100)
-    maxPlaylistVideos: 0,
-    maxPlaylists: 0,
+    maxVideoDuration: 7200,         // 2h
+    chatQuestionsPerVideo: 25,
+    chatDailyLimit: -1,
+    maxPlaylistVideos: 5,
+    maxPlaylists: 3,
     maxExportsPerDay: 20,
     webSearchMonthly: 20,
-    historyDays: -1,              // synced (was 60) — permanent
+    historyDays: -1,
     apiRequestsDaily: 0,
     teamMembers: 1,
     studyQuizQuestions: 7,
@@ -100,25 +87,30 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyCanGenerateMore: true,
     studyDailyLimit: 10,
     academicPapersPerAnalysis: 15,
+    voiceChatMonthlyMinutes: 10,
+    debateMonthly: 10,
   },
-  pro: {
-    monthlyAnalyses: 200,         // synced (was 300)
-    monthlyCredits: 15000,
-    maxVideoDuration: 14400,      // 4h max
+
+  expert: {
+    monthlyAnalyses: 100,
+    monthlyCredits: 10000,
+    maxVideoDuration: 14400,        // 4h
     chatQuestionsPerVideo: -1,
     chatDailyLimit: -1,
     maxPlaylistVideos: 20,
     maxPlaylists: 10,
     maxExportsPerDay: -1,
-    webSearchMonthly: 100,
-    historyDays: -1,              // synced (was 180) — permanent
+    webSearchMonthly: 60,
+    historyDays: -1,
     apiRequestsDaily: 0,
     teamMembers: 1,
     studyQuizQuestions: 10,
     studyMindmapDepth: 4,
     studyCanGenerateMore: true,
     studyDailyLimit: 50,
-    academicPapersPerAnalysis: 30,
+    academicPapersPerAnalysis: 50,
+    voiceChatMonthlyMinutes: 20,
+    debateMonthly: 50,
   },
 };
 
@@ -153,10 +145,12 @@ export interface PlanFeatures {
   sharedWorkspace: boolean;
   slackIntegration: boolean;
   teamsIntegration: boolean;
-  // Academic sources
   academicSearch: boolean;
   bibliographyExport: boolean;
   academicFullText: boolean;
+  voiceChat: boolean;
+  debate: boolean;
+  deepResearch: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
@@ -173,7 +167,7 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     intelligentSearch: false,
     playlists: false,
     corpus: false,
-    flashcards: false,
+    flashcards: true,
     conceptMaps: false,
     citationExport: false,
     bibtexExport: false,
@@ -187,60 +181,33 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     sharedWorkspace: false,
     slackIntegration: false,
     teamsIntegration: false,
-    academicSearch: true,         // Basic search available
+    academicSearch: true,
     bibliographyExport: false,
     academicFullText: false,
+    voiceChat: false,
+    debate: true,
+    deepResearch: false,
   },
-  student: {
+
+  pro: {
     summaryExpress: true,
     summaryDetailed: true,
     summaryTimestamps: true,
     summaryConcepts: true,
     chatBasic: true,
-    chatWebSearch: false,         // synced — web search starts at Starter
-    chatSuggestedQuestions: true,
-    factCheckBasic: true,
-    factCheckAdvanced: false,
-    intelligentSearch: false,     // synced — starts at Starter
-    playlists: false,
-    corpus: false,
-    flashcards: true,             // Student killer feature
-    conceptMaps: true,            // Student killer feature
-    citationExport: true,
-    bibtexExport: true,
-    exportPdf: false,             // synced — PDF starts at Pro
-    exportMarkdown: true,         // synced — Markdown dès Student
-    exportTxt: true,
-    exportWatermark: false,
-    ttsAudio: true,
-    apiAccess: false,
-    prioritySupport: false,
-    sharedWorkspace: false,
-    slackIntegration: false,
-    teamsIntegration: false,
-    academicSearch: true,
-    bibliographyExport: true,
-    academicFullText: false,
-  },
-  starter: {
-    summaryExpress: true,
-    summaryDetailed: true,
-    summaryTimestamps: true,
-    summaryConcepts: true,
-    chatBasic: true,
-    chatWebSearch: true,          // Web search starts at Starter
+    chatWebSearch: true,
     chatSuggestedQuestions: true,
     factCheckBasic: true,
     factCheckAdvanced: false,
     intelligentSearch: true,
-    playlists: false,
+    playlists: true,
     corpus: false,
     flashcards: true,
     conceptMaps: true,
     citationExport: true,
-    bibtexExport: false,
-    exportPdf: false,             // synced — PDF starts at Pro
-    exportMarkdown: true,         // synced — Markdown dès Student
+    bibtexExport: true,
+    exportPdf: true,
+    exportMarkdown: true,
     exportTxt: true,
     exportWatermark: false,
     ttsAudio: true,
@@ -252,8 +219,12 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     academicSearch: true,
     bibliographyExport: true,
     academicFullText: false,
+    voiceChat: true,
+    debate: true,
+    deepResearch: false,
   },
-  pro: {
+
+  expert: {
     summaryExpress: true,
     summaryDetailed: true,
     summaryTimestamps: true,
@@ -283,6 +254,9 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     academicSearch: true,
     bibliographyExport: true,
     academicFullText: true,
+    voiceChat: true,
+    debate: true,
+    deepResearch: true,
   },
 };
 
@@ -311,7 +285,7 @@ export const PLANS_INFO: PlanInfo[] = [
   {
     id: 'free',
     name: { fr: 'Gratuit', en: 'Free' },
-    description: { fr: 'Pour découvrir', en: 'To discover' },
+    description: { fr: 'Pour découvrir DeepSight', en: 'Discover DeepSight' },
     price: 0,
     priceDisplay: { fr: '0€', en: 'Free' },
     color: '#6B7280',
@@ -322,46 +296,32 @@ export const PLANS_INFO: PlanInfo[] = [
     killerFeature: { fr: '5 analyses gratuites', en: '5 free analyses' },
   },
   {
-    id: 'student',
-    name: { fr: 'Starter', en: 'Starter' },
-    description: { fr: 'Pour réviser efficacement', en: 'For effective studying' },
-    price: 299,
-    priceDisplay: { fr: '2,99€/mois', en: '€2.99/mo' },
-    color: '#10B981',
-    icon: 'school-outline',
-    gradient: ['#10B981', '#059669'],
-    order: 1,
-    targetAudience: { fr: 'Étudiants & Apprenants', en: 'Students & Learners' },
-    killerFeature: { fr: 'Flashcards & Cartes mentales', en: 'Flashcards & Mind maps' },
-  },
-  {
-    id: 'starter',
-    name: { fr: 'Standard', en: 'Standard' },
+    id: 'pro',
+    name: { fr: 'Pro', en: 'Pro' },
     description: { fr: 'Pour les utilisateurs réguliers', en: 'For regular users' },
     price: 599,
     priceDisplay: { fr: '5,99€/mois', en: '€5.99/mo' },
-    badge: { fr: 'Populaire étudiants', en: 'Popular with students' },
+    badge: { fr: 'Le plus populaire', en: 'Most popular' },
+    popular: true,
     color: '#3B82F6',
-    icon: 'flash-outline',
+    icon: 'star-outline',
     gradient: ['#3B82F6', '#2563EB'],
-    order: 2,
-    targetAudience: { fr: 'Particuliers & Étudiants', en: 'Individuals & Students' },
-    killerFeature: { fr: '50 analyses/mois', en: '50 analyses/month' },
+    order: 1,
+    targetAudience: { fr: 'Étudiants & Particuliers', en: 'Students & Individuals' },
+    killerFeature: { fr: '30 analyses + Mindmap + Web Search', en: '30 analyses + Mindmap + Web Search' },
   },
   {
-    id: 'pro',
-    name: { fr: 'Pro', en: 'Pro' },
+    id: 'expert',
+    name: { fr: 'Expert', en: 'Expert' },
     description: { fr: 'Pour les créateurs & professionnels', en: 'For creators & professionals' },
-    price: 1299,
-    priceDisplay: { fr: '12,99€/mois', en: '€12.99/mo' },
-    badge: { fr: 'Populaire', en: 'Popular' },
-    popular: true,
-    color: '#8B5CF6',
-    icon: 'star-outline',
-    gradient: ['#8B5CF6', '#7C3AED'],
-    order: 3,
-    targetAudience: { fr: 'Créateurs & Profs', en: 'Creators & Teachers' },
-    killerFeature: { fr: 'Playlists (20 vidéos)', en: 'Playlists (20 videos)' },
+    price: 1499,
+    priceDisplay: { fr: '14,99€/mois', en: '€14.99/mo' },
+    color: '#F59E0B',
+    icon: 'trophy-outline',
+    gradient: ['#F59E0B', '#D97706'],
+    order: 2,
+    targetAudience: { fr: 'Créateurs & Chercheurs', en: 'Creators & Researchers' },
+    killerFeature: { fr: '100 analyses + Deep Research + Mistral Large', en: '100 analyses + Deep Research + Mistral Large' },
   },
 ];
 
@@ -405,7 +365,7 @@ export const TESTIMONIALS: Testimonial[] = [
       fr: 'DeepSight m\'a fait gagner des heures de prise de notes. Je peux maintenant me concentrer sur la compréhension plutôt que la transcription.',
       en: 'DeepSight saved me hours of note-taking. I can now focus on understanding rather than transcribing.',
     },
-    plan: 'student',
+    plan: 'pro',
     rating: 5,
   },
   {
@@ -413,10 +373,10 @@ export const TESTIMONIALS: Testimonial[] = [
     name: 'Thomas R.',
     role: { fr: 'Créateur de contenu', en: 'Content Creator' },
     quote: {
-      fr: 'J\'analyse 20+ vidéos par semaine pour ma veille. L\'analyse de playlists Pro est un game-changer.',
-      en: 'I analyze 20+ videos weekly for research. The Pro playlist analysis is a game-changer.',
+      fr: 'J\'analyse 20+ vidéos par semaine pour ma veille. L\'analyse de playlists est un game-changer.',
+      en: 'I analyze 20+ videos weekly for research. Playlist analysis is a game-changer.',
     },
-    plan: 'pro',
+    plan: 'expert',
     rating: 5,
   },
   {
@@ -427,7 +387,7 @@ export const TESTIMONIALS: Testimonial[] = [
       fr: 'Les exports BibTeX et le fact-checking sont indispensables pour mes publications académiques.',
       en: 'BibTeX exports and fact-checking are essential for my academic publications.',
     },
-    plan: 'pro',
+    plan: 'expert',
     rating: 5,
   },
   {
@@ -435,8 +395,8 @@ export const TESTIMONIALS: Testimonial[] = [
     name: 'Alex K.',
     role: { fr: 'Développeur freelance', en: 'Freelance Developer' },
     quote: {
-      fr: 'Je peux parcourir des heures de tutoriels en quelques minutes. ROI incroyable pour 12€/mois.',
-      en: 'I can go through hours of tutorials in minutes. Incredible ROI for €12/month.',
+      fr: 'Je peux parcourir des heures de tutoriels en quelques minutes. ROI incroyable pour 5,99€/mois.',
+      en: 'I can go through hours of tutorials in minutes. Incredible ROI for €5.99/month.',
     },
     plan: 'pro',
     rating: 5,
@@ -449,7 +409,7 @@ export const TESTIMONIALS: Testimonial[] = [
       fr: 'Les flashcards générées automatiquement m\'aident à créer des supports de cours rapidement.',
       en: 'Auto-generated flashcards help me create course materials quickly.',
     },
-    plan: 'student',
+    plan: 'pro',
     rating: 5,
   },
 ];
@@ -473,7 +433,7 @@ export const PRO_BENEFITS: ProBenefit[] = [
   {
     icon: 'list-outline',
     title: { fr: 'Playlists', en: 'Playlists' },
-    description: { fr: 'Analysez jusqu\'à 20 vidéos d\'un coup', en: 'Analyze up to 20 videos at once' },
+    description: { fr: 'Analysez jusqu\'à 5 vidéos d\'un coup', en: 'Analyze up to 5 videos at once' },
   },
   {
     icon: 'school-outline',
@@ -482,8 +442,8 @@ export const PRO_BENEFITS: ProBenefit[] = [
   },
   {
     icon: 'shield-checkmark-outline',
-    title: { fr: 'Fact-checking', en: 'Fact-checking' },
-    description: { fr: 'Vérifiez les affirmations avec Perplexity', en: 'Verify claims with Perplexity' },
+    title: { fr: 'Fact-checking + Web Search', en: 'Fact-checking + Web Search' },
+    description: { fr: 'Vérifiez les affirmations avec l\'IA', en: 'Verify claims with AI' },
   },
 ];
 
@@ -491,8 +451,11 @@ export const PRO_BENEFITS: ProBenefit[] = [
 // UTILITY FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
+const PLAN_ORDER: PlanId[] = ['free', 'pro', 'expert'];
+
 /**
- * Normalize a plan name to a valid PlanId
+ * Normalize a plan name to a valid PlanId.
+ * Handles legacy aliases (student→pro, starter→pro, team→expert, etc.)
  */
 export function normalizePlanId(plan: string | undefined): PlanId {
   if (!plan) return 'free';
@@ -505,15 +468,18 @@ export function normalizePlanId(plan: string | undefined): PlanId {
     'découverte': 'free',
     'decouverte': 'free',
     'discovery': 'free',
-    'student': 'student',
-    'étudiant': 'student',
-    'etudiant': 'student',
-    'starter': 'starter',
+    // Legacy → Pro
+    'student': 'pro',
+    'étudiant': 'pro',
+    'etudiant': 'pro',
+    'starter': 'pro',
     'pro': 'pro',
-    'team': 'pro',
-    'équipe': 'pro',
-    'equipe': 'pro',
-    'expert': 'pro',
+    // Legacy → Expert
+    'expert': 'expert',
+    'team': 'expert',
+    'équipe': 'expert',
+    'equipe': 'expert',
+    'unlimited': 'expert',
   };
 
   return planMapping[normalized] || 'free';
@@ -570,13 +536,12 @@ export function isPlanHigher(currentPlan: PlanId | string, targetPlan: PlanId | 
  * Get minimum plan required for a feature
  */
 export function getMinPlanForFeature(feature: keyof PlanFeatures): PlanId {
-  const planOrder: PlanId[] = ['free', 'student', 'starter', 'pro'];
-  for (const plan of planOrder) {
+  for (const plan of PLAN_ORDER) {
     if (PLAN_FEATURES[plan][feature]) {
       return plan;
     }
   }
-  return 'pro';
+  return 'expert';
 }
 
 /**
@@ -676,14 +641,13 @@ export function getFeatureListForDisplay(plan: PlanId, language: 'fr' | 'en'): A
     { text: analysesText, included: true, highlight: limits.monthlyAnalyses === -1 },
     { text: chatText, included: features.chatBasic },
     { text: webSearchText, included: features.chatWebSearch, highlight: features.chatWebSearch },
-    { text: language === 'fr' ? 'Flashcards & Cartes mentales' : 'Flashcards & Mind maps', included: features.flashcards, highlight: features.flashcards && plan === 'student' },
+    { text: language === 'fr' ? 'Flashcards & Cartes mentales' : 'Flashcards & Mind maps', included: features.flashcards && features.conceptMaps, highlight: plan === 'pro' },
     { text: playlistText, included: features.playlists, highlight: features.playlists },
     { text: language === 'fr' ? 'Export PDF' : 'PDF export', included: features.exportPdf },
     { text: language === 'fr' ? 'Export Markdown' : 'Markdown export', included: features.exportMarkdown },
     { text: language === 'fr' ? 'Export BibTeX' : 'BibTeX export', included: features.bibtexExport },
     { text: language === 'fr' ? 'Lecture audio TTS' : 'TTS audio playback', included: features.ttsAudio },
-    { text: language === 'fr' ? 'Accès API' : 'API access', included: features.apiAccess, highlight: features.apiAccess },
-    { text: language === 'fr' ? `${limits.teamMembers} utilisateur${limits.teamMembers > 1 ? 's' : ''}` : `${limits.teamMembers} user${limits.teamMembers > 1 ? 's' : ''}`, included: limits.teamMembers > 1, highlight: limits.teamMembers > 1 },
+    { text: language === 'fr' ? 'Deep Research' : 'Deep Research', included: features.deepResearch, highlight: features.deepResearch },
   ].filter(f => f.included || plan !== 'free');
 }
 

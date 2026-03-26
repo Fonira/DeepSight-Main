@@ -23,7 +23,7 @@ interface TTSState {
 }
 
 const PLAN_RANK: Record<string, number> = {
-  free: 0, decouverte: 0, etudiant: 1, student: 1, starter: 2, pro: 3, expert: 3,
+  free: 0, decouverte: 0, pro: 1, expert: 2, etudiant: 1, student: 1, starter: 1,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -72,7 +72,7 @@ function saveSettings(): void {
 export async function isTTSPremium(): Promise<boolean> {
   const user = await getStoredUser();
   const plan = user?.plan || 'free';
-  return (PLAN_RANK[plan] ?? 0) >= 1; // etudiant+ = TTS enabled
+  return (PLAN_RANK[plan] ?? 0) >= 1; // pro+ = TTS enabled
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

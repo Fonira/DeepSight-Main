@@ -5,9 +5,8 @@ import type { PlanType } from '../constants/config';
 /** Credit limits per plan (mirrors backend config) */
 const PLAN_CREDITS: Record<string, number> = {
   free: 150,
-  student: 2000,
-  starter: 3000,
-  pro: 15000,
+  pro: 3000,
+  expert: 10000,
 };
 
 export function useCredits() {

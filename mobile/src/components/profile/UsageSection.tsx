@@ -8,10 +8,9 @@ import { sp, borderRadius } from '@/theme/spacing';
 import { fontFamily, fontSize } from '@/theme/typography';
 
 const PLAN_ANALYSES: Record<string, number> = {
-  free: 3,
-  student: 40,
-  starter: 60,
-  pro: 300,
+  free: 5,
+  pro: 30,
+  expert: 100,
 };
 
 export const UsageSection: React.FC = () => {

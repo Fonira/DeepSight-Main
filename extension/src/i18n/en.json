@@ -30,33 +30,24 @@
   },
   "plans": {
     "free": "Free",
-    "etudiant": "Starter",
-    "student": "Starter",
-    "starter": "Standard",
     "pro": "Pro",
-    "equipe": "Pro",
-    "team": "Pro"
+    "expert": "Expert",
+    "etudiant": "Pro",
+    "student": "Pro",
+    "starter": "Pro",
+    "equipe": "Expert",
+    "team": "Expert"
   },
   "upsell": {
     "free": {
-      "label": "Starter",
-      "feature": "Flashcards + Mind maps",
-      "price": "€2.99"
-    },
-    "etudiant": {
-      "label": "Standard",
-      "feature": "AI Web search + 50 analyses",
-      "price": "€5.99"
-    },
-    "student": {
-      "label": "Standard",
-      "feature": "AI Web search + 50 analyses",
-      "price": "€5.99"
-    },
-    "starter": {
       "label": "Pro",
-      "feature": "Playlists + Exports + Unlimited chat",
-      "price": "€12.99"
+      "feature": "30 analyses + Mind maps + Web Search",
+      "price": "€5.99"
+    },
+    "pro": {
+      "label": "Expert",
+      "feature": "100 analyses + Mistral Large + 20-video playlists",
+      "price": "€14.99"
     }
   },
   "analysis": {
@@ -209,43 +200,25 @@
   "promos": {
     "free": [
       {
-        "text": "Study with AI Flashcards — from €2.99/mo",
-        "cta": "Unlock Starter"
+        "text": "30 analyses/month + Mind maps + Web Search — from €5.99/mo",
+        "cta": "Upgrade to Pro"
       },
       {
-        "text": "AI Mind maps for every video — from €2.99/mo",
-        "cta": "View plans"
-      },
-      {
-        "text": "Only 5 analyses/month? Get 20 with Starter",
+        "text": "Only 5 analyses/month? Get 30 with Pro",
         "cta": "Upgrade →"
-      }
-    ],
-    "starter": [
-      {
-        "text": "AI Web search to cross-reference sources — Standard plan",
-        "cta": "Unlock"
-      },
-      {
-        "text": "50 analyses/month + 2h videos — Upgrade to Standard",
-        "cta": "View plans"
-      }
-    ],
-    "standard": [
-      {
-        "text": "Analyze entire playlists — Upgrade to Pro",
-        "cta": "Unlock Pro"
-      },
-      {
-        "text": "Export to PDF/DOCX — Pro at €12.99/mo",
-        "cta": "View plans"
       }
     ],
     "pro": [
       {
+        "text": "100 analyses/month + Mistral Large + 20-video playlists — Expert",
+        "cta": "Upgrade to Expert"
+      },
+      {
         "text": "DeepSight on mobile — study your flashcards anywhere",
         "cta": "Download"
-      },
+      }
+    ],
+    "expert": [
       {
         "text": "Manage your playlists and exports on deepsightsynthesis.com",
         "cta": "Open"

@@ -46,14 +46,14 @@ export const colors = {
     errorMuted: 'rgba(239, 68, 68, 0.12)',
   },
   plan: {
-    free: { color: '#6b6b80', bg: 'rgba(107, 107, 128, 0.12)' },
-    etudiant: { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)' },
-    starter: { color: '#10b981', bg: 'rgba(16, 185, 129, 0.12)' },
-    pro: { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.12)' },
-    // Aliases pour rétrocompat
-    student: { color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.12)' },
-    team: { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.12)' },
-    expert: { color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.12)' },
+    free: { color: '#6B7280', bg: 'rgba(107, 114, 128, 0.12)' },
+    pro: { color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.12)' },
+    expert: { color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)' },
+    // Legacy aliases
+    etudiant: { color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.12)' },
+    starter: { color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.12)' },
+    student: { color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.12)' },
+    team: { color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)' },
   },
 } as const;
 

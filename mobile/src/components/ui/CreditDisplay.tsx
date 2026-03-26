@@ -166,9 +166,8 @@ export const CreditDisplay: React.FC<CreditDisplayProps> = ({
 function getMaxCredits(plan: string): number {
   const limits: Record<string, number> = {
     free: 5,
-    starter: 30,
-    pro: 100,
-    expert: -1, // unlimited
+    pro: 30,
+    expert: 100,
   };
   return limits[plan] ?? 5;
 }

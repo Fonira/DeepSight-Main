@@ -264,12 +264,12 @@ STRIPE_CONFIG = {
         "pro": {
             "test": _settings.STRIPE_PRICE_PRO_TEST,
             "live": _settings.STRIPE_PRICE_PRO_LIVE,
-            "amount": 399, "credits": 50, "name": "Pro"
+            "amount": 599, "credits": 30, "name": "Pro"
         },
         "expert": {
             "test": _settings.STRIPE_PRICE_EXPERT_TEST,
             "live": _settings.STRIPE_PRICE_EXPERT_LIVE,
-            "amount": 999, "credits": 200, "name": "Expert"
+            "amount": 1499, "credits": 100, "name": "Expert"
         }
     },
 }
@@ -364,23 +364,23 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         }
     },
     "pro": {
-        "monthly_credits": 5000,
-        "daily_analyses": 50,
+        "monthly_credits": 3000,
+        "daily_analyses": 30,
         "can_use_playlists": True,
-        "max_playlist_videos": 10,
+        "max_playlist_videos": 5,
         "history_days": -1,
         "models": ["mistral-small-2603", "mistral-medium-2508"],
         "default_model": "mistral-medium-2508",
         "name": {"fr": "PRO", "en": "PRO"},
         "color": "#3B82F6",
-        "price": 399,
-        "price_display": {"fr": "3.99\u20ac/mois", "en": "\u20ac3.99/mo"},
+        "price": 599,
+        "price_display": {"fr": "5.99\u20ac/mois", "en": "\u20ac5.99/mo"},
         "playlist_credits_per_3_videos": 1,
         "chat_daily_limit": -1,
-        "chat_per_video_limit": 30,
+        "chat_per_video_limit": 25,
         "chat_playlist_enabled": True,
         "chat_corpus_daily": -1,
-        "web_search_monthly": 30,
+        "web_search_monthly": 20,
         "web_search_per_video": 5,
         "web_search_enabled": True,
         "deep_research_enabled": False,
@@ -389,7 +389,7 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "bibliography_export": True,
         "academic_full_text": False,
         "voice_chat_enabled": True,
-        "voice_monthly_minutes": 15,
+        "voice_monthly_minutes": 10,
         "blocked_features": ["batch_api", "deep_research"],
         "upgrade_prompt": {
             "fr": "Passez \u00e0 Expert pour la recherche approfondie et le chat illimit\u00e9 !",
@@ -397,8 +397,8 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         }
     },
     "expert": {
-        "monthly_credits": 15000,
-        "daily_analyses": 200,
+        "monthly_credits": 10000,
+        "daily_analyses": 100,
         "can_use_playlists": True,
         "max_playlist_videos": 20,
         "history_days": -1,
@@ -406,14 +406,14 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "default_model": "mistral-large-2512",
         "name": {"fr": "EXPERT", "en": "EXPERT"},
         "color": "#F59E0B",
-        "price": 999,
-        "price_display": {"fr": "9.99\u20ac/mois", "en": "\u20ac9.99/mo"},
+        "price": 1499,
+        "price_display": {"fr": "14.99\u20ac/mois", "en": "\u20ac14.99/mo"},
         "playlist_credits_per_3_videos": 1,
         "chat_daily_limit": -1,
         "chat_per_video_limit": -1,
         "chat_playlist_enabled": True,
         "chat_corpus_daily": -1,
-        "web_search_monthly": 100,
+        "web_search_monthly": 60,
         "web_search_per_video": 10,
         "web_search_enabled": True,
         "deep_research_enabled": True,
@@ -422,7 +422,7 @@ PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
         "bibliography_export": True,
         "academic_full_text": True,
         "voice_chat_enabled": True,
-        "voice_monthly_minutes": 45,
+        "voice_monthly_minutes": 20,
         "blocked_features": [],
         "upgrade_prompt": {
             "fr": "Vous avez le plan Expert, toutes les fonctionnalit\u00e9s sont d\u00e9bloqu\u00e9es !",
@@ -497,8 +497,8 @@ R2_CONFIG = {
 
 VOICE_LIMITS: Dict[str, Dict[str, Any]] = {
     "free":      {"enabled": False, "monthly_minutes": 0,   "max_session_minutes": 0},
-    "pro":       {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},
-    "expert":    {"enabled": True,  "monthly_minutes": 45,  "max_session_minutes": 15},
+    "pro":       {"enabled": True,  "monthly_minutes": 10,  "max_session_minutes": 10},
+    "expert":    {"enabled": True,  "monthly_minutes": 20,  "max_session_minutes": 15},
     "unlimited": {"enabled": True,  "monthly_minutes": 999, "max_session_minutes": 30},
 }
 
