@@ -4543,114 +4543,140 @@ async def _detect_video_screenshot(
     api_key: str,
 ) -> Optional[Dict[str, str]]:
     """
-    📱 Détecte si une image est une capture d'écran de YouTube Shorts ou TikTok.
+    📱 Détecte si une image est une capture d'écran YouTube/TikTok.
 
-    Envoie l'image à Mistral Vision avec un prompt de détection.
-    Retourne un dict avec platform, search_query, video_url si détecté, sinon None.
+    Utilise l'API OCR dédiée de Mistral (/v1/ocr) qui a son propre rate limit
+    séparé du chat completions. Extrait le texte visible puis parse pour
+    trouver des URLs YouTube/TikTok et des indices de plateforme.
+
+    Aucun appel Vision (chat completions) — zéro impact sur le quota chat.
     """
     import httpx as httpx_client
+    import re
 
     b64_data = image.data
     if b64_data.startswith("data:"):
         b64_data = b64_data.split(",", 1)[-1]
     data_uri = f"data:{image.mime_type};base64,{b64_data}"
 
-    detection_prompt = (
-        "Regarde attentivement cette image. Est-ce une CAPTURE D'ÉCRAN montrant "
-        "une vidéo YouTube (ou YouTube Shorts) ou TikTok ?\n\n"
-        "La capture peut venir de N'IMPORTE QUEL appareil :\n"
-        "- **Mobile** (iPhone, Android) : app YouTube, app TikTok, YouTube Shorts\n"
-        "- **PC/Mac** (navigateur) : youtube.com, tiktok.com dans Chrome/Firefox/Safari/Edge\n\n"
-        "Indices à chercher :\n"
-        "**YouTube mobile** : boutons like/dislike, barre de progression, logo YouTube, titre, nom de chaîne\n"
-        "**YouTube Shorts mobile** : scroll vertical, boutons à droite (like, comment, share), @chaîne\n"
-        "**YouTube PC/Mac** : player vidéo avec contrôles, titre en dessous, nom de chaîne, barre latérale de suggestions, URL youtube.com visible\n"
-        "**TikTok mobile** : boutons à droite (coeur, commentaire, partage), @username, description en bas, logo TikTok\n"
-        "**TikTok PC/Mac** : player centré, @username, description, boutons like/comment, barre latérale, URL tiktok.com visible\n\n"
-        "IMPORTANT : Si tu vois une URL dans la barre d'adresse du navigateur (youtube.com/watch?v=..., "
-        "youtu.be/..., tiktok.com/@.../video/...), EXTRAIS-LA EXACTEMENT.\n\n"
-        "RÉPONDS UNIQUEMENT dans ce format JSON exact (rien d'autre) :\n"
-        '{"is_screenshot": true/false, "platform": "youtube"|"tiktok"|null, '
-        '"video_url": "URL complète visible dans la barre d\'adresse ou null", '
-        '"video_title": "titre visible ou null", "channel": "@nom ou nom de chaîne ou null", '
-        '"description": "description visible ou null"}\n\n'
-        "Si ce n'est PAS une capture d'écran de YouTube ou TikTok, réponds :\n"
-        '{"is_screenshot": false, "platform": null, "video_url": null, "video_title": null, "channel": null, "description": null}'
-    )
-
     try:
-        text = await _mistral_vision_request(
-            api_key=api_key,
-            messages=[
-                {"role": "user", "content": [
-                    {"type": "image_url", "image_url": data_uri},
-                    {"type": "text", "text": detection_prompt},
-                ]},
-            ],
-            max_tokens=300,
-            temperature=0.0,
-            response_format={"type": "json_object"},
-            timeout=30.0,
-            max_retries=1,
-            fallback_models=["pixtral-large-2411", "mistral-medium-2508", "ministral-8b-latest", "mistral-large-latest"],
-        )
+        # ── Étape 1 : OCR via /v1/ocr (quota séparé) ──
+        async with httpx_client.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.mistral.ai/v1/ocr",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "mistral-ocr-latest",
+                    "document": {
+                        "type": "image_url",
+                        "image_url": data_uri,
+                    },
+                },
+            )
 
-        if not text:
+            if response.status_code != 200:
+                logger.warning(f"[SCREENSHOT_DETECT] OCR API error: {response.status_code}")
+                return None
+
+            ocr_data = response.json()
+            # Assembler tout le texte OCR
+            ocr_text = ""
+            for page in ocr_data.get("pages", []):
+                ocr_text += page.get("markdown", "") + "\n"
+
+            if not ocr_text.strip():
+                return None
+
+        logger.info(f"[SCREENSHOT_DETECT] OCR extracted {len(ocr_text)} chars")
+
+        # ── Étape 2 : Chercher des URLs YouTube/TikTok dans le texte OCR ──
+        video_url = None
+        platform = None
+
+        # YouTube URLs
+        yt_patterns = [
+            r'(https?://(?:www\.)?youtube\.com/watch\?v=[A-Za-z0-9_-]+[^\s\)\"\']*)',
+            r'(https?://youtu\.be/[A-Za-z0-9_-]+[^\s\)\"\']*)',
+            r'(https?://(?:www\.)?youtube\.com/shorts/[A-Za-z0-9_-]+[^\s\)\"\']*)',
+            r'(youtube\.com/watch\?v=[A-Za-z0-9_-]+[^\s\)\"\']*)',
+        ]
+        for pattern in yt_patterns:
+            match = re.search(pattern, ocr_text)
+            if match:
+                url = match.group(1)
+                if not url.startswith("http"):
+                    url = "https://" + url
+                video_url = url
+                platform = "youtube"
+                logger.info(f"[SCREENSHOT_DETECT] YouTube URL found in OCR: {video_url}")
+                break
+
+        # TikTok URLs
+        if not video_url:
+            tt_patterns = [
+                r'(https?://(?:www\.)?tiktok\.com/@[\w.-]+/video/\d+[^\s\)\"\']*)',
+                r'(https?://vm\.tiktok\.com/[\w-]+[^\s\)\"\']*)',
+                r'(tiktok\.com/@[\w.-]+/video/\d+)',
+            ]
+            for pattern in tt_patterns:
+                match = re.search(pattern, ocr_text)
+                if match:
+                    url = match.group(1)
+                    if not url.startswith("http"):
+                        url = "https://" + url
+                    video_url = url
+                    platform = "tiktok"
+                    logger.info(f"[SCREENSHOT_DETECT] TikTok URL found in OCR: {video_url}")
+                    break
+
+        # ── Étape 3 : Si pas d'URL, chercher des indices de plateforme ──
+        if not platform:
+            ocr_lower = ocr_text.lower()
+            yt_indicators = ["youtube", "subscribe", "s'abonner", "views", "vues", "shorts"]
+            tt_indicators = ["tiktok", "pour toi", "for you", "fyp", "following"]
+
+            yt_score = sum(1 for ind in yt_indicators if ind in ocr_lower)
+            tt_score = sum(1 for ind in tt_indicators if ind in ocr_lower)
+
+            if yt_score >= 2:
+                platform = "youtube"
+            elif tt_score >= 2:
+                platform = "tiktok"
+
+        if not platform:
             return None
 
-            # Parser le JSON
-            import json as json_module
-            try:
-                result = json_module.loads(text)
-            except json_module.JSONDecodeError:
-                # Tenter d'extraire le JSON du texte
-                import re
-                match = re.search(r'\{.*\}', text, re.DOTALL)
-                if match:
-                    result = json_module.loads(match.group())
-                else:
-                    return None
+        # ── Étape 4 : Extraire titre et chaîne du texte OCR ──
+        # Chercher des patterns de chaîne (@username)
+        channel = None
+        channel_match = re.search(r'@([\w.-]{2,30})', ocr_text)
+        if channel_match:
+            channel = f"@{channel_match.group(1)}"
 
-            if not result.get("is_screenshot"):
-                return None
+        # Le titre est plus difficile à extraire sans Vision, on prend les premières lignes significatives
+        lines = [l.strip() for l in ocr_text.split('\n') if l.strip() and len(l.strip()) > 10]
+        video_title = lines[0] if lines else None
 
-            platform = result.get("platform")
-            if platform not in ("youtube", "tiktok"):
-                return None
+        # Construire la query de recherche
+        parts = []
+        if video_title:
+            parts.append(video_title[:80])
+        if channel:
+            parts.append(channel)
+        search_query = " ".join(parts) if parts else None
 
-            # Construire la query de recherche
-            parts = []
-            if result.get("video_title"):
-                parts.append(result["video_title"])
-            if result.get("channel"):
-                parts.append(result["channel"])
-            if not parts and result.get("description"):
-                parts.append(result["description"][:100])
+        logger.info(f"[SCREENSHOT_DETECT] Detected {platform}: url='{video_url}' title='{video_title}' channel='{channel}'")
 
-            search_query = " ".join(parts) if parts else None
-
-            # Extraire l'URL directement si visible (screenshot PC avec barre d'adresse)
-            video_url = None
-            raw_url = result.get("video_url")
-            if raw_url and isinstance(raw_url, str):
-                import re
-                # Valider que c'est bien une URL YouTube ou TikTok
-                if re.search(r'youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/', raw_url):
-                    video_url = raw_url.strip()
-                    logger.info(f"[SCREENSHOT_DETECT] URL extracted from address bar: {video_url}")
-                elif re.search(r'tiktok\.com/.*/video/\d+|vm\.tiktok\.com/', raw_url):
-                    video_url = raw_url.strip()
-                    logger.info(f"[SCREENSHOT_DETECT] TikTok URL extracted: {video_url}")
-
-            logger.info(f"[SCREENSHOT_DETECT] Detected {platform}: url='{video_url}' title='{result.get('video_title')}' channel='{result.get('channel')}'")
-
-            return {
-                "platform": platform,
-                "search_query": search_query,
-                "video_title": result.get("video_title"),
-                "channel": result.get("channel"),
-                "video_url": video_url,
-            }
+        return {
+            "platform": platform,
+            "search_query": search_query,
+            "video_title": video_title,
+            "channel": channel,
+            "video_url": video_url,
+        }
 
     except Exception as e:
         logger.warning(f"[SCREENSHOT_DETECT] Error: {e}")
