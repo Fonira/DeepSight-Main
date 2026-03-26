@@ -397,19 +397,18 @@ interface FeatureTeaser {
 }
 
 const FEATURE_TEASERS: FeatureTeaser[] = [
-  { icon: '\u{1F0CF}', label: 'Flashcards IA', minPlan: 'etudiant', url: `${WEBAPP_URL}/upgrade` },
-  { icon: '\u{1F9E0}', label: 'Carte mentale', minPlan: 'etudiant', url: `${WEBAPP_URL}/upgrade` },
-  { icon: '\u{1F310}', label: 'Recherche web IA', minPlan: 'starter', url: `${WEBAPP_URL}/upgrade` },
+  { icon: '\u{1F0CF}', label: 'Flashcards IA', minPlan: 'free', url: `${WEBAPP_URL}/upgrade` },
+  { icon: '\u{1F9E0}', label: 'Carte mentale', minPlan: 'pro', url: `${WEBAPP_URL}/upgrade` },
+  { icon: '\u{1F310}', label: 'Recherche web IA', minPlan: 'pro', url: `${WEBAPP_URL}/upgrade` },
   { icon: '\u{1F4E6}', label: 'Export PDF/DOCX', minPlan: 'pro', url: `${WEBAPP_URL}/upgrade` },
   { icon: '\u{1F4CB}', label: 'Playlists enti\u00E8res', minPlan: 'pro', url: `${WEBAPP_URL}/upgrade` },
 ];
 
-const PLAN_RANK: Record<string, number> = { free: 0, etudiant: 1, student: 1, starter: 2, pro: 3 };
+const PLAN_RANK: Record<string, number> = { free: 0, pro: 1, expert: 2, etudiant: 1, student: 1, starter: 1 };
 
 const PLAN_PRICE_LABEL: Record<string, string> = {
-  etudiant: 'Starter 2,99\u20AC',
-  starter: 'Standard 5,99\u20AC',
-  pro: 'Pro 12,99\u20AC',
+  pro: 'Pro 5,99\u20AC',
+  expert: 'Expert 14,99\u20AC',
 };
 
 async function buildPremiumTeasers(summaryId: number): Promise<void> {

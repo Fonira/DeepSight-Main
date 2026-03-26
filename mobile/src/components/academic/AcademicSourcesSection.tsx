@@ -100,8 +100,8 @@ export const AcademicSourcesSection: React.FC<AcademicSourcesSectionProps> = ({
       Alert.alert(
         tr('Fonctionnalité Premium', 'Premium Feature'),
         tr(
-          'L\'export de bibliographie nécessite un abonnement Student ou supérieur.',
-          'Bibliography export requires a Student subscription or higher.'
+          'L\'export de bibliographie nécessite un abonnement Pro ou supérieur.',
+          'Bibliography export requires a Pro subscription or higher.'
         ),
         [
           { text: tr('Annuler', 'Cancel'), style: 'cancel' },

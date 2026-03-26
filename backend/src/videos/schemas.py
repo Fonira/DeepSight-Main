@@ -340,6 +340,49 @@ class InputType(str, Enum):
     URL = "url"
     RAW_TEXT = "raw_text"
     SEARCH = "search"
+    IMAGES = "images"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📸 ANALYSE D'IMAGES — Input images/screenshots utilisateur
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class ImageItem(BaseModel):
+    """Une image encodée en base64"""
+    data: str = Field(..., description="Image en base64 (sans préfixe data:...)")
+    mime_type: str = Field(default="image/jpeg", description="Type MIME: image/jpeg, image/png, image/webp")
+    filename: Optional[str] = Field(default=None, description="Nom de fichier original (optionnel)")
+
+
+class AnalyzeImagesRequest(BaseModel):
+    """Requête pour analyser des images collées/uploadées par l'utilisateur"""
+    images: List[ImageItem] = Field(..., description="Liste d'images en base64 (max 10)", min_length=1, max_length=10)
+    title: Optional[str] = Field(default=None, description="Titre donné par l'utilisateur (optionnel)", max_length=200)
+    context: Optional[str] = Field(default=None, description="Contexte additionnel (optionnel)", max_length=1000)
+    mode: str = Field(default="standard", description="Mode d'analyse: accessible, standard, expert")
+    lang: str = Field(default="fr", description="Langue: fr, en")
+    model: Optional[str] = Field(default=None, description="Modèle Mistral à utiliser")
+    category: Optional[str] = Field(default=None, description="Catégorie forcée (None = auto-détection)")
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "images": [{"data": "base64...", "mime_type": "image/png"}],
+                "title": "Capture d'écran article",
+                "mode": "standard",
+                "lang": "fr"
+            }
+        }
+
+
+class AnalyzeImagesResponse(BaseModel):
+    """Réponse de l'analyse d'images"""
+    task_id: str
+    status: str = "processing"
+    message: str = "Analyse des images en cours..."
+    image_count: int
+    estimated_duration_seconds: int = 30
+    cost: int = 1
 
 
 class ContentTypeEnum(str, Enum):

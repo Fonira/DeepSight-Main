@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 from db.database import get_session, User, Summary
 from auth.dependencies import get_current_user, get_verified_user, require_plan, check_daily_limit, require_feature, get_current_admin
-from core.config import PLAN_LIMITS, CATEGORIES
+from core.config import PLAN_LIMITS, CATEGORIES, get_mistral_key
 
 # Import du système de sécurité
 try:
@@ -44,7 +44,8 @@ from .schemas import (
     TaskStatusResponse, VideoInfoResponse, ExtensionSummaryResponse,
     GuestAnalyzeRequest, GuestAnalyzeResponse,
     QuickChatRequest, QuickChatResponse,
-    UpgradeQuickChatRequest, UpgradeQuickChatResponse
+    UpgradeQuickChatRequest, UpgradeQuickChatResponse,
+    AnalyzeImagesRequest, AnalyzeImagesResponse,
 )
 from .summary_extractor import extract_extension_summary
 from .service import (
@@ -4358,6 +4359,617 @@ async def get_video_freshness(
         "video_title": summary.video_title,
         **freshness.to_dict()
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📸 ANALYSE D'IMAGES — Input images/screenshots utilisateur
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.post("/analyze/images", response_model=AnalyzeImagesResponse)
+async def analyze_images(
+    request: AnalyzeImagesRequest,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_verified_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    📸 Analyse d'images collées/uploadées par l'utilisateur.
+
+    Utilise Mistral Vision pour :
+    1. Extraire le texte (OCR) de chaque image
+    2. Décrire les éléments visuels
+    3. Faire le lien entre toutes les images (narration, logique)
+    4. Générer une synthèse structurée
+
+    Limites :
+    - Max 10 images par requête
+    - Max 10 MB par image
+    - Formats : JPEG, PNG, WebP
+    - Coût : 1 crédit
+    """
+    # Validation
+    if len(request.images) > 10:
+        raise HTTPException(status_code=400, detail="Maximum 10 images par analyse")
+    if len(request.images) < 1:
+        raise HTTPException(status_code=400, detail="Au moins 1 image requise")
+
+    # Valider les tailles (base64 → ~1.37x taille originale, donc 14MB en b64 ≈ 10MB réel)
+    MAX_B64_SIZE = 14_000_000
+    for i, img in enumerate(request.images):
+        if len(img.data) > MAX_B64_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Image {i + 1} trop volumineuse (max 10 MB)"
+            )
+        if img.mime_type not in ("image/jpeg", "image/png", "image/webp"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Image {i + 1} : format non supporté ({img.mime_type}). Utiliser JPEG, PNG ou WebP."
+            )
+
+    # Vérifier les crédits
+    model = request.model or "mistral-small-2603"
+    credit_cost = get_credit_cost(model) if SECURITY_AVAILABLE else 1
+
+    if current_user.credits < credit_cost:
+        raise HTTPException(
+            status_code=402,
+            detail=f"Crédits insuffisants ({current_user.credits}/{credit_cost})"
+        )
+
+    # Générer un ID unique pour cet ensemble d'images
+    import hashlib
+    image_hash = hashlib.sha256(
+        f"{current_user.id}:{len(request.images)}:{request.images[0].data[:100]}".encode()
+    ).hexdigest()[:12]
+    image_id = f"img_{image_hash}"
+
+    # Créer la tâche
+    task_id = str(uuid4())
+    _task_store[task_id] = {
+        "status": "processing",
+        "progress": 0,
+        "message": f"Analyse de {len(request.images)} image(s) en cours...",
+        "image_id": image_id,
+        "user_id": current_user.id,
+    }
+
+    # Lancer l'analyse en background
+    background_tasks.add_task(
+        _analyze_images_background,
+        task_id=task_id,
+        images=request.images,
+        image_id=image_id,
+        title=request.title,
+        context=request.context,
+        user_id=current_user.id,
+        mode=request.mode,
+        lang=request.lang,
+        model=model,
+        category=request.category,
+    )
+
+    print(f"📸 [IMAGES] User {current_user.email} - {len(request.images)} images - task={task_id}", flush=True)
+
+    return AnalyzeImagesResponse(
+        task_id=task_id,
+        status="processing",
+        message=f"Analyse de {len(request.images)} image(s) en cours...",
+        image_count=len(request.images),
+        estimated_duration_seconds=15 + len(request.images) * 5,
+        cost=credit_cost,
+    )
+
+
+async def _detect_video_screenshot(
+    image: Any,
+    api_key: str,
+) -> Optional[Dict[str, str]]:
+    """
+    📱 Détecte si une image est une capture d'écran de YouTube Shorts ou TikTok.
+
+    Envoie l'image à Mistral Vision avec un prompt de détection.
+    Retourne un dict avec platform, search_query, video_url si détecté, sinon None.
+    """
+    import httpx as httpx_client
+
+    b64_data = image.data
+    if b64_data.startswith("data:"):
+        b64_data = b64_data.split(",", 1)[-1]
+    data_uri = f"data:{image.mime_type};base64,{b64_data}"
+
+    detection_prompt = (
+        "Regarde attentivement cette image. Est-ce une CAPTURE D'ÉCRAN montrant "
+        "une vidéo YouTube (ou YouTube Shorts) ou TikTok ?\n\n"
+        "La capture peut venir de N'IMPORTE QUEL appareil :\n"
+        "- **Mobile** (iPhone, Android) : app YouTube, app TikTok, YouTube Shorts\n"
+        "- **PC/Mac** (navigateur) : youtube.com, tiktok.com dans Chrome/Firefox/Safari/Edge\n\n"
+        "Indices à chercher :\n"
+        "**YouTube mobile** : boutons like/dislike, barre de progression, logo YouTube, titre, nom de chaîne\n"
+        "**YouTube Shorts mobile** : scroll vertical, boutons à droite (like, comment, share), @chaîne\n"
+        "**YouTube PC/Mac** : player vidéo avec contrôles, titre en dessous, nom de chaîne, barre latérale de suggestions, URL youtube.com visible\n"
+        "**TikTok mobile** : boutons à droite (coeur, commentaire, partage), @username, description en bas, logo TikTok\n"
+        "**TikTok PC/Mac** : player centré, @username, description, boutons like/comment, barre latérale, URL tiktok.com visible\n\n"
+        "RÉPONDS UNIQUEMENT dans ce format JSON exact (rien d'autre) :\n"
+        '{"is_screenshot": true/false, "platform": "youtube"|"tiktok"|null, '
+        '"video_title": "titre visible ou null", "channel": "@nom ou nom de chaîne ou null", '
+        '"description": "description visible ou null"}\n\n'
+        "Si ce n'est PAS une capture d'écran de YouTube ou TikTok, réponds :\n"
+        '{"is_screenshot": false, "platform": null, "video_title": null, "channel": null, "description": null}'
+    )
+
+    try:
+        async with httpx_client.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "mistral-small-2603",
+                    "messages": [
+                        {"role": "user", "content": [
+                            {"type": "image_url", "image_url": data_uri},
+                            {"type": "text", "text": detection_prompt},
+                        ]},
+                    ],
+                    "max_tokens": 300,
+                    "temperature": 0.0,
+                    "response_format": {"type": "json_object"},
+                },
+            )
+
+            if response.status_code != 200:
+                logger.warning(f"[SCREENSHOT_DETECT] Mistral error: {response.status_code}")
+                return None
+
+            text = response.json()["choices"][0]["message"]["content"].strip()
+
+            # Parser le JSON
+            import json as json_module
+            try:
+                result = json_module.loads(text)
+            except json_module.JSONDecodeError:
+                # Tenter d'extraire le JSON du texte
+                import re
+                match = re.search(r'\{.*\}', text, re.DOTALL)
+                if match:
+                    result = json_module.loads(match.group())
+                else:
+                    return None
+
+            if not result.get("is_screenshot"):
+                return None
+
+            platform = result.get("platform")
+            if platform not in ("youtube", "tiktok"):
+                return None
+
+            # Construire la query de recherche
+            parts = []
+            if result.get("video_title"):
+                parts.append(result["video_title"])
+            if result.get("channel"):
+                parts.append(result["channel"])
+            if not parts and result.get("description"):
+                parts.append(result["description"][:100])
+
+            search_query = " ".join(parts) if parts else None
+
+            logger.info(f"[SCREENSHOT_DETECT] Detected {platform}: title='{result.get('video_title')}' channel='{result.get('channel')}'")
+
+            return {
+                "platform": platform,
+                "search_query": search_query,
+                "video_title": result.get("video_title"),
+                "channel": result.get("channel"),
+                "video_url": None,  # On ne peut pas extraire l'URL directement
+            }
+
+    except Exception as e:
+        logger.warning(f"[SCREENSHOT_DETECT] Error: {e}")
+        return None
+
+
+async def _search_video_from_screenshot(
+    search_query: str,
+    platform: str,
+) -> Optional[str]:
+    """
+    🔍 Recherche une vidéo YouTube/TikTok à partir du titre et créateur extraits d'un screenshot.
+
+    Retourne l'URL de la vidéo si trouvée, sinon None.
+    """
+    if not search_query or len(search_query.strip()) < 3:
+        return None
+
+    try:
+        if platform == "youtube":
+            # Utiliser yt-dlp search (même méthode que intelligent_discovery)
+            import subprocess
+            import asyncio
+
+            cmd = [
+                "yt-dlp",
+                "--dump-json",
+                "--flat-playlist",
+                "--no-warnings",
+                "--geo-bypass",
+                f"ytsearch3:{search_query}",
+            ]
+
+            loop = asyncio.get_event_loop()
+
+            def run_search():
+                try:
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                    return result.stdout
+                except Exception:
+                    return ""
+
+            stdout = await loop.run_in_executor(None, run_search)
+
+            if stdout:
+                import json as json_module
+                for line in stdout.strip().split('\n'):
+                    if line:
+                        try:
+                            video = json_module.loads(line)
+                            video_id = video.get("id")
+                            if video_id:
+                                url = f"https://www.youtube.com/watch?v={video_id}"
+                                logger.info(f"[SCREENSHOT_SEARCH] Found YouTube: {url} ({video.get('title', '?')})")
+                                return url
+                        except json_module.JSONDecodeError:
+                            continue
+
+        elif platform == "tiktok":
+            # Pour TikTok, on ne peut pas facilement rechercher via yt-dlp
+            # Fallback: si le search_query contient un @username, construire l'URL
+            import re
+            username_match = re.search(r'@([\w.-]+)', search_query)
+            if username_match:
+                username = username_match.group(1)
+                logger.info(f"[SCREENSHOT_SEARCH] TikTok @{username} detected, but no direct search available")
+                # TikTok n'a pas de recherche publique simple — fallback image analysis
+                return None
+
+    except Exception as e:
+        logger.warning(f"[SCREENSHOT_SEARCH] Error: {e}")
+
+    return None
+
+
+async def _analyze_images_background(
+    task_id: str,
+    images: list,
+    image_id: str,
+    title: Optional[str],
+    context: Optional[str],
+    user_id: int,
+    mode: str,
+    lang: str,
+    model: str,
+    category: Optional[str] = None,
+):
+    """
+    📸 Analyse des images en background avec Mistral Vision.
+
+    Pipeline :
+    1. Envoyer les images à Mistral Vision (OCR + description)
+    2. Si plusieurs images : faire le lien narratif entre elles
+    3. Assembler un pseudo-transcript
+    4. Générer la synthèse DeepSight classique
+    5. Sauvegarder comme un Summary (platform="images")
+    """
+    from sqlalchemy.ext.asyncio import AsyncSession
+    from db.database import async_session_maker
+
+    print(f"📸 [IMAGES] Starting analysis for {image_id} ({len(images)} images)", flush=True)
+
+    try:
+        _task_store[task_id]["progress"] = 5
+        _task_store[task_id]["message"] = "Préparation des images..."
+
+        # ─── Phase 1 : Analyse Vision de toutes les images ───
+        _task_store[task_id]["progress"] = 10
+        _task_store[task_id]["message"] = "Extraction du texte et analyse visuelle (Mistral Vision)..."
+
+        api_key = get_mistral_key()
+        if not api_key:
+            raise Exception("Clé Mistral API non configurée")
+
+        # ─── Phase 0 : Détection screenshot YouTube/TikTok ───
+        # Si 1 seule image, vérifier si c'est une capture d'écran d'app vidéo
+        if len(images) == 1 and not title:
+            _task_store[task_id]["message"] = "Détection du type d'image..."
+            screenshot_result = await _detect_video_screenshot(images[0], api_key)
+
+            if screenshot_result:
+                platform = screenshot_result.get("platform")  # "youtube" ou "tiktok"
+                search_query = screenshot_result.get("search_query", "")
+                video_url = screenshot_result.get("video_url")
+
+                print(f"📱 [IMAGES] Screenshot detected: {platform} — query: '{search_query}'", flush=True)
+                _task_store[task_id]["progress"] = 15
+                _task_store[task_id]["message"] = f"Capture d'écran {platform} détectée ! Recherche de la vidéo..."
+
+                # Chercher la vidéo originale
+                found_url = video_url
+                if not found_url and search_query:
+                    found_url = await _search_video_from_screenshot(search_query, platform)
+
+                if found_url:
+                    print(f"🎯 [IMAGES] Video found: {found_url}", flush=True)
+                    _task_store[task_id]["progress"] = 20
+                    _task_store[task_id]["message"] = f"Vidéo trouvée ! Lancement de l'analyse vidéo..."
+
+                    # Basculer vers le pipeline vidéo classique
+                    from .schemas import AnalyzeVideoRequest
+                    analyze_request = AnalyzeVideoRequest(
+                        url=found_url,
+                        mode=mode,
+                        category=category,
+                        lang=lang,
+                        model=model,
+                    )
+
+                    # Créer une session et lancer l'analyse vidéo
+                    async with async_session_maker() as db_session:
+                        from sqlalchemy import select as sql_select
+                        user = (await db_session.execute(
+                            sql_select(User).where(User.id == user_id)
+                        )).scalar_one_or_none()
+
+                        if user:
+                            result = await analyze_video(
+                                request=analyze_request,
+                                background_tasks=BackgroundTasks(),
+                                current_user=user,
+                                session=db_session,
+                            )
+
+                            # Mettre à jour le task store avec le nouveau task_id
+                            _task_store[task_id]["status"] = "redirect"
+                            _task_store[task_id]["progress"] = 100
+                            _task_store[task_id]["message"] = f"Vidéo {platform} détectée et analysée"
+                            _task_store[task_id]["result"] = {
+                                "redirected_to_video": True,
+                                "video_url": found_url,
+                                "platform": platform,
+                                "new_task_id": result.task_id,
+                            }
+                            print(f"✅ [IMAGES] Redirected to video pipeline: {found_url} → task={result.task_id}", flush=True)
+                            return  # Sortir du pipeline images
+
+                    print(f"⚠️ [IMAGES] User not found for redirect, falling back to image analysis", flush=True)
+                else:
+                    print(f"⚠️ [IMAGES] Video not found for query '{search_query}', falling back to image analysis", flush=True)
+                    _task_store[task_id]["message"] = "Vidéo non trouvée, analyse de l'image en cours..."
+
+        # Construire le message multimodal
+        vision_model = "mistral-small-2603"  # Vision-capable, cost-effective
+        image_count = len(images)
+
+        if lang == "fr":
+            if image_count == 1:
+                user_instruction = (
+                    "Analyse cette image en détail.\n\n"
+                    "Fournis :\n"
+                    "1. **[OCR]** Tout le texte visible, exactement comme écrit\n"
+                    "2. **[VISUEL]** Description des éléments visuels (graphiques, photos, schémas, captures d'écran)\n"
+                    "3. **[TYPE]** Type d'image (capture d'écran, infographie, photo, document, schéma, meme, tableau)\n"
+                    "4. **[SENS]** Le message principal ou l'information communiquée\n"
+                )
+            else:
+                user_instruction = (
+                    f"Analyse ces {image_count} images comme un ENSEMBLE COHÉRENT.\n\n"
+                    "Pour chaque image, fournis :\n"
+                    "1. **[OCR]** Tout le texte visible\n"
+                    "2. **[VISUEL]** Description des éléments visuels\n"
+                    "3. **[TYPE]** Type d'image\n\n"
+                    "Puis OBLIGATOIREMENT une section finale :\n"
+                    "**[LIENS ENTRE IMAGES]**\n"
+                    "- Quel est le fil conducteur ou la logique narrative entre les images ?\n"
+                    "- Comment les images se complètent-elles ?\n"
+                    "- Quel message global émerge de l'ensemble ?\n"
+                    "\nFormat de réponse pour chaque image :\n"
+                    "[Image N]\n"
+                    "OCR: ...\nVisuel: ...\nType: ...\n"
+                )
+        else:
+            if image_count == 1:
+                user_instruction = (
+                    "Analyze this image in detail.\n\n"
+                    "Provide:\n"
+                    "1. **[OCR]** All visible text, exactly as written\n"
+                    "2. **[VISUAL]** Description of visual elements (charts, photos, diagrams, screenshots)\n"
+                    "3. **[TYPE]** Image type (screenshot, infographic, photo, document, diagram, meme, table)\n"
+                    "4. **[MEANING]** The main message or information conveyed\n"
+                )
+            else:
+                user_instruction = (
+                    f"Analyze these {image_count} images as a COHERENT SET.\n\n"
+                    "For each image, provide:\n"
+                    "1. **[OCR]** All visible text\n"
+                    "2. **[VISUAL]** Description of visual elements\n"
+                    "3. **[TYPE]** Image type\n\n"
+                    "Then MANDATORY final section:\n"
+                    "**[LINKS BETWEEN IMAGES]**\n"
+                    "- What is the connecting thread or narrative logic between the images?\n"
+                    "- How do the images complement each other?\n"
+                    "- What overall message emerges from the set?\n"
+                    "\nOutput format for each image:\n"
+                    "[Image N]\n"
+                    "OCR: ...\nVisual: ...\nType: ...\n"
+                )
+
+        if context:
+            user_instruction += f"\n\nContexte additionnel fourni par l'utilisateur : {context}"
+
+        # Construire le contenu multimodal
+        content = [{"type": "text", "text": user_instruction}]
+        for img in images:
+            # Nettoyer le préfixe data:... si présent
+            b64_data = img.data
+            if b64_data.startswith("data:"):
+                # Extraire le base64 pur après la virgule
+                b64_data = b64_data.split(",", 1)[-1]
+            data_uri = f"data:{img.mime_type};base64,{b64_data}"
+            content.append({"type": "image_url", "image_url": data_uri})
+
+        system_prompt = (
+            "Tu es un expert en OCR et analyse d'images. "
+            "Tu extrais tout le texte visible et décris les éléments visuels avec précision. "
+            f"Réponds en {'français' if lang == 'fr' else 'anglais'}."
+        )
+
+        import httpx as httpx_client
+        async with httpx_client.AsyncClient(timeout=120.0) as client:
+            response = await client.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": vision_model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": content},
+                    ],
+                    "max_tokens": 6000,
+                    "temperature": 0.1,
+                },
+            )
+
+            if response.status_code != 200:
+                raise Exception(f"Mistral Vision error: {response.status_code} - {response.text[:300]}")
+
+            vision_result = response.json()["choices"][0]["message"]["content"].strip()
+
+        print(f"📸 [IMAGES] Vision analysis complete: {len(vision_result)} chars", flush=True)
+
+        _task_store[task_id]["progress"] = 40
+        _task_store[task_id]["message"] = "Texte et visuels extraits. Génération de la synthèse..."
+
+        # ─── Phase 2 : Assembler le pseudo-transcript ───
+        header = f"📸 ANALYSE D'IMAGES — {image_count} image(s)" if lang == "fr" else f"📸 IMAGE ANALYSIS — {image_count} image(s)"
+        parts = [header]
+        if title:
+            parts.append(f"{'Titre' if lang == 'fr' else 'Title'} : {title}")
+        if context:
+            parts.append(f"{'Contexte' if lang == 'fr' else 'Context'} : {context[:500]}")
+        parts.append("")
+        parts.append(vision_result)
+
+        pseudo_transcript = "\n".join(parts)
+
+        _task_store[task_id]["progress"] = 50
+        _task_store[task_id]["message"] = "Détection de catégorie..."
+
+        # ─── Phase 3 : Détection de catégorie ───
+        if category and category != "auto":
+            detected_category = category
+            category_confidence = 1.0
+        else:
+            detected_category, category_confidence = detect_category(title=title or "", transcript=pseudo_transcript[:5000])
+
+        _task_store[task_id]["progress"] = 60
+        _task_store[task_id]["message"] = "Génération de la synthèse DeepSight..."
+
+        # ─── Phase 4 : Générer la synthèse ───
+        smart_title = title or (
+            f"Analyse d'images ({image_count})" if lang == "fr"
+            else f"Image Analysis ({image_count})"
+        )
+
+        summary_content = await generate_summary(
+            title=smart_title,
+            transcript=pseudo_transcript,
+            category=detected_category,
+            lang=lang,
+            mode=mode,
+            model=model,
+            channel="Images importées" if lang == "fr" else "Imported images",
+        )
+
+        _task_store[task_id]["progress"] = 80
+        _task_store[task_id]["message"] = "Extraction des entités..."
+
+        # ─── Phase 5 : Entités et fiabilité ───
+        entities = await extract_entities(summary_content or pseudo_transcript[:10000], lang=lang)
+
+        _task_store[task_id]["progress"] = 90
+        _task_store[task_id]["message"] = "Calcul du score de fiabilité..."
+
+        reliability = await calculate_reliability_score(
+            summary_content or pseudo_transcript, entities, lang=lang
+        )
+
+        _task_store[task_id]["progress"] = 95
+        _task_store[task_id]["message"] = "Sauvegarde..."
+
+        # ─── Phase 6 : Sauvegarder ───
+        word_count = len(pseudo_transcript.split())
+
+        async with async_session_maker() as db_session:
+            credit_cost = get_credit_cost(model) if SECURITY_AVAILABLE else 1
+            await deduct_credit(db_session, user_id, credit_cost, f"images:{image_id}")
+
+            summary_id = await save_summary(
+                session=db_session,
+                user_id=user_id,
+                video_id=image_id,
+                video_title=smart_title,
+                video_channel="Images importées" if lang == "fr" else "Imported images",
+                video_duration=0,
+                video_url=f"images://{image_id}",
+                thumbnail_url="",
+                category=detected_category,
+                category_confidence=category_confidence,
+                lang=lang,
+                mode=mode,
+                model_used=model,
+                summary_content=summary_content,
+                entities_extracted=entities,
+                reliability_score=reliability,
+                transcript_context=pseudo_transcript[:50000],
+                platform="images",
+            )
+
+            await db_session.commit()
+
+        _task_store[task_id]["status"] = "completed"
+        _task_store[task_id]["progress"] = 100
+        _task_store[task_id]["message"] = "Analyse terminée"
+        _task_store[task_id]["result"] = {
+            "summary_id": summary_id,
+            "image_id": image_id,
+            "image_count": image_count,
+            "word_count": word_count,
+            "category": detected_category,
+        }
+
+        if NOTIFICATIONS_AVAILABLE:
+            await notify_analysis_complete(
+                user_id=user_id,
+                summary_id=summary_id,
+                video_title=smart_title,
+                video_id=image_id,
+            )
+
+        print(f"✅ [IMAGES] Analysis completed: {image_id} → summary_id={summary_id}", flush=True)
+
+    except Exception as e:
+        print(f"❌ [IMAGES] Error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+
+        _task_store[task_id]["status"] = "failed"
+        _task_store[task_id]["error"] = str(e)
+        _task_store[task_id]["message"] = f"Erreur: {str(e)}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

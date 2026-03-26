@@ -31,8 +31,8 @@ export const TTSHelpBanner: React.FC = () => {
   if (!visible) return null;
 
   const content = language === 'fr'
-    ? "Lecture vocale — Écoutez les réponses de l'IA à voix haute. Activez le mode vocal dans la barre d'outils pour une lecture automatique, ou appuyez sur ▶ sur chaque réponse. Contrôlez la vitesse (1x à 3x), changez la langue (FR/EN) et la voix. Disponible dès le plan Étudiant."
-    : 'Voice Mode — Listen to AI responses read aloud. Enable voice mode in the toolbar for automatic playback, or tap ▶ on any response. Control speed (1x to 3x), switch language (FR/EN) and voice. Available from Student plan.';
+    ? "Lecture vocale — Écoutez les réponses de l'IA à voix haute. Activez le mode vocal dans la barre d'outils pour une lecture automatique, ou appuyez sur ▶ sur chaque réponse. Contrôlez la vitesse (1x à 3x), changez la langue (FR/EN) et la voix. Disponible dès le plan Pro."
+    : 'Voice Mode — Listen to AI responses read aloud. Enable voice mode in the toolbar for automatic playback, or tap ▶ on any response. Control speed (1x to 3x), switch language (FR/EN) and voice. Available from Pro plan.';
 
   const buttonText = language === 'fr' ? 'Compris' : 'Got it';
 

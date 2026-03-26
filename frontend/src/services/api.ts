@@ -183,13 +183,18 @@ export interface EnrichedConceptsResponse {
 
 export interface TaskStatus {
   task_id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'redirect';
   progress?: number;
   message?: string;
-  platform?: 'youtube' | 'tiktok' | 'text';
+  platform?: 'youtube' | 'tiktok' | 'text' | 'images';
   result?: {
     summary_id?: number;
     summary?: Summary;
+    // Screenshot redirect fields
+    redirected_to_video?: boolean;
+    new_task_id?: string;
+    video_url?: string;
+    platform?: string;
   };
   error?: string;
 }
@@ -901,6 +906,36 @@ export const videoApi = {
       method: 'POST',
       body,
       timeout: 300000,
+    });
+  },
+
+  /**
+   * Analyse d'images collées/uploadées par l'utilisateur.
+   * Utilise Mistral Vision pour OCR + description + liens entre images.
+   *
+   * Endpoint: POST /api/videos/analyze/images
+   */
+  async analyzeImages(params: {
+    images: Array<{ data: string; mime_type: string; filename?: string }>;
+    title?: string;
+    context?: string;
+    mode?: string;
+    lang?: string;
+    model?: string;
+    category?: string;
+  }): Promise<{ task_id: string; status: string; image_count: number; cost: number }> {
+    return request('/api/videos/analyze/images', {
+      method: 'POST',
+      body: {
+        images: params.images,
+        title: params.title || null,
+        context: params.context || null,
+        mode: params.mode || 'standard',
+        lang: params.lang || 'fr',
+        model: params.model || null,
+        category: params.category || null,
+      },
+      timeout: 120000,
     });
   },
 

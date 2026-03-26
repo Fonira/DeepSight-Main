@@ -67,18 +67,20 @@ function buildPlanFeatures(planId: PlanId): PlanFeatures {
     academicSearchEnabled: f.academicSearch,
     ttsEnabled: f.ttsAudio,
     voiceChatEnabled: planId !== 'free',
-    voiceChatMonthlyMinutes: ({ free: 0, student: 5, starter: 15, pro: 45 } as Record<PlanId, number>)[planId],
+    voiceChatMonthlyMinutes: l.voiceChatMonthlyMinutes,
     historyDays: l.historyDays,
     apiAccess: f.apiAccess,
   };
 }
 
-// Plan configurations — synced from planPrivileges.ts
-const PLAN_FEATURES_MAP: Record<PlanType, PlanFeatures> = {
+// Plan configurations — synced from planPrivileges.ts (3 plans)
+const PLAN_FEATURES_MAP: Record<string, PlanFeatures> = {
   free: buildPlanFeatures('free'),
-  student: buildPlanFeatures('student'),
-  starter: buildPlanFeatures('starter'),
   pro: buildPlanFeatures('pro'),
+  expert: buildPlanFeatures('expert'),
+  // Legacy aliases → redirigés par normalizePlanId
+  student: buildPlanFeatures('pro'),
+  starter: buildPlanFeatures('pro'),
 };
 
 // Usage stats interface
@@ -120,10 +122,11 @@ const PlanContext = createContext<PlanContextType | undefined>(undefined);
 
 // Get suggested upgrade plan
 function getSuggestedUpgrade(currentPlan: PlanType): PlanType | null {
-  const planOrder: PlanType[] = ['free', 'student', 'starter', 'pro'];
-  const currentIndex = planOrder.indexOf(currentPlan);
-  if (currentIndex < planOrder.length - 1) {
-    return planOrder[currentIndex + 1];
+  const planOrder: string[] = ['free', 'pro', 'expert'];
+  const normalized = normalizePlanId(currentPlan);
+  const currentIndex = planOrder.indexOf(normalized);
+  if (currentIndex >= 0 && currentIndex < planOrder.length - 1) {
+    return planOrder[currentIndex + 1] as PlanType;
   }
   return null;
 }

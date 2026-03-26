@@ -443,14 +443,9 @@
         "description": "Pour explorer",
         "cta": "Commencer gratuitement"
       },
-      "starter": {
-        "name": "Starter",
-        "description": "Pour les réguliers",
-        "cta": "Choisir Starter"
-      },
       "pro": {
         "name": "Pro",
-        "description": "Pour les power users",
+        "description": "Pour les utilisateurs réguliers",
         "cta": "Choisir Pro"
       },
       "expert": {
@@ -951,7 +946,7 @@
     },
     "upgrade": {
       "moreResults": "résultats supplémentaires disponibles",
-      "exportAccess": "L'export de bibliographie nécessite un abonnement Student ou supérieur.",
+      "exportAccess": "L'export de bibliographie nécessite un abonnement Pro ou supérieur.",
       "upgradeToSeeMore": "Passez à un forfait supérieur pour voir plus de sources."
     },
     "sources": {

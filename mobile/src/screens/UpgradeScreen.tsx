@@ -58,14 +58,12 @@ const PLANS: PlanWithTranslations[] = PLANS_INFO.map((info) => {
 });
 
 // Plan progression order for recommendations
-const PLAN_ORDER: PlanId[] = ['free', 'student', 'starter', 'pro'];
+const PLAN_ORDER: PlanId[] = ['free', 'pro', 'expert'];
 
 // Get recommended upgrade path based on current plan
 const getRecommendedPlan = (currentPlan: PlanId): PlanId | null => {
   const currentIndex = PLAN_ORDER.indexOf(currentPlan);
   if (currentIndex === -1 || currentIndex >= PLAN_ORDER.length - 1) return null;
-  // Recommend the next tier, but skip to 'pro' if on 'starter' (since pro is popular)
-  if (currentPlan === 'starter') return 'pro';
   return PLAN_ORDER[currentIndex + 1];
 };
 
