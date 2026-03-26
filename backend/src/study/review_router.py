@@ -109,7 +109,7 @@ async def submit_review(
         review.state = scheduled.state
         review.last_rating = body.rating
         review.due_date = scheduled.due
-        review.last_review = datetime.now(timezone.utc)
+        review.last_review = datetime.utcnow()
 
         # Calculate XP earned for this review
         xp_earned = calculate_xp(Rating(body.rating))
@@ -138,7 +138,7 @@ async def submit_review(
         distinct_videos = len(result.scalars().all())
 
         # Check badges
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
         context = {
             "session_cards": 1,
             "session_duration": 0,
@@ -154,7 +154,7 @@ async def submit_review(
             success=True,
             card_index=body.card_index,
             new_state=scheduled.state,
-            next_due=scheduled.due or datetime.now(timezone.utc),
+            next_due=scheduled.due or datetime.utcnow(),
             stability=scheduled.stability,
             difficulty=scheduled.difficulty,
             xp_earned=xp_earned,
@@ -185,7 +185,7 @@ async def get_due_cards(
     """
     try:
         user_id = current_user.id
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
 
         # Verify summary exists and belongs to user
         result = await session.execute(
@@ -335,7 +335,7 @@ async def end_session(
         study_session.cards_correct = body.cards_correct
         study_session.xp_earned = session_xp
         study_session.duration_seconds = body.duration_seconds
-        study_session.completed_at = datetime.now(timezone.utc)
+        study_session.completed_at = datetime.utcnow()
 
         # Update user stats
         stats = await get_or_create_stats(session, user_id)
@@ -365,7 +365,7 @@ async def end_session(
         distinct_videos = len(result.scalars().all())
 
         # Check badges (session-level context)
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow()
 
         # Check if all cards mastered for this video
         all_mastered_video = False
