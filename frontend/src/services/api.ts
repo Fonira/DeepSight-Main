@@ -183,7 +183,7 @@ export interface EnrichedConceptsResponse {
 
 export interface TaskStatus {
   task_id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'redirect';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'redirect' | 'screenshot_detected';
   progress?: number;
   message?: string;
   platform?: 'youtube' | 'tiktok' | 'text' | 'images';
@@ -195,6 +195,7 @@ export interface TaskStatus {
     new_task_id?: string;
     video_url?: string;
     platform?: string;
+    content_type?: 'video' | 'short' | 'tiktok_slideshow' | string;
   };
   error?: string;
 }

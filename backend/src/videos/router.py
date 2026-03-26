@@ -4686,44 +4686,47 @@ async def _detect_video_screenshot(
 async def _search_video_from_screenshot(
     search_query: str,
     platform: str,
+    screenshot_data: Optional[Dict[str, str]] = None,
 ) -> Optional[str]:
     """
-    🔍 Recherche une vidéo YouTube/TikTok à partir du titre et créateur extraits d'un screenshot.
+    Recherche une video YouTube/TikTok a partir des infos extraites d un screenshot.
 
-    Retourne l'URL de la vidéo si trouvée, sinon None.
+    Strategie multi-fallback :
+    - YouTube : yt-dlp ytsearch (titre + chaine)
+    - TikTok : yt-dlp search sur TikTok (titre + @username)
+    - Fallback : Brave Search API si yt-dlp echoue
     """
     if not search_query or len(search_query.strip()) < 3:
         return None
 
+    import subprocess
+    import asyncio
+    import json as json_module
+
     try:
         if platform == "youtube":
-            # Utiliser yt-dlp search (même méthode que intelligent_discovery)
-            import subprocess
-            import asyncio
-
             cmd = [
                 "yt-dlp",
                 "--dump-json",
                 "--flat-playlist",
                 "--no-warnings",
                 "--geo-bypass",
-                f"ytsearch3:{search_query}",
+                f"ytsearch5:{search_query}",
             ]
 
             loop = asyncio.get_event_loop()
 
-            def run_search():
+            def run_yt_search():
                 try:
-                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
                     return result.stdout
                 except Exception:
                     return ""
 
-            stdout = await loop.run_in_executor(None, run_search)
+            stdout = await loop.run_in_executor(None, run_yt_search)
 
             if stdout:
-                import json as json_module
-                for line in stdout.strip().split('\n'):
+                for line in stdout.strip().split("\n"):
                     if line:
                         try:
                             video = json_module.loads(line)
@@ -4735,19 +4738,107 @@ async def _search_video_from_screenshot(
                         except json_module.JSONDecodeError:
                             continue
 
+            # Fallback: Brave Search API
+            brave_url = await _brave_search_video(search_query, "youtube")
+            if brave_url:
+                return brave_url
+
         elif platform == "tiktok":
-            # Pour TikTok, on ne peut pas facilement rechercher via yt-dlp
-            # Fallback: si le search_query contient un @username, construire l'URL
-            import re
-            username_match = re.search(r'@([\w.-]+)', search_query)
-            if username_match:
-                username = username_match.group(1)
-                logger.info(f"[SCREENSHOT_SEARCH] TikTok @{username} detected, but no direct search available")
-                # TikTok n'a pas de recherche publique simple — fallback image analysis
-                return None
+            # yt-dlp TikTok search
+            tiktok_query = search_query
+            cmd = [
+                "yt-dlp",
+                "--dump-json",
+                "--flat-playlist",
+                "--no-warnings",
+                f"tiktoksearch3:{tiktok_query}",
+            ]
+
+            loop = asyncio.get_event_loop()
+
+            def run_tt_search():
+                try:
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+                    return result.stdout
+                except Exception:
+                    return ""
+
+            stdout = await loop.run_in_executor(None, run_tt_search)
+
+            if stdout:
+                for line in stdout.strip().split("\n"):
+                    if line:
+                        try:
+                            video = json_module.loads(line)
+                            video_url = video.get("webpage_url") or video.get("url")
+                            if video_url and "tiktok.com" in video_url:
+                                logger.info(f"[SCREENSHOT_SEARCH] Found TikTok: {video_url}")
+                                return video_url
+                            video_id = video.get("id")
+                            uploader = video.get("uploader_id") or video.get("uploader")
+                            if video_id and uploader:
+                                url = f"https://www.tiktok.com/@{uploader}/video/{video_id}"
+                                logger.info(f"[SCREENSHOT_SEARCH] Found TikTok (constructed): {url}")
+                                return url
+                        except json_module.JSONDecodeError:
+                            continue
+
+            # Fallback: Brave Search API
+            brave_url = await _brave_search_video(search_query, "tiktok")
+            if brave_url:
+                return brave_url
+
+            logger.info(f"[SCREENSHOT_SEARCH] TikTok not found for: '{search_query}'")
 
     except Exception as e:
         logger.warning(f"[SCREENSHOT_SEARCH] Error: {e}")
+
+    return None
+
+
+async def _brave_search_video(query: str, platform: str) -> Optional[str]:
+    """
+    Recherche une video via Brave Search API quand yt-dlp echoue.
+    Utile pour les screenshots mobile sans URL.
+    """
+    try:
+        from core.config import settings
+        brave_key = getattr(settings, "BRAVE_SEARCH_API_KEY", None)
+        if not brave_key:
+            return None
+
+        import httpx as httpx_client
+        import re as re_module
+
+        site_filter = "site:youtube.com OR site:youtu.be" if platform == "youtube" else "site:tiktok.com"
+        search_q = f"{query} {site_filter}"
+
+        async with httpx_client.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                "https://api.search.brave.com/res/v1/web/search",
+                headers={"X-Subscription-Token": brave_key, "Accept": "application/json"},
+                params={"q": search_q, "count": 5},
+            )
+
+            if response.status_code != 200:
+                return None
+
+            results = response.json().get("web", {}).get("results", [])
+            for r in results:
+                url = r.get("url", "")
+                if platform == "youtube" and re_module.search(
+                    r'youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/', url
+                ):
+                    logger.info(f"[BRAVE_SEARCH] Found YouTube: {url}")
+                    return url
+                elif platform == "tiktok" and re_module.search(
+                    r'tiktok\.com/.*/video/\d+|tiktok\.com/@', url
+                ):
+                    logger.info(f"[BRAVE_SEARCH] Found TikTok: {url}")
+                    return url
+
+    except Exception as e:
+        logger.warning(f"[BRAVE_SEARCH] Error: {e}")
 
     return None
 
@@ -4813,48 +4904,21 @@ async def _analyze_images_background(
 
                 if found_url:
                     print(f"🎯 [IMAGES] Video found: {found_url}", flush=True)
-                    _task_store[task_id]["progress"] = 20
-                    _task_store[task_id]["message"] = f"Vidéo trouvée ! Lancement de l'analyse vidéo..."
 
-                    # Basculer vers le pipeline vidéo classique
-                    from .schemas import AnalyzeVideoRequest
-                    analyze_request = AnalyzeVideoRequest(
-                        url=found_url,
-                        mode=mode,
-                        category=category,
-                        lang=lang,
-                        model=model,
-                    )
-
-                    # Créer une session et lancer l'analyse vidéo
-                    async with async_session_maker() as db_session:
-                        from sqlalchemy import select as sql_select
-                        user = (await db_session.execute(
-                            sql_select(User).where(User.id == user_id)
-                        )).scalar_one_or_none()
-
-                        if user:
-                            result = await analyze_video(
-                                request=analyze_request,
-                                background_tasks=BackgroundTasks(),
-                                current_user=user,
-                                session=db_session,
-                            )
-
-                            # Mettre à jour le task store avec le nouveau task_id
-                            _task_store[task_id]["status"] = "redirect"
-                            _task_store[task_id]["progress"] = 100
-                            _task_store[task_id]["message"] = f"Vidéo {platform} détectée et analysée"
-                            _task_store[task_id]["result"] = {
-                                "redirected_to_video": True,
-                                "video_url": found_url,
-                                "platform": platform,
-                                "new_task_id": result.task_id,
-                            }
-                            print(f"✅ [IMAGES] Redirected to video pipeline: {found_url} → task={result.task_id}", flush=True)
-                            return  # Sortir du pipeline images
-
-                    print(f"⚠️ [IMAGES] User not found for redirect, falling back to image analysis", flush=True)
+                    # Signaler au frontend de lancer l analyse video classique
+                    # (on ne peut pas appeler analyze_video() ici car BackgroundTasks
+                    #  cree manuellement n est pas execute par FastAPI)
+                    _task_store[task_id]["status"] = "screenshot_detected"
+                    _task_store[task_id]["progress"] = 100
+                    _task_store[task_id]["message"] = f"Capture {platform} detectee ! Redirection vers l analyse video..."
+                    _task_store[task_id]["result"] = {
+                        "redirected_to_video": True,
+                        "video_url": found_url,
+                        "platform": platform,
+                        "search_query": search_query,
+                    }
+                    print(f"✅ [IMAGES] Screenshot detected, returning URL to frontend: {found_url}", flush=True)
+                    return  # Le frontend lancera analyzeHybrid() avec cette URL
                 else:
                     print(f"⚠️ [IMAGES] Video not found for query '{search_query}', falling back to image analysis", flush=True)
                     _task_store[task_id]["message"] = "Vidéo non trouvée, analyse de l'image en cours..."
