@@ -247,12 +247,12 @@ async def create_voice_session(
     try:
         from datetime import timedelta
         if expires_at_iso:
-            expires_at = datetime.fromisoformat(expires_at_iso.replace("Z", "+00:00"))
+            expires_at = datetime.fromisoformat(expires_at_iso.replace("Z", "+00:00")).replace(tzinfo=None)
         else:
-            expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+            expires_at = datetime.utcnow() + timedelta(minutes=10)
     except (ValueError, TypeError):
         from datetime import timedelta
-        expires_at = datetime.now(timezone.utc) + timedelta(minutes=10)
+        expires_at = datetime.utcnow() + timedelta(minutes=10)
 
     # Compute quota remaining
     max_session_minutes = plan_limits.get("max_session_minutes", 10)
