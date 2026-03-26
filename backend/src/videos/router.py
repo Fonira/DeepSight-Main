@@ -4461,6 +4461,181 @@ async def analyze_images(
     )
 
 
+async def _detect_video_screenshot(
+    image: Any,
+    api_key: str,
+) -> Optional[Dict[str, str]]:
+    """
+    📱 Détecte si une image est une capture d'écran de YouTube Shorts ou TikTok.
+
+    Envoie l'image à Mistral Vision avec un prompt de détection.
+    Retourne un dict avec platform, search_query, video_url si détecté, sinon None.
+    """
+    import httpx as httpx_client
+
+    b64_data = image.data
+    if b64_data.startswith("data:"):
+        b64_data = b64_data.split(",", 1)[-1]
+    data_uri = f"data:{image.mime_type};base64,{b64_data}"
+
+    detection_prompt = (
+        "Regarde attentivement cette image. Est-ce une CAPTURE D'ÉCRAN d'un téléphone mobile "
+        "montrant une vidéo YouTube (ou YouTube Shorts) ou TikTok ?\n\n"
+        "Indices à chercher :\n"
+        "- Interface YouTube : boutons like/dislike, barre de progression, logo YouTube, titre de vidéo, nom de chaîne\n"
+        "- Interface YouTube Shorts : scroll vertical, boutons à droite (like, comment, share), @nom de chaîne\n"
+        "- Interface TikTok : boutons à droite (coeur, commentaire, partage), @username, description en bas, logo TikTok\n\n"
+        "RÉPONDS UNIQUEMENT dans ce format JSON exact (rien d'autre) :\n"
+        '{"is_screenshot": true/false, "platform": "youtube"|"tiktok"|null, '
+        '"video_title": "titre visible ou null", "channel": "@nom ou nom de chaîne ou null", '
+        '"description": "description visible ou null"}\n\n'
+        "Si ce n'est PAS une capture d'écran d'app vidéo, réponds :\n"
+        '{"is_screenshot": false, "platform": null, "video_title": null, "channel": null, "description": null}'
+    )
+
+    try:
+        async with httpx_client.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "mistral-small-2603",
+                    "messages": [
+                        {"role": "user", "content": [
+                            {"type": "image_url", "image_url": data_uri},
+                            {"type": "text", "text": detection_prompt},
+                        ]},
+                    ],
+                    "max_tokens": 300,
+                    "temperature": 0.0,
+                    "response_format": {"type": "json_object"},
+                },
+            )
+
+            if response.status_code != 200:
+                logger.warning(f"[SCREENSHOT_DETECT] Mistral error: {response.status_code}")
+                return None
+
+            text = response.json()["choices"][0]["message"]["content"].strip()
+
+            # Parser le JSON
+            import json as json_module
+            try:
+                result = json_module.loads(text)
+            except json_module.JSONDecodeError:
+                # Tenter d'extraire le JSON du texte
+                import re
+                match = re.search(r'\{.*\}', text, re.DOTALL)
+                if match:
+                    result = json_module.loads(match.group())
+                else:
+                    return None
+
+            if not result.get("is_screenshot"):
+                return None
+
+            platform = result.get("platform")
+            if platform not in ("youtube", "tiktok"):
+                return None
+
+            # Construire la query de recherche
+            parts = []
+            if result.get("video_title"):
+                parts.append(result["video_title"])
+            if result.get("channel"):
+                parts.append(result["channel"])
+            if not parts and result.get("description"):
+                parts.append(result["description"][:100])
+
+            search_query = " ".join(parts) if parts else None
+
+            logger.info(f"[SCREENSHOT_DETECT] Detected {platform}: title='{result.get('video_title')}' channel='{result.get('channel')}'")
+
+            return {
+                "platform": platform,
+                "search_query": search_query,
+                "video_title": result.get("video_title"),
+                "channel": result.get("channel"),
+                "video_url": None,  # On ne peut pas extraire l'URL directement
+            }
+
+    except Exception as e:
+        logger.warning(f"[SCREENSHOT_DETECT] Error: {e}")
+        return None
+
+
+async def _search_video_from_screenshot(
+    search_query: str,
+    platform: str,
+) -> Optional[str]:
+    """
+    🔍 Recherche une vidéo YouTube/TikTok à partir du titre et créateur extraits d'un screenshot.
+
+    Retourne l'URL de la vidéo si trouvée, sinon None.
+    """
+    if not search_query or len(search_query.strip()) < 3:
+        return None
+
+    try:
+        if platform == "youtube":
+            # Utiliser yt-dlp search (même méthode que intelligent_discovery)
+            import subprocess
+            import asyncio
+
+            cmd = [
+                "yt-dlp",
+                "--dump-json",
+                "--flat-playlist",
+                "--no-warnings",
+                "--geo-bypass",
+                f"ytsearch3:{search_query}",
+            ]
+
+            loop = asyncio.get_event_loop()
+
+            def run_search():
+                try:
+                    result = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                    return result.stdout
+                except Exception:
+                    return ""
+
+            stdout = await loop.run_in_executor(None, run_search)
+
+            if stdout:
+                import json as json_module
+                for line in stdout.strip().split('\n'):
+                    if line:
+                        try:
+                            video = json_module.loads(line)
+                            video_id = video.get("id")
+                            if video_id:
+                                url = f"https://www.youtube.com/watch?v={video_id}"
+                                logger.info(f"[SCREENSHOT_SEARCH] Found YouTube: {url} ({video.get('title', '?')})")
+                                return url
+                        except json_module.JSONDecodeError:
+                            continue
+
+        elif platform == "tiktok":
+            # Pour TikTok, on ne peut pas facilement rechercher via yt-dlp
+            # Fallback: si le search_query contient un @username, construire l'URL
+            import re
+            username_match = re.search(r'@([\w.-]+)', search_query)
+            if username_match:
+                username = username_match.group(1)
+                logger.info(f"[SCREENSHOT_SEARCH] TikTok @{username} detected, but no direct search available")
+                # TikTok n'a pas de recherche publique simple — fallback image analysis
+                return None
+
+    except Exception as e:
+        logger.warning(f"[SCREENSHOT_SEARCH] Error: {e}")
+
+    return None
+
+
 async def _analyze_images_background(
     task_id: str,
     images: list,
@@ -4499,6 +4674,74 @@ async def _analyze_images_background(
         api_key = get_mistral_key()
         if not api_key:
             raise Exception("Clé Mistral API non configurée")
+
+        # ─── Phase 0 : Détection screenshot YouTube/TikTok ───
+        # Si 1 seule image, vérifier si c'est une capture d'écran d'app vidéo
+        if len(images) == 1 and not title:
+            _task_store[task_id]["message"] = "Détection du type d'image..."
+            screenshot_result = await _detect_video_screenshot(images[0], api_key)
+
+            if screenshot_result:
+                platform = screenshot_result.get("platform")  # "youtube" ou "tiktok"
+                search_query = screenshot_result.get("search_query", "")
+                video_url = screenshot_result.get("video_url")
+
+                print(f"📱 [IMAGES] Screenshot detected: {platform} — query: '{search_query}'", flush=True)
+                _task_store[task_id]["progress"] = 15
+                _task_store[task_id]["message"] = f"Capture d'écran {platform} détectée ! Recherche de la vidéo..."
+
+                # Chercher la vidéo originale
+                found_url = video_url
+                if not found_url and search_query:
+                    found_url = await _search_video_from_screenshot(search_query, platform)
+
+                if found_url:
+                    print(f"🎯 [IMAGES] Video found: {found_url}", flush=True)
+                    _task_store[task_id]["progress"] = 20
+                    _task_store[task_id]["message"] = f"Vidéo trouvée ! Lancement de l'analyse vidéo..."
+
+                    # Basculer vers le pipeline vidéo classique
+                    from .schemas import AnalyzeVideoRequest
+                    analyze_request = AnalyzeVideoRequest(
+                        url=found_url,
+                        mode=mode,
+                        category=category,
+                        lang=lang,
+                        model=model,
+                    )
+
+                    # Créer une session et lancer l'analyse vidéo
+                    async with async_session_maker() as db_session:
+                        from sqlalchemy import select as sql_select
+                        user = (await db_session.execute(
+                            sql_select(User).where(User.id == user_id)
+                        )).scalar_one_or_none()
+
+                        if user:
+                            result = await analyze_video(
+                                request=analyze_request,
+                                background_tasks=BackgroundTasks(),
+                                current_user=user,
+                                session=db_session,
+                            )
+
+                            # Mettre à jour le task store avec le nouveau task_id
+                            _task_store[task_id]["status"] = "redirect"
+                            _task_store[task_id]["progress"] = 100
+                            _task_store[task_id]["message"] = f"Vidéo {platform} détectée et analysée"
+                            _task_store[task_id]["result"] = {
+                                "redirected_to_video": True,
+                                "video_url": found_url,
+                                "platform": platform,
+                                "new_task_id": result.task_id,
+                            }
+                            print(f"✅ [IMAGES] Redirected to video pipeline: {found_url} → task={result.task_id}", flush=True)
+                            return  # Sortir du pipeline images
+
+                    print(f"⚠️ [IMAGES] User not found for redirect, falling back to image analysis", flush=True)
+                else:
+                    print(f"⚠️ [IMAGES] Video not found for query '{search_query}', falling back to image analysis", flush=True)
+                    _task_store[task_id]["message"] = "Vidéo non trouvée, analyse de l'image en cours..."
 
         # Construire le message multimodal
         vision_model = "mistral-small-2603"  # Vision-capable, cost-effective
