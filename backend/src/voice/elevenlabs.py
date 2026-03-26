@@ -49,13 +49,26 @@ class ElevenLabsClient:
         voice_id: str,
         first_message: Optional[str] = None,
         language: str = "fr",
+        model_id: str = "eleven_flash_v2_5",
+        voice_settings: Optional[dict] = None,
     ) -> str:
         """Create a conversational AI agent and return its agent_id.
+
+        Args:
+            model_id: ElevenLabs TTS model (eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2).
+            voice_settings: ElevenLabs voice_settings dict (stability, similarity_boost, style, speed, etc.).
 
         Raises:
             ValueError: on 401 (invalid API key).
             httpx.HTTPStatusError: on 429 (rate limit) or 5xx.
         """
+        tts_config: dict = {
+            "voice_id": voice_id,
+            "model_id": model_id,
+        }
+        if voice_settings:
+            tts_config["voice_settings"] = voice_settings
+
         body: dict = {
             "conversation_config": {
                 "agent": {
@@ -63,17 +76,14 @@ class ElevenLabsClient:
                     "first_message": first_message,
                     "language": language,
                 },
-                "tts": {
-                    "voice_id": voice_id,
-                    "model_id": "eleven_flash_v2_5",
-                },
+                "tts": tts_config,
             },
             "tools": tools,
         }
 
         logger.info(
             "elevenlabs.create_agent",
-            extra={"voice_id": voice_id, "language": language},
+            extra={"voice_id": voice_id, "model_id": model_id, "language": language},
         )
 
         response = await self._client.post("/convai/agents/create", json=body)

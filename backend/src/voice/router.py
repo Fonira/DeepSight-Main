@@ -39,6 +39,10 @@ from voice.schemas import (
     WebhookAckResponse,
     VoiceHistoryResponse,
     VoiceTranscriptResponse,
+    VoicePreferencesRequest,
+    VoicePreferencesResponse,
+    VoiceCatalogResponse,
+    VoiceCatalogEntry,
 )
 from voice.quota import (
     get_voice_quota_info,
@@ -70,6 +74,136 @@ async def get_voice_quota(
     """Return voice chat quota information for the current user."""
     quota_info = await get_voice_quota_info(current_user.id, current_user.plan or "free", db)
     return quota_info
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /preferences — Get user voice preferences
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/preferences", response_model=VoicePreferencesResponse)
+async def get_voice_preferences(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Return the current user's voice preferences (speed, voice, model, etc.)."""
+    from voice.preferences import get_user_voice_preferences
+
+    prefs = await get_user_voice_preferences(current_user.id, db)
+    return VoicePreferencesResponse(
+        voice_id=prefs.voice_id,
+        voice_name=prefs.voice_name,
+        speed=prefs.speed,
+        stability=prefs.stability,
+        similarity_boost=prefs.similarity_boost,
+        style=prefs.style,
+        use_speaker_boost=prefs.use_speaker_boost,
+        tts_model=prefs.tts_model,
+        voice_chat_model=prefs.voice_chat_model,
+        language=prefs.language,
+        gender=prefs.gender,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PUT /preferences — Update user voice preferences
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.put("/preferences", response_model=VoicePreferencesResponse)
+async def update_voice_preferences(
+    request: VoicePreferencesRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Update the current user's voice preferences. Only provided fields are updated."""
+    from voice.preferences import get_user_voice_preferences, save_user_voice_preferences, CATALOG_VOICE_IDS
+
+    # Load current preferences
+    prefs = await get_user_voice_preferences(current_user.id, db)
+
+    # Validate voice_id against catalog if provided
+    if request.voice_id is not None and request.voice_id not in CATALOG_VOICE_IDS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "code": "invalid_voice_id",
+                "message": f"Voice ID inconnu. Utilisez GET /api/voice/catalog pour la liste.",
+            },
+        )
+
+    # Apply only non-None fields (partial update)
+    update_data = request.model_dump(exclude_none=True)
+    for field_name, value in update_data.items():
+        setattr(prefs, field_name, value)
+
+    # Save
+    await save_user_voice_preferences(current_user.id, prefs, db)
+
+    logger.info(
+        "Voice preferences updated",
+        extra={
+            "user_id": current_user.id,
+            "updated_fields": list(update_data.keys()),
+        },
+    )
+
+    return VoicePreferencesResponse(
+        voice_id=prefs.voice_id,
+        voice_name=prefs.voice_name,
+        speed=prefs.speed,
+        stability=prefs.stability,
+        similarity_boost=prefs.similarity_boost,
+        style=prefs.style,
+        use_speaker_boost=prefs.use_speaker_boost,
+        tts_model=prefs.tts_model,
+        voice_chat_model=prefs.voice_chat_model,
+        language=prefs.language,
+        gender=prefs.gender,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GET /catalog — Voice catalog (available voices + speed presets + models)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/catalog", response_model=VoiceCatalogResponse)
+async def get_voice_catalog():
+    """Return the full ElevenLabs voice catalog, speed presets, and available models."""
+    from voice.preferences import VOICE_CATALOG, SPEED_PRESETS
+
+    voices = [VoiceCatalogEntry(**v) for v in VOICE_CATALOG]
+
+    models = [
+        {
+            "id": "eleven_multilingual_v2",
+            "name": "Multilingual v2",
+            "description_fr": "Qualité maximale — toutes les langues",
+            "description_en": "Highest quality — all languages",
+            "latency": "high",
+            "recommended_for": "tts",
+        },
+        {
+            "id": "eleven_flash_v2_5",
+            "name": "Flash v2.5",
+            "description_fr": "Équilibré — bonne qualité, faible latence",
+            "description_en": "Balanced — good quality, low latency",
+            "latency": "low",
+            "recommended_for": "voice_chat",
+        },
+        {
+            "id": "eleven_turbo_v2_5",
+            "name": "Turbo v2.5",
+            "description_fr": "Ultra-rapide — ~300ms, idéal voice chat",
+            "description_en": "Ultra-fast — ~300ms, ideal for voice chat",
+            "latency": "lowest",
+            "recommended_for": "voice_chat",
+        },
+    ]
+
+    return VoiceCatalogResponse(
+        voices=voices,
+        speed_presets=SPEED_PRESETS,
+        models=models,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -239,9 +373,15 @@ async def create_voice_session(
                 if t.get("name", "") in allowed_tool_names
             ]
 
-        # Get voice ID from config
-        from core.config import _settings
-        voice_id = _settings.ELEVENLABS_VOICE_ID or "21m00Tcm4TlvDq8ikWAM"  # Default: Rachel
+        # Get voice ID from user preferences (fallback to config)
+        from voice.preferences import get_user_voice_preferences
+        user_prefs = await get_user_voice_preferences(current_user.id, db)
+
+        if user_prefs.voice_id:
+            voice_id = user_prefs.voice_id
+        else:
+            from core.config import _settings
+            voice_id = _settings.ELEVENLABS_VOICE_ID or "21m00Tcm4TlvDq8ikWAM"  # Default: Rachel
 
         # ── Build first message from agent config ────────────────────────
         if language == "fr":
@@ -261,14 +401,20 @@ async def create_voice_session(
                     "What would you like to know?"
                 )
 
+        # Build voice settings from user preferences
+        voice_settings = user_prefs.to_voice_settings()
+        voice_chat_model = user_prefs.voice_chat_model or "eleven_flash_v2_5"
+
         async with get_elevenlabs_client() as client:
-            # Create the agent
+            # Create the agent with user's preferred voice settings
             agent_id = await client.create_conversation_agent(
                 system_prompt=system_prompt,
                 tools=tools_config,
                 voice_id=voice_id,
                 first_message=first_message,
                 language=language,
+                model_id=voice_chat_model,
+                voice_settings=voice_settings,
             )
 
             # Get the signed WebSocket URL

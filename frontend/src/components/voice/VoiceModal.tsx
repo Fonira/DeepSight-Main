@@ -16,6 +16,7 @@ import {
   AlertCircle,
   ArrowUpCircle,
   RotateCcw,
+  Settings2,
 } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 
@@ -354,13 +355,22 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                   <p className="text-xs text-white/40 mt-0.5 truncate">{channelName}</p>
                 )}
               </div>
-              <button
-                onClick={onClose}
-                className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center flex-shrink-0 focus-visible:ring-2 focus-visible:ring-indigo-400"
-                aria-label={tr('Fermer', 'Close')}
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <a
+                  href="/settings"
+                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/30 hover:text-white/70 hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  title={tr('Paramètres voix', 'Voice settings')}
+                >
+                  <Settings2 className="w-4 h-4" />
+                </a>
+                <button
+                  onClick={onClose}
+                  className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
+                  aria-label={tr('Fermer', 'Close')}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Center — status zone */}

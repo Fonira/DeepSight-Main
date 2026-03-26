@@ -153,6 +153,7 @@ class User(Base):
     
     # Voice
     voice_bonus_seconds = Column(Integer, default=0)
+    voice_preferences = Column(Text, default=None)  # JSON blob: voice_id, speed, stability, etc.
 
     # Timestamps
     created_at = Column(DateTime, default=func.now())

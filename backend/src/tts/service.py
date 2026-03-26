@@ -33,8 +33,17 @@ VOICES = {
 
 DEFAULT_MODEL_ID = "eleven_multilingual_v2"
 
-# Set of all known voice IDs (for validation)
-KNOWN_VOICE_IDS = {vid for lang_voices in VOICES.values() for vid in lang_voices.values()}
+# Set of all known voice IDs (for validation) — includes catalog voices
+def _build_known_voice_ids() -> set[str]:
+    """Build the set of all valid voice IDs (base + catalog)."""
+    base = {vid for lang_voices in VOICES.values() for vid in lang_voices.values()}
+    try:
+        from voice.preferences import CATALOG_VOICE_IDS
+        return base | CATALOG_VOICE_IDS
+    except ImportError:
+        return base
+
+KNOWN_VOICE_IDS = _build_known_voice_ids()
 
 
 def get_voice_id(language: str = "fr", gender: str = "female") -> str:

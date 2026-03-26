@@ -8,7 +8,8 @@ from fastapi.responses import StreamingResponse
 import httpx
 import logging
 
-from db.database import User
+from db.database import User, get_session
+from sqlalchemy.ext.asyncio import AsyncSession
 from auth.dependencies import get_current_user
 from billing.permissions import require_feature
 from core.config import get_elevenlabs_key
@@ -76,6 +77,7 @@ async def check_tts_rate_limit(current_user: User = Depends(get_current_user)):
 async def tts_generate(
     request: Request,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
     _rate: None = Depends(check_tts_rate_limit),
 ):
     """
@@ -84,7 +86,7 @@ async def tts_generate(
     Primary: ElevenLabs (eleven_multilingual_v2)
     Fallback: OpenAI TTS (tts-1) — activated when ElevenLabs circuit breaker is open
 
-    Body: { text, language?, gender?, speed?, strip_questions? }
+    Body: { text, language?, gender?, speed?, strip_questions?, use_preferences? }
     Returns: streaming audio/mpeg response
     Headers: X-TTS-Provider indicates which provider served the request
     """
@@ -99,6 +101,26 @@ async def tts_generate(
         tts_req = TTSRequest(**body)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    # ── Apply user voice preferences as defaults ──────────────────────────
+    if tts_req.use_preferences:
+        try:
+            from voice.preferences import get_user_voice_preferences
+            user_prefs = await get_user_voice_preferences(current_user.id, db)
+
+            # Only apply pref if request didn't explicitly override
+            if tts_req.voice_id is None and user_prefs.voice_id:
+                tts_req.voice_id = user_prefs.voice_id
+            if tts_req.speed == 1.0 and user_prefs.speed != 1.0:
+                tts_req.speed = user_prefs.speed
+            if tts_req.model_id is None and user_prefs.tts_model:
+                tts_req.model_id = user_prefs.tts_model
+            if tts_req.language == "fr" and user_prefs.language:
+                tts_req.language = user_prefs.language
+            if tts_req.gender == "female" and user_prefs.gender in ("male", "female"):
+                tts_req.gender = user_prefs.gender
+        except Exception as e:
+            logger.warning("Failed to load voice preferences: %s", e)
 
     # Clean text for TTS
     cleaned_text = clean_text_for_tts(tts_req.text, strip_questions=tts_req.strip_questions)
@@ -217,7 +239,7 @@ async def generate_audio_summary(
         language = "fr"
     if gender not in ("male", "female"):
         gender = "female"
-    speed = max(0.7, min(3.0, float(speed)))
+    speed = max(0.25, min(4.0, float(speed)))
 
     # ── Verify summary ownership ─────────────────────────────────────────
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -497,17 +519,4 @@ async def tts_status():
         "active_provider": active_provider,
         "providers": {
             "elevenlabs": {
-                "available": elevenlabs_available,
-                "circuit_breaker": elevenlabs_circuit.state,
-                "model": DEFAULT_MODEL_ID,
-            },
-            "openai": {
-                "available": openai_available,
-                "model": "tts-1",
-            },
-        },
-        "max_text_length": MAX_TEXT_LENGTH,
-        "supported_languages": ["fr", "en"],
-        "supported_genders": ["male", "female"],
-        "speed_range": {"min": 0.7, "max": 3.0, "default": 1.0},
-    }
+           

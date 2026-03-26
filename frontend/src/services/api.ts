@@ -2197,6 +2197,56 @@ export interface VoiceTranscript {
   transcript: string;
 }
 
+export interface VoicePreferences {
+  voice_id: string | null;
+  voice_name: string | null;
+  speed: number;
+  stability: number;
+  similarity_boost: number;
+  style: number;
+  use_speaker_boost: boolean;
+  tts_model: string;
+  voice_chat_model: string;
+  language: string;
+  gender: string;
+}
+
+export interface VoiceCatalogEntry {
+  voice_id: string;
+  name: string;
+  description_fr: string;
+  description_en: string;
+  gender: string;
+  accent: string;
+  language: string;
+  use_case: string;
+  recommended: boolean;
+  preview_url: string;
+}
+
+export interface VoiceSpeedPreset {
+  id: string;
+  label_fr: string;
+  label_en: string;
+  value: number;
+  icon: string;
+}
+
+export interface VoiceModel {
+  id: string;
+  name: string;
+  description_fr: string;
+  description_en: string;
+  latency: string;
+  recommended_for: string;
+}
+
+export interface VoiceCatalog {
+  voices: VoiceCatalogEntry[];
+  speed_presets: VoiceSpeedPreset[];
+  models: VoiceModel[];
+}
+
 export const voiceApi = {
   /**
    * 🎙️ Récupère le quota vocal de l'utilisateur
@@ -2242,6 +2292,33 @@ export const voiceApi = {
       method: 'POST',
       body: { pack_id: packId },
     });
+  },
+
+  /**
+   * 🎙️ Récupère les préférences vocales de l'utilisateur
+   * Endpoint: GET /api/voice/preferences
+   */
+  async getPreferences(): Promise<VoicePreferences> {
+    return request('/api/voice/preferences');
+  },
+
+  /**
+   * 🎙️ Met à jour les préférences vocales de l'utilisateur
+   * Endpoint: PUT /api/voice/preferences
+   */
+  async updatePreferences(prefs: Partial<VoicePreferences>): Promise<VoicePreferences> {
+    return request('/api/voice/preferences', {
+      method: 'PUT',
+      body: prefs as unknown as Record<string, unknown>,
+    });
+  },
+
+  /**
+   * 🎙️ Récupère le catalogue des voix disponibles + speed presets + modèles
+   * Endpoint: GET /api/voice/catalog
+   */
+  async getCatalog(): Promise<VoiceCatalog> {
+    return request('/api/voice/catalog');
   },
 };
 
@@ -2408,29 +2485,4 @@ export default {
 
   // ═══════════════════════════════════════════════════════════════════
   // 🎙️ VOICE AGENTS — Types d'agents vocaux disponibles
-  // ═══════════════════════════════════════════════════════════════════
-
-  async getVoiceAgentTypes(): Promise<{
-    agents: {
-      type: string;
-      display_name: string;
-      description: string;
-      plan_minimum: string;
-      available_tools: string[];
-    }[];
-  }> {
-    return request('/api/voice/agents/types');
-  },
-
-  // ═══════════════════════════════════════════════════════════════════
-  // 🔊 TTS STATUS — État des providers TTS
-  // ═══════════════════════════════════════════════════════════════════
-
-  async getTTSStatus(): Promise<{
-    elevenlabs: { available: boolean; circuit_breaker: string };
-    openai: { available: boolean };
-    active_provider: string;
-  }> {
-    return request('/api/tts/status');
-  },
-};
+  // ══════════════════�

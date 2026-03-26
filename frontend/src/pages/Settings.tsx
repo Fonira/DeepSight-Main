@@ -22,6 +22,8 @@ import { useToast } from '../components/Toast';
 import DoodleBackground from '../components/DoodleBackground';
 import { SEO } from '../components/SEO';
 
+const VoiceSettingsPanel = React.lazy(() => import('../components/voice/VoiceSettings'));
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎛️ Types
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -364,6 +366,25 @@ export const Settings: React.FC = () => {
                     saved={saved === 'autoSave'}
                   />
                 </SettingRow>
+              </div>
+            </section>
+
+            {/* Paramètres vocaux */}
+            <section className="card">
+              <div className="panel-header">
+                <h2 className="font-semibold text-text-primary flex items-center gap-2">
+                  <Volume2 className="w-5 h-5 text-accent-primary" />
+                  {tr('Paramètres vocaux', 'Voice Settings')}
+                </h2>
+              </div>
+              <div className="panel-body">
+                <React.Suspense fallback={
+                  <div className="flex items-center justify-center p-8">
+                    <div className="animate-spin w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full" />
+                  </div>
+                }>
+                  <VoiceSettingsPanel />
+                </React.Suspense>
               </div>
             </section>
 
