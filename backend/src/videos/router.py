@@ -4465,26 +4465,35 @@ async def _mistral_vision_request(
     api_key: str,
     messages: list,
     model: str = "mistral-small-2603",
-    max_tokens: int = 4000,
+    max_tokens: int = 4096,
     temperature: float = 0.1,
     response_format: Optional[Dict] = None,
     timeout: float = 120.0,
-    max_retries: int = 3,
+    max_retries: int = 4,
     fallback_models: Optional[list] = None,
 ) -> Optional[str]:
     """
     Appel Mistral Vision avec model fallback sur 429 (rate limit).
 
-    Stratégie : si le modèle principal est rate-limité, essayer les fallback models
-    immédiatement au lieu d'attendre. Chaque modèle a son propre rate limit.
+    Strategie resiliente (JAMAIS d'erreur rate-limit pour l'utilisateur) :
+    1. Essayer le modele principal (max_retries tentatives)
+    2. Si 429 -> passer au modele suivant IMMEDIATEMENT
+    3. Si TOUS les modeles sont 429 -> attendre 30s puis re-essayer
+    4. En dernier recours : attente longue (60s) + dernier essai
     """
     import httpx as httpx_client
     import asyncio
 
     models_to_try = [model] + (fallback_models or [])
+    total_attempts = 0
+    max_total_attempts = 20  # Securite anti boucle infinie
 
+    # Phase 1 : Rotation rapide entre modeles
     for model_idx, current_model in enumerate(models_to_try):
         for attempt in range(max_retries):
+            total_attempts += 1
+            if total_attempts > max_total_attempts:
+                break
             try:
                 payload: Dict[str, Any] = {
                     "model": current_model,
@@ -4506,23 +4515,21 @@ async def _mistral_vision_request(
                     )
 
                     if response.status_code == 200:
-                        if model_idx > 0:
-                            logger.info(f"[MISTRAL_VISION] Success with fallback model: {current_model}")
+                        if model_idx > 0 or attempt > 0:
+                            logger.info(f"[MISTRAL_VISION] Success with {current_model} (attempt {attempt+1}, model #{model_idx+1})")
                         return response.json()["choices"][0]["message"]["content"].strip()
 
                     if response.status_code == 429:
-                        # Try next model immediately instead of waiting
                         if model_idx < len(models_to_try) - 1:
-                            logger.warning(f"[MISTRAL_VISION] {current_model} rate-limited, trying {models_to_try[model_idx + 1]}")
-                            break  # Break inner retry loop → next model
-                        # Last model: wait and retry
-                        wait = min(5 * (attempt + 1), 20)
-                        logger.warning(f"[MISTRAL_VISION] {current_model} rate-limited, retry {attempt + 1}/{max_retries} in {wait}s")
+                            logger.warning(f"[MISTRAL_VISION] {current_model} rate-limited, trying next model")
+                            break  # Next model
+                        # Last model: exponential backoff
+                        wait = min(8 * (2 ** attempt), 30)
+                        logger.warning(f"[MISTRAL_VISION] {current_model} rate-limited, retry {attempt+1}/{max_retries} in {wait}s")
                         await asyncio.sleep(wait)
                         continue
 
                     logger.error(f"[MISTRAL_VISION] {current_model} error {response.status_code}: {response.text[:200]}")
-                    # Non-429 error: try next model
                     if model_idx < len(models_to_try) - 1:
                         break
                     return None
@@ -4532,9 +4539,45 @@ async def _mistral_vision_request(
                 if attempt < max_retries - 1:
                     await asyncio.sleep(2)
                     continue
-                break  # Try next model
+                break
 
-    logger.error(f"[MISTRAL_VISION] All models exhausted: {models_to_try}")
+    # Phase 2 : Tous les modeles ont echoue - attente longue + retry
+    logger.warning(f"[MISTRAL_VISION] All models exhausted in phase 1, waiting 30s for rate limit reset...")
+    await asyncio.sleep(30)
+
+    # Re-essayer les 2 premiers modeles avec 2 tentatives chacun
+    for retry_model in models_to_try[:2]:
+        for final_attempt in range(2):
+            try:
+                payload = {
+                    "model": retry_model,
+                    "messages": messages,
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                }
+                if response_format:
+                    payload["response_format"] = response_format
+
+                async with httpx_client.AsyncClient(timeout=timeout) as client:
+                    response = await client.post(
+                        "https://api.mistral.ai/v1/chat/completions",
+                        headers={
+                            "Authorization": f"Bearer {api_key}",
+                            "Content-Type": "application/json",
+                        },
+                        json=payload,
+                    )
+                    if response.status_code == 200:
+                        logger.info(f"[MISTRAL_VISION] Success in phase 2 with {retry_model}")
+                        return response.json()["choices"][0]["message"]["content"].strip()
+                    if response.status_code == 429:
+                        await asyncio.sleep(15)
+                        continue
+            except Exception as e:
+                logger.error(f"[MISTRAL_VISION] Phase 2 error with {retry_model}: {e}")
+                await asyncio.sleep(5)
+
+    logger.error(f"[MISTRAL_VISION] FINAL FAILURE - all models exhausted after phase 2: {models_to_try}")
     return None
 
 
@@ -5011,11 +5054,11 @@ async def _analyze_images_background(
             temperature=0.1,
             timeout=120.0,
             max_retries=2,
-            fallback_models=["pixtral-large-2411", "mistral-medium-2508", "ministral-8b-latest", "mistral-large-latest"],
+            fallback_models=["pixtral-large-2411", "pixtral-12b-2409", "mistral-small-latest", "mistral-medium-2508", "mistral-large-latest"],
         )
 
         if not vision_result:
-            raise Exception("Mistral Vision : l'API est temporairement surchargée. Réessayez dans 1-2 minutes.")
+            raise Exception("L'analyse d'image n'a pas pu être complétée. Veuillez réessayer.")
 
         print(f"📸 [IMAGES] Vision analysis complete: {len(vision_result)} chars", flush=True)
 
