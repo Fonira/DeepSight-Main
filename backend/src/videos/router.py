@@ -4469,10 +4469,11 @@ async def _mistral_vision_request(
     temperature: float = 0.1,
     response_format: Optional[Dict] = None,
     timeout: float = 120.0,
-    max_retries: int = 3,
+    max_retries: int = 5,
 ) -> Optional[str]:
     """
     Appel Mistral Vision avec retry automatique sur 429 (rate limit).
+    Backoff: 5s, 15s, 30s, 45s, 60s.
     Retourne le contenu texte de la réponse, ou None en cas d'échec.
     """
     import httpx as httpx_client
@@ -4502,7 +4503,8 @@ async def _mistral_vision_request(
                     return response.json()["choices"][0]["message"]["content"].strip()
 
                 if response.status_code == 429:
-                    wait = 2 ** attempt + 1  # 2s, 3s, 5s
+                    wait_times = [5, 15, 30, 45, 60]
+                    wait = wait_times[min(attempt, len(wait_times) - 1)]
                     logger.warning(f"[MISTRAL_VISION] Rate limited (429), retry {attempt + 1}/{max_retries} in {wait}s")
                     import asyncio
                     await asyncio.sleep(wait)
@@ -4519,7 +4521,7 @@ async def _mistral_vision_request(
                 continue
             return None
 
-    logger.error(f"[MISTRAL_VISION] All {max_retries} retries exhausted")
+    logger.error(f"[MISTRAL_VISION] All {max_retries} retries exhausted (total wait ~2.5min)")
     return None
 
 
@@ -4573,7 +4575,7 @@ async def _detect_video_screenshot(
             temperature=0.0,
             response_format={"type": "json_object"},
             timeout=30.0,
-            max_retries=3,
+            max_retries=5,
         )
 
         if not text:
@@ -4888,7 +4890,7 @@ async def _analyze_images_background(
             max_tokens=6000,
             temperature=0.1,
             timeout=120.0,
-            max_retries=3,
+            max_retries=5,
         )
 
         if not vision_result:
