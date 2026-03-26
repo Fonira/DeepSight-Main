@@ -93,7 +93,13 @@ async def create_voice_session(
     agent_config = get_agent_config(request.agent_type)
 
     # Check plan minimum for this agent type
-    plan_order = {"free": 0, "pro": 1, "expert": 2}
+    plan_order = {
+        "free": 0,
+        "etudiant": 1, "starter": 1, "student": 1,  # Legacy aliases → pro
+        "pro": 1,
+        "equipe": 2, "team": 2, "unlimited": 2,      # Legacy aliases → expert
+        "expert": 2,
+    }
     user_plan_level = plan_order.get(plan, 0)
     required_level = plan_order.get(agent_config.plan_minimum, 0)
     if user_plan_level < required_level:
