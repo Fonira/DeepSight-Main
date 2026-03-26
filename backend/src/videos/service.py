@@ -269,12 +269,12 @@ async def save_summary(
         share_count=share_count,
         channel_follower_count=channel_follower_count,
         content_type=content_type or "video",
-        source_tags_json=json.dumps(source_tags, ensure_ascii=False) if source_tags else None,
+        source_tags=json.dumps(source_tags, ensure_ascii=False) if source_tags else None,
         video_description=(video_description[:2000] if video_description else None),
         channel_id=channel_id,
         music_title=music_title,
         music_author=music_author,
-        carousel_images_json=json.dumps(carousel_images, ensure_ascii=False) if carousel_images else None,
+        carousel_images=json.dumps(carousel_images, ensure_ascii=False) if carousel_images else None,
     )
     
     # Ajouter enrichment_data si le modèle le supporte
