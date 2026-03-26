@@ -9,7 +9,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  FileText, Search, BookOpen,
+  FileText, Search, BookOpen, Image as ImageIcon, X,
   Sparkles, Info, Wand2, Play, Clipboard, ExternalLink
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from './ui';
@@ -44,6 +44,8 @@ const ModeIconRenderer: React.FC<{ mode: InputMode; className?: string }> = ({ m
       );
     case 'text':
       return <FileText className={className} />;
+    case 'image':
+      return <ImageIcon className={className} />;
     case 'library':
       return <BookOpen className={className} />;
     default:
@@ -55,7 +57,16 @@ const ModeIconRenderer: React.FC<{ mode: InputMode; className?: string }> = ({ m
 // TYPES
 // ═══════════════════════════════════════════════════════════════════
 
-export type InputMode = 'url' | 'text' | 'search' | 'library';
+export type InputMode = 'url' | 'text' | 'search' | 'library' | 'image';
+
+export interface ImageFile {
+  id: string;
+  data: string;       // base64 sans préfixe
+  mimeType: string;
+  preview: string;     // data URL pour l'aperçu
+  filename?: string;
+  size: number;
+}
 
 export interface SmartInputValue {
   mode: InputMode;
@@ -66,6 +77,9 @@ export interface SmartInputValue {
   searchQuery?: string;
   searchLanguages?: string[];
   libraryQuery?: string;
+  images?: ImageFile[];
+  imageTitle?: string;
+  imageContext?: string;
 }
 
 interface SmartInputBarProps {
@@ -80,7 +94,45 @@ interface SmartInputBarProps {
   showLanguageSelector?: boolean;
   onQuickChat?: (url: string) => void;
   isQuickChatting?: boolean;
+  onImageSubmit?: (images: ImageFile[], title?: string, context?: string) => void;
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// IMAGE HELPERS
+// ═══════════════════════════════════════════════════════════════════
+
+const MAX_IMAGES = 10;
+const MAX_IMAGE_SIZE_MB = 10;
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+const fileToImageFile = (file: File): Promise<ImageFile> => {
+  return new Promise((resolve, reject) => {
+    if (!ACCEPTED_TYPES.includes(file.type)) {
+      reject(new Error(`Format non supporté: ${file.type}`));
+      return;
+    }
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      reject(new Error(`Image trop volumineuse: ${(file.size / 1024 / 1024).toFixed(1)} MB (max ${MAX_IMAGE_SIZE_MB} MB)`));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.split(',')[1];
+      resolve({
+        id: `img_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        data: base64,
+        mimeType: file.type,
+        preview: dataUrl,
+        filename: file.name,
+        size: file.size,
+      });
+    };
+    reader.onerror = () => reject(new Error('Erreur de lecture du fichier'));
+    reader.readAsDataURL(file);
+  });
+};
 
 // ═══════════════════════════════════════════════════════════════════
 // CONFIGURATION
@@ -121,7 +173,7 @@ const SEARCH_LANGUAGES = [
 ];
 
 // Ordre des modes dans le dropdown (search en premier)
-const MODE_ORDER: InputMode[] = ['search', 'url', 'text', 'library'];
+const MODE_ORDER: InputMode[] = ['search', 'url', 'image', 'text', 'library'];
 
 const MODE_CONFIG = {
   search: {
@@ -157,6 +209,17 @@ const MODE_CONFIG = {
     focusBorder: 'focus-within:border-blue-500/60',
     gradient: 'from-blue-500 to-cyan-600',
     placeholder: { fr: 'Collez votre texte ici (min. 100 caractères)', en: 'Paste your text here (min. 100 characters)' },
+  },
+  image: {
+    icon: ImageIcon,
+    label: { fr: 'Images', en: 'Images' },
+    bgColor: 'bg-amber-500/10',
+    textColor: 'text-amber-400',
+    borderColor: 'border-amber-500/30',
+    hoverBorder: 'hover:border-amber-500/50',
+    focusBorder: 'focus-within:border-amber-500/60',
+    gradient: 'from-amber-500 to-orange-600',
+    placeholder: { fr: 'Collez des images (Ctrl+V) ou glissez-les ici...', en: 'Paste images (Ctrl+V) or drag & drop here...' },
   },
   library: {
     icon: BookOpen,
@@ -207,6 +270,7 @@ const getInputValue = (value: SmartInputValue): string => {
     case 'text': return value.rawText || '';
     case 'search': return value.searchQuery || '';
     case 'library': return value.libraryQuery || '';
+    case 'image': return value.imageTitle || '';
     default: return '';
   }
 };
@@ -235,6 +299,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   onChange,
   onSubmit,
   onQuickChat,
+  onImageSubmit,
   isQuickChatting = false,
   loading = false,
   disabled = false,
@@ -245,9 +310,93 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   const [autoDetected, setAutoDetected] = useState(true);
   // État de soumission : la bordure rouge n'apparaît qu'après une tentative invalide
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   const config = MODE_CONFIG[value.mode];
+  const currentImages = value.images || [];
+  const isImageMode = value.mode === 'image';
+
+  // ═══ IMAGE HANDLERS ═══
+  const addImages = useCallback(async (files: File[]) => {
+    setImageError(null);
+    const remaining = MAX_IMAGES - currentImages.length;
+    if (remaining <= 0) {
+      setImageError(language === 'fr' ? `Maximum ${MAX_IMAGES} images atteint` : `Maximum ${MAX_IMAGES} images reached`);
+      return;
+    }
+    const toProcess = files.slice(0, remaining);
+    const newImages: ImageFile[] = [];
+    for (const file of toProcess) {
+      try {
+        const img = await fileToImageFile(file);
+        newImages.push(img);
+      } catch (err: unknown) {
+        setImageError(err instanceof Error ? err.message : 'Erreur inconnue');
+      }
+    }
+    if (newImages.length > 0) {
+      onChange({
+        ...value,
+        mode: 'image',
+        images: [...currentImages, ...newImages],
+      });
+    }
+  }, [currentImages, value, onChange, language]);
+
+  const removeImage = useCallback((id: string) => {
+    const updated = currentImages.filter(img => img.id !== id);
+    onChange({
+      ...value,
+      images: updated,
+      mode: updated.length === 0 ? 'search' : 'image',
+    });
+  }, [currentImages, value, onChange]);
+
+  // Paste handler (capture images from clipboard)
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const imageFiles: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          const file = items[i].getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        addImages(imageFiles);
+      }
+    };
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [addImages]);
+
+  // Drag & drop handlers
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (files.length > 0) addImages(files);
+  }, [addImages]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -322,10 +471,21 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   // Handle submit
   const handleSubmit = useCallback(() => {
     setHasAttemptedSubmit(true);
+    if (loading || disabled) return;
+
+    // Image mode: submit images
+    if (value.mode === 'image') {
+      if (!currentImages.length) return;
+      if (onImageSubmit) {
+        onImageSubmit(currentImages, value.imageTitle, value.imageContext);
+      }
+      return;
+    }
+
     const inputVal = getInputValue(value);
-    if (!inputVal.trim() || loading || disabled) return;
+    if (!inputVal.trim()) return;
     onSubmit();
-  }, [value, loading, disabled, onSubmit]);
+  }, [value, loading, disabled, onSubmit, onImageSubmit, currentImages]);
 
   // Keyboard handling
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
@@ -341,6 +501,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   const isSearchMode = value.mode === 'search';
   const isUrlMode = value.mode === 'url';
   const charCount = inputVal.length;
+  const imageCount = currentImages.length;
 
   // Bordure dynamique pour le mode URL : neutre → vert/cyan (URL valide) → rouge (soumis + invalide)
   const getDynamicBorderClasses = (): string => {
@@ -362,7 +523,9 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
   };
   const TEXT_MIN_CHARS = 100;
   const textTooShort = isTextMode && charCount > 0 && charCount < TEXT_MIN_CHARS;
-  const canSubmit = inputVal.trim().length > 0 && !loading && !disabled && !textTooShort;
+  const canSubmit = isImageMode
+    ? imageCount > 0 && !loading && !disabled
+    : inputVal.trim().length > 0 && !loading && !disabled && !textTooShort;
 
   // Credit info
   const creditCost = value.mode === 'search' ? 0 : 1;
@@ -393,6 +556,7 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
               <span className="sm:hidden">
                 {m === 'search' && 'Recherche'}
                 {m === 'url' && 'URL'}
+                {m === 'image' && 'Images'}
                 {m === 'text' && 'Texte'}
               </span>
             </button>
@@ -415,118 +579,268 @@ const SmartInputBar: React.FC<SmartInputBarProps> = ({
       </div>
 
       {/* Main Input Area */}
-      <div className={`relative rounded-xl border-2 transition-all duration-300 bg-bg-secondary ${getDynamicBorderClasses()}`}>
+      <div
+        ref={dropZoneRef}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`relative rounded-xl border-2 transition-all duration-300 bg-bg-secondary ${getDynamicBorderClasses()} ${isDragOver ? 'border-amber-500/60 bg-amber-500/5' : ''}`}
+      >
 
-        {/* Input */}
-        <div className="flex items-start gap-3 p-3 sm:p-4">
-          {/* Active mode badge (compact) */}
-          <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg shrink-0 ${config.bgColor} ${config.textColor}`}>
-            <ModeIconRenderer mode={value.mode} className="w-4 h-4" />
-          </div>
-
-          {/* Paste button — visible when input is empty */}
-          {!inputVal && (
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  const text = await navigator.clipboard.readText();
-                  if (text) handleInputChange(text.trim());
-                } catch { /* clipboard denied */ }
-              }}
-              className="flex items-center gap-1.5 px-2.5 py-2.5 rounded-lg shrink-0 bg-surface-secondary/60 hover:bg-surface-secondary border border-border-subtle text-text-tertiary hover:text-text-secondary transition-colors text-xs min-h-[44px]"
-              title={language === 'fr' ? 'Coller' : 'Paste'}
-            >
-              <Clipboard className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{language === 'fr' ? 'Coller' : 'Paste'}</span>
-            </button>
-          )}
-
-          {/* Input Area */}
-          <div className="flex-1 min-w-0">
-            <textarea
-              ref={textareaRef}
-              value={inputVal}
-              onChange={(e) => handleInputChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={config.placeholder[language]}
-              disabled={disabled || loading}
-              className="w-full bg-transparent border-none outline-none resize-none text-text-primary placeholder:text-text-muted text-base leading-relaxed"
-              style={{ minHeight: '24px' }}
-              rows={1}
-            />
-          </div>
-
-          {/* Quick Chat Button - next to Submit */}
-          {onQuickChat && value.mode === 'url' && inputVal.trim().length > 10 && !loading && (
-            <button
-              type="button"
-              onClick={() => onQuickChat(inputVal.trim())}
-              disabled={isQuickChatting}
-              className="flex items-center justify-center gap-2 px-4 h-12 rounded-xl transition-all duration-200 font-medium text-sm whitespace-nowrap bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 hover:border-emerald-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
-              title={language === 'fr' ? "Chatter avec l'IA sans analyse (gratuit)" : 'Chat directly with AI (free)'}
-            >
-              {isQuickChatting ? (
-                <div className="w-4 h-4 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
-              ) : (
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                </svg>
-              )}
-              <span className="hidden sm:inline">
-                {language === 'fr' ? 'Chat IA' : 'AI Chat'}
-              </span>
-            </button>
-          )}
-
-          {/* Submit Button — Visible & Explicit */}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!canSubmit || !hasEnoughCredits}
-            className={`flex items-center justify-center gap-2 px-5 h-12 rounded-xl transition-all duration-200 font-semibold text-sm whitespace-nowrap ${
-              canSubmit && hasEnoughCredits
-                ? `bg-gradient-to-r ${config.gradient} text-white shadow-lg shadow-accent-primary/20 hover:shadow-xl hover:scale-[1.03] active:scale-[0.97]`
-                : 'bg-bg-tertiary text-text-muted cursor-not-allowed'
-            }`}
-          >
-            {loading ? (
-              <DeepSightSpinnerMicro />
+        {/* ═══ IMAGE MODE ═══ */}
+        {isImageMode ? (
+          <div className="p-3 sm:p-4 space-y-3">
+            {/* Drop zone / empty state */}
+            {imageCount === 0 ? (
+              <div
+                className={`flex flex-col items-center justify-center gap-3 py-8 px-4 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
+                  isDragOver
+                    ? 'border-amber-400 bg-amber-500/10 text-amber-300'
+                    : 'border-border-subtle text-text-muted hover:border-amber-500/40 hover:text-amber-400'
+                }`}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <ImageIcon className="w-10 h-10" />
+                <div className="text-center">
+                  <p className="text-sm font-medium">
+                    {language === 'fr'
+                      ? 'Collez des images (Ctrl+V), glissez-les ici, ou cliquez pour parcourir'
+                      : 'Paste images (Ctrl+V), drag & drop, or click to browse'}
+                  </p>
+                  <p className="text-xs mt-1 text-text-muted">
+                    {language === 'fr'
+                      ? `Max ${MAX_IMAGES} images · JPEG, PNG, WebP · ${MAX_IMAGE_SIZE_MB} MB max/image`
+                      : `Max ${MAX_IMAGES} images · JPEG, PNG, WebP · ${MAX_IMAGE_SIZE_MB} MB max/image`}
+                  </p>
+                </div>
+              </div>
             ) : (
               <>
-                <Play className="w-4 h-4 fill-current" />
-                <span className="hidden sm:inline">
-                  {isSearchMode
-                    ? (language === 'fr' ? 'Rechercher' : 'Search')
-                    : (language === 'fr' ? `Analyser · ${creditCost} crédit${creditCost > 1 ? 's' : ''}` : `Analyze · ${creditCost} credit${creditCost > 1 ? 's' : ''}`)
-                  }
-                </span>
+                {/* Image thumbnails grid */}
+                <div className="flex flex-wrap gap-2">
+                  {currentImages.map((img, idx) => (
+                    <div key={img.id} className="relative group w-20 h-20 rounded-lg overflow-hidden border border-border-subtle">
+                      <img
+                        src={img.preview}
+                        alt={img.filename || `Image ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(img.id)}
+                        className="absolute top-0.5 right-0.5 p-0.5 bg-black/70 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                      <span className="absolute bottom-0.5 left-0.5 text-[10px] bg-black/60 text-white px-1 rounded">
+                        {idx + 1}
+                      </span>
+                    </div>
+                  ))}
+                  {/* Add more button */}
+                  {imageCount < MAX_IMAGES && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-20 h-20 flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-border-subtle text-text-muted hover:border-amber-500/40 hover:text-amber-400 transition-colors"
+                    >
+                      <span className="text-xl">+</span>
+                      <span className="text-[10px]">{imageCount}/{MAX_IMAGES}</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Title + context inputs */}
+                <div className="flex flex-wrap gap-2">
+                  <input
+                    type="text"
+                    value={value.imageTitle || ''}
+                    onChange={(e) => onChange({ ...value, imageTitle: e.target.value })}
+                    placeholder={language === 'fr' ? 'Titre (optionnel)' : 'Title (optional)'}
+                    className="flex-1 min-w-0 sm:min-w-[150px] px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:border-amber-500/50 focus:outline-none"
+                  />
+                  <input
+                    type="text"
+                    value={value.imageContext || ''}
+                    onChange={(e) => onChange({ ...value, imageContext: e.target.value })}
+                    placeholder={language === 'fr' ? 'Contexte (optionnel)' : 'Context (optional)'}
+                    className="flex-1 min-w-0 sm:min-w-[150px] px-3 py-2 bg-bg-tertiary border border-border-subtle rounded-lg text-sm text-text-primary placeholder:text-text-muted focus:border-amber-500/50 focus:outline-none"
+                  />
+                </div>
               </>
             )}
-          </button>
-        </div>
 
-        {/* Bottom Bar - Minimal context (credits only) */}
-        {(creditCost > 0 || (isTextMode && charCount > 0)) && (
-          <div className="flex items-center justify-end px-4 py-1.5 border-t border-border-subtle text-xs">
-            <div className="flex items-center gap-3 text-text-muted">
-              {isTextMode && charCount > 0 && (
-                <span className={textTooShort ? 'text-amber-400' : ''}>
-                  {charCount.toLocaleString()}/{TEXT_MIN_CHARS} {language === 'fr' ? 'car. min' : 'min chars'}
-                  {textTooShort && (
-                    <span className="ml-1">
-                      ({language === 'fr' ? `encore ${TEXT_MIN_CHARS - charCount}` : `${TEXT_MIN_CHARS - charCount} more`})
+            {/* Error message */}
+            {imageError && (
+              <p className="text-xs text-red-400">{imageError}</p>
+            )}
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const files = Array.from(e.target.files || []);
+                if (files.length > 0) addImages(files);
+                e.target.value = '';
+              }}
+            />
+
+            {/* Submit row */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-text-muted">
+                {imageCount > 0 && (
+                  <>
+                    {imageCount} image{imageCount > 1 ? 's' : ''} · {creditCost} {language === 'fr' ? 'crédit' : 'credit'}
+                    {imageCount > 1 && (
+                      <span className="ml-1 text-amber-400/70">
+                        {language === 'fr' ? '(liens entre images activés)' : '(cross-image linking enabled)'}
+                      </span>
+                    )}
+                  </>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!canSubmit || !hasEnoughCredits}
+                className={`flex items-center justify-center gap-2 px-5 h-10 rounded-xl transition-all duration-200 font-semibold text-sm whitespace-nowrap ${
+                  canSubmit && hasEnoughCredits
+                    ? `bg-gradient-to-r ${config.gradient} text-white shadow-lg shadow-accent-primary/20 hover:shadow-xl hover:scale-[1.03] active:scale-[0.97]`
+                    : 'bg-bg-tertiary text-text-muted cursor-not-allowed'
+                }`}
+              >
+                {loading ? (
+                  <DeepSightSpinnerMicro />
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 fill-current" />
+                    <span>
+                      {language === 'fr' ? `Analyser · ${creditCost} crédit` : `Analyze · ${creditCost} credit`}
                     </span>
-                  )}
-                </span>
-              )}
-              {creditCost > 0 && (
-                <span className={hasEnoughCredits ? '' : 'text-red-400'}>
-                  {creditCost} crédit{creditCost > 1 ? 's' : ''}
-                </span>
-              )}
+                  </>
+                )}
+              </button>
             </div>
           </div>
+        ) : (
+          /* ═══ STANDARD MODES (URL, Text, Search, Library) ═══ */
+          <>
+            {/* Input */}
+            <div className="flex items-start gap-3 p-3 sm:p-4">
+              {/* Active mode badge (compact) */}
+              <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg shrink-0 ${config.bgColor} ${config.textColor}`}>
+                <ModeIconRenderer mode={value.mode} className="w-4 h-4" />
+              </div>
+
+              {/* Paste button — visible when input is empty */}
+              {!inputVal && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      if (text) handleInputChange(text.trim());
+                    } catch { /* clipboard denied */ }
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-2.5 rounded-lg shrink-0 bg-surface-secondary/60 hover:bg-surface-secondary border border-border-subtle text-text-tertiary hover:text-text-secondary transition-colors text-xs min-h-[44px]"
+                  title={language === 'fr' ? 'Coller' : 'Paste'}
+                >
+                  <Clipboard className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">{language === 'fr' ? 'Coller' : 'Paste'}</span>
+                </button>
+              )}
+
+              {/* Input Area */}
+              <div className="flex-1 min-w-0">
+                <textarea
+                  ref={textareaRef}
+                  value={inputVal}
+                  onChange={(e) => handleInputChange(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={config.placeholder[language]}
+                  disabled={disabled || loading}
+                  className="w-full bg-transparent border-none outline-none resize-none text-text-primary placeholder:text-text-muted text-base leading-relaxed"
+                  style={{ minHeight: '24px' }}
+                  rows={1}
+                />
+              </div>
+
+              {/* Quick Chat Button - next to Submit */}
+              {onQuickChat && value.mode === 'url' && inputVal.trim().length > 10 && !loading && (
+                <button
+                  type="button"
+                  onClick={() => onQuickChat(inputVal.trim())}
+                  disabled={isQuickChatting}
+                  className="flex items-center justify-center gap-2 px-4 h-12 rounded-xl transition-all duration-200 font-medium text-sm whitespace-nowrap bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25 hover:border-emerald-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={language === 'fr' ? "Chatter avec l'IA sans analyse (gratuit)" : 'Chat directly with AI (free)'}
+                >
+                  {isQuickChatting ? (
+                    <div className="w-4 h-4 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  )}
+                  <span className="hidden sm:inline">
+                    {language === 'fr' ? 'Chat IA' : 'AI Chat'}
+                  </span>
+                </button>
+              )}
+
+              {/* Submit Button — Visible & Explicit */}
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!canSubmit || !hasEnoughCredits}
+                className={`flex items-center justify-center gap-2 px-5 h-12 rounded-xl transition-all duration-200 font-semibold text-sm whitespace-nowrap ${
+                  canSubmit && hasEnoughCredits
+                    ? `bg-gradient-to-r ${config.gradient} text-white shadow-lg shadow-accent-primary/20 hover:shadow-xl hover:scale-[1.03] active:scale-[0.97]`
+                    : 'bg-bg-tertiary text-text-muted cursor-not-allowed'
+                }`}
+              >
+                {loading ? (
+                  <DeepSightSpinnerMicro />
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 fill-current" />
+                    <span className="hidden sm:inline">
+                      {isSearchMode
+                        ? (language === 'fr' ? 'Rechercher' : 'Search')
+                        : (language === 'fr' ? `Analyser · ${creditCost} crédit${creditCost > 1 ? 's' : ''}` : `Analyze · ${creditCost} credit${creditCost > 1 ? 's' : ''}`)
+                      }
+                    </span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Bottom Bar - Minimal context (credits only) */}
+            {(creditCost > 0 || (isTextMode && charCount > 0)) && (
+              <div className="flex items-center justify-end px-4 py-1.5 border-t border-border-subtle text-xs">
+                <div className="flex items-center gap-3 text-text-muted">
+                  {isTextMode && charCount > 0 && (
+                    <span className={textTooShort ? 'text-amber-400' : ''}>
+                      {charCount.toLocaleString()}/{TEXT_MIN_CHARS} {language === 'fr' ? 'car. min' : 'min chars'}
+                      {textTooShort && (
+                        <span className="ml-1">
+                          ({language === 'fr' ? `encore ${TEXT_MIN_CHARS - charCount}` : `${TEXT_MIN_CHARS - charCount} more`})
+                        </span>
+                      )}
+                    </span>
+                  )}
+                  {creditCost > 0 && (
+                    <span className={hasEnoughCredits ? '' : 'text-red-400'}>
+                      {creditCost} crédit{creditCost > 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

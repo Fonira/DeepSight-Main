@@ -332,6 +332,49 @@ export const DashboardPage: React.FC = () => {
     }
   };
 
+  // === HANDLER: Analyse d'images ===
+  const handleImageAnalyze = async (
+    images: Array<{ id: string; data: string; mimeType: string; preview: string; filename?: string; size: number }>,
+    title?: string,
+    context?: string,
+  ) => {
+    if (!images.length) return;
+    setLoading(true);
+    setError(null);
+    setLoadingMessage(
+      language === 'fr'
+        ? `Analyse de ${images.length} image(s) en cours...`
+        : `Analyzing ${images.length} image(s)...`
+    );
+
+    try {
+      const imgApiParams = customizationToApiParams(analysisCustomization, language as 'fr' | 'en');
+      const response = await videoApi.analyzeImages({
+        images: images.map(img => ({
+          data: img.data,
+          mime_type: img.mimeType,
+          filename: img.filename,
+        })),
+        title: title || undefined,
+        context: context || undefined,
+        mode: imgApiParams.mode,
+        lang: imgApiParams.lang,
+      });
+
+      if (response.task_id) {
+        pollingRef.current = true;
+        await pollTaskStatus(response.task_id);
+      }
+    } catch (err) {
+      console.error('[IMAGES] Error:', err);
+      const message = err instanceof Error ? err.message : (language === 'fr' ? "Erreur lors de l'analyse des images" : "Image analysis error");
+      setError(message);
+    } finally {
+      setLoading(false);
+      pollingRef.current = false;
+    }
+  };
+
     const handleAnalyze = async () => {
     // Validation selon le mode
     if (smartInput.mode === 'url' && !smartInput.url?.trim()) return;
@@ -493,7 +536,7 @@ export const DashboardPage: React.FC = () => {
       // === MODE TEXT: Analyse de texte brut ===
       if (smartInput.mode === 'text') {
         setLoadingMessage(language === 'fr' ? "Analyse du texte..." : "Analyzing text...");
-        
+
         const textApiParams = customizationToApiParams(analysisCustomization, language as 'fr' | 'en');
         const response = await videoApi.analyzeHybrid({
           inputType: 'raw_text',
@@ -504,13 +547,13 @@ export const DashboardPage: React.FC = () => {
           lang: textApiParams.lang,
           deepResearch,
         });
-        
+
         if (response.task_id) {
           pollingRef.current = true;
           await pollTaskStatus(response.task_id);
         }
       }
-      
+
     } catch (err) {
       console.error('❌ [ANALYZE] Error:', err);
       const message = err instanceof ApiError 
@@ -745,6 +788,7 @@ export const DashboardPage: React.FC = () => {
                 value={smartInput}
                 onChange={setSmartInput}
                 onSubmit={handleAnalyze}
+                onImageSubmit={handleImageAnalyze}
                 loading={loading}
                 disabled={loading}
                 userCredits={user?.credits || 0}

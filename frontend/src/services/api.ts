@@ -905,6 +905,36 @@ export const videoApi = {
   },
 
   /**
+   * Analyse d'images collées/uploadées par l'utilisateur.
+   * Utilise Mistral Vision pour OCR + description + liens entre images.
+   *
+   * Endpoint: POST /api/videos/analyze/images
+   */
+  async analyzeImages(params: {
+    images: Array<{ data: string; mime_type: string; filename?: string }>;
+    title?: string;
+    context?: string;
+    mode?: string;
+    lang?: string;
+    model?: string;
+    category?: string;
+  }): Promise<{ task_id: string; status: string; image_count: number; cost: number }> {
+    return request('/api/videos/analyze/images', {
+      method: 'POST',
+      body: {
+        images: params.images,
+        title: params.title || null,
+        context: params.context || null,
+        mode: params.mode || 'standard',
+        lang: params.lang || 'fr',
+        model: params.model || null,
+        category: params.category || null,
+      },
+      timeout: 120000,
+    });
+  },
+
+  /**
    * ? Quick Chat � Pr�pare une vid�o pour le chat IA sans analyse compl�te.
    * Extrait uniquement le transcript et cr�e un Summary l�ger.
    * Z�ro cr�dit consomm�, temps de r�ponse ~2-5s.
