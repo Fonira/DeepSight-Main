@@ -16,7 +16,7 @@ from sqlalchemy import select, delete
 from db.database import (
     async_session_maker, TranscriptCache, TranscriptCacheChunk, TranscriptEmbedding
 )
-from core.config import settings
+from core.config import MISTRAL_API_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ MIN_SIMILARITY = 0.3
 
 async def generate_embedding(text: str) -> Optional[list]:
     """Generate a single embedding vector via Mistral API."""
-    api_key = getattr(settings, "MISTRAL_API_KEY", None)
+    api_key = MISTRAL_API_KEY
     if not api_key:
         logger.warning("[EMBED] No MISTRAL_API_KEY configured")
         return None
@@ -51,7 +51,7 @@ async def generate_embedding(text: str) -> Optional[list]:
 
 async def generate_embeddings_batch(texts: list[str]) -> list[Optional[list]]:
     """Generate embeddings for a batch of texts (max 10)."""
-    api_key = getattr(settings, "MISTRAL_API_KEY", None)
+    api_key = MISTRAL_API_KEY
     if not api_key:
         return [None] * len(texts)
 
