@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ╔════════════════════════════════════════════════════════════════════════════════════╗
  * ║  🌐 DEEP SIGHT API SERVICE v7.1 — Client HTTP Complet                              ║
  * ╠════════════════════════════════════════════════════════════════════════════════════╣
@@ -907,6 +907,37 @@ export const videoApi = {
    * 
    * Endpoint: POST /api/videos/quick-chat
    */
+
+  /**
+   * Analyse d'images collees/uploadees par l'utilisateur.
+   * Utilise Mistral Vision pour OCR + description + liens entre images.
+   *
+   * Endpoint: POST /api/videos/analyze/images
+   */
+  async analyzeImages(params: {
+    images: Array<{ data: string; mime_type: string; filename?: string }>;
+    title?: string;
+    context?: string;
+    mode?: string;
+    lang?: string;
+    model?: string;
+    category?: string;
+  }): Promise<{ task_id: string; status: string; image_count: number; cost: number }> {
+    return request('/api/videos/analyze/images', {
+      method: 'POST',
+      body: {
+        images: params.images,
+        title: params.title || null,
+        context: params.context || null,
+        mode: params.mode || 'standard',
+        lang: params.lang || 'fr',
+        model: params.model || null,
+        category: params.category || null,
+      },
+      timeout: 120000,
+    });
+  },
+
   async quickChat(url: string, lang: string = 'fr'): Promise<QuickChatResponse> {
     return request('/api/videos/quick-chat', {
       method: 'POST',
