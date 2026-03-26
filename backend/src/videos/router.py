@@ -4479,17 +4479,22 @@ async def _detect_video_screenshot(
     data_uri = f"data:{image.mime_type};base64,{b64_data}"
 
     detection_prompt = (
-        "Regarde attentivement cette image. Est-ce une CAPTURE D'ÉCRAN d'un téléphone mobile "
-        "montrant une vidéo YouTube (ou YouTube Shorts) ou TikTok ?\n\n"
+        "Regarde attentivement cette image. Est-ce une CAPTURE D'ÉCRAN montrant "
+        "une vidéo YouTube (ou YouTube Shorts) ou TikTok ?\n\n"
+        "La capture peut venir de N'IMPORTE QUEL appareil :\n"
+        "- **Mobile** (iPhone, Android) : app YouTube, app TikTok, YouTube Shorts\n"
+        "- **PC/Mac** (navigateur) : youtube.com, tiktok.com dans Chrome/Firefox/Safari/Edge\n\n"
         "Indices à chercher :\n"
-        "- Interface YouTube : boutons like/dislike, barre de progression, logo YouTube, titre de vidéo, nom de chaîne\n"
-        "- Interface YouTube Shorts : scroll vertical, boutons à droite (like, comment, share), @nom de chaîne\n"
-        "- Interface TikTok : boutons à droite (coeur, commentaire, partage), @username, description en bas, logo TikTok\n\n"
+        "**YouTube mobile** : boutons like/dislike, barre de progression, logo YouTube, titre, nom de chaîne\n"
+        "**YouTube Shorts mobile** : scroll vertical, boutons à droite (like, comment, share), @chaîne\n"
+        "**YouTube PC/Mac** : player vidéo avec contrôles, titre en dessous, nom de chaîne, barre latérale de suggestions, URL youtube.com visible\n"
+        "**TikTok mobile** : boutons à droite (coeur, commentaire, partage), @username, description en bas, logo TikTok\n"
+        "**TikTok PC/Mac** : player centré, @username, description, boutons like/comment, barre latérale, URL tiktok.com visible\n\n"
         "RÉPONDS UNIQUEMENT dans ce format JSON exact (rien d'autre) :\n"
         '{"is_screenshot": true/false, "platform": "youtube"|"tiktok"|null, '
         '"video_title": "titre visible ou null", "channel": "@nom ou nom de chaîne ou null", '
         '"description": "description visible ou null"}\n\n'
-        "Si ce n'est PAS une capture d'écran d'app vidéo, réponds :\n"
+        "Si ce n'est PAS une capture d'écran de YouTube ou TikTok, réponds :\n"
         '{"is_screenshot": false, "platform": null, "video_title": null, "channel": null, "description": null}'
     )
 
