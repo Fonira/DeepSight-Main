@@ -4575,7 +4575,7 @@ async def _detect_video_screenshot(
             temperature=0.0,
             response_format={"type": "json_object"},
             timeout=30.0,
-            max_retries=5,
+            max_retries=1,  # Detection is a bonus — don't block on rate limits
         )
 
         if not text:
