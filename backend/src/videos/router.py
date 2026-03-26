@@ -4592,7 +4592,7 @@ async def _detect_video_screenshot(
             response_format={"type": "json_object"},
             timeout=30.0,
             max_retries=1,
-            fallback_models=["pixtral-large-2411", "mistral-medium-2508"],
+            fallback_models=["pixtral-large-2411", "mistral-medium-2508", "ministral-8b-latest", "mistral-large-latest"],
         )
 
         if not text:
@@ -4921,7 +4921,7 @@ async def _analyze_images_background(
             temperature=0.1,
             timeout=120.0,
             max_retries=2,
-            fallback_models=["pixtral-large-2411", "mistral-medium-2508"],
+            fallback_models=["pixtral-large-2411", "mistral-medium-2508", "ministral-8b-latest", "mistral-large-latest"],
         )
 
         if not vision_result:
