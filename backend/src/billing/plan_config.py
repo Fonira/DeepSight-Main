@@ -139,13 +139,13 @@ PLANS: dict[str, dict[str, Any]] = {
         },
     },
 
-    # ─── PRO (3.99€/mois) ──────────────────────────────────────────────
+    # ─── PRO (12.99€/mois) ─────────────────────────────────────────────
     PlanId.PRO: {
         "name": "Pro",
         "name_en": "Pro",
         "description": "Pour les étudiants et utilisateurs réguliers",
         "description_en": "For students and regular users",
-        "price_monthly_cents": 399,
+        "price_monthly_cents": 1299,
         "stripe_price_id_test": None,
         "stripe_price_id_live": None,
         "color": "#3B82F6",
@@ -223,13 +223,13 @@ PLANS: dict[str, dict[str, Any]] = {
         },
     },
 
-    # ─── EXPERT (9.99€/mois) ──────────────────────────────────────────
+    # ─── EXPERT (14.99€/mois) ─────────────────────────────────────────
     PlanId.EXPERT: {
         "name": "Expert",
         "name_en": "Expert",
         "description": "Pour les professionnels et créateurs de contenu",
         "description_en": "For professionals and content creators",
-        "price_monthly_cents": 999,
+        "price_monthly_cents": 1499,
         "stripe_price_id_test": None,
         "stripe_price_id_live": None,
         "color": "#F59E0B",

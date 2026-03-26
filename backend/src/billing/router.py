@@ -345,7 +345,7 @@ async def start_pro_trial(
 
 @router.get("/plans")
 async def get_plans(
-    platform: str = Query("web", regex="^(web|mobile|extension)$"),
+    platform: str = Query("web", pattern="^(web|mobile|extension)$"),
     current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """Retourne la liste des 5 plans avec limites filtrées par plateforme.
@@ -389,7 +389,7 @@ async def get_plans(
 
 @router.get("/my-plan")
 async def get_my_plan(
-    platform: str = Query("web", regex="^(web|mobile|extension)$"),
+    platform: str = Query("web", pattern="^(web|mobile|extension)$"),
     current_user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
