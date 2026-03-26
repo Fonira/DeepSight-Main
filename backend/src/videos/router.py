@@ -4894,7 +4894,7 @@ async def _analyze_images_background(
         )
 
         if not vision_result:
-            raise Exception("Mistral Vision: échec après 3 tentatives (rate limit ou erreur)")
+            raise Exception("Mistral Vision : l'API est temporairement surchargée. Réessayez dans 1-2 minutes.")
 
         print(f"📸 [IMAGES] Vision analysis complete: {len(vision_result)} chars", flush=True)
 
