@@ -602,10 +602,24 @@ export const DashboardPage: React.FC = () => {
       try {
         const status: TaskStatus = await videoApi.getTaskStatus(taskId);
         
+        // Screenshot redirect: Mistral detected a YouTube/TikTok screenshot → follow new task
+        if (status.status === "redirect" && status.result?.new_task_id) {
+          const platform = status.result.platform || 'video';
+          setLoadingMessage(
+            language === 'fr'
+              ? `Capture ${platform} détectée ! Analyse de la vidéo en cours...`
+              : `${platform} screenshot detected! Analyzing video...`
+          );
+          setLoadingProgress(25);
+          // Follow the redirected video analysis task
+          await pollTaskStatus(status.result.new_task_id);
+          return;
+        }
+
         if (status.status === "completed" && status.result) {
           setLoadingProgress(95);
           setLoadingMessage(language === 'fr' ? 'Chargement du résumé...' : 'Loading summary...');
-          
+
           const summaryId = status.result.summary_id;
           if (summaryId) {
             const fullSummary = await videoApi.getSummary(summaryId);
