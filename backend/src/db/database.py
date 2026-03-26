@@ -231,6 +231,20 @@ class Summary(Base):
     # 🆕 Duration Router v1.0 (Mar 2026) — Index structuré (table des matières temporelle)
     structured_index = Column(Text, nullable=True)  # JSON: [{ts, t, title, summary, kw}]
 
+    # 📊 Engagement metadata (Mar 2026)
+    view_count = Column(Integer, nullable=True)
+    like_count = Column(Integer, nullable=True)
+    comment_count = Column(Integer, nullable=True)
+    share_count = Column(Integer, nullable=True)
+    channel_follower_count = Column(Integer, nullable=True)
+    content_type = Column(String(50), nullable=True)
+    video_description = Column(Text, nullable=True)
+    channel_id = Column(String(100), nullable=True)
+    music_title = Column(String(500), nullable=True)
+    music_author = Column(String(255), nullable=True)
+    source_tags = Column(Text, nullable=True)  # JSON list
+    carousel_images = Column(Text, nullable=True)  # JSON list
+
     # Relations
     user = relationship("User", back_populates="summaries")
     chat_messages = relationship("ChatMessage", back_populates="summary", cascade="all, delete-orphan")

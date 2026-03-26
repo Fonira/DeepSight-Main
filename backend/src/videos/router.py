@@ -4567,12 +4567,15 @@ async def _detect_video_screenshot(
         "**YouTube PC/Mac** : player vidéo avec contrôles, titre en dessous, nom de chaîne, barre latérale de suggestions, URL youtube.com visible\n"
         "**TikTok mobile** : boutons à droite (coeur, commentaire, partage), @username, description en bas, logo TikTok\n"
         "**TikTok PC/Mac** : player centré, @username, description, boutons like/comment, barre latérale, URL tiktok.com visible\n\n"
+        "IMPORTANT : Si tu vois une URL dans la barre d'adresse du navigateur (youtube.com/watch?v=..., "
+        "youtu.be/..., tiktok.com/@.../video/...), EXTRAIS-LA EXACTEMENT.\n\n"
         "RÉPONDS UNIQUEMENT dans ce format JSON exact (rien d'autre) :\n"
         '{"is_screenshot": true/false, "platform": "youtube"|"tiktok"|null, '
+        '"video_url": "URL complète visible dans la barre d\'adresse ou null", '
         '"video_title": "titre visible ou null", "channel": "@nom ou nom de chaîne ou null", '
         '"description": "description visible ou null"}\n\n'
         "Si ce n'est PAS une capture d'écran de YouTube ou TikTok, réponds :\n"
-        '{"is_screenshot": false, "platform": null, "video_title": null, "channel": null, "description": null}'
+        '{"is_screenshot": false, "platform": null, "video_url": null, "video_title": null, "channel": null, "description": null}'
     )
 
     try:
@@ -4626,14 +4629,27 @@ async def _detect_video_screenshot(
 
             search_query = " ".join(parts) if parts else None
 
-            logger.info(f"[SCREENSHOT_DETECT] Detected {platform}: title='{result.get('video_title')}' channel='{result.get('channel')}'")
+            # Extraire l'URL directement si visible (screenshot PC avec barre d'adresse)
+            video_url = None
+            raw_url = result.get("video_url")
+            if raw_url and isinstance(raw_url, str):
+                import re
+                # Valider que c'est bien une URL YouTube ou TikTok
+                if re.search(r'youtube\.com/watch\?v=|youtu\.be/|youtube\.com/shorts/', raw_url):
+                    video_url = raw_url.strip()
+                    logger.info(f"[SCREENSHOT_DETECT] URL extracted from address bar: {video_url}")
+                elif re.search(r'tiktok\.com/.*/video/\d+|vm\.tiktok\.com/', raw_url):
+                    video_url = raw_url.strip()
+                    logger.info(f"[SCREENSHOT_DETECT] TikTok URL extracted: {video_url}")
+
+            logger.info(f"[SCREENSHOT_DETECT] Detected {platform}: url='{video_url}' title='{result.get('video_title')}' channel='{result.get('channel')}'")
 
             return {
                 "platform": platform,
                 "search_query": search_query,
                 "video_title": result.get("video_title"),
                 "channel": result.get("channel"),
-                "video_url": None,  # On ne peut pas extraire l'URL directement
+                "video_url": video_url,
             }
 
     except Exception as e:
