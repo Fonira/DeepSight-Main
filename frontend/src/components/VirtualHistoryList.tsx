@@ -42,12 +42,14 @@ import { DeepSightSpinnerSmall } from './ui';
  * Détecte la plateforme.
  * Priorité : champ platform > heuristiques URL/ID
  */
-function resolvePlatform(item: { platform?: string; video_id?: string }): 'youtube' | 'tiktok' | 'text' {
+function resolvePlatform(item: { platform?: string; video_id?: string; video_url?: string }): 'youtube' | 'tiktok' | 'text' | 'images' {
+  if (item.platform === 'images' || item.video_url?.startsWith('images://')) return 'images';
   if (item.platform === 'text') return 'text';
   if (item.platform === 'tiktok') return 'tiktok';
   const vid = item.video_id || '';
   if (!vid) return 'youtube';
   if (vid.startsWith('txt_')) return 'text';
+  if (vid.startsWith('img_')) return 'images';
   const isYouTubeId = /^[A-Za-z0-9_-]{11}$/.test(vid);
   return isYouTubeId ? 'youtube' : 'tiktok';
 }
@@ -65,7 +67,8 @@ export interface SummaryItem {
   is_favorite?: boolean;
   mode?: string;
   lang?: string;
-  platform?: 'youtube' | 'tiktok' | 'text';
+  platform?: 'youtube' | 'tiktok' | 'text' | 'images';
+  video_url?: string;
 }
 
 interface VirtualHistoryListProps {
@@ -195,17 +198,54 @@ const SummaryCard = memo<SummaryCardProps>(({
               alt=""
               className="w-full h-full object-cover transition-transform group-hover/thumb:scale-105"
               loading="lazy"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                const vid = item.video_id;
+                const plat = resolvePlatform(item);
+                if (plat === 'youtube' && vid && !vid.startsWith('img_') && !vid.startsWith('txt_')) {
+                  target.src = `https://img.youtube.com/vi/${vid}/mqdefault.jpg`;
+                  target.onerror = null;
+                } else {
+                  target.style.display = 'none';
+                  const fb = target.parentElement?.querySelector('.thumb-fallback') as HTMLElement;
+                  if (fb) fb.style.display = 'flex';
+                }
+              }}
             />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <FileText className="w-8 h-8 text-text-muted" />
-            </div>
-          )}
+          ) : null}
+          <div
+            className={`thumb-fallback w-full h-full items-center justify-center ${
+              resolvePlatform(item) === 'images'
+                ? 'bg-gradient-to-br from-violet-500/20 to-indigo-500/20'
+                : resolvePlatform(item) === 'tiktok'
+                  ? 'bg-gradient-to-br from-pink-500/20 to-cyan-500/20'
+                  : 'bg-gradient-to-br from-red-500/10 to-orange-500/10'
+            }`}
+            style={{ display: item.thumbnail_url ? 'none' : 'flex' }}
+          >
+            {resolvePlatform(item) === 'images' ? (
+              <svg className="w-8 h-8 text-violet-400/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <path d="m21 15-5-5L5 21" />
+              </svg>
+            ) : (
+              <FileText className="w-8 h-8 text-text-muted/40" />
+            )}
+          </div>
           
           {/* Platform badge */}
           <span className="absolute top-1 left-1 z-10">
             {resolvePlatform(item) === 'tiktok' ? (
               <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-5 h-5 drop-shadow-md" />
+            ) : resolvePlatform(item) === 'images' ? (
+              <span className="flex items-center justify-center w-5 h-5 rounded bg-violet-500/60 backdrop-blur-sm">
+                <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <path d="m21 15-5-5L5 21" />
+                </svg>
+              </span>
             ) : resolvePlatform(item) === 'text' ? (
               <span className="flex items-center justify-center w-5 h-5 rounded bg-gray-500/60 backdrop-blur-sm">
                 <FileText className="w-3.5 h-3.5 text-white" />
