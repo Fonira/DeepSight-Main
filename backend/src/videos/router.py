@@ -1,4 +1,4 @@
-﻿"""
+"""
 ╔════════════════════════════════════════════════════════════════════════════════════╗
 ║  📹 VIDEO ROUTER v6.0 — SÉCURITÉ RENFORCÉE + ENRICHISSEMENT PERPLEXITY             ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
@@ -2540,8 +2540,44 @@ async def _analyze_video_background_v6(
                     except Exception:
                         pass
 
-            if not transcript:
-                raise Exception("No transcript available for this video")
+            if not transcript or _is_empty_transcript(transcript):
+                # 🎞️ Slideshow detection: empty transcript + short video = possible image slideshow
+                _vid_duration = video_info.get("duration", 0) or 0
+                _vid_url = video_info.get("url") or video_info.get("webpage_url") or url
+                if _vid_duration <= 120 or not transcript:
+                    print(f"🎞️ [SLIDESHOW] Empty/minimal transcript ({len(transcript or '')} chars, {_vid_duration}s), trying frame extraction...", flush=True)
+                    _task_store[task_id]["message"] = "Transcript vide — extraction des slides..."
+                    _task_store[task_id]["progress"] = 22
+                    try:
+                        _slideshow_frames = await _extract_slideshow_frames(_vid_url, platform, max_frames=10)
+                        if _slideshow_frames:
+                            _task_store[task_id]["message"] = "Analyse des slides avec Vision IA..."
+                            _api_key = get_mistral_key()
+                            _slide_content = [{"type": "text", "text": f"Analyse ces {len(_slideshow_frames)} slides extraites d'une video {platform}. Pour chaque slide, extrais tout le texte visible et decris le visuel. Assemble le tout comme un transcript coherent. Reponds en {'francais' if lang == 'fr' else 'anglais'}."}]
+                            for _frame in _slideshow_frames:
+                                _data_uri = f"data:{_frame['mime_type']};base64,{_frame['data']}"
+                                _slide_content.append({"type": "image_url", "image_url": _data_uri})
+                            _slide_result = await _mistral_vision_request(
+                                api_key=_api_key,
+                                messages=[
+                                    {"role": "system", "content": "Tu es un expert en OCR et analyse d'images. Extrais et decris le contenu de chaque slide."},
+                                    {"role": "user", "content": _slide_content},
+                                ],
+                                model="mistral-small-2603",
+                                max_tokens=6000,
+                                timeout=120.0,
+                                fallback_models=["pixtral-large-2411", "pixtral-12b-2409"],
+                            )
+                            if _slide_result:
+                                transcript = "[SLIDESHOW — " + str(len(_slideshow_frames)) + " slides]" + chr(10) + chr(10) + _slide_result
+                                print(f"🎞️ [SLIDESHOW] Vision OCR success: {len(_slide_result)} chars", flush=True)
+                            else:
+                                print(f"🎞️ [SLIDESHOW] Vision OCR failed", flush=True)
+                    except Exception as _se:
+                        print(f"🎞️ [SLIDESHOW] Error: {_se}", flush=True)
+                
+                if not transcript or len(transcript.strip()) < 30:
+                    raise Exception("No transcript available for this video")
 
             print(f"✅ Transcript: {len(transcript)} chars", flush=True)
 
@@ -4469,31 +4505,21 @@ async def _mistral_vision_request(
     temperature: float = 0.1,
     response_format: Optional[Dict] = None,
     timeout: float = 120.0,
-    max_retries: int = 4,
+    max_retries: int = 3,
     fallback_models: Optional[list] = None,
 ) -> Optional[str]:
     """
-    Appel Mistral Vision avec model fallback sur 429 (rate limit).
-
-    Strategie resiliente (JAMAIS d'erreur rate-limit pour l'utilisateur) :
-    1. Essayer le modele principal (max_retries tentatives)
-    2. Si 429 -> passer au modele suivant IMMEDIATEMENT
-    3. Si TOUS les modeles sont 429 -> attendre 30s puis re-essayer
-    4. En dernier recours : attente longue (60s) + dernier essai
+    Appel Vision resilient: Mistral -> OpenAI fallback.
+    JAMAIS d'erreur rate-limit visible pour l'utilisateur.
     """
     import httpx as httpx_client
     import asyncio
 
-    models_to_try = [model] + (fallback_models or [])
-    total_attempts = 0
-    max_total_attempts = 20  # Securite anti boucle infinie
+    # -- Phase 1: Mistral (3 modeles max, rotation rapide) --
+    mistral_models = [model] + (fallback_models or [])[:2]
 
-    # Phase 1 : Rotation rapide entre modeles
-    for model_idx, current_model in enumerate(models_to_try):
-        for attempt in range(max_retries):
-            total_attempts += 1
-            if total_attempts > max_total_attempts:
-                break
+    for model_idx, current_model in enumerate(mistral_models):
+        for attempt in range(2):
             try:
                 payload: Dict[str, Any] = {
                     "model": current_model,
@@ -4513,71 +4539,112 @@ async def _mistral_vision_request(
                         },
                         json=payload,
                     )
-
                     if response.status_code == 200:
-                        if model_idx > 0 or attempt > 0:
-                            logger.info(f"[MISTRAL_VISION] Success with {current_model} (attempt {attempt+1}, model #{model_idx+1})")
-                        return response.json()["choices"][0]["message"]["content"].strip()
-
+                        data = response.json()
+                        c = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                        if c:
+                            if model_idx > 0 or attempt > 0:
+                                print(f"[MISTRAL_VISION] Success with {current_model} (attempt {attempt+1})", flush=True)
+                            return c.strip()
                     if response.status_code == 429:
-                        if model_idx < len(models_to_try) - 1:
-                            logger.warning(f"[MISTRAL_VISION] {current_model} rate-limited, trying next model")
-                            break  # Next model
-                        # Last model: exponential backoff
-                        wait = min(8 * (2 ** attempt), 30)
-                        logger.warning(f"[MISTRAL_VISION] {current_model} rate-limited, retry {attempt+1}/{max_retries} in {wait}s")
-                        await asyncio.sleep(wait)
-                        continue
-
-                    logger.error(f"[MISTRAL_VISION] {current_model} error {response.status_code}: {response.text[:200]}")
-                    if model_idx < len(models_to_try) - 1:
+                        print(f"[MISTRAL_VISION] {current_model} rate-limited, next model", flush=True)
                         break
-                    return None
-
+                    print(f"[MISTRAL_VISION] {current_model} error {response.status_code}: {response.text[:200]}", flush=True)
+                    break
             except Exception as e:
-                logger.error(f"[MISTRAL_VISION] {current_model} request error: {e}")
-                if attempt < max_retries - 1:
+                print(f"[MISTRAL_VISION] {current_model} exception: {e}", flush=True)
+                if attempt == 0:
                     await asyncio.sleep(2)
                     continue
                 break
 
-    # Phase 2 : Tous les modeles ont echoue - attente longue + retry
-    logger.warning(f"[MISTRAL_VISION] All models exhausted in phase 1, waiting 30s for rate limit reset...")
-    await asyncio.sleep(30)
+    # -- Phase 2: OpenAI GPT-4o-mini Vision (separate account = separate limits) --
+    print(f"[VISION_FALLBACK] Mistral exhausted, trying OpenAI gpt-4o-mini...", flush=True)
+    try:
+        from core.config import settings
+        openai_key = getattr(settings, "OPENAI_API_KEY", None)
+        if openai_key:
+            openai_messages = []
+            for msg in messages:
+                role = msg.get("role", "user")
+                raw_content = msg.get("content", "")
+                if isinstance(raw_content, str):
+                    openai_messages.append({"role": role, "content": raw_content})
+                elif isinstance(raw_content, list):
+                    oai_content = []
+                    for item in raw_content:
+                        if isinstance(item, dict):
+                            if item.get("type") == "text":
+                                oai_content.append(item)
+                            elif item.get("type") == "image_url":
+                                img_url = item.get("image_url", "")
+                                if isinstance(img_url, str):
+                                    oai_content.append({"type": "image_url", "image_url": {"url": img_url, "detail": "low"}})
+                                elif isinstance(img_url, dict):
+                                    oai_content.append({"type": "image_url", "image_url": {"url": img_url.get("url", ""), "detail": "low"}})
+                                else:
+                                    oai_content.append(item)
+                        else:
+                            oai_content.append(item)
+                    openai_messages.append({"role": role, "content": oai_content})
+                else:
+                    openai_messages.append({"role": role, "content": str(raw_content)})
 
-    # Re-essayer les 2 premiers modeles avec 2 tentatives chacun
-    for retry_model in models_to_try[:2]:
-        for final_attempt in range(2):
-            try:
-                payload = {
-                    "model": retry_model,
-                    "messages": messages,
-                    "max_tokens": max_tokens,
-                    "temperature": temperature,
-                }
-                if response_format:
-                    payload["response_format"] = response_format
-
-                async with httpx_client.AsyncClient(timeout=timeout) as client:
-                    response = await client.post(
-                        "https://api.mistral.ai/v1/chat/completions",
-                        headers={
-                            "Authorization": f"Bearer {api_key}",
-                            "Content-Type": "application/json",
-                        },
-                        json=payload,
-                    )
-                    if response.status_code == 200:
-                        logger.info(f"[MISTRAL_VISION] Success in phase 2 with {retry_model}")
-                        return response.json()["choices"][0]["message"]["content"].strip()
-                    if response.status_code == 429:
-                        await asyncio.sleep(15)
+            for oai_attempt in range(2):
+                try:
+                    async with httpx_client.AsyncClient(timeout=timeout) as client:
+                        resp = await client.post(
+                            "https://api.openai.com/v1/chat/completions",
+                            headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
+                            json={"model": "gpt-4o-mini", "messages": openai_messages, "max_tokens": max_tokens, "temperature": temperature},
+                        )
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            c = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                            if c:
+                                print(f"[VISION_FALLBACK] OpenAI gpt-4o-mini success!", flush=True)
+                                return c.strip()
+                        if resp.status_code == 429:
+                            print(f"[VISION_FALLBACK] OpenAI rate-limited, attempt {oai_attempt+1}/2", flush=True)
+                            await asyncio.sleep(5)
+                            continue
+                        print(f"[VISION_FALLBACK] OpenAI error {resp.status_code}: {resp.text[:200]}", flush=True)
+                        break
+                except Exception as e:
+                    print(f"[VISION_FALLBACK] OpenAI exception: {e}", flush=True)
+                    if oai_attempt == 0:
+                        await asyncio.sleep(3)
                         continue
-            except Exception as e:
-                logger.error(f"[MISTRAL_VISION] Phase 2 error with {retry_model}: {e}")
-                await asyncio.sleep(5)
+                    break
+        else:
+            print(f"[VISION_FALLBACK] No OPENAI_API_KEY, skipping", flush=True)
+    except Exception as e:
+        print(f"[VISION_FALLBACK] OpenAI setup error: {e}", flush=True)
 
-    logger.error(f"[MISTRAL_VISION] FINAL FAILURE - all models exhausted after phase 2: {models_to_try}")
+    # -- Phase 3: Last resort - wait 15s + retry Mistral --
+    print(f"[VISION_FALLBACK] All providers failed, waiting 15s...", flush=True)
+    await asyncio.sleep(15)
+    try:
+        retry_model = mistral_models[0]
+        payload = {"model": retry_model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}
+        if response_format:
+            payload["response_format"] = response_format
+        async with httpx_client.AsyncClient(timeout=timeout) as client:
+            response = await client.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                json=payload,
+            )
+            if response.status_code == 200:
+                data = response.json()
+                c = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                if c:
+                    print(f"[VISION_FALLBACK] Final retry success with {retry_model}", flush=True)
+                    return c.strip()
+    except Exception as e:
+        print(f"[VISION_FALLBACK] Final retry error: {e}", flush=True)
+
+    print(f"[VISION_FALLBACK] FINAL FAILURE - all providers exhausted", flush=True)
     return None
 
 
@@ -4678,15 +4745,27 @@ async def _detect_video_screenshot(
         # ── Étape 3 : Si pas d'URL, chercher des indices de plateforme ──
         if not platform:
             ocr_lower = ocr_text.lower()
-            yt_indicators = ["youtube", "subscribe", "s'abonner", "views", "vues", "shorts"]
-            tt_indicators = ["tiktok", "pour toi", "for you", "fyp", "following"]
+            yt_indicators = [
+                "youtube", "subscribe", "s'abonner", "views", "vues", "shorts",
+                "j'aime", "dislike", "partager", "enregistrer", "save",
+                "playlist", "regarder plus tard", "watch later", "abonnés", "subscribers",
+            ]
+            tt_indicators = [
+                "tiktok", "pour toi", "for you", "fyp", "following",
+                "suivre", "likes", "duet", "stitch", "son original",
+                "original sound", "partager", "répondre", "discover", "créer",
+            ]
 
             yt_score = sum(1 for ind in yt_indicators if ind in ocr_lower)
             tt_score = sum(1 for ind in tt_indicators if ind in ocr_lower)
 
-            if yt_score >= 2:
+            # Lower threshold if @username detected (strong platform signal)
+            has_at_user = bool(re.search(r'@[\w.-]{2,30}', ocr_text))
+            threshold = 1 if has_at_user else 2
+
+            if yt_score >= threshold and yt_score > tt_score:
                 platform = "youtube"
-            elif tt_score >= 2:
+            elif tt_score >= threshold:
                 platform = "tiktok"
 
         if not platform:
@@ -4700,8 +4779,22 @@ async def _detect_video_screenshot(
             channel = f"@{channel_match.group(1)}"
 
         # Le titre est plus difficile à extraire sans Vision, on prend les premières lignes significatives
-        lines = [l.strip() for l in ocr_text.split('\n') if l.strip() and len(l.strip()) > 10]
-        video_title = lines[0] if lines else None
+        lines = [l.strip() for l in ocr_text.split('\n') if l.strip()]
+        candidate_titles = []
+        for line in lines:
+            if len(line) < 15:
+                continue
+            if line.startswith('@') and len(line.split()) <= 2:
+                continue
+            if re.match(r'^[\d\s.,]+$', line):
+                continue
+            ui_words = ['subscribe', "s'abonner", 'views', 'vues', 'likes', 'share', 'partager', 'follow']
+            if any(w in line.lower() for w in ui_words) and len(line) < 30:
+                continue
+            candidate_titles.append(line)
+        video_title = max(candidate_titles, key=len) if candidate_titles else (lines[0] if lines else None)
+        if video_title:
+            video_title = video_title[:120]
 
         # Construire la query de recherche
         parts = []
@@ -5125,6 +5218,32 @@ async def _analyze_images_background(
         # ─── Phase 6 : Sauvegarder ───
         word_count = len(pseudo_transcript.split())
 
+        # Generate thumbnail from first image
+        image_thumbnail_url = ""
+        try:
+            import base64 as b64_mod
+            first_img = images[0]
+            b64_data = first_img.data
+            if b64_data.startswith("data:"):
+                b64_data = b64_data.split(",", 1)[-1]
+            raw_bytes = b64_mod.b64decode(b64_data)
+            if len(raw_bytes) < 200_000:
+                image_thumbnail_url = f"data:{first_img.mime_type};base64,{b64_data[:65536]}"
+            else:
+                try:
+                    from PIL import Image as PILImage
+                    from io import BytesIO
+                    img = PILImage.open(BytesIO(raw_bytes))
+                    img.thumbnail((320, 180), PILImage.LANCZOS)
+                    buffer = BytesIO()
+                    img.save(buffer, format="JPEG", quality=60)
+                    thumb_b64 = b64_mod.b64encode(buffer.getvalue()).decode()
+                    image_thumbnail_url = f"data:image/jpeg;base64,{thumb_b64}"
+                except Exception:
+                    image_thumbnail_url = f"data:{first_img.mime_type};base64,{b64_data[:32768]}"
+        except Exception as e:
+            print(f"[IMAGES] Thumbnail error: {e}", flush=True)
+
         async with async_session_maker() as db_session:
             credit_cost = get_credit_cost(model) if SECURITY_AVAILABLE else 1
             await deduct_credit(db_session, user_id, credit_cost, f"images:{image_id}")
@@ -5137,7 +5256,7 @@ async def _analyze_images_background(
                 video_channel="Images importées" if lang == "fr" else "Imported images",
                 video_duration=0,
                 video_url=f"images://{image_id}",
-                thumbnail_url="",
+                thumbnail_url=image_thumbnail_url,
                 category=detected_category,
                 category_confidence=category_confidence,
                 lang=lang,
@@ -5181,6 +5300,136 @@ async def _analyze_images_background(
         _task_store[task_id]["status"] = "failed"
         _task_store[task_id]["error"] = str(e)
         _task_store[task_id]["message"] = f"Erreur: {str(e)}"
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🎞️ SLIDESHOW — Frame extraction for image-only videos (TikTok/YouTube Shorts)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _is_empty_transcript(transcript: str) -> bool:
+    """Detect if a transcript is quasi-empty (slideshow probable)."""
+    if not transcript:
+        return True
+    import re as _re
+    cleaned = transcript
+    noise_patterns = [
+        r'\[(?:Musique|Music|Applause|Applaudissements)\]',
+        r'[♪♫🎵🎶]+',
+        r'\[.*?\]',
+    ]
+    for pat in noise_patterns:
+        cleaned = _re.sub(pat, '', cleaned, flags=_re.IGNORECASE)
+    cleaned = cleaned.strip()
+    if len(cleaned) < 50:
+        return True
+    words = [w for w in cleaned.split() if len(w) > 2]
+    return len(words) < 10
+
+
+async def _extract_slideshow_frames(
+    video_url: str,
+    platform: str,
+    max_frames: int = 10,
+    interval_seconds: float = 3.0,
+) -> Optional[list]:
+    """
+    Extract frames from a slideshow video (TikTok/YouTube Short with no speech).
+    Returns list of dicts {"data": base64, "mime_type": "image/jpeg"} or None.
+    """
+    import subprocess
+    import asyncio
+    import tempfile
+    import base64
+    import os
+    import glob as glob_module
+
+    print(f"🎞️ [SLIDESHOW] Extracting frames from {platform}: {video_url}", flush=True)
+
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            video_path = os.path.join(tmpdir, "video.mp4")
+
+            download_cmd = [
+                "yt-dlp", "--no-warnings", "--geo-bypass",
+                "-f", "worst[ext=mp4]/worst",
+                "--max-filesize", "50M",
+                "-o", video_path, video_url,
+            ]
+
+            loop = asyncio.get_event_loop()
+
+            def run_dl():
+                try:
+                    r = subprocess.run(download_cmd, capture_output=True, text=True, timeout=60)
+                    return r.returncode == 0
+                except Exception:
+                    return False
+
+            ok = await loop.run_in_executor(None, run_dl)
+            if not ok or not os.path.exists(video_path):
+                print(f"🎞️ [SLIDESHOW] Download failed", flush=True)
+                return None
+
+            def get_dur():
+                try:
+                    r = subprocess.run(
+                        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                         "-of", "default=noprint_wrappers=1:nokey=1", video_path],
+                        capture_output=True, text=True, timeout=10,
+                    )
+                    return float(r.stdout.strip())
+                except Exception:
+                    return 30.0
+
+            duration = await loop.run_in_executor(None, get_dur)
+
+            if duration <= 15:
+                interval = max(duration / (max_frames + 1), 1.0)
+            elif duration <= 60:
+                interval = interval_seconds
+            else:
+                interval = max(duration / max_frames, 3.0)
+
+            frames_pat = os.path.join(tmpdir, "frame_%04d.jpg")
+            ff_cmd = [
+                "ffmpeg", "-i", video_path,
+                "-vf", f"fps=1/{interval},scale=640:-1",
+                "-q:v", "3", "-frames:v", str(max_frames),
+                frames_pat, "-y", "-loglevel", "error",
+            ]
+
+            def do_ff():
+                try:
+                    r = subprocess.run(ff_cmd, capture_output=True, text=True, timeout=30)
+                    return r.returncode == 0
+                except Exception:
+                    return False
+
+            ok = await loop.run_in_executor(None, do_ff)
+            if not ok:
+                print(f"🎞️ [SLIDESHOW] ffmpeg extraction failed", flush=True)
+                return None
+
+            frame_files = sorted(glob_module.glob(os.path.join(tmpdir, "frame_*.jpg")))
+            if not frame_files:
+                print(f"🎞️ [SLIDESHOW] No frames found", flush=True)
+                return None
+
+            frames = []
+            for fpath in frame_files[:max_frames]:
+                with open(fpath, "rb") as f:
+                    raw = f.read()
+                    frames.append({"data": base64.b64encode(raw).decode(), "mime_type": "image/jpeg"})
+
+            print(f"🎞️ [SLIDESHOW] Extracted {len(frames)} frames from {duration:.1f}s video", flush=True)
+            return frames
+
+    except Exception as e:
+        print(f"🎞️ [SLIDESHOW] Error: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
+        return None
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
