@@ -1026,8 +1026,8 @@ export const videoApi = {
     return request(`/api/videos/transcript/${videoId}`);
   },
 
-  async exportSummary(summaryId: number, format: 'pdf' | 'markdown' | 'text'): Promise<Blob> {
-    const response = await fetch(`${API_URL}/api/exports/${format}/${summaryId}`, {
+  async exportSummary(summaryId: number, format: 'pdf' | 'md' | 'txt' | 'docx' | 'xlsx'): Promise<Blob> {
+    const response = await fetch(`${API_URL}/api/exports/${summaryId}/${format}`, {
       headers: { Authorization: `Bearer ${getAccessToken()}` },
     });
     if (!response.ok) throw new ApiError('Export failed', response.status);
@@ -1718,7 +1718,7 @@ export const academicApi = {
 
 export const exportsApi = {
   async pdf(summaryId: number): Promise<Blob> {
-    const response = await fetch(`${API_URL}/api/exports/pdf/${summaryId}`, {
+    const response = await fetch(`${API_URL}/api/exports/${summaryId}/pdf`, {
       headers: { Authorization: `Bearer ${getAccessToken()}` },
     });
     if (!response.ok) throw new ApiError('Export failed', response.status);
@@ -1726,12 +1726,12 @@ export const exportsApi = {
   },
 
   async markdown(summaryId: number): Promise<string> {
-    const data = await request<{ content: string }>(`/api/exports/markdown/${summaryId}`);
+    const data = await request<{ content: string }>(`/api/exports/${summaryId}/md`);
     return data.content;
   },
 
   async text(summaryId: number): Promise<string> {
-    const data = await request<{ content: string }>(`/api/exports/text/${summaryId}`);
+    const data = await request<{ content: string }>(`/api/exports/${summaryId}/txt`);
     return data.content;
   },
 };

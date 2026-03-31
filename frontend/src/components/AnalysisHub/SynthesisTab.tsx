@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import {
   BookOpen, Copy, Check, GraduationCap,
-  Download, ChevronDown, FileText, FileDown
+  Download, ChevronDown, FileText, FileDown, Share2, Loader2
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from '../ui';
 import { AudioPlayerButton } from '../AudioPlayerButton';
@@ -17,7 +17,7 @@ import { ConceptsGlossary } from '../ConceptsGlossary';
 import { AcademicSourcesPanel } from '../academic';
 import { AnalysisValueDisplay } from '../AnalysisValueDisplay';
 import { CitationExport } from '../CitationExport';
-import { videoApi } from '../../services/api';
+import { videoApi, shareApi } from '../../services/api';
 import type { Summary, EnrichedConcept } from '../../services/api';
 import type { TimecodeInfo } from '../TimecodeRenderer';
 
@@ -42,6 +42,8 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
   const [exporting, setExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showCitationModal, setShowCitationModal] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
 
 
   const handleCopy = async () => {
@@ -53,13 +55,41 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const handleShare = async () => {
+    if (!selectedSummary?.video_id || sharing) return;
+    setSharing(true);
+    try {
+      const { share_url } = await shareApi.createShareLink(selectedSummary.video_id);
+      if (navigator.share) {
+        await navigator.share({
+          title: selectedSummary.video_title ? `DeepSight — ${selectedSummary.video_title}` : 'DeepSight Analysis',
+          url: share_url,
+        });
+      } else {
+        await navigator.clipboard.writeText(share_url);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2500);
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      // Fallback clipboard
+      try {
+        const { share_url } = await shareApi.createShareLink(selectedSummary.video_id);
+        await navigator.clipboard.writeText(share_url);
+        setShareCopied(true);
+        setTimeout(() => setShareCopied(false), 2500);
+      } catch { console.error('Share failed'); }
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const handleExport = async (format: 'pdf' | 'md' | 'txt') => {
     if (!selectedSummary?.id) return;
     setExporting(true);
     setShowExportMenu(false);
-    const formatMap: Record<string, 'pdf' | 'markdown' | 'text'> = { pdf: 'pdf', md: 'markdown', txt: 'text' };
     try {
-      const blob = await videoApi.exportSummary(selectedSummary.id, formatMap[format]);
+      const blob = await videoApi.exportSummary(selectedSummary.id, format);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -147,6 +177,25 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
               </div>
             )}
           </div>
+
+          {/* Share */}
+          <button
+            onClick={handleShare}
+            disabled={sharing}
+            className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
+            title={shareCopied ? (language === 'fr' ? 'Lien copié !' : 'Link copied!') : (language === 'fr' ? 'Partager l\'analyse' : 'Share analysis')}
+          >
+            {sharing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : shareCopied ? (
+              <Check className="w-4 h-4 text-accent-success" />
+            ) : (
+              <Share2 className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline">
+              {shareCopied ? (language === 'fr' ? 'Copié !' : 'Copied!') : (language === 'fr' ? 'Partager' : 'Share')}
+            </span>
+          </button>
         </div>
       </div>
 
