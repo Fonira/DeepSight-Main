@@ -4561,8 +4561,8 @@ async def _mistral_vision_request(
     # -- Phase 2: OpenAI GPT-4o-mini Vision (separate account = separate limits) --
     print(f"[VISION_FALLBACK] Mistral exhausted, trying OpenAI gpt-4o-mini...", flush=True)
     try:
-        from core.config import settings
-        openai_key = getattr(settings, "OPENAI_API_KEY", None)
+        from core.config import OPENAI_API_KEY, BRAVE_SEARCH_API_KEY
+        openai_key = OPENAI_API_KEY
         if openai_key:
             openai_messages = []
             for msg in messages:
@@ -4938,8 +4938,8 @@ async def _brave_search_video(query: str, platform: str) -> Optional[str]:
     Utile pour les screenshots mobile sans URL.
     """
     try:
-        from core.config import settings
-        brave_key = getattr(settings, "BRAVE_SEARCH_API_KEY", None)
+        from core.config import BRAVE_SEARCH_API_KEY
+        brave_key = BRAVE_SEARCH_API_KEY
         if not brave_key:
             return None
 
