@@ -52,7 +52,7 @@ MEDIUM_VIDEO_TRANSCRIPT_LIMIT = 80_000  # 30 min – 1h30 → digest + segments
 # > 80K → digest + résumé structuré uniquement
 
 # Limites par consumer
-MAX_CONTEXT_VOICE = 28_000    # ElevenLabs system prompt (~32K max, garder marge)
+MAX_CONTEXT_VOICE = 12_000    # ElevenLabs — réduit pour baisser la latence (was 28K)
 MAX_CONTEXT_CHAT = 50_000     # Mistral (mode expert 25K tokens ≈ 50K chars)
 
 # Taille des sections

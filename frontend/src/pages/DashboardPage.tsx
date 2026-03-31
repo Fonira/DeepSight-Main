@@ -163,7 +163,7 @@ export const DashboardPage: React.FC = () => {
 
   // 🎙️ Voice Chat
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
-  const voiceChat = useVoiceChat({ summaryId: selectedSummary?.id ?? 0 });
+  const voiceChat = useVoiceChat({ summaryId: selectedSummary?.id ?? 0, language: language as 'fr' | 'en' });
 
   // 🎙️ Onboarding Voice — show for users who haven't dismissed it yet
   const [showOnboardingVoice, setShowOnboardingVoice] = useState(() => {
@@ -609,37 +609,17 @@ export const DashboardPage: React.FC = () => {
       try {
         const status: TaskStatus = await videoApi.getTaskStatus(taskId);
         
-        // Screenshot redirect: Mistral detected a YouTube/TikTok screenshot → launch video analysis
-        if ((status.status === "screenshot_detected" || status.status === "redirect") && status.result?.video_url) {
+        // Screenshot redirect: Mistral detected a YouTube/TikTok screenshot → follow new task
+        if (status.status === "redirect" && status.result?.new_task_id) {
           const platform = status.result.platform || 'video';
-          const contentType = status.result.content_type;
-          const videoUrl = status.result.video_url;
-
-          // Adapter le message selon le type de contenu détecté
-          const label = contentType === 'tiktok_slideshow'
-            ? (language === 'fr' ? 'Slideshow TikTok' : 'TikTok slideshow')
-            : contentType === 'short'
-              ? (language === 'fr' ? 'Short YouTube' : 'YouTube Short')
-              : platform.charAt(0).toUpperCase() + platform.slice(1);
-
           setLoadingMessage(
             language === 'fr'
-              ? `${label} détecté(e) ! Analyse en cours...`
-              : `${label} detected! Analyzing...`
+              ? `Capture ${platform} détectée ! Analyse de la vidéo en cours...`
+              : `${platform} screenshot detected! Analyzing video...`
           );
           setLoadingProgress(25);
-
-          // Launch a real video analysis from the frontend (avoids BackgroundTasks issue)
-          const apiParams = customizationToApiParams(analysisCustomization, language as 'fr' | 'en');
-          const videoResponse = await videoApi.analyzeHybrid({
-            url: videoUrl,
-            mode: apiParams.mode,
-            lang: apiParams.lang,
-          });
-
-          if (videoResponse.task_id) {
-            await pollTaskStatus(videoResponse.task_id);
-          }
+          // Follow the redirected video analysis task
+          await pollTaskStatus(status.result.new_task_id);
           return;
         }
 

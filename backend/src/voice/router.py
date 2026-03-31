@@ -345,19 +345,26 @@ async def create_voice_session(
             )
 
         # ── Build system prompt from agent config + video context ────────
+        # Use language-aware prompt with enforcement
+        agent_prompt = agent_config.get_system_prompt(language)
+
         if rich_ctx:
             # Agent with video context: combine agent prompt + video data
+            ctx_label = "CONTEXTE VIDÉO" if language == "fr" else "VIDEO CONTEXT"
+            title_label = "Titre" if language == "fr" else "Title"
+            channel_label = "Chaîne" if language == "fr" else "Channel"
+            duration_label = "Durée" if language == "fr" else "Duration"
             system_prompt = (
-                f"{agent_config.system_prompt}\n\n"
-                f"--- CONTEXTE VIDÉO ---\n"
-                f"Titre : {rich_ctx.video_title}\n"
-                f"Chaîne : {rich_ctx.channel_name}\n"
-                f"Durée : {rich_ctx.duration_str}\n\n"
+                f"{agent_prompt}\n\n"
+                f"--- {ctx_label} ---\n"
+                f"{title_label} : {rich_ctx.video_title}\n"
+                f"{channel_label} : {rich_ctx.channel_name}\n"
+                f"{duration_label} : {rich_ctx.duration_str}\n\n"
                 f"{context_block}"
             )
         else:
             # Agent without video context (onboarding)
-            system_prompt = agent_config.system_prompt
+            system_prompt = agent_prompt
 
         # Build webhook tools — filter to agent's allowed tools
         webhook_base_url = APP_URL.rstrip("/")
@@ -403,7 +410,7 @@ async def create_voice_session(
 
         # Build voice settings from user preferences
         voice_settings = user_prefs.to_voice_settings()
-        voice_chat_model = user_prefs.voice_chat_model or "eleven_flash_v2_5"
+        voice_chat_model = user_prefs.voice_chat_model or "eleven_turbo_v2_5"
 
         async with get_elevenlabs_client() as client:
             # Create the agent with user's preferred voice settings
@@ -613,6 +620,25 @@ async def voice_webhook(
             "status": voice_session.status,
         },
     )
+
+    # ── Cleanup: delete the ElevenLabs agent (fire-and-forget) ────────
+    if voice_session.elevenlabs_agent_id:
+        try:
+            async with get_elevenlabs_client() as client:
+                deleted = await client.delete_agent(voice_session.elevenlabs_agent_id)
+                if deleted:
+                    logger.info(
+                        "Voice agent cleaned up",
+                        extra={"agent_id": voice_session.elevenlabs_agent_id},
+                    )
+        except Exception as cleanup_err:
+            logger.warning(
+                "Failed to cleanup ElevenLabs agent (non-critical)",
+                extra={
+                    "agent_id": voice_session.elevenlabs_agent_id,
+                    "error": str(cleanup_err),
+                },
+            )
 
     return WebhookAckResponse(
         status="ok",

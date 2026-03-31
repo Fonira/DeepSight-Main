@@ -12,6 +12,7 @@ import { API_URL, getAccessToken } from '../../services/api';
 
 interface UseVoiceChatOptions {
   summaryId: number;
+  language?: 'fr' | 'en';
   onError?: (error: string) => void;
 }
 
@@ -80,7 +81,7 @@ const ERROR_MESSAGES = {
 // Hook
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export function useVoiceChat({ summaryId, onError }: UseVoiceChatOptions): UseVoiceChatReturn {
+export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceChatOptions): UseVoiceChatReturn {
   const [status, setStatus] = useState<VoiceChatStatus>('idle');
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -193,7 +194,7 @@ export function useVoiceChat({ summaryId, onError }: UseVoiceChatOptions): UseVo
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ summary_id: summaryId }),
+        body: JSON.stringify({ summary_id: summaryId, language }),
         credentials: 'include',
       });
 
@@ -295,7 +296,7 @@ export function useVoiceChat({ summaryId, onError }: UseVoiceChatOptions): UseVo
       releaseMediaStream();
       reportError(ERROR_MESSAGES.SDK_LOAD_FAILED);
     }
-  }, [status, summaryId, onError, reportError, releaseMediaStream, stopTimer, stop]);
+  }, [status, summaryId, language, onError, reportError, releaseMediaStream, stopTimer, stop]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // toggleMute()

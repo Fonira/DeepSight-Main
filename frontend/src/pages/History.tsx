@@ -452,7 +452,7 @@ export const History: React.FC = () => {
 
   // 🎙️ Voice Chat
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
-  const voiceChat = useVoiceChat({ summaryId: selectedVideoDetail?.id ?? 0 });
+  const voiceChat = useVoiceChat({ summaryId: selectedVideoDetail?.id ?? 0, language: language as 'fr' | 'en' });
   const voiceEnabled = PLAN_LIMITS[normalizePlanId(user?.plan)].voiceChatEnabled;
 
   // 🗑️ Clear History Modal

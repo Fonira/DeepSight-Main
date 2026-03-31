@@ -155,7 +155,7 @@ class VoicePreferencesResponse(BaseModel):
     style: float = 0.3
     use_speaker_boost: bool = True
     tts_model: str = "eleven_multilingual_v2"
-    voice_chat_model: str = "eleven_flash_v2_5"
+    voice_chat_model: str = "eleven_turbo_v2_5"
     language: str = "fr"
     gender: str = "female"
 
