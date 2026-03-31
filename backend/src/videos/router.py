@@ -4621,30 +4621,35 @@ async def _mistral_vision_request(
     except Exception as e:
         print(f"[VISION_FALLBACK] OpenAI setup error: {e}", flush=True)
 
-    # -- Phase 3: Last resort - wait 15s + retry Mistral --
-    print(f"[VISION_FALLBACK] All providers failed, waiting 15s...", flush=True)
-    await asyncio.sleep(15)
-    try:
-        retry_model = mistral_models[0]
-        payload = {"model": retry_model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}
-        if response_format:
-            payload["response_format"] = response_format
-        async with httpx_client.AsyncClient(timeout=timeout) as client:
-            response = await client.post(
-                "https://api.mistral.ai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-                json=payload,
-            )
-            if response.status_code == 200:
-                data = response.json()
-                c = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                if c:
-                    print(f"[VISION_FALLBACK] Final retry success with {retry_model}", flush=True)
-                    return c.strip()
-    except Exception as e:
-        print(f"[VISION_FALLBACK] Final retry error: {e}", flush=True)
+    # -- Phase 3: Last resort - progressive backoff retries on Mistral --
+    for retry_idx, wait_secs in enumerate([20, 40, 60]):
+        print(f"[VISION_FALLBACK] Retry {retry_idx+1}/3 - waiting {wait_secs}s for rate limit reset...", flush=True)
+        await asyncio.sleep(wait_secs)
+        try:
+            retry_model = mistral_models[retry_idx % len(mistral_models)]
+            payload = {"model": retry_model, "messages": messages, "max_tokens": max_tokens, "temperature": temperature}
+            if response_format:
+                payload["response_format"] = response_format
+            async with httpx_client.AsyncClient(timeout=timeout) as client:
+                response = await client.post(
+                    "https://api.mistral.ai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json=payload,
+                )
+                if response.status_code == 200:
+                    data = response.json()
+                    c = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    if c:
+                        print(f"[VISION_FALLBACK] Retry {retry_idx+1} success with {retry_model}", flush=True)
+                        return c.strip()
+                if response.status_code == 429:
+                    print(f"[VISION_FALLBACK] Retry {retry_idx+1} still rate-limited, continuing...", flush=True)
+                    continue
+                print(f"[VISION_FALLBACK] Retry {retry_idx+1} error {response.status_code}", flush=True)
+        except Exception as e:
+            print(f"[VISION_FALLBACK] Retry {retry_idx+1} exception: {e}", flush=True)
 
-    print(f"[VISION_FALLBACK] FINAL FAILURE - all providers exhausted", flush=True)
+    print(f"[VISION_FALLBACK] FINAL FAILURE after 3 retries (total ~2min wait)", flush=True)
     return None
 
 
