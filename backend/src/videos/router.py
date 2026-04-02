@@ -4858,6 +4858,119 @@ async def _detect_video_screenshot(
         return None
 
 
+
+
+def _is_garbage_query(query: str) -> bool:
+    """Check if OCR-extracted query is garbage (mostly symbols, numbers, too short)."""
+    if not query or len(query.strip()) < 5:
+        return True
+    # Mostly digits/spaces/symbols
+    alpha_chars = sum(1 for c in query if c.isalpha())
+    if alpha_chars < 5:
+        return True
+    # Repetitive patterns (0 0 0 0...)
+    words = query.split()
+    if len(words) > 3 and len(set(words)) <= 2:
+        return True
+    # HTML entities
+    if '&lt;' in query or '&gt;' in query or '&amp;' in query:
+        return True
+    return False
+
+
+async def _detect_video_screenshot_vision(
+    image,
+    api_key: str,
+    platform: str = "youtube",
+) -> Optional[Dict[str, str]]:
+    """
+    Fallback Vision: use Mistral chat/vision to extract title + channel
+    from a YouTube/TikTok screenshot when OCR gives garbage.
+    """
+    import httpx as httpx_client
+
+    b64_data = image.data
+    if b64_data.startswith("data:"):
+        b64_data = b64_data.split(",", 1)[-1]
+
+    platform_name = "YouTube" if platform == "youtube" else "TikTok"
+
+    try:
+        async with httpx_client.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "mistral-small-2503",
+                    "messages": [{
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{image.mime_type};base64,{b64_data}"
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": f"This is a screenshot of a {platform_name} video. Extract ONLY the video title and channel name. Reply in this exact format:\nTITLE: <the video title>\nCHANNEL: <the channel name>\nIf you cannot find either, write UNKNOWN for that field."
+                            }
+                        ]
+                    }],
+                    "max_tokens": 150,
+                    "temperature": 0.0,
+                },
+            )
+
+            if response.status_code != 200:
+                logger.warning(f"[SCREENSHOT_VISION] API error: {response.status_code}")
+                return None
+
+            data = response.json()
+            answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+            logger.info(f"[SCREENSHOT_VISION] Response: {answer[:200]}")
+
+            import re as re_mod
+            title_match = re_mod.search(r"TITLE:\s*(.+)", answer)
+            channel_match = re_mod.search(r"CHANNEL:\s*(.+)", answer)
+
+            title = title_match.group(1).strip() if title_match else None
+            channel = channel_match.group(1).strip() if channel_match else None
+
+            # Clean up
+            if title and title.upper() == "UNKNOWN":
+                title = None
+            if channel and channel.upper() == "UNKNOWN":
+                channel = None
+
+            if not title and not channel:
+                return None
+
+            parts = []
+            if title:
+                parts.append(title[:80])
+            if channel:
+                parts.append(channel[:30])
+            search_query = " ".join(parts)
+
+            print(f"🔍 [SCREENSHOT_VISION] Extracted: title='{title}' channel='{channel}' query='{search_query}'", flush=True)
+
+            return {
+                "platform": platform,
+                "search_query": search_query,
+                "video_title": title,
+                "channel": channel,
+                "video_url": None,
+            }
+
+    except Exception as e:
+        logger.warning(f"[SCREENSHOT_VISION] Error: {e}")
+        return None
+
+
 async def _search_video_from_screenshot(
     search_query: str,
     platform: str,
@@ -5069,12 +5182,23 @@ async def _analyze_images_background(
                 video_url = screenshot_result.get("video_url")
 
                 print(f"📱 [IMAGES] Screenshot detected: {platform} — query: '{search_query}'", flush=True)
+
+                # Si la query OCR est du garbage, utiliser Vision comme fallback
+                if _is_garbage_query(search_query) and not video_url:
+                    print(f"⚠️ [IMAGES] OCR query is garbage, trying Vision fallback...", flush=True)
+                    _task_store[task_id]["message"] = f"Analyse visuelle du screenshot {platform}..."
+                    vision_result = await _detect_video_screenshot_vision(images[0], api_key, platform)
+                    if vision_result:
+                        search_query = vision_result.get("search_query", search_query)
+                        video_url = vision_result.get("video_url")
+                        print(f"🔍 [IMAGES] Vision fallback query: '{search_query}'", flush=True)
+
                 _task_store[task_id]["progress"] = 15
                 _task_store[task_id]["message"] = f"Capture d'écran {platform} détectée ! Recherche de la vidéo..."
 
                 # Chercher la vidéo originale
                 found_url = video_url
-                if not found_url and search_query:
+                if not found_url and search_query and not _is_garbage_query(search_query):
                     found_url = await _search_video_from_screenshot(search_query, platform)
 
                 if found_url:
