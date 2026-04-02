@@ -4920,35 +4920,17 @@ def _is_garbage_query(query: str) -> bool:
     """Check if OCR-extracted query is garbage (mostly symbols, numbers, too short)."""
     if not query or len(query.strip()) < 5:
         return True
-    q = query.strip()
     # Mostly digits/spaces/symbols
-    alpha_chars = sum(1 for c in q if c.isalpha())
+    alpha_chars = sum(1 for c in query if c.isalpha())
     if alpha_chars < 5:
         return True
     # Repetitive patterns (0 0 0 0...)
-    words = q.split()
+    words = query.split()
     if len(words) > 3 and len(set(words)) <= 2:
         return True
     # HTML entities
-    if '&lt;' in q or '&gt;' in q or '&amp;' in q:
+    if '&lt;' in query or '&gt;' in query or '&amp;' in query:
         return True
-    # Too many hashtags or special chars relative to real words
-    hashtag_count = q.count('#')
-    if hashtag_count >= 2 and alpha_chars < 15:
-        return True
-    # Garbled OCR: high ratio of digits+symbols to letters
-    non_alpha = sum(1 for c in q if not c.isalpha() and not c.isspace())
-    if len(q) > 8 and non_alpha > alpha_chars:
-        return True
-    # Single "word" queries that look like garbled text (no spaces, lots of digits)
-    if len(words) <= 2 and any(len(w) > 5 and sum(c.isdigit() for c in w) > len(w) * 0.3 for w in words):
-        return True
-    # Starts with "Playlist:" but has garbled content after
-    import re as _re_gb
-    if _re_gb.match(r'^(Playlist|Mix|Queue)\s*:', q, _re_gb.IGNORECASE):
-        after_colon = q.split(':', 1)[1].strip() if ':' in q else ""
-        if len(after_colon) < 10 or sum(1 for c in after_colon if c.isalpha()) < 5:
-            return True
     return False
 
 
@@ -4972,40 +4954,23 @@ async def _detect_video_screenshot_vision(
     platform_name = "YouTube" if platform == "youtube" else "TikTok"
     prompt_text = (
         f"This is a screenshot of a {platform_name} video page. "
-        f"Your task is to identify the EXACT video being watched.\n\n"
-        f"Extract the following information visible on screen:\n"
-        f"1. The video TITLE (the main, large title text of the video being played)\n"
-        f"2. The CHANNEL name (the creator/uploader name below the title)\n"
-        f"3. If visible in the browser address bar, the video URL or video ID\n\n"
+        f"Extract ONLY the video title and channel name visible on screen. "
         f"Reply in this exact format:\n"
-        f"TITLE: <the exact video title as shown on screen>\n"
+        f"TITLE: <the video title>\n"
         f"CHANNEL: <the channel name>\n"
-        f"URL: <the video URL if visible, otherwise UNKNOWN>\n"
-        f"If you cannot find a field, write UNKNOWN for that field.\n"
-        f"IMPORTANT: Focus on the MAIN video being watched, not suggested/related videos."
+        f"If you cannot find either, write UNKNOWN for that field."
     )
 
     def _parse_vision_response(answer: str):
         title_match = re_mod.search(r"TITLE:\s*(.+)", answer)
         channel_match = re_mod.search(r"CHANNEL:\s*(.+)", answer)
-        url_match = re_mod.search(r"URL:\s*(.+)", answer)
         title = title_match.group(1).strip() if title_match else None
         channel = channel_match.group(1).strip() if channel_match else None
-        url_text = url_match.group(1).strip() if url_match else None
         if title and title.upper() == "UNKNOWN":
             title = None
         if channel and channel.upper() == "UNKNOWN":
             channel = None
-        # Extract video URL from Vision response
-        video_url = None
-        if url_text and url_text.upper() != "UNKNOWN":
-            yt_id_match = re_mod.search(r"(?:v=|youtu\.be/|shorts/)([A-Za-z0-9_-]{11})", url_text)
-            if yt_id_match:
-                video_url = f"https://www.youtube.com/watch?v={yt_id_match.group(1)}"
-            tt_match = re_mod.search(r"(tiktok\.com/@[\w.-]+/video/\d+)", url_text)
-            if tt_match and not video_url:
-                video_url = f"https://www.{tt_match.group(1)}"
-        if not title and not channel and not video_url:
+        if not title and not channel:
             return None
         parts = []
         if title:
@@ -5013,13 +4978,13 @@ async def _detect_video_screenshot_vision(
         if channel:
             parts.append(channel[:30])
         search_query = " ".join(parts)
-        print(f"\U0001f50d [SCREENSHOT_VISION] Extracted: title=\'{title}\' channel=\'{channel}\' url=\'{video_url}\' query=\'{search_query}\'", flush=True)
+        print(f"\U0001f50d [SCREENSHOT_VISION] Extracted: title=\'{title}\' channel=\'{channel}\' query=\'{search_query}\'", flush=True)
         return {
             "platform": platform,
             "search_query": search_query,
             "video_title": title,
             "channel": channel,
-            "video_url": video_url,
+            "video_url": None,
         }
 
     # ── Try Mistral models (pixtral-12b first, then small) ──
@@ -5364,6 +5329,18 @@ async def _analyze_images_background(
                         print(f"⚠️ [IMAGES] Vision returned nothing, using OCR query: '{search_query}'", flush=True)
                     else:
                         print(f"❌ [IMAGES] Vision failed and OCR query is garbage: '{ocr_query}'", flush=True)
+
+                print(f"📱 [IMAGES] Screenshot detected: {platform} — query: '{search_query}'", flush=True)
+
+                # Si la query OCR est du garbage, utiliser Vision comme fallback
+                if _is_garbage_query(search_query) and not video_url:
+                    print(f"⚠️ [IMAGES] OCR query is garbage, trying Vision fallback...", flush=True)
+                    _task_store[task_id]["message"] = f"Analyse visuelle du screenshot {platform}..."
+                    vision_result = await _detect_video_screenshot_vision(images[0], api_key, platform)
+                    if vision_result:
+                        search_query = vision_result.get("search_query", search_query)
+                        video_url = vision_result.get("video_url")
+                        print(f"🔍 [IMAGES] Vision fallback query: '{search_query}'", flush=True)
 
                 _task_store[task_id]["progress"] = 15
                 _task_store[task_id]["message"] = f"Capture d'écran {platform} détectée ! Recherche de la vidéo..."
