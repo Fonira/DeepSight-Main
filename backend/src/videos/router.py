@@ -5046,20 +5046,68 @@ async def _analyze_images_background(
                 if found_url:
                     print(f"🎯 [IMAGES] Video found: {found_url}", flush=True)
 
-                    # Signaler au frontend de lancer l analyse video classique
-                    # (on ne peut pas appeler analyze_video() ici car BackgroundTasks
-                    #  cree manuellement n est pas execute par FastAPI)
-                    _task_store[task_id]["status"] = "screenshot_detected"
-                    _task_store[task_id]["progress"] = 100
-                    _task_store[task_id]["message"] = f"Capture {platform} detectee ! Redirection vers l analyse video..."
-                    _task_store[task_id]["result"] = {
-                        "redirected_to_video": True,
-                        "video_url": found_url,
-                        "platform": platform,
-                        "search_query": search_query,
-                    }
-                    print(f"✅ [IMAGES] Screenshot detected, returning URL to frontend: {found_url}", flush=True)
-                    return  # Le frontend lancera analyzeHybrid() avec cette URL
+                    # Extraire le video_id et lancer l'analyse vidéo classique
+                    import asyncio
+                    from uuid import uuid4 as _uuid4
+
+                    if platform == "tiktok":
+                        vid_id = extract_tiktok_video_id(found_url)
+                    else:
+                        vid_id = extract_video_id(found_url)
+
+                    if vid_id:
+                        # Créer un nouveau task pour l'analyse vidéo
+                        new_task_id = str(_uuid4())
+                        _task_store[new_task_id] = {
+                            "status": "processing",
+                            "progress": 0,
+                            "message": f"Analyse de la vidéo {platform} en cours...",
+                        }
+
+                        # Récupérer le plan et modèle de l'utilisateur
+                        async with async_session_maker() as _db:
+                            from sqlalchemy import select as _select
+                            _user = (await _db.execute(
+                                _select(User).where(User.id == user_id)
+                            )).scalar_one_or_none()
+                            _plan = _user.plan if _user else "free"
+
+                        _plan_limits = PLAN_LIMITS.get(_plan, PLAN_LIMITS["free"])
+                        _model = _plan_limits.get("default_model", "mistral-small-2603")
+                        _credit_cost = get_credit_cost("video_analysis", _model) if SECURITY_AVAILABLE else 1
+
+                        # Lancer l'analyse vidéo v6 en background
+                        asyncio.create_task(
+                            _analyze_video_background_v6(
+                                task_id=new_task_id,
+                                video_id=vid_id,
+                                url=found_url,
+                                mode=mode or "standard",
+                                category=None,
+                                lang=lang,
+                                model=_model,
+                                user_id=user_id,
+                                user_plan=_plan,
+                                credit_cost=_credit_cost,
+                                deep_research=False,
+                                platform=platform,
+                            )
+                        )
+
+                        # Signaler la redirection au frontend (status "redirect" + new_task_id)
+                        _task_store[task_id]["status"] = "redirect"
+                        _task_store[task_id]["progress"] = 100
+                        _task_store[task_id]["message"] = f"Capture {platform} détectée ! Redirection vers l'analyse vidéo..."
+                        _task_store[task_id]["result"] = {
+                            "new_task_id": new_task_id,
+                            "platform": platform,
+                            "video_url": found_url,
+                            "video_id": vid_id,
+                        }
+                        print(f"✅ [IMAGES] Screenshot → video redirect: {found_url} → new_task={new_task_id}", flush=True)
+                        return
+                    else:
+                        print(f"⚠️ [IMAGES] Could not extract video_id from {found_url}", flush=True)
                 else:
                     print(f"⚠️ [IMAGES] Video not found for query '{search_query}', falling back to image analysis", flush=True)
                     _task_store[task_id]["message"] = "Vidéo non trouvée, analyse de l'image en cours..."
