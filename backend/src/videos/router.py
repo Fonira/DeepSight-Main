@@ -4777,27 +4777,61 @@ async def _detect_video_screenshot(
             return None
 
         # ── Étape 4 : Extraire titre et chaîne du texte OCR ──
-        # Chercher des patterns de chaîne (@username)
-        channel = None
-        channel_match = re.search(r'@([\w.-]{2,30})', ocr_text)
-        if channel_match:
-            channel = f"@{channel_match.group(1)}"
-
-        # Le titre est plus difficile à extraire sans Vision, on prend les premières lignes significatives
+        # Filtrer le bruit : onglets navigateur, barres d'adresse, UI Chrome
         lines = [l.strip() for l in ocr_text.split('\n') if l.strip()]
-        candidate_titles = []
+
+        # Mots-clés qui indiquent du bruit navigateur (titres d'onglets, barre d'adresse)
+        browser_noise = [
+            'connexion', 'chrome', 'edge', 'firefox', 'copilot', 'bing', 'google.com',
+            'nouvel onglet', 'new tab', 'favoris', 'bookmarks', 'translate', 'extensions',
+            'paramètres', 'settings', 'téléchargements', 'downloads', 'historique',
+            'http://', 'https://', '.com/', '.fr/', 'www.', '://','\\|',
+        ]
+        # Filtrer les lignes qui ressemblent à des onglets ou de la navigation
+        clean_lines = []
         for line in lines:
-            if len(line) < 15:
+            ll = line.lower()
+            # Skip si c'est clairement une barre d'onglets (séparée par | ou · avec des noms de sites)
+            if ll.count('|') >= 2 or ll.count('·') >= 2:
+                continue
+            # Skip si la ligne contient surtout du bruit navigateur
+            noise_count = sum(1 for nw in browser_noise if nw in ll)
+            if noise_count >= 2 and len(line) < 80:
+                continue
+            # Skip URL brutes
+            if re.match(r'^https?://\S+$', line.strip()):
+                continue
+            clean_lines.append(line)
+
+        # Chercher des patterns de chaîne (@username) dans le texte FILTRÉ
+        channel = None
+        for cl in clean_lines:
+            channel_match = re.search(r'@([\w.-]{2,30})', cl)
+            if channel_match:
+                channel = f"@{channel_match.group(1)}"
+                break
+
+        # Trouver le titre vidéo dans les lignes nettoyées
+        candidate_titles = []
+        for line in clean_lines:
+            if len(line) < 10:
                 continue
             if line.startswith('@') and len(line.split()) <= 2:
                 continue
-            if re.match(r'^[\d\s.,]+$', line):
+            if re.match(r'^[\d\s.,:%]+$', line):
                 continue
-            ui_words = ['subscribe', "s'abonner", 'views', 'vues', 'likes', 'share', 'partager', 'follow']
-            if any(w in line.lower() for w in ui_words) and len(line) < 30:
+            # Filtrer les éléments d'UI courts
+            ui_words = [
+                'subscribe', "s'abonner", 'views', 'vues', 'likes', 'share',
+                'partager', 'follow', 'j\'aime', 'enregistrer', 'save',
+                'clip', 'remix', 'thanks', 'merci', 'download',
+            ]
+            if any(w in line.lower() for w in ui_words) and len(line) < 40:
                 continue
             candidate_titles.append(line)
-        video_title = max(candidate_titles, key=len) if candidate_titles else (lines[0] if lines else None)
+
+        # Préférer la ligne la plus longue (souvent le titre vidéo)
+        video_title = max(candidate_titles, key=len) if candidate_titles else (clean_lines[0] if clean_lines else None)
         if video_title:
             video_title = video_title[:120]
 
