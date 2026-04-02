@@ -4884,91 +4884,148 @@ async def _detect_video_screenshot_vision(
     platform: str = "youtube",
 ) -> Optional[Dict[str, str]]:
     """
-    Fallback Vision: use Mistral chat/vision to extract title + channel
+    Fallback Vision: use Mistral/OpenAI vision to extract title + channel
     from a YouTube/TikTok screenshot when OCR gives garbage.
+    Multi-model fallback: pixtral-12b → mistral-small-2603 → OpenAI gpt-4o-mini
     """
     import httpx as httpx_client
+    import re as re_mod
 
     b64_data = image.data
     if b64_data.startswith("data:"):
         b64_data = b64_data.split(",", 1)[-1]
 
     platform_name = "YouTube" if platform == "youtube" else "TikTok"
+    prompt_text = (
+        f"This is a screenshot of a {platform_name} video page. "
+        f"Extract ONLY the video title and channel name visible on screen. "
+        f"Reply in this exact format:\n"
+        f"TITLE: <the video title>\n"
+        f"CHANNEL: <the channel name>\n"
+        f"If you cannot find either, write UNKNOWN for that field."
+    )
 
+    def _parse_vision_response(answer: str):
+        title_match = re_mod.search(r"TITLE:\s*(.+)", answer)
+        channel_match = re_mod.search(r"CHANNEL:\s*(.+)", answer)
+        title = title_match.group(1).strip() if title_match else None
+        channel = channel_match.group(1).strip() if channel_match else None
+        if title and title.upper() == "UNKNOWN":
+            title = None
+        if channel and channel.upper() == "UNKNOWN":
+            channel = None
+        if not title and not channel:
+            return None
+        parts = []
+        if title:
+            parts.append(title[:80])
+        if channel:
+            parts.append(channel[:30])
+        search_query = " ".join(parts)
+        print(f"\U0001f50d [SCREENSHOT_VISION] Extracted: title=\'{title}\' channel=\'{channel}\' query=\'{search_query}\'", flush=True)
+        return {
+            "platform": platform,
+            "search_query": search_query,
+            "video_title": title,
+            "channel": channel,
+            "video_url": None,
+        }
+
+    # ── Try Mistral models (pixtral-12b first, then small) ──
+    mistral_models = ["pixtral-12b-2409", "mistral-small-2603"]
+    for model in mistral_models:
+        try:
+            async with httpx_client.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    "https://api.mistral.ai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": model,
+                        "messages": [{
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:{image.mime_type};base64,{b64_data}"
+                                    }
+                                },
+                                {"type": "text", "text": prompt_text}
+                            ]
+                        }],
+                        "max_tokens": 150,
+                        "temperature": 0.0,
+                    },
+                )
+
+                if response.status_code == 429:
+                    print(f"[SCREENSHOT_VISION] {model} rate-limited, trying next...", flush=True)
+                    continue
+                if response.status_code != 200:
+                    print(f"[SCREENSHOT_VISION] {model} error: {response.status_code}", flush=True)
+                    continue
+
+                data = response.json()
+                answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                print(f"[SCREENSHOT_VISION] {model} response: {answer[:200]}", flush=True)
+
+                result = _parse_vision_response(answer)
+                if result:
+                    return result
+
+        except Exception as e:
+            print(f"[SCREENSHOT_VISION] {model} exception: {e}", flush=True)
+            continue
+
+    # ── Fallback: OpenAI gpt-4o-mini ──
     try:
-        async with httpx_client.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": "mistral-small-2503",
-                    "messages": [{
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:{image.mime_type};base64,{b64_data}"
-                                }
-                            },
-                            {
-                                "type": "text",
-                                "text": f"This is a screenshot of a {platform_name} video. Extract ONLY the video title and channel name. Reply in this exact format:\nTITLE: <the video title>\nCHANNEL: <the channel name>\nIf you cannot find either, write UNKNOWN for that field."
-                            }
-                        ]
-                    }],
-                    "max_tokens": 150,
-                    "temperature": 0.0,
-                },
-            )
+        from core.config import settings
+        openai_key = getattr(settings, 'OPENAI_API_KEY', None) or getattr(settings, 'openai_api_key', None)
+        if openai_key:
+            async with httpx_client.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {openai_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": "gpt-4o-mini",
+                        "messages": [{
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:{image.mime_type};base64,{b64_data}"
+                                    }
+                                },
+                                {"type": "text", "text": prompt_text}
+                            ]
+                        }],
+                        "max_tokens": 150,
+                        "temperature": 0.0,
+                    },
+                )
 
-            if response.status_code != 200:
-                logger.warning(f"[SCREENSHOT_VISION] API error: {response.status_code}")
-                return None
-
-            data = response.json()
-            answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-            logger.info(f"[SCREENSHOT_VISION] Response: {answer[:200]}")
-
-            import re as re_mod
-            title_match = re_mod.search(r"TITLE:\s*(.+)", answer)
-            channel_match = re_mod.search(r"CHANNEL:\s*(.+)", answer)
-
-            title = title_match.group(1).strip() if title_match else None
-            channel = channel_match.group(1).strip() if channel_match else None
-
-            # Clean up
-            if title and title.upper() == "UNKNOWN":
-                title = None
-            if channel and channel.upper() == "UNKNOWN":
-                channel = None
-
-            if not title and not channel:
-                return None
-
-            parts = []
-            if title:
-                parts.append(title[:80])
-            if channel:
-                parts.append(channel[:30])
-            search_query = " ".join(parts)
-
-            print(f"🔍 [SCREENSHOT_VISION] Extracted: title='{title}' channel='{channel}' query='{search_query}'", flush=True)
-
-            return {
-                "platform": platform,
-                "search_query": search_query,
-                "video_title": title,
-                "channel": channel,
-                "video_url": None,
-            }
-
+                if response.status_code == 200:
+                    data = response.json()
+                    answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                    print(f"[SCREENSHOT_VISION] OpenAI response: {answer[:200]}", flush=True)
+                    result = _parse_vision_response(answer)
+                    if result:
+                        return result
+                else:
+                    print(f"[SCREENSHOT_VISION] OpenAI error: {response.status_code}", flush=True)
     except Exception as e:
-        logger.warning(f"[SCREENSHOT_VISION] Error: {e}")
-        return None
+        print(f"[SCREENSHOT_VISION] OpenAI exception: {e}", flush=True)
+
+    print("[SCREENSHOT_VISION] All models exhausted, no title found", flush=True)
+    return None
+
 
 
 async def _search_video_from_screenshot(
