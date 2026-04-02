@@ -4982,8 +4982,8 @@ async def _detect_video_screenshot_vision(
 
     # ── Fallback: OpenAI gpt-4o-mini ──
     try:
-        from core.config import settings
-        openai_key = getattr(settings, 'OPENAI_API_KEY', None) or getattr(settings, 'openai_api_key', None)
+        from core.config import get_openai_key
+        openai_key = get_openai_key()
         if openai_key:
             async with httpx_client.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
@@ -5257,6 +5257,18 @@ async def _analyze_images_background(
                 found_url = video_url
                 if not found_url and search_query and not _is_garbage_query(search_query):
                     found_url = await _search_video_from_screenshot(search_query, platform)
+
+                # Last resort: if Vision gave us a query but search failed, OR if everything failed,
+                # try Brave Search with whatever clean text we can extract from OCR
+                if not found_url and screenshot_result:
+                    # Try to build a minimal query from OCR non-garbage lines
+                    _ocr_title = screenshot_result.get("video_title", "")
+                    _ocr_channel = screenshot_result.get("channel", "")
+                    if _ocr_channel and len(_ocr_channel) > 2:
+                        # Channel name is often reliable even when title is garbage
+                        _brave_q = f"{_ocr_channel} {platform} video"
+                        print(f"🔎 [IMAGES] Last resort Brave search with channel: '{_brave_q}'", flush=True)
+                        found_url = await _brave_search_video(_brave_q, platform)
 
                 if found_url:
                     print(f"🎯 [IMAGES] Video found: {found_url}", flush=True)
