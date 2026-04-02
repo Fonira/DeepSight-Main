@@ -1180,6 +1180,10 @@ async def _analyze_video_background_v2(
             _task_store[task_id]["message"] = "🚀 Démarrage de l'analyse v2..."
 
             # 1. Récupérer les infos vidéo
+            # Check cancellation
+            if _task_store.get(task_id, {}).get("status") == "cancelled":
+                print(f"🚫 [v6.0] Task {task_id[:12]} cancelled", flush=True)
+                return
             _task_store[task_id]["progress"] = 10
             _task_store[task_id]["message"] = "📺 Récupération des infos vidéo..."
 
@@ -2461,6 +2465,11 @@ async def _analyze_video_background_v6(
     try:
         async with async_session_maker() as session:
             # Update status
+            # Check if cancelled before starting
+            if _task_store.get(task_id, {}).get("status") == "cancelled":
+                print(f"🚫 [v6.0] Task {task_id[:12]} cancelled before start", flush=True)
+                return
+
             _task_store[task_id]["status"] = "processing"
             _task_store[task_id]["progress"] = 5
             _task_store[task_id]["message"] = "🚀 Démarrage de l'analyse..."
@@ -2468,6 +2477,10 @@ async def _analyze_video_background_v6(
             # ═══════════════════════════════════════════════════════════════════
             # 1. RÉCUPÉRER LES INFOS VIDÉO
             # ═══════════════════════════════════════════════════════════════════
+            # Check cancellation
+            if _task_store.get(task_id, {}).get("status") == "cancelled":
+                print(f"🚫 [v6.0] Task {task_id[:12]} cancelled", flush=True)
+                return
             _task_store[task_id]["progress"] = 10
             _task_store[task_id]["message"] = "📺 Récupération des infos vidéo..."
             
@@ -2998,6 +3011,27 @@ async def _analyze_video_background_v6(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 STATUS & POLLING
 # ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post("/cancel/{task_id}")
+async def cancel_task(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Annule une tâche d'analyse en cours."""
+    if task_id in _task_store:
+        task = _task_store[task_id]
+        if task.get("user_id") != current_user.id:
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        # Mark as cancelled
+        _task_store[task_id]["status"] = "cancelled"
+        _task_store[task_id]["message"] = "Analyse annulée par l'utilisateur"
+        print(f"🚫 [CANCEL] Task {task_id[:12]} cancelled by user {current_user.id}", flush=True)
+        return {"status": "cancelled", "task_id": task_id}
+
+    raise HTTPException(status_code=404, detail="Task not found")
+
 
 @router.get("/status/{task_id}", response_model=TaskStatusResponse)
 async def get_task_status(
@@ -4509,7 +4543,7 @@ async def _mistral_vision_request(
     fallback_models: Optional[list] = None,
 ) -> Optional[str]:
     """
-    Appel Vision resilient: Mistral -> OpenAI fallback.
+    Appel Vision resilient: Mistral -> Claude Vision fallback.
     JAMAIS d'erreur rate-limit visible pour l'utilisateur.
     """
     import httpx as httpx_client
@@ -4558,68 +4592,90 @@ async def _mistral_vision_request(
                     continue
                 break
 
-    # -- Phase 2: OpenAI GPT-4o-mini Vision (separate account = separate limits) --
-    print(f"[VISION_FALLBACK] Mistral exhausted, trying OpenAI gpt-4o-mini...", flush=True)
+    # -- Phase 2: Anthropic Claude Vision (remplace OpenAI) --
+    print(f"[VISION_FALLBACK] Mistral exhausted, trying Claude Vision...", flush=True)
     try:
-        from core.config import OPENAI_API_KEY, BRAVE_SEARCH_API_KEY
-        openai_key = OPENAI_API_KEY
-        if openai_key:
-            openai_messages = []
+        import os as _os
+        anthropic_key = _os.environ.get("ANTHROPIC_API_KEY", "")
+        if anthropic_key:
+            # Convert Mistral messages format to Anthropic format
+            claude_messages = []
             for msg in messages:
                 role = msg.get("role", "user")
                 raw_content = msg.get("content", "")
                 if isinstance(raw_content, str):
-                    openai_messages.append({"role": role, "content": raw_content})
+                    claude_messages.append({"role": role, "content": raw_content})
                 elif isinstance(raw_content, list):
-                    oai_content = []
+                    claude_content = []
                     for item in raw_content:
                         if isinstance(item, dict):
                             if item.get("type") == "text":
-                                oai_content.append(item)
+                                claude_content.append(item)
                             elif item.get("type") == "image_url":
                                 img_url = item.get("image_url", "")
+                                url_str = ""
                                 if isinstance(img_url, str):
-                                    oai_content.append({"type": "image_url", "image_url": {"url": img_url, "detail": "low"}})
+                                    url_str = img_url
                                 elif isinstance(img_url, dict):
-                                    oai_content.append({"type": "image_url", "image_url": {"url": img_url.get("url", ""), "detail": "low"}})
+                                    url_str = img_url.get("url", "")
+                                # Convert data URI to Anthropic image block
+                                if url_str.startswith("data:"):
+                                    parts = url_str.split(",", 1)
+                                    media_type = parts[0].replace("data:", "").replace(";base64", "")
+                                    b64 = parts[1] if len(parts) > 1 else ""
+                                    claude_content.append({
+                                        "type": "image",
+                                        "source": {"type": "base64", "media_type": media_type, "data": b64}
+                                    })
                                 else:
-                                    oai_content.append(item)
+                                    claude_content.append({"type": "text", "text": "[Image URL]"})
                         else:
-                            oai_content.append(item)
-                    openai_messages.append({"role": role, "content": oai_content})
+                            claude_content.append(item)
+                    claude_messages.append({"role": role, "content": claude_content})
                 else:
-                    openai_messages.append({"role": role, "content": str(raw_content)})
+                    claude_messages.append({"role": role, "content": str(raw_content)})
 
-            for oai_attempt in range(2):
+            for claude_attempt in range(2):
                 try:
                     async with httpx_client.AsyncClient(timeout=timeout) as client:
                         resp = await client.post(
-                            "https://api.openai.com/v1/chat/completions",
-                            headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
-                            json={"model": "gpt-4o-mini", "messages": openai_messages, "max_tokens": max_tokens, "temperature": temperature},
+                            "https://api.anthropic.com/v1/messages",
+                            headers={
+                                "x-api-key": anthropic_key,
+                                "anthropic-version": "2023-06-01",
+                                "Content-Type": "application/json",
+                            },
+                            json={
+                                "model": "claude-sonnet-4-20250514",
+                                "max_tokens": max_tokens or 1024,
+                                "messages": claude_messages,
+                            },
                         )
                         if resp.status_code == 200:
                             data = resp.json()
-                            c = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                            if c:
-                                print(f"[VISION_FALLBACK] OpenAI gpt-4o-mini success!", flush=True)
-                                return c.strip()
+                            answer = ""
+                            for block in data.get("content", []):
+                                if block.get("type") == "text":
+                                    answer += block.get("text", "")
+                            if answer:
+                                print(f"[VISION_FALLBACK] Claude Vision success!", flush=True)
+                                return answer.strip()
                         if resp.status_code == 429:
-                            print(f"[VISION_FALLBACK] OpenAI rate-limited, attempt {oai_attempt+1}/2", flush=True)
+                            print(f"[VISION_FALLBACK] Claude rate-limited, attempt {claude_attempt+1}/2", flush=True)
                             await asyncio.sleep(5)
                             continue
-                        print(f"[VISION_FALLBACK] OpenAI error {resp.status_code}: {resp.text[:200]}", flush=True)
+                        print(f"[VISION_FALLBACK] Claude error {resp.status_code}: {resp.text[:200]}", flush=True)
                         break
                 except Exception as e:
-                    print(f"[VISION_FALLBACK] OpenAI exception: {e}", flush=True)
-                    if oai_attempt == 0:
+                    print(f"[VISION_FALLBACK] Claude exception: {e}", flush=True)
+                    if claude_attempt == 0:
                         await asyncio.sleep(3)
                         continue
                     break
         else:
-            print(f"[VISION_FALLBACK] No OPENAI_API_KEY, skipping", flush=True)
+            print(f"[VISION_FALLBACK] No ANTHROPIC_API_KEY, skipping", flush=True)
     except Exception as e:
-        print(f"[VISION_FALLBACK] OpenAI setup error: {e}", flush=True)
+        print(f"[VISION_FALLBACK] Claude setup error: {e}", flush=True)
 
     # -- Phase 3: Last resort - progressive backoff retries on Mistral --
     for retry_idx, wait_secs in enumerate([20, 40, 60]):
@@ -4884,9 +4940,9 @@ async def _detect_video_screenshot_vision(
     platform: str = "youtube",
 ) -> Optional[Dict[str, str]]:
     """
-    Fallback Vision: use Mistral/OpenAI vision to extract title + channel
+    Fallback Vision: use Mistral/Claude vision to extract title + channel
     from a YouTube/TikTok screenshot when OCR gives garbage.
-    Multi-model fallback: pixtral-12b → mistral-small-2603 → OpenAI gpt-4o-mini
+    Multi-model fallback: pixtral-12b → pixtral-large → mistral-small → Claude Vision
     """
     import httpx as httpx_client
     import re as re_mod
@@ -4932,7 +4988,7 @@ async def _detect_video_screenshot_vision(
         }
 
     # ── Try Mistral models (pixtral-12b first, then small) ──
-    mistral_models = ["pixtral-12b-2409", "mistral-small-2603"]
+    mistral_models = ["pixtral-12b-2409", "pixtral-large-2411", "mistral-small-2603"]
     for model in mistral_models:
         try:
             async with httpx_client.AsyncClient(timeout=30.0) as client:
@@ -4980,48 +5036,56 @@ async def _detect_video_screenshot_vision(
             print(f"[SCREENSHOT_VISION] {model} exception: {e}", flush=True)
             continue
 
-    # ── Fallback: OpenAI gpt-4o-mini ──
+    # ── Fallback: Anthropic Claude Vision (remplace OpenAI) ──
     try:
-        from core.config import get_openai_key
-        openai_key = get_openai_key()
-        if openai_key:
+        import os as _os
+        anthropic_key = _os.environ.get("ANTHROPIC_API_KEY", "")
+        if anthropic_key:
+            print(f"[SCREENSHOT_VISION] Trying Claude Vision fallback...", flush=True)
             async with httpx_client.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
-                    "https://api.openai.com/v1/chat/completions",
+                    "https://api.anthropic.com/v1/messages",
                     headers={
-                        "Authorization": f"Bearer {openai_key}",
+                        "x-api-key": anthropic_key,
+                        "anthropic-version": "2023-06-01",
                         "Content-Type": "application/json",
                     },
                     json={
-                        "model": "gpt-4o-mini",
+                        "model": "claude-sonnet-4-20250514",
+                        "max_tokens": 150,
                         "messages": [{
                             "role": "user",
                             "content": [
                                 {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:{image.mime_type};base64,{b64_data}"
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": image.mime_type,
+                                        "data": b64_data,
                                     }
                                 },
                                 {"type": "text", "text": prompt_text}
                             ]
                         }],
-                        "max_tokens": 150,
-                        "temperature": 0.0,
                     },
                 )
 
                 if response.status_code == 200:
                     data = response.json()
-                    answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                    print(f"[SCREENSHOT_VISION] OpenAI response: {answer[:200]}", flush=True)
+                    answer = ""
+                    for block in data.get("content", []):
+                        if block.get("type") == "text":
+                            answer += block.get("text", "")
+                    print(f"[SCREENSHOT_VISION] Claude response: {answer[:200]}", flush=True)
                     result = _parse_vision_response(answer)
                     if result:
                         return result
                 else:
-                    print(f"[SCREENSHOT_VISION] OpenAI error: {response.status_code}", flush=True)
+                    print(f"[SCREENSHOT_VISION] Claude error: {response.status_code} {response.text[:200]}", flush=True)
+        else:
+            print(f"[SCREENSHOT_VISION] No ANTHROPIC_API_KEY, skipping", flush=True)
     except Exception as e:
-        print(f"[SCREENSHOT_VISION] OpenAI exception: {e}", flush=True)
+        print(f"[SCREENSHOT_VISION] Claude exception: {e}", flush=True)
 
     print("[SCREENSHOT_VISION] All models exhausted, no title found", flush=True)
     return None
