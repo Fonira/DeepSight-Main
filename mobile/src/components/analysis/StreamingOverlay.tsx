@@ -206,6 +206,13 @@ export const StreamingOverlay: React.FC<StreamingOverlayProps> = ({
           summaryIdRef.current = status.summary_id;
         }
 
+        if (status.status === 'cancelled') {
+          if (pollingRef.current) clearInterval(pollingRef.current);
+          if (fakeProgressRef.current) clearInterval(fakeProgressRef.current);
+          onCancel();
+          return;
+        }
+
         if (status.status === 'completed') {
           summaryIdRef.current = status.summary_id || summaryIdRef.current;
           handleComplete();

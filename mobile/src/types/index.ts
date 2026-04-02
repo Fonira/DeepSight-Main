@@ -114,7 +114,7 @@ export interface AnalysisStatus {
   // Backend returns snake_case (task_id), but we also accept camelCase
   task_id?: string;
   taskId?: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'done' | 'error';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'done' | 'error' | 'cancelled';
   progress: number;
   message?: string;
   result?: Record<string, unknown>;

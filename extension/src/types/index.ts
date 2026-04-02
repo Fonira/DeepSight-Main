@@ -38,7 +38,7 @@ export interface AnalyzeResponse {
 }
 
 export interface TaskStatus {
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   message: string;
   result?: {

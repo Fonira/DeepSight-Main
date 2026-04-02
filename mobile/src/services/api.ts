@@ -520,6 +520,12 @@ export const videoApi = {
     });
   },
 
+  async cancelTask(taskId: string): Promise<{ status: string; task_id: string }> {
+    return request<{ status: string; task_id: string }>(`/api/videos/cancel/${taskId}`, {
+      method: 'POST',
+    });
+  },
+
   async getStatus(taskId: string): Promise<AnalysisStatus> {
     const raw = await request<Record<string, unknown>>(`/api/videos/status/${taskId}`);
     // Normalize backend snake_case response to match AnalysisStatus interface
