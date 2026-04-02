@@ -1180,6 +1180,10 @@ async def _analyze_video_background_v2(
             _task_store[task_id]["message"] = "🚀 Démarrage de l'analyse v2..."
 
             # 1. Récupérer les infos vidéo
+            # Check cancellation
+            if _task_store.get(task_id, {}).get("status") == "cancelled":
+                print(f"🚫 [v6.0] Task {task_id[:12]} cancelled", flush=True)
+                return
             _task_store[task_id]["progress"] = 10
             _task_store[task_id]["message"] = "📺 Récupération des infos vidéo..."
 
@@ -2461,6 +2465,11 @@ async def _analyze_video_background_v6(
     try:
         async with async_session_maker() as session:
             # Update status
+            # Check if cancelled before starting
+            if _task_store.get(task_id, {}).get("status") == "cancelled":
+                print(f"🚫 [v6.0] Task {task_id[:12]} cancelled before start", flush=True)
+                return
+
             _task_store[task_id]["status"] = "processing"
             _task_store[task_id]["progress"] = 5
             _task_store[task_id]["message"] = "🚀 Démarrage de l'analyse..."
@@ -2468,6 +2477,10 @@ async def _analyze_video_background_v6(
             # ═══════════════════════════════════════════════════════════════════
             # 1. RÉCUPÉRER LES INFOS VIDÉO
             # ═══════════════════════════════════════════════════════════════════
+            # Check cancellation
+            if _task_store.get(task_id, {}).get("status") == "cancelled":
+                print(f"🚫 [v6.0] Task {task_id[:12]} cancelled", flush=True)
+                return
             _task_store[task_id]["progress"] = 10
             _task_store[task_id]["message"] = "📺 Récupération des infos vidéo..."
             
@@ -2998,6 +3011,27 @@ async def _analyze_video_background_v6(
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📊 STATUS & POLLING
 # ═══════════════════════════════════════════════════════════════════════════════
+
+
+@router.post("/cancel/{task_id}")
+async def cancel_task(
+    task_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """Annule une tâche d'analyse en cours."""
+    if task_id in _task_store:
+        task = _task_store[task_id]
+        if task.get("user_id") != current_user.id:
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        # Mark as cancelled
+        _task_store[task_id]["status"] = "cancelled"
+        _task_store[task_id]["message"] = "Analyse annulée par l'utilisateur"
+        print(f"🚫 [CANCEL] Task {task_id[:12]} cancelled by user {current_user.id}", flush=True)
+        return {"status": "cancelled", "task_id": task_id}
+
+    raise HTTPException(status_code=404, detail="Task not found")
+
 
 @router.get("/status/{task_id}", response_model=TaskStatusResponse)
 async def get_task_status(
@@ -4509,7 +4543,7 @@ async def _mistral_vision_request(
     fallback_models: Optional[list] = None,
 ) -> Optional[str]:
     """
-    Appel Vision resilient: Mistral -> OpenAI fallback.
+    Appel Vision resilient: Mistral -> Claude Vision fallback.
     JAMAIS d'erreur rate-limit visible pour l'utilisateur.
     """
     import httpx as httpx_client
@@ -4558,68 +4592,90 @@ async def _mistral_vision_request(
                     continue
                 break
 
-    # -- Phase 2: OpenAI GPT-4o-mini Vision (separate account = separate limits) --
-    print(f"[VISION_FALLBACK] Mistral exhausted, trying OpenAI gpt-4o-mini...", flush=True)
+    # -- Phase 2: Anthropic Claude Vision (remplace OpenAI) --
+    print(f"[VISION_FALLBACK] Mistral exhausted, trying Claude Vision...", flush=True)
     try:
-        from core.config import OPENAI_API_KEY, BRAVE_SEARCH_API_KEY
-        openai_key = OPENAI_API_KEY
-        if openai_key:
-            openai_messages = []
+        import os as _os
+        anthropic_key = _os.environ.get("ANTHROPIC_API_KEY", "")
+        if anthropic_key:
+            # Convert Mistral messages format to Anthropic format
+            claude_messages = []
             for msg in messages:
                 role = msg.get("role", "user")
                 raw_content = msg.get("content", "")
                 if isinstance(raw_content, str):
-                    openai_messages.append({"role": role, "content": raw_content})
+                    claude_messages.append({"role": role, "content": raw_content})
                 elif isinstance(raw_content, list):
-                    oai_content = []
+                    claude_content = []
                     for item in raw_content:
                         if isinstance(item, dict):
                             if item.get("type") == "text":
-                                oai_content.append(item)
+                                claude_content.append(item)
                             elif item.get("type") == "image_url":
                                 img_url = item.get("image_url", "")
+                                url_str = ""
                                 if isinstance(img_url, str):
-                                    oai_content.append({"type": "image_url", "image_url": {"url": img_url, "detail": "low"}})
+                                    url_str = img_url
                                 elif isinstance(img_url, dict):
-                                    oai_content.append({"type": "image_url", "image_url": {"url": img_url.get("url", ""), "detail": "low"}})
+                                    url_str = img_url.get("url", "")
+                                # Convert data URI to Anthropic image block
+                                if url_str.startswith("data:"):
+                                    parts = url_str.split(",", 1)
+                                    media_type = parts[0].replace("data:", "").replace(";base64", "")
+                                    b64 = parts[1] if len(parts) > 1 else ""
+                                    claude_content.append({
+                                        "type": "image",
+                                        "source": {"type": "base64", "media_type": media_type, "data": b64}
+                                    })
                                 else:
-                                    oai_content.append(item)
+                                    claude_content.append({"type": "text", "text": "[Image URL]"})
                         else:
-                            oai_content.append(item)
-                    openai_messages.append({"role": role, "content": oai_content})
+                            claude_content.append(item)
+                    claude_messages.append({"role": role, "content": claude_content})
                 else:
-                    openai_messages.append({"role": role, "content": str(raw_content)})
+                    claude_messages.append({"role": role, "content": str(raw_content)})
 
-            for oai_attempt in range(2):
+            for claude_attempt in range(2):
                 try:
                     async with httpx_client.AsyncClient(timeout=timeout) as client:
                         resp = await client.post(
-                            "https://api.openai.com/v1/chat/completions",
-                            headers={"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"},
-                            json={"model": "gpt-4o-mini", "messages": openai_messages, "max_tokens": max_tokens, "temperature": temperature},
+                            "https://api.anthropic.com/v1/messages",
+                            headers={
+                                "x-api-key": anthropic_key,
+                                "anthropic-version": "2023-06-01",
+                                "Content-Type": "application/json",
+                            },
+                            json={
+                                "model": "claude-sonnet-4-20250514",
+                                "max_tokens": max_tokens or 1024,
+                                "messages": claude_messages,
+                            },
                         )
                         if resp.status_code == 200:
                             data = resp.json()
-                            c = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                            if c:
-                                print(f"[VISION_FALLBACK] OpenAI gpt-4o-mini success!", flush=True)
-                                return c.strip()
+                            answer = ""
+                            for block in data.get("content", []):
+                                if block.get("type") == "text":
+                                    answer += block.get("text", "")
+                            if answer:
+                                print(f"[VISION_FALLBACK] Claude Vision success!", flush=True)
+                                return answer.strip()
                         if resp.status_code == 429:
-                            print(f"[VISION_FALLBACK] OpenAI rate-limited, attempt {oai_attempt+1}/2", flush=True)
+                            print(f"[VISION_FALLBACK] Claude rate-limited, attempt {claude_attempt+1}/2", flush=True)
                             await asyncio.sleep(5)
                             continue
-                        print(f"[VISION_FALLBACK] OpenAI error {resp.status_code}: {resp.text[:200]}", flush=True)
+                        print(f"[VISION_FALLBACK] Claude error {resp.status_code}: {resp.text[:200]}", flush=True)
                         break
                 except Exception as e:
-                    print(f"[VISION_FALLBACK] OpenAI exception: {e}", flush=True)
-                    if oai_attempt == 0:
+                    print(f"[VISION_FALLBACK] Claude exception: {e}", flush=True)
+                    if claude_attempt == 0:
                         await asyncio.sleep(3)
                         continue
                     break
         else:
-            print(f"[VISION_FALLBACK] No OPENAI_API_KEY, skipping", flush=True)
+            print(f"[VISION_FALLBACK] No ANTHROPIC_API_KEY, skipping", flush=True)
     except Exception as e:
-        print(f"[VISION_FALLBACK] OpenAI setup error: {e}", flush=True)
+        print(f"[VISION_FALLBACK] Claude setup error: {e}", flush=True)
 
     # -- Phase 3: Last resort - progressive backoff retries on Mistral --
     for retry_idx, wait_secs in enumerate([20, 40, 60]):
@@ -4858,6 +4914,219 @@ async def _detect_video_screenshot(
         return None
 
 
+
+
+def _is_garbage_query(query: str) -> bool:
+    """Check if OCR-extracted query is garbage (mostly symbols, numbers, too short)."""
+    if not query or len(query.strip()) < 5:
+        return True
+    q = query.strip()
+    # Mostly digits/spaces/symbols
+    alpha_chars = sum(1 for c in q if c.isalpha())
+    if alpha_chars < 5:
+        return True
+    # Repetitive patterns (0 0 0 0...)
+    words = q.split()
+    if len(words) > 3 and len(set(words)) <= 2:
+        return True
+    # HTML entities
+    if '&lt;' in q or '&gt;' in q or '&amp;' in q:
+        return True
+    # Too many hashtags or special chars relative to real words
+    hashtag_count = q.count('#')
+    if hashtag_count >= 2 and alpha_chars < 15:
+        return True
+    # Garbled OCR: high ratio of digits+symbols to letters
+    non_alpha = sum(1 for c in q if not c.isalpha() and not c.isspace())
+    if len(q) > 8 and non_alpha > alpha_chars:
+        return True
+    # Single "word" queries that look like garbled text (no spaces, lots of digits)
+    if len(words) <= 2 and any(len(w) > 5 and sum(c.isdigit() for c in w) > len(w) * 0.3 for w in words):
+        return True
+    # Starts with "Playlist:" but has garbled content after
+    import re as _re_gb
+    if _re_gb.match(r'^(Playlist|Mix|Queue)\s*:', q, _re_gb.IGNORECASE):
+        after_colon = q.split(':', 1)[1].strip() if ':' in q else ""
+        if len(after_colon) < 10 or sum(1 for c in after_colon if c.isalpha()) < 5:
+            return True
+    return False
+
+
+async def _detect_video_screenshot_vision(
+    image,
+    api_key: str,
+    platform: str = "youtube",
+) -> Optional[Dict[str, str]]:
+    """
+    Fallback Vision: use Mistral/Claude vision to extract title + channel
+    from a YouTube/TikTok screenshot when OCR gives garbage.
+    Multi-model fallback: pixtral-12b → pixtral-large → mistral-small → Claude Vision
+    """
+    import httpx as httpx_client
+    import re as re_mod
+
+    b64_data = image.data
+    if b64_data.startswith("data:"):
+        b64_data = b64_data.split(",", 1)[-1]
+
+    platform_name = "YouTube" if platform == "youtube" else "TikTok"
+    prompt_text = (
+        f"This is a screenshot of a {platform_name} video page. "
+        f"Your task is to identify the EXACT video being watched.\n\n"
+        f"Extract the following information visible on screen:\n"
+        f"1. The video TITLE (the main, large title text of the video being played)\n"
+        f"2. The CHANNEL name (the creator/uploader name below the title)\n"
+        f"3. If visible in the browser address bar, the video URL or video ID\n\n"
+        f"Reply in this exact format:\n"
+        f"TITLE: <the exact video title as shown on screen>\n"
+        f"CHANNEL: <the channel name>\n"
+        f"URL: <the video URL if visible, otherwise UNKNOWN>\n"
+        f"If you cannot find a field, write UNKNOWN for that field.\n"
+        f"IMPORTANT: Focus on the MAIN video being watched, not suggested/related videos."
+    )
+
+    def _parse_vision_response(answer: str):
+        title_match = re_mod.search(r"TITLE:\s*(.+)", answer)
+        channel_match = re_mod.search(r"CHANNEL:\s*(.+)", answer)
+        url_match = re_mod.search(r"URL:\s*(.+)", answer)
+        title = title_match.group(1).strip() if title_match else None
+        channel = channel_match.group(1).strip() if channel_match else None
+        url_text = url_match.group(1).strip() if url_match else None
+        if title and title.upper() == "UNKNOWN":
+            title = None
+        if channel and channel.upper() == "UNKNOWN":
+            channel = None
+        # Extract video URL from Vision response
+        video_url = None
+        if url_text and url_text.upper() != "UNKNOWN":
+            yt_id_match = re_mod.search(r"(?:v=|youtu\.be/|shorts/)([A-Za-z0-9_-]{11})", url_text)
+            if yt_id_match:
+                video_url = f"https://www.youtube.com/watch?v={yt_id_match.group(1)}"
+            tt_match = re_mod.search(r"(tiktok\.com/@[\w.-]+/video/\d+)", url_text)
+            if tt_match and not video_url:
+                video_url = f"https://www.{tt_match.group(1)}"
+        if not title and not channel and not video_url:
+            return None
+        parts = []
+        if title:
+            parts.append(title[:80])
+        if channel:
+            parts.append(channel[:30])
+        search_query = " ".join(parts)
+        print(f"\U0001f50d [SCREENSHOT_VISION] Extracted: title=\'{title}\' channel=\'{channel}\' url=\'{video_url}\' query=\'{search_query}\'", flush=True)
+        return {
+            "platform": platform,
+            "search_query": search_query,
+            "video_title": title,
+            "channel": channel,
+            "video_url": video_url,
+        }
+
+    # ── Try Mistral models (pixtral-12b first, then small) ──
+    mistral_models = ["pixtral-12b-2409", "pixtral-large-2411", "mistral-small-2603"]
+    for model in mistral_models:
+        try:
+            async with httpx_client.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    "https://api.mistral.ai/v1/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": model,
+                        "messages": [{
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:{image.mime_type};base64,{b64_data}"
+                                    }
+                                },
+                                {"type": "text", "text": prompt_text}
+                            ]
+                        }],
+                        "max_tokens": 150,
+                        "temperature": 0.0,
+                    },
+                )
+
+                if response.status_code == 429:
+                    print(f"[SCREENSHOT_VISION] {model} rate-limited, trying next...", flush=True)
+                    continue
+                if response.status_code != 200:
+                    print(f"[SCREENSHOT_VISION] {model} error: {response.status_code}", flush=True)
+                    continue
+
+                data = response.json()
+                answer = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                print(f"[SCREENSHOT_VISION] {model} response: {answer[:200]}", flush=True)
+
+                result = _parse_vision_response(answer)
+                if result:
+                    return result
+
+        except Exception as e:
+            print(f"[SCREENSHOT_VISION] {model} exception: {e}", flush=True)
+            continue
+
+    # ── Fallback: Anthropic Claude Vision (remplace OpenAI) ──
+    try:
+        import os as _os
+        anthropic_key = _os.environ.get("ANTHROPIC_API_KEY", "")
+        if anthropic_key:
+            print(f"[SCREENSHOT_VISION] Trying Claude Vision fallback...", flush=True)
+            async with httpx_client.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    "https://api.anthropic.com/v1/messages",
+                    headers={
+                        "x-api-key": anthropic_key,
+                        "anthropic-version": "2023-06-01",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": "claude-sonnet-4-20250514",
+                        "max_tokens": 150,
+                        "messages": [{
+                            "role": "user",
+                            "content": [
+                                {
+                                    "type": "image",
+                                    "source": {
+                                        "type": "base64",
+                                        "media_type": image.mime_type,
+                                        "data": b64_data,
+                                    }
+                                },
+                                {"type": "text", "text": prompt_text}
+                            ]
+                        }],
+                    },
+                )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    answer = ""
+                    for block in data.get("content", []):
+                        if block.get("type") == "text":
+                            answer += block.get("text", "")
+                    print(f"[SCREENSHOT_VISION] Claude response: {answer[:200]}", flush=True)
+                    result = _parse_vision_response(answer)
+                    if result:
+                        return result
+                else:
+                    print(f"[SCREENSHOT_VISION] Claude error: {response.status_code} {response.text[:200]}", flush=True)
+        else:
+            print(f"[SCREENSHOT_VISION] No ANTHROPIC_API_KEY, skipping", flush=True)
+    except Exception as e:
+        print(f"[SCREENSHOT_VISION] Claude exception: {e}", flush=True)
+
+    print("[SCREENSHOT_VISION] All models exhausted, no title found", flush=True)
+    return None
+
+
+
 async def _search_video_from_screenshot(
     search_query: str,
     platform: str,
@@ -5065,17 +5334,56 @@ async def _analyze_images_background(
 
             if screenshot_result:
                 platform = screenshot_result.get("platform")  # "youtube" ou "tiktok"
-                search_query = screenshot_result.get("search_query", "")
+                ocr_query = screenshot_result.get("search_query", "")
                 video_url = screenshot_result.get("video_url")
+                search_query = ocr_query
 
-                print(f"📱 [IMAGES] Screenshot detected: {platform} — query: '{search_query}'", flush=True)
+                print(f"📱 [IMAGES] Screenshot detected: {platform} — OCR query: '{ocr_query}' — URL: {video_url}", flush=True)
+
+                # TOUJOURS appeler Vision quand OCR n'a pas trouvé d'URL directe
+                # Vision est beaucoup plus fiable que le parsing OCR pour extraire titre/chaîne
+                if not video_url:
+                    print(f"🔍 [IMAGES] No direct URL from OCR, calling Vision for title extraction...", flush=True)
+                    _task_store[task_id]["message"] = f"Analyse visuelle du screenshot {platform}..."
+                    vision_result = await _detect_video_screenshot_vision(images[0], api_key, platform)
+                    if vision_result:
+                        vision_query = vision_result.get("search_query", "")
+                        vision_url = vision_result.get("video_url")
+                        if vision_url:
+                            video_url = vision_url
+                        # Préférer la query Vision sauf si elle est aussi garbage
+                        if vision_query and not _is_garbage_query(vision_query):
+                            search_query = vision_query
+                            print(f"✅ [IMAGES] Vision query (primary): '{search_query}'", flush=True)
+                        elif not _is_garbage_query(ocr_query):
+                            search_query = ocr_query
+                            print(f"⚠️ [IMAGES] Vision failed, using OCR query: '{search_query}'", flush=True)
+                        else:
+                            print(f"❌ [IMAGES] Both Vision and OCR queries are garbage", flush=True)
+                    elif not _is_garbage_query(ocr_query):
+                        print(f"⚠️ [IMAGES] Vision returned nothing, using OCR query: '{search_query}'", flush=True)
+                    else:
+                        print(f"❌ [IMAGES] Vision failed and OCR query is garbage: '{ocr_query}'", flush=True)
+
                 _task_store[task_id]["progress"] = 15
                 _task_store[task_id]["message"] = f"Capture d'écran {platform} détectée ! Recherche de la vidéo..."
 
                 # Chercher la vidéo originale
                 found_url = video_url
-                if not found_url and search_query:
+                if not found_url and search_query and not _is_garbage_query(search_query):
                     found_url = await _search_video_from_screenshot(search_query, platform)
+
+                # Last resort: if Vision gave us a query but search failed, OR if everything failed,
+                # try Brave Search with whatever clean text we can extract from OCR
+                if not found_url and screenshot_result:
+                    # Try to build a minimal query from OCR non-garbage lines
+                    _ocr_title = screenshot_result.get("video_title", "")
+                    _ocr_channel = screenshot_result.get("channel", "")
+                    if _ocr_channel and len(_ocr_channel) > 2:
+                        # Channel name is often reliable even when title is garbage
+                        _brave_q = f"{_ocr_channel} {platform} video"
+                        print(f"🔎 [IMAGES] Last resort Brave search with channel: '{_brave_q}'", flush=True)
+                        found_url = await _brave_search_video(_brave_q, platform)
 
                 if found_url:
                     print(f"🎯 [IMAGES] Video found: {found_url}", flush=True)
@@ -5090,14 +5398,6 @@ async def _analyze_images_background(
                         vid_id = extract_video_id(found_url)
 
                     if vid_id:
-                        # Créer un nouveau task pour l'analyse vidéo
-                        new_task_id = str(_uuid4())
-                        _task_store[new_task_id] = {
-                            "status": "processing",
-                            "progress": 0,
-                            "message": f"Analyse de la vidéo {platform} en cours...",
-                        }
-
                         # Récupérer le plan et modèle de l'utilisateur
                         async with async_session_maker() as _db:
                             from sqlalchemy import select as _select
@@ -5109,6 +5409,17 @@ async def _analyze_images_background(
                         _plan_limits = PLAN_LIMITS.get(_plan, PLAN_LIMITS["free"])
                         _model = _plan_limits.get("default_model", "mistral-small-2603")
                         _credit_cost = get_credit_cost("video_analysis", _model) if SECURITY_AVAILABLE else 1
+
+                        # Créer un nouveau task pour l'analyse vidéo
+                        new_task_id = str(_uuid4())
+                        _task_store[new_task_id] = {
+                            "status": "processing",
+                            "progress": 0,
+                            "message": f"Analyse de la vidéo {platform} en cours...",
+                            "user_id": user_id,
+                            "video_id": vid_id,
+                            "credit_cost": _credit_cost,
+                        }
 
                         # Lancer l'analyse vidéo v6 en background
                         asyncio.create_task(
