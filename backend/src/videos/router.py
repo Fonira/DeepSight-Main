@@ -5090,17 +5090,6 @@ async def _analyze_images_background(
                         vid_id = extract_video_id(found_url)
 
                     if vid_id:
-                        # Créer un nouveau task pour l'analyse vidéo
-                        new_task_id = str(_uuid4())
-                        _task_store[new_task_id] = {
-                            "status": "processing",
-                            "progress": 0,
-                            "message": f"Analyse de la vidéo {platform} en cours...",
-                            "user_id": user_id,
-                            "video_id": vid_id,
-                            "credit_cost": _credit_cost,
-                        }
-
                         # Récupérer le plan et modèle de l'utilisateur
                         async with async_session_maker() as _db:
                             from sqlalchemy import select as _select
@@ -5112,6 +5101,17 @@ async def _analyze_images_background(
                         _plan_limits = PLAN_LIMITS.get(_plan, PLAN_LIMITS["free"])
                         _model = _plan_limits.get("default_model", "mistral-small-2603")
                         _credit_cost = get_credit_cost("video_analysis", _model) if SECURITY_AVAILABLE else 1
+
+                        # Créer un nouveau task pour l'analyse vidéo
+                        new_task_id = str(_uuid4())
+                        _task_store[new_task_id] = {
+                            "status": "processing",
+                            "progress": 0,
+                            "message": f"Analyse de la vidéo {platform} en cours...",
+                            "user_id": user_id,
+                            "video_id": vid_id,
+                            "credit_cost": _credit_cost,
+                        }
 
                         # Lancer l'analyse vidéo v6 en background
                         asyncio.create_task(
