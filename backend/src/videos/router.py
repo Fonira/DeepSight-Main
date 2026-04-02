@@ -5096,6 +5096,9 @@ async def _analyze_images_background(
                             "status": "processing",
                             "progress": 0,
                             "message": f"Analyse de la vidéo {platform} en cours...",
+                            "user_id": user_id,
+                            "video_id": vid_id,
+                            "credit_cost": _credit_cost,
                         }
 
                         # Récupérer le plan et modèle de l'utilisateur
