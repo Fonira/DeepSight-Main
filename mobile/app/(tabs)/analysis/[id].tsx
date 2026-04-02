@@ -160,10 +160,18 @@ export default function AnalysisDetailScreen() {
     [tabIndicatorX]
   );
 
-  const handleCancelAnalysis = useCallback(() => {
+  const handleCancelAnalysis = useCallback(async () => {
+    // Notify backend to stop processing
+    if (id) {
+      try {
+        await videoApi.cancelTask(id);
+      } catch (err) {
+        if (__DEV__) console.warn('[CANCEL] Error cancelling task:', err);
+      }
+    }
     store.resetAnalysis();
     router.back();
-  }, [store, router]);
+  }, [store, router, id]);
 
   const handleStreamingComplete = useCallback(async (summaryId?: string) => {
     // Normalize: backend may send integer (number) or string

@@ -36,6 +36,7 @@ type AppState = 'login' | 'ready' | 'analyzing' | 'results' | 'chat';
 interface AppContext {
   state: AppState;
   videoId: string | null;
+  currentTaskId: string | null;
   user: User | null;
   planInfo: PlanInfo | null;
   summary: Summary | null;
@@ -47,6 +48,7 @@ interface AppContext {
 const ctx: AppContext = {
   state: 'login',
   videoId: null,
+  currentTaskId: null,
   user: null,
   planInfo: null,
   summary: null,
@@ -162,11 +164,33 @@ function getVideoTitle(): string {
 
 // ── Analyse ──
 
+function handleCancelCurrentAnalysis(): void {
+  if (ctx.currentTaskId) {
+    chrome.runtime.sendMessage({
+      action: 'CANCEL_ANALYSIS',
+      data: { taskId: ctx.currentTaskId },
+    }).catch(() => {});
+  }
+  ctx.state = 'ready';
+  ctx.currentTaskId = null;
+  if (ctx.user) {
+    renderReadyState({
+      user: { username: ctx.user.username, plan: ctx.user.plan, credits: ctx.user.credits },
+      tournesol: ctx.tournesol,
+      videoTitle: getVideoTitle(),
+      onAnalyze: startAnalysis,
+      onQuickChat: handleQuickChat,
+      onLogout: handleLogout,
+    });
+  }
+}
+
 async function startAnalysis(mode: string, lang: string): Promise<void> {
   if (!ctx.videoId) return;
 
   ctx.state = 'analyzing';
-  renderAnalyzingState('Démarrage de l\'analyse...', 0);
+  ctx.currentTaskId = null;
+  renderAnalyzingState('Démarrage de l\'analyse...', 0, handleCancelCurrentAnalysis);
 
   const url = window.location.href;
 
@@ -397,8 +421,9 @@ async function onNavigate(videoId: string | null): Promise<void> {
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.action === 'ANALYSIS_PROGRESS') {
-    const { progress, message: msg } = message.data as { taskId: string; progress: number; message: string };
+    const { taskId, progress, message: msg } = message.data as { taskId: string; progress: number; message: string };
     if (ctx.state === 'analyzing') {
+      ctx.currentTaskId = taskId;
       updateAnalyzingProgress(msg, progress);
     }
     sendResponse({ success: true });

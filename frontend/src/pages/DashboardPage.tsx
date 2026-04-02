@@ -20,7 +20,7 @@ import {
   Play, Video, ChevronDown, Clock, Timer,
   Sparkles,
   ExternalLink, MessageCircle, X,
-  AlertCircle, Microscope,
+  AlertCircle, Microscope, XCircle,
 } from "lucide-react";
 import { DeepSightSpinner } from "../components/ui";
 import { videoApi, chatApi, reliabilityApi, ApiError } from "../services/api";
@@ -192,6 +192,7 @@ export const DashboardPage: React.FC = () => {
   // Refs
   const chatEndRef = useRef<HTMLDivElement>(null);
   const pollingRef = useRef<boolean>(false);
+  const currentTaskIdRef = useRef<string | null>(null);
 
   const normalizedPlan = normalizePlanId(user?.plan);
   const isProUser = normalizedPlan === 'pro';
@@ -596,19 +597,46 @@ export const DashboardPage: React.FC = () => {
     setSelectedVideoTitle(video.title);
   };
 
+  const handleCancelAnalysis = useCallback(async () => {
+    const taskId = currentTaskIdRef.current;
+    if (!taskId) return;
+
+    try {
+      pollingRef.current = false;
+      await videoApi.cancelTask(taskId);
+    } catch (err) {
+      console.warn('[CANCEL] Error cancelling task:', err);
+    } finally {
+      setLoading(false);
+      setLoadingProgress(0);
+      setLoadingMessage('');
+      currentTaskIdRef.current = null;
+    }
+  }, []);
+
   const pollTaskStatus = async (taskId: string) => {
+    currentTaskIdRef.current = taskId;
     const fallbackMsgFr = ["Traitement en cours...", "Analyse du contenu...", "Génération du résumé...", "Finalisation..."];
     const fallbackMsgEn = ["Processing...", "Analyzing content...", "Generating summary...", "Finalizing..."];
     const fallbackMessages = language === 'fr' ? fallbackMsgFr : fallbackMsgEn;
-    
+
     let attempts = 0;
     const maxAttempts = 180; // 9 minutes max
-    
-    
+
+
     while (attempts < maxAttempts && pollingRef.current) {
       try {
         const status: TaskStatus = await videoApi.getTaskStatus(taskId);
-        
+
+        // Handle cancelled status
+        if (status.status === "cancelled") {
+          setLoading(false);
+          setLoadingProgress(0);
+          setLoadingMessage('');
+          currentTaskIdRef.current = null;
+          return;
+        }
+
         // Screenshot redirect: Mistral detected a YouTube/TikTok screenshot → follow new task
         if (status.status === "redirect" && status.result?.new_task_id) {
           const platform = status.result.platform || 'video';
@@ -1015,15 +1043,24 @@ export const DashboardPage: React.FC = () => {
                   <p className="text-sm font-medium text-text-tertiary tabular-nums">
                     {loadingProgress}%
                   </p>
-                  
+
                   {/* 🆕 Message informatif pour longues vidéos */}
                   {loadingProgress > 30 && loadingProgress < 90 && (
                     <p className="text-xs text-text-muted mt-3 max-w-sm">
-                      {language === 'fr' 
+                      {language === 'fr'
                         ? "💡 Les vidéos longues (>30min) peuvent prendre plus de temps."
                         : "💡 Long videos (>30min) may take longer."}
                     </p>
                   )}
+
+                  {/* 🆕 Bouton Annuler l'analyse */}
+                  <button
+                    onClick={handleCancelAnalysis}
+                    className="mt-5 px-5 py-2 text-sm text-text-muted hover:text-red-400 transition-all duration-200 flex items-center gap-2 rounded-lg hover:bg-red-500/10 border border-transparent hover:border-red-500/20"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    {language === 'fr' ? 'Annuler l\'analyse' : 'Cancel analysis'}
+                  </button>
                 </div>
               </div>
             )}

@@ -21,7 +21,7 @@ function spinnerHtml(): string {
     </div>`;
 }
 
-export function renderAnalyzingState(message: string, progress: number): void {
+export function renderAnalyzingState(message: string, progress: number, onCancel?: () => void): void {
   const html = `
     <div class="ds-analyzing-container">
       <div class="ds-loading" style="text-align:center;padding:16px 0">
@@ -31,9 +31,34 @@ export function renderAnalyzingState(message: string, progress: number): void {
       <div class="ds-progress" style="margin:8px 0">
         <div class="ds-progress-bar" id="ds-progress-bar" style="width:${progress}%"></div>
       </div>
+      <button id="ds-cancel-btn" style="
+        display:block;margin:12px auto 0;padding:6px 16px;
+        background:transparent;border:1px solid rgba(255,255,255,0.15);
+        border-radius:8px;color:rgba(255,255,255,0.5);font-size:12px;
+        cursor:pointer;transition:all 0.2s;
+      ">Annuler</button>
     </div>
   `;
   setWidgetBody(html);
+
+  // Bind cancel button
+  if (onCancel) {
+    const body = getWidgetBody();
+    const btn = body?.querySelector<HTMLButtonElement>('#ds-cancel-btn');
+    if (btn) {
+      btn.addEventListener('click', onCancel);
+      btn.addEventListener('mouseenter', () => {
+        btn.style.color = '#ef4444';
+        btn.style.borderColor = 'rgba(239,68,68,0.3)';
+        btn.style.background = 'rgba(239,68,68,0.1)';
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.color = 'rgba(255,255,255,0.5)';
+        btn.style.borderColor = 'rgba(255,255,255,0.15)';
+        btn.style.background = 'transparent';
+      });
+    }
+  }
 }
 
 export function updateAnalyzingProgress(message: string, progress: number): void {

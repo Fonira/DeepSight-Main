@@ -205,6 +205,12 @@ async function getTaskStatus(taskId: string): Promise<TaskStatus> {
   return apiRequest<TaskStatus>(`/videos/status/${taskId}`);
 }
 
+async function cancelTask(taskId: string): Promise<{ status: string; task_id: string }> {
+  return apiRequest<{ status: string; task_id: string }>(`/videos/cancel/${taskId}`, {
+    method: 'POST',
+  });
+}
+
 async function getSummary(summaryId: number): Promise<Summary> {
   const summary = await apiRequest<Summary>(`/videos/summary/${summaryId}`);
 
@@ -301,7 +307,7 @@ async function pollAnalysis(taskId: string, originTabId?: number): Promise<unkno
   while (Date.now() - startTime < MAX_DURATION_MS) {
     const status = await getTaskStatus(taskId);
 
-    if (status.status === 'completed' || status.status === 'failed') {
+    if (status.status === 'completed' || status.status === 'failed' || status.status === 'cancelled') {
       return status;
     }
 
@@ -408,6 +414,16 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       try {
         const status = await getTaskStatus(taskId);
         return { success: true, status };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case 'CANCEL_ANALYSIS': {
+      const { taskId } = message.data as { taskId: string };
+      try {
+        const result = await cancelTask(taskId);
+        return { success: true, result };
       } catch (e) {
         return { success: false, error: (e as Error).message };
       }
