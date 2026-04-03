@@ -6,7 +6,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  BookOpen, Copy, Check, GraduationCap,
+  BookOpen, Copy, Check, GraduationCap, Brain, Tags, Mic,
   Download, ChevronDown, FileText, FileDown, Share2, Loader2, Headphones
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from '../ui';
@@ -18,6 +18,8 @@ import { ConceptsGlossary } from '../ConceptsGlossary';
 import { AcademicSourcesPanel } from '../academic';
 import { AnalysisValueDisplay } from '../AnalysisValueDisplay';
 import { CitationExport } from '../CitationExport';
+import { StudyToolsModal } from '../StudyToolsModal';
+import { KeywordsModal } from '../KeywordsModal';
 import { videoApi, shareApi } from '../../services/api';
 import type { Summary, EnrichedConcept } from '../../services/api';
 import type { TimecodeInfo } from '../TimecodeRenderer';
@@ -29,6 +31,16 @@ interface SynthesisTabProps {
   concepts: EnrichedConcept[];
   onTimecodeClick: (seconds: number, info?: TimecodeInfo) => void;
   onNavigate: (path: string) => void;
+  /** Show Keywords button in toolbar (History context) */
+  showKeywords?: boolean;
+  /** Show Study Tools button in toolbar (History context) */
+  showStudyTools?: boolean;
+  /** Show Voice Chat button in toolbar (History context) */
+  showVoice?: boolean;
+  /** Voice chat enabled for user's plan */
+  voiceEnabled?: boolean;
+  /** Callback to open voice modal */
+  onOpenVoice?: () => void;
 }
 
 export const SynthesisTab: React.FC<SynthesisTabProps> = ({
@@ -38,6 +50,11 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
   concepts,
   onTimecodeClick,
   onNavigate,
+  showKeywords = false,
+  showStudyTools = false,
+  showVoice = false,
+  voiceEnabled = false,
+  onOpenVoice,
 }) => {
   const [copied, setCopied] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -45,6 +62,11 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
   const [showCitationModal, setShowCitationModal] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  // Optional toolbar features (used in History context)
+  const [showStudyToolsModal, setShowStudyToolsModal] = useState(false);
+  const [showKeywordsModal, setShowKeywordsModal] = useState(false);
+  const [keywordsConcepts, setKeywordsConcepts] = useState<EnrichedConcept[]>([]);
+  const [keywordsLoading, setKeywordsLoading] = useState(false);
   const exportBtnRef = useRef<HTMLButtonElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
@@ -142,6 +164,18 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
     }
   };
 
+  // Keywords handler (loads enriched concepts on demand)
+  const handleOpenKeywords = useCallback(() => {
+    setShowKeywordsModal(true);
+    if (selectedSummary?.id && keywordsConcepts.length === 0) {
+      setKeywordsLoading(true);
+      videoApi.getEnrichedConcepts(selectedSummary.id)
+        .then((data: any) => setKeywordsConcepts(data.concepts || []))
+        .catch(() => setKeywordsConcepts([]))
+        .finally(() => setKeywordsLoading(false));
+    }
+  }, [selectedSummary?.id, keywordsConcepts.length]);
+
   return (
     <div>
       {/* Toolbar */}
@@ -180,6 +214,41 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
             language={language}
             compact
           />
+
+          {/* Study Tools (optional — History context) */}
+          {showStudyTools && (
+            <button
+              onClick={() => setShowStudyToolsModal(true)}
+              className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
+              title={language === 'fr' ? 'Fiches de révision et arbre pédagogique' : 'Study cards and concept map'}
+            >
+              <Brain className="w-4 h-4" />
+              <span className="hidden sm:inline">{language === 'fr' ? 'Réviser' : 'Study'}</span>
+            </button>
+          )}
+
+          {/* Keywords (optional — History context) */}
+          {showKeywords && (
+            <button
+              onClick={handleOpenKeywords}
+              className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
+              title={language === 'fr' ? 'Voir les mots-clés extraits' : 'View extracted keywords'}
+            >
+              <Tags className="w-4 h-4" />
+              <span className="hidden sm:inline">{language === 'fr' ? 'Mots-clés' : 'Keywords'}</span>
+            </button>
+          )}
+
+          {/* Voice Chat (optional — History context) */}
+          {showVoice && voiceEnabled && onOpenVoice && (
+            <button
+              onClick={onOpenVoice}
+              className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
+            >
+              <Mic className="w-4 h-4" />
+              <span className="hidden sm:inline">{language === 'fr' ? 'Vocal' : 'Voice'}</span>
+            </button>
+          )}
 
           {/* Export */}
           <div className="flex-shrink-0">
@@ -311,6 +380,28 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
         }}
         language={language}
       />
+
+      {/* Study Tools Modal (optional — History context) */}
+      {showStudyTools && (
+        <StudyToolsModal
+          isOpen={showStudyToolsModal}
+          onClose={() => setShowStudyToolsModal(false)}
+          summaryId={selectedSummary.id}
+          videoTitle={selectedSummary.video_title || 'Vidéo'}
+          language={language}
+        />
+      )}
+
+      {/* Keywords Modal (optional — History context) */}
+      {showKeywords && (
+        <KeywordsModal
+          isOpen={showKeywordsModal}
+          onClose={() => setShowKeywordsModal(false)}
+          videoTitle={selectedSummary.video_title || 'Vidéo'}
+          concepts={keywordsConcepts}
+          loading={keywordsLoading}
+        />
+      )}
     </div>
   );
 };

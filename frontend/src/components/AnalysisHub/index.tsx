@@ -32,6 +32,18 @@ interface AnalysisHubProps {
   onTimecodeClick: (seconds: number, info?: TimecodeInfo) => void;
   onOpenChat: (prefillMessage?: string) => void;
   onNavigate: (path: string) => void;
+  /** Which tabs to show. Defaults to all. */
+  enabledTabs?: TabType[];
+  /** Show Keywords button in SynthesisTab toolbar */
+  showKeywords?: boolean;
+  /** Show Study Tools button in SynthesisTab toolbar */
+  showStudyTools?: boolean;
+  /** Show Voice Chat button in SynthesisTab toolbar */
+  showVoice?: boolean;
+  /** Voice chat enabled for user's plan */
+  voiceEnabled?: boolean;
+  /** Callback to open voice modal (managed by parent) */
+  onOpenVoice?: () => void;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -59,6 +71,12 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
   onTimecodeClick,
   onOpenChat,
   onNavigate,
+  enabledTabs,
+  showKeywords,
+  showStudyTools,
+  showVoice,
+  voiceEnabled,
+  onOpenVoice,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('synthesis');
 
@@ -142,11 +160,14 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
     return null;
   };
 
+  const visibleTabs = enabledTabs ? TABS.filter(t => enabledTabs.includes(t.id)) : TABS;
+
   return (
     <div className="card overflow-hidden">
-      {/* Tab Bar */}
+      {/* Tab Bar — hidden if only one tab */}
+      {visibleTabs.length > 1 && (
       <div className="flex border-b border-border-subtle overflow-x-auto scrollbar-hide">
-        {TABS.map((tab) => {
+        {visibleTabs.map((tab) => {
           const isActive = activeTab === tab.id;
           const Icon = tab.icon;
           const label = language === 'fr' ? tab.labelFr : tab.labelEn;
@@ -178,6 +199,7 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
           );
         })}
       </div>
+      )}
 
       {/* Tab Content */}
       {activeTab === 'synthesis' && (
@@ -188,6 +210,11 @@ export const AnalysisHub: React.FC<AnalysisHubProps> = ({
           concepts={concepts}
           onTimecodeClick={onTimecodeClick}
           onNavigate={onNavigate}
+          showKeywords={showKeywords}
+          showStudyTools={showStudyTools}
+          showVoice={showVoice}
+          voiceEnabled={voiceEnabled}
+          onOpenVoice={onOpenVoice}
         />
       )}
 
