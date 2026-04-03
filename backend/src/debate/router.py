@@ -361,7 +361,11 @@ async def _run_debate_pipeline(
             if video_a_info:
                 debate.video_a_title = video_a_info.get("title", "")[:500]
                 debate.video_a_channel = video_a_info.get("channel", "")[:255]
-                debate.video_a_thumbnail = video_a_info.get("thumbnail", "")
+                debate.video_a_thumbnail = (
+                    video_a_info.get("thumbnail_url")
+                    or video_a_info.get("thumbnail")
+                    or f"https://img.youtube.com/vi/{video_a_id}/maxresdefault.jpg"
+                )
                 await session.commit()
 
             transcript_a, _, lang_a = await get_transcript_with_timestamps(video_a_id)
@@ -450,7 +454,11 @@ async def _run_debate_pipeline(
                     debate.video_b_title = video_b_info.get("title", "")[:500]
                 if not debate.video_b_channel:
                     debate.video_b_channel = video_b_info.get("channel", "")[:255]
-                debate.video_b_thumbnail = video_b_info.get("thumbnail", "")
+                debate.video_b_thumbnail = (
+                    video_b_info.get("thumbnail_url")
+                    or video_b_info.get("thumbnail")
+                    or f"https://img.youtube.com/vi/{actual_video_b_id}/maxresdefault.jpg"
+                )
                 await session.commit()
 
             transcript_b, _, _ = await get_transcript_with_timestamps(actual_video_b_id)

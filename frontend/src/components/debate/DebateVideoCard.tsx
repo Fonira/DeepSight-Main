@@ -1,11 +1,11 @@
 /**
  * DebateVideoCard — Carte vidéo pour un côté du débat (A ou B)
- * Affiche thumbnail, titre, chaîne, thèse et arguments avec badges de force
+ * Affiche player YouTube intégré (ou thumbnail fallback), titre, chaîne, thèse et arguments avec badges de force
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Zap, AlertTriangle } from 'lucide-react';
+import { Shield, Zap, AlertTriangle, Play } from 'lucide-react';
 import type { DebateArgument } from '../../types/debate';
 
 interface DebateVideoCardProps {
@@ -13,6 +13,7 @@ interface DebateVideoCardProps {
   title: string;
   channel: string;
   thumbnail: string;
+  videoId: string;
   thesis: string;
   arguments: DebateArgument[];
 }
@@ -61,25 +62,74 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
   title,
   channel,
   thumbnail,
+  videoId,
   thesis,
   arguments: args,
 }) => {
   const accent = SIDE_ACCENT[side];
+  const [showPlayer, setShowPlayer] = useState(false);
+
+  // Build thumbnail URL: use provided, or construct from videoId
+  const thumbnailUrl = thumbnail || (videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : '');
+  const [imgError, setImgError] = useState(false);
+  const fallbackThumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : '';
 
   return (
     <div
       className={`rounded-xl bg-white/5 border ${accent.border} backdrop-blur-xl shadow-lg ${accent.glow} overflow-hidden`}
     >
-      {/* Thumbnail */}
-      <div className="relative aspect-video overflow-hidden">
-        <img
-          src={thumbnail}
-          alt={title}
-          className="w-full h-full object-cover"
-        />
-        <div className={`absolute inset-0 bg-gradient-to-t ${accent.gradient}`} />
+      {/* Video Player / Thumbnail */}
+      <div className="relative aspect-video overflow-hidden bg-black/40">
+        {showPlayer && videoId ? (
+          <iframe
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
+            title={title}
+            className="w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        ) : (
+          <>
+            {thumbnailUrl && !imgError ? (
+              <img
+                src={thumbnailUrl}
+                alt={title}
+                className="w-full h-full object-cover"
+                onError={() => {
+                  if (!imgError && fallbackThumbnail && thumbnailUrl !== fallbackThumbnail) {
+                    setImgError(true);
+                  }
+                }}
+              />
+            ) : fallbackThumbnail && imgError ? (
+              <img
+                src={fallbackThumbnail}
+                alt={title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              /* Placeholder when no thumbnail at all */
+              <div className="w-full h-full flex items-center justify-center bg-white/5">
+                <span className="text-white/20 text-sm">Aperçu indisponible</span>
+              </div>
+            )}
+            <div className={`absolute inset-0 bg-gradient-to-t ${accent.gradient}`} />
+            {/* Play button overlay */}
+            {videoId && (
+              <button
+                onClick={() => setShowPlayer(true)}
+                className="absolute inset-0 flex items-center justify-center group cursor-pointer"
+                aria-label={`Lire ${title}`}
+              >
+                <div className="w-14 h-14 rounded-full bg-black/60 border border-white/20 flex items-center justify-center backdrop-blur-sm transition-all group-hover:bg-white/20 group-hover:scale-110">
+                  <Play className="w-6 h-6 text-white ml-0.5" fill="currentColor" />
+                </div>
+              </button>
+            )}
+          </>
+        )}
         <span
-          className={`absolute top-3 left-3 text-xs font-semibold px-2 py-1 rounded-md border ${accent.badge}`}
+          className={`absolute top-3 left-3 text-xs font-semibold px-2 py-1 rounded-md border ${accent.badge} z-10`}
         >
           {accent.label}
         </span>
@@ -91,16 +141,20 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
           <h3 className="text-sm font-semibold text-white leading-snug line-clamp-2">
             {title}
           </h3>
-          <p className="text-xs text-white/50 mt-1">{channel}</p>
+          {channel && (
+            <p className="text-xs text-white/50 mt-1">{channel}</p>
+          )}
         </div>
 
         {/* Thèse */}
-        <div className={`rounded-lg bg-white/[0.03] border border-white/5 p-3`}>
-          <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-1">
-            Thèse
-          </p>
-          <p className="text-sm text-white/80 leading-relaxed">{thesis}</p>
-        </div>
+        {thesis && (
+          <div className="rounded-lg bg-white/[0.03] border border-white/5 p-3">
+            <p className="text-xs font-medium text-white/40 uppercase tracking-wider mb-1">
+              Thèse
+            </p>
+            <p className="text-sm text-white/80 leading-relaxed">{thesis}</p>
+          </div>
+        )}
 
         {/* Arguments */}
         <div className="space-y-2">
