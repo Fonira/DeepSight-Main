@@ -290,10 +290,17 @@ async def _search_opposing_video(
         match = yt_pattern.search(url)
         if match:
             video_id = match.group(1)
-            logger.info("Found opposing video: %s — %s", video_id, result.get("title", ""))
+            # Fix UTF-8 encoding: Brave sometimes returns double-encoded strings
+            raw_title = result.get("title", "")
+            try:
+                # Attempt to fix mojibake (e.g. "EnquÃªte" → "Enquête")
+                fixed_title = raw_title.encode("latin-1").decode("utf-8")
+            except (UnicodeDecodeError, UnicodeEncodeError):
+                fixed_title = raw_title
+            logger.info("Found opposing video: %s — %s", video_id, fixed_title)
             return {
                 "url": f"https://www.youtube.com/watch?v={video_id}",
-                "title": result.get("title", ""),
+                "title": fixed_title,
                 "channel": "",
             }
 
@@ -545,24 +552,38 @@ async def _run_debate_pipeline(
             fact_check_results = []
             from core.config import is_web_search_available
             if is_web_search_available():
-                fact_prompt = (
-                    f"Fact-check les affirmations principales de ce débat.\n\n"
-                    f"Sujet : {detected_topic}\n"
-                    f"Thèse A : {thesis_a}\n"
-                    f"Thèse B : {thesis_b}\n"
-                    f"Arguments A : {', '.join(a.get('claim', str(a)) if isinstance(a, dict) else str(a) for a in arguments_a[:3])}\n"
-                    f"Arguments B : {', '.join(a.get('claim', str(a)) if isinstance(a, dict) else str(a) for a in arguments_b[:3])}\n\n"
-                    f"Pour chaque affirmation clé, vérifie sa véracité avec une source. "
-                    f"Le verdict DOIT être exactement l'un de : confirmed, nuanced, disputed, unverifiable. "
-                    f"Réponds UNIQUEMENT avec un tableau JSON (pas d'objet englobant) : "
-                    f'[{{"claim": "...", "verdict": "confirmed|nuanced|disputed|unverifiable", "source": "...", "explanation": "..."}}]'
-                )
-                fact_result = await _call_perplexity(fact_prompt)
-                if fact_result:
-                    parsed = _extract_json(fact_result)
+                # Build a concise search query for web search (not the full JSON prompt)
+                args_a_str = ", ".join(a.get("claim", str(a)) if isinstance(a, dict) else str(a) for a in arguments_a[:3])
+                args_b_str = ", ".join(a.get("claim", str(a)) if isinstance(a, dict) else str(a) for a in arguments_b[:3])
+                web_query = f"fact check: {detected_topic} — {thesis_a[:100]} vs {thesis_b[:100]}"
+                fact_web_result = await _call_perplexity(web_query)
+
+                # web_search_and_synthesize returns natural language, NOT JSON.
+                # Use Mistral to structure the web search results into JSON format.
+                structuring_prompt = [
+                    {"role": "system", "content": (
+                        "Tu es un fact-checker rigoureux. À partir du contexte de recherche web ci-dessous, "
+                        "identifie 3 à 6 affirmations clés du débat et évalue leur véracité. "
+                        "Le verdict DOIT être exactement : confirmed, nuanced, disputed, ou unverifiable. "
+                        "Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour : "
+                        '[{"claim": "...", "verdict": "confirmed|nuanced|disputed|unverifiable", "source": "...", "explanation": "..."}]'
+                    )},
+                    {"role": "user", "content": (
+                        f"Sujet du débat : {detected_topic}\n"
+                        f"Thèse A : {thesis_a}\n"
+                        f"Thèse B : {thesis_b}\n"
+                        f"Arguments A : {args_a_str}\n"
+                        f"Arguments B : {args_b_str}\n\n"
+                        f"Résultats de recherche web :\n{fact_web_result or 'Aucun résultat de recherche disponible.'}\n\n"
+                        f"Produis le tableau JSON de fact-check."
+                    )},
+                ]
+                structured_result = await _call_mistral(structuring_prompt, model=model, temperature=0.2, json_mode=False)
+                if structured_result:
+                    parsed = _extract_json(structured_result)
                     if parsed is None:
                         # Try parsing as JSON array directly
-                        array_match = re.search(r"\[.*\]", fact_result, re.DOTALL)
+                        array_match = re.search(r"\[.*\]", structured_result, re.DOTALL)
                         if array_match:
                             try:
                                 parsed = json.loads(array_match.group(0))
@@ -574,17 +595,59 @@ async def _run_debate_pipeline(
                             fact_check_results = parsed
                         elif isinstance(parsed, dict) and "claims" in parsed:
                             fact_check_results = parsed["claims"]
+                        elif isinstance(parsed, dict) and "fact_check" in parsed:
+                            fact_check_results = parsed["fact_check"]
                         # Normalize verdicts to frontend-expected values
                         verdict_map = {"vraie": "confirmed", "vrai": "confirmed", "confirmé": "confirmed",
+                                       "confirmed": "confirmed", "true": "confirmed",
                                        "partiellement vraie": "nuanced", "nuancé": "nuanced",
+                                       "partially true": "nuanced", "nuanced": "nuanced",
                                        "fausse": "disputed", "faux": "disputed", "contesté": "disputed",
-                                       "non vérifiable": "unverifiable", "invérifiable": "unverifiable"}
+                                       "disputed": "disputed", "false": "disputed",
+                                       "non vérifiable": "unverifiable", "invérifiable": "unverifiable",
+                                       "unverifiable": "unverifiable", "unknown": "unverifiable"}
                         for item in fact_check_results:
                             if isinstance(item, dict) and "verdict" in item:
                                 v = item["verdict"].strip().lower()
                                 item["verdict"] = verdict_map.get(v, v if v in ("confirmed", "nuanced", "disputed", "unverifiable") else "unverifiable")
+                        logger.info("[DEBATE] Fact-check produced %d items for debate_id=%d", len(fact_check_results), debate_id)
                     else:
-                        logger.warning("[DEBATE] Failed to parse fact-check: %s", fact_result[:300])
+                        logger.warning("[DEBATE] Failed to parse structured fact-check: %s", structured_result[:300])
+                else:
+                    logger.warning("[DEBATE] Mistral structuring call returned None for fact-check")
+
+                # Fallback: if web search failed but Mistral is available, generate fact-check from context alone
+                if not fact_check_results:
+                    logger.info("[DEBATE] Fact-check fallback: generating from debate context without web search")
+                    fallback_prompt = [
+                        {"role": "system", "content": (
+                            "Tu es un fact-checker. Analyse les affirmations de ce débat et évalue leur solidité "
+                            "en te basant sur tes connaissances. Indique 'unverifiable' si tu n'es pas sûr. "
+                            "Réponds UNIQUEMENT avec un tableau JSON : "
+                            '[{"claim": "...", "verdict": "confirmed|nuanced|disputed|unverifiable", "source": "connaissances générales", "explanation": "..."}]'
+                        )},
+                        {"role": "user", "content": (
+                            f"Sujet : {detected_topic}\nThèse A : {thesis_a}\nThèse B : {thesis_b}\n"
+                            f"Arguments A : {args_a_str}\nArguments B : {args_b_str}"
+                        )},
+                    ]
+                    fallback_result = await _call_mistral(fallback_prompt, model=model, temperature=0.2)
+                    if fallback_result:
+                        fb_parsed = _extract_json(fallback_result)
+                        if fb_parsed is None:
+                            fb_array = re.search(r"\[.*\]", fallback_result, re.DOTALL)
+                            if fb_array:
+                                try:
+                                    fb_parsed = json.loads(fb_array.group(0))
+                                except json.JSONDecodeError:
+                                    pass
+                        if isinstance(fb_parsed, list):
+                            fact_check_results = fb_parsed
+                            for item in fact_check_results:
+                                if isinstance(item, dict) and "verdict" in item:
+                                    v = item["verdict"].strip().lower()
+                                    item["verdict"] = verdict_map.get(v, v if v in ("confirmed", "nuanced", "disputed", "unverifiable") else "unverifiable")
+                            logger.info("[DEBATE] Fact-check fallback produced %d items", len(fact_check_results))
 
             debate.fact_check_results = json.dumps(fact_check_results, ensure_ascii=False)
             debate.model_used = model

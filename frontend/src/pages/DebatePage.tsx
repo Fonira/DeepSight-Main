@@ -2,12 +2,14 @@
  * DebatePage — Page principale Débat IA
  * Affiche le formulaire de création, la liste des débats passés, ou le détail d'un débat
  * Connecté à l'API /api/debate/* avec fallback mock pour le dev
+ *
+ * v2.0 — Refonte design : DoodleBackground, Sidebar, DoodleDivider, DoodleEmptyState
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams, useParams } from 'react-router-dom';
-import { Swords, ArrowLeft, FileText, Loader2, AlertTriangle } from 'lucide-react';
+import { Swords, ArrowLeft, FileText, Loader2, AlertTriangle, Sparkles } from 'lucide-react';
 import {
   DebateCreateForm,
   DebateVSLayout,
@@ -19,6 +21,11 @@ import {
 } from '../components/debate';
 import { debateApi } from '../services/api';
 import type { DebateAnalysis, DebateListItem } from '../types/debate';
+import { Sidebar } from '../components/layout/Sidebar';
+import DoodleBackground from '../components/DoodleBackground';
+import { DoodleDivider } from '../components/doodles';
+import DoodleEmptyState from '../components/doodles/DoodleEmptyState';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // MOCK DATA — Fallback pour dev quand l'API n'est pas dispo
@@ -219,6 +226,7 @@ export const DebatePage: React.FC = () => {
   const [debatesList, setDebatesList] = useState<DebateListItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [useMock, setUseMock] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ─── Cleanup polling on unmount ───
@@ -362,156 +370,55 @@ export const DebatePage: React.FC = () => {
     setSearchParams({});
   };
 
+  // ─── Content margin class (responsive with sidebar) ───
+  const mainClass = `transition-all duration-200 ease-out relative z-10 ${
+    sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'
+  }`;
+
   // ─── Loading skeleton while debate is being fetched ───
-  if (debateLoading && !selectedDebate && debateId) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0f] text-white">
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          <button
-            onClick={handleBack}
-            className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors mb-6"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Retour aux débats
-          </button>
-          <div className="animate-pulse space-y-6">
-            <div className="flex flex-col items-center gap-3">
-              <div className="h-6 w-24 rounded-full bg-white/5" />
-              <div className="h-8 w-96 max-w-full rounded-lg bg-white/5" />
-            </div>
-            <div className="h-40 rounded-xl bg-white/5" />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="h-60 rounded-xl bg-white/5" />
-              <div className="h-60 rounded-xl bg-white/5" />
-            </div>
-          </div>
+  const renderSkeleton = () => (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <button
+        onClick={handleBack}
+        className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors mb-6"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        Retour aux débats
+      </button>
+      <div className="animate-pulse space-y-6">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-6 w-24 rounded-full bg-white/5" />
+          <div className="h-8 w-96 max-w-full rounded-lg bg-white/5" />
+        </div>
+        <div className="h-40 rounded-xl bg-white/5" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="h-60 rounded-xl bg-white/5" />
+          <div className="h-60 rounded-xl bg-white/5" />
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 
-  // ─── Detail view ───
-  if (selectedDebate) {
+  // ─── Detail view content ───
+  const renderDetail = () => {
+    if (!selectedDebate) return null;
     const isInProgress = selectedDebate.status !== 'completed' && selectedDebate.status !== 'failed';
+    const hasFactChecks = selectedDebate.fact_check_results && selectedDebate.fact_check_results.length > 0;
 
     return (
-      <div className="min-h-screen bg-[#0a0a0f] text-white">
-        <div className="max-w-6xl mx-auto px-4 py-8">
-          {/* Back button */}
-          <button
-            onClick={handleBack}
-            className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors mb-6"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Retour aux débats
-          </button>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        {/* Back button */}
+        <motion.button
+          onClick={handleBack}
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors mb-6 group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          Retour aux débats
+        </motion.button>
 
-          {/* Topic header */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
-          >
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 mb-3">
-              <Swords className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="text-xs font-medium text-white/60">Débat IA</span>
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight">
-              {selectedDebate.detected_topic}
-            </h1>
-          </motion.div>
-
-          {/* Status tracker (if in progress) */}
-          {isInProgress && (
-            <div className="mb-8">
-              <DebateStatusTracker status={selectedDebate.status} />
-            </div>
-          )}
-
-          {/* Failed state */}
-          {selectedDebate.status === 'failed' && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-8 p-4 rounded-xl bg-red-500/10 border border-red-500/20"
-            >
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="w-4 h-4 text-red-400" />
-                <h3 className="text-sm font-semibold text-red-400">Le débat a échoué</h3>
-              </div>
-              {selectedDebate.debate_summary && (
-                <p className="text-sm text-red-300/70 leading-relaxed">
-                  {selectedDebate.debate_summary}
-                </p>
-              )}
-            </motion.div>
-          )}
-
-          {/* VS Layout */}
-          <div className="mb-8">
-            <DebateVSLayout debate={selectedDebate} />
-          </div>
-
-          {/* Convergence / Divergence */}
-          {selectedDebate.status === 'completed' && (
-            <>
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="mb-8"
-              >
-                <DebateConvergenceDivergence
-                  convergencePoints={selectedDebate.convergence_points}
-                  divergencePoints={selectedDebate.divergence_points}
-                />
-              </motion.div>
-
-              {/* Fact Check */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="mb-8"
-              >
-                <DebateFactCheck results={selectedDebate.fact_check_results} />
-              </motion.div>
-
-              {/* Summary */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl p-5 mb-8"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center">
-                    <FileText className="w-4 h-4 text-indigo-400" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-white">Synthèse du débat</h3>
-                </div>
-                <p className="text-sm text-white/70 leading-relaxed">
-                  {selectedDebate.debate_summary}
-                </p>
-              </motion.div>
-
-              {/* Chat */}
-              <DebateChat
-                debateId={selectedDebate.id}
-                debateTopic={selectedDebate.detected_topic ?? undefined}
-              />
-            </>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ─── List / Create view ───
-  return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        {/* Page header */}
+        {/* Topic header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -521,63 +428,221 @@ export const DebatePage: React.FC = () => {
             <Swords className="w-3.5 h-3.5 text-indigo-400" />
             <span className="text-xs font-medium text-white/60">Débat IA</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">
-            Confrontez les points de vue
+          <h1 className="text-xl sm:text-2xl font-bold text-white leading-tight max-w-3xl mx-auto">
+            {selectedDebate.detected_topic}
           </h1>
-          <p className="text-sm text-white/40 max-w-md mx-auto">
-            Analysez deux vidéos qui défendent des positions opposées. DeepSight compare les arguments, identifie les convergences et vérifie les faits.
-          </p>
         </motion.div>
 
-        {/* Error message */}
-        {error && (
+        {/* Status tracker (if in progress) */}
+        {isInProgress && (
           <motion.div
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mb-8"
           >
-            {error}
+            <DebateStatusTracker status={selectedDebate.status} />
           </motion.div>
         )}
 
-        {/* Create form */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8"
-        >
-          <DebateCreateForm onSubmit={handleCreateDebate} loading={loading} />
-        </motion.div>
+        {/* Failed state */}
+        {selectedDebate.status === 'failed' && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 p-4 rounded-xl bg-red-500/10 border border-red-500/20 backdrop-blur-xl"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="w-4 h-4 text-red-400" />
+              <h3 className="text-sm font-semibold text-red-400">Le débat a échoué</h3>
+            </div>
+            {selectedDebate.debate_summary && (
+              <p className="text-sm text-red-300/70 leading-relaxed">
+                {selectedDebate.debate_summary}
+              </p>
+            )}
+          </motion.div>
+        )}
 
-        {/* Past debates */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <h2 className="text-sm font-semibold text-white/60 mb-3">Débats récents</h2>
-          {historyLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 text-white/30 animate-spin" />
-            </div>
-          ) : debatesList.length > 0 ? (
-            <div className="space-y-2">
-              {debatesList.map((debate) => (
-                <DebateSummaryCard
-                  key={debate.id}
-                  debate={debate}
-                  onClick={handleSelectDebate}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-white/30 text-center py-8">
-              Aucun débat pour le moment. Lancez votre premier !
-            </p>
-          )}
-        </motion.div>
+        {/* VS Layout */}
+        <div className="mb-4">
+          <DebateVSLayout debate={selectedDebate} />
+        </div>
+
+        {/* Completed sections with doodle dividers */}
+        {selectedDebate.status === 'completed' && (
+          <>
+            {/* Doodle divider between VS and convergence/divergence */}
+            <DoodleDivider variant="analysis" density="sparse" />
+
+            {/* Convergence / Divergence */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mb-4"
+            >
+              <DebateConvergenceDivergence
+                convergencePoints={selectedDebate.convergence_points}
+                divergencePoints={selectedDebate.divergence_points}
+              />
+            </motion.div>
+
+            {/* Fact Check (only if results exist) */}
+            {hasFactChecks && (
+              <>
+                <DoodleDivider variant="analysis" density="sparse" />
+
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="mb-4"
+                >
+                  <DebateFactCheck results={selectedDebate.fact_check_results} />
+                </motion.div>
+              </>
+            )}
+
+            {/* Doodle divider before summary */}
+            <DoodleDivider variant="analysis" density="sparse" />
+
+            {/* Summary */}
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl p-5 mb-4"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center">
+                  <FileText className="w-4 h-4 text-indigo-400" />
+                </div>
+                <h3 className="text-sm font-semibold text-white">Synthèse du débat</h3>
+              </div>
+              <p className="text-sm text-white/70 leading-relaxed">
+                {selectedDebate.debate_summary}
+              </p>
+            </motion.div>
+
+            {/* Doodle divider before chat */}
+            <DoodleDivider variant="analysis" density="sparse" />
+
+            {/* Chat */}
+            <DebateChat
+              debateId={selectedDebate.id}
+              debateTopic={selectedDebate.detected_topic ?? undefined}
+            />
+          </>
+        )}
       </div>
+    );
+  };
+
+  // ─── List / Create view content ───
+  const renderList = () => (
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
+      {/* Page header with doodle accent */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center mb-8"
+      >
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-violet-500/10 border border-white/10 mb-3">
+          <Swords className="w-3.5 h-3.5 text-indigo-400" />
+          <span className="text-xs font-medium text-white/60">Débat IA</span>
+        </div>
+        <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">
+          Confrontez les points de vue
+        </h1>
+        <p className="text-sm text-white/40 max-w-md mx-auto">
+          Analysez deux vidéos qui défendent des positions opposées. DeepSight compare les arguments, identifie les convergences et vérifie les faits.
+        </p>
+      </motion.div>
+
+      {/* Error message */}
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400 backdrop-blur-xl"
+        >
+          {error}
+        </motion.div>
+      )}
+
+      {/* Create form */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="mb-4"
+      >
+        <DebateCreateForm onSubmit={handleCreateDebate} loading={loading} />
+      </motion.div>
+
+      {/* Doodle divider between form and history */}
+      <DoodleDivider variant="analysis" density="sparse" />
+
+      {/* Past debates */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="w-3.5 h-3.5 text-white/30" />
+          <h2 className="text-sm font-semibold text-white/60">Débats récents</h2>
+        </div>
+        {historyLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-5 h-5 text-white/30 animate-spin" />
+          </div>
+        ) : debatesList.length > 0 ? (
+          <div className="space-y-2">
+            {debatesList.map((debate) => (
+              <DebateSummaryCard
+                key={debate.id}
+                debate={debate}
+                onClick={handleSelectDebate}
+              />
+            ))}
+          </div>
+        ) : (
+          <DoodleEmptyState type="no-analyses">
+            <p className="text-sm font-medium text-white/50 mb-1">Aucun débat pour le moment</p>
+            <p className="text-xs text-white/30">Lancez votre premier débat IA ci-dessus !</p>
+          </DoodleEmptyState>
+        )}
+      </motion.div>
+    </div>
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // RENDER — Unified layout with DoodleBackground + Sidebar
+  // ═══════════════════════════════════════════════════════════════════════════════
+
+  return (
+    <div className="min-h-screen bg-bg-primary relative text-white">
+      {/* Doodle background */}
+      <ErrorBoundary fallback={null}>
+        <DoodleBackground variant="analysis" />
+      </ErrorBoundary>
+
+      {/* Sidebar */}
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
+
+      {/* Main content with sidebar-responsive margin */}
+      <main className={mainClass}>
+        {debateLoading && !selectedDebate && debateId
+          ? renderSkeleton()
+          : selectedDebate
+            ? renderDetail()
+            : renderList()
+        }
+      </main>
     </div>
   );
 };
