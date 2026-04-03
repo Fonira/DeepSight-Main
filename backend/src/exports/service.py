@@ -1027,6 +1027,8 @@ def get_available_formats() -> List[str]:
         formats.append("pdf")
     if EXCEL_AVAILABLE:
         formats.append("xlsx")
+    if is_audio_export_available():
+        formats.append("audio")
     return formats
 
 
@@ -1035,3 +1037,250 @@ def get_pdf_export_options() -> List[Dict]:
     if _ensure_pdf():
         return _pdf_module.PDF_EXPORT_OPTIONS
     return []
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔊 AUDIO EXPORT (ElevenLabs TTS)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+import uuid
+import logging
+import glob as glob_module
+import time as _time
+
+_audio_logger = logging.getLogger(__name__)
+
+AUDIO_TMP_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "tmp", "audio")
+os.makedirs(AUDIO_TMP_DIR, exist_ok=True)
+
+# Cleanup threshold: 24 hours
+_AUDIO_MAX_AGE_SECONDS = 86400
+
+
+def is_audio_export_available() -> bool:
+    """Check if audio export is available (ElevenLabs key configured)."""
+    try:
+        from core.config import get_elevenlabs_key
+        return bool(get_elevenlabs_key())
+    except ImportError:
+        return False
+
+
+def cleanup_old_audio_files() -> int:
+    """Remove audio files older than 24h. Returns count of removed files."""
+    removed = 0
+    now = _time.time()
+    for filepath in glob_module.glob(os.path.join(AUDIO_TMP_DIR, "*.mp3")):
+        try:
+            if now - os.path.getmtime(filepath) > _AUDIO_MAX_AGE_SECONDS:
+                os.remove(filepath)
+                removed += 1
+        except OSError:
+            pass
+    return removed
+
+
+def build_narrative_text(
+    title: str,
+    channel: str,
+    summary: str,
+    mode: str = "",
+) -> str:
+    """
+    Build a natural-sounding narrative from the analysis content.
+    Designed to be read aloud by TTS.
+    """
+    try:
+        from tts.service import clean_text_for_tts
+    except ImportError:
+        clean_text_for_tts = lambda t, **kw: t
+
+    # Build intro
+    parts = []
+    parts.append(f"Voici l'analyse de la vidéo intitulée {title}")
+    if channel:
+        parts.append(f"publiée par {channel}.")
+    else:
+        parts.append(".")
+
+    # Clean the main summary content
+    cleaned_summary = clean_text_for_tts(summary, strip_questions=True)
+
+    if cleaned_summary:
+        parts.append(cleaned_summary)
+
+    # Build outro
+    parts.append("Voilà qui conclut cette analyse. Document généré par DeepSight.")
+
+    full_text = " ".join(parts)
+
+    # Remove any remaining markdown artifacts
+    full_text = re.sub(r'#{1,6}\s+', '', full_text)
+    full_text = re.sub(r'\*\*(.+?)\*\*', r'\1', full_text)
+    full_text = re.sub(r'\*(.+?)\*', r'\1', full_text)
+    full_text = re.sub(r'`[^`]*`', '', full_text)
+    full_text = re.sub(r'---+', '', full_text)
+    full_text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', full_text)  # [text](url) → text
+    full_text = re.sub(r'\s{2,}', ' ', full_text)
+
+    return full_text.strip()
+
+
+def chunk_text_for_tts(text: str, max_chunk_size: int = 4500) -> List[str]:
+    """
+    Split text into chunks at sentence boundaries.
+    ElevenLabs has a ~5000 char limit per request.
+    """
+    if len(text) <= max_chunk_size:
+        return [text]
+
+    chunks = []
+    remaining = text
+
+    while remaining:
+        if len(remaining) <= max_chunk_size:
+            chunks.append(remaining)
+            break
+
+        # Find last sentence boundary within limit
+        cut_point = -1
+        for sep in ['. ', '.\n', '! ', '? ', ';\n']:
+            idx = remaining.rfind(sep, 0, max_chunk_size)
+            if idx > cut_point:
+                cut_point = idx + len(sep)
+
+        if cut_point <= 0:
+            # No sentence boundary found, cut at space
+            cut_point = remaining.rfind(' ', 0, max_chunk_size)
+            if cut_point <= 0:
+                cut_point = max_chunk_size
+
+        chunks.append(remaining[:cut_point].strip())
+        remaining = remaining[cut_point:].strip()
+
+    return [c for c in chunks if c]
+
+
+async def export_to_audio(
+    title: str,
+    channel: str,
+    summary: str,
+    mode: str = "",
+    voice_id: str = "",
+    speed: float = 1.0,
+) -> Optional[Dict[str, Any]]:
+    """
+    Generate MP3 audio from analysis content via ElevenLabs TTS.
+
+    Returns:
+        dict with { file_id, file_path, duration_estimate } or None on failure.
+    """
+    import httpx
+    from core.config import get_elevenlabs_key
+
+    api_key = get_elevenlabs_key()
+    if not api_key:
+        _audio_logger.error("ElevenLabs API key not configured for audio export")
+        return None
+
+    # Cleanup old files opportunistically
+    cleanup_old_audio_files()
+
+    # Build narrative text
+    narrative = build_narrative_text(title, channel, summary, mode)
+    if not narrative or len(narrative) < 10:
+        _audio_logger.error("Narrative text too short for audio export")
+        return None
+
+    # Determine voice
+    if not voice_id:
+        try:
+            from tts.service import get_voice_id, DEFAULT_MODEL_ID
+            voice_id = get_voice_id("fr", "female")
+            model_id = DEFAULT_MODEL_ID
+        except ImportError:
+            voice_id = "pFZP5JQG7iQjIQuC4Bku"  # Lily default
+            model_id = "eleven_multilingual_v2"
+    else:
+        model_id = "eleven_multilingual_v2"
+
+    # Chunk the text
+    chunks = chunk_text_for_tts(narrative)
+    _audio_logger.info(f"Audio export: {len(narrative)} chars → {len(chunks)} chunks")
+
+    # Generate audio for each chunk
+    file_id = str(uuid.uuid4())
+    file_path = os.path.join(AUDIO_TMP_DIR, f"{file_id}.mp3")
+
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            audio_parts: list[bytes] = []
+
+            for i, chunk_text in enumerate(chunks):
+                url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+                payload = {
+                    "text": chunk_text,
+                    "model_id": model_id,
+                    "voice_settings": {
+                        "stability": 0.5,
+                        "similarity_boost": 0.75,
+                        "style": 0.3,
+                        "use_speaker_boost": True,
+                        "speed": speed,
+                    },
+                }
+                headers = {
+                    "xi-api-key": api_key,
+                    "Content-Type": "application/json",
+                    "Accept": "audio/mpeg",
+                }
+
+                response = await client.post(url, json=payload, headers=headers)
+
+                if response.status_code != 200:
+                    _audio_logger.error(
+                        f"ElevenLabs API error on chunk {i+1}/{len(chunks)}: "
+                        f"{response.status_code} {response.text[:200]}"
+                    )
+                    return None
+
+                audio_parts.append(response.content)
+
+            # Concatenate MP3 chunks (simple byte concatenation works for MP3)
+            with open(file_path, "wb") as f:
+                for part in audio_parts:
+                    f.write(part)
+
+        # Estimate duration: ~150 words/min for French TTS
+        word_count = len(narrative.split())
+        duration_estimate = int((word_count / 150) * 60)
+
+        return {
+            "file_id": file_id,
+            "file_path": file_path,
+            "duration_estimate": duration_estimate,
+        }
+
+    except httpx.TimeoutException:
+        _audio_logger.error("ElevenLabs API timeout during audio export")
+        return None
+    except Exception as e:
+        _audio_logger.error(f"Audio export error: {e}")
+        # Cleanup partial file
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        return None
+
+
+def get_audio_file_path(file_id: str) -> Optional[str]:
+    """Get the path to a temporary audio file, validating the file_id format."""
+    # Validate UUID format to prevent path traversal
+    try:
+        uuid.UUID(file_id)
+    except ValueError:
+        return None
+
+    file_path = os.path.join(AUDIO_TMP_DIR, f"{file_id}.mp3")
+    if os.path.exists(file_path):
+        return file_path
+    return None

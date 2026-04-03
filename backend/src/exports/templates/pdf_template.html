@@ -2,93 +2,47 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ title }} - Deep Sight Analysis</title>
+    <title>{{ title }} — DeepSight</title>
     <style>
-        /* ═══════════════════════════════════════════════════════════════════════════
-           🎨 DEEP SIGHT PDF STYLES — Professional Analysis Export
-           ═══════════════════════════════════════════════════════════════════════════ */
-        
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700&display=swap');
-        
-        :root {
-            --primary: #0D4F4F;
-            --primary-light: #1A6B6B;
-            --secondary: #D4A574;
-            --accent: #00CED1;
-            --text: #1A1A2E;
-            --text-light: #4A4A5A;
-            --background: #FFFFFF;
-            --surface: #F8FAFA;
-            --border: #E0E6E6;
-        }
-        
+        /* ═══════════════════════════════════════════════════════════════
+           DeepSight — Premium PDF Export Template
+           WeasyPrint inline CSS (no external resources)
+           ═══════════════════════════════════════════════════════════════ */
+
         @page {
             size: A4;
-            margin: 2cm 2.5cm;
-            @top-center {
-                content: element(header);
-            }
+            margin: 2cm 2cm 2.5cm 2cm;
             @bottom-center {
-                content: "Page " counter(page) " / " counter(pages);
-                font-family: 'Inter', sans-serif;
+                content: "Généré par DeepSight — deepsightsynthesis.com  |  Page " counter(page) " / " counter(pages);
+                font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                 font-size: 9pt;
-                color: var(--text-light);
+                color: #94A3B8;
             }
         }
-        
+
         @page:first {
-            @top-center { content: none; }
+            @bottom-center {
+                content: none;
+            }
         }
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             font-size: 11pt;
-            line-height: 1.6;
-            color: var(--text);
-            background: var(--background);
+            line-height: 1.7;
+            color: #1E293B;
+            background: #FFFFFF;
         }
-        
-        /* ═══════════════════════════════════════════════════════════════════════════
-           📄 HEADER (Running header for subsequent pages)
-           ═══════════════════════════════════════════════════════════════════════════ */
-        
-        .running-header {
-            position: running(header);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: 0.5cm;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 0.5cm;
-        }
-        
-        .running-header .logo-small {
-            font-size: 10pt;
-            font-weight: 600;
-            color: var(--primary);
-        }
-        
-        .running-header .doc-title {
-            font-size: 9pt;
-            color: var(--text-light);
-            max-width: 70%;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        
-        /* ═══════════════════════════════════════════════════════════════════════════
-           🎯 COVER PAGE
-           ═══════════════════════════════════════════════════════════════════════════ */
-        
-        .cover-page {
+
+        /* ═══════════════════ COVER PAGE ═══════════════════ */
+
+        .cover {
             page-break-after: always;
             min-height: 100vh;
             display: flex;
@@ -96,576 +50,595 @@
             justify-content: center;
             padding: 2cm 0;
         }
-        
-        .logo-container {
+
+        .cover-brand {
             text-align: center;
-            margin-bottom: 3cm;
+            margin-bottom: 2.5cm;
         }
-        
-        .logo {
-            width: 80px;
-            height: 80px;
-        }
-        
-        .logo-text {
-            font-family: 'Playfair Display', serif;
-            font-size: 28pt;
+
+        .cover-brand-name {
+            font-size: 32pt;
             font-weight: 700;
-            color: var(--primary);
-            letter-spacing: 2px;
-            margin-top: 0.5cm;
-        }
-        
-        .logo-subtitle {
-            font-size: 11pt;
-            color: var(--text-light);
-            margin-top: 0.3cm;
+            color: #2563EB;
             letter-spacing: 3px;
+        }
+
+        .cover-brand-tagline {
+            font-size: 11pt;
+            color: #64748B;
+            margin-top: 0.3cm;
+            letter-spacing: 2px;
             text-transform: uppercase;
         }
-        
+
         .cover-title {
             text-align: center;
             margin-bottom: 2cm;
         }
-        
+
         .cover-title h1 {
-            font-family: 'Playfair Display', serif;
             font-size: 22pt;
-            font-weight: 600;
-            color: var(--text);
+            font-weight: 700;
+            color: #1E293B;
             line-height: 1.3;
             margin-bottom: 0.5cm;
         }
-        
-        .cover-title .channel {
-            font-size: 13pt;
-            color: var(--primary);
+
+        .cover-title .channel-name {
+            font-size: 14pt;
+            color: #2563EB;
             font-weight: 500;
         }
-        
-        .cover-meta {
+
+        .cover-meta-box {
+            background: #F1F5F9;
+            border-left: 4px solid #2563EB;
+            border-radius: 0 8px 8px 0;
+            padding: 16px 20px;
+            margin: 1.5cm 1cm 0 1cm;
+        }
+
+        .cover-meta-row {
             display: flex;
-            justify-content: center;
-            gap: 2cm;
-            margin-top: 2cm;
-            padding-top: 1cm;
-            border-top: 2px solid var(--border);
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
         }
-        
-        .meta-item {
-            text-align: center;
+
+        .cover-meta-item {
+            flex: 1;
+            min-width: 120px;
         }
-        
-        .meta-label {
-            font-size: 9pt;
+
+        .cover-meta-label {
+            font-size: 8pt;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: var(--text-light);
-            margin-bottom: 0.2cm;
+            color: #64748B;
+            margin-bottom: 2px;
         }
-        
-        .meta-value {
+
+        .cover-meta-value {
             font-size: 11pt;
             font-weight: 600;
-            color: var(--primary);
+            color: #1E293B;
         }
-        
+
         .cover-footer {
             margin-top: auto;
             text-align: center;
             padding-top: 2cm;
         }
-        
+
         .cover-footer .date {
             font-size: 10pt;
-            color: var(--text-light);
+            color: #64748B;
         }
-        
+
         .cover-footer .url {
             font-size: 9pt;
-            color: var(--accent);
+            color: #2563EB;
             margin-top: 0.3cm;
             word-break: break-all;
         }
-        
-        /* ═══════════════════════════════════════════════════════════════════════════
-           📑 TABLE OF CONTENTS
-           ═══════════════════════════════════════════════════════════════════════════ */
-        
-        .toc-page {
+
+        /* ═══════════════════ TABLE OF CONTENTS ═══════════════════ */
+
+        .toc {
             page-break-after: always;
         }
-        
-        .toc-title {
-            font-family: 'Playfair Display', serif;
+
+        .toc-heading {
             font-size: 18pt;
-            color: var(--primary);
+            font-weight: 700;
+            color: #2563EB;
             margin-bottom: 1cm;
             padding-bottom: 0.3cm;
-            border-bottom: 2px solid var(--secondary);
+            border-bottom: 2px solid #2563EB;
         }
-        
+
         .toc-list {
             list-style: none;
         }
-        
+
         .toc-item {
             display: flex;
             align-items: baseline;
-            padding: 0.4cm 0;
-            border-bottom: 1px dotted var(--border);
+            padding: 0.35cm 0;
+            border-bottom: 1px dotted #E2E8F0;
         }
-        
-        .toc-number {
+
+        .toc-num {
             font-weight: 600;
-            color: var(--primary);
-            width: 1.5cm;
+            color: #2563EB;
+            width: 1.2cm;
             flex-shrink: 0;
         }
-        
+
         .toc-text {
             flex-grow: 1;
+            color: #1E293B;
         }
-        
-        .toc-page-num {
-            color: var(--text-light);
-            margin-left: 0.5cm;
-        }
-        
-        /* ═══════════════════════════════════════════════════════════════════════════
-           📖 CONTENT SECTIONS
-           ═══════════════════════════════════════════════════════════════════════════ */
-        
+
+        /* ═══════════════════ CONTENT SECTIONS ═══════════════════ */
+
         .section {
-            margin-bottom: 1.5cm;
+            margin-bottom: 1.2cm;
         }
-        
+
         .section-header {
             display: flex;
             align-items: center;
-            gap: 0.4cm;
-            margin-bottom: 0.6cm;
-            padding-bottom: 0.3cm;
-            border-bottom: 2px solid var(--primary);
+            gap: 0.3cm;
+            margin-bottom: 0.5cm;
+            padding-bottom: 0.25cm;
+            border-bottom: 2px solid #2563EB;
         }
-        
-        .section-icon {
-            font-size: 18pt;
-        }
-        
+
         .section-title {
-            font-family: 'Playfair Display', serif;
-            font-size: 16pt;
-            font-weight: 600;
-            color: var(--primary);
+            font-size: 18pt;
+            font-weight: 700;
+            color: #2563EB;
         }
-        
+
         .section-content {
-            padding-left: 0.3cm;
+            padding-left: 0.2cm;
         }
-        
-        /* ═══════════════════════════════════════════════════════════════════════════
-           📋 SUMMARY STYLING
-           ═══════════════════════════════════════════════════════════════════════════ */
-        
-        .summary-content {
-            text-align: justify;
-        }
-        
-        .summary-content h2 {
+
+        /* ═══════════════════ SYNTHESIS PROSE ═══════════════════ */
+
+        .synthesis h2 {
             font-size: 14pt;
             font-weight: 600;
-            color: var(--primary);
-            margin-top: 0.8cm;
-            margin-bottom: 0.4cm;
-        }
-        
-        .summary-content h3 {
-            font-size: 12pt;
-            font-weight: 600;
-            color: var(--primary-light);
-            margin-top: 0.6cm;
+            color: #2563EB;
+            margin-top: 0.7cm;
             margin-bottom: 0.3cm;
         }
-        
-        .summary-content p {
-            margin-bottom: 0.5cm;
+
+        .synthesis h3 {
+            font-size: 12pt;
+            font-weight: 600;
+            color: #3B82F6;
+            margin-top: 0.5cm;
+            margin-bottom: 0.2cm;
         }
-        
-        .summary-content ul, .summary-content ol {
-            margin: 0.4cm 0;
+
+        .synthesis p {
+            margin-bottom: 0.4cm;
+            text-align: justify;
+        }
+
+        .synthesis ul, .synthesis ol {
+            margin: 0.3cm 0;
             padding-left: 0.8cm;
         }
-        
-        .summary-content li {
-            margin-bottom: 0.2cm;
+
+        .synthesis li {
+            margin-bottom: 0.15cm;
         }
-        
-        .summary-content blockquote {
-            margin: 0.5cm 0;
-            padding: 0.4cm 0.6cm;
-            border-left: 3px solid var(--secondary);
-            background: var(--surface);
+
+        .synthesis blockquote {
+            margin: 0.4cm 0;
+            padding: 0.3cm 0.6cm;
+            border-left: 3px solid #2563EB;
+            background: #F1F5F9;
             font-style: italic;
+            color: #475569;
         }
-        
-        .summary-content strong {
-            color: var(--primary);
-        }
-        
-        /* ═══════════════════════════════════════════════════════════════════════════
-           💡 KEY CONCEPTS BOX
-           ═══════════════════════════════════════════════════════════════════════════ */
-        
-        .concepts-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.5cm;
-        }
-        
-        .concept-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            padding: 0.4cm;
-        }
-        
-        .concept-card .concept-name {
+
+        .synthesis strong {
+            color: #1E293B;
             font-weight: 600;
-            color: var(--primary);
-            margin-bottom: 0.2cm;
         }
-        
-        .concept-card .concept-desc {
-            font-size: 10pt;
-            color: var(--text-light);
+
+        /* ═══════════════════ KEY POINTS ═══════════════════ */
+
+        .key-points-list {
+            list-style: none;
+            padding: 0;
         }
-        
-        /* ═══════════════════════════════════════════════════════════════════════════
-           ⏱️ TIMESTAMPS
-           ═══════════════════════════════════════════════════════════════════════════ */
-        
+
+        .key-point {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.3cm;
+            padding: 0.25cm 0;
+            border-bottom: 1px solid #F1F5F9;
+        }
+
+        .key-point-bullet {
+            color: #2563EB;
+            font-weight: 700;
+            font-size: 12pt;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .key-point-text {
+            flex-grow: 1;
+        }
+
+        /* ═══════════════════ CONCEPTS / TAGS ═══════════════════ */
+
+        .concepts-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3cm;
+        }
+
+        .concept-tag {
+            display: inline-block;
+            padding: 0.15cm 0.4cm;
+            background: #EFF6FF;
+            border: 1px solid #BFDBFE;
+            border-radius: 20px;
+            font-size: 9pt;
+            color: #2563EB;
+            font-weight: 500;
+        }
+
+        .concept-tag.person {
+            background: #F0FDF4;
+            border-color: #BBF7D0;
+            color: #16A34A;
+        }
+
+        .concept-tag.org {
+            background: #FAF5FF;
+            border-color: #E9D5FF;
+            color: #7C3AED;
+        }
+
+        /* ═══════════════════ TIMESTAMPS ═══════════════════ */
+
         .timestamps-list {
             list-style: none;
         }
-        
+
         .timestamp-item {
             display: flex;
             align-items: flex-start;
             gap: 0.4cm;
-            padding: 0.3cm 0;
-            border-bottom: 1px solid var(--border);
+            padding: 0.25cm 0;
+            border-bottom: 1px solid #F1F5F9;
         }
-        
+
         .timestamp-time {
-            font-family: 'Monaco', 'Consolas', monospace;
+            font-family: 'Courier New', 'Consolas', monospace;
             font-size: 10pt;
             font-weight: 600;
-            color: var(--accent);
-            background: var(--surface);
-            padding: 0.1cm 0.3cm;
-            border-radius: 3px;
+            color: #2563EB;
+            background: #EFF6FF;
+            padding: 0.08cm 0.25cm;
+            border-radius: 4px;
             flex-shrink: 0;
         }
-        
+
         .timestamp-text {
             flex-grow: 1;
         }
-        
-        /* ═══════════════════════════════════════════════════════════════════════════
-           📊 RELIABILITY SCORE
-           ═══════════════════════════════════════════════════════════════════════════ */
-        
+
+        /* ═══════════════════ FLASHCARDS ═══════════════════ */
+
+        .flashcards-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.4cm;
+        }
+
+        .flashcard {
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            overflow: hidden;
+            page-break-inside: avoid;
+        }
+
+        .flashcard-label {
+            font-size: 8pt;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0.15cm 0.3cm;
+            font-weight: 600;
+        }
+
+        .flashcard-question {
+            background: #2563EB;
+            color: white;
+            padding: 0.3cm 0.4cm 0.15cm;
+        }
+
+        .flashcard-question .flashcard-label {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .flashcard-question .flashcard-text {
+            font-size: 10pt;
+            font-weight: 500;
+            padding: 0.1cm 0;
+        }
+
+        .flashcard-answer {
+            background: #F8FAFC;
+            padding: 0.3cm 0.4cm 0.15cm;
+        }
+
+        .flashcard-answer .flashcard-label {
+            color: #64748B;
+        }
+
+        .flashcard-answer .flashcard-text {
+            font-size: 10pt;
+            padding: 0.1cm 0;
+            color: #334155;
+        }
+
+        /* ═══════════════════ QUIZ ═══════════════════ */
+
+        .quiz-item {
+            margin-bottom: 0.6cm;
+            page-break-inside: avoid;
+        }
+
+        .quiz-question {
+            font-weight: 600;
+            color: #1E293B;
+            margin-bottom: 0.2cm;
+        }
+
+        .quiz-question-num {
+            color: #2563EB;
+            font-weight: 700;
+        }
+
+        .quiz-options {
+            list-style: none;
+            padding-left: 0.5cm;
+        }
+
+        .quiz-option {
+            padding: 0.1cm 0.3cm;
+            margin-bottom: 0.1cm;
+            border-radius: 4px;
+            font-size: 10pt;
+        }
+
+        .quiz-option.correct {
+            background: #F0FDF4;
+            color: #16A34A;
+            font-weight: 600;
+        }
+
+        .quiz-option.incorrect {
+            color: #64748B;
+        }
+
+        /* ═══════════════════ RELIABILITY SCORE ═══════════════════ */
+
         .reliability-box {
             display: flex;
             align-items: center;
             gap: 0.5cm;
             padding: 0.5cm;
-            background: var(--surface);
-            border-radius: 6px;
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            page-break-inside: avoid;
         }
-        
+
         .reliability-score {
-            font-size: 24pt;
+            font-size: 28pt;
             font-weight: 700;
         }
-        
-        .reliability-score.high { color: #22C55E; }
+
+        .reliability-score.high { color: #16A34A; }
         .reliability-score.medium { color: #F59E0B; }
         .reliability-score.low { color: #EF4444; }
-        
+
+        .reliability-details {
+            flex-grow: 1;
+        }
+
         .reliability-label {
             font-size: 10pt;
-            color: var(--text-light);
+            color: #64748B;
+            margin-bottom: 0.15cm;
         }
-        
+
         .reliability-bar {
-            flex-grow: 1;
             height: 8px;
-            background: var(--border);
+            background: #E2E8F0;
             border-radius: 4px;
             overflow: hidden;
         }
-        
+
         .reliability-fill {
             height: 100%;
             border-radius: 4px;
         }
-        
-        .reliability-fill.high { background: #22C55E; }
+
+        .reliability-fill.high { background: #16A34A; }
         .reliability-fill.medium { background: #F59E0B; }
         .reliability-fill.low { background: #EF4444; }
-        
-        /* ═══════════════════════════════════════════════════════════════════════════
-           🏷️ ENTITIES / TAGS
-           ═══════════════════════════════════════════════════════════════════════════ */
-        
-        .entities-group {
-            margin-bottom: 0.6cm;
-        }
-        
-        .entities-label {
-            font-size: 10pt;
-            font-weight: 600;
-            color: var(--text-light);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 0.3cm;
-        }
-        
-        .tags-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.2cm;
-        }
-        
-        .tag {
-            display: inline-block;
-            padding: 0.15cm 0.4cm;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            font-size: 9pt;
-            color: var(--text);
-        }
-        
-        .tag.person { border-color: #3B82F6; color: #3B82F6; }
-        .tag.org { border-color: #8B5CF6; color: #8B5CF6; }
-        .tag.concept { border-color: var(--secondary); color: #B8956A; }
-        
-        /* ═══════════════════════════════════════════════════════════════════════════
-           📚 FLASHCARDS
-           ═══════════════════════════════════════════════════════════════════════════ */
-        
-        .flashcards-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.5cm;
-        }
-        
-        .flashcard {
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            overflow: hidden;
-        }
-        
-        .flashcard-front {
-            background: var(--primary);
-            color: white;
-            padding: 0.4cm;
-            font-weight: 500;
-            font-size: 10pt;
-        }
-        
-        .flashcard-back {
-            background: var(--surface);
-            padding: 0.4cm;
-            font-size: 10pt;
-        }
-        
-        /* ═══════════════════════════════════════════════════════════════════════════
-           🔗 SOURCES
-           ═══════════════════════════════════════════════════════════════════════════ */
-        
+
+        /* ═══════════════════ SOURCES ═══════════════════ */
+
         .sources-list {
             list-style: none;
         }
-        
+
         .source-item {
             display: flex;
             align-items: flex-start;
             gap: 0.3cm;
-            padding: 0.3cm 0;
-            border-bottom: 1px solid var(--border);
+            padding: 0.25cm 0;
+            border-bottom: 1px solid #F1F5F9;
         }
-        
-        .source-number {
-            font-weight: 600;
-            color: var(--primary);
+
+        .source-num {
+            font-weight: 700;
+            color: #2563EB;
             font-size: 10pt;
+            flex-shrink: 0;
         }
-        
+
         .source-content {
             flex-grow: 1;
         }
-        
+
         .source-title {
             font-weight: 500;
-            margin-bottom: 0.1cm;
+            margin-bottom: 0.05cm;
         }
-        
+
         .source-url {
             font-size: 9pt;
-            color: var(--accent);
+            color: #3B82F6;
             word-break: break-all;
         }
-        
-        /* ═══════════════════════════════════════════════════════════════════════════
-           📄 FOOTER
-           ═══════════════════════════════════════════════════════════════════════════ */
-        
-        .document-footer {
-            margin-top: 2cm;
-            padding-top: 0.5cm;
-            border-top: 2px solid var(--border);
+
+        /* ═══════════════════ DOCUMENT FOOTER ═══════════════════ */
+
+        .doc-footer {
+            margin-top: 1.5cm;
+            padding-top: 0.4cm;
+            border-top: 2px solid #E2E8F0;
             text-align: center;
         }
-        
-        .footer-text {
+
+        .doc-footer-text {
             font-size: 9pt;
-            color: var(--text-light);
+            color: #94A3B8;
         }
-        
-        .footer-url {
-            font-size: 10pt;
-            color: var(--primary);
-            font-weight: 500;
+
+        .doc-footer-brand {
+            font-size: 11pt;
+            color: #2563EB;
+            font-weight: 600;
         }
-        
-        /* ═══════════════════════════════════════════════════════════════════════════
-           🖨️ PRINT UTILITIES
-           ═══════════════════════════════════════════════════════════════════════════ */
-        
-        .page-break {
-            page-break-before: always;
-        }
-        
-        .no-break {
-            page-break-inside: avoid;
-        }
-        
-        .hide-print {
-            display: none;
-        }
+
+        /* ═══════════════════ UTILITIES ═══════════════════ */
+
+        .page-break { page-break-before: always; }
+        .no-break { page-break-inside: avoid; }
+        .separator { border: 0; border-top: 1px solid #E2E8F0; margin: 0.6cm 0; }
     </style>
 </head>
 <body>
-    <!-- Running Header (appears on pages after cover) -->
-    <div class="running-header">
-        <span class="logo-small">🤿 Deep Sight</span>
-        <span class="doc-title">{{ title }}</span>
-    </div>
-
-    <!-- ═══════════════════════════════════════════════════════════════════════════
-         COVER PAGE
-         ═══════════════════════════════════════════════════════════════════════════ -->
-    <div class="cover-page">
-        <div class="logo-container">
-            <!-- SVG Logo -->
-            <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <linearGradient id="oceanGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" style="stop-color:#0D4F4F"/>
-                        <stop offset="100%" style="stop-color:#00CED1"/>
-                    </linearGradient>
-                </defs>
-                <circle cx="50" cy="50" r="45" fill="url(#oceanGrad)"/>
-                <path d="M50 25 C35 25 25 38 25 50 C25 65 35 75 50 75 C65 75 75 65 75 50 C75 38 65 25 50 25 M50 35 C60 35 65 43 65 50 C65 60 58 65 50 65 C42 65 35 60 35 50 C35 43 40 35 50 35" fill="white" opacity="0.9"/>
-                <circle cx="50" cy="50" r="12" fill="white"/>
-                <circle cx="50" cy="50" r="6" fill="#0D4F4F"/>
-                <path d="M30 78 L40 85 L60 85 L70 78" stroke="#D4A574" stroke-width="3" fill="none" stroke-linecap="round"/>
-            </svg>
-            <div class="logo-text">DEEP SIGHT</div>
-            <div class="logo-subtitle">Analyse Intelligente</div>
+    <!-- ═══════════════════ COVER PAGE ═══════════════════ -->
+    <div class="cover">
+        <div class="cover-brand">
+            <div class="cover-brand-name">DeepSight</div>
+            <div class="cover-brand-tagline">Analyse Intelligente de Vidéos</div>
         </div>
-        
+
         <div class="cover-title">
             <h1>{{ title }}</h1>
             {% if channel %}
-            <div class="channel">{{ channel }}</div>
+            <div class="channel-name">{{ channel }}</div>
             {% endif %}
         </div>
-        
-        <div class="cover-meta">
-            {% if duration %}
-            <div class="meta-item">
-                <div class="meta-label">Durée</div>
-                <div class="meta-value">{{ duration_formatted }}</div>
-            </div>
-            {% endif %}
-            <div class="meta-item">
-                <div class="meta-label">Catégorie</div>
-                <div class="meta-value">{{ category }}</div>
-            </div>
-            <div class="meta-item">
-                <div class="meta-label">Mode</div>
-                <div class="meta-value">{{ mode }}</div>
+
+        <div class="cover-meta-box">
+            <div class="cover-meta-row">
+                {% if duration %}
+                <div class="cover-meta-item">
+                    <div class="cover-meta-label">Durée</div>
+                    <div class="cover-meta-value">{{ duration_formatted }}</div>
+                </div>
+                {% endif %}
+                <div class="cover-meta-item">
+                    <div class="cover-meta-label">Catégorie</div>
+                    <div class="cover-meta-value">{{ category }}</div>
+                </div>
+                <div class="cover-meta-item">
+                    <div class="cover-meta-label">Mode</div>
+                    <div class="cover-meta-value">{{ mode }}</div>
+                </div>
+                {% if reliability_score %}
+                <div class="cover-meta-item">
+                    <div class="cover-meta-label">Fiabilité</div>
+                    <div class="cover-meta-value">{{ reliability_score }}/100</div>
+                </div>
+                {% endif %}
             </div>
         </div>
-        
+
         <div class="cover-footer">
-            <div class="date">Analysé le {{ date }}</div>
+            <div class="date">Exporté le {{ date }}</div>
             {% if video_url %}
             <div class="url">{{ video_url }}</div>
             {% endif %}
         </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════════════
-         TABLE OF CONTENTS
-         ═══════════════════════════════════════════════════════════════════════════ -->
+    <!-- ═══════════════════ TABLE OF CONTENTS ═══════════════════ -->
     {% if show_toc %}
-    <div class="toc-page">
-        <h2 class="toc-title">📑 Table des matières</h2>
+    <div class="toc">
+        <h2 class="toc-heading">Table des matières</h2>
         <ul class="toc-list">
             <li class="toc-item">
-                <span class="toc-number">1.</span>
+                <span class="toc-num">1.</span>
                 <span class="toc-text">Synthèse</span>
             </li>
             {% if show_concepts and entities and entities.concepts %}
             <li class="toc-item">
-                <span class="toc-number">2.</span>
+                <span class="toc-num">2.</span>
                 <span class="toc-text">Concepts clés</span>
             </li>
             {% endif %}
             {% if show_timestamps and timestamps %}
             <li class="toc-item">
-                <span class="toc-number">3.</span>
-                <span class="toc-text">Chapitres & Timestamps</span>
+                <span class="toc-num">3.</span>
+                <span class="toc-text">Chapitres &amp; Timestamps</span>
             </li>
             {% endif %}
             {% if entities and (entities.persons or entities.organizations) %}
             <li class="toc-item">
-                <span class="toc-number">4.</span>
+                <span class="toc-num">4.</span>
                 <span class="toc-text">Entités mentionnées</span>
             </li>
             {% endif %}
             {% if show_flashcards and flashcards %}
             <li class="toc-item">
-                <span class="toc-number">5.</span>
+                <span class="toc-num">5.</span>
                 <span class="toc-text">Flashcards de révision</span>
+            </li>
+            {% endif %}
+            {% if show_quiz and quiz %}
+            <li class="toc-item">
+                <span class="toc-num">6.</span>
+                <span class="toc-text">Quiz</span>
             </li>
             {% endif %}
             {% if reliability_score %}
             <li class="toc-item">
-                <span class="toc-number">6.</span>
+                <span class="toc-num">7.</span>
                 <span class="toc-text">Score de fiabilité</span>
             </li>
             {% endif %}
             {% if sources %}
             <li class="toc-item">
-                <span class="toc-number">7.</span>
+                <span class="toc-num">8.</span>
                 <span class="toc-text">Sources</span>
             </li>
             {% endif %}
@@ -673,44 +646,37 @@
     </div>
     {% endif %}
 
-    <!-- ═══════════════════════════════════════════════════════════════════════════
-         MAIN CONTENT
-         ═══════════════════════════════════════════════════════════════════════════ -->
-    
-    <!-- Summary Section -->
+    <!-- ═══════════════════ SYNTHESIS ═══════════════════ -->
     <div class="section">
         <div class="section-header">
-            <span class="section-icon">📋</span>
             <h2 class="section-title">Synthèse</h2>
         </div>
-        <div class="section-content summary-content">
+        <div class="section-content synthesis">
             {{ summary_html | safe }}
         </div>
     </div>
-    
-    <!-- Key Concepts -->
+
+    <!-- ═══════════════════ KEY CONCEPTS ═══════════════════ -->
     {% if show_concepts and entities and entities.concepts %}
-    <div class="section page-break">
+    <div class="section">
         <div class="section-header">
-            <span class="section-icon">💡</span>
             <h2 class="section-title">Concepts clés</h2>
         </div>
         <div class="section-content">
-            <div class="tags-container">
-                {% for concept in entities.concepts[:15] %}
-                <span class="tag concept">{{ concept }}</span>
+            <div class="concepts-grid">
+                {% for concept in entities.concepts[:20] %}
+                <span class="concept-tag">{{ concept }}</span>
                 {% endfor %}
             </div>
         </div>
     </div>
     {% endif %}
-    
-    <!-- Timestamps -->
+
+    <!-- ═══════════════════ TIMESTAMPS ═══════════════════ -->
     {% if show_timestamps and timestamps %}
     <div class="section">
         <div class="section-header">
-            <span class="section-icon">⏱️</span>
-            <h2 class="section-title">Chapitres & Timestamps</h2>
+            <h2 class="section-title">Chapitres &amp; Timestamps</h2>
         </div>
         <div class="section-content">
             <ul class="timestamps-list">
@@ -724,31 +690,30 @@
         </div>
     </div>
     {% endif %}
-    
-    <!-- Entities -->
+
+    <!-- ═══════════════════ ENTITIES ═══════════════════ -->
     {% if entities and (entities.persons or entities.organizations) %}
     <div class="section">
         <div class="section-header">
-            <span class="section-icon">🏷️</span>
             <h2 class="section-title">Entités mentionnées</h2>
         </div>
         <div class="section-content">
             {% if entities.persons %}
-            <div class="entities-group">
-                <div class="entities-label">👤 Personnes</div>
-                <div class="tags-container">
-                    {% for person in entities.persons[:10] %}
-                    <span class="tag person">{{ person }}</span>
+            <div style="margin-bottom: 0.4cm;">
+                <div style="font-size: 10pt; font-weight: 600; color: #64748B; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.2cm;">Personnes</div>
+                <div class="concepts-grid">
+                    {% for person in entities.persons[:12] %}
+                    <span class="concept-tag person">{{ person }}</span>
                     {% endfor %}
                 </div>
             </div>
             {% endif %}
             {% if entities.organizations %}
-            <div class="entities-group">
-                <div class="entities-label">🏢 Organisations</div>
-                <div class="tags-container">
-                    {% for org in entities.organizations[:10] %}
-                    <span class="tag org">{{ org }}</span>
+            <div>
+                <div style="font-size: 10pt; font-weight: 600; color: #64748B; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.2cm;">Organisations</div>
+                <div class="concepts-grid">
+                    {% for org in entities.organizations[:12] %}
+                    <span class="concept-tag org">{{ org }}</span>
                     {% endfor %}
                 </div>
             </div>
@@ -756,38 +721,69 @@
         </div>
     </div>
     {% endif %}
-    
-    <!-- Flashcards -->
+
+    <!-- ═══════════════════ FLASHCARDS ═══════════════════ -->
     {% if show_flashcards and flashcards %}
     <div class="section page-break">
         <div class="section-header">
-            <span class="section-icon">📚</span>
             <h2 class="section-title">Flashcards de révision</h2>
         </div>
         <div class="section-content">
             <div class="flashcards-grid">
-                {% for card in flashcards[:12] %}
-                <div class="flashcard no-break">
-                    <div class="flashcard-front">{{ card.front }}</div>
-                    <div class="flashcard-back">{{ card.back }}</div>
+                {% for card in flashcards[:16] %}
+                <div class="flashcard">
+                    <div class="flashcard-question">
+                        <div class="flashcard-label">Question</div>
+                        <div class="flashcard-text">{{ card.front }}</div>
+                    </div>
+                    <div class="flashcard-answer">
+                        <div class="flashcard-label">Réponse</div>
+                        <div class="flashcard-text">{{ card.back }}</div>
+                    </div>
                 </div>
                 {% endfor %}
             </div>
         </div>
     </div>
     {% endif %}
-    
-    <!-- Reliability Score -->
+
+    <!-- ═══════════════════ QUIZ ═══════════════════ -->
+    {% if show_quiz and quiz %}
+    <div class="section page-break">
+        <div class="section-header">
+            <h2 class="section-title">Quiz</h2>
+        </div>
+        <div class="section-content">
+            {% for q in quiz[:10] %}
+            <div class="quiz-item">
+                <div class="quiz-question">
+                    <span class="quiz-question-num">Q{{ loop.index }}.</span> {{ q.question }}
+                </div>
+                {% if q.options %}
+                <ul class="quiz-options">
+                    {% for opt in q.options %}
+                    <li class="quiz-option {{ 'correct' if opt == q.answer else 'incorrect' }}">
+                        {{ '✓' if opt == q.answer else '○' }} {{ opt }}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- ═══════════════════ RELIABILITY SCORE ═══════════════════ -->
     {% if reliability_score %}
     <div class="section">
         <div class="section-header">
-            <span class="section-icon">📊</span>
             <h2 class="section-title">Score de fiabilité</h2>
         </div>
         <div class="section-content">
-            <div class="reliability-box no-break">
+            <div class="reliability-box">
                 <div class="reliability-score {{ reliability_class }}">{{ reliability_score }}/100</div>
-                <div>
+                <div class="reliability-details">
                     <div class="reliability-label">{{ reliability_label }}</div>
                     <div class="reliability-bar">
                         <div class="reliability-fill {{ reliability_class }}" style="width: {{ reliability_score }}%;"></div>
@@ -797,19 +793,18 @@
         </div>
     </div>
     {% endif %}
-    
-    <!-- Sources -->
+
+    <!-- ═══════════════════ SOURCES ═══════════════════ -->
     {% if sources %}
     <div class="section">
         <div class="section-header">
-            <span class="section-icon">🔗</span>
             <h2 class="section-title">Sources</h2>
         </div>
         <div class="section-content">
             <ul class="sources-list">
                 {% for source in sources %}
                 <li class="source-item no-break">
-                    <span class="source-number">[{{ loop.index }}]</span>
+                    <span class="source-num">[{{ loop.index }}]</span>
                     <div class="source-content">
                         <div class="source-title">{{ source.title }}</div>
                         {% if source.url %}
@@ -822,11 +817,11 @@
         </div>
     </div>
     {% endif %}
-    
-    <!-- Document Footer -->
-    <div class="document-footer">
-        <div class="footer-text">Document généré automatiquement par</div>
-        <div class="footer-url">Deep Sight — deepsightsynthesis.com</div>
+
+    <!-- ═══════════════════ DOCUMENT FOOTER ═══════════════════ -->
+    <div class="doc-footer">
+        <div class="doc-footer-text">Document généré automatiquement par</div>
+        <div class="doc-footer-brand">DeepSight — deepsightsynthesis.com</div>
     </div>
 </body>
 </html>

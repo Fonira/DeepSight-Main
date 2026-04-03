@@ -65,15 +65,15 @@ class PDFExportType(str, Enum):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 DEEP_SIGHT_THEME = {
-    "primary": "#0D4F4F",
-    "primary_light": "#1A6B6B",
-    "secondary": "#D4A574",
-    "accent": "#00CED1",
-    "text": "#1A1A2E",
-    "text_light": "#4A4A5A",
+    "primary": "#2563EB",
+    "primary_light": "#3B82F6",
+    "secondary": "#6366F1",
+    "accent": "#06B6D4",
+    "text": "#1E293B",
+    "text_light": "#64748B",
     "background": "#FFFFFF",
-    "surface": "#F8FAFA",
-    "border": "#E0E6E6",
+    "surface": "#F1F5F9",
+    "border": "#E2E8F0",
 }
 
 

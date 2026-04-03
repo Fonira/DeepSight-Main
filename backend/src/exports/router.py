@@ -13,7 +13,7 @@
 import json
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -28,9 +28,11 @@ from auth.dependencies import get_current_user
 from videos.service import get_summary_by_id
 
 from .service import (
-    export_summary, 
-    get_available_formats, 
-    get_pdf_export_options
+    export_summary,
+    get_available_formats,
+    get_pdf_export_options,
+    export_to_audio,
+    get_audio_file_path,
 )
 
 router = APIRouter()
@@ -335,10 +337,10 @@ def _generate_simple_flashcards(concepts: List[str], summary: str) -> List[dict]
 def _find_concept_context(concept: str, summary: str) -> Optional[str]:
     """Trouve le contexte d'un concept dans le résumé"""
     import re
-    
+
     # Look for sentence containing the concept
     sentences = re.split(r'[.!?]\s+', summary)
-    
+
     concept_lower = concept.lower()
     for sentence in sentences:
         if concept_lower in sentence.lower() and len(sentence) > 30:
@@ -347,5 +349,151 @@ def _find_concept_context(concept: str, summary: str) -> Optional[str]:
             if len(clean) > 200:
                 clean = clean[:200] + "..."
             return clean
-    
+
     return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔊 AUDIO EXPORT ENDPOINTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class AudioExportRequest(BaseModel):
+    """Requête d'export audio"""
+    voice_id: Optional[str] = None
+    speed: float = Field(default=1.0, ge=0.5, le=2.0)
+
+
+@router.post("/{summary_id}/audio")
+async def export_analysis_audio(
+    summary_id: int,
+    request: AudioExportRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Export an analysis as audio (MP3) via ElevenLabs TTS.
+    Requires Pro plan or higher (tts feature).
+    """
+    from core.config import get_settings
+
+    # Feature gating: check if tts is blocked for user's plan
+    settings = get_settings()
+    plan = current_user.plan or "free"
+    plan_limits = settings.PLAN_LIMITS if hasattr(settings, 'PLAN_LIMITS') else None
+
+    # Check blocked features from config
+    try:
+        from core.config import PLAN_LIMITS
+        blocked = PLAN_LIMITS.get(plan, PLAN_LIMITS.get("free", {})).get("blocked_features", [])
+        if "tts" in blocked:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "code": "feature_locked",
+                    "message": "L'export audio nécessite un plan Pro ou supérieur",
+                    "current_plan": plan,
+                    "required_plan": "pro",
+                    "action": "upgrade",
+                }
+            )
+    except ImportError:
+        pass
+
+    # Get the summary
+    summary = await get_summary_by_id(session, summary_id, current_user.id)
+    if not summary:
+        raise HTTPException(status_code=404, detail="Summary not found")
+
+    if not summary.summary_content:
+        raise HTTPException(status_code=400, detail="Analysis has no content to export as audio")
+
+    # Generate audio
+    result = await export_to_audio(
+        title=summary.video_title or "Vidéo",
+        channel=summary.video_channel or "",
+        summary=summary.summary_content,
+        mode=summary.mode or "standard",
+        voice_id=request.voice_id or "",
+        speed=request.speed,
+    )
+
+    if not result:
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate audio export. ElevenLabs may be unavailable."
+        )
+
+    return {
+        "status": "success",
+        "data": {
+            "audio_url": f"/api/exports/audio/{result['file_id']}",
+            "file_id": result["file_id"],
+            "duration_estimate": result["duration_estimate"],
+        }
+    }
+
+
+@router.get("/audio/{file_id}")
+async def stream_audio_file(
+    file_id: str,
+    request: Request,
+):
+    """
+    Stream a generated audio file. Supports Range requests for seeking.
+    No JWT required — the UUID file_id is the security token.
+    """
+
+    file_path = get_audio_file_path(file_id)
+    if not file_path:
+        raise HTTPException(status_code=404, detail="Audio file not found or expired")
+
+    import os
+    file_size = os.path.getsize(file_path)
+
+    # Check for Range header (for seeking in audio player)
+    range_header = None
+    if request and hasattr(request, 'headers'):
+        range_header = request.headers.get("range")
+
+    if range_header and range_header.startswith("bytes="):
+        # Parse range: "bytes=start-end" or "bytes=start-"
+        range_spec = range_header[6:]
+        parts = range_spec.split("-")
+        start = int(parts[0]) if parts[0] else 0
+        end = int(parts[1]) if parts[1] else file_size - 1
+
+        # Clamp values
+        start = max(0, min(start, file_size - 1))
+        end = max(start, min(end, file_size - 1))
+        content_length = end - start + 1
+
+        with open(file_path, "rb") as f:
+            f.seek(start)
+            data = f.read(content_length)
+
+        return Response(
+            content=data,
+            status_code=206,
+            media_type="audio/mpeg",
+            headers={
+                "Content-Range": f"bytes {start}-{end}/{file_size}",
+                "Accept-Ranges": "bytes",
+                "Content-Length": str(content_length),
+                "Cache-Control": "public, max-age=3600",
+            }
+        )
+
+    # No Range header — return full file
+    with open(file_path, "rb") as f:
+        data = f.read()
+
+    return Response(
+        content=data,
+        media_type="audio/mpeg",
+        headers={
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(file_size),
+            "Content-Disposition": f'inline; filename="{file_id}.mp3"',
+            "Cache-Control": "public, max-age=3600",
+        }
+    )

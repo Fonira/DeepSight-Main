@@ -750,6 +750,7 @@ class SharedAnalysis(Base):
     video_thumbnail = Column(Text)
     verdict = Column(Text)
     view_count = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True, nullable=False, server_default="true")
     created_at = Column(DateTime, default=func.now())
 
     __table_args__ = (
