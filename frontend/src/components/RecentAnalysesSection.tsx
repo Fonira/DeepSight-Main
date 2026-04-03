@@ -14,6 +14,8 @@ import { ThumbnailImage } from './ThumbnailImage';
 interface RecentAnalysesSectionProps {
   language: 'fr' | 'en';
   onVideoSelect: (videoId: string) => void;
+  /** Navigate to the analysis detail (e.g. /history?open=summaryId) */
+  onOpenAnalysis?: (summaryId: number, videoId: string) => void;
   hidden?: boolean;
 }
 
@@ -48,6 +50,7 @@ function formatDuration(seconds: number): string {
 export const RecentAnalysesSection: React.FC<RecentAnalysesSectionProps> = ({
   language,
   onVideoSelect,
+  onOpenAnalysis,
   hidden = false,
 }) => {
   const [recent, setRecent] = useState<Summary[]>([]);
@@ -86,7 +89,7 @@ export const RecentAnalysesSection: React.FC<RecentAnalysesSectionProps> = ({
         {recent.map((item) => (
           <button
             key={item.id}
-            onClick={() => onVideoSelect(item.video_id)}
+            onClick={() => onOpenAnalysis ? onOpenAnalysis(item.id, item.video_id) : onVideoSelect(item.video_id)}
             className="group flex items-center gap-3 p-2 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-accent-primary/30 hover:bg-bg-secondary transition-all duration-200 text-left"
           >
             {/* Mini thumbnail */}

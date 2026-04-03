@@ -1343,6 +1343,9 @@ export const DashboardPage: React.FC = () => {
                       searchLanguages: smartInput.searchLanguages || ['fr', 'en'],
                     });
                   }}
+                  onOpenAnalysis={(summaryId) => {
+                    navigate(`/history?open=${summaryId}`);
+                  }}
                 />
 
                 {/* Suggestions Tournesol */}

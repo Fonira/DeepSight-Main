@@ -43,7 +43,6 @@ import { YouTubePlayer, YouTubePlayerRef } from "../components/YouTubePlayer";
 import { CitationExport } from "../components/CitationExport";
 import { StudyToolsModal } from "../components/StudyToolsModal";
 import { KeywordsModal } from "../components/KeywordsModal";
-import { AnalysisHub } from "../components/AnalysisHub";
 import { videoApi, shareApi, reliabilityApi, chatApi } from "../services/api";
 import type { Summary, ReliabilityResult, EnrichedConcept } from "../services/api";
 import { normalizePlanId, PLAN_LIMITS } from "../config/planPrivileges";
@@ -538,6 +537,24 @@ export const History: React.FC = () => {
     if (playlistParam) {
       setActiveTab('playlists');
       loadPlaylistDetail(playlistParam);
+    }
+    // Open a specific video analysis by summary ID (from RecentAnalyses click)
+    const openParam = searchParams.get('open');
+    if (openParam) {
+      const summaryId = parseInt(openParam, 10);
+      if (!isNaN(summaryId)) {
+        setActiveTab('videos');
+        setLoadingVideoDetail(true);
+        videoApi.getSummary(summaryId)
+          .then((summary) => {
+            setSelectedVideoDetail(summary);
+            reliabilityApi.getReliability(summaryId).then(setVideoDetailReliability).catch(() => {});
+          })
+          .catch(() => {
+            setError(language === 'fr' ? "Analyse introuvable" : "Analysis not found");
+          })
+          .finally(() => setLoadingVideoDetail(false));
+      }
     }
   }, [searchParams]);
 
@@ -1314,23 +1331,82 @@ export const History: React.FC = () => {
                       </button>
                     </div>
                   ) : (
-                  <AnalysisHub
-                    selectedSummary={selectedVideoDetail as any}
-                    reliabilityData={videoDetailReliability}
-                    reliabilityLoading={false}
-                    user={{ plan: user?.plan, credits: 0 }}
-                    language={language as 'fr' | 'en'}
-                    concepts={[]}
-                    onTimecodeClick={handleDetailTimecodeClick}
-                    onOpenChat={(msg) => handleOpenVideoChat({ id: selectedVideoDetail.id, video_id: selectedVideoDetail.video_id, video_title: selectedVideoDetail.video_title } as VideoSummary)}
-                    onNavigate={navigate}
-                    enabledTabs={['synthesis']}
-                    showKeywords
-                    showStudyTools
-                    showVoice
-                    voiceEnabled={voiceEnabled}
-                    onOpenVoice={() => setIsVoiceModalOpen(true)}
-                  />
+                  <div className="card">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-5 border-b border-border-subtle">
+                      <h3 className="font-semibold text-text-primary flex items-center gap-2">
+                        <BookOpen className="w-5 h-5 text-accent-primary" />
+                        {language === 'fr' ? 'Analyse' : 'Analysis'}
+                      </h3>
+                      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0">
+                        <button onClick={handleDetailCopy} className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]">
+                          {detailCopied ? <Check className="w-4 h-4 text-accent-success" /> : <Copy className="w-4 h-4" />}
+                          <span className="hidden sm:inline">{detailCopied ? (language === 'fr' ? 'Copié' : 'Copied') : (language === 'fr' ? 'Copier' : 'Copy')}</span>
+                        </button>
+                        <button onClick={() => setDetailShowCitationModal(true)} className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]">
+                          <GraduationCap className="w-4 h-4" />
+                          <span className="hidden sm:inline">{language === 'fr' ? 'Citer' : 'Cite'}</span>
+                        </button>
+                        <button onClick={() => setDetailShowStudyToolsModal(true)} className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]">
+                          <Brain className="w-4 h-4" />
+                          <span className="hidden sm:inline">{language === 'fr' ? 'Réviser' : 'Study'}</span>
+                        </button>
+                        <button onClick={handleDetailOpenKeywords} className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]">
+                          <Tags className="w-4 h-4" />
+                          <span className="hidden sm:inline">{language === 'fr' ? 'Mots-clés' : 'Keywords'}</span>
+                        </button>
+                        {voiceEnabled && (
+                          <button
+                            onClick={() => setIsVoiceModalOpen(true)}
+                            className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
+                          >
+                            <Mic className="w-4 h-4" />
+                            <span className="hidden sm:inline">{language === 'fr' ? 'Vocal' : 'Voice'}</span>
+                          </button>
+                        )}
+                        <div className="flex-shrink-0">
+                          <button ref={detailExportBtnRef} onClick={() => { const pos = calcExportMenuPos(detailExportBtnRef); setDetailExportMenuPos(pos); setDetailShowExportMenu(!detailShowExportMenu); }} className="btn btn-ghost text-xs min-h-[36px] sm:min-h-[32px]" disabled={detailExporting}>
+                            {detailExporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
+                            <span className="hidden sm:inline">Export</span>
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                          {detailShowExportMenu && createPortal(
+                            <div ref={detailExportMenuRef} className="fixed w-44 bg-bg-elevated border border-border-default rounded-lg shadow-xl py-1 animate-fadeIn" style={{ top: detailExportMenuPos.top, left: detailExportMenuPos.left, zIndex: 9999 }}>
+                              <button onClick={() => handleDetailExport('pdf')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
+                                <FileText className="w-4 h-4" /> PDF
+                              </button>
+                              <button onClick={() => handleDetailExport('md')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
+                                <FileDown className="w-4 h-4" /> Markdown
+                              </button>
+                              <button onClick={() => handleDetailExport('txt')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
+                                <FileText className="w-4 h-4" /> Texte
+                              </button>
+                            </div>,
+                            document.body
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="p-4 sm:p-5 prose max-w-none">
+                      <EnrichedMarkdown
+                        language={language}
+                        onTimecodeClick={handleDetailTimecodeClick}
+                        className="text-text-primary"
+                      >
+                        {selectedVideoDetail.summary_content || ''}
+                      </EnrichedMarkdown>
+                      <div className="mt-6">
+                        <ConceptsGlossary summaryId={selectedVideoDetail.id} language={language} />
+                      </div>
+                      <div className="mt-6 not-prose">
+                        <AcademicSourcesPanel
+                          summaryId={selectedVideoDetail.id.toString()}
+                          userPlan={user?.plan || 'free'}
+                          onUpgrade={() => navigate('/pricing')}
+                          language={language as 'fr' | 'en'}
+                        />
+                      </div>
+                    </div>
+                  </div>
                   )}
                 </div>
 
@@ -1346,9 +1422,39 @@ export const History: React.FC = () => {
                   </button>
                 )}
 
-                {/* Voice Modal pour la vue détail (géré par parent car state audio complexe) */}
+                {/* Modals pour la vue détail */}
                 {selectedVideoDetail && (
                   <>
+                    <CitationExport
+                      isOpen={detailShowCitationModal}
+                      onClose={() => setDetailShowCitationModal(false)}
+                      video={{
+                        title: selectedVideoDetail.video_title || 'Vidéo sans titre',
+                        channel: selectedVideoDetail.video_channel || 'Chaîne inconnue',
+                        videoId: selectedVideoDetail.video_id,
+                        publishedDate: selectedVideoDetail.created_at,
+                        duration: selectedVideoDetail.video_duration,
+                      }}
+                      language={language as 'fr' | 'en'}
+                    />
+                    <StudyToolsModal
+                      isOpen={detailShowStudyToolsModal}
+                      onClose={() => setDetailShowStudyToolsModal(false)}
+                      summaryId={selectedVideoDetail.id}
+                      videoTitle={selectedVideoDetail.video_title || 'Vidéo'}
+                      language={language as 'fr' | 'en'}
+                    />
+                    <KeywordsModal
+                      isOpen={detailShowKeywordsModal}
+                      onClose={() => setDetailShowKeywordsModal(false)}
+                      videoTitle={selectedVideoDetail.video_title || 'Vidéo'}
+                      tags={selectedVideoDetail.tags ? selectedVideoDetail.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []}
+                      concepts={detailConcepts}
+                      loading={detailConceptsLoading}
+                      language={language as 'fr' | 'en'}
+                      provider={detailConceptsProvider}
+                      categories={detailConceptsCategories}
+                    />
                     <VoiceModal
                       isOpen={isVoiceModalOpen}
                       onClose={() => {
