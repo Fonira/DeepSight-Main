@@ -1038,10 +1038,10 @@ export const videoApi = {
     return response.blob();
   },
 
-  async exportAudio(summaryId: number, voiceId?: string, speed?: number): Promise<{ audio_url: string; file_id: string; duration_estimate: number }> {
+  async exportAudio(summaryId: number, voiceId?: string, speed?: number, audioMode: 'full' | 'condensed' = 'full'): Promise<{ audio_url: string; file_id: string; duration_estimate: number }> {
     const res = await request(`/api/exports/${summaryId}/audio`, {
       method: 'POST',
-      body: { voice_id: voiceId || null, speed: speed || 1.0 },
+      body: { voice_id: voiceId || null, speed: speed || 1.0, audio_mode: audioMode },
     });
     return res.data;
   },

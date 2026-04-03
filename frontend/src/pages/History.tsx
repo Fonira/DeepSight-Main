@@ -23,7 +23,7 @@ import {
   Maximize2, ExternalLink, Share2, Mic,
   // 🆕 Toolbar icons
   Copy, Check, GraduationCap, Brain, Tags,
-  Download, FileText, FileDown, ChevronDown
+  Download, FileText, FileDown, ChevronDown, Headphones
 } from "lucide-react";
 import { DeepSightSpinner, DeepSightSpinnerMicro } from "../components/ui";
 import { useTranslation } from '../hooks/useTranslation';
@@ -707,9 +707,8 @@ export const History: React.FC = () => {
     if (!selectedVideoDetail?.id) return;
     setDetailExporting(true);
     setDetailShowExportMenu(false);
-    const formatMap: Record<string, 'pdf' | 'markdown' | 'text'> = { pdf: 'pdf', md: 'markdown', txt: 'text' };
     try {
-      const blob = await videoApi.exportSummary(selectedVideoDetail.id, formatMap[format]);
+      const blob = await videoApi.exportSummary(selectedVideoDetail.id, format);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -718,6 +717,28 @@ export const History: React.FC = () => {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Export error:', err);
+    } finally {
+      setDetailExporting(false);
+    }
+  };
+
+  const handleDetailAudioExport = async (audioMode: 'full' | 'condensed') => {
+    if (!selectedVideoDetail?.id) return;
+    setDetailExporting(true);
+    setDetailShowExportMenu(false);
+    try {
+      const result = await videoApi.exportAudio(selectedVideoDetail.id, undefined, undefined, audioMode);
+      const audioUrl = `${BASE_API_URL}${result.audio_url}`;
+      // Open audio in new tab for playback/download
+      window.open(audioUrl, '_blank');
+    } catch (err: any) {
+      console.error('Audio export error:', err);
+      const msg = err?.message || '';
+      if (msg.includes('feature_locked') || err?.status === 403) {
+        alert(language === 'fr' ? "L'export audio nécessite un plan Pro ou supérieur." : "Audio export requires Pro plan or higher.");
+      } else {
+        alert(language === 'fr' ? "Erreur lors de l'export audio. Réessayez." : "Audio export failed. Try again.");
+      }
     } finally {
       setDetailExporting(false);
     }
@@ -1358,7 +1379,7 @@ export const History: React.FC = () => {
                             <ChevronDown className="w-3 h-3" />
                           </button>
                           {detailShowExportMenu && createPortal(
-                            <div ref={detailExportMenuRef} className="fixed w-44 bg-bg-elevated border border-border-default rounded-lg shadow-xl py-1 animate-fadeIn" style={{ top: detailExportMenuPos.top, left: detailExportMenuPos.left, zIndex: 9999 }}>
+                            <div ref={detailExportMenuRef} className="fixed w-52 bg-bg-elevated border border-border-default rounded-lg shadow-xl py-1 animate-fadeIn" style={{ top: detailExportMenuPos.top, left: detailExportMenuPos.left, zIndex: 9999 }}>
                               <button onClick={() => handleDetailExport('pdf')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
                                 <FileText className="w-4 h-4" /> PDF
                               </button>
@@ -1367,6 +1388,13 @@ export const History: React.FC = () => {
                               </button>
                               <button onClick={() => handleDetailExport('txt')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
                                 <FileText className="w-4 h-4" /> Texte
+                              </button>
+                              <div className="border-t border-border-subtle my-1" />
+                              <button onClick={() => handleDetailAudioExport('full')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
+                                <Headphones className="w-4 h-4" /> {language === 'fr' ? 'Audio complet' : 'Full audio'}
+                              </button>
+                              <button onClick={() => handleDetailAudioExport('condensed')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
+                                <Headphones className="w-4 h-4 opacity-60" /> {language === 'fr' ? 'Audio résumé (~2 min)' : 'Short audio (~2 min)'}
                               </button>
                             </div>,
                             document.body
@@ -2207,9 +2235,8 @@ const PlaylistDetailView: React.FC<{
     setExporting(true);
     setShowExportMenu(false);
 
-    const formatMap: Record<string, 'pdf' | 'markdown' | 'text'> = { pdf: 'pdf', md: 'markdown', txt: 'text' };
     try {
-      const blob = await videoApi.exportSummary(selectedVideo.id, formatMap[format]);
+      const blob = await videoApi.exportSummary(selectedVideo.id, format);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

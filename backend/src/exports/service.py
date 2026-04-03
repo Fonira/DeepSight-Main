@@ -1085,10 +1085,13 @@ def build_narrative_text(
     channel: str,
     summary: str,
     mode: str = "",
+    condensed: bool = False,
 ) -> str:
     """
     Build a natural-sounding narrative from the analysis content.
     Designed to be read aloud by TTS.
+
+    If condensed=True, truncate to ~300 words (~2 min at 150 wpm).
     """
     try:
         from tts.service import clean_text_for_tts
@@ -1105,6 +1108,17 @@ def build_narrative_text(
 
     # Clean the main summary content
     cleaned_summary = clean_text_for_tts(summary, strip_questions=True)
+
+    # Condensed mode: keep ~300 words (≈2 min audio)
+    if condensed and cleaned_summary:
+        words = cleaned_summary.split()
+        if len(words) > 300:
+            # Cut at last paragraph break before 300 words
+            truncated = " ".join(words[:300])
+            last_period = truncated.rfind(".")
+            if last_period > len(truncated) * 0.5:
+                truncated = truncated[:last_period + 1]
+            cleaned_summary = truncated
 
     if cleaned_summary:
         parts.append(cleaned_summary)
@@ -1168,9 +1182,13 @@ async def export_to_audio(
     mode: str = "",
     voice_id: str = "",
     speed: float = 1.0,
+    condensed: bool = False,
 ) -> Optional[Dict[str, Any]]:
     """
     Generate MP3 audio from analysis content via ElevenLabs TTS.
+
+    Args:
+        condensed: If True, truncate to ~300 words (~2 min audio).
 
     Returns:
         dict with { file_id, file_path, duration_estimate } or None on failure.
@@ -1187,7 +1205,7 @@ async def export_to_audio(
     cleanup_old_audio_files()
 
     # Build narrative text
-    narrative = build_narrative_text(title, channel, summary, mode)
+    narrative = build_narrative_text(title, channel, summary, mode, condensed=condensed)
     if not narrative or len(narrative) < 10:
         _audio_logger.error("Narrative text too short for audio export")
         return None

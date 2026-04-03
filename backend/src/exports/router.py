@@ -361,6 +361,10 @@ class AudioExportRequest(BaseModel):
     """Requête d'export audio"""
     voice_id: Optional[str] = None
     speed: float = Field(default=1.0, ge=0.5, le=2.0)
+    audio_mode: str = Field(
+        default="full",
+        description="'full' = synthèse complète, 'condensed' = résumé ~2 min"
+    )
 
 
 @router.post("/{summary_id}/audio")
@@ -415,6 +419,7 @@ async def export_analysis_audio(
         mode=summary.mode or "standard",
         voice_id=request.voice_id or "",
         speed=request.speed,
+        condensed=(request.audio_mode == "condensed"),
     )
 
     if not result:
