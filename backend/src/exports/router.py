@@ -378,30 +378,22 @@ async def export_analysis_audio(
     Export an analysis as audio (MP3) via ElevenLabs TTS.
     Requires Pro plan or higher (tts feature).
     """
-    from core.config import get_settings
+    from core.config import PLAN_LIMITS
 
     # Feature gating: check if tts is blocked for user's plan
-    settings = get_settings()
     plan = current_user.plan or "free"
-    plan_limits = settings.PLAN_LIMITS if hasattr(settings, 'PLAN_LIMITS') else None
-
-    # Check blocked features from config
-    try:
-        from core.config import PLAN_LIMITS
-        blocked = PLAN_LIMITS.get(plan, PLAN_LIMITS.get("free", {})).get("blocked_features", [])
-        if "tts" in blocked:
-            raise HTTPException(
-                status_code=403,
-                detail={
-                    "code": "feature_locked",
-                    "message": "L'export audio nécessite un plan Pro ou supérieur",
-                    "current_plan": plan,
-                    "required_plan": "pro",
-                    "action": "upgrade",
-                }
-            )
-    except ImportError:
-        pass
+    blocked = PLAN_LIMITS.get(plan, PLAN_LIMITS.get("free", {})).get("blocked_features", [])
+    if "tts" in blocked:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "feature_locked",
+                "message": "L'export audio nécessite un plan Pro ou supérieur",
+                "current_plan": plan,
+                "required_plan": "pro",
+                "action": "upgrade",
+            }
+        )
 
     # Get the summary
     summary = await get_summary_by_id(session, summary_id, current_user.id)
