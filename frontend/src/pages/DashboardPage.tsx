@@ -38,6 +38,7 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { SEO } from '../components/SEO';
 import SmartInputBar, { SmartInputValue } from "../components/SmartInputBar";
 import { TournesolTrendingSection } from "../components/TournesolTrendingSection";
+import { RecentAnalysesSection } from "../components/RecentAnalysesSection";
 // LoadingWordWidget désormais global dans App.tsx
 import VideoDiscoveryModal from "../components/VideoDiscoveryModal";
 import { ThumbnailImage } from "../components/ThumbnailImage";
@@ -1329,9 +1330,22 @@ export const DashboardPage: React.FC = () => {
               </div>
             )}
 
-            {/* Empty State → Trending Section */}
+            {/* Empty State → Recent + Trending */}
             {!selectedSummary && (
               <div className={`animate-fadeIn transition-opacity duration-300 ${loading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                {/* Analyses récentes */}
+                <RecentAnalysesSection
+                  language={language as 'fr' | 'en'}
+                  onVideoSelect={(videoId) => {
+                    setSmartInput({
+                      mode: 'url',
+                      url: `https://www.youtube.com/watch?v=${videoId}`,
+                      searchLanguages: smartInput.searchLanguages || ['fr', 'en'],
+                    });
+                  }}
+                />
+
+                {/* Suggestions Tournesol */}
                 <TournesolTrendingSection
                   language={language as 'fr' | 'en'}
                   onVideoSelect={(videoId) => {

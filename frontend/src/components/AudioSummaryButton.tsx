@@ -67,6 +67,7 @@ export const AudioSummaryButton: React.FC<AudioSummaryButtonProps> = ({
     <>
       {/* Button */}
       <motion.button
+        data-audio-summary-btn
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         onClick={handleGenerate}

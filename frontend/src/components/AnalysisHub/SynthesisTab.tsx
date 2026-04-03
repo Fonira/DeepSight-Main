@@ -3,10 +3,11 @@
  * Onglet Synthèse : toolbar (copy/cite/export) + contenu enrichi
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   BookOpen, Copy, Check, GraduationCap,
-  Download, ChevronDown, FileText, FileDown, Share2, Loader2
+  Download, ChevronDown, FileText, FileDown, Share2, Loader2, Headphones
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from '../ui';
 import { AudioPlayerButton } from '../AudioPlayerButton';
@@ -44,6 +45,43 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
   const [showCitationModal, setShowCitationModal] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const exportBtnRef = useRef<HTMLButtonElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0 });
+
+  // Position the portal menu under the Export button
+  const updateMenuPos = useCallback(() => {
+    if (exportBtnRef.current) {
+      const rect = exportBtnRef.current.getBoundingClientRect();
+      setMenuPos({
+        top: rect.bottom + 4,
+        left: Math.max(8, rect.right - 176), // 176 = w-44 = 11rem
+      });
+    }
+  }, []);
+
+  // Close export menu on click outside + scroll/resize
+  useEffect(() => {
+    if (!showExportMenu) return;
+    updateMenuPos();
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node) &&
+        exportBtnRef.current && !exportBtnRef.current.contains(e.target as Node)
+      ) {
+        setShowExportMenu(false);
+      }
+    };
+    const handleScrollOrResize = () => setShowExportMenu(false);
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [showExportMenu, updateMenuPos]);
 
 
   const handleCopy = async () => {
@@ -115,7 +153,7 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
             <AudioPlayerButton text={selectedSummary.summary_content.slice(0, 5000)} size="sm" />
           )}
         </h3>
-        <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap pb-2 sm:pb-0">
           {/* Copy */}
           <button
             onClick={handleCopy}
@@ -144,37 +182,48 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
           />
 
           {/* Export */}
-          <div className="relative flex-shrink-0">
+          <div className="flex-shrink-0">
             <button
+              ref={exportBtnRef}
               onClick={() => setShowExportMenu(!showExportMenu)}
               className="btn btn-ghost text-xs min-h-[36px] sm:min-h-[32px]"
               disabled={exporting}
             >
               {exporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
               <span className="hidden sm:inline">Export</span>
-              <ChevronDown className="w-3 h-3" />
+              <ChevronDown className={`w-3 h-3 transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
             </button>
-            {showExportMenu && (
-              <div className="absolute right-0 top-full mt-1 w-40 bg-bg-elevated border border-border-default rounded-lg shadow-lg z-10 py-1">
+            {showExportMenu && createPortal(
+              <div
+                ref={exportMenuRef}
+                className="fixed w-44 bg-bg-elevated border border-border-default rounded-lg shadow-xl py-1 animate-fadeIn"
+                style={{ top: menuPos.top, left: menuPos.left, zIndex: 9999 }}
+              >
                 <button
                   onClick={() => handleExport('pdf')}
-                  className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                  className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2 transition-colors"
                 >
                   <FileText className="w-4 h-4" /> PDF
                 </button>
                 <button
                   onClick={() => handleExport('md')}
-                  className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                  className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2 transition-colors"
                 >
                   <FileDown className="w-4 h-4" /> Markdown
                 </button>
+                <div className="border-t border-border-subtle my-1" />
                 <button
-                  onClick={() => handleExport('txt')}
-                  className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                  onClick={() => {
+                    setShowExportMenu(false);
+                    const audioBtn = document.querySelector('[data-audio-summary-btn]') as HTMLButtonElement;
+                    if (audioBtn) audioBtn.click();
+                  }}
+                  className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2 transition-colors"
                 >
-                  <FileText className="w-4 h-4" /> Texte
+                  <Headphones className="w-4 h-4" /> Audio (podcast)
                 </button>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
 
