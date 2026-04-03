@@ -12,6 +12,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import {
@@ -437,6 +438,9 @@ export const History: React.FC = () => {
   const [detailCopied, setDetailCopied] = useState(false);
   const [detailShowExportMenu, setDetailShowExportMenu] = useState(false);
   const [detailExporting, setDetailExporting] = useState(false);
+  const detailExportBtnRef = useRef<HTMLButtonElement>(null);
+  const detailExportMenuRef = useRef<HTMLDivElement>(null);
+  const [detailExportMenuPos, setDetailExportMenuPos] = useState({ top: 0, left: 0 });
   // Quick Chat Upgrade states
   const [upgradeMode, setUpgradeMode] = useState<string>('standard');
   const [upgradeDeepResearch, setUpgradeDeepResearch] = useState(false);
@@ -461,6 +465,49 @@ export const History: React.FC = () => {
   const [clearLoading, setClearLoading] = useState(false);
 
   const isProUser = normalizePlanId(user?.plan) === 'pro';
+
+  // 📦 Portal Export Menu — position helper
+  const calcExportMenuPos = useCallback((btnRef: React.RefObject<HTMLButtonElement | null>) => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      return { top: rect.bottom + 4, left: Math.max(8, rect.right - 176) };
+    }
+    return { top: 0, left: 0 };
+  }, []);
+
+  // 📦 Click-outside + scroll/resize handler for all 3 export menus
+  useEffect(() => {
+    const anyOpen = detailShowExportMenu || showExportMenu || metaShowExportMenu;
+    if (!anyOpen) return;
+
+    const closeAll = () => {
+      setDetailShowExportMenu(false);
+      setShowExportMenu(false);
+      setMetaShowExportMenu(false);
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const refs = [
+        { btn: detailExportBtnRef, menu: detailExportMenuRef },
+        { btn: exportBtnRef, menu: exportMenuRef },
+        { btn: metaExportBtnRef, menu: metaExportMenuRef },
+      ];
+      for (const { btn, menu } of refs) {
+        if (btn.current?.contains(target) || menu.current?.contains(target)) return;
+      }
+      closeAll();
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', closeAll, true);
+    window.addEventListener('resize', closeAll);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', closeAll, true);
+      window.removeEventListener('resize', closeAll);
+    };
+  }, [detailShowExportMenu, showExportMenu, metaShowExportMenu]);
 
   // 🎯 Composants Markdown avec timecodes cliquables (ouvrent YouTube)
   const getTimecodeComponents = useCallback((videoId?: string) => {
@@ -1298,14 +1345,14 @@ export const History: React.FC = () => {
                             <span className="hidden sm:inline">{language === 'fr' ? 'Vocal' : 'Voice'}</span>
                           </button>
                         )}
-                        <div className="relative flex-shrink-0">
-                          <button onClick={() => setDetailShowExportMenu(!detailShowExportMenu)} className="btn btn-ghost text-xs min-h-[36px] sm:min-h-[32px]" disabled={detailExporting}>
+                        <div className="flex-shrink-0">
+                          <button ref={detailExportBtnRef} onClick={() => { const pos = calcExportMenuPos(detailExportBtnRef); setDetailExportMenuPos(pos); setDetailShowExportMenu(!detailShowExportMenu); }} className="btn btn-ghost text-xs min-h-[36px] sm:min-h-[32px]" disabled={detailExporting}>
                             {detailExporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
                             <span className="hidden sm:inline">Export</span>
                             <ChevronDown className="w-3 h-3" />
                           </button>
-                          {detailShowExportMenu && (
-                            <div className="absolute right-0 top-full mt-1 w-40 bg-bg-elevated border border-border-default rounded-lg shadow-lg z-10 py-1">
+                          {detailShowExportMenu && createPortal(
+                            <div ref={detailExportMenuRef} className="fixed w-44 bg-bg-elevated border border-border-default rounded-lg shadow-xl py-1 animate-fadeIn" style={{ top: detailExportMenuPos.top, left: detailExportMenuPos.left, zIndex: 9999 }}>
                               <button onClick={() => handleDetailExport('pdf')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
                                 <FileText className="w-4 h-4" /> PDF
                               </button>
@@ -1315,7 +1362,8 @@ export const History: React.FC = () => {
                               <button onClick={() => handleDetailExport('txt')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
                                 <FileText className="w-4 h-4" /> Texte
                               </button>
-                            </div>
+                            </div>,
+                            document.body
                           )}
                         </div>
                       </div>
@@ -2061,11 +2109,17 @@ const PlaylistDetailView: React.FC<{
   const [showKeywordsModal, setShowKeywordsModal] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const exportBtnRef = useRef<HTMLButtonElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+  const [exportMenuPos, setExportMenuPos] = useState({ top: 0, left: 0 });
 
   // 🆕 États pour la toolbar méta-analyse (tous les outils)
   const [metaCopied, setMetaCopied] = useState(false);
   const [metaShowExportMenu, setMetaShowExportMenu] = useState(false);
   const [metaExporting, setMetaExporting] = useState(false);
+  const metaExportBtnRef = useRef<HTMLButtonElement>(null);
+  const metaExportMenuRef = useRef<HTMLDivElement>(null);
+  const [metaExportMenuPos, setMetaExportMenuPos] = useState({ top: 0, left: 0 });
   const [metaShowCitationModal, setMetaShowCitationModal] = useState(false);
   const [metaShowStudyToolsModal, setMetaShowStudyToolsModal] = useState(false);
   const [metaShowKeywordsModal, setMetaShowKeywordsModal] = useState(false);
@@ -2297,9 +2351,10 @@ const PlaylistDetailView: React.FC<{
               </button>
 
               {/* Export */}
-              <div className="relative">
+              <div>
                 <button
-                  onClick={() => setShowExportMenu(!showExportMenu)}
+                  ref={exportBtnRef}
+                  onClick={() => { const pos = calcExportMenuPos(exportBtnRef); setExportMenuPos(pos); setShowExportMenu(!showExportMenu); }}
                   className="btn btn-ghost text-xs"
                   disabled={exporting}
                 >
@@ -2307,8 +2362,8 @@ const PlaylistDetailView: React.FC<{
                   Export
                   <ChevronDown className="w-3 h-3" />
                 </button>
-                {showExportMenu && (
-                  <div className="absolute right-0 top-full mt-1 w-40 bg-bg-elevated border border-border-default rounded-lg shadow-lg z-10 py-1">
+                {showExportMenu && createPortal(
+                  <div ref={exportMenuRef} className="fixed w-44 bg-bg-elevated border border-border-default rounded-lg shadow-xl py-1 animate-fadeIn" style={{ top: exportMenuPos.top, left: exportMenuPos.left, zIndex: 9999 }}>
                     <button
                       onClick={() => handleExport('pdf')}
                       className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
@@ -2327,7 +2382,8 @@ const PlaylistDetailView: React.FC<{
                     >
                       <FileText className="w-4 h-4" /> Texte
                     </button>
-                  </div>
+                  </div>,
+                  document.body
                 )}
               </div>
 
@@ -2720,17 +2776,18 @@ const PlaylistDetailView: React.FC<{
                 </button>
 
                 {/* Export */}
-                <div className="relative">
+                <div>
                   <button
-                    onClick={() => setMetaShowExportMenu(!metaShowExportMenu)}
+                    ref={metaExportBtnRef}
+                    onClick={() => { const pos = calcExportMenuPos(metaExportBtnRef); setMetaExportMenuPos(pos); setMetaShowExportMenu(!metaShowExportMenu); }}
                     className="btn btn-ghost text-xs"
                   >
                     {metaExporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
                     Export
                     <ChevronDown className="w-3 h-3" />
                   </button>
-                  {metaShowExportMenu && (
-                    <div className="absolute right-0 top-full mt-1 w-40 bg-bg-elevated border border-border-default rounded-lg shadow-lg z-10 py-1">
+                  {metaShowExportMenu && createPortal(
+                    <div ref={metaExportMenuRef} className="fixed w-44 bg-bg-elevated border border-border-default rounded-lg shadow-xl py-1 animate-fadeIn" style={{ top: metaExportMenuPos.top, left: metaExportMenuPos.left, zIndex: 9999 }}>
                       <button
                         onClick={() => handleMetaExport('md')}
                         className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
@@ -2743,7 +2800,8 @@ const PlaylistDetailView: React.FC<{
                       >
                         <FileText className="w-4 h-4" /> Texte
                       </button>
-                    </div>
+                    </div>,
+                    document.body
                   )}
                 </div>
 
