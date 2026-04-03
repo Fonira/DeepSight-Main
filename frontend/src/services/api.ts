@@ -1039,9 +1039,10 @@ export const videoApi = {
   },
 
   async exportAudio(summaryId: number, voiceId?: string, speed?: number, audioMode: 'full' | 'condensed' = 'full'): Promise<{ audio_url: string; file_id: string; duration_estimate: number }> {
-    const res = await request(`/api/exports/${summaryId}/audio`, {
+    const res = await request<{ status: string; data: { audio_url: string; file_id: string; duration_estimate: number } }>(`/api/exports/${summaryId}/audio`, {
       method: 'POST',
       body: { voice_id: voiceId || null, speed: speed || 1.0, audio_mode: audioMode },
+      timeout: 120000, // ElevenLabs TTS can take 30-90s
     });
     return res.data;
   },
