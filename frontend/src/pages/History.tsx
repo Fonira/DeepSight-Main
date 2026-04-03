@@ -17,7 +17,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import {
   Search, Trash2, Play, MessageCircle,
-  ChevronRight, Clock, Video, Layers,
+  ChevronRight, Clock, Video, Layers, Swords,
   Grid, List, RefreshCw, BarChart2,
   AlertCircle, X, ArrowLeft, BookOpen,
   Maximize2, ExternalLink, Share2, Mic,
@@ -43,8 +43,10 @@ import { YouTubePlayer, YouTubePlayerRef } from "../components/YouTubePlayer";
 import { CitationExport } from "../components/CitationExport";
 import { StudyToolsModal } from "../components/StudyToolsModal";
 import { KeywordsModal } from "../components/KeywordsModal";
-import { videoApi, shareApi, reliabilityApi, chatApi } from "../services/api";
+import { videoApi, shareApi, reliabilityApi, chatApi, debateApi } from "../services/api";
 import type { Summary, ReliabilityResult, EnrichedConcept } from "../services/api";
+import type { DebateAnalysis } from "../types/debate";
+import { DebateHistoryCard } from "../components/debate";
 import { normalizePlanId, PLAN_LIMITS } from "../config/planPrivileges";
 import { VoiceModal } from "../components/voice/VoiceModal";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
@@ -394,7 +396,7 @@ export const History: React.FC = () => {
   // États
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"videos" | "playlists">("videos");
+  const [activeTab, setActiveTab] = useState<"videos" | "debates">("videos");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -402,6 +404,9 @@ export const History: React.FC = () => {
   // Données
   const [videos, setVideos] = useState<VideoSummary[]>([]);
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
+  const [debates, setDebates] = useState<DebateAnalysis[]>([]);
+  const [debatesTotal, setDebatesTotal] = useState(0);
+  const [debatesPage, setDebatesPage] = useState(1);
   const [stats, setStats] = useState<HistoryStats | null>(null);
   const [selectedPlaylist, setSelectedPlaylist] = useState<PlaylistDetail | null>(null);
   const [selectedPlaylistVideo, setSelectedPlaylistVideo] = useState<PlaylistVideoDetail | null>(null);
@@ -522,8 +527,11 @@ export const History: React.FC = () => {
   useEffect(() => {
     const playlistParam = searchParams.get('playlist');
     if (playlistParam) {
-      setActiveTab('playlists');
       loadPlaylistDetail(playlistParam);
+    }
+    const debateParam = searchParams.get('debate');
+    if (debateParam) {
+      setActiveTab('debates');
     }
     // Open a specific video analysis by summary ID (from RecentAnalyses click)
     const openParam = searchParams.get('open');
@@ -568,18 +576,14 @@ export const History: React.FC = () => {
         // Stats indisponibles — on continue sans
       }
 
-      // Charger les playlists pour tous les utilisateurs (affichage de l'historique)
+      // Charger les débats IA
       try {
-        const playlistsRes = await api.fetchPlaylists({
-          page: playlistsPage,
-          per_page: perPage,
-          search: searchQuery,
-        });
-        setPlaylists(playlistsRes.items || playlistsRes);
-        setPlaylistsTotal(playlistsRes.total || playlistsRes.length);
+        const debatesRes = await debateApi.getHistory(debatesPage, perPage);
+        setDebates(debatesRes.debates || []);
+        setDebatesTotal(debatesRes.total || 0);
       } catch {
-        setPlaylists([]);
-        setPlaylistsTotal(0);
+        setDebates([]);
+        setDebatesTotal(0);
       }
     } catch (err) {
       console.error("History load error:", err);
@@ -587,7 +591,7 @@ export const History: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [videosPage, playlistsPage, selectedCategory, searchQuery, language]);
+  }, [videosPage, debatesPage, selectedCategory, searchQuery, language]);
 
   useEffect(() => {
     loadData();
@@ -982,12 +986,12 @@ export const History: React.FC = () => {
                   </div>
                   <div className="card p-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                        <Layers className="w-5 h-5 text-purple-600" />
+                      <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                        <Swords className="w-5 h-5 text-indigo-600" />
                       </div>
                       <div>
-                        <p className="text-lg sm:text-2xl font-semibold text-text-primary">{stats.total_playlists}</p>
-                        <p className="text-xs text-text-tertiary">Playlists</p>
+                        <p className="text-lg sm:text-2xl font-semibold text-text-primary">{debatesTotal}</p>
+                        <p className="text-xs text-text-tertiary">{language === 'fr' ? 'Débats' : 'Debates'}</p>
                       </div>
                     </div>
                   </div>
@@ -1046,33 +1050,30 @@ export const History: React.FC = () => {
                     {stats?.total_videos || 0}
                   </span>
                 </button>
-                {/* Onglet Playlists - Toujours visible */}
+                {/* Onglet Débat IA */}
                 <button
-                  onClick={() => setActiveTab("playlists")}
+                  onClick={() => setActiveTab("debates")}
                   className={`pb-3 px-4 text-sm font-medium border-b-2 transition-all flex items-center gap-2 ${
-                    activeTab === "playlists"
-                      ? "border-purple-500 text-purple-600 dark:text-purple-400"
+                    activeTab === "debates"
+                      ? "border-indigo-500 text-indigo-600 dark:text-indigo-400"
                       : "border-transparent text-text-tertiary hover:text-text-primary"
                   }`}
                 >
                   <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                    activeTab === "playlists"
-                      ? "bg-purple-500 text-white"
-                      : "bg-purple-100 dark:bg-purple-900/30 text-purple-600"
+                    activeTab === "debates"
+                      ? "bg-indigo-500 text-white"
+                      : "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600"
                   }`}>
-                    <Layers className="w-3.5 h-3.5" />
+                    <Swords className="w-3.5 h-3.5" />
                   </div>
-                  <span>Playlists</span>
+                  <span>{language === 'fr' ? 'Débat IA' : 'AI Debate'}</span>
                   <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    activeTab === "playlists"
-                      ? "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                    activeTab === "debates"
+                      ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
                       : "bg-bg-tertiary text-text-muted"
                   }`}>
-                    {stats?.total_playlists || 0}
+                    {debatesTotal}
                   </span>
-                  {!isProUser && (
-                    <span className="badge bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs border-0">Pro</span>
-                  )}
                 </button>
               </div>
             </header>
@@ -1536,56 +1537,63 @@ export const History: React.FC = () => {
               />
             ) : (
               <section>
-                {/* Section Header Playlists */}
-                <div className="flex items-center gap-3 mb-6 p-4 rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800/50">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
-                    <Layers className="w-6 h-6 text-white" />
+                {/* Section Header Débat IA */}
+                <div className="flex items-center gap-3 mb-6 p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 border border-indigo-200 dark:border-indigo-800/50">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <Swords className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
                     <h2 className="font-semibold text-lg text-text-primary flex items-center gap-2">
-                      {language === 'fr' ? 'Playlists & Corpus' : 'Playlists & Corpus'}
-                      <span className="text-sm font-normal text-purple-600 dark:text-purple-400">
-                        ({playlists.length} {language === 'fr' ? 'collections' : 'collections'})
+                      {language === 'fr' ? 'Débats IA' : 'AI Debates'}
+                      <span className="text-sm font-normal text-indigo-600 dark:text-indigo-400">
+                        ({debatesTotal} {language === 'fr' ? 'débats' : 'debates'})
                       </span>
-                      <span className="badge bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs border-0">Pro</span>
                     </h2>
                     <p className="text-xs text-text-tertiary">
-                      {language === 'fr' 
-                        ? 'Collections de vidéos avec méta-analyse globale • Chat corpus intelligent' 
-                        : 'Video collections with global meta-analysis • Intelligent corpus chat'}
+                      {language === 'fr'
+                        ? 'Confrontation de perspectives entre vidéos • Fact-check automatique'
+                        : 'Confrontation of perspectives between videos • Automatic fact-check'}
                     </p>
                   </div>
                 </div>
 
-                {playlists.length === 0 ? (
-                <div className="card p-12 text-center border-dashed border-2 border-purple-200 dark:border-purple-800/50 bg-purple-50/30 dark:bg-purple-900/10">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-purple-500/20">
-                    <Layers className="w-8 h-8 text-white" />
+                {debates.length === 0 ? (
+                <div className="card p-12 text-center border-dashed border-2 border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/30 dark:bg-indigo-900/10">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/20">
+                    <Swords className="w-8 h-8 text-white" />
                   </div>
                   <h3 className="text-lg font-semibold text-text-primary mb-2">
-                    {language === 'fr' ? 'Aucune playlist analysée' : 'No playlists analyzed'}
+                    {language === 'fr' ? 'Aucun débat IA' : 'No AI debates'}
                   </h3>
                   <p className="text-text-secondary text-sm mb-4">
-                    {language === 'fr' ? 'Analysez votre première playlist YouTube pour une méta-analyse complète !' : 'Analyze your first YouTube playlist for a complete meta-analysis!'}
+                    {language === 'fr' ? 'Confrontez deux vidéos pour voir les convergences et divergences !' : 'Confront two videos to see convergences and divergences!'}
                   </p>
-                  <button onClick={() => navigate('/debate')} className="btn bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:opacity-90">
-                    <Layers className="w-4 h-4 mr-2" />
+                  <button onClick={() => navigate('/debate')} className="btn bg-gradient-to-r from-indigo-500 to-violet-500 text-white hover:opacity-90">
+                    <Swords className="w-4 h-4 mr-2" />
                     {language === 'fr' ? 'Lancer un Débat IA' : 'Start an AI Debate'}
                   </button>
                 </div>
               ) : (
-                <div className={viewMode === "grid" 
-                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" 
+                <div className={viewMode === "grid"
+                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
                   : "space-y-3"
                 }>
-                  {playlists.map((playlist) => (
-                    <PlaylistCard
-                      key={playlist.playlist_id}
-                      playlist={playlist}
+                  {debates.map((debate) => (
+                    <DebateHistoryCard
+                      key={debate.id}
+                      debate={debate}
                       language={language}
-                      onView={() => handleViewPlaylist(playlist)}
-                      onChat={() => handleOpenPlaylistChat(playlist)}
-                      onDelete={() => handleDeletePlaylist(playlist)}
+                      onView={() => navigate(`/debate?id=${debate.id}`)}
+                      onDelete={async () => {
+                        if (!confirm(language === 'fr' ? 'Supprimer ce débat ?' : 'Delete this debate?')) return;
+                        try {
+                          await debateApi.delete(debate.id);
+                          setDebates(prev => prev.filter(d => d.id !== debate.id));
+                          setDebatesTotal(prev => prev - 1);
+                        } catch (err) {
+                          console.error("Delete debate error:", err);
+                        }
+                      }}
                     />
                   ))}
                 </div>
@@ -1594,21 +1602,21 @@ export const History: React.FC = () => {
             )}
 
             {/* Pagination */}
-            {!selectedPlaylist && ((activeTab === "videos" && videosTotal > perPage) || (activeTab === "playlists" && playlistsTotal > perPage)) && (
+            {!selectedPlaylist && ((activeTab === "videos" && videosTotal > perPage) || (activeTab === "debates" && debatesTotal > perPage)) && (
               <div className="flex items-center justify-center gap-4 mt-8">
                 <button
-                  onClick={() => activeTab === "videos" ? setVideosPage(p => Math.max(1, p - 1)) : setPlaylistsPage(p => Math.max(1, p - 1))}
-                  disabled={(activeTab === "videos" ? videosPage : playlistsPage) === 1}
+                  onClick={() => activeTab === "videos" ? setVideosPage(p => Math.max(1, p - 1)) : setDebatesPage(p => Math.max(1, p - 1))}
+                  disabled={(activeTab === "videos" ? videosPage : debatesPage) === 1}
                   className="btn btn-secondary disabled:opacity-50"
                 >
                   {language === 'fr' ? 'Précédent' : 'Previous'}
                 </button>
                 <span className="text-text-tertiary text-sm">
-                  Page {activeTab === "videos" ? videosPage : playlistsPage} / {Math.ceil((activeTab === "videos" ? videosTotal : playlistsTotal) / perPage)}
+                  Page {activeTab === "videos" ? videosPage : debatesPage} / {Math.ceil((activeTab === "videos" ? videosTotal : debatesTotal) / perPage)}
                 </span>
                 <button
-                  onClick={() => activeTab === "videos" ? setVideosPage(p => p + 1) : setPlaylistsPage(p => p + 1)}
-                  disabled={(activeTab === "videos" ? videosPage : playlistsPage) >= Math.ceil((activeTab === "videos" ? videosTotal : playlistsTotal) / perPage)}
+                  onClick={() => activeTab === "videos" ? setVideosPage(p => p + 1) : setDebatesPage(p => p + 1)}
+                  disabled={(activeTab === "videos" ? videosPage : debatesPage) >= Math.ceil((activeTab === "videos" ? videosTotal : debatesTotal) / perPage)}
                   className="btn btn-secondary disabled:opacity-50"
                 >
                   {language === 'fr' ? 'Suivant' : 'Next'}
@@ -1717,30 +1725,28 @@ export const History: React.FC = () => {
                 <Video className="w-5 h-5 text-blue-500" />
               </label>
 
-              {isProUser && (
-                <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                  clearType === 'playlists' 
-                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' 
-                    : 'border-border-subtle hover:border-purple-300 dark:hover:border-purple-800'
-                }`}>
-                  <input
-                    type="radio"
-                    name="clearType"
-                    checked={clearType === 'playlists'}
-                    onChange={() => setClearType('playlists')}
-                    className="w-4 h-4 text-purple-500"
-                  />
-                  <div className="flex-1">
-                    <p className="font-medium text-text-primary">
-                      {language === 'fr' ? 'Playlists uniquement' : 'Playlists only'}
-                    </p>
-                    <p className="text-xs text-text-tertiary">
-                      {stats?.total_playlists || 0} playlists
-                    </p>
-                  </div>
-                  <Layers className="w-5 h-5 text-purple-500" />
-                </label>
-              )}
+              <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                clearType === 'playlists'
+                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                  : 'border-border-subtle hover:border-indigo-300 dark:hover:border-indigo-800'
+              }`}>
+                <input
+                  type="radio"
+                  name="clearType"
+                  checked={clearType === 'playlists'}
+                  onChange={() => setClearType('playlists')}
+                  className="w-4 h-4 text-indigo-500"
+                />
+                <div className="flex-1">
+                  <p className="font-medium text-text-primary">
+                    {language === 'fr' ? 'Débats IA uniquement' : 'AI Debates only'}
+                  </p>
+                  <p className="text-xs text-text-tertiary">
+                    {debatesTotal} {language === 'fr' ? 'débats' : 'debates'}
+                  </p>
+                </div>
+                <Swords className="w-5 h-5 text-indigo-500" />
+              </label>
             </div>
 
             {/* Actions */}

@@ -6,3 +6,4 @@ export { DebateStatusTracker } from './DebateStatusTracker';
 export { DebateCreateForm } from './DebateCreateForm';
 export { DebateSummaryCard } from './DebateSummaryCard';
 export { DebateChat } from './DebateChat';
+export { DebateHistoryCard } from './DebateHistoryCard';
