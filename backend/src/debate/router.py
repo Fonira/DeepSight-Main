@@ -35,6 +35,8 @@ from db.database import (
     get_session,
 )
 from utils.video_id import extract_video_id
+from transcripts.youtube import get_video_info, get_transcript_with_timestamps
+from transcripts.tiktok import get_tiktok_video_info, get_tiktok_transcript
 
 from .schemas import (
     DebateChatMessageResponse,
@@ -102,6 +104,8 @@ def _debate_to_result(debate: DebateAnalysis) -> DebateResultResponse:
         id=debate.id,
         video_a_id=debate.video_a_id,
         video_b_id=debate.video_b_id,
+        platform_a=getattr(debate, 'platform_a', None) or "youtube",
+        platform_b=getattr(debate, 'platform_b', None),
         video_a_title=debate.video_a_title or "Vidéo A",
         video_b_title=debate.video_b_title,
         video_a_channel=debate.video_a_channel,
@@ -335,8 +339,6 @@ async def _run_debate_pipeline(
     6. Fact-check via Perplexity
     7. Generate debate summary
     """
-    from transcripts.youtube import get_video_info, get_transcript_with_timestamps
-
     # Select model based on plan
     plan_limits = PLAN_LIMITS.get(user_plan, PLAN_LIMITS["free"])
     model = plan_limits.get("default_model", "mistral-small-2603")
@@ -357,18 +359,31 @@ async def _run_debate_pipeline(
             debate.status = "pending"
             await session.commit()
 
-            video_a_info = await get_video_info(video_a_id)
+            # Get video A info — YouTube or TikTok
+            if platform_a == "tiktok":
+                tiktok_url_a = f"https://www.tiktok.com/@user/video/{video_a_id}"
+                video_a_info = await get_tiktok_video_info(tiktok_url_a)
+            else:
+                video_a_info = await get_video_info(video_a_id)
+
             if video_a_info:
                 debate.video_a_title = video_a_info.get("title", "")[:500]
-                debate.video_a_channel = video_a_info.get("channel", "")[:255]
-                debate.video_a_thumbnail = (
-                    video_a_info.get("thumbnail_url")
-                    or video_a_info.get("thumbnail")
-                    or f"https://img.youtube.com/vi/{video_a_id}/maxresdefault.jpg"
-                )
+                debate.video_a_channel = video_a_info.get("channel", video_a_info.get("author", ""))[:255]
+                thumb_a = video_a_info.get("thumbnail_url") or video_a_info.get("thumbnail") or ""
+                if not thumb_a and platform_a == "youtube":
+                    thumb_a = f"https://img.youtube.com/vi/{video_a_id}/maxresdefault.jpg"
+                debate.video_a_thumbnail = thumb_a
                 await session.commit()
 
-            transcript_a, _, lang_a = await get_transcript_with_timestamps(video_a_id)
+            # Get transcript A — YouTube or TikTok
+            if platform_a == "tiktok":
+                tiktok_url_a = f"https://www.tiktok.com/@user/video/{video_a_id}"
+                transcript_a_result = await get_tiktok_transcript(tiktok_url_a)
+                transcript_a = transcript_a_result if isinstance(transcript_a_result, str) else (transcript_a_result[0] if transcript_a_result else None)
+                lang_a = "fr"
+            else:
+                transcript_a, _, lang_a = await get_transcript_with_timestamps(video_a_id)
+
             if not transcript_a:
                 debate.status = "failed"
                 debate.debate_summary = "Impossible de récupérer la transcription de la vidéo A."
@@ -448,20 +463,34 @@ async def _run_debate_pipeline(
             # ── Step 4: Get video B transcript ──
             _debate_task_store[debate_id] = {"status": "analyzing_b", "message": "Analyse de la vidéo opposée..."}
 
-            video_b_info = await get_video_info(actual_video_b_id)
+            # Determine platform B (auto-discovered videos are always YouTube from Brave Search)
+            actual_platform_b = getattr(debate, 'platform_b', None) or platform_b or "youtube"
+
+            if actual_platform_b == "tiktok":
+                tiktok_url_b = f"https://www.tiktok.com/@user/video/{actual_video_b_id}"
+                video_b_info = await get_tiktok_video_info(tiktok_url_b)
+            else:
+                video_b_info = await get_video_info(actual_video_b_id)
+
             if video_b_info:
                 if not debate.video_b_title:
                     debate.video_b_title = video_b_info.get("title", "")[:500]
                 if not debate.video_b_channel:
-                    debate.video_b_channel = video_b_info.get("channel", "")[:255]
-                debate.video_b_thumbnail = (
-                    video_b_info.get("thumbnail_url")
-                    or video_b_info.get("thumbnail")
-                    or f"https://img.youtube.com/vi/{actual_video_b_id}/maxresdefault.jpg"
-                )
+                    debate.video_b_channel = video_b_info.get("channel", video_b_info.get("author", ""))[:255]
+                thumb_b = video_b_info.get("thumbnail_url") or video_b_info.get("thumbnail") or ""
+                if not thumb_b and actual_platform_b == "youtube":
+                    thumb_b = f"https://img.youtube.com/vi/{actual_video_b_id}/maxresdefault.jpg"
+                debate.video_b_thumbnail = thumb_b
                 await session.commit()
 
-            transcript_b, _, _ = await get_transcript_with_timestamps(actual_video_b_id)
+            # Get transcript B — YouTube or TikTok
+            if actual_platform_b == "tiktok":
+                tiktok_url_b = f"https://www.tiktok.com/@user/video/{actual_video_b_id}"
+                transcript_b_result = await get_tiktok_transcript(tiktok_url_b)
+                transcript_b = transcript_b_result if isinstance(transcript_b_result, str) else (transcript_b_result[0] if transcript_b_result else None)
+            else:
+                transcript_b, _, _ = await get_transcript_with_timestamps(actual_video_b_id)
+
             if not transcript_b:
                 debate.status = "failed"
                 debate.debate_summary = "Impossible de récupérer la transcription de la vidéo B."
@@ -790,8 +819,14 @@ async def get_debate_status(
         debate_id=debate_id,
         status=status,
         progress_message=message,
+        video_a_id=debate.video_a_id,
+        video_b_id=debate.video_b_id,
         video_a_title=debate.video_a_title,
         video_b_title=debate.video_b_title,
+        video_a_channel=debate.video_a_channel,
+        video_b_channel=debate.video_b_channel,
+        video_a_thumbnail=debate.video_a_thumbnail,
+        video_b_thumbnail=debate.video_b_thumbnail,
     )
 
 

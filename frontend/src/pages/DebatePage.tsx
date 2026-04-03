@@ -35,6 +35,8 @@ const MOCK_DEBATE: DebateAnalysis = {
   id: 1,
   video_a_id: 'dQw4w9WgXcQ',
   video_b_id: 'jNQXAC9IVRw',
+  platform_a: 'youtube',
+  platform_b: 'youtube',
   video_a_title: "Pourquoi l'IA ne remplacera JAMAIS les développeurs",
   video_b_title: 'Les développeurs vont disparaître d\'ici 5 ans — voici pourquoi',
   video_a_channel: 'CodeAvecHugo',
@@ -313,8 +315,14 @@ export const DebatePage: React.FC = () => {
               ? {
                   ...prev,
                   status: statusRes.status as DebateAnalysis['status'],
+                  ...(statusRes.video_a_id && { video_a_id: statusRes.video_a_id }),
+                  ...(statusRes.video_b_id && { video_b_id: statusRes.video_b_id }),
                   ...(statusRes.video_a_title && { video_a_title: statusRes.video_a_title }),
                   ...(statusRes.video_b_title && { video_b_title: statusRes.video_b_title }),
+                  ...(statusRes.video_a_channel && { video_a_channel: statusRes.video_a_channel }),
+                  ...(statusRes.video_b_channel && { video_b_channel: statusRes.video_b_channel }),
+                  ...(statusRes.video_a_thumbnail && { video_a_thumbnail: statusRes.video_a_thumbnail }),
+                  ...(statusRes.video_b_thumbnail && { video_b_thumbnail: statusRes.video_b_thumbnail }),
                 }
               : prev
           );

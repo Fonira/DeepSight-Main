@@ -57,10 +57,14 @@ export type DebateMode = 'auto' | 'manual';
 // ⚔️ DEBATE ANALYSIS — Analyse complète d'un débat
 // ═══════════════════════════════════════════════════════════════════════════════
 
+export type VideoPlatform = 'youtube' | 'tiktok';
+
 export interface DebateAnalysis {
   id: number;
   video_a_id: string;
   video_b_id: string | null;
+  platform_a: VideoPlatform;
+  platform_b: VideoPlatform | null;
   video_a_title: string;
   video_b_title: string | null;
   video_a_channel: string | null;

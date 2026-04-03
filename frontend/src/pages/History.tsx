@@ -475,39 +475,26 @@ export const History: React.FC = () => {
     return { top: 0, left: 0 };
   }, []);
 
-  // 📦 Click-outside + scroll/resize handler for all 3 export menus
+  // 📦 Click-outside + scroll/resize handler for detail export menu
   useEffect(() => {
-    const anyOpen = detailShowExportMenu || showExportMenu || metaShowExportMenu;
-    if (!anyOpen) return;
-
-    const closeAll = () => {
-      setDetailShowExportMenu(false);
-      setShowExportMenu(false);
-      setMetaShowExportMenu(false);
-    };
+    if (!detailShowExportMenu) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
-      const refs = [
-        { btn: detailExportBtnRef, menu: detailExportMenuRef },
-        { btn: exportBtnRef, menu: exportMenuRef },
-        { btn: metaExportBtnRef, menu: metaExportMenuRef },
-      ];
-      for (const { btn, menu } of refs) {
-        if (btn.current?.contains(target) || menu.current?.contains(target)) return;
-      }
-      closeAll();
+      if (detailExportBtnRef.current?.contains(target) || detailExportMenuRef.current?.contains(target)) return;
+      setDetailShowExportMenu(false);
     };
+    const handleDismiss = () => setDetailShowExportMenu(false);
 
     document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('scroll', closeAll, true);
-    window.addEventListener('resize', closeAll);
+    window.addEventListener('scroll', handleDismiss, true);
+    window.addEventListener('resize', handleDismiss);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('scroll', closeAll, true);
-      window.removeEventListener('resize', closeAll);
+      window.removeEventListener('scroll', handleDismiss, true);
+      window.removeEventListener('resize', handleDismiss);
     };
-  }, [detailShowExportMenu, showExportMenu, metaShowExportMenu]);
+  }, [detailShowExportMenu]);
 
   // 🎯 Composants Markdown avec timecodes cliquables (ouvrent YouTube)
   const getTimecodeComponents = useCallback((videoId?: string) => {
@@ -2141,6 +2128,32 @@ const PlaylistDetailView: React.FC<{
   const [metaShowCitationModal, setMetaShowCitationModal] = useState(false);
   const [metaShowStudyToolsModal, setMetaShowStudyToolsModal] = useState(false);
   const [metaShowKeywordsModal, setMetaShowKeywordsModal] = useState(false);
+
+  // 📦 Click-outside + scroll/resize handler for playlist export menus
+  useEffect(() => {
+    const anyOpen = showExportMenu || metaShowExportMenu;
+    if (!anyOpen) return;
+    const closeAll = () => { setShowExportMenu(false); setMetaShowExportMenu(false); };
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const refs = [
+        { btn: exportBtnRef, menu: exportMenuRef },
+        { btn: metaExportBtnRef, menu: metaExportMenuRef },
+      ];
+      for (const { btn, menu } of refs) {
+        if (btn.current?.contains(target) || menu.current?.contains(target)) return;
+      }
+      closeAll();
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', closeAll, true);
+    window.addEventListener('resize', closeAll);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', closeAll, true);
+      window.removeEventListener('resize', closeAll);
+    };
+  }, [showExportMenu, metaShowExportMenu]);
 
   // 🆕 Handler: Copy vidéo
   const handleCopy = async () => {

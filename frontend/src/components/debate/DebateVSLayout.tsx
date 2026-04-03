@@ -27,6 +27,7 @@ export const DebateVSLayout: React.FC<DebateVSLayoutProps> = ({ debate }) => {
           channel={debate.video_a_channel ?? ''}
           thumbnail={debate.video_a_thumbnail ?? ''}
           videoId={debate.video_a_id}
+          platform={debate.platform_a ?? 'youtube'}
           thesis={debate.thesis_a ?? ''}
           arguments={debate.arguments_a}
         />
@@ -66,6 +67,7 @@ export const DebateVSLayout: React.FC<DebateVSLayoutProps> = ({ debate }) => {
           channel={debate.video_b_channel ?? ''}
           thumbnail={debate.video_b_thumbnail ?? ''}
           videoId={debate.video_b_id ?? ''}
+          platform={debate.platform_b ?? 'youtube'}
           thesis={debate.thesis_b ?? ''}
           arguments={debate.arguments_b}
         />

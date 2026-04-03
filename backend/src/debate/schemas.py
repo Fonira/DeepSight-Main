@@ -42,8 +42,14 @@ class DebateStatusResponse(BaseModel):
     debate_id: int
     status: str
     progress_message: str
+    video_a_id: Optional[str] = None
+    video_b_id: Optional[str] = None
     video_a_title: Optional[str] = None
     video_b_title: Optional[str] = None
+    video_a_channel: Optional[str] = None
+    video_b_channel: Optional[str] = None
+    video_a_thumbnail: Optional[str] = None
+    video_b_thumbnail: Optional[str] = None
 
 
 class DebateResultResponse(BaseModel):
@@ -51,6 +57,8 @@ class DebateResultResponse(BaseModel):
     id: int
     video_a_id: str
     video_b_id: Optional[str] = None
+    platform_a: str = "youtube"
+    platform_b: Optional[str] = None
     video_a_title: str
     video_b_title: Optional[str] = None
     video_a_channel: Optional[str] = None

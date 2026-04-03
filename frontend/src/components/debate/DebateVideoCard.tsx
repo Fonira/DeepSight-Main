@@ -1,12 +1,14 @@
 /**
  * DebateVideoCard — Carte vidéo pour un côté du débat (A ou B)
- * Affiche player YouTube intégré (ou thumbnail fallback), titre, chaîne, thèse et arguments avec badges de force
+ * Affiche player YouTube/TikTok intégré (ou thumbnail fallback), titre, chaîne, thèse et arguments
+ * Supporte YouTube et TikTok avec détection automatique de la plateforme
  */
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Zap, AlertTriangle, Play } from 'lucide-react';
 import type { DebateArgument } from '../../types/debate';
+import type { VideoPlatform } from '../../types/debate';
 
 interface DebateVideoCardProps {
   side: 'a' | 'b';
@@ -14,6 +16,7 @@ interface DebateVideoCardProps {
   channel: string;
   thumbnail: string;
   videoId: string;
+  platform?: VideoPlatform;
   thesis: string;
   arguments: DebateArgument[];
 }
@@ -57,22 +60,45 @@ const SIDE_ACCENT = {
   },
 };
 
+/** Detect platform from video ID format if not explicitly provided */
+function detectPlatform(videoId: string, platform?: VideoPlatform): VideoPlatform {
+  if (platform && platform !== 'youtube' && platform !== 'tiktok') return 'youtube';
+  if (platform) return platform;
+  // TikTok IDs are long numeric strings (15-20 digits)
+  if (/^\d{10,}$/.test(videoId)) return 'tiktok';
+  return 'youtube';
+}
+
 export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
   side,
   title,
   channel,
   thumbnail,
   videoId,
+  platform: platformProp,
   thesis,
   arguments: args,
 }) => {
   const accent = SIDE_ACCENT[side];
   const [showPlayer, setShowPlayer] = useState(false);
+  const platform = detectPlatform(videoId, platformProp);
 
-  // Build thumbnail URL: use provided, or construct from videoId
-  const thumbnailUrl = thumbnail || (videoId ? `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg` : '');
+  // Build thumbnail URL with fallback chain
+  const getThumbnailUrl = (): string => {
+    if (thumbnail) return thumbnail;
+    if (platform === 'youtube' && videoId) {
+      return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    }
+    return '';
+  };
+
+  const thumbnailUrl = getThumbnailUrl();
   const [imgError, setImgError] = useState(false);
-  const fallbackThumbnail = videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : '';
+
+  // YouTube fallback: maxresdefault → hqdefault → mqdefault
+  const fallbackThumbnail = platform === 'youtube' && videoId
+    ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+    : '';
 
   return (
     <div
@@ -81,13 +107,23 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
       {/* Video Player / Thumbnail */}
       <div className="relative aspect-video overflow-hidden bg-black/40">
         {showPlayer && videoId ? (
-          <iframe
-            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
-            title={title}
-            className="w-full h-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
+          platform === 'tiktok' ? (
+            <iframe
+              src={`https://www.tiktok.com/embed/v2/${videoId}`}
+              title={title}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope"
+              allowFullScreen
+            />
+          ) : (
+            <iframe
+              src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
+              title={title}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          )
         ) : (
           <>
             {thumbnailUrl && !imgError ? (
@@ -96,21 +132,28 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
                 alt={title}
                 className="w-full h-full object-cover"
                 onError={() => {
-                  if (!imgError && fallbackThumbnail && thumbnailUrl !== fallbackThumbnail) {
-                    setImgError(true);
-                  }
+                  if (!imgError) setImgError(true);
                 }}
               />
-            ) : fallbackThumbnail && imgError ? (
+            ) : imgError && fallbackThumbnail ? (
               <img
                 src={fallbackThumbnail}
                 alt={title}
                 className="w-full h-full object-cover"
               />
             ) : (
-              /* Placeholder when no thumbnail at all */
-              <div className="w-full h-full flex items-center justify-center bg-white/5">
-                <span className="text-white/20 text-sm">Aperçu indisponible</span>
+              /* Placeholder gradient when no thumbnail */
+              <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${
+                platform === 'tiktok'
+                  ? 'from-pink-500/20 via-black/40 to-cyan-500/20'
+                  : 'from-red-500/20 via-black/40 to-white/5'
+              }`}>
+                <div className="text-center">
+                  <span className="text-3xl">{platform === 'tiktok' ? '🎵' : '▶️'}</span>
+                  <p className="text-white/30 text-xs mt-2">
+                    {platform === 'tiktok' ? 'TikTok' : 'YouTube'}
+                  </p>
+                </div>
               </div>
             )}
             <div className={`absolute inset-0 bg-gradient-to-t ${accent.gradient}`} />
@@ -128,11 +171,17 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
             )}
           </>
         )}
+        {/* Badge Vidéo A/B + Platform badge */}
         <span
           className={`absolute top-3 left-3 text-xs font-semibold px-2 py-1 rounded-md border ${accent.badge} z-10`}
         >
           {accent.label}
         </span>
+        {platform === 'tiktok' && (
+          <span className="absolute top-3 right-3 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-black/50 text-white/70 border border-white/10 z-10">
+            TikTok
+          </span>
+        )}
       </div>
 
       {/* Info */}

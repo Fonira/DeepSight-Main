@@ -676,12 +676,14 @@ class DebateAnalysis(Base):
 
     # Vidéo A (source)
     video_a_id = Column(String(100), nullable=False)
+    platform_a = Column(String(20), default="youtube")  # youtube / tiktok
     video_a_title = Column(String(500))
     video_a_channel = Column(String(255))
     video_a_thumbnail = Column(Text)
 
     # Vidéo B (opposée, peut être trouvée automatiquement)
     video_b_id = Column(String(100))
+    platform_b = Column(String(20))  # youtube / tiktok
     video_b_title = Column(String(500))
     video_b_channel = Column(String(255))
     video_b_thumbnail = Column(Text)
@@ -1125,10 +1127,12 @@ async def run_schema_migrations():
             id SERIAL PRIMARY KEY,
             user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             video_a_id VARCHAR(100) NOT NULL,
+            platform_a VARCHAR(20) DEFAULT 'youtube',
             video_a_title VARCHAR(500),
             video_a_channel VARCHAR(255),
             video_a_thumbnail TEXT,
             video_b_id VARCHAR(100),
+            platform_b VARCHAR(20),
             video_b_title VARCHAR(500),
             video_b_channel VARCHAR(255),
             video_b_thumbnail TEXT,
@@ -1287,5 +1291,4 @@ async def create_admin_if_not_exists():
                 existing.password_hash = correct_hash
                 existing.is_admin = True
                 existing.plan = "unlimited"
-                await session.commit()
-                print(f"✅ Admin user updated", flush=True)
+                
