@@ -2,6 +2,17 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
+    {
+      "source": "/s/:token",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i)(facebookexternalhit|Twitterbot|LinkedInBot|WhatsApp|Slackbot|TelegramBot|Discordbot|Googlebot|bingbot)"
+        }
+      ],
+      "destination": "https://api.deepsightsynthesis.com/api/share/:token/og"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

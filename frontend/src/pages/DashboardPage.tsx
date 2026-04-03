@@ -52,6 +52,10 @@ import { CustomizationPanel } from "../components/analysis/CustomizationPanel";
 import { AnalysisCustomization, DEFAULT_CUSTOMIZATION, customizationToApiParams } from "../types/analysis";
 // 📊 AnalysisHub — Panel intelligent à onglets
 import { AnalysisHub } from "../components/AnalysisHub";
+// 📥 Export & Share
+import { ExportMenu } from "../components/analysis/ExportMenu";
+import { AudioPlayer } from "../components/analysis/AudioPlayer";
+import { ShareButton } from "../components/analysis/ShareButton";
 // 🎙️ Voice Chat
 import VoiceButton from "../components/voice/VoiceButton";
 import { VoiceModal } from "../components/voice/VoiceModal";
@@ -160,6 +164,9 @@ export const DashboardPage: React.FC = () => {
 
   // 🆕 État pour détection de playlist
   const [playlistDetected, setPlaylistDetected] = useState(false);
+
+  // 📥 Audio Player
+  const [audioPlayerUrl, setAudioPlayerUrl] = useState<string | null>(null);
 
   // 🎙️ Voice Chat
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
@@ -1242,6 +1249,19 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* 📥 Export & Share Action Bar */}
+                <div className="flex items-center gap-1 px-1">
+                  <ExportMenu
+                    summaryId={selectedSummary.id}
+                    videoTitle={selectedSummary.video_title}
+                    onAudioReady={(url) => setAudioPlayerUrl(url)}
+                  />
+                  <ShareButton
+                    videoId={selectedSummary.video_id}
+                    videoTitle={selectedSummary.video_title}
+                  />
+                </div>
+
                 {/* 💬 Bandeau Chat IA — Design glassmorphism premium */}
                 {!chatOpen && (
                   <button
@@ -1381,6 +1401,15 @@ export const DashboardPage: React.FC = () => {
         analysisCount={analysisCountThisMonth}
         videoDurationSeconds={lastAnalysisTimeSaved}
       />
+
+      {/* 🔊 Audio Player (fixed bottom bar) */}
+      {audioPlayerUrl && (
+        <AudioPlayer
+          audioUrl={audioPlayerUrl}
+          title={selectedSummary?.video_title || 'Analyse'}
+          onClose={() => setAudioPlayerUrl(null)}
+        />
+      )}
 
       {/* CSS pour animations (shimmer) */}
       <style>{`
