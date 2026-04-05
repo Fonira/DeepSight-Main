@@ -21,7 +21,13 @@ Tracking : Table onboarding_email_log (auto-creee si absente).
 import asyncio
 from datetime import datetime, timedelta
 from sqlalchemy import (
-    Column, Integer, String, DateTime, func, select, and_,
+    Column,
+    Integer,
+    String,
+    DateTime,
+    func,
+    select,
+    and_,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,14 +46,18 @@ email_service = EmailService()
 # 📊 TRACKING — Table de log onboarding (legere, auto-creee)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class OnboardingEmailLog(Base):
     """Log des emails onboarding envoyes — garantit l'idempotence."""
+
     __tablename__ = "onboarding_email_log"
     __table_args__ = {"extend_existing": True}
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, nullable=False, index=True)
-    email_key = Column(String(20), nullable=False)  # "j1", "j3", "j5", "j7", "j10", "j14"
+    email_key = Column(
+        String(20), nullable=False
+    )  # "j1", "j3", "j5", "j7", "j10", "j14"
     sent_at = Column(DateTime, default=func.now())
 
 
@@ -61,7 +71,9 @@ async def _ensure_table_exists(db: AsyncSession) -> None:
             )
         )
     except Exception as e:
-        logger.warning("Could not ensure onboarding_email_log table", extra={"error": str(e)})
+        logger.warning(
+            "Could not ensure onboarding_email_log table", extra={"error": str(e)}
+        )
 
 
 async def _get_sent_keys(db: AsyncSession, user_id: int) -> set[str]:
@@ -82,7 +94,10 @@ async def _mark_email_sent(db: AsyncSession, user_id: int, email_key: str) -> No
         await db.flush()
     except Exception as e:
         await db.rollback()
-        logger.error("Failed to mark email sent", extra={"user_id": user_id, "email_key": email_key, "error": str(e)})
+        logger.error(
+            "Failed to mark email sent",
+            extra={"user_id": user_id, "email_key": email_key, "error": str(e)},
+        )
         raise
 
 
@@ -90,9 +105,10 @@ async def _mark_email_sent(db: AsyncSession, user_id: int, email_key: str) -> No
 # 📧 EMAIL SENDERS — Jinja2 templates
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 async def _send_j1_first_analysis(user: User) -> bool:
     """J+1 : Tutoriel — votre premiere analyse en 30 secondes."""
-    username = user.username or user.email.split('@')[0]
+    username = user.username or user.email.split("@")[0]
     html = email_service._render("onboarding_j1.html", username=username)
     return await email_service.send_email(
         to=user.email,
@@ -112,7 +128,7 @@ async def _send_j1_first_analysis(user: User) -> bool:
 
 async def _send_j3_chat_discovery(user: User) -> bool:
     """J+3 : Avez-vous essaye le chat contextuel ?"""
-    username = user.username or user.email.split('@')[0]
+    username = user.username or user.email.split("@")[0]
     html = email_service._render("onboarding_j3.html", username=username)
     return await email_service.send_email(
         to=user.email,
@@ -130,7 +146,7 @@ async def _send_j3_chat_discovery(user: User) -> bool:
 
 async def _send_j5_flashcards(user: User) -> bool:
     """J+5 : Transformez vos videos en flashcards."""
-    username = user.username or user.email.split('@')[0]
+    username = user.username or user.email.split("@")[0]
     html = email_service._render("onboarding_j5.html", username=username)
     return await email_service.send_email(
         to=user.email,
@@ -148,7 +164,7 @@ async def _send_j5_flashcards(user: User) -> bool:
 
 async def _send_j7_weekly_recap(user: User) -> bool:
     """J+7 : Bilan premiere semaine + teaser Pro."""
-    username = user.username or user.email.split('@')[0]
+    username = user.username or user.email.split("@")[0]
     plan = user.plan or "free"
 
     html = email_service._render(
@@ -174,11 +190,11 @@ async def _send_j7_weekly_recap(user: User) -> bool:
 
 async def _send_j10_european_ai(user: User) -> bool:
     """J+10 : Differenciateur europeen — Mistral AI / RGPD."""
-    username = user.username or user.email.split('@')[0]
+    username = user.username or user.email.split("@")[0]
     html = email_service._render("onboarding_j10.html", username=username)
     return await email_service.send_email(
         to=user.email,
-        subject=f"IA 100% europeenne — vos donnees restent en Europe",
+        subject="IA 100% europeenne — vos donnees restent en Europe",
         html_content=html,
         text_content=(
             f"Bonjour {username},\n\n"
@@ -194,11 +210,11 @@ async def _send_j14_trial_cta(user: User) -> bool:
     if (user.plan or "free") != "free":
         return True  # Skip — already on a paid plan
 
-    username = user.username or user.email.split('@')[0]
+    username = user.username or user.email.split("@")[0]
     html = email_service._render("onboarding_j14.html", username=username)
     return await email_service.send_email(
         to=user.email,
-        subject=f"7 jours Pro gratuits — essayez sans engagement",
+        subject="7 jours Pro gratuits — essayez sans engagement",
         html_content=html,
         text_content=(
             f"Bonjour {username},\n\n"
@@ -221,10 +237,10 @@ async def _send_j14_trial_cta(user: User) -> bool:
 
 # (email_key, days_after_signup, sender_function)
 ONBOARDING_SEQUENCE = [
-    ("j1",  1,  _send_j1_first_analysis),
-    ("j3",  3,  _send_j3_chat_discovery),
-    ("j5",  5,  _send_j5_flashcards),
-    ("j7",  7,  _send_j7_weekly_recap),
+    ("j1", 1, _send_j1_first_analysis),
+    ("j3", 3, _send_j3_chat_discovery),
+    ("j5", 5, _send_j5_flashcards),
+    ("j7", 7, _send_j7_weekly_recap),
     ("j10", 10, _send_j10_european_ai),
     ("j14", 14, _send_j14_trial_cta),
 ]
@@ -236,6 +252,7 @@ LEGACY_KEY_MAP = {"j2": "j3"}  # j2 feature discovery → now j3
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🚀 ORCHESTRATEUR
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 async def process_onboarding_emails(db: AsyncSession) -> dict[str, int]:
     """
@@ -273,7 +290,10 @@ async def process_onboarding_emails(db: AsyncSession) -> dict[str, int]:
 
     for user in users:
         if emails_sent_this_run >= MAX_EMAILS_PER_RUN:
-            logger.warning("Onboarding cron hit MAX_EMAILS_PER_RUN cap", extra={"cap": MAX_EMAILS_PER_RUN})
+            logger.warning(
+                "Onboarding cron hit MAX_EMAILS_PER_RUN cap",
+                extra={"cap": MAX_EMAILS_PER_RUN},
+            )
             break
 
         try:
@@ -304,7 +324,9 @@ async def process_onboarding_emails(db: AsyncSession) -> dict[str, int]:
 
         except Exception as e:
             stats["errors"] += 1
-            logger.error("Onboarding email error", extra={"user_id": user.id, "error": str(e)})
+            logger.error(
+                "Onboarding email error", extra={"user_id": user.id, "error": str(e)}
+            )
 
     # Commit final unique
     try:

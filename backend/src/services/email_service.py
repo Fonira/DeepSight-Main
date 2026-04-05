@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Optional
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from core.config import EMAIL_CONFIG, APP_NAME, FRONTEND_URL
+from core.config import APP_NAME, FRONTEND_URL
+
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates" / "emails"
 
 
@@ -46,6 +47,7 @@ class EmailService:
             priority: True for critical emails (verification, password reset)
         """
         from services.email_queue import email_queue
+
         return await email_queue.enqueue(
             to=to,
             subject=subject,
@@ -133,7 +135,7 @@ class EmailService:
         )
         return await self.send_email(
             to=to,
-            subject=f"Echec de paiement — Action requise",
+            subject="Echec de paiement — Action requise",
             html_content=html,
             text_content=(
                 f"Bonjour {username},\n\n"
