@@ -27,6 +27,8 @@ import {
   PLANS_INFO as FALLBACK_PLANS_INFO,
   PLAN_LIMITS as FALLBACK_PLAN_LIMITS,
   PLAN_HIERARCHY,
+  DIFFERENTIATORS,
+  CREDIT_PACKS,
   type PlanId,
 } from '../config/planPrivileges';
 
@@ -1181,6 +1183,91 @@ export const UpgradePage: React.FC = () => {
                 </button>
               </div>
             )}
+
+            {/* Pourquoi DeepSight — Differenciateurs concurrentiels */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="card p-4 sm:p-6 mb-6 sm:mb-8"
+            >
+              <h3 className="font-bold text-base sm:text-lg text-text-primary mb-2 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-accent-primary" />
+                {lang === 'fr' ? 'Pourquoi DeepSight ?' : 'Why DeepSight?'}
+              </h3>
+              <p className="text-xs sm:text-sm text-text-secondary mb-4 sm:mb-5">
+                {lang === 'fr'
+                  ? 'Pas un simple resumeur. Une plateforme d\'analyse, de verification et d\'apprentissage.'
+                  : 'Not a simple summarizer. An analysis, verification and learning platform.'}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                {DIFFERENTIATORS.map((d, i) => (
+                  <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 sm:p-4 hover:bg-white/[0.04] transition-colors">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xl">{d.icon}</span>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-accent-primary bg-accent-primary/10 px-2 py-0.5 rounded-full">
+                        {lang === 'fr' ? d.tag.fr : d.tag.en}
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-semibold text-text-primary mb-1">
+                      {lang === 'fr' ? d.title.fr : d.title.en}
+                    </h4>
+                    <p className="text-xs text-text-secondary leading-relaxed">
+                      {lang === 'fr' ? d.description.fr : d.description.en}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Credit Packs — Achats a la carte */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.45 }}
+              className="card p-4 sm:p-6 mb-6 sm:mb-8"
+            >
+              <h3 className="font-bold text-base sm:text-lg text-text-primary mb-2 flex items-center gap-2">
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+                {lang === 'fr' ? 'Besoin de credits ponctuels ?' : 'Need extra credits?'}
+              </h3>
+              <p className="text-xs sm:text-sm text-text-secondary mb-4">
+                {lang === 'fr'
+                  ? 'Achetez des credits a la carte, sans abonnement. Utilisez-les quand vous voulez.'
+                  : 'Buy credits on demand, no subscription. Use them whenever you want.'}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                {CREDIT_PACKS.map((pack) => (
+                  <div
+                    key={pack.id}
+                    className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center hover:bg-white/[0.04] transition-colors"
+                  >
+                    <p className="text-sm font-semibold text-text-primary mb-1">
+                      {lang === 'fr' ? pack.name.fr : pack.name.en}
+                    </p>
+                    <p className="text-2xl font-bold text-accent-primary mb-1">
+                      {pack.priceDisplay}&euro;
+                    </p>
+                    <p className="text-xs text-text-secondary mb-3">
+                      {pack.credits} credits &middot; {lang === 'fr' ? pack.description.fr : pack.description.en}
+                    </p>
+                    <button
+                      className="w-full text-xs font-semibold py-2 px-4 rounded-lg border border-accent-primary/30 text-accent-primary hover:bg-accent-primary/10 transition-colors min-h-[36px]"
+                      onClick={async () => {
+                        try {
+                          const res = await billingApi.createCreditPackCheckout(pack.id);
+                          if (res?.checkout_url) window.location.href = res.checkout_url;
+                        } catch {
+                          /* handled by API layer */
+                        }
+                      }}
+                    >
+                      {lang === 'fr' ? 'Acheter' : 'Buy'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
 
             {/* FAQ */}
             <motion.div
