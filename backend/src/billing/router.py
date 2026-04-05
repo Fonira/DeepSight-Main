@@ -1591,6 +1591,11 @@ async def handle_checkout_completed(session: AsyncSession, data: dict):
         await _handle_voice_addon_checkout(session, data, metadata)
         return
 
+    # ── Credit pack (one-time payment) ────────────────────────────────
+    if metadata.get("type") == "credit_pack":
+        await _handle_credit_pack_checkout(session, data, metadata)
+        return
+
     user_id = metadata.get("user_id")
     plan = metadata.get("plan")
     customer_id = data.get("customer")
@@ -1943,6 +1948,134 @@ async def handle_trial_will_end(session: AsyncSession, data: dict):
     except Exception as e:
         # L'email est optionnel — ne pas bloquer le webhook
         logger.info(f"Trial ending email error (non-blocking): {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 💳 CREDIT PACKS — Achats a la carte (one-time Stripe payments)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/credits/packs")
+async def list_credit_packs_endpoint():
+    """Liste les packs de credits disponibles a l'achat."""
+    from billing.plan_config import list_credit_packs
+    return {"packs": list_credit_packs()}
+
+
+class CreditPackRequest(BaseModel):
+    pack_id: str
+
+
+@router.post("/credits/checkout")
+async def create_credit_pack_checkout(
+    request: CreditPackRequest,
+    current_user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    """Cree une session Stripe pour acheter un pack de credits."""
+    from billing.plan_config import get_credit_pack
+
+    pack = get_credit_pack(request.pack_id)
+    if not pack:
+        raise HTTPException(400, "Pack de credits invalide")
+
+    stripe_key = get_stripe_key()
+    if not stripe_key:
+        raise HTTPException(503, "Stripe not configured")
+
+    stripe.api_key = stripe_key
+
+    # Create or reuse Stripe customer
+    customer_id = current_user.stripe_customer_id
+    if not customer_id:
+        customer = stripe.Customer.create(
+            email=current_user.email,
+            metadata={"user_id": str(current_user.id)},
+        )
+        customer_id = customer.id
+        current_user.stripe_customer_id = customer_id
+        await session.commit()
+
+    checkout_session = stripe.checkout.Session.create(
+        customer=customer_id,
+        mode="payment",
+        payment_method_types=["card"],
+        line_items=[{
+            "price_data": {
+                "currency": "eur",
+                "unit_amount": pack["price_cents"],
+                "product_data": {
+                    "name": f"{pack['name']} — {pack['credits']} credits",
+                    "description": pack["description"],
+                },
+            },
+            "quantity": 1,
+        }],
+        metadata={
+            "type": "credit_pack",
+            "user_id": str(current_user.id),
+            "pack_id": request.pack_id,
+            "credits": str(pack["credits"]),
+        },
+        success_url=f"{FRONTEND_URL}/payment/success?type=credits&pack={request.pack_id}",
+        cancel_url=f"{FRONTEND_URL}/upgrade",
+    )
+
+    return {"checkout_url": checkout_session.url, "session_id": checkout_session.id}
+
+
+async def _handle_credit_pack_checkout(
+    session: AsyncSession, data: dict, metadata: dict
+):
+    """Handle a completed credit pack one-time payment."""
+    credits = int(metadata.get("credits", 0))
+    user_id_str = metadata.get("user_id", "0")
+    pack_id = metadata.get("pack_id", "unknown")
+
+    try:
+        user_id = int(user_id_str)
+    except (ValueError, TypeError):
+        logger.warning("Credit pack: invalid user_id in metadata: %s", user_id_str)
+        return
+
+    if credits <= 0 or user_id <= 0:
+        logger.warning("Credit pack: invalid credits=%s or user_id=%s", credits, user_id)
+        return
+
+    # DB-level idempotency
+    payment_id = data.get("payment_intent") or data.get("id")
+    if payment_id:
+        existing = await session.execute(
+            select(CreditTransaction).where(CreditTransaction.stripe_payment_id == payment_id)
+        )
+        if existing.scalar_one_or_none():
+            logger.info("Credit pack checkout %s already processed — skipping", payment_id)
+            return
+
+    user = await session.get(User, user_id)
+    if not user:
+        logger.warning("Credit pack: user %s not found", user_id)
+        return
+
+    # Add credits
+    user.credits = (user.credits or 0) + credits
+
+    # Record transaction
+    transaction = CreditTransaction(
+        user_id=user.id,
+        amount=credits,
+        balance_after=user.credits,
+        transaction_type="credit_pack",
+        type="credit_pack",
+        stripe_payment_id=payment_id,
+        description=f"Credit pack: {pack_id} (+{credits} credits)",
+    )
+    session.add(transaction)
+
+    await session.commit()
+    logger.info(
+        "Credit pack: +%d credits for user %s (pack=%s, balance=%d)",
+        credits, user_id, pack_id, user.credits,
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

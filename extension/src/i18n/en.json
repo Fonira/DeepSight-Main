@@ -24,7 +24,7 @@
     "emailPlaceholder": "Email address",
     "passwordPlaceholder": "Password",
     "loginLoading": "Logging in...",
-    "guestButton": "Try without an account (1 free analysis)",
+    "guestButton": "Try without an account (3 free analyses)",
     "privacy": "Privacy",
     "terms": "Terms"
   },
@@ -77,7 +77,7 @@
     }
   },
   "guest": {
-    "banner": "Discovery mode — 1 free analysis without an account",
+    "banner": "Discovery mode — 3 free analyses without an account",
     "exhaustedText": "Create a free account to save your analyses and do more"
   },
   "credits": {

@@ -144,6 +144,36 @@ class EmailService:
             ),
         )
 
+    async def send_trial_ending_reminder(
+        self,
+        to: str,
+        username: str,
+        trial_end_date: str,
+        plan: str = "Pro",
+    ) -> bool:
+        plan_display = {"pro": "Pro", "expert": "Expert"}.get(plan, plan.capitalize())
+        price_display = {"pro": "5,99", "expert": "14,99"}.get(plan, "5,99")
+        html = self._render(
+            "trial_ending.html",
+            username=username,
+            trial_end_date=trial_end_date,
+            plan=plan_display,
+            price=price_display,
+        )
+        return await self.send_email(
+            to=to,
+            subject=f"Votre essai {plan_display} se termine le {trial_end_date}",
+            html_content=html,
+            text_content=(
+                f"Bonjour {username},\n\n"
+                f"Votre essai gratuit du plan {plan_display} se termine le {trial_end_date}.\n"
+                f"Gardez toutes vos fonctionnalites pour seulement {price_display}EUR/mois.\n\n"
+                f"Continuer : {FRONTEND_URL}/upgrade\n"
+                f"Gerer : {FRONTEND_URL}/settings\n\n"
+                f"— {APP_NAME}"
+            ),
+        )
+
     async def send_analysis_complete(
         self,
         to: str,

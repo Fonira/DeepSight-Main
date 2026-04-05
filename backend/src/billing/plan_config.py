@@ -454,6 +454,48 @@ def get_plan_by_price_id(price_id: str) -> Optional[str]:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# CREDIT PACKS — Achats a la carte (one-time Stripe payments)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+CREDIT_PACKS: dict[str, dict[str, Any]] = {
+    "discovery": {
+        "id": "discovery",
+        "name": "Pack Decouverte",
+        "credits": 500,
+        "price_cents": 199,   # 1.99 EUR
+        "price_display": "1,99",
+        "description": "~4 analyses supplementaires",
+    },
+    "standard": {
+        "id": "standard",
+        "name": "Pack Standard",
+        "credits": 2000,
+        "price_cents": 599,   # 5.99 EUR
+        "price_display": "5,99",
+        "description": "~16 analyses supplementaires",
+    },
+    "intensive": {
+        "id": "intensive",
+        "name": "Pack Intensif",
+        "credits": 5000,
+        "price_cents": 1199,  # 11.99 EUR
+        "price_display": "11,99",
+        "description": "~40 analyses supplementaires",
+    },
+}
+
+
+def get_credit_pack(pack_id: str) -> Optional[dict[str, Any]]:
+    """Retourne un credit pack par son ID, ou None si inexistant."""
+    return CREDIT_PACKS.get(pack_id)
+
+
+def list_credit_packs() -> list[dict[str, Any]]:
+    """Retourne tous les credit packs disponibles."""
+    return list(CREDIT_PACKS.values())
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # MODULE INIT — Charge les prix Stripe au chargement
 # ═══════════════════════════════════════════════════════════════════════════════
 
