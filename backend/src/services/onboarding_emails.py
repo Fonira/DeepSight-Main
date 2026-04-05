@@ -151,52 +151,13 @@ async def _send_j7_weekly_recap(user: User) -> bool:
     username = user.username or user.email.split('@')[0]
     plan = user.plan or "free"
 
-    upgrade_block = ""
-    if plan == "free":
-        upgrade_block = f"""
-        <div style="background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(139,92,246,0.1)); border: 1px solid rgba(59,130,246,0.2); border-radius: 12px; padding: 24px; margin: 24px 0;">
-          <h3 style="color: #3b82f6; margin-top: 0;">Saviez-vous que Pro debloque le fact-check ?</h3>
-          <p style="color: #94a3b8;">
-            Verifiez automatiquement les affirmations de n'importe quelle video.
-            Plus de 30 analyses/mois, videos de 2h, et cartes mentales.
-          </p>
-          <a href="{FRONTEND_URL}/upgrade" style="display: inline-block; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: 600;">
-            Decouvrir Pro
-          </a>
-        </div>
-        """
-
-    html = f"""
-    <div style="font-family: Inter, -apple-system, sans-serif; max-width: 560px; margin: 0 auto; background: #0a0a0f; color: #e2e8f0; padding: 40px 30px;">
-      <h1 style="color: #3b82f6; font-size: 24px; margin-bottom: 20px;">
-        Votre premiere semaine avec {APP_NAME}
-      </h1>
-
-      <p style="color: #94a3b8; line-height: 1.7;">
-        {username}, cela fait maintenant une semaine que vous utilisez {APP_NAME}.
-        Nous esperons que l'outil vous aide a mieux comprendre le contenu video !
-      </p>
-
-      <div style="background: #12121a; border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; margin: 24px 0;">
-        <h3 style="color: #f59e0b; margin-top: 0;">Astuce de la semaine</h3>
-        <p style="color: #94a3b8; margin-bottom: 0;">
-          Utilisez le chat contextuel pour poser des questions precises.
-          Par exemple : <em>"Quelles sont les sources citees dans cette video ?"</em>
-        </p>
-      </div>
-
-      {upgrade_block}
-
-      <p style="color: #94a3b8; line-height: 1.7;">
-        Une question ? Repondez directement a cet email, nous lisons tout.
-      </p>
-
-      <p style="color: #475569; font-size: 12px; margin-top: 40px;">
-        {APP_NAME} — Analyse video par IA<br>
-        <a href="{FRONTEND_URL}" style="color: #3b82f6; text-decoration: none;">deepsightsynthesis.com</a>
-      </p>
-    </div>
-    """
+    html = email_service._render(
+        "onboarding_j7.html",
+        username=username,
+        plan=plan,
+        app_name=APP_NAME,
+        frontend_url=FRONTEND_URL,
+    )
 
     return await email_service.send_email(
         to=user.email,
