@@ -46,7 +46,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
   useEffect(() => {
     if (isGuest) {
       getFreeAnalysisCount().then((count) => {
-        if (count >= 1) setGuestUsed(true);
+        if (count >= 3) setGuestUsed(true);
       });
     }
   }, [isGuest]);
@@ -123,7 +123,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
     // Guest mode: check limit
     if (isGuest) {
       const count = await getFreeAnalysisCount();
-      if (count >= 1) {
+      if (count >= 3) {
         setGuestUsed(true);
         return;
       }

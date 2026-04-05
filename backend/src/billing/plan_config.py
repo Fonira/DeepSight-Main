@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 # PLAN IDs & HIERARCHY
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class PlanId(str, Enum):
     FREE = "free"
     PRO = "pro"
@@ -119,26 +120,49 @@ PLANS: dict[str, dict[str, Any]] = {
         ],
         "platforms": {
             "web": {
-                "analyse": True, "chat": True, "tts": False, "flashcards": True,
-                "quiz": True, "mindmap": False, "web_search": False,
-                "export_md": False, "export_pdf": False, "playlists": False,
-                "history": True, "voice_chat": False,
+                "analyse": True,
+                "chat": True,
+                "tts": False,
+                "flashcards": True,
+                "quiz": True,
+                "mindmap": False,
+                "web_search": False,
+                "export_md": False,
+                "export_pdf": False,
+                "playlists": False,
+                "history": True,
+                "voice_chat": False,
             },
             "mobile": {
-                "analyse": True, "chat": True, "tts": False, "flashcards": True,
-                "quiz": True, "mindmap": False, "web_search": False,
-                "export_md": False, "export_pdf": False, "playlists": False,
-                "history": True, "voice_chat": False,
+                "analyse": True,
+                "chat": True,
+                "tts": False,
+                "flashcards": True,
+                "quiz": True,
+                "mindmap": False,
+                "web_search": False,
+                "export_md": False,
+                "export_pdf": False,
+                "playlists": False,
+                "history": True,
+                "voice_chat": False,
             },
             "extension": {
-                "analyse": True, "chat": True, "tts": False, "flashcards": False,
-                "quiz": False, "mindmap": False, "web_search": False,
-                "export_md": False, "export_pdf": False, "playlists": False,
-                "history": True, "voice_chat": False,
+                "analyse": True,
+                "chat": True,
+                "tts": False,
+                "flashcards": False,
+                "quiz": False,
+                "mindmap": False,
+                "web_search": False,
+                "export_md": False,
+                "export_pdf": False,
+                "playlists": False,
+                "history": True,
+                "voice_chat": False,
             },
         },
     },
-
     # ─── PRO (5.99€/mois) ──────────────────────────────────────────────
     PlanId.PRO: {
         "name": "Pro",
@@ -186,7 +210,11 @@ PLANS: dict[str, dict[str, Any]] = {
             {"text": "30 analyses / mois", "icon": "📊"},
             {"text": "Vidéos jusqu'à 2h", "icon": "⏱️"},
             {"text": "Chat IA (25/vidéo, illimité/jour)", "icon": "💬"},
-            {"text": "Flashcards, Quiz, Mindmap, Fact-check", "icon": "🧠", "highlight": True},
+            {
+                "text": "Flashcards, Quiz, Mindmap, Fact-check",
+                "icon": "🧠",
+                "highlight": True,
+            },
             {"text": "Recherche web IA (20/mois)", "icon": "🔍", "highlight": True},
             {"text": "Playlists (3 max, 5 vidéos)", "icon": "📋", "highlight": True},
             {"text": "Chat vocal (10 min/mois)", "icon": "🎙️", "highlight": True},
@@ -203,26 +231,49 @@ PLANS: dict[str, dict[str, Any]] = {
         ],
         "platforms": {
             "web": {
-                "analyse": True, "chat": True, "tts": True, "flashcards": True,
-                "quiz": True, "mindmap": True, "web_search": True,
-                "export_md": True, "export_pdf": True, "playlists": True,
-                "history": True, "voice_chat": True,
+                "analyse": True,
+                "chat": True,
+                "tts": True,
+                "flashcards": True,
+                "quiz": True,
+                "mindmap": True,
+                "web_search": True,
+                "export_md": True,
+                "export_pdf": True,
+                "playlists": True,
+                "history": True,
+                "voice_chat": True,
             },
             "mobile": {
-                "analyse": True, "chat": True, "tts": True, "flashcards": True,
-                "quiz": True, "mindmap": False, "web_search": False,
-                "export_md": False, "export_pdf": False, "playlists": True,
-                "history": True, "voice_chat": True,
+                "analyse": True,
+                "chat": True,
+                "tts": True,
+                "flashcards": True,
+                "quiz": True,
+                "mindmap": False,
+                "web_search": False,
+                "export_md": False,
+                "export_pdf": False,
+                "playlists": True,
+                "history": True,
+                "voice_chat": True,
             },
             "extension": {
-                "analyse": True, "chat": True, "tts": True, "flashcards": False,
-                "quiz": False, "mindmap": False, "web_search": False,
-                "export_md": False, "export_pdf": False, "playlists": False,
-                "history": True, "voice_chat": False,
+                "analyse": True,
+                "chat": True,
+                "tts": True,
+                "flashcards": False,
+                "quiz": False,
+                "mindmap": False,
+                "web_search": False,
+                "export_md": False,
+                "export_pdf": False,
+                "playlists": False,
+                "history": True,
+                "voice_chat": False,
             },
         },
     },
-
     # ─── EXPERT (14.99€/mois) ─────────────────────────────────────────
     PlanId.EXPERT: {
         "name": "Expert",
@@ -258,7 +309,11 @@ PLANS: dict[str, dict[str, Any]] = {
             "export_markdown": True,
             "export_pdf": True,
             "history_retention_days": -1,
-            "allowed_models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
+            "allowed_models": [
+                "mistral-small-2603",
+                "mistral-medium-2508",
+                "mistral-large-2512",
+            ],
             "default_model": "mistral-large-2512",
             "voice_chat_enabled": True,
             "voice_monthly_minutes": 20,
@@ -284,26 +339,49 @@ PLANS: dict[str, dict[str, Any]] = {
         "features_locked": [],
         "platforms": {
             "web": {
-                "analyse": True, "chat": True, "tts": True, "flashcards": True,
-                "quiz": True, "mindmap": True, "web_search": True,
-                "export_md": True, "export_pdf": True, "playlists": True,
-                "history": True, "voice_chat": True,
+                "analyse": True,
+                "chat": True,
+                "tts": True,
+                "flashcards": True,
+                "quiz": True,
+                "mindmap": True,
+                "web_search": True,
+                "export_md": True,
+                "export_pdf": True,
+                "playlists": True,
+                "history": True,
+                "voice_chat": True,
             },
             "mobile": {
-                "analyse": True, "chat": True, "tts": True, "flashcards": True,
-                "quiz": True, "mindmap": False, "web_search": False,
-                "export_md": False, "export_pdf": False, "playlists": True,
-                "history": True, "voice_chat": True,
+                "analyse": True,
+                "chat": True,
+                "tts": True,
+                "flashcards": True,
+                "quiz": True,
+                "mindmap": False,
+                "web_search": False,
+                "export_md": False,
+                "export_pdf": False,
+                "playlists": True,
+                "history": True,
+                "voice_chat": True,
             },
             "extension": {
-                "analyse": True, "chat": True, "tts": True, "flashcards": False,
-                "quiz": False, "mindmap": False, "web_search": False,
-                "export_md": False, "export_pdf": False, "playlists": False,
-                "history": True, "voice_chat": False,
+                "analyse": True,
+                "chat": True,
+                "tts": True,
+                "flashcards": False,
+                "quiz": False,
+                "mindmap": False,
+                "web_search": False,
+                "export_md": False,
+                "export_pdf": False,
+                "playlists": False,
+                "history": True,
+                "voice_chat": False,
             },
         },
     },
-
 }
 
 
@@ -314,12 +392,12 @@ PLANS: dict[str, dict[str, Any]] = {
 PLATFORM_LIMITS: dict[str, dict[str, Any]] = {
     "youtube": {
         "max_video_length_min": None,  # Utilise la limite du plan
-        "credit_multiplier": 1.0,      # Coût standard
+        "credit_multiplier": 1.0,  # Coût standard
         "supported": True,
     },
     "tiktok": {
-        "max_video_length_min": 10,    # TikTok max 10 min (au-delà c'est très rare)
-        "credit_multiplier": 0.5,      # Vidéos courtes = 50% du coût
+        "max_video_length_min": 10,  # TikTok max 10 min (au-delà c'est très rare)
+        "credit_multiplier": 0.5,  # Vidéos courtes = 50% du coût
         "supported": True,
     },
 }
@@ -352,6 +430,7 @@ def get_max_duration_for_platform(plan_id: str, platform: str) -> int:
 # STRIPE PRICE INITIALIZATION
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def init_stripe_prices() -> None:
     """Charge les stripe_price_id depuis les variables d'environnement.
 
@@ -369,12 +448,18 @@ def init_stripe_prices() -> None:
         PLANS[plan_id]["stripe_price_id_test"] = test_id or None
         PLANS[plan_id]["stripe_price_id_live"] = live_id or None
         if test_id or live_id:
-            logger.info("Stripe price loaded for %s: test=%s live=%s", plan_id, bool(test_id), bool(live_id))
+            logger.info(
+                "Stripe price loaded for %s: test=%s live=%s",
+                plan_id,
+                bool(test_id),
+                bool(live_id),
+            )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ACCESSOR FUNCTIONS
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def get_plan(plan_id: str) -> dict[str, Any]:
     """Retourne la config complète d'un plan. Normalise les aliases, fallback vers FREE."""
@@ -451,6 +536,48 @@ def get_plan_by_price_id(price_id: str) -> Optional[str]:
         if plan.get("stripe_price_id_live") == price_id:
             return plan_id if isinstance(plan_id, str) else plan_id.value
     return None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CREDIT PACKS — Achats a la carte (one-time Stripe payments)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+CREDIT_PACKS: dict[str, dict[str, Any]] = {
+    "discovery": {
+        "id": "discovery",
+        "name": "Pack Decouverte",
+        "credits": 500,
+        "price_cents": 199,  # 1.99 EUR
+        "price_display": "1,99",
+        "description": "~4 analyses supplementaires",
+    },
+    "standard": {
+        "id": "standard",
+        "name": "Pack Standard",
+        "credits": 2000,
+        "price_cents": 599,  # 5.99 EUR
+        "price_display": "5,99",
+        "description": "~16 analyses supplementaires",
+    },
+    "intensive": {
+        "id": "intensive",
+        "name": "Pack Intensif",
+        "credits": 5000,
+        "price_cents": 1199,  # 11.99 EUR
+        "price_display": "11,99",
+        "description": "~40 analyses supplementaires",
+    },
+}
+
+
+def get_credit_pack(pack_id: str) -> Optional[dict[str, Any]]:
+    """Retourne un credit pack par son ID, ou None si inexistant."""
+    return CREDIT_PACKS.get(pack_id)
+
+
+def list_credit_packs() -> list[dict[str, Any]]:
+    """Retourne tous les credit packs disponibles."""
+    return list(CREDIT_PACKS.values())
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

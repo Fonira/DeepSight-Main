@@ -24,7 +24,7 @@
     "emailPlaceholder": "Adresse e-mail",
     "passwordPlaceholder": "Mot de passe",
     "loginLoading": "Connexion...",
-    "guestButton": "Essayer sans compte (1 analyse gratuite)",
+    "guestButton": "Essayer sans compte (3 analyses gratuites)",
     "privacy": "Confidentialité",
     "terms": "CGU"
   },
@@ -77,7 +77,7 @@
     }
   },
   "guest": {
-    "banner": "Mode découverte — 1 analyse gratuite sans compte",
+    "banner": "Mode découverte — 3 analyses gratuites sans compte",
     "exhaustedText": "Créez un compte gratuit pour sauvegarder vos analyses et en faire plus"
   },
   "credits": {

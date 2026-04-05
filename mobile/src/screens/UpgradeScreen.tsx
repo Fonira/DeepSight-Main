@@ -24,6 +24,7 @@ import { billingApi, ApiError } from '../services/api';
 import {
   normalizePlanId, isPlanHigher, comparePlans,
   PLANS_INFO, PLAN_LIMITS, getFeatureListForDisplay,
+  DIFFERENTIATORS, CREDIT_PACKS,
   type PlanId,
 } from '../config/planPrivileges';
 
@@ -76,6 +77,7 @@ export const UpgradeScreen: React.FC = () => {
 
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [packLoading, setPackLoading] = useState<string | null>(null);
 
   const isEn = language === 'en';
   const currentPlan = normalizePlanId(user?.plan);
@@ -132,6 +134,26 @@ export const UpgradeScreen: React.FC = () => {
       Alert.alert(t.common.error, message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleBuyCreditPack = async (packId: string) => {
+    setPackLoading(packId);
+    try {
+      const { checkout_url } = await billingApi.createCreditPackCheckout(packId);
+      if (!checkout_url) throw new Error('No checkout URL');
+      await WebBrowser.openBrowserAsync(checkout_url, {
+        showTitle: true,
+        enableBarCollapsing: true,
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err) {
+      const message = err instanceof ApiError
+        ? err.message
+        : (isEn ? 'Unable to start checkout.' : 'Impossible de démarrer le paiement.');
+      Alert.alert(t.common.error, message);
+    } finally {
+      setPackLoading(null);
     }
   };
 
@@ -274,6 +296,74 @@ export const UpgradeScreen: React.FC = () => {
         </Text>
 
         {PLANS.map(renderPlanCard)}
+
+        {/* Pourquoi DeepSight — Différenciateurs */}
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+          {isEn ? 'Why DeepSight?' : 'Pourquoi DeepSight ?'}
+        </Text>
+        <Text style={[styles.sectionSubtitle, { color: colors.textTertiary }]}>
+          {isEn
+            ? 'Features no other tool offers'
+            : 'Ce que personne d\'autre ne propose'}
+        </Text>
+        {DIFFERENTIATORS.map((diff, index) => (
+          <Card key={index} style={styles.diffCard}>
+            <View style={styles.diffHeader}>
+              <View style={[styles.diffIconWrap, { backgroundColor: colors.accentPrimary + '15' }]}>
+                <Ionicons name={diff.ionicon as any} size={20} color={colors.accentPrimary} />
+              </View>
+              <View style={[styles.diffTag, { backgroundColor: colors.accentSecondary + '20' }]}>
+                <Text style={[styles.diffTagText, { color: colors.accentSecondary }]}>
+                  {isEn ? diff.tag.en : diff.tag.fr}
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.diffTitle, { color: colors.textPrimary }]}>
+              {isEn ? diff.title.en : diff.title.fr}
+            </Text>
+            <Text style={[styles.diffDesc, { color: colors.textSecondary }]}>
+              {isEn ? diff.description.en : diff.description.fr}
+            </Text>
+          </Card>
+        ))}
+
+        {/* Credit Packs */}
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginTop: Spacing.lg }]}>
+          {isEn ? 'Need more credits?' : 'Besoin de plus de crédits ?'}
+        </Text>
+        <Text style={[styles.sectionSubtitle, { color: colors.textTertiary }]}>
+          {isEn
+            ? 'One-time purchase, no subscription'
+            : 'Achat unique, sans abonnement'}
+        </Text>
+        {CREDIT_PACKS.map((pack) => (
+          <Card key={pack.id} style={styles.packCard}>
+            <View style={styles.packRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.packName, { color: colors.textPrimary }]}>
+                  {isEn ? pack.name.en : pack.name.fr}
+                </Text>
+                <Text style={[styles.packCredits, { color: colors.accentPrimary }]}>
+                  {pack.credits.toLocaleString()} {isEn ? 'credits' : 'crédits'}
+                </Text>
+                <Text style={[styles.packDesc, { color: colors.textTertiary }]}>
+                  {isEn ? pack.description.en : pack.description.fr}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.packButton, { borderColor: colors.accentPrimary }]}
+                onPress={() => handleBuyCreditPack(pack.id)}
+                disabled={packLoading === pack.id}
+              >
+                <Text style={[styles.packButtonText, { color: colors.accentPrimary }]}>
+                  {packLoading === pack.id
+                    ? '...'
+                    : `${pack.priceDisplay}€`}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
+        ))}
 
         {/* B2B / Sur-mesure */}
         <Card style={{ padding: Spacing.lg, marginBottom: Spacing.xl, alignItems: 'center' as const }}>
@@ -465,6 +555,88 @@ const styles = StyleSheet.create({
   selectButtonText: {
     fontSize: Typography.fontSize.sm,
     fontFamily: Typography.fontFamily.bodyMedium,
+  },
+  sectionTitle: {
+    fontSize: Typography.fontSize.xl,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    textAlign: 'center',
+    marginTop: Spacing.xl,
+    marginBottom: Spacing.xs,
+  },
+  sectionSubtitle: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.body,
+    textAlign: 'center',
+    marginBottom: Spacing.lg,
+  },
+  diffCard: {
+    marginBottom: Spacing.md,
+    padding: Spacing.lg,
+  },
+  diffHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  diffIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  diffTag: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+  },
+  diffTagText: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+  },
+  diffTitle: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+    marginBottom: Spacing.xs,
+  },
+  diffDesc: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.body,
+    lineHeight: 20,
+  },
+  packCard: {
+    marginBottom: Spacing.md,
+    padding: Spacing.lg,
+  },
+  packRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  packName: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bodySemiBold,
+  },
+  packCredits: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.bodyMedium,
+    marginTop: 2,
+  },
+  packDesc: {
+    fontSize: Typography.fontSize.xs,
+    fontFamily: Typography.fontFamily.body,
+    marginTop: 2,
+  },
+  packButton: {
+    borderWidth: 1.5,
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    marginLeft: Spacing.md,
+  },
+  packButtonText: {
+    fontSize: Typography.fontSize.base,
+    fontFamily: Typography.fontFamily.bodySemiBold,
   },
   bottomCta: {
     position: 'absolute',

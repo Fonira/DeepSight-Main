@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Optional
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from core.config import EMAIL_CONFIG, APP_NAME, FRONTEND_URL
+from core.config import APP_NAME, FRONTEND_URL
+
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates" / "emails"
 
 
@@ -46,6 +47,7 @@ class EmailService:
             priority: True for critical emails (verification, password reset)
         """
         from services.email_queue import email_queue
+
         return await email_queue.enqueue(
             to=to,
             subject=subject,
@@ -133,13 +135,43 @@ class EmailService:
         )
         return await self.send_email(
             to=to,
-            subject=f"Echec de paiement — Action requise",
+            subject="Echec de paiement — Action requise",
             html_content=html,
             text_content=(
                 f"Bonjour {username},\n\n"
                 f"Le paiement pour votre plan {plan_display} a echoue.\n"
                 f"Mettez a jour vos informations de paiement :\n"
                 f"{FRONTEND_URL}/settings\n\n"
+                f"— {APP_NAME}"
+            ),
+        )
+
+    async def send_trial_ending_reminder(
+        self,
+        to: str,
+        username: str,
+        trial_end_date: str,
+        plan: str = "Pro",
+    ) -> bool:
+        plan_display = {"pro": "Pro", "expert": "Expert"}.get(plan, plan.capitalize())
+        price_display = {"pro": "5,99", "expert": "14,99"}.get(plan, "5,99")
+        html = self._render(
+            "trial_ending.html",
+            username=username,
+            trial_end_date=trial_end_date,
+            plan=plan_display,
+            price=price_display,
+        )
+        return await self.send_email(
+            to=to,
+            subject=f"Votre essai {plan_display} se termine le {trial_end_date}",
+            html_content=html,
+            text_content=(
+                f"Bonjour {username},\n\n"
+                f"Votre essai gratuit du plan {plan_display} se termine le {trial_end_date}.\n"
+                f"Gardez toutes vos fonctionnalites pour seulement {price_display}EUR/mois.\n\n"
+                f"Continuer : {FRONTEND_URL}/upgrade\n"
+                f"Gerer : {FRONTEND_URL}/settings\n\n"
                 f"— {APP_NAME}"
             ),
         )

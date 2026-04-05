@@ -1491,6 +1491,17 @@ export const billingApi = {
   }> {
     return request('/api/billing/my-plan?platform=mobile');
   },
+
+  async getCreditPacks(): Promise<{ packs: Array<{ id: string; credits: number; price_cents: number; name: string }> }> {
+    return request('/api/billing/credits/packs');
+  },
+
+  async createCreditPackCheckout(packId: string): Promise<{ checkout_url: string; session_id: string }> {
+    return request('/api/billing/credits/checkout', {
+      method: 'POST',
+      body: { pack_id: packId },
+    });
+  },
 };
 
 // ============================================

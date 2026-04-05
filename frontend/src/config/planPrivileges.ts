@@ -204,8 +204,8 @@ export const PLANS_INFO: Record<PlanId, PlanInfo> = {
     id: 'free',
     name: 'Gratuit',
     nameEn: 'Free',
-    description: 'Pour découvrir DeepSight — YouTube & TikTok',
-    descriptionEn: 'Discover DeepSight — YouTube & TikTok',
+    description: 'Analysez, chattez et revisez — sans engagement',
+    descriptionEn: 'Analyze, chat and study — no commitment',
     priceMonthly: 0,
     color: '#6B7280',
     icon: 'Zap',
@@ -217,8 +217,8 @@ export const PLANS_INFO: Record<PlanId, PlanInfo> = {
     id: 'pro',
     name: 'Pro',
     nameEn: 'Pro',
-    description: 'YouTube & TikTok — Pour les utilisateurs réguliers',
-    descriptionEn: 'YouTube & TikTok — For regular users',
+    description: 'Fact-checking, cartes mentales et recherche web',
+    descriptionEn: 'Fact-checking, mind maps and web search',
     priceMonthly: 599,
     color: '#3B82F6',
     icon: '⭐',
@@ -230,8 +230,8 @@ export const PLANS_INFO: Record<PlanId, PlanInfo> = {
     id: 'expert',
     name: 'Expert',
     nameEn: 'Expert',
-    description: 'YouTube & TikTok — Créateurs & professionnels',
-    descriptionEn: 'YouTube & TikTok — Creators & professionals',
+    description: 'Recherche approfondie, debats IA et priorite',
+    descriptionEn: 'Deep research, AI debates and priority queue',
     priceMonthly: 1499,
     color: '#F59E0B',
     icon: 'Crown',
@@ -320,6 +320,114 @@ export function normalizePlanId(raw: string | undefined | null): PlanId {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// DIFFERENCIATEURS CONCURRENTIELS — Ce que DeepSight fait et personne d'autre
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface Differentiator {
+  icon: string;
+  title: { fr: string; en: string };
+  description: { fr: string; en: string };
+  tag: { fr: string; en: string };
+}
+
+export const DIFFERENTIATORS: Differentiator[] = [
+  {
+    icon: '🔍',
+    title: { fr: 'Fact-checking automatique', en: 'Automatic fact-checking' },
+    description: {
+      fr: 'Chaque affirmation est vérifiée avec des sources web fiables. Repérer les erreurs, pas juste résumer.',
+      en: 'Every claim is verified against reliable web sources. Spot errors, not just summarize.',
+    },
+    tag: { fr: 'Exclusif', en: 'Exclusive' },
+  },
+  {
+    icon: '⚔️',
+    title: { fr: 'Débat IA entre 2 vidéos', en: 'AI Debate between 2 videos' },
+    description: {
+      fr: 'Confrontez les arguments de 2 vidéos sur le même sujet. Identifiez contradictions et points communs.',
+      en: 'Compare arguments from 2 videos on the same topic. Identify contradictions and common ground.',
+    },
+    tag: { fr: 'Unique', en: 'Unique' },
+  },
+  {
+    icon: '📚',
+    title: { fr: 'Sources académiques', en: 'Academic sources' },
+    description: {
+      fr: 'Enrichissement automatique avec arXiv, Semantic Scholar, CrossRef et OpenAlex. Export bibliographique.',
+      en: 'Auto-enrichment from arXiv, Semantic Scholar, CrossRef and OpenAlex. Bibliography export.',
+    },
+    tag: { fr: 'Exclusif', en: 'Exclusive' },
+  },
+  {
+    icon: '🇫🇷',
+    title: { fr: 'IA 100% européenne', en: '100% European AI' },
+    description: {
+      fr: 'Propulsé par Mistral AI. Vos données restent en Europe. Conforme RGPD.',
+      en: 'Powered by Mistral AI. Your data stays in Europe. GDPR compliant.',
+    },
+    tag: { fr: 'Confiance', en: 'Trust' },
+  },
+  {
+    icon: '🧠',
+    title: { fr: 'Révision scientifique (FSRS)', en: 'Scientific review (FSRS)' },
+    description: {
+      fr: 'Flashcards avec algorithme de répétition espacée FSRS v5 — le même que Anki. Retenez 3x mieux.',
+      en: 'Flashcards with FSRS v5 spaced repetition — same as Anki. Retain 3x better.',
+    },
+    tag: { fr: 'Science', en: 'Science' },
+  },
+  {
+    icon: '🎙️',
+    title: { fr: 'Chat vocal sur vos vidéos', en: 'Voice chat on your videos' },
+    description: {
+      fr: 'Discutez à voix haute avec l\'IA sur le contenu de vos vidéos. Mains libres, contexte complet.',
+      en: 'Talk to AI about your video content. Hands-free, full context.',
+    },
+    tag: { fr: 'Pro', en: 'Pro' },
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CREDIT PACKS — Achats à la carte
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface CreditPack {
+  id: string;
+  name: { fr: string; en: string };
+  credits: number;
+  priceCents: number;
+  priceDisplay: string;
+  description: { fr: string; en: string };
+}
+
+export const CREDIT_PACKS: CreditPack[] = [
+  {
+    id: 'discovery',
+    name: { fr: 'Pack Découverte', en: 'Discovery Pack' },
+    credits: 500,
+    priceCents: 199,
+    priceDisplay: '1,99',
+    description: { fr: '~4 analyses supplémentaires', en: '~4 additional analyses' },
+  },
+  {
+    id: 'standard',
+    name: { fr: 'Pack Standard', en: 'Standard Pack' },
+    credits: 2000,
+    priceCents: 599,
+    priceDisplay: '5,99',
+    description: { fr: '~16 analyses supplémentaires', en: '~16 additional analyses' },
+  },
+  {
+    id: 'intensive',
+    name: { fr: 'Pack Intensif', en: 'Intensive Pack' },
+    credits: 5000,
+    priceCents: 1199,
+    priceDisplay: '11,99',
+    description: { fr: '~40 analyses supplémentaires', en: '~40 additional analyses' },
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // TESTIMONIALS
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -396,6 +504,8 @@ export default {
   PLAN_FEATURES,
   PLANS_INFO,
   CONVERSION_TRIGGERS,
+  DIFFERENTIATORS,
+  CREDIT_PACKS,
   TESTIMONIALS,
   hasFeature,
   getLimit,

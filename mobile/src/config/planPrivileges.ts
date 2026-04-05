@@ -285,7 +285,7 @@ export const PLANS_INFO: PlanInfo[] = [
   {
     id: 'free',
     name: { fr: 'Gratuit', en: 'Free' },
-    description: { fr: 'Pour découvrir DeepSight', en: 'Discover DeepSight' },
+    description: { fr: 'Analysez, chattez et révisez — sans engagement', en: 'Analyze, chat and review — no commitment' },
     price: 0,
     priceDisplay: { fr: '0€', en: 'Free' },
     color: '#6B7280',
@@ -298,7 +298,7 @@ export const PLANS_INFO: PlanInfo[] = [
   {
     id: 'pro',
     name: { fr: 'Pro', en: 'Pro' },
-    description: { fr: 'Pour les utilisateurs réguliers', en: 'For regular users' },
+    description: { fr: 'Fact-checking, cartes mentales et recherche web', en: 'Fact-checking, mind maps and web search' },
     price: 599,
     priceDisplay: { fr: '5,99€/mois', en: '€5.99/mo' },
     badge: { fr: 'Le plus populaire', en: 'Most popular' },
@@ -313,7 +313,7 @@ export const PLANS_INFO: PlanInfo[] = [
   {
     id: 'expert',
     name: { fr: 'Expert', en: 'Expert' },
-    description: { fr: 'Pour les créateurs & professionnels', en: 'For creators & professionals' },
+    description: { fr: 'Recherche approfondie, débats IA et priorité', en: 'Deep research, AI debates and priority' },
     price: 1499,
     priceDisplay: { fr: '14,99€/mois', en: '€14.99/mo' },
     color: '#F59E0B',
@@ -341,6 +341,121 @@ export const CONVERSION_TRIGGERS = {
   trialPlan: 'pro' as PlanId,
   trialRequiresCard: false,
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// DIFFERENCIATEURS CONCURRENTIELS — Ce que DeepSight fait et personne d'autre
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface Differentiator {
+  icon: string;
+  ionicon: string;
+  title: { fr: string; en: string };
+  description: { fr: string; en: string };
+  tag: { fr: string; en: string };
+}
+
+export const DIFFERENTIATORS: Differentiator[] = [
+  {
+    icon: '🔍',
+    ionicon: 'search-outline',
+    title: { fr: 'Fact-checking automatique', en: 'Automatic fact-checking' },
+    description: {
+      fr: 'Chaque affirmation est vérifiée avec des sources web fiables. Repérer les erreurs, pas juste résumer.',
+      en: 'Every claim is verified against reliable web sources. Spot errors, not just summarize.',
+    },
+    tag: { fr: 'Exclusif', en: 'Exclusive' },
+  },
+  {
+    icon: '⚔️',
+    ionicon: 'git-compare-outline',
+    title: { fr: 'Débat IA entre 2 vidéos', en: 'AI Debate between 2 videos' },
+    description: {
+      fr: 'Confrontez les arguments de 2 vidéos sur le même sujet. Identifiez contradictions et points communs.',
+      en: 'Compare arguments from 2 videos on the same topic. Identify contradictions and common ground.',
+    },
+    tag: { fr: 'Unique', en: 'Unique' },
+  },
+  {
+    icon: '📚',
+    ionicon: 'library-outline',
+    title: { fr: 'Sources académiques', en: 'Academic sources' },
+    description: {
+      fr: 'Enrichissement automatique avec arXiv, Semantic Scholar, CrossRef et OpenAlex. Export bibliographique.',
+      en: 'Auto-enrichment from arXiv, Semantic Scholar, CrossRef and OpenAlex. Bibliography export.',
+    },
+    tag: { fr: 'Exclusif', en: 'Exclusive' },
+  },
+  {
+    icon: '🇫🇷',
+    ionicon: 'shield-checkmark-outline',
+    title: { fr: 'IA 100% européenne', en: '100% European AI' },
+    description: {
+      fr: 'Propulsé par Mistral AI. Vos données restent en Europe. Conforme RGPD.',
+      en: 'Powered by Mistral AI. Your data stays in Europe. GDPR compliant.',
+    },
+    tag: { fr: 'Confiance', en: 'Trust' },
+  },
+  {
+    icon: '🧠',
+    ionicon: 'bulb-outline',
+    title: { fr: 'Révision scientifique (FSRS)', en: 'Scientific review (FSRS)' },
+    description: {
+      fr: 'Flashcards avec algorithme de répétition espacée FSRS v5 — le même que Anki. Retenez 3x mieux.',
+      en: 'Flashcards with FSRS v5 spaced repetition — same as Anki. Retain 3x better.',
+    },
+    tag: { fr: 'Science', en: 'Science' },
+  },
+  {
+    icon: '🎙️',
+    ionicon: 'mic-outline',
+    title: { fr: 'Chat vocal sur vos vidéos', en: 'Voice chat on your videos' },
+    description: {
+      fr: 'Discutez à voix haute avec l\'IA sur le contenu de vos vidéos. Mains libres, contexte complet.',
+      en: 'Talk to AI about your video content. Hands-free, full context.',
+    },
+    tag: { fr: 'Pro', en: 'Pro' },
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CREDIT PACKS — Achats à la carte
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface CreditPack {
+  id: string;
+  name: { fr: string; en: string };
+  credits: number;
+  priceCents: number;
+  priceDisplay: string;
+  description: { fr: string; en: string };
+}
+
+export const CREDIT_PACKS: CreditPack[] = [
+  {
+    id: 'discovery',
+    name: { fr: 'Pack Découverte', en: 'Discovery Pack' },
+    credits: 500,
+    priceCents: 199,
+    priceDisplay: '1,99',
+    description: { fr: '~4 analyses supplémentaires', en: '~4 additional analyses' },
+  },
+  {
+    id: 'standard',
+    name: { fr: 'Pack Standard', en: 'Standard Pack' },
+    credits: 2000,
+    priceCents: 599,
+    priceDisplay: '5,99',
+    description: { fr: '~16 analyses supplémentaires', en: '~16 additional analyses' },
+  },
+  {
+    id: 'intensive',
+    name: { fr: 'Pack Intensif', en: 'Intensive Pack' },
+    credits: 5000,
+    priceCents: 1199,
+    priceDisplay: '11,99',
+    description: { fr: '~40 analyses supplémentaires', en: '~40 additional analyses' },
+  },
+];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TESTIMONIALS
@@ -656,6 +771,8 @@ export default {
   PLAN_FEATURES,
   PLANS_INFO,
   CONVERSION_TRIGGERS,
+  DIFFERENTIATORS,
+  CREDIT_PACKS,
   TESTIMONIALS,
   PRO_BENEFITS,
   hasFeature,
