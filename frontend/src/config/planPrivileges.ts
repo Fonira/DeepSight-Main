@@ -335,23 +335,23 @@ export const DIFFERENTIATORS: Differentiator[] = [
     icon: '🔍',
     title: { fr: 'Fact-checking automatique', en: 'Automatic fact-checking' },
     description: {
-      fr: 'Chaque affirmation est verifiee avec des sources web fiables. Reperer les erreurs, pas juste resumer.',
+      fr: 'Chaque affirmation est vérifiée avec des sources web fiables. Repérer les erreurs, pas juste résumer.',
       en: 'Every claim is verified against reliable web sources. Spot errors, not just summarize.',
     },
     tag: { fr: 'Exclusif', en: 'Exclusive' },
   },
   {
     icon: '⚔️',
-    title: { fr: 'Debat IA entre 2 videos', en: 'AI Debate between 2 videos' },
+    title: { fr: 'Débat IA entre 2 vidéos', en: 'AI Debate between 2 videos' },
     description: {
-      fr: 'Confrontez les arguments de 2 videos sur le meme sujet. Identifiez contradictions et points communs.',
+      fr: 'Confrontez les arguments de 2 vidéos sur le même sujet. Identifiez contradictions et points communs.',
       en: 'Compare arguments from 2 videos on the same topic. Identify contradictions and common ground.',
     },
     tag: { fr: 'Unique', en: 'Unique' },
   },
   {
     icon: '📚',
-    title: { fr: 'Sources academiques', en: 'Academic sources' },
+    title: { fr: 'Sources académiques', en: 'Academic sources' },
     description: {
       fr: 'Enrichissement automatique avec arXiv, Semantic Scholar, CrossRef et OpenAlex. Export bibliographique.',
       en: 'Auto-enrichment from arXiv, Semantic Scholar, CrossRef and OpenAlex. Bibliography export.',
@@ -360,27 +360,27 @@ export const DIFFERENTIATORS: Differentiator[] = [
   },
   {
     icon: '🇫🇷',
-    title: { fr: 'IA 100% europeenne', en: '100% European AI' },
+    title: { fr: 'IA 100% européenne', en: '100% European AI' },
     description: {
-      fr: 'Propulse par Mistral AI. Vos donnees restent en Europe. Conforme RGPD.',
+      fr: 'Propulsé par Mistral AI. Vos données restent en Europe. Conforme RGPD.',
       en: 'Powered by Mistral AI. Your data stays in Europe. GDPR compliant.',
     },
     tag: { fr: 'Confiance', en: 'Trust' },
   },
   {
     icon: '🧠',
-    title: { fr: 'Revision scientifique (FSRS)', en: 'Scientific review (FSRS)' },
+    title: { fr: 'Révision scientifique (FSRS)', en: 'Scientific review (FSRS)' },
     description: {
-      fr: 'Flashcards avec algorithme de repetition espacee FSRS v5 — le meme que Anki. Retenez 3x mieux.',
+      fr: 'Flashcards avec algorithme de répétition espacée FSRS v5 — le même que Anki. Retenez 3x mieux.',
       en: 'Flashcards with FSRS v5 spaced repetition — same as Anki. Retain 3x better.',
     },
     tag: { fr: 'Science', en: 'Science' },
   },
   {
     icon: '🎙️',
-    title: { fr: 'Chat vocal sur vos videos', en: 'Voice chat on your videos' },
+    title: { fr: 'Chat vocal sur vos vidéos', en: 'Voice chat on your videos' },
     description: {
-      fr: 'Discutez a voix haute avec l\'IA sur le contenu de vos videos. Mains libres, contexte complet.',
+      fr: 'Discutez à voix haute avec l\'IA sur le contenu de vos vidéos. Mains libres, contexte complet.',
       en: 'Talk to AI about your video content. Hands-free, full context.',
     },
     tag: { fr: 'Pro', en: 'Pro' },
@@ -388,7 +388,7 @@ export const DIFFERENTIATORS: Differentiator[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CREDIT PACKS — Achats a la carte
+// CREDIT PACKS — Achats à la carte
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export interface CreditPack {
@@ -403,11 +403,11 @@ export interface CreditPack {
 export const CREDIT_PACKS: CreditPack[] = [
   {
     id: 'discovery',
-    name: { fr: 'Pack Decouverte', en: 'Discovery Pack' },
+    name: { fr: 'Pack Découverte', en: 'Discovery Pack' },
     credits: 500,
     priceCents: 199,
     priceDisplay: '1,99',
-    description: { fr: '~4 analyses supplementaires', en: '~4 additional analyses' },
+    description: { fr: '~4 analyses supplémentaires', en: '~4 additional analyses' },
   },
   {
     id: 'standard',
@@ -415,7 +415,7 @@ export const CREDIT_PACKS: CreditPack[] = [
     credits: 2000,
     priceCents: 599,
     priceDisplay: '5,99',
-    description: { fr: '~16 analyses supplementaires', en: '~16 additional analyses' },
+    description: { fr: '~16 analyses supplémentaires', en: '~16 additional analyses' },
   },
   {
     id: 'intensive',
@@ -423,7 +423,7 @@ export const CREDIT_PACKS: CreditPack[] = [
     credits: 5000,
     priceCents: 1199,
     priceDisplay: '11,99',
-    description: { fr: '~40 analyses supplementaires', en: '~40 additional analyses' },
+    description: { fr: '~40 analyses supplémentaires', en: '~40 additional analyses' },
   },
 ];
 
