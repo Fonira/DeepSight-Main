@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 import logging
 
 from core.config import get_mistral_key, get_brave_key
+from core.llm_provider import llm_complete
 from videos.brave_search import _call_brave_api, BraveSearchResult
 
 logger = logging.getLogger(__name__)
@@ -190,75 +191,46 @@ async def _call_mistral_api(
     timeout: float = 30.0
 ) -> tuple[str, int]:
     """
-    Appelle l'API Mistral pour synthétiser les résultats web.
-    
+    Appelle l'API Mistral (via llm_provider avec fallback) pour synthétiser les résultats web.
+
     Args:
         prompt_json: Prompt préformaté en JSON avec clés "system" et "user"
         model: Modèle Mistral à utiliser
         max_tokens: Tokens max pour la réponse
         timeout: Timeout en secondes
-    
+
     Returns:
         Tuple[content, tokens_used]
-    
+
     Raises:
         Exception si l'API échoue
     """
-    api_key = get_mistral_key()
-    if not api_key:
-        raise ValueError("MISTRAL_API_KEY not configured")
-    
     try:
         prompt_data = json.loads(prompt_json)
         system_msg = prompt_data.get("system", "")
         user_msg = prompt_data.get("user", "")
     except json.JSONDecodeError as e:
         raise ValueError(f"Invalid prompt JSON: {e}")
-    
+
     print(f"🤖 [MISTRAL] Calling {model} (max_tokens={max_tokens})...", flush=True)
-    
-    try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.post(
-                "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": system_msg},
-                        {"role": "user", "content": user_msg}
-                    ],
-                    "max_tokens": max_tokens,
-                    "temperature": 0.3,  # Réponses déterministes pour synthèse
-                },
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                content = data["choices"][0]["message"]["content"]
-                
-                # Extraire tokens utilisés
-                tokens_used = data.get("usage", {}).get("total_tokens", 0)
-                
-                print(f"✅ [MISTRAL] Success: {len(content)} chars, {tokens_used} tokens", flush=True)
-                
-                return content, tokens_used
-            else:
-                error_msg = f"Mistral API {response.status_code}: {response.text[:200]}"
-                print(f"❌ [MISTRAL] {error_msg}", flush=True)
-                raise Exception(error_msg)
-    
-    except httpx.TimeoutException:
-        error_msg = f"Mistral timeout after {timeout}s"
-        print(f"❌ [MISTRAL] {error_msg}", flush=True)
-        raise Exception(error_msg)
-    except Exception as e:
-        error_msg = str(e)
-        print(f"❌ [MISTRAL] Exception: {error_msg}", flush=True)
-        raise
+
+    result = await llm_complete(
+        messages=[
+            {"role": "system", "content": system_msg},
+            {"role": "user", "content": user_msg},
+        ],
+        model=model,
+        max_tokens=max_tokens,
+        temperature=0.3,
+        timeout=timeout,
+    )
+
+    if result:
+        fallback_info = f" [fallback: {result.provider}:{result.model_used}]" if result.fallback_used else ""
+        print(f"✅ [MISTRAL] Success: {len(result.content)} chars, {result.tokens_total} tokens{fallback_info}", flush=True)
+        return result.content, result.tokens_total
+
+    raise Exception("All LLM providers exhausted (Mistral + DeepSeek)")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

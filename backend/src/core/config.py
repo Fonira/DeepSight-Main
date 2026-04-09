@@ -52,6 +52,7 @@ class _DeepSightSettings(BaseSettings):
     GROQ_API_KEY: str = ""
     DEEPGRAM_API_KEY: str = ""
     ASSEMBLYAI_API_KEY: str = ""
+    DEEPSEEK_API_KEY: str = ""
     SEMANTIC_SCHOLAR_API_KEY: str = ""
 
     # -- YouTube Proxy (pour contourner le blocage IP YouTube sur VPS) --
@@ -227,6 +228,7 @@ SUPADATA_API_KEY = _settings.SUPADATA_API_KEY
 PERPLEXITY_API_KEY = _settings.PERPLEXITY_API_KEY
 BRAVE_SEARCH_API_KEY = _settings.BRAVE_SEARCH_API_KEY
 OPENAI_API_KEY = _settings.OPENAI_API_KEY
+DEEPSEEK_API_KEY = _settings.DEEPSEEK_API_KEY
 YOUTUBE_PROXY = _settings.YOUTUBE_PROXY
 
 # =============================================================================
@@ -568,6 +570,14 @@ def get_brave_key() -> str:
 
 def get_openai_key() -> Optional[str]:
     return OPENAI_API_KEY or None
+
+
+def get_deepseek_key() -> Optional[str]:
+    return DEEPSEEK_API_KEY or None
+
+
+def is_deepseek_available() -> bool:
+    return bool(DEEPSEEK_API_KEY)
 
 
 def is_openai_available() -> bool:

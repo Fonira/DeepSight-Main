@@ -13,6 +13,7 @@ from datetime import datetime
 
 from core.config import get_mistral_key, get_perplexity_key, MISTRAL_MODELS, VERSION
 from core.config import MISTRAL_INTERNAL_MODEL
+from core.llm_provider import llm_complete
 
 try:
     from core.cache import cache_service, make_cache_key
@@ -1461,71 +1462,35 @@ async def generate_summary(
     if web_context:
         max_tokens = int(max_tokens * 1.2)  # +20%
     
-    # Retry avec backoff pour les erreurs 429 (rate limit Mistral)
-    max_retries = 3
-    last_error = None
+    # 🔄 Centralized LLM call with automatic fallback chain (Mistral → DeepSeek)
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
 
-    for attempt in range(max_retries):
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    "https://api.mistral.ai/v1/chat/completions",
-                    headers={
-                        "Authorization": f"Bearer {api_key}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "model": model,
-                        "messages": [
-                            {"role": "system", "content": system_prompt},
-                            {"role": "user", "content": user_prompt}
-                        ],
-                        "max_tokens": max_tokens,
-                        "temperature": 0.3
-                    },
-                    timeout=180  # 3 minutes pour les longues analyses
-                )
+    result = await llm_complete(
+        messages=messages,
+        model=model,
+        max_tokens=max_tokens,
+        temperature=0.3,
+        timeout=180,
+    )
 
-                if response.status_code == 200:
-                    data = response.json()
-                    summary = data["choices"][0]["message"]["content"].strip()
-                    word_count = len(summary.split())
-                    print(f"✅ Summary generated: {word_count} words (attempt {attempt + 1})", flush=True)
-                    # Cache the result
-                    if CACHE_AVAILABLE and video_id:
-                        try:
-                            cache_key = make_cache_key("analysis", video_id, mode, model)
-                            await cache_service.set(cache_key, summary)
-                            print(f"💾 Analysis cached: {cache_key}", flush=True)
-                        except Exception:
-                            pass
-                    return summary
-                elif response.status_code == 429:
-                    # Rate limit — retry avec backoff exponentiel
-                    wait_time = (2 ** attempt) * 3  # 3s, 6s, 12s
-                    print(f"⏳ Mistral 429 rate limit (attempt {attempt + 1}/{max_retries}), retry in {wait_time}s...", flush=True)
-                    print(f"   Response: {response.text[:200]}", flush=True)
-                    last_error = "rate_limit"
-                    if attempt < max_retries - 1:
-                        import asyncio
-                        await asyncio.sleep(wait_time)
-                        continue
-                    else:
-                        print(f"❌ Mistral 429 after {max_retries} retries — giving up", flush=True)
-                        return None
-                else:
-                    print(f"❌ Mistral API error: {response.status_code}", flush=True)
-                    print(f"   Response: {response.text[:200]}", flush=True)
-                    return None
+    if result:
+        summary = result.content
+        word_count = len(summary.split())
+        fallback_info = f" [fallback: {result.provider}:{result.model_used}]" if result.fallback_used else ""
+        print(f"✅ Summary generated: {word_count} words, {result.tokens_total} tokens{fallback_info}", flush=True)
 
-        except Exception as e:
-            print(f"❌ Summary generation error (attempt {attempt + 1}): {e}", flush=True)
-            last_error = str(e)
-            if attempt < max_retries - 1:
-                import asyncio
-                await asyncio.sleep(2 ** attempt)
-                continue
-            return None
+        # Cache the result
+        if CACHE_AVAILABLE and video_id:
+            try:
+                cache_key = make_cache_key("analysis", video_id, mode, model)
+                await cache_service.set(cache_key, summary)
+                print(f"💾 Analysis cached: {cache_key}", flush=True)
+            except Exception:
+                pass
+        return summary
 
     return None
 

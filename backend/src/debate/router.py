@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.dependencies import get_current_user, require_credits
 from core.config import get_mistral_key, PLAN_LIMITS
+from core.llm_provider import llm_complete
 from videos.web_search_provider import web_search_and_synthesize, WebSearchResult
 from core.credits import deduct_credits
 from db.database import (
@@ -153,46 +154,20 @@ async def _call_mistral(
     max_tokens: int = 4096,
     json_mode: bool = False,
 ) -> Optional[str]:
-    """Call Mistral AI chat completions API."""
-    api_key = get_mistral_key()
-    if not api_key:
-        logger.error("[DEBATE] No Mistral API key configured")
-        return None
-    try:
-        payload = {
-            "model": model,
-            "messages": messages,
-            "temperature": temperature,
-            "top_p": 0.9,
-            "max_tokens": max_tokens,
-        }
-        if json_mode:
-            payload["response_format"] = {"type": "json_object"}
-        async with httpx.AsyncClient(timeout=120.0) as client:
-            resp = await client.post(
-                MISTRAL_CHAT_URL,
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            content = data["choices"][0]["message"]["content"]
-            finish_reason = data["choices"][0].get("finish_reason", "unknown")
-            if finish_reason == "length":
-                logger.warning("[DEBATE] Mistral response truncated (finish_reason=length), model=%s", model)
-            return content
-    except httpx.TimeoutException:
-        logger.error("[DEBATE] Mistral API timeout (120s), model=%s", model)
-        return None
-    except httpx.HTTPStatusError as e:
-        logger.error("[DEBATE] Mistral API HTTP error %d: %s", e.response.status_code, str(e)[:200])
-        return None
-    except Exception as e:
-        logger.error("[DEBATE] Mistral API unexpected error: %s", str(e)[:300])
-        return None
+    """Call LLM with automatic fallback chain (Mistral → DeepSeek)."""
+    result = await llm_complete(
+        messages=messages,
+        model=model,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        timeout=120,
+    )
+    if result:
+        if result.fallback_used:
+            logger.info("[DEBATE] Used fallback: %s:%s", result.provider, result.model_used)
+        return result.content
+    logger.error("[DEBATE] All LLM providers failed")
+    return None
 
 
 async def _call_perplexity(query: str, context: str = "") -> Optional[str]:

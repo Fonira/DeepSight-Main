@@ -26,6 +26,7 @@ from db.database import (
     PlaylistAnalysis, TaskStatus, CreditTransaction
 )
 from core.config import get_mistral_key, get_perplexity_key, PLAN_LIMITS, R2_CONFIG
+from core.llm_provider import llm_complete, llm_complete_stream
 
 
 # Colonnes légères pour la liste d'historique (exclut summary_content, transcript_context, etc.)
@@ -1051,35 +1052,22 @@ async def generate_chat_response(
         "expert": 3000
     }.get(mode, 1500)
     
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    "max_tokens": max_tokens,
-                    "temperature": 0.3
-                },
-                timeout=60
-            )
-            
-            if response.status_code == 200:
-                return response.json()["choices"][0]["message"]["content"].strip()
-            else:
-                print(f"❌ Chat API error: {response.status_code}", flush=True)
-                return None
-                
-    except Exception as e:
-        print(f"❌ Chat generation error: {e}", flush=True)
-        return None
+    # 🔄 Centralized LLM call with automatic fallback
+    result = await llm_complete(
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        model=model,
+        max_tokens=max_tokens,
+        temperature=0.3,
+        timeout=60,
+    )
+    if result:
+        if result.fallback_used:
+            print(f"🔄 [CHAT] Used fallback: {result.provider}:{result.model_used}", flush=True)
+        return result.content
+    return None
 
 
 async def generate_chat_response_stream(
@@ -1107,41 +1095,18 @@ async def generate_chat_response_stream(
     
     max_tokens = {"accessible": 800, "standard": 1500, "expert": 3000}.get(mode, 1500)
     
-    try:
-        async with httpx.AsyncClient() as client:
-            async with client.stream(
-                "POST",
-                "https://api.mistral.ai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    "max_tokens": max_tokens,
-                    "temperature": 0.3,
-                    "stream": True
-                },
-                timeout=120
-            ) as response:
-                async for line in response.aiter_lines():
-                    if line.startswith("data: "):
-                        data = line[6:]
-                        if data == "[DONE]":
-                            break
-                        try:
-                            chunk = json.loads(data)
-                            content = chunk["choices"][0]["delta"].get("content", "")
-                            if content:
-                                yield content
-                        except (json.JSONDecodeError, KeyError, IndexError):
-                            continue
-    except Exception as e:
-        yield f"Error: {e}"
+    # 🔄 Centralized streaming with automatic fallback
+    async for chunk in llm_complete_stream(
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        model=model,
+        max_tokens=max_tokens,
+        temperature=0.3,
+        timeout=120,
+    ):
+        yield chunk
 
 
 async def generate_chat_response_v4(

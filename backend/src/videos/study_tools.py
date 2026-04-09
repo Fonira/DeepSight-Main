@@ -14,6 +14,7 @@ from datetime import datetime
 
 # Import configuration
 from core.config import get_mistral_key
+from core.llm_provider import llm_complete
 
 # Message de startup visible
 print("", file=sys.stderr, flush=True)
@@ -199,47 +200,30 @@ async def call_mistral_json(
     temperature: float = 0.1
 ) -> str:
     """
-    Appelle l'API Mistral avec le mode JSON officiel.
+    Appelle l'API Mistral avec fallback automatique (Mistral → DeepSeek).
+    Note: JSON mode n'est pas garanti via le fallback DeepSeek,
+    mais le prompt demande du JSON donc ça marche en pratique.
     Retourne le contenu brut de la réponse.
     """
-    api_key = get_mistral_key()
-    if not api_key:
-        raise ValueError("Clé API Mistral non configurée")
-    
     log(f"🤖 Appel Mistral [{model}] max_tokens={max_tokens}...")
-    
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        response = await client.post(
-            "https://api.mistral.ai/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                "temperature": temperature,
-                "max_tokens": max_tokens,
-                "response_format": {"type": "json_object"}  # MODE JSON OFFICIEL
-            }
-        )
-        
-        log(f"🤖 Réponse HTTP: {response.status_code}")
-        
-        if response.status_code != 200:
-            error = response.text[:300]
-            log(f"❌ Erreur API Mistral: {error}")
-            raise Exception(f"Erreur Mistral {response.status_code}: {error}")
-        
-        data = response.json()
-        content = data["choices"][0]["message"]["content"]
-        
-        log(f"🤖 Contenu reçu: {len(content)} caractères")
-        
-        return content
+
+    result = await llm_complete(
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        model=model,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        timeout=120,
+    )
+
+    if result:
+        fallback_info = f" [fallback: {result.provider}:{result.model_used}]" if result.fallback_used else ""
+        log(f"🤖 Contenu reçu: {len(result.content)} caractères{fallback_info}")
+        return result.content
+
+    raise Exception("Erreur Mistral: tous les providers LLM ont échoué")
 
 
 async def generate_study_card(
