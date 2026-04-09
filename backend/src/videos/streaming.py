@@ -557,7 +557,7 @@ async def analysis_stream_generator(
         # ─────────────────────────────────────────────────────────────────
         # 🔬 PATH A: DEEP RESEARCH (Brave massif + Perplexity sonar-pro)
         # ─────────────────────────────────────────────────────────────────
-        if deep_research and user_plan in ('pro', 'expert', 'admin', 'unlimited'):
+        if deep_research and user_plan in ('pro', 'admin'):
             print(f"🔬 [DEEP RESEARCH] Pipeline activé pour plan={user_plan}", flush=True)
             try:
                 # Étape 1: Brave Search massif (5 queries × 8 résultats)
@@ -620,7 +620,7 @@ async def analysis_stream_generator(
         # ─────────────────────────────────────────────────────────────────
         if web_context is None and web_enrich and WEB_ENRICHMENT_AVAILABLE:
             try:
-                should_enrich = user_plan in ('pro', 'expert', 'admin')
+                should_enrich = user_plan in ('pro', 'admin')
                 
                 if not should_enrich:
                     fast_changing_keywords = [
@@ -649,7 +649,7 @@ async def analysis_stream_generator(
                         video_channel=metadata.get("channel", ""),
                         category="technology",
                         transcript=transcript,
-                        plan=user_plan if user_plan in ('pro', 'expert', 'admin') else 'pro',
+                        plan=user_plan if user_plan in ('pro', 'admin') else 'pro',
                         lang=lang,
                     )
                     

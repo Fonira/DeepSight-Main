@@ -66,10 +66,7 @@ CREDIT_COSTS = {
 # Rate limiting par plan - LIMITES AUGMENTÉES
 RATE_LIMITS = {
     "free": {"requests_per_minute": 60, "burst": 30},
-    "starter": {"requests_per_minute": 90, "burst": 40},
-    "pro": {"requests_per_minute": 150, "burst": 60},
-    "expert": {"requests_per_minute": 200, "burst": 80},
-    "unlimited": {"requests_per_minute": 999999, "burst": 999999},
+    "pro": {"requests_per_minute": 200, "burst": 80},
 }
 
 # Endpoints exemptés du rate limiting strict

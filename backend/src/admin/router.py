@@ -51,7 +51,7 @@ class UpdateUserRequest(BaseModel):
         """Valide que le plan est une valeur autorisée"""
         if self.plan is None:
             return None
-        valid_plans = ["free", "starter", "pro", "expert", "unlimited"]
+        valid_plans = ["free", "pro"]  # After migration (April 2026)
         if self.plan not in valid_plans:
             raise ValueError(f"Invalid plan. Must be one of: {', '.join(valid_plans)}")
         return self.plan
@@ -137,16 +137,13 @@ async def get_admin_stats(
     )
     new_users_week = new_week_result.scalar() or 0
     
-    # Revenue estimate (based on plans)
+    # Revenue estimate (based on Pro users only, 6.99€/month)
     revenue = 0.0
-    for plan, limits in PLAN_LIMITS.items():
-        if plan == "free" or plan == "unlimited":
-            continue
-        plan_count_result = await session.execute(
-            select(func.count(User.id)).where(User.plan == plan)
-        )
-        plan_count = plan_count_result.scalar() or 0
-        revenue += plan_count * (limits.get("price", 0) / 100)  # centimes -> euros
+    pro_count_result = await session.execute(
+        select(func.count(User.id)).where(User.plan == "pro")
+    )
+    pro_count = pro_count_result.scalar() or 0
+    revenue = pro_count * 6.99  # Pro plan: 6.99€/month
     
     # Transcript cache metrics
     transcript_cache_stats = None

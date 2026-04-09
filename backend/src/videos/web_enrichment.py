@@ -75,10 +75,10 @@ def get_enrichment_level(plan: str) -> EnrichmentLevel:
     """Détermine le niveau d'enrichissement selon le plan"""
     plan_mapping = {
         "free": EnrichmentLevel.NONE,
-        "starter": EnrichmentLevel.NONE,  # Starter n'a pas d'enrichissement
+        "starter": EnrichmentLevel.FULL,  # Maps to pro (normalize_plan_id)
         "pro": EnrichmentLevel.FULL,
-        "expert": EnrichmentLevel.DEEP,
-        "unlimited": EnrichmentLevel.DEEP
+        "expert": EnrichmentLevel.FULL,  # Maps to pro (normalize_plan_id)
+        "unlimited": EnrichmentLevel.FULL  # Maps to pro (normalize_plan_id)
     }
     return plan_mapping.get(plan, EnrichmentLevel.NONE)
 

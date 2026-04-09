@@ -2266,7 +2266,7 @@ async def get_api_key_status(
     🔑 Vérifier le status de la clé API de l'utilisateur.
     Disponible uniquement pour le plan Pro.
     """
-    plan_eligible = current_user.plan in ["pro", "unlimited"]
+    plan_eligible = current_user.plan in ["pro"]
 
     return ApiKeyStatusResponse(
         has_api_key=bool(current_user.api_key_hash),
@@ -2291,7 +2291,7 @@ async def generate_user_api_key(
     Disponible uniquement pour le plan Pro.
     """
     # Vérifier le plan
-    if current_user.plan not in ["pro", "unlimited"]:
+    if current_user.plan not in ["pro"]:
         raise HTTPException(
             status_code=403,
             detail={
@@ -2345,7 +2345,7 @@ async def regenerate_user_api_key(
     Disponible uniquement pour le plan Pro.
     """
     # Vérifier le plan
-    if current_user.plan not in ["pro", "unlimited"]:
+    if current_user.plan not in ["pro"]:
         raise HTTPException(
             status_code=403,
             detail={

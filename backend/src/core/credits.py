@@ -21,13 +21,10 @@ from db.database import User, CreditTransaction
 # 💰 CONFIGURATION DES COÛTS
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Crédits mensuels par plan (grands nombres pour effet psychologique positif)
+# Crédits mensuels par plan — 2 plans (Avril 2026)
 PLAN_CREDITS = {
     "free": 500,           # ~10 analyses basiques
-    "starter": 5_000,      # ~100 analyses basiques ou 50 avec Medium
-    "pro": 25_000,         # ~500 analyses ou usage intensif avec Large
-    "expert": 100_000,     # Usage très intensif
-    "unlimited": 999_999   # Admin
+    "pro": 10_000,         # ~200 analyses ou usage intensif avec Large
 }
 
 # Coût de base par modèle — Gamme Mistral 2026
@@ -57,7 +54,7 @@ MODEL_COSTS = {
         "multiplier": 2.0
     },
 
-    # ── Tier 3 : Expert ──
+    # ── Tier 3 : Premium ──
     "mistral-large-2512": {
         "analysis": 150,     # 3x Small (était 5x — reflète la baisse de prix de 75%)
         "chat": 15,

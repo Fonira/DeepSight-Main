@@ -21,11 +21,11 @@ logger = logging.getLogger(__name__)
 
 VOICE_LIMITS = {
     "free":      {"enabled": False, "monthly_minutes": 0,   "max_session_minutes": 0},
-    "etudiant":  {"enabled": True,  "monthly_minutes": 5,   "max_session_minutes": 10},
-    "starter":   {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},
-    "pro":       {"enabled": True,  "monthly_minutes": 45,  "max_session_minutes": 10},
-    "expert":    {"enabled": True,  "monthly_minutes": 90,  "max_session_minutes": 15},
-    "unlimited": {"enabled": True,  "monthly_minutes": 999, "max_session_minutes": 30},
+    "etudiant":  {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},  # Legacy alias
+    "starter":   {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},  # Maps to pro
+    "pro":       {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},
+    "expert":    {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},  # Maps to pro
+    "unlimited": {"enabled": True,  "monthly_minutes": 15,  "max_session_minutes": 10},  # Maps to pro
 }
 
 WARNING_THRESHOLDS = [50, 80, 95, 100]

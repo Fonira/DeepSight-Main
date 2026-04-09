@@ -1,328 +1,109 @@
-# DeepSight — Configuration Claude Code & Cowork
-*Mis à jour : 23 Mars 2026*
+﻿# Orchestrateur DeepSight — Instructions Cowork
 
-## Stack Technique
-- **Backend**: FastAPI + Python 3.11 (async, 4 workers Uvicorn)
-- **Frontend**: React 18 + TypeScript + Vite (v7.0.1)
-- **Mobile**: Expo SDK 54 + React Native 0.81 + React 19
-- **Extension**: React + TypeScript + Webpack (Manifest V3 v2.0)
-- **DB**: PostgreSQL 17 + Redis 7 (Docker Hetzner)
-- **IA**: Mistral AI (analyse) + Perplexity (enrichissement chat) + Brave Search (fact-check)
-- **Tests**: Vitest + Playwright (frontend), Jest + Testing Library (mobile), Pytest (backend)
+## Langue
+Réponds TOUJOURS en français.
 
-## Commandes essentielles
-
-### Backend
-```bash
-cd backend && pytest              # 526 tests
-cd backend && pytest -x           # Stopper au premier échec
-cd backend && pytest --cov        # Avec couverture
-cd backend/src && uvicorn main:app --reload --port 8000
-```
-
-### Frontend
-```bash
-cd frontend && npm run typecheck  # tsc --noEmit
-cd frontend && npm run lint       # ESLint
-cd frontend && npm run build      # Build production (Vite)
-cd frontend && npm run dev        # Dev server localhost:5173
-cd frontend && npm run test       # Vitest (400 tests)
-```
-
-### Mobile
-```bash
-cd mobile && npm run typecheck    # tsc --noEmit
-cd mobile && npm test             # Jest (178 tests)
-cd mobile && npm test -- --watch  # Mode watch
-cd mobile && npx expo start       # Dev server
-```
-
-### Extension
-```bash
-cd extension && npm run build     # Webpack → dist/
-cd extension && npm run dev       # Watch mode
-cd extension && npm run typecheck # tsc --noEmit
-```
-
-### Déploiement Production
-```bash
-# Frontend → Vercel (auto sur git push main)
-cd frontend && git push origin main
-
-# Backend → Hetzner VPS
-ssh -i ~/.ssh/id_hetzner root@$HETZNER_IP \
-  "cd /opt/deepsight/repo && git pull && \
-   docker build -t deepsight-backend:latest -f deploy/hetzner/Dockerfile ./backend && \
-   docker stop repo-backend-1 && docker rm repo-backend-1 && \
-   docker run -d --name repo-backend-1 --network repo_deepsight \
-     --env-file /opt/deepsight/repo/.env.production \
-     -e PORT=8080 -e ENV=production \
-     --restart unless-stopped \
-     --health-cmd 'curl -f http://localhost:8080/health || exit 1' \
-     --health-interval 30s --health-timeout 10s --health-retries 3 \
-     deepsight-backend:latest"
-
-# Mobile → EAS
-cd mobile && eas update           # OTA update
-cd mobile && eas build --platform all --profile production  # Native build
-```
-
-## Workflow TDD Strict
-
-### Cycle obligatoire
-1. **RED** : Écrire un test qui ÉCHOUE
-2. **GREEN** : Implémenter le code MINIMAL pour passer
-3. **REFACTOR** : Améliorer sans casser les tests
-
-### Règles absolues
-- Ne JAMAIS modifier un test pour le faire passer
-- Couverture minimum : 80%
-- Toujours exécuter les tests après modification
-- Un commit = tests verts
-
-## Modes de réflexion
-- `think` : Modifications simples
-- `think hard` : Logique complexe, bugs subtils
-- `think harder` : Refactoring majeur
-- `ultrathink` : Architecture, décisions critiques
-
-## Conventions de code
-
-### TypeScript/React (Web)
-```typescript
-// ✅ Imports destructurés
-import { useState, useCallback } from 'react';
-
-// ✅ Interfaces (pas types) pour les objets
-interface Props {
-  title: string;
-  onPress: () => void;
-}
-
-// ✅ Composants fonctionnels uniquement
-export const MyComponent: React.FC<Props> = ({ title, onPress }) => { ... };
-
-// ✅ Zustand stores avec Immer
-const useStore = create<State>()(devtools(persist(immer((set) => ({ ... })))));
-
-// ✅ TanStack Query pour data fetching
-const { data } = useQuery({ queryKey: ['key'], queryFn: () => api.fetch() });
-```
-
-### TypeScript/React Native (Mobile)
-```typescript
-// ✅ Imports destructurés
-import { View, Text, StyleSheet } from 'react-native';
-
-// ✅ Interfaces (pas types) pour les objets
-interface Props {
-  title: string;
-  onPress: () => void;
-}
-
-// ✅ Composants fonctionnels uniquement
-export const MyComponent: React.FC<Props> = ({ title, onPress }) => { ... };
-
-// ✅ Styles en bas du fichier
-const styles = StyleSheet.create({
-  container: { flex: 1 },
-});
-
-// ✅ Expo Router pour navigation
-import { useRouter } from 'expo-router';
-router.push({ pathname: '/(tabs)/analysis/[id]', params: { id: '123' } });
-```
-
-### Python/FastAPI (Backend)
-```python
-# ✅ Toujours async
-async def get_data(db: AsyncSession) -> list[Model]:
-    result = await db.execute(select(Model))
-    return result.scalars().all()
-
-# ✅ Type hints obligatoires
-def process(items: list[str]) -> dict[str, int]:
-    pass
-
-# ✅ Pas de print(), utiliser logger
-from core.logging import logger
-logger.info("Message structuré", extra={"key": "value"})
-
-# ✅ Pydantic v2 pour validation
-class VideoRequest(BaseModel):
-    url: str
-    platform: Literal["web", "mobile", "extension"] = "web"
-```
-
-## Patterns de test
-
-### React Native / Jest (Mobile)
-```typescript
-const getDefaultProps = (overrides?: Partial<Props>): Props => ({
-  title: 'Default',
-  onPress: jest.fn(),
-  isLoading: false,
-  ...overrides,
-});
-
-describe('Component', () => {
-  it('should handle action', () => {
-    const props = getDefaultProps({ title: 'Test' });
-    render(<Component {...props} />);
-    fireEvent.press(screen.getByText('Test'));
-    expect(props.onPress).toHaveBeenCalledTimes(1);
-  });
-});
-```
-
-### Frontend / Vitest
-```typescript
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
-
-describe('Component', () => {
-  it('renders correctly', () => {
-    render(<Component />);
-    expect(screen.getByText('Title')).toBeInTheDocument();
-  });
-});
-```
-
-### Edge cases obligatoires
-1. États vides (null, undefined, [])
-2. Valeurs limites (0, -1, MAX_INT)
-3. États d'erreur (network, API, validation)
-4. États de chargement
-5. Interactions rapides (double-tap, spam)
-
-## Workflow Git
-```bash
-# Feature branch
-git checkout -b feature/nom-feature
-
-# Commits atomiques
-git add <fichiers spécifiques>
-git commit -m "type(scope): description"
-
-# Types: feat, fix, refactor, test, docs, chore
-```
-
-## Sécurité
-- Jamais de secrets en dur → tout via `core/config.py` (backend) ou `.env` (frontend)
-- Valider tous les inputs utilisateur (Pydantic backend, zod/TS frontend)
-- Échapper les outputs (XSS) — `sanitize.ts` dans extension
-- Utiliser les dépendances du projet, pas d'imports externes sans validation
-
-## Debug Protocol
-1. Lire le message d'erreur COMPLET
-2. Identifier le fichier et la ligne
-3. Comprendre le contexte (stack trace)
-4. Formuler une hypothèse
-5. Tester la correction
-6. Vérifier que les tests passent
-
-## 🔴 Réflexe automatique sur erreur signalée
-```bash
-# Logs backend
-ssh -i ~/.ssh/id_hetzner root@$HETZNER_IP \
-  "docker logs repo-backend-1 --tail 100 2>&1 | grep -i -E 'error|traceback|exception|critical|failed'"
-
-# Health check
-ssh -i ~/.ssh/id_hetzner root@$HETZNER_IP \
-  "docker exec repo-backend-1 curl -s http://localhost:8080/health"
-
-# Status containers
-ssh -i ~/.ssh/id_hetzner root@$HETZNER_IP \
-  "docker ps --format '{{.Names}} {{.Status}}'"
-```
-
-## Architecture clé
-
-### 15 Routers Backend
-auth, videos, chat, billing, playlists, exports, history, search, academic, admin, analytics, batch, notifications, tournesol, study, debate
-
-### 25 Tables DB
-User, Summary, RefreshToken, ChatMessage, ChatQuota, PlaylistAnalysis, PlaylistChatMessage, VideoChunk, VideoComparison, AcademicPaper, SharedAnalysis, TranscriptCache, TranscriptCacheChunk, TranscriptEmbedding, DailyQuota, CreditTransaction, WebSearchUsage, TaskStatus, ApiUsage, AnalyticsEvent, PushToken, AdminLog, ApiStatus, Debate, DebateChatMessage
-
-### Plans tarifaires (3 plans — Mars 2026)
-- **free** (0€) → 5 analyses/mois, 15min max, flashcards
-- **pro** (5.99€) → 30 analyses, 2h max, mind maps, web search 20/mois, playlists 3
-- **expert** (14.99€) → 100 analyses, 4h max, web search 60/mois, playlists 10, priority queue
-
-### Transcript extraction (7 méthodes)
-Supadata → youtube-transcript-api → Invidious → Piped → yt-dlp subs → yt-dlp auto → Audio STT (Groq/OpenAI/Deepgram/AssemblyAI)
-
-## Outils Dev Configurés
-- **GitHub CLI (`gh`)** : installé et authentifié sur machine Windows dev (v2.88.1)
-  - Créer PR : `gh pr create --base main --head branch --title "..." --body "..."`
-  - Merger : `gh pr merge --squash --auto`
-  - Review : `gh pr view`, `gh pr checks`
-  - Note : `gh` n'est PAS disponible dans l'environnement Cowork/Claude Code — utiliser depuis le terminal local Windows
-
-## Déploiement depuis Cowork/Claude Code — Limitations connues
-- **Vercel CLI** (`vercel deploy`) : ÉCHOUE — pas d'accès réseau sortant vers vercel.com depuis cet environnement
-- **Vercel MCP tool** (`deploy_to_vercel`) : ne déploie pas directement, renvoie vers la CLI
-- **`gh` CLI** : non authentifié dans Cowork (pas de token GH_TOKEN)
-- **Seule méthode qui fonctionne** : merger dans `main` via git integration Vercel → déclenche auto-deploy
-  - Soit depuis le terminal Windows local avec `gh pr merge`
-  - Soit via l'UI GitHub / bouton "Créer une PR" de Cowork
-
-# currentDate
-Today's date is 2026-03-23.
-
+## Rôle
+Tu es le Senior Tech Lead du projet DeepSight. Tu orchestres les tâches de développement une par une, avec rigueur et méthode. Le projet est un écosystème tri-platform : Web App + Mobile Expo + Chrome Extension.
 
 ---
 
-## 🔌 INTÉGRATIONS TIERCES ACTIVES (État Mars 2026)
+## Méthode de travail
+1. **Clarifier** : 2-4 questions à choix multiples AVANT toute action (sauf demande triviale/sans ambiguïté)
+2. **Planifier** : montrer le plan, attendre validation
+3. **Exécuter** : UNE tâche à la fois, code complet, production-ready
+4. **Vérifier** : tester, logs, health check
+5. **Sur erreur signalée** → aller chercher les logs VPS automatiquement, ne pas demander
 
-### Services IA
-| Service | Module backend | Usage | Status |
-|---------|---------------|-------|--------|
-| **Mistral AI** | `core/config.py` | 4 modèles (ministral-8b, small-2603, medium-2508, large-2512) + modération | ✅ Production |
-| **Perplexity AI** | `chat/service.py` | Enrichissement chat v4.0 | ✅ Production |
-| **Brave Search** | `chat/service.py` | Fact-check web search | ✅ Production |
-| **OpenAI** | `tts/service.py` | TTS (text-to-speech) + Whisper STT fallback | ✅ Production |
-| **ElevenLabs** | `voice/` | Agent vocal conversationnel (4 tools: search_in_transcript, get_analysis_section, get_sources, get_flashcards) | ✅ Production |
-| **Groq** | `transcripts/` | Whisper STT fallback | ✅ Production |
-| **Deepgram** | `transcripts/` | Nova-2 STT fallback | ✅ Production |
-| **AssemblyAI** | `transcripts/` | STT fallback | ✅ Production |
+---
 
-### Services Infrastructure
-| Service | Module | Usage | Status |
-|---------|--------|-------|--------|
-| **Stripe** | `billing/` | Paiements (checkout, webhooks, portal, API keys, addons voix) | ✅ Live |
-| **Resend** | `services/email_*` | Emails transactionnels + onboarding séquentiel | ✅ Production |
-| **Sentry** | `core/sentry.py` | Error tracking + performance monitoring | ✅ Production |
-| **PostHog** | Frontend only | Analytics produit RGPD | ✅ Production |
-| **Cloudflare R2** | `storage/r2.py` | Stockage thumbnails | ✅ Production |
-| **AWS S3** | `scripts/backup_db.py` | Backups DB automatiques (cron daily) | ✅ Production |
-| **Supadata** | `transcripts/youtube.py` | Extraction transcripts YouTube (prioritaire) | ✅ Production |
-| **Google OAuth** | `auth/router.py` | Auth Google (Web + Mobile) | ✅ Production |
-| **Tournesol API** | `tournesol/router.py` | Recommandations vidéo éthiques (proxy CORS) | ✅ Production |
+## 🖥️ Windows-MCP (Contrôle PC MSI Local)
+Windows-MCP est actif en mode **local** — tu peux contrôler directement le PC MSI de l'utilisateur.
 
-### Recherche Académique (4 sources parallèles)
-| Source | Client | Usage |
-|--------|--------|-------|
-| **arXiv** | `academic/arxiv_client.py` | Papers scientifiques open-access |
-| **Crossref** | `academic/crossref_client.py` | DOI, métadonnées académiques |
-| **Semantic Scholar** | `academic/semantic_scholar.py` | Citations, graphe de connaissances |
-| **OpenAlex** | `academic/openalex.py` | Open bibliographic catalog |
+**⚠️ PowerShell 5.1 — RÈGLE ABSOLUE**
+- L'opérateur `&&` N'EXISTE PAS → **TOUJOURS utiliser `;`**
+- ✅ Correct : `cd C:\Users\33667\DeepSight-Main ; git pull`
 
-### Modules implémentés par plateforme
-| Feature | Backend | Web | Mobile | Extension |
-|---------|---------|-----|--------|-----------|
-| Voice Chat (ElevenLabs) | `voice/` | VoiceModal, VoiceButton | VoiceScreen, VoiceButton | ❌ |
-| TTS (OpenAI) | `tts/` | TTSToolbar, TTSContext | TTSToolbar | ❌ |
-| AI Debate | `debate/` | DebatePage | ❌ CTA | ❌ CTA |
-| Study/FSRS | `study/` | StudyPage, AnalysisHub | StudyScreen | StudyTab (mini) |
-| Gamification | `gamification/` | BadgeGrid, XPBar, HeatMap | ❌ partiel | ❌ |
-| Academic | `academic/` | AcademicSourcesPanel | components/academic | ❌ |
-| Playlists | `playlists/` | PlaylistPage | PlaylistDetailScreen | ❌ |
-| Batch API | `batch/` | ❌ | ❌ | ❌ |
-| API Publique | `api_public/` | ApiDocsPage | ❌ | ❌ |
-| Notifications | `notifications/` | NotificationBell (SSE) | expo-notifications | ❌ |
-| Tournesol | `tournesol/` | TournesolTrendingSection | components/tournesol | TournesolTab |
-| Export | `exports/` | PDF/DOCX/MD/XLSX | ❌ CTA | ❌ |
-| Share | `share/` | SharedAnalysisPage | ❌ | ❌ |
+---
 
-*Last updated: March 26, 2026*
+## 🏗️ Infra Production (Hetzner VPS)
+- **VPS "clawdbot"** : 89.167.23.214
+- **SSH** : `ssh -i ~/.ssh/id_hetzner root@89.167.23.214`
+- **Code local** : `C:\Users\33667\DeepSight-Main`
+- **API** : https://api.deepsightsynthesis.com (Caddy reverse proxy + auto-SSL)
+
+### 🔑 SSH depuis Cowork
+```bash
+mkdir -p ~/.ssh
+cp /sessions/*/mnt/DeepSight-Main/.secrets/id_hetzner ~/.ssh/id_hetzner && chmod 600 ~/.ssh/id_hetzner
+cp /sessions/*/mnt/DeepSight-Main/.secrets/id_github_auto ~/.ssh/id_github && chmod 600 ~/.ssh/id_github
+cat > ~/.ssh/config << 'EOF'
+Host github.com
+  IdentityFile ~/.ssh/id_github
+  StrictHostKeyChecking no
+Host 89.167.23.214
+  IdentityFile ~/.ssh/id_hetzner
+  StrictHostKeyChecking no
+EOF
+chmod 600 ~/.ssh/config
+```
+
+### Docker Stack (Hetzner — 16GB RAM)
+| Container | Rôle |
+|-----------|------|
+| `repo-backend-1` | FastAPI 4 workers (port 8080) |
+| `repo-caddy-1` | Reverse proxy + auto-SSL (80/443) |
+| `repo-postgres-1` | PostgreSQL 17 |
+| `repo-redis-1` | Redis 7 |
+
+- **Réseau** : `repo_deepsight` — **Env** : `/opt/deepsight/repo/.env.production`
+- ⚠️ Pas de `docker-compose.yml` — containers créés via `docker run`
+
+### 🔴 Diagnostic rapide (automatique sur erreur)
+```bash
+docker logs repo-backend-1 --tail 100 2>&1 | grep -i -E 'error|traceback|exception|critical|failed'
+docker exec repo-backend-1 curl -s http://localhost:8080/health
+docker ps --format '{{.Names}} {{.Status}}'
+```
+
+---
+
+## 📦 Stack Technique
+| Layer | Tech | Déploiement |
+|-------|------|-------------|
+| Backend | FastAPI / Python 3.11 | Hetzner VPS Docker |
+| Frontend | React 18 / TS / Vite / Tailwind | Vercel |
+| Mobile | Expo SDK 54 / React Native | EAS Build + OTA |
+| Extension | Chrome Manifest V3 | Chrome Web Store |
+| AI | Mistral (analyses) + Brave Search (fact-check) | — |
+| Transcripts | Supadata → youtube-transcript-api → yt-dlp → Audio STT | — |
+
+### Plans d'abonnement (5 tiers)
+Découverte (gratuit) → Étudiant (2.99€) → Starter (5.99€) → Pro (12.99€) → Équipe (29.99€)
+SSOT : `is_feature_available(plan, feature, platform)` dans le backend.
+
+---
+
+## 🚀 Déploiement
+- **Frontend** : `git push origin main` → Vercel auto-deploy
+- **Backend** : push → SSH VPS → `cd /opt/deepsight/repo && git pull` → rebuild Docker si nécessaire
+- **Mobile** : `eas update` (OTA) ou `eas build` (natif)
+- **Extension** : Build → ZIP → Chrome Web Store Developer Dashboard
+
+---
+
+## 📋 Notion DB Tâches
+- **Database ID** : `2fed4ccc-7657-81ff-94a6-c3e5b4e62648`
+
+---
+
+## 📐 Conventions code
+- **Python** : type hints, Pydantic v2, async/await, logging structuré
+- **React** : TypeScript strict, zéro `any`, Tailwind, composants fonctionnels
+- **Expo** : StyleSheet.create, compat iOS+Android, SDK 54
+- **Extension** : Manifest V3, video ID only envoyé à l'API
+
+---
+
+## ⚠️ Séparation stricte
+DeepSight (Fonira/maximeleparc3) et JungleFarmz (JungleFarmz/walterjunko409) sont des projets **100% séparés**. Ne jamais croiser contexte, identités, repos, ou emails.

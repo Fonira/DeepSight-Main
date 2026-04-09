@@ -1080,7 +1080,7 @@ async def analyze_video_v2(
         "include_entities": request.include_entities,
         "include_timestamps": request.include_timestamps,
         "include_reliability": request.include_reliability,
-        "priority": request.priority if current_user.plan in ["pro", "expert", "unlimited"] else "normal",
+        "priority": request.priority if current_user.plan in ["pro"] else "normal",
         "webhook_url": request.webhook_url,
         "custom": request.customization or {}
     }
@@ -1657,22 +1657,22 @@ async def analyze_video_v2_1(
         customization = AnalysisCustomization(**custom_kwargs)
 
     # Vérifier les permissions pour fonctionnalités avancées
-    is_premium = current_user.plan in ["pro", "expert", "unlimited"]
-    
-    # Anti-AI detection: Pro/Expert only
+    is_premium = current_user.plan in ["pro"]
+
+    # Anti-AI detection: Pro only
     if customization.anti_ai_detection and not is_premium:
         customization.anti_ai_detection = False
-        print(f"⚠️ [v2.1] Anti-AI disabled (requires Pro/Expert)", flush=True)
-    
-    # Analyse des commentaires: Pro/Expert only
+        print(f"⚠️ [v2.1] Anti-AI disabled (requires Pro)", flush=True)
+
+    # Analyse des commentaires: Pro only
     if customization.analyze_comments and not is_premium:
         customization.analyze_comments = False
-        print(f"⚠️ [v2.1] Comments analysis disabled (requires Pro/Expert)", flush=True)
-    
-    # Analyse de propagande: Expert only
-    if customization.detect_propaganda and current_user.plan not in ["expert", "unlimited"]:
+        print(f"⚠️ [v2.1] Comments analysis disabled (requires Pro)", flush=True)
+
+    # Analyse de propagande: Pro only (advanced feature)
+    if customization.detect_propaganda and current_user.plan not in ["pro"]:
         customization.detect_propaganda = False
-        print(f"⚠️ [v2.1] Propaganda analysis disabled (requires Expert)", flush=True)
+        print(f"⚠️ [v2.1] Propaganda analysis disabled (requires Pro)", flush=True)
     
     # Analyse d'intention: Pro/Expert only
     if customization.analyze_publication_intent and not is_premium:
@@ -3305,8 +3305,8 @@ async def get_enriched_concepts(
             "provider": "none"
         }
     
-    # Déterminer si on utilise Perplexity (Pro/Expert seulement)
-    use_perplexity = current_user.plan in ["pro", "expert", "unlimited"]
+    # Déterminer si on utilise Perplexity (Pro only)
+    use_perplexity = current_user.plan in ["pro"]
     
     try:
         # Obtenir les définitions enrichies
@@ -4322,7 +4322,7 @@ async def get_content_reliability(
     result["user_plan"] = current_user.plan or "free"
     
     # Indiquer si l'utilisateur peut avoir un fact-check complet
-    result["full_factcheck_available"] = current_user.plan in ["pro", "expert", "unlimited"]
+    result["full_factcheck_available"] = current_user.plan in ["pro"]
 
     # Push notification for fact-check complete
     try:
@@ -4380,8 +4380,8 @@ async def analyze_text_reliability(
     )
     
     result["user_plan"] = current_user.plan or "free"
-    result["full_factcheck_available"] = current_user.plan in ["pro", "expert", "unlimited"]
-    
+    result["full_factcheck_available"] = current_user.plan in ["pro"]
+
     return result
 
 

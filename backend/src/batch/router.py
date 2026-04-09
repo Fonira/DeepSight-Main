@@ -87,11 +87,11 @@ _batch_store: dict = {}
 
 BATCH_LIMITS = {
     "free": 3,
-    "student": 5,
-    "starter": 5,
+    "student": 10,  # Legacy alias
+    "starter": 10,  # Maps to pro (normalize_plan_id)
     "pro": 10,
-    "expert": 20,
-    "unlimited": 100,
+    "expert": 10,  # Maps to pro (normalize_plan_id)
+    "unlimited": 10,  # Maps to pro (normalize_plan_id)
 }
 
 
@@ -135,8 +135,8 @@ async def create_batch_analysis(
             detail="At least one video is required."
         )
 
-    # Vérifier priorité (high = Expert+ only)
-    if request.priority == "high" and user_plan not in ["expert", "unlimited"]:
+    # Vérifier priorité (high = Pro only)
+    if request.priority == "high" and user_plan not in ["pro"]:
         request.priority = "normal"
 
     # Calculer le coût total en crédits

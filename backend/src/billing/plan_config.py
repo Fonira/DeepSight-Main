@@ -1,6 +1,7 @@
 """
 PLAN_CONFIG — Single Source of Truth pour les plans DeepSight.
 
+Migration Avril 2026 : 2 plans uniquement (Free + Pro 6.99€).
 Chaque plan définit : limites, features, affichage, prix, plateformes.
 Convention : -1 = illimité.
 """
@@ -14,30 +15,30 @@ logger = logging.getLogger(__name__)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PLAN IDs & HIERARCHY
+# PLAN IDs & HIERARCHY — 2 plans uniquement (Avril 2026)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
 class PlanId(str, Enum):
     FREE = "free"
     PRO = "pro"
-    EXPERT = "expert"
 
 
 PLAN_HIERARCHY: list[PlanId] = [
     PlanId.FREE,
     PlanId.PRO,
-    PlanId.EXPERT,
 ]
 
 # Aliases rétrocompatibilité — anciens plan IDs → plan valide actuel
+# Tous les anciens plans payants sont mappés vers "pro"
 PLAN_ALIASES: dict[str, str] = {
     "etudiant": "pro",
     "starter": "pro",
     "student": "pro",
-    "equipe": "expert",
-    "team": "expert",
-    "unlimited": "expert",
+    "expert": "pro",
+    "equipe": "pro",
+    "team": "pro",
+    "unlimited": "pro",
 }
 
 
@@ -163,133 +164,23 @@ PLANS: dict[str, dict[str, Any]] = {
             },
         },
     },
-    # ─── PRO (5.99€/mois) ──────────────────────────────────────────────
+    # ─── PRO (6.99€/mois) — Plan unique payant, Avril 2026 ──────────────
+    # Fusionne les features des anciens plans Pro + Expert
     PlanId.PRO: {
         "name": "Pro",
         "name_en": "Pro",
-        "description": "Pour les étudiants et utilisateurs réguliers",
-        "description_en": "For students and regular users",
-        "price_monthly_cents": 599,
+        "description": "Toute la puissance de DeepSight, sans limites",
+        "description_en": "The full power of DeepSight, unlimited",
+        "price_monthly_cents": 699,
         "stripe_price_id_test": None,
         "stripe_price_id_live": None,
-        "color": "#3B82F6",
-        "icon": "⭐",
-        "badge": {"text": "Le plus populaire", "color": "#EF4444"},
+        "color": "#6366F1",
+        "icon": "⚡",
+        "badge": {"text": "Recommandé", "color": "#6366F1"},
         "popular": True,
         "limits": {
-            "monthly_credits": 3000,
-            "monthly_analyses": 30,
-            "max_video_length_min": 120,
-            "concurrent_analyses": 1,
-            "priority_queue": False,
-            "chat_questions_per_video": 25,
-            "chat_daily_limit": -1,
-            "flashcards_enabled": True,
-            "quiz_enabled": True,
-            "mindmap_enabled": True,
-            "factcheck_enabled": True,
-            "deep_research_enabled": False,
-            "web_search_enabled": True,
-            "web_search_monthly": 20,
-            "playlists_enabled": True,
-            "max_playlists": 3,
-            "max_playlist_videos": 5,
-            "export_formats": ["txt", "md", "pdf"],
-            "export_markdown": True,
-            "export_pdf": True,
-            "history_retention_days": -1,
-            "allowed_models": ["mistral-small-2603", "mistral-medium-2508"],
-            "default_model": "mistral-medium-2508",
-            "voice_chat_enabled": True,
-            "voice_monthly_minutes": 10,
-            "academic_papers_per_analysis": 15,
-            "bibliography_export": True,
-            "academic_full_text": False,
-        },
-        "features_display": [
-            {"text": "30 analyses / mois", "icon": "📊"},
-            {"text": "Vidéos jusqu'à 2h", "icon": "⏱️"},
-            {"text": "Chat IA (25/vidéo, illimité/jour)", "icon": "💬"},
-            {
-                "text": "Flashcards, Quiz, Mindmap, Fact-check",
-                "icon": "🧠",
-                "highlight": True,
-            },
-            {"text": "Recherche web IA (20/mois)", "icon": "🔍", "highlight": True},
-            {"text": "Playlists (3 max, 5 vidéos)", "icon": "📋", "highlight": True},
-            {"text": "Chat vocal (10 min/mois)", "icon": "🎙️", "highlight": True},
-            {"text": "Export PDF + Markdown", "icon": "📄"},
-            {"text": "Papers académiques (15/analyse)", "icon": "📚"},
-            {"text": "Modèle Mistral Medium", "icon": "🤖"},
-            {"text": "Historique permanent", "icon": "♾️"},
-        ],
-        "features_locked": [
-            {"text": "Deep Research", "unlock_plan": "expert"},
-            {"text": "Chat IA illimité", "unlock_plan": "expert"},
-            {"text": "2 analyses simultanées", "unlock_plan": "expert"},
-            {"text": "Modèle Mistral Large", "unlock_plan": "expert"},
-        ],
-        "platforms": {
-            "web": {
-                "analyse": True,
-                "chat": True,
-                "tts": True,
-                "flashcards": True,
-                "quiz": True,
-                "mindmap": True,
-                "web_search": True,
-                "export_md": True,
-                "export_pdf": True,
-                "playlists": True,
-                "history": True,
-                "voice_chat": True,
-            },
-            "mobile": {
-                "analyse": True,
-                "chat": True,
-                "tts": True,
-                "flashcards": True,
-                "quiz": True,
-                "mindmap": False,
-                "web_search": False,
-                "export_md": False,
-                "export_pdf": False,
-                "playlists": True,
-                "history": True,
-                "voice_chat": True,
-            },
-            "extension": {
-                "analyse": True,
-                "chat": True,
-                "tts": True,
-                "flashcards": False,
-                "quiz": False,
-                "mindmap": False,
-                "web_search": False,
-                "export_md": False,
-                "export_pdf": False,
-                "playlists": False,
-                "history": True,
-                "voice_chat": False,
-            },
-        },
-    },
-    # ─── EXPERT (14.99€/mois) ─────────────────────────────────────────
-    PlanId.EXPERT: {
-        "name": "Expert",
-        "name_en": "Expert",
-        "description": "Pour les professionnels et créateurs de contenu",
-        "description_en": "For professionals and content creators",
-        "price_monthly_cents": 1499,
-        "stripe_price_id_test": None,
-        "stripe_price_id_live": None,
-        "color": "#F59E0B",
-        "icon": "🚀",
-        "badge": None,
-        "popular": False,
-        "limits": {
             "monthly_credits": 10000,
-            "monthly_analyses": 100,
+            "monthly_analyses": 50,
             "max_video_length_min": 240,
             "concurrent_analyses": 2,
             "priority_queue": True,
@@ -301,10 +192,10 @@ PLANS: dict[str, dict[str, Any]] = {
             "factcheck_enabled": True,
             "deep_research_enabled": True,
             "web_search_enabled": True,
-            "web_search_monthly": 60,
+            "web_search_monthly": 30,
             "playlists_enabled": True,
-            "max_playlists": 10,
-            "max_playlist_videos": 20,
+            "max_playlists": 5,
+            "max_playlist_videos": 10,
             "export_formats": ["txt", "md", "pdf"],
             "export_markdown": True,
             "export_pdf": True,
@@ -316,25 +207,30 @@ PLANS: dict[str, dict[str, Any]] = {
             ],
             "default_model": "mistral-large-2512",
             "voice_chat_enabled": True,
-            "voice_monthly_minutes": 20,
-            "academic_papers_per_analysis": 50,
+            "voice_monthly_minutes": 15,
+            "academic_papers_per_analysis": 30,
             "bibliography_export": True,
             "academic_full_text": True,
         },
         "features_display": [
-            {"text": "100 analyses / mois", "icon": "📊"},
+            {"text": "50 analyses / mois", "icon": "📊"},
             {"text": "Vidéos jusqu'à 4h", "icon": "⏱️"},
             {"text": "Chat IA illimité", "icon": "💬", "highlight": True},
-            {"text": "2 analyses simultanées", "icon": "⚡", "highlight": True},
-            {"text": "File prioritaire", "icon": "🏃"},
+            {"text": "2 analyses simultanées", "icon": "⚡"},
             {"text": "Deep Research", "icon": "🔬", "highlight": True},
-            {"text": "Playlists (10 max, 20 vidéos)", "icon": "📋"},
-            {"text": "Recherche web IA (60/mois)", "icon": "🔍"},
-            {"text": "Chat vocal (20 min/mois)", "icon": "🎙️"},
+            {
+                "text": "Flashcards, Quiz, Mind Maps, Fact-check",
+                "icon": "🧠",
+                "highlight": True,
+            },
+            {"text": "Recherche web IA (30/mois)", "icon": "🔍", "highlight": True},
+            {"text": "Playlists (5 max, 10 vidéos)", "icon": "📋"},
+            {"text": "Chat vocal (15 min/mois)", "icon": "🎙️"},
             {"text": "Export PDF + Markdown", "icon": "📄"},
-            {"text": "Papers académiques (50/analyse, full text)", "icon": "📚"},
+            {"text": "Papers académiques (30/analyse)", "icon": "📚"},
             {"text": "Modèle Mistral Large", "icon": "🤖"},
             {"text": "Historique permanent", "icon": "♾️"},
+            {"text": "File prioritaire", "icon": "🏃"},
         ],
         "features_locked": [],
         "platforms": {
@@ -435,25 +331,18 @@ def init_stripe_prices() -> None:
     """Charge les stripe_price_id depuis les variables d'environnement.
 
     Env vars attendues :
-      STRIPE_PRICE_PRO_TEST    / STRIPE_PRICE_PRO_LIVE
-      STRIPE_PRICE_EXPERT_TEST / STRIPE_PRICE_EXPERT_LIVE
+      STRIPE_PRICE_PRO_TEST / STRIPE_PRICE_PRO_LIVE
     """
-    mapping = {
-        PlanId.PRO: "PRO",
-        PlanId.EXPERT: "EXPERT",
-    }
-    for plan_id, env_key in mapping.items():
-        test_id = os.environ.get(f"STRIPE_PRICE_{env_key}_TEST", "")
-        live_id = os.environ.get(f"STRIPE_PRICE_{env_key}_LIVE", "")
-        PLANS[plan_id]["stripe_price_id_test"] = test_id or None
-        PLANS[plan_id]["stripe_price_id_live"] = live_id or None
-        if test_id or live_id:
-            logger.info(
-                "Stripe price loaded for %s: test=%s live=%s",
-                plan_id,
-                bool(test_id),
-                bool(live_id),
-            )
+    test_id = os.environ.get("STRIPE_PRICE_PRO_TEST", "")
+    live_id = os.environ.get("STRIPE_PRICE_PRO_LIVE", "")
+    PLANS[PlanId.PRO]["stripe_price_id_test"] = test_id or None
+    PLANS[PlanId.PRO]["stripe_price_id_live"] = live_id or None
+    if test_id or live_id:
+        logger.info(
+            "Stripe price loaded for PRO: test=%s live=%s",
+            bool(test_id),
+            bool(live_id),
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -514,7 +403,7 @@ def get_minimum_plan_for(feature: str) -> str:
         web = PLANS[plan_id]["platforms"]["web"]
         if feature in web and web[feature]:
             return plan_id.value
-    return PlanId.EXPERT.value
+    return PlanId.PRO.value
 
 
 def get_price_id(plan_id: str, test_mode: bool = True) -> Optional[str]:
@@ -536,48 +425,6 @@ def get_plan_by_price_id(price_id: str) -> Optional[str]:
         if plan.get("stripe_price_id_live") == price_id:
             return plan_id if isinstance(plan_id, str) else plan_id.value
     return None
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# CREDIT PACKS — Achats a la carte (one-time Stripe payments)
-# ═══════════════════════════════════════════════════════════════════════════════
-
-CREDIT_PACKS: dict[str, dict[str, Any]] = {
-    "discovery": {
-        "id": "discovery",
-        "name": "Pack Decouverte",
-        "credits": 500,
-        "price_cents": 199,  # 1.99 EUR
-        "price_display": "1,99",
-        "description": "~4 analyses supplementaires",
-    },
-    "standard": {
-        "id": "standard",
-        "name": "Pack Standard",
-        "credits": 2000,
-        "price_cents": 599,  # 5.99 EUR
-        "price_display": "5,99",
-        "description": "~16 analyses supplementaires",
-    },
-    "intensive": {
-        "id": "intensive",
-        "name": "Pack Intensif",
-        "credits": 5000,
-        "price_cents": 1199,  # 11.99 EUR
-        "price_display": "11,99",
-        "description": "~40 analyses supplementaires",
-    },
-}
-
-
-def get_credit_pack(pack_id: str) -> Optional[dict[str, Any]]:
-    """Retourne un credit pack par son ID, ou None si inexistant."""
-    return CREDIT_PACKS.get(pack_id)
-
-
-def list_credit_packs() -> list[dict[str, Any]]:
-    """Retourne tous les credit packs disponibles."""
-    return list(CREDIT_PACKS.values())
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -250,7 +250,7 @@ async def get_verified_user(
     OBLIGATOIRE pour les opérations qui consomment des crédits.
     """
     # Les admins sont exemptés
-    if current_user.is_admin or current_user.plan == "unlimited":
+    if current_user.is_admin:
         return current_user
     
     if not current_user.email_verified:
@@ -269,41 +269,31 @@ def require_plan(min_plan: str):
     """
     Factory de dépendance pour vérifier le plan utilisateur.
     Usage: Depends(require_plan("pro"))
+    Hiérarchie Avril 2026 : free → pro (2 plans uniquement).
     """
-    plan_order = ["free", "etudiant", "starter", "pro"]
-    # Aliases rétrocompatibilité pour anciens plans en DB
-    plan_aliases = {
-        "equipe": "pro", "team": "pro", "expert": "pro",
-        "unlimited": "pro", "student": "etudiant",
-    }
+    from billing.plan_config import normalize_plan_id, get_plan_index
 
     async def check_plan(current_user: User = Depends(get_verified_user)) -> User:
         raw_plan = current_user.plan or "free"
-        user_plan = plan_aliases.get(raw_plan, raw_plan)
-        normalized_min = plan_aliases.get(min_plan, min_plan)
+        user_plan = normalize_plan_id(raw_plan)
+        normalized_min = normalize_plan_id(min_plan)
 
-        try:
-            user_idx = plan_order.index(user_plan)
-        except ValueError:
-            user_idx = 0  # Fallback free
-        try:
-            min_idx = plan_order.index(normalized_min)
-        except ValueError:
-            min_idx = 0
+        user_idx = get_plan_index(user_plan)
+        min_idx = get_plan_index(normalized_min)
 
         if user_idx < min_idx:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail={
                     "code": "plan_required",
-                    "message": f"This feature requires {min_plan} plan or higher.",
+                    "message": f"This feature requires Pro plan.",
                     "current_plan": user_plan,
-                    "required_plan": min_plan,
+                    "required_plan": normalized_min,
                     "action": "upgrade"
                 }
             )
         return current_user
-    
+
     return check_plan
 
 
@@ -316,8 +306,8 @@ def require_credits(min_credits: int = 1):
         current_user: User = Depends(get_verified_user),
         session: AsyncSession = Depends(get_session)
     ) -> User:
-        # Plan unlimited = toujours OK
-        if current_user.plan == "unlimited":
+        # Admin users have unlimited access
+        if current_user.is_admin:
             return current_user
 
         credits = current_user.credits or 0
@@ -346,12 +336,9 @@ async def check_daily_limit(
     🎫 Vérifie la limite quotidienne d'analyses.
     Usage: Depends(check_daily_limit)
 
-    Plans limits:
+    Plans (Avril 2026):
     - free: 5 analyses/jour
-    - starter: 20 analyses/jour
     - pro: 50 analyses/jour
-    - expert: 200 analyses/jour
-    - unlimited: illimité
     """
     from core.plan_limits import check_daily_analysis_limit
 

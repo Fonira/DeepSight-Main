@@ -243,9 +243,9 @@ async def export_bibliography(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={
                 "code": "plan_required",
-                "message": "Bibliography export requires Starter plan or higher.",
+                "message": "Bibliography export requires Pro plan or higher.",
                 "current_plan": user_plan,
-                "required_plan": "starter",
+                "required_plan": "pro",
                 "action": "upgrade"
             }
         )
@@ -849,6 +849,6 @@ async def _get_papers_by_ids(
 
 
 def _can_export_bibliography(plan: str) -> bool:
-    """Check if plan allows bibliography export"""
-    allowed_plans = ["starter", "etudiant", "student", "pro", "expert", "unlimited"]
+    """Check if plan allows bibliography export (Pro and above)"""
+    allowed_plans = ["pro"]  # After normalization, all paid plans are "pro"
     return plan in allowed_plans

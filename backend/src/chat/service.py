@@ -132,15 +132,15 @@ async def select_chat_model(question: str, user_plan: str) -> str:
     """
     Sélectionne le modèle approprié selon la question et le plan.
 
-    - Free/Starter: Toujours Mistral Small
-    - Pro/Expert: GPT-4 pour questions complexes, Mistral sinon
+    - Free: Toujours Mistral Small
+    - Pro: GPT-4 pour questions complexes, Mistral sinon
     """
-    # Plans basiques: toujours Mistral
-    if user_plan in ["free", "student", "starter"]:
+    # Plan Free: toujours Mistral
+    if user_plan in ["free", "student"]:
         return "mistral"
 
-    # Plans premium: GPT-4 pour questions complexes
-    if user_plan in ["pro", "expert", "unlimited"]:
+    # Plan Pro: GPT-4 pour questions complexes
+    if user_plan in ["pro"]:
         if _detect_complex_question(question) and is_openai_available():
             return "openai"
 
@@ -1014,33 +1014,26 @@ async def generate_chat_response_v4(
         # 🆕 v5.0: Fact-checking automatique pour questions critiques
         elif needs_fact_check:
             # Pour les questions factuelles critiques, on ESSAIE de vérifier
-            # même pour les plans basiques (Starter a un quota limité)
-            if user_plan in ["pro", "expert", "unlimited"]:
+            # Pro a accès au fact-checking
+            if user_plan in ["pro"]:
                 should_enrich = True
-                print(f"🔍 [CHAT v5.0] Critical fact-check triggered (premium plan)", flush=True)
-            elif user_plan == "starter":
-                # Starter: fact-checking limité (via le quota web_search)
-                # Le quota sera vérifié dans enrich_chat_response
-                should_enrich = True
-                print(f"🔍 [CHAT v5.0] Critical fact-check triggered (starter, limited)", flush=True)
+                print(f"🔍 [CHAT v5.0] Critical fact-check triggered (pro plan)", flush=True)
             else:
                 # Free: pas de fact-checking, mais on ajoute un avertissement
                 print(f"⚠️ [CHAT v5.0] Fact-check needed but not available for free plan", flush=True)
-        
-        # Enrichissement automatique standard pour Pro/Expert
+
+        # Enrichissement automatique standard pour Pro
         elif enrichment_level in [EnrichmentLevel.FULL, EnrichmentLevel.DEEP]:
             should_enrich = _should_auto_enrich_chat(question, video_title)
             if should_enrich:
                 print(f"🌐 [CHAT v5.0] Auto-enrichment triggered for {enrichment_level.value}", flush=True)
-        
+
         if should_enrich:
             try:
                 video_context = f"Vidéo: {video_title}\n\nRésumé: {summary[:1500]}"
-                
-                # 🆕 v5.0: Pour Starter, on force le niveau FULL temporairement
+
+                # 🆕 v5.0: Plan Pro obtient accès au fact-check complet
                 effective_plan = user_plan
-                if needs_fact_check and user_plan == "starter":
-                    effective_plan = "pro"  # Utiliser les paramètres Pro pour le fact-check
                 
                 enriched_response, sources, actual_level = await enrich_chat_response(
                     question=question,

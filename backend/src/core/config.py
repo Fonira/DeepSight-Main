@@ -73,8 +73,6 @@ class _DeepSightSettings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: str = ""
     STRIPE_PRICE_PRO_TEST: str = ""
     STRIPE_PRICE_PRO_LIVE: str = ""
-    STRIPE_PRICE_EXPERT_TEST: str = ""
-    STRIPE_PRICE_EXPERT_LIVE: str = ""
 
     # -- Google OAuth --
     GOOGLE_OAUTH_ENABLED: str = "false"
@@ -264,13 +262,8 @@ STRIPE_CONFIG = {
         "pro": {
             "test": _settings.STRIPE_PRICE_PRO_TEST,
             "live": _settings.STRIPE_PRICE_PRO_LIVE,
-            "amount": 599, "credits": 30, "name": "Pro"
+            "amount": 699, "credits": 50, "name": "Pro"
         },
-        "expert": {
-            "test": _settings.STRIPE_PRICE_EXPERT_TEST,
-            "live": _settings.STRIPE_PRICE_EXPERT_LIVE,
-            "amount": 1499, "credits": 100, "name": "Expert"
-        }
     },
 }
 
@@ -326,142 +319,61 @@ LEGAL_CONFIG = {
 # ⚠️ DEPRECATED — PLAN_LIMITS est OBSOLÈTE.
 # La source de vérité unique est : billing/plan_config.py → PLANS[plan]["limits"]
 # Utiliser get_limits(plan_id) de billing/plan_config pour tout nouveau code.
-# Ce dict reste pour rétrocompatibilité avec les modules non encore migrés.
-# NE PAS MODIFIER ICI — modifier billing/plan_config.py à la place.
+# Ce shim reste pour rétrocompatibilité — redirige vers plan_config.
 # =============================================================================
 
-PLAN_LIMITS: Dict[str, Dict[str, Any]] = {
-    "free": {
-        "monthly_credits": 250,
-        "daily_analyses": 5,
-        "can_use_playlists": False,
-        "max_playlist_videos": 0,
-        "history_days": 60,
-        "models": ["mistral-small-2603"],
-        "default_model": "mistral-small-2603",
-        "name": {"fr": "GRATUIT", "en": "FREE"},
-        "color": "#6B7280",
-        "price": 0,
-        "price_display": {"fr": "0\u20ac", "en": "Free"},
-        "chat_daily_limit": 10,
-        "chat_per_video_limit": 5,
-        "chat_playlist_enabled": False,
-        "chat_corpus_daily": 0,
-        "web_search_monthly": 0,
-        "web_search_per_video": 0,
-        "web_search_enabled": False,
-        "deep_research_enabled": False,
-        "deep_research_credits_cost": 0,
-        "academic_papers_per_analysis": 0,
-        "bibliography_export": False,
-        "academic_full_text": False,
-        "voice_chat_enabled": False,
-        "voice_monthly_minutes": 0,
-        "blocked_features": ["playlists", "export_csv", "export_excel", "batch_api", "tts", "deep_research", "voice_chat", "mindmap"],
-        "upgrade_prompt": {
-            "fr": "Passez \u00e0 Pro pour d\u00e9bloquer plus d'analyses et de fonctionnalit\u00e9s !",
-            "en": "Upgrade to Pro to unlock more analyses and features!"
+
+def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
+    """Construit PLAN_LIMITS à partir du SSOT plan_config pour rétrocompatibilité."""
+    try:
+        from billing.plan_config import PLANS, PlanId, get_limits
+
+        legacy = {}
+        for plan_id in [PlanId.FREE, PlanId.PRO]:
+            plan = PLANS[plan_id]
+            limits = plan["limits"]
+            key = plan_id.value
+            legacy[key] = {
+                "monthly_credits": limits.get("monthly_credits", 0),
+                "daily_analyses": limits.get("monthly_analyses", 5),
+                "can_use_playlists": limits.get("playlists_enabled", False),
+                "max_playlist_videos": limits.get("max_playlist_videos", 0),
+                "history_days": limits.get("history_retention_days", 60),
+                "models": limits.get("allowed_models", ["mistral-small-2603"]),
+                "default_model": limits.get("default_model", "mistral-small-2603"),
+                "name": {"fr": plan["name"].upper(), "en": plan["name_en"].upper()},
+                "color": plan.get("color", "#888888"),
+                "price": plan.get("price_monthly_cents", 0),
+                "chat_daily_limit": limits.get("chat_daily_limit", 10),
+                "chat_per_video_limit": limits.get("chat_questions_per_video", 5),
+                "web_search_monthly": limits.get("web_search_monthly", 0),
+                "web_search_enabled": limits.get("web_search_enabled", False),
+                "deep_research_enabled": limits.get("deep_research_enabled", False),
+                "voice_chat_enabled": limits.get("voice_chat_enabled", False),
+                "voice_monthly_minutes": limits.get("voice_monthly_minutes", 0),
+                "blocked_features": [] if key == "pro" else [
+                    "playlists", "export_csv", "export_excel", "batch_api",
+                    "tts", "deep_research", "voice_chat", "mindmap",
+                ],
+                "upgrade_prompt": {
+                    "fr": ("Vous avez le plan Pro, toutes les fonctionnalités sont débloquées !"
+                           if key == "pro"
+                           else "Passez à Pro pour débloquer plus d'analyses et de fonctionnalités !"),
+                    "en": ("You have the Pro plan, all features are unlocked!"
+                           if key == "pro"
+                           else "Upgrade to Pro to unlock more analyses and features!"),
+                },
+            }
+        return legacy
+    except Exception:
+        # Fallback minimal si plan_config n'est pas chargeable (tests unitaires)
+        return {
+            "free": {"monthly_credits": 250, "daily_analyses": 5, "blocked_features": [], "models": ["mistral-small-2603"], "default_model": "mistral-small-2603"},
+            "pro": {"monthly_credits": 10000, "daily_analyses": 50, "blocked_features": [], "models": ["mistral-large-2512"], "default_model": "mistral-large-2512"},
         }
-    },
-    "pro": {
-        "monthly_credits": 3000,
-        "daily_analyses": 30,
-        "can_use_playlists": True,
-        "max_playlist_videos": 5,
-        "history_days": -1,
-        "models": ["mistral-small-2603", "mistral-medium-2508"],
-        "default_model": "mistral-medium-2508",
-        "name": {"fr": "PRO", "en": "PRO"},
-        "color": "#3B82F6",
-        "price": 599,
-        "price_display": {"fr": "5.99\u20ac/mois", "en": "\u20ac5.99/mo"},
-        "playlist_credits_per_3_videos": 1,
-        "chat_daily_limit": -1,
-        "chat_per_video_limit": 25,
-        "chat_playlist_enabled": True,
-        "chat_corpus_daily": -1,
-        "web_search_monthly": 20,
-        "web_search_per_video": 5,
-        "web_search_enabled": True,
-        "deep_research_enabled": False,
-        "deep_research_credits_cost": 0,
-        "academic_papers_per_analysis": 15,
-        "bibliography_export": True,
-        "academic_full_text": False,
-        "voice_chat_enabled": True,
-        "voice_monthly_minutes": 10,
-        "blocked_features": ["batch_api", "deep_research"],
-        "upgrade_prompt": {
-            "fr": "Passez \u00e0 Expert pour la recherche approfondie et le chat illimit\u00e9 !",
-            "en": "Upgrade to Expert for deep research and unlimited chat!"
-        }
-    },
-    "expert": {
-        "monthly_credits": 10000,
-        "daily_analyses": 100,
-        "can_use_playlists": True,
-        "max_playlist_videos": 20,
-        "history_days": -1,
-        "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
-        "default_model": "mistral-large-2512",
-        "name": {"fr": "EXPERT", "en": "EXPERT"},
-        "color": "#F59E0B",
-        "price": 1499,
-        "price_display": {"fr": "14.99\u20ac/mois", "en": "\u20ac14.99/mo"},
-        "playlist_credits_per_3_videos": 1,
-        "chat_daily_limit": -1,
-        "chat_per_video_limit": -1,
-        "chat_playlist_enabled": True,
-        "chat_corpus_daily": -1,
-        "web_search_monthly": 60,
-        "web_search_per_video": 10,
-        "web_search_enabled": True,
-        "deep_research_enabled": True,
-        "deep_research_credits_cost": 50,
-        "academic_papers_per_analysis": 50,
-        "bibliography_export": True,
-        "academic_full_text": True,
-        "voice_chat_enabled": True,
-        "voice_monthly_minutes": 20,
-        "blocked_features": [],
-        "upgrade_prompt": {
-            "fr": "Vous avez le plan Expert, toutes les fonctionnalit\u00e9s sont d\u00e9bloqu\u00e9es !",
-            "en": "You have the Expert plan, all features are unlocked!"
-        }
-    },
-    "unlimited": {
-        "monthly_credits": 999999,
-        "daily_analyses": -1,
-        "can_use_playlists": True,
-        "max_playlist_videos": 100,
-        "history_days": -1,
-        "models": ["ministral-8b-2512", "mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"],
-        "default_model": "mistral-large-2512",
-        "name": {"fr": "ADMIN", "en": "ADMIN"},
-        "color": "#ffd700",
-        "price": 0,
-        "price_display": {"fr": "Illimit\u00e9", "en": "Unlimited"},
-        "chat_daily_limit": -1,
-        "chat_per_video_limit": -1,
-        "chat_playlist_enabled": True,
-        "chat_corpus_daily": -1,
-        "web_search_monthly": -1,
-        "web_search_per_video": -1,
-        "web_search_enabled": True,
-        "deep_research_enabled": True,
-        "deep_research_credits_cost": 0,
-        "academic_papers_per_analysis": 100,
-        "bibliography_export": True,
-        "academic_full_text": True,
-        "voice_chat_enabled": True,
-        "voice_monthly_minutes": -1,
-        "blocked_features": [],
-        "upgrade_prompt": {
-            "fr": "Compte administrateur - acc\u00e8s illimit\u00e9",
-            "en": "Admin account - unlimited access"
-        }
-    }
-}
+
+
+PLAN_LIMITS: Dict[str, Dict[str, Any]] = _build_legacy_plan_limits()
 
 # =============================================================================
 # BACKUP / S3
@@ -496,10 +408,8 @@ R2_CONFIG = {
 # =============================================================================
 
 VOICE_LIMITS: Dict[str, Dict[str, Any]] = {
-    "free":      {"enabled": False, "monthly_minutes": 0,   "max_session_minutes": 0},
-    "pro":       {"enabled": True,  "monthly_minutes": 10,  "max_session_minutes": 10},
-    "expert":    {"enabled": True,  "monthly_minutes": 20,  "max_session_minutes": 15},
-    "unlimited": {"enabled": True,  "monthly_minutes": 999, "max_session_minutes": 30},
+    "free": {"enabled": False, "monthly_minutes": 0,  "max_session_minutes": 0},
+    "pro":  {"enabled": True,  "monthly_minutes": 15, "max_session_minutes": 15},
 }
 
 VOICE_CHAT_CONFIG: Dict[str, Any] = {
@@ -528,7 +438,7 @@ MISTRAL_MODELS = {
         "quality": "adequate",
         "cost_input_per_1m": 0.10,
         "cost_output_per_1m": 0.10,
-        "plans": ["free", "pro", "expert", "unlimited"],
+        "plans": ["free", "pro"],
         "internal_only": True,
         "use_cases": ["entity_extraction", "flashcards", "classification", "study_tools"],
         "description": {
@@ -537,7 +447,7 @@ MISTRAL_MODELS = {
         }
     },
 
-    # ── Tier 1 : Standard (Free + Étudiant + Starter) ──
+    # ── Tier 1 : Standard (Free + Pro) ──
     "mistral-small-2603": {
         "name": "Mistral Small 3.1",
         "context": 128000,
@@ -545,14 +455,14 @@ MISTRAL_MODELS = {
         "quality": "good",
         "cost_input_per_1m": 0.10,
         "cost_output_per_1m": 0.30,
-        "plans": ["free", "pro", "expert", "unlimited"],
+        "plans": ["free", "pro"],
         "description": {
             "fr": "Rapide et intelligent, idéal pour les analyses courantes",
             "en": "Fast and smart, ideal for standard analyses"
         }
     },
 
-    # ── Tier 2 : Avancé (Pro + Expert) ──
+    # ── Tier 2 : Avancé (Pro) ──
     "mistral-medium-2508": {
         "name": "Mistral Medium 3.1",
         "context": 131000,
@@ -560,14 +470,14 @@ MISTRAL_MODELS = {
         "quality": "very_good",
         "cost_input_per_1m": 0.40,
         "cost_output_per_1m": 2.00,
-        "plans": ["pro", "expert", "unlimited"],
+        "plans": ["pro"],
         "description": {
             "fr": "Analyses approfondies, raisonnement de niveau GPT-4",
             "en": "Deep analyses, GPT-4 level reasoning"
         }
     },
 
-    # ── Tier 3 : Expert ──
+    # ── Tier 3 : Premium (Pro) ──
     "mistral-large-2512": {
         "name": "Mistral Large 3",
         "context": 262000,
@@ -575,7 +485,7 @@ MISTRAL_MODELS = {
         "quality": "excellent",
         "cost_input_per_1m": 0.50,
         "cost_output_per_1m": 1.50,
-        "plans": ["expert", "unlimited"],
+        "plans": ["pro"],
         "description": {
             "fr": "Maximum de qualité, contexte 262K pour vidéos longues",
             "en": "Maximum quality, 262K context for long videos"

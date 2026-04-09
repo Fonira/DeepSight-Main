@@ -158,12 +158,12 @@ async def get_api_user(
         )
     
     # Vérifier le plan
-    if user.plan not in ["expert", "unlimited"]:
+    if user.plan not in ["pro"]:
         raise HTTPException(
             status_code=403,
             detail={
                 "error": "plan_required",
-                "message": "API access requires Expert plan",
+                "message": "API access requires Pro plan",
                 "current_plan": user.plan,
                 "upgrade_url": "https://www.deepsightsynthesis.com/upgrade"
             }

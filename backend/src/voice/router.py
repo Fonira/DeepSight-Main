@@ -231,8 +231,8 @@ async def create_voice_session(
         "free": 0,
         "etudiant": 1, "starter": 1, "student": 1,  # Legacy aliases → pro
         "pro": 1,
-        "equipe": 2, "team": 2, "unlimited": 2,      # Legacy aliases → expert
-        "expert": 2,
+        "equipe": 1, "team": 1, "unlimited": 1,     # Legacy aliases → pro
+        "expert": 1,  # Maps to pro
     }
     user_plan_level = plan_order.get(plan, 0)
     required_level = plan_order.get(agent_config.plan_minimum, 0)

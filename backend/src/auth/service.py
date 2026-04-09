@@ -610,10 +610,10 @@ async def login_or_register_google_user(
             user.google_id = google_id
             user.email_verified = True
         
-        # 🔐 Si c'est l'admin, s'assurer que is_admin=True et plan=unlimited
+        # 🔐 Si c'est l'admin, s'assurer que is_admin=True et plan=pro
         if is_admin_user and not user.is_admin:
             user.is_admin = True
-            user.plan = "unlimited"
+            user.plan = "pro"
             user.credits = 999999
             print(f"🔐 Admin privileges granted to: {email}", flush=True)
         
@@ -648,7 +648,7 @@ async def login_or_register_google_user(
             password_hash=hash_password(random_password),
             email_verified=True,
             google_id=google_id,
-            plan="unlimited",
+            plan="pro",
             credits=999999,
             is_admin=True
         )

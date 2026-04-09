@@ -32,12 +32,12 @@ SOURCE_WEIGHTS = {
 # Tier limits for academic papers
 TIER_LIMITS = {
     "free": 5,
-    "starter": 15,
-    "student": 15,
-    "etudiant": 15,
+    "starter": 30,  # Maps to pro (normalize_plan_id)
+    "student": 15,  # Handled by normalize_plan_id → pro
+    "etudiant": 15,  # Handled by normalize_plan_id → pro
     "pro": 30,
-    "expert": 50,
-    "unlimited": 100
+    "expert": 30,  # Maps to pro (normalize_plan_id)
+    "unlimited": 30  # Maps to pro (normalize_plan_id)
 }
 
 
