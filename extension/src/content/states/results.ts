@@ -24,7 +24,7 @@ interface ResultsOptions {
   onShare: () => void;
 }
 
-const PLAN_RANK: Record<string, number> = { free: 0, etudiant: 1, student: 1, starter: 2, pro: 3 };
+const PLAN_RANK: Record<string, number> = { free: 0, decouverte: 0, pro: 1, expert: 1, etudiant: 1, student: 1, starter: 1 };
 const CATEGORY_ICON: Record<string, string> = {
   tech: '💻', science: '🔬', education: '📚', news: '📰',
   entertainment: '🎬', gaming: '🎮', music: '🎵', sports: '⚽',
@@ -59,10 +59,10 @@ function keyPointIcon(type: KeyPoint['type']): string {
 function buildPremiumTeasers(userPlan: string): string {
   const userRank = PLAN_RANK[userPlan] ?? 0;
   const teasers = [
-    { icon: '🃏', label: 'Flashcards IA', minPlan: 'etudiant', price: '2,99€' },
-    { icon: '🧠', label: 'Carte mentale', minPlan: 'etudiant', price: '2,99€' },
-    { icon: '🌐', label: 'Recherche web IA', minPlan: 'starter', price: '5,99€' },
-    { icon: '📦', label: 'Export PDF/DOCX', minPlan: 'pro', price: '12,99€' },
+    { icon: '🃏', label: 'Flashcards IA', minPlan: 'pro', price: '5,99€' },
+    { icon: '🧠', label: 'Carte mentale', minPlan: 'pro', price: '5,99€' },
+    { icon: '🌐', label: 'Recherche web IA', minPlan: 'pro', price: '5,99€' },
+    { icon: '📦', label: 'Export PDF/DOCX', minPlan: 'pro', price: '5,99€' },
   ].filter(t => (PLAN_RANK[t.minPlan] ?? 0) > userRank);
 
   if (teasers.length === 0) {

@@ -19,20 +19,12 @@ import { Badge } from "../Badge";
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const PLAN_GLOW_COLORS: Record<string, string> = {
-  unlimited: "rgba(255, 215, 0, 0.6)",
-  expert: "rgba(168, 85, 247, 0.5)",
-  pro: "rgba(255, 107, 53, 0.4)",
-  starter: "rgba(0, 255, 255, 0.3)",
-  student: "rgba(16, 185, 129, 0.3)",
+  pro: "rgba(99, 102, 241, 0.4)",
   free: "rgba(212, 165, 116, 0.2)",
 };
 
 const PLAN_BORDER_COLORS: Record<string, string> = {
-  unlimited: "#FFD700",
-  expert: "#A855F7",
-  pro: "#FF6B35",
-  starter: "#00FFFF",
-  student: "#10b981",
+  pro: "#6366F1",
   free: "#D4A574",
 };
 
@@ -43,7 +35,7 @@ const PLAN_BORDER_COLORS: Record<string, string> = {
 interface SidebarUserCardProps {
   username: string;
   credits: number;
-  plan?: "free" | "etudiant" | "starter" | "pro" | "student" | "expert" | "unlimited" | "team"; // Aliases pour rétrocompat
+  plan?: "free" | "pro"; // Aliases pour rétrocompat
   avatarUrl?: string | null;
   onLogout: () => void;
 }
@@ -93,9 +85,6 @@ export const SidebarUserCard: React.FC<SidebarUserCardProps> = ({
   const planConfig = useMemo(() => ({
     variant: (() => {
       switch (plan) {
-        case "expert":
-        case "unlimited":
-          return "success" as const;
         case "pro":
           return "warning" as const;
         default:
@@ -104,17 +93,13 @@ export const SidebarUserCard: React.FC<SidebarUserCardProps> = ({
     })(),
     label: (() => {
       switch (plan) {
-        case "unlimited": return "UNLIMITED";
-        case "expert": return "EXPERT";
         case "pro": return "PRO";
-        case "starter": return "STARTER";
-        case "student": return "STUDENT";
         default: return "FREE";
       }
     })(),
     glowColor: PLAN_GLOW_COLORS[plan] || PLAN_GLOW_COLORS.free,
     borderColor: PLAN_BORDER_COLORS[plan] || PLAN_BORDER_COLORS.free,
-    hasGlow: ["pro", "expert", "unlimited", "team"].includes(plan),
+    hasGlow: ["pro"].includes(plan),
   }), [plan]);
 
   // Génération des initiales

@@ -4,7 +4,7 @@
  *
  * Aligned with pricing strategy:
  * - Maximum friction for free users (5 analyses/month)
- * - Starter plan highlighted as best entry point (2.99€)
+ * - Pro plan highlighted as only paid option (6.99€)
  * - Pro trial option available (7 days)
  */
 
@@ -57,7 +57,7 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
   const t = (fr: string, en: string) => language === 'fr' ? fr : en;
 
   // Get testimonials for display
-  const displayTestimonials = TESTIMONIALS.filter(t => t.plan === 'student' || t.plan === 'pro').slice(0, 3);
+  const displayTestimonials = TESTIMONIALS.filter(t => t.plan === 'pro').slice(0, 3);
 
   useEffect(() => {
     if (isOpen && displayTestimonials.length > 0) {
@@ -75,9 +75,9 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
     navigate('/upgrade');
   };
 
-  const handleSelectStudent = () => {
+  const handleSelectPro = () => {
     onClose();
-    navigate('/upgrade?plan=student');
+    navigate('/upgrade');
   };
 
   const handleStartTrial = () => {
@@ -85,8 +85,8 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
     navigate('/upgrade?trial=true');
   };
 
-  // Get student plan info
-  const studentPlan = PLANS_INFO.find(p => p.id === 'student')!;
+  // Get pro plan info
+  const proPlan = PLANS_INFO.pro;
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -267,11 +267,11 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
           </div>
         )}
 
-        {/* Student plan highlight - best value entry */}
+        {/* Pro plan highlight - best value entry */}
         <div className="px-6 py-3">
           <div
-            className={`relative p-4 rounded-xl bg-gradient-to-br ${studentPlan.gradient} bg-opacity-10 border border-emerald-500/30 cursor-pointer hover:scale-[1.02] transition-transform`}
-            onClick={handleSelectStudent}
+            className={`relative p-4 rounded-xl bg-gradient-to-br ${proPlan.gradient} bg-opacity-10 border border-emerald-500/30 cursor-pointer hover:scale-[1.02] transition-transform`}
+            onClick={handleSelectPro}
           >
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-green-500/5 rounded-xl" />
             <div className="relative flex items-center justify-between">
@@ -282,20 +282,20 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-text-primary">
-                      {studentPlan.name[language === 'fr' ? 'fr' : 'en']}
+                      {proPlan.name[language === 'fr' ? 'fr' : 'en']}
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-medium">
-                      {studentPlan.badge?.[language === 'fr' ? 'fr' : 'en'] || t('Étudiants', 'Students')}
+                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-medium">
+                      {proPlan.badge?.[language === 'fr' ? 'fr' : 'en'] || t('Recommandé', 'Recommended')}
                     </span>
                   </div>
                   <p className="text-sm text-text-secondary">
-                    {studentPlan.killerFeature[language === 'fr' ? 'fr' : 'en']}
+                    {proPlan.killerFeature[language === 'fr' ? 'fr' : 'en']}
                   </p>
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-emerald-400">
-                  {(studentPlan.price / 100).toFixed(2).replace('.', ',')}€
+                  {(proPlan.price / 100).toFixed(2).replace('.', ',')}€
                 </p>
                 <p className="text-xs text-text-tertiary">/{t('mois', 'mo')}</p>
               </div>

@@ -70,8 +70,7 @@ interface ChatPanelProps {
 
 const canUseWebSearch = (plan?: string): boolean => {
   if (!plan) return false;
-  const paid = ['starter', 'etudiant', 'student', 'pro', 'expert', 'team', 'equipe'];
-  return paid.includes(plan.toLowerCase());
+  return plan.toLowerCase() === 'pro';
 };
 
 const getThumbnailUrl = (videoId: string, thumbnailUrl?: string): string => {
@@ -123,7 +122,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     emptyTitle: 'Discutez avec l\'IA',
     emptySubtitle: 'Posez n\'importe quelle question sur le contenu de cette vidéo.',
     deepen: 'Approfondir (web)',
-    deepenLocked: 'Dès le plan Starter',
+    deepenLocked: 'Dès le plan Pro',
     webEnriched: 'Enrichi par le web',
     sources: 'Sources :',
   } : {
@@ -134,7 +133,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     emptyTitle: 'Chat with the AI',
     emptySubtitle: 'Ask any question about this video\'s content.',
     deepen: 'Deepen (web)',
-    deepenLocked: 'From Starter plan',
+    deepenLocked: 'From Pro plan',
     webEnriched: 'Web enriched',
     sources: 'Sources:',
   };

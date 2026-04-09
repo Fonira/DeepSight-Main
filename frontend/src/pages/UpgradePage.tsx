@@ -1,9 +1,9 @@
 /**
- * UpgradePage v6.0 — Fallback robuste + toggle mensuel/annuel
+ * UpgradePage v7.0 — Pricing simplifié (Free + Pro mensuel uniquement)
  *
  * Fetch GET /api/billing/plans?platform=web au mount.
  * Fallback sur planPrivileges.ts si API échoue (snake_case mapping).
- * Toggle mensuel/annuel avec -20% (cosmétique, pas de price_id Stripe annuel).
+ * Facturation mensuelle uniquement — pas de toggle annuel.
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -28,7 +28,6 @@ import {
   PLAN_LIMITS as FALLBACK_PLAN_LIMITS,
   PLAN_HIERARCHY,
   DIFFERENTIATORS,
-  CREDIT_PACKS,
   type PlanId,
 } from '../config/planPrivileges';
 
@@ -39,13 +38,11 @@ import {
 const PLAN_ICON_MAP: Record<string, React.ElementType> = {
   free: Zap,
   pro: Star,
-  expert: Crown,
 };
 
 const PLAN_GRADIENT_MAP: Record<string, string> = {
   free: 'from-gray-500 to-gray-600',
   pro: 'from-blue-500 to-blue-600',
-  expert: 'from-amber-500 to-yellow-600',
 };
 
 function formatPriceFr(cents: number): string {
@@ -105,7 +102,7 @@ function buildFallbackPlans(currentUserPlan: string): ApiBillingPlan[] {
       text: limits.chatQuestionsPerVideo === -1 ? 'Chat illimité' : `Chat (${limits.chatQuestionsPerVideo} q/vidéo)`,
       icon: '💬',
     });
-    if (limits.flashcardsEnabled) featuresDisplay.push({ text: 'Flashcards & Cartes mentales', icon: '🧠', highlight: pid === 'etudiant' });
+    if (limits.flashcardsEnabled) featuresDisplay.push({ text: 'Flashcards & Cartes mentales', icon: '🧠', highlight: pid === 'pro' });
     if (limits.playlistsEnabled) featuresDisplay.push({ text: `Playlists (${limits.maxPlaylistVideos} vidéos)`, icon: '📚', highlight: true });
     if (limits.webSearchMonthly > 0 || limits.webSearchMonthly === -1) {
       featuresDisplay.push({
@@ -160,62 +157,6 @@ const SkeletonCard: React.FC = () => (
   </div>
 );
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// BILLING PERIOD
-// ═══════════════════════════════════════════════════════════════════════════════
-
-type BillingPeriod = 'monthly' | 'annual';
-const ANNUAL_DISCOUNT = 0.20; // 20% de réduction
-
-function getAnnualMonthlyPrice(monthlyCents: number): number {
-  return Math.round(monthlyCents * (1 - ANNUAL_DISCOUNT));
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// BILLING TOGGLE
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface BillingToggleProps {
-  period: BillingPeriod;
-  onChange: (period: BillingPeriod) => void;
-  lang: 'fr' | 'en';
-}
-
-const BillingToggle: React.FC<BillingToggleProps> = ({ period, onChange, lang }) => (
-  <div className="flex items-center justify-center gap-3 mb-6 sm:mb-8">
-    <span
-      className={`text-sm font-medium transition-colors cursor-pointer ${
-        period === 'monthly' ? 'text-text-primary' : 'text-text-tertiary'
-      }`}
-      onClick={() => onChange('monthly')}
-    >
-      {lang === 'fr' ? 'Mensuel' : 'Monthly'}
-    </span>
-    <button
-      onClick={() => onChange(period === 'monthly' ? 'annual' : 'monthly')}
-      className="relative w-14 h-7 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-accent-primary/50"
-      style={{ backgroundColor: period === 'annual' ? '#8b5cf6' : 'rgba(255,255,255,0.1)' }}
-      aria-label={lang === 'fr' ? 'Basculer facturation' : 'Toggle billing period'}
-    >
-      <motion.div
-        className="absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md"
-        animate={{ left: period === 'monthly' ? '2px' : '30px' }}
-        transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-      />
-    </button>
-    <span
-      className={`text-sm font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
-        period === 'annual' ? 'text-text-primary' : 'text-text-tertiary'
-      }`}
-      onClick={() => onChange('annual')}
-    >
-      {lang === 'fr' ? 'Annuel' : 'Annual'}
-      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">
-        {lang === 'fr' ? '2 mois offerts' : '2 months free'}
-      </span>
-    </span>
-  </div>
-);
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PLAN CARD
@@ -230,11 +171,10 @@ interface PlanCardProps {
   trialLoading: boolean;
   onStartTrial: () => void;
   allPlans: ApiBillingPlan[];
-  billingPeriod: BillingPeriod;
 }
 
 const PlanCard: React.FC<PlanCardProps> = ({
-  plan, lang, loading, onSelect, trialEligible, trialLoading, onStartTrial, allPlans, billingPeriod,
+  plan, lang, loading, onSelect, trialEligible, trialLoading, onStartTrial, allPlans,
 }) => {
   const Icon = getPlanIcon(plan.id);
   const gradient = getPlanGradient(plan.id);
@@ -244,11 +184,9 @@ const PlanCard: React.FC<PlanCardProps> = ({
   const isFree = plan.price_monthly_cents === 0;
   const nameDisplay = lang === 'fr' ? plan.name : plan.name_en;
 
-  const isAnnual = billingPeriod === 'annual' && !isFree;
   const monthlyPrice = plan.price_monthly_cents;
-  const displayPrice = isAnnual ? getAnnualMonthlyPrice(monthlyPrice) : monthlyPrice;
+  const displayPrice = monthlyPrice;
   const priceDisplay = formatPriceFr(displayPrice);
-  const annualTotal = isAnnual ? formatPriceFr(displayPrice * 12) : null;
 
   // Find unlock plan names for features_locked
   const getUnlockPlanName = (unlockPlanId: string) => {
@@ -311,23 +249,10 @@ const PlanCard: React.FC<PlanCardProps> = ({
 
         {/* Price */}
         <div className="mb-3 sm:mb-4">
-          {isAnnual && (
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <span className="text-sm text-text-tertiary line-through">{formatPriceFr(monthlyPrice)}€</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400">
-                -20%
-              </span>
-            </div>
-          )}
           <span className="text-2xl sm:text-3xl font-bold text-text-primary">{priceDisplay}</span>
           <span className="text-text-tertiary text-xs sm:text-sm ml-1">
             €/{lang === 'fr' ? 'mois' : 'mo'}
           </span>
-          {isAnnual && annualTotal && (
-            <div className="text-[10px] text-text-tertiary mt-0.5">
-              {lang === 'fr' ? `soit ${annualTotal}€/an` : `i.e. ${annualTotal}€/year`}
-            </div>
-          )}
         </div>
 
         {/* Features Display */}
@@ -431,7 +356,6 @@ interface ComparisonTableProps {
   lang: 'fr' | 'en';
   loading: string | null;
   onSelect: (plan: ApiBillingPlan) => void;
-  billingPeriod: BillingPeriod;
 }
 
 /** Build comparison rows from API plan limits */
@@ -534,7 +458,7 @@ function buildComparisonData(plans: ApiBillingPlan[], lang: 'fr' | 'en'): Compar
   return categories;
 }
 
-const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading, onSelect, billingPeriod }) => {
+const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading, onSelect }) => {
   const [expanded, setExpanded] = useState<string[]>([]);
   const categories = useMemo(() => buildComparisonData(plans, lang), [plans, lang]);
 
@@ -585,9 +509,7 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
               <div className="text-[10px] text-text-tertiary">
                 {plan.price_monthly_cents === 0
                   ? '0€'
-                  : billingPeriod === 'annual'
-                    ? `${formatPriceFr(getAnnualMonthlyPrice(plan.price_monthly_cents))}€/${lang === 'fr' ? 'mois' : 'mo'}`
-                    : `${formatPriceFr(plan.price_monthly_cents)}€/${lang === 'fr' ? 'mois' : 'mo'}`}
+                  : `${formatPriceFr(plan.price_monthly_cents)}€/${lang === 'fr' ? 'mois' : 'mo'}`}
               </div>
               {plan.is_current && (
                 <div className="text-[10px] text-green-400 mt-1 flex items-center justify-center gap-1">
@@ -789,7 +711,6 @@ export const UpgradePage: React.FC = () => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
   const [downgradeTarget, setDowngradeTarget] = useState<ApiBillingPlan | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>('monthly');
   const [trialEligible, setTrialEligible] = useState(false);
   const [trialLoading, setTrialLoading] = useState(false);
 
@@ -939,7 +860,7 @@ export const UpgradePage: React.FC = () => {
     <div className="min-h-screen bg-bg-primary relative">
       <SEO
         title="Mon plan"
-        description="Découvrez les plans DeepSight : Gratuit, Pro (3,99€/mois) et Expert (9,99€/mois). Analysez vos vidéos YouTube et TikTok avec l'IA."
+        description="Découvrez les plans DeepSight : Gratuit et Pro (6,99€/mois). Analysez vos vidéos YouTube et TikTok avec l'IA."
         path="/upgrade"
       />
       <DoodleBackground variant="creative" />
@@ -1078,9 +999,6 @@ export const UpgradePage: React.FC = () => {
               </motion.div>
             )}
 
-            {/* Billing Period Toggle */}
-            <BillingToggle period={billingPeriod} onChange={setBillingPeriod} lang={lang} />
-
             {/* View Toggle */}
             <div className="flex justify-center mb-6 sm:mb-8">
               <div className="inline-flex bg-bg-tertiary rounded-xl p-1">
@@ -1142,7 +1060,6 @@ export const UpgradePage: React.FC = () => {
                             trialLoading={trialLoading}
                             onStartTrial={handleStartTrial}
                             allPlans={plans}
-                            billingPeriod={billingPeriod}
                           />
                         </motion.div>
                       ))}
@@ -1163,7 +1080,6 @@ export const UpgradePage: React.FC = () => {
                       lang={lang}
                       loading={loading}
                       onSelect={handleSelectPlan}
-                      billingPeriod={billingPeriod}
                     />
                   )}
                 </motion.div>
@@ -1221,54 +1137,6 @@ export const UpgradePage: React.FC = () => {
             </motion.div>
 
             {/* Credit Packs — Achats a la carte */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.45 }}
-              className="card p-4 sm:p-6 mb-6 sm:mb-8"
-            >
-              <h3 className="font-bold text-base sm:text-lg text-text-primary mb-2 flex items-center gap-2">
-                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
-                {lang === 'fr' ? 'Besoin de credits ponctuels ?' : 'Need extra credits?'}
-              </h3>
-              <p className="text-xs sm:text-sm text-text-secondary mb-4">
-                {lang === 'fr'
-                  ? 'Achetez des credits a la carte, sans abonnement. Utilisez-les quand vous voulez.'
-                  : 'Buy credits on demand, no subscription. Use them whenever you want.'}
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                {CREDIT_PACKS.map((pack) => (
-                  <div
-                    key={pack.id}
-                    className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center hover:bg-white/[0.04] transition-colors"
-                  >
-                    <p className="text-sm font-semibold text-text-primary mb-1">
-                      {lang === 'fr' ? pack.name.fr : pack.name.en}
-                    </p>
-                    <p className="text-2xl font-bold text-accent-primary mb-1">
-                      {pack.priceDisplay}&euro;
-                    </p>
-                    <p className="text-xs text-text-secondary mb-3">
-                      {pack.credits} credits &middot; {lang === 'fr' ? pack.description.fr : pack.description.en}
-                    </p>
-                    <button
-                      className="w-full text-xs font-semibold py-2 px-4 rounded-lg border border-accent-primary/30 text-accent-primary hover:bg-accent-primary/10 transition-colors min-h-[36px]"
-                      onClick={async () => {
-                        try {
-                          const res = await billingApi.createCreditPackCheckout(pack.id);
-                          if (res?.checkout_url) window.location.href = res.checkout_url;
-                        } catch {
-                          /* handled by API layer */
-                        }
-                      }}
-                    >
-                      {lang === 'fr' ? 'Acheter' : 'Buy'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </motion.div>
-
             {/* FAQ */}
             <motion.div
               initial={{ opacity: 0 }}

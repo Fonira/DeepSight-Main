@@ -105,8 +105,7 @@ const injectStyles = () => {
 
 const canUseWebSearch = (plan?: string): boolean => {
   if (!plan) return false;
-  const paid = ['starter', 'etudiant', 'student', 'pro', 'expert', 'team', 'equipe'];
-  return paid.includes(plan.toLowerCase());
+  return plan.toLowerCase() === 'pro';
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -313,8 +312,8 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
       : 'L\'IA a accès à la synthèse et la transcription de la vidéo pour vous répondre.',
     clearHistory: 'Effacer l\'historique',
     deepen: 'Approfondir avec recherche web',
-    deepenLocked: 'Disponible dès le plan Starter',
-    webLocked: 'Plan Starter requis',
+    deepenLocked: 'Disponible dès le plan Pro',
+    webLocked: 'Plan Pro requis',
     webEnriched: 'Enrichi par le web',
     quotaLabel: 'recherches ce mois',
     upgradeHint: 'Obtenez des réponses enrichies par le web',
@@ -331,8 +330,8 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
       : 'The AI has access to the video summary and transcription to answer you.',
     clearHistory: 'Clear history',
     deepen: 'Deepen with web search',
-    deepenLocked: 'Available from Starter plan',
-    webLocked: 'Starter plan required',
+    deepenLocked: 'Available from Pro plan',
+    webLocked: 'Pro plan required',
     webEnriched: 'Web enriched',
     quotaLabel: 'searches this month',
     upgradeHint: 'Get web-enriched answers',

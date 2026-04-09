@@ -49,7 +49,6 @@ export function renderReadyState(opts: ReadyOptions): void {
         <select id="ds-mode" class="ds-select" title="Mode d'analyse">
           <option value="standard">📋 Standard</option>
           <option value="accessible">📖 Accessible</option>
-          <option value="expert">🎓 Expert</option>
         </select>
         <select id="ds-lang" class="ds-select" title="Langue">
           <option value="fr">🇫🇷 FR</option>

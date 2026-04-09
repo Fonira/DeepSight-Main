@@ -41,11 +41,11 @@ interface FeatureCTA {
 }
 
 const FEATURE_CTAS: FeatureCTA[] = [
-  { key: 'flashcards', icon: '\uD83D\uDDC2\uFE0F', labelKey: 'flashcards', hash: '#flashcards', minPlan: 'etudiant', price: '2,99€' },
-  { key: 'mind_maps', icon: '\uD83E\uDDE0', labelKey: 'mindMaps', hash: '#mindmap', minPlan: 'etudiant', price: '2,99€' },
-  { key: 'web_search', icon: '\uD83C\uDF10', labelKey: 'webSearch', hash: '#websearch', minPlan: 'starter', price: '5,99€' },
-  { key: 'exports', icon: '\uD83D\uDCE4', labelKey: 'exports', hash: '#export', minPlan: 'pro', price: '12,99€' },
-  { key: 'playlists', icon: '\uD83C\uDFAC', labelKey: 'playlists', hash: '#playlists', minPlan: 'pro', price: '12,99€' },
+  { key: 'flashcards', icon: '\uD83D\uDDC2\uFE0F', labelKey: 'flashcards', hash: '#flashcards', minPlan: 'pro', price: '5,99€' },
+  { key: 'mind_maps', icon: '\uD83E\uDDE0', labelKey: 'mindMaps', hash: '#mindmap', minPlan: 'pro', price: '5,99€' },
+  { key: 'web_search', icon: '\uD83C\uDF10', labelKey: 'webSearch', hash: '#websearch', minPlan: 'pro', price: '5,99€' },
+  { key: 'exports', icon: '\uD83D\uDCE4', labelKey: 'exports', hash: '#export', minPlan: 'pro', price: '5,99€' },
+  { key: 'playlists', icon: '\uD83C\uDFAC', labelKey: 'playlists', hash: '#playlists', minPlan: 'pro', price: '5,99€' },
 ];
 
 export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId, planInfo, onOpenChat }) => {

@@ -23,7 +23,7 @@ interface TTSState {
 }
 
 const PLAN_RANK: Record<string, number> = {
-  free: 0, decouverte: 0, pro: 1, expert: 2, etudiant: 1, student: 1, starter: 1,
+  free: 0, decouverte: 0, pro: 1, expert: 1, etudiant: 1, student: 1, starter: 1,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════

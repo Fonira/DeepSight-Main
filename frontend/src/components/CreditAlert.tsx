@@ -192,8 +192,8 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
             {normalizedPlan === 'free' && (
               <span className="text-xs text-text-tertiary">
                 {language === 'fr'
-                  ? `Dès ${(PLANS_INFO.etudiant.priceMonthly / 100).toFixed(2).replace('.', ',')}€/mois`
-                  : `From €${(PLANS_INFO.etudiant.priceMonthly / 100).toFixed(2)}/mo`}
+                  ? `Dès ${(PLANS_INFO.pro.priceMonthly / 100).toFixed(2).replace('.', ',')}€/mois`
+                  : `From €${(PLANS_INFO.pro.priceMonthly / 100).toFixed(2)}/mo`}
               </span>
             )}
           </div>

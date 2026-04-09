@@ -24,7 +24,7 @@ import { billingApi, ApiError } from '../services/api';
 import {
   normalizePlanId, isPlanHigher, comparePlans,
   PLANS_INFO, PLAN_LIMITS, getFeatureListForDisplay,
-  DIFFERENTIATORS, CREDIT_PACKS,
+  DIFFERENTIATORS,
   type PlanId,
 } from '../config/planPrivileges';
 
@@ -59,7 +59,7 @@ const PLANS: PlanWithTranslations[] = PLANS_INFO.map((info) => {
 });
 
 // Plan progression order for recommendations
-const PLAN_ORDER: PlanId[] = ['free', 'pro', 'expert'];
+const PLAN_ORDER: PlanId[] = ['free', 'pro'];
 
 // Get recommended upgrade path based on current plan
 const getRecommendedPlan = (currentPlan: PlanId): PlanId | null => {
@@ -324,44 +324,6 @@ export const UpgradeScreen: React.FC = () => {
             <Text style={[styles.diffDesc, { color: colors.textSecondary }]}>
               {isEn ? diff.description.en : diff.description.fr}
             </Text>
-          </Card>
-        ))}
-
-        {/* Credit Packs */}
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginTop: Spacing.lg }]}>
-          {isEn ? 'Need more credits?' : 'Besoin de plus de crédits ?'}
-        </Text>
-        <Text style={[styles.sectionSubtitle, { color: colors.textTertiary }]}>
-          {isEn
-            ? 'One-time purchase, no subscription'
-            : 'Achat unique, sans abonnement'}
-        </Text>
-        {CREDIT_PACKS.map((pack) => (
-          <Card key={pack.id} style={styles.packCard}>
-            <View style={styles.packRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.packName, { color: colors.textPrimary }]}>
-                  {isEn ? pack.name.en : pack.name.fr}
-                </Text>
-                <Text style={[styles.packCredits, { color: colors.accentPrimary }]}>
-                  {pack.credits.toLocaleString()} {isEn ? 'credits' : 'crédits'}
-                </Text>
-                <Text style={[styles.packDesc, { color: colors.textTertiary }]}>
-                  {isEn ? pack.description.en : pack.description.fr}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.packButton, { borderColor: colors.accentPrimary }]}
-                onPress={() => handleBuyCreditPack(pack.id)}
-                disabled={packLoading === pack.id}
-              >
-                <Text style={[styles.packButtonText, { color: colors.accentPrimary }]}>
-                  {packLoading === pack.id
-                    ? '...'
-                    : `${pack.priceDisplay}€`}
-                </Text>
-              </TouchableOpacity>
-            </View>
           </Card>
         ))}
 

@@ -5,11 +5,11 @@
  *   - backend/src/billing/plan_config.py  (SSOT)
  *   - frontend/src/config/planPrivileges.ts
  *
- * Architecture: 3 plans — Free / Pro (5.99€) / Expert (14.99€)
- * Dernière synchro: 26 Mars 2026
+ * Architecture: 2 plans — Free / Pro (6.99€)
+ * Dernière synchro: 9 Avril 2026
  */
 
-export type PlanId = 'free' | 'pro' | 'expert';
+export type PlanId = 'free' | 'pro';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // PLAN LIMITS
@@ -70,37 +70,15 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   },
 
   pro: {
-    monthlyAnalyses: 30,
-    monthlyCredits: 3000,
-    maxVideoDuration: 7200,         // 2h
-    chatQuestionsPerVideo: 25,
-    chatDailyLimit: -1,
-    maxPlaylistVideos: 5,
-    maxPlaylists: 3,
-    maxExportsPerDay: 20,
-    webSearchMonthly: 20,
-    historyDays: -1,
-    apiRequestsDaily: 0,
-    teamMembers: 1,
-    studyQuizQuestions: 7,
-    studyMindmapDepth: 3,
-    studyCanGenerateMore: true,
-    studyDailyLimit: 10,
-    academicPapersPerAnalysis: 15,
-    voiceChatMonthlyMinutes: 10,
-    debateMonthly: 10,
-  },
-
-  expert: {
-    monthlyAnalyses: 100,
-    monthlyCredits: 10000,
+    monthlyAnalyses: 50,
+    monthlyCredits: 5000,
     maxVideoDuration: 14400,        // 4h
     chatQuestionsPerVideo: -1,
     chatDailyLimit: -1,
-    maxPlaylistVideos: 20,
-    maxPlaylists: 10,
+    maxPlaylistVideos: 10,
+    maxPlaylists: 5,
     maxExportsPerDay: -1,
-    webSearchMonthly: 60,
+    webSearchMonthly: 30,
     historyDays: -1,
     apiRequestsDaily: 0,
     teamMembers: 1,
@@ -108,9 +86,9 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyMindmapDepth: 4,
     studyCanGenerateMore: true,
     studyDailyLimit: 50,
-    academicPapersPerAnalysis: 50,
-    voiceChatMonthlyMinutes: 20,
-    debateMonthly: 50,
+    academicPapersPerAnalysis: 30,
+    voiceChatMonthlyMinutes: 15,
+    debateMonthly: -1,
   },
 };
 
@@ -198,41 +176,6 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     chatWebSearch: true,
     chatSuggestedQuestions: true,
     factCheckBasic: true,
-    factCheckAdvanced: false,
-    intelligentSearch: true,
-    playlists: true,
-    corpus: false,
-    flashcards: true,
-    conceptMaps: true,
-    citationExport: true,
-    bibtexExport: true,
-    exportPdf: true,
-    exportMarkdown: true,
-    exportTxt: true,
-    exportWatermark: false,
-    ttsAudio: true,
-    apiAccess: false,
-    prioritySupport: false,
-    sharedWorkspace: false,
-    slackIntegration: false,
-    teamsIntegration: false,
-    academicSearch: true,
-    bibliographyExport: true,
-    academicFullText: false,
-    voiceChat: true,
-    debate: true,
-    deepResearch: false,
-  },
-
-  expert: {
-    summaryExpress: true,
-    summaryDetailed: true,
-    summaryTimestamps: true,
-    summaryConcepts: true,
-    chatBasic: true,
-    chatWebSearch: true,
-    chatSuggestedQuestions: true,
-    factCheckBasic: true,
     factCheckAdvanced: true,
     intelligentSearch: true,
     playlists: true,
@@ -298,30 +241,17 @@ export const PLANS_INFO: PlanInfo[] = [
   {
     id: 'pro',
     name: { fr: 'Pro', en: 'Pro' },
-    description: { fr: 'Fact-checking, cartes mentales et recherche web', en: 'Fact-checking, mind maps and web search' },
-    price: 599,
-    priceDisplay: { fr: '5,99€/mois', en: '€5.99/mo' },
+    description: { fr: 'Toute la puissance de DeepSight, sans limites', en: 'All the power of DeepSight, unlimited' },
+    price: 699,
+    priceDisplay: { fr: '6,99€/mois', en: '€6.99/mo' },
     badge: { fr: 'Le plus populaire', en: 'Most popular' },
     popular: true,
-    color: '#3B82F6',
+    color: '#6366F1',
     icon: 'star-outline',
-    gradient: ['#3B82F6', '#2563EB'],
+    gradient: ['#6366F1', '#4F46E5'],
     order: 1,
-    targetAudience: { fr: 'Étudiants & Particuliers', en: 'Students & Individuals' },
-    killerFeature: { fr: '30 analyses + Mindmap + Web Search', en: '30 analyses + Mindmap + Web Search' },
-  },
-  {
-    id: 'expert',
-    name: { fr: 'Expert', en: 'Expert' },
-    description: { fr: 'Recherche approfondie, débats IA et priorité', en: 'Deep research, AI debates and priority' },
-    price: 1499,
-    priceDisplay: { fr: '14,99€/mois', en: '€14.99/mo' },
-    color: '#F59E0B',
-    icon: 'trophy-outline',
-    gradient: ['#F59E0B', '#D97706'],
-    order: 2,
-    targetAudience: { fr: 'Créateurs & Chercheurs', en: 'Creators & Researchers' },
-    killerFeature: { fr: '100 analyses + Deep Research + Mistral Large', en: '100 analyses + Deep Research + Mistral Large' },
+    targetAudience: { fr: 'Tous les utilisateurs', en: 'All users' },
+    killerFeature: { fr: '50 analyses + Tout inclus', en: '50 analyses + Everything included' },
   },
 ];
 
@@ -336,8 +266,8 @@ export const CONVERSION_TRIGGERS = {
   lowCreditsCriticalPercent: 5,
   showTimeSaved: true,
   showEquivalentPages: true,
-  trialEnabled: true,
-  trialDays: 7,
+  trialEnabled: false,
+  trialDays: 0,
   trialPlan: 'pro' as PlanId,
   trialRequiresCard: false,
 };
@@ -418,46 +348,6 @@ export const DIFFERENTIATORS: Differentiator[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CREDIT PACKS — Achats à la carte
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export interface CreditPack {
-  id: string;
-  name: { fr: string; en: string };
-  credits: number;
-  priceCents: number;
-  priceDisplay: string;
-  description: { fr: string; en: string };
-}
-
-export const CREDIT_PACKS: CreditPack[] = [
-  {
-    id: 'discovery',
-    name: { fr: 'Pack Découverte', en: 'Discovery Pack' },
-    credits: 500,
-    priceCents: 199,
-    priceDisplay: '1,99',
-    description: { fr: '~4 analyses supplémentaires', en: '~4 additional analyses' },
-  },
-  {
-    id: 'standard',
-    name: { fr: 'Pack Standard', en: 'Standard Pack' },
-    credits: 2000,
-    priceCents: 599,
-    priceDisplay: '5,99',
-    description: { fr: '~16 analyses supplémentaires', en: '~16 additional analyses' },
-  },
-  {
-    id: 'intensive',
-    name: { fr: 'Pack Intensif', en: 'Intensive Pack' },
-    credits: 5000,
-    priceCents: 1199,
-    priceDisplay: '11,99',
-    description: { fr: '~40 analyses supplémentaires', en: '~40 additional analyses' },
-  },
-];
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // TESTIMONIALS
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -481,28 +371,6 @@ export const TESTIMONIALS: Testimonial[] = [
       en: 'DeepSight saved me hours of note-taking. I can now focus on understanding rather than transcribing.',
     },
     plan: 'pro',
-    rating: 5,
-  },
-  {
-    id: 'testimonial-2',
-    name: 'Thomas R.',
-    role: { fr: 'Créateur de contenu', en: 'Content Creator' },
-    quote: {
-      fr: 'J\'analyse 20+ vidéos par semaine pour ma veille. L\'analyse de playlists est un game-changer.',
-      en: 'I analyze 20+ videos weekly for research. Playlist analysis is a game-changer.',
-    },
-    plan: 'expert',
-    rating: 5,
-  },
-  {
-    id: 'testimonial-3',
-    name: 'Dr. Sophie M.',
-    role: { fr: 'Chercheuse CNRS', en: 'CNRS Researcher' },
-    quote: {
-      fr: 'Les exports BibTeX et le fact-checking sont indispensables pour mes publications académiques.',
-      en: 'BibTeX exports and fact-checking are essential for my academic publications.',
-    },
-    plan: 'expert',
     rating: 5,
   },
   {
@@ -566,7 +434,7 @@ export const PRO_BENEFITS: ProBenefit[] = [
 // UTILITY FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const PLAN_ORDER: PlanId[] = ['free', 'pro', 'expert'];
+const PLAN_ORDER: PlanId[] = ['free', 'pro'];
 
 /**
  * Normalize a plan name to a valid PlanId.
@@ -589,12 +457,11 @@ export function normalizePlanId(plan: string | undefined): PlanId {
     'etudiant': 'pro',
     'starter': 'pro',
     'pro': 'pro',
-    // Legacy → Expert
-    'expert': 'expert',
-    'team': 'expert',
-    'équipe': 'expert',
-    'equipe': 'expert',
-    'unlimited': 'expert',
+    'expert': 'pro',
+    'team': 'pro',
+    'équipe': 'pro',
+    'equipe': 'pro',
+    'unlimited': 'pro',
   };
 
   return planMapping[normalized] || 'free';
@@ -656,7 +523,7 @@ export function getMinPlanForFeature(feature: keyof PlanFeatures): PlanId {
       return plan;
     }
   }
-  return 'expert';
+  return 'pro';
 }
 
 /**
@@ -772,7 +639,6 @@ export default {
   PLANS_INFO,
   CONVERSION_TRIGGERS,
   DIFFERENTIATORS,
-  CREDIT_PACKS,
   TESTIMONIALS,
   PRO_BENEFITS,
   hasFeature,

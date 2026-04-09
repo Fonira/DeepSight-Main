@@ -171,32 +171,20 @@ const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
 
   if (!user) return null;
 
-  // Aligné sur planPrivileges.ts (free/etudiant/starter/pro/unlimited)
+  // Aligné sur planPrivileges.ts (free/pro)
   const planLabels: Record<string, string> = {
     free: language === 'fr' ? 'Gratuit' : 'Free',
-    etudiant: 'Starter',
-    starter: 'Standard',
     pro: 'Pro',
-    unlimited: 'Pro ∞',
-    expert: 'Expert',
   };
 
   const planColors: Record<string, string> = {
     free: 'text-text-tertiary',
-    etudiant: 'text-blue-400',
-    starter: 'text-emerald-400',
-    pro: 'text-violet-400',
-    unlimited: 'text-amber-400',
-    expert: 'text-purple-400',
+    pro: 'text-indigo-400',
   };
 
   const planBgColors: Record<string, string> = {
     free: 'bg-bg-tertiary',
-    etudiant: 'bg-blue-500/10',
-    starter: 'bg-emerald-500/10',
-    pro: 'bg-violet-500/10',
-    unlimited: 'bg-amber-500/10',
-    expert: 'bg-purple-500/10',
+    pro: 'bg-indigo-500/10',
   };
 
   const currentPlan = user.plan || 'free';
@@ -255,9 +243,7 @@ const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
                 <motion.div
                   className={`h-full rounded-full ${
                     currentPlan === 'free' ? 'bg-text-muted' :
-                    currentPlan === 'etudiant' ? 'bg-blue-500' :
-                    currentPlan === 'starter' ? 'bg-emerald-500' :
-                    currentPlan === 'pro' ? 'bg-violet-500' :
+                    currentPlan === 'pro' ? 'bg-indigo-500' :
                     'bg-text-muted'
                   }`}
                   initial={{ width: 0 }}
@@ -323,13 +309,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   // Badges dynamiques — getMinPlanForFeature comme source unique de vérité
   const planBadgeStyles: Record<PlanId, string> = {
     free: 'bg-gray-500/15 text-gray-400',
-    etudiant: 'bg-emerald-500/15 text-emerald-400',
-    starter: 'bg-blue-500/15 text-blue-400',
-    pro: 'bg-violet-500/15 text-violet-400',
+    pro: 'bg-indigo-500/15 text-indigo-400',
   };
   const minPlanPlaylists = getMinPlanForFeature('playlistsEnabled');
   const minPlanStudy = getMinPlanForFeature('flashcardsEnabled');
-  const minPlanChat: PlanId = 'etudiant'; // Chat page bloque les free users
+  const minPlanChat: PlanId = 'pro'; // Chat page bloque les free users
   const getBadge = (minPlan: PlanId) => {
     const userIdx = PLAN_HIERARCHY.indexOf(userPlan);
     const minIdx = PLAN_HIERARCHY.indexOf(minPlan);

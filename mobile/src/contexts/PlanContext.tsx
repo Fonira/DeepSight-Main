@@ -73,14 +73,17 @@ function buildPlanFeatures(planId: PlanId): PlanFeatures {
   };
 }
 
-// Plan configurations — synced from planPrivileges.ts (3 plans)
+// Plan configurations — synced from planPrivileges.ts (2 plans)
 const PLAN_FEATURES_MAP: Record<string, PlanFeatures> = {
   free: buildPlanFeatures('free'),
   pro: buildPlanFeatures('pro'),
-  expert: buildPlanFeatures('expert'),
   // Legacy aliases → redirigés par normalizePlanId
   student: buildPlanFeatures('pro'),
   starter: buildPlanFeatures('pro'),
+  expert: buildPlanFeatures('pro'),
+  team: buildPlanFeatures('pro'),
+  equipe: buildPlanFeatures('pro'),
+  unlimited: buildPlanFeatures('pro'),
 };
 
 // Usage stats interface
@@ -122,7 +125,7 @@ const PlanContext = createContext<PlanContextType | undefined>(undefined);
 
 // Get suggested upgrade plan
 function getSuggestedUpgrade(currentPlan: PlanType): PlanType | null {
-  const planOrder: string[] = ['free', 'pro', 'expert'];
+  const planOrder: string[] = ['free', 'pro'];
   const normalized = normalizePlanId(currentPlan);
   const currentIndex = planOrder.indexOf(normalized);
   if (currentIndex >= 0 && currentIndex < planOrder.length - 1) {

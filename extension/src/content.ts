@@ -242,7 +242,6 @@ function renderAnalyzeReady(container: HTMLElement, user: { credits: number; pla
       <select id="ds-mode" class="ds-select" title="Analysis mode">
         <option value="standard">\u{1F4CB} Standard</option>
         <option value="accessible">\u{1F4D6} Accessible</option>
-        <option value="expert">\u{1F393} Expert</option>
       </select>
       <select id="ds-lang" class="ds-select" title="Language">
         <option value="fr">\u{1F1EB}\u{1F1F7} FR</option>
@@ -404,11 +403,10 @@ const FEATURE_TEASERS: FeatureTeaser[] = [
   { icon: '\u{1F4CB}', label: 'Playlists enti\u00E8res', minPlan: 'pro', url: `${WEBAPP_URL}/upgrade` },
 ];
 
-const PLAN_RANK: Record<string, number> = { free: 0, pro: 1, expert: 2, etudiant: 1, student: 1, starter: 1 };
+const PLAN_RANK: Record<string, number> = { free: 0, decouverte: 0, pro: 1, expert: 1, etudiant: 1, student: 1, starter: 1 };
 
 const PLAN_PRICE_LABEL: Record<string, string> = {
   pro: 'Pro 5,99\u20AC',
-  expert: 'Expert 14,99\u20AC',
 };
 
 async function buildPremiumTeasers(summaryId: number): Promise<void> {

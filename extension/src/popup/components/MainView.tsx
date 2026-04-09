@@ -395,7 +395,6 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                     <select className="ds-select" value={mode} onChange={(e) => setMode(e.target.value)}>
                       <option value="standard">{t.analysis.modes.standard}</option>
                       <option value="accessible">{t.analysis.modes.accessible}</option>
-                      <option value="expert">{t.analysis.modes.expert}</option>
                     </select>
                   </div>
                   <div className="ds-select-wrapper">

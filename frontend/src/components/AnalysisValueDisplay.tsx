@@ -38,7 +38,7 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
   const navigate = useNavigate();
 
   const plan = user?.plan || 'free';
-  const shouldShowUpgrade = showUpgradeCTA && (plan === 'free' || plan === 'student');
+  const shouldShowUpgrade = showUpgradeCTA && plan === 'free';
 
   // Calculate time saved
   const stats = useMemo(() => {
@@ -189,8 +189,8 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
                 </p>
                 <p className="text-xs text-text-tertiary">
                   {language === 'fr'
-                    ? `Dès ${(PLANS_INFO.etudiant.priceMonthly / 100).toFixed(2).replace('.', ',')}€/mois pour les étudiants`
-                    : `From €${(PLANS_INFO.etudiant.priceMonthly / 100).toFixed(2)}/mo for students`}
+                    ? `Dès ${(PLANS_INFO.pro.priceMonthly / 100).toFixed(2).replace('.', ',')}€/mois`
+                    : `From €${(PLANS_INFO.pro.priceMonthly / 100).toFixed(2)}/mo`}
                 </p>
               </div>
               <button

@@ -27,31 +27,20 @@ const PROMOS_FREE: Promo[] = [
   { id: 'free-quota', textKey: 2, url: `${WEBAPP_URL}/upgrade`, gradient: GRADIENTS.warmOrange },
 ];
 
-const PROMOS_STARTER: Promo[] = [
-  { id: 'starter-websearch', textKey: 0, url: `${WEBAPP_URL}/upgrade`, gradient: GRADIENTS.cyanBlue },
-  { id: 'starter-more', textKey: 1, url: `${WEBAPP_URL}/upgrade`, gradient: GRADIENTS.blueViolet },
-];
-
-const PROMOS_STANDARD: Promo[] = [
-  { id: 'standard-playlists', textKey: 0, url: `${WEBAPP_URL}/upgrade`, gradient: GRADIENTS.warmOrange },
-  { id: 'standard-exports', textKey: 1, url: `${WEBAPP_URL}/upgrade`, gradient: GRADIENTS.violetOrange },
-];
-
 const PROMOS_PRO: Promo[] = [
   { id: 'pro-mobile', textKey: 0, url: `${WEBAPP_URL}/mobile`, gradient: GRADIENTS.greenCyan },
   { id: 'pro-web', textKey: 1, url: WEBAPP_URL, gradient: GRADIENTS.blueViolet },
 ];
 
-type PromoTier = 'free' | 'starter' | 'standard' | 'pro';
+type PromoTier = 'free' | 'pro';
 
 function getPromoTier(planId?: string): PromoTier {
   switch (planId) {
+    case 'pro':
+    case 'expert':
     case 'etudiant':
     case 'student':
-      return 'starter';
     case 'starter':
-      return 'standard';
-    case 'pro':
       return 'pro';
     default:
       return 'free';
@@ -60,8 +49,6 @@ function getPromoTier(planId?: string): PromoTier {
 
 function getPromosForPlan(planId?: string): Promo[] {
   switch (getPromoTier(planId)) {
-    case 'starter': return PROMOS_STARTER;
-    case 'standard': return PROMOS_STANDARD;
     case 'pro': return PROMOS_PRO;
     default: return PROMOS_FREE;
   }

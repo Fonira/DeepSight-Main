@@ -75,7 +75,6 @@ export const MyAccount: React.FC = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const normalizedPlan = normalizePlanId(user?.plan);
-  const isExpertUser = normalizedPlan === 'expert';
   const isPaidUser = normalizedPlan !== 'free';
 
   // Plan data from API
@@ -114,24 +113,24 @@ export const MyAccount: React.FC = () => {
   // ─────────────────────────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if (!isExpertUser) return;
-    
+    if (!isPaidUser) return;
+
     const fetchStatus = async () => {
       try {
         const status = await billingApi.getApiKeyStatus();
         setApiKey(prev => ({ ...prev, status, loading: false }));
       } catch {
-        setApiKey(prev => ({ 
-          ...prev, 
+        setApiKey(prev => ({
+          ...prev,
           error: tr('Impossible de charger le statut API', 'Failed to load API status'),
-          loading: false 
+          loading: false
         }));
       }
     };
-    
+
     setApiKey(prev => ({ ...prev, loading: true }));
     fetchStatus();
-  }, [isExpertUser, tr]);
+  }, [isPaidUser, tr]);
 
   // ─────────────────────────────────────────────────────────────────────────────
   // 📋 Fetch My Plan (billing/my-plan)
@@ -275,8 +274,7 @@ export const MyAccount: React.FC = () => {
   // Plan info - v5.0 (Free, Pro, Expert)
   const planConfig: Record<string, { label: string; color: string; bgColor: string; icon: string }> = {
     free: { label: tr('Gratuit', 'Free'), color: 'text-gray-400', bgColor: 'bg-gray-500/10', icon: '🆓' },
-    pro: { label: 'Pro', color: 'text-blue-400', bgColor: 'bg-blue-500/10', icon: '⭐' },
-    expert: { label: 'Expert', color: 'text-amber-400', bgColor: 'bg-amber-500/10', icon: '👑' },
+    pro: { label: 'Pro', color: 'text-indigo-400', bgColor: 'bg-indigo-500/10', icon: '⭐' },
   };
 
   const currentPlan = planConfig[normalizedPlan] || planConfig['free'];
@@ -737,21 +735,21 @@ export const MyAccount: React.FC = () => {
                 <h2 className="font-semibold text-text-primary flex items-center gap-2">
                   <Key className="w-5 h-5 text-accent-primary" />
                   {tr('Clés API', 'API Keys')}
-                  {isExpertUser && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400">Expert</span>}
+                  {isPaidUser && <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-400">Pro</span>}
                 </h2>
               </div>
               <div className="panel-body">
-                {!isExpertUser ? (
+                {!isPaidUser ? (
                   <div className="text-center py-6">
                     <div className="w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center mx-auto mb-3">
                       <Lock className="w-6 h-6 text-violet-400" />
                     </div>
                     <p className="text-text-secondary mb-3">
-                      {tr('L\'accès API est réservé aux abonnés Expert (9,99€/mois).', 'API access is available for Expert subscribers (€9.99/mo).')}
+                      {tr('L\'accès API est réservé aux abonnés Pro (6,99€/mois).', 'API access is available for Pro subscribers (€6.99/mo).')}
                     </p>
-                    <Link to="/upgrade" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500/10 text-amber-400 text-sm font-medium hover:bg-amber-500/20 transition-colors">
+                    <Link to="/upgrade" className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-500/10 text-indigo-400 text-sm font-medium hover:bg-indigo-500/20 transition-colors">
                       <Users className="w-4 h-4" />
-                      {tr('Passer à Expert', 'Upgrade to Expert')}
+                      {tr('Passer à Pro', 'Upgrade to Pro')}
                     </Link>
                   </div>
                 ) : (

@@ -27,7 +27,7 @@ function cleanQuestion(q: string): string {
 }
 
 // ── Plan helpers ──────────────────────────────────────────────────
-const PAID_PLANS = ['starter', 'student', 'etudiant', 'pro', 'expert', 'team', 'equipe'];
+const PAID_PLANS = ['pro', 'starter', 'student', 'etudiant', 'expert', 'team', 'equipe'];
 function canUseWebSearch(plan?: string): boolean {
   if (!plan) return false;
   return PAID_PLANS.includes(plan.toLowerCase());
