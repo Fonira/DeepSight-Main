@@ -64,14 +64,14 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     studyMindmapDepth: 2,
     studyCanGenerateMore: false,
     studyDailyLimit: 2,
-    academicPapersPerAnalysis: 3,
+    academicPapersPerAnalysis: 0,
     voiceChatMonthlyMinutes: 0,
-    debateMonthly: 1,
+    debateMonthly: 0,
   },
 
   pro: {
     monthlyAnalyses: 50,
-    monthlyCredits: 5000,
+    monthlyCredits: 10000,
     maxVideoDuration: 14400,        // 4h
     chatQuestionsPerVideo: -1,
     chatDailyLimit: -1,

@@ -262,7 +262,7 @@ STRIPE_CONFIG = {
         "pro": {
             "test": _settings.STRIPE_PRICE_PRO_TEST,
             "live": _settings.STRIPE_PRICE_PRO_LIVE,
-            "amount": 699, "credits": 50, "name": "Pro"
+            "amount": 699, "name": "Pro"
         },
     },
 }

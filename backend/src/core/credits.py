@@ -23,7 +23,7 @@ from db.database import User, CreditTransaction
 
 # Crédits mensuels par plan — 2 plans (Avril 2026)
 PLAN_CREDITS = {
-    "free": 500,           # ~10 analyses basiques
+    "free": 250,           # ~5 analyses basiques (aligned with plan_config SSOT)
     "pro": 10_000,         # ~200 analyses ou usage intensif avec Large
 }
 

@@ -23,6 +23,7 @@ from enum import Enum
 
 from db.database import User, CreditTransaction, Summary, ChatQuota, WebSearchUsage
 from core.config import PLAN_LIMITS
+from billing.plan_config import normalize_plan_id
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -386,7 +387,8 @@ async def check_and_reset_monthly_credits(
     session: AsyncSession,
     user: User
 ) -> Tuple[int, bool]:
-    if user.plan in ["free", "unlimited"]:
+    normalized_plan = normalize_plan_id(user.plan)
+    if normalized_plan == "free":
         return user.credits or 0, False
     
     today = date.today()
@@ -466,13 +468,6 @@ async def reserve_credits(
         if not user:
             return False, "user_not_found", {}
         
-        if user.plan == "unlimited":
-            return True, "ok", {
-                "operation_id": operation_id,
-                "reserved": amount,
-                "unlimited": True
-            }
-        
         credits, _ = await check_and_reset_monthly_credits(session, user)
         
         already_reserved = sum(_credit_reservations.get(user_id, {}).values())
@@ -518,10 +513,6 @@ async def consume_credits(
         if not user:
             del reservations[operation_id]
             return False, "user_not_found"
-        
-        if user.plan == "unlimited":
-            del reservations[operation_id]
-            return True, "ok"
         
         user.credits = max(0, (user.credits or 0) - amount)
         
@@ -577,14 +568,14 @@ async def check_video_analysis_allowed(
     available = credits - reserved
     cost = get_credit_cost("video_analysis", model)
     
-    if available < cost and user.plan != "unlimited":
+    if available < cost:
         return False, "insufficient_credits", {
             "credits": credits,
             "available": available,
             "cost": cost,
             "plan": user.plan
         }
-    
+
     return True, "ok", {
         "credits": credits,
         "available": available,
@@ -627,7 +618,7 @@ async def check_playlist_analysis_allowed(
     
     cost = num_videos
     
-    if available < cost and user.plan != "unlimited":
+    if available < cost:
         return False, "insufficient_credits", {
             "credits": credits,
             "available": available,

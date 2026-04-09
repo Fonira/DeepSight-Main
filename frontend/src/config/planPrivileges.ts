@@ -57,7 +57,7 @@ export interface PlanLimits {
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
   free: {
     monthlyAnalyses: 5,
-    maxVideoLengthMin: 20,
+    maxVideoLengthMin: 15,
     concurrentAnalyses: 1,
     priorityQueue: false,
     chatQuestionsPerVideo: 5,
@@ -72,7 +72,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     exportFormats: ['txt'],
     exportMarkdown: false,
     exportPdf: false,
-    historyRetentionDays: 30,
+    historyRetentionDays: 60,
     allowedModels: ['mistral-small-2603'],
     defaultModel: 'mistral-small-2603',
     academicSearch: false,

@@ -807,8 +807,7 @@ async def change_subscription_plan(
         raise HTTPException(status_code=400, detail=f"Invalid plan: {new_plan}")
 
     # Déterminer si c'est un upgrade ou downgrade
-    plan_order = {"free": 0, "pro": 1}
-    is_upgrade = plan_order.get(new_plan, 0) > plan_order.get(current_plan, 0)
+    is_upgrade = get_plan_index(new_plan) > get_plan_index(current_plan)
 
     try:
         # Récupérer l'item d'abonnement actuel
