@@ -75,7 +75,7 @@ _processed_events = _EventIdCache()
 class CreateCheckoutRequest(BaseModel):
     """Requête pour créer une session de paiement"""
 
-    plan: str  # starter, pro, expert
+    plan: str  # pro
     success_url: Optional[str] = None
     cancel_url: Optional[str] = None
 
@@ -100,15 +100,15 @@ class BillingInfoResponse(BaseModel):
 
 
 class UpgradeRequest(BaseModel):
-    """Requête pour upgrade Pro → Expert"""
+    """Requête pour upgrade Free → Pro (deprecated - use /change-plan instead)"""
 
-    target_plan: str = "expert"
+    target_plan: str = "pro"
 
 
 class DowngradeRequest(BaseModel):
-    """Requête pour downgrade Expert → Pro"""
+    """Requête pour downgrade Pro → Free (deprecated - use /cancel instead)"""
 
-    target_plan: str = "pro"
+    target_plan: str = "free"
 
 
 class CancelRequest(BaseModel):
@@ -515,7 +515,7 @@ async def create_checkout_session(
     session: AsyncSession = Depends(get_session),
 ):
     """
-    Crée une session de paiement Stripe Checkout pour Pro ou Expert.
+    Crée une session de paiement Stripe Checkout pour Pro.
     Ajoute trial_period_days=7 pour les nouveaux abonnés (jamais eu de trial).
     """
     if not STRIPE_CONFIG.get("ENABLED"):
@@ -525,10 +525,10 @@ async def create_checkout_session(
         raise HTTPException(status_code=500, detail="Stripe not configured")
 
     # Valider le plan
-    if request.plan not in ("pro", "expert"):
+    if request.plan != "pro":
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid plan: {request.plan}. Must be 'pro' or 'expert'.",
+            detail=f"Invalid plan: {request.plan}. Must be 'pro'.",
         )
 
     price_id = get_price_id(request.plan)
@@ -609,7 +609,7 @@ async def create_checkout_session(
 class CreateCheckoutByPlanId(BaseModel):
     """Requête avec plan_id (format frontend)"""
 
-    plan_id: str  # starter, pro, expert
+    plan_id: str  # pro
 
 
 @router.post("/create-checkout")
@@ -704,7 +704,7 @@ async def create_portal_session(current_user: User = Depends(get_current_user)):
 class ChangePlanRequest(BaseModel):
     """Requête pour changer de plan"""
 
-    new_plan: str  # starter, pro, expert
+    new_plan: str  # pro
 
 
 class ChangePlanResponse(BaseModel):
@@ -741,7 +741,7 @@ async def change_subscription_plan(
     current_plan = current_user.plan or "free"
 
     # Validation du nouveau plan
-    valid_plans = ["starter", "pro", "expert"]
+    valid_plans = ["pro"]
     if new_plan not in valid_plans:
         raise HTTPException(status_code=400, detail=f"Invalid plan: {new_plan}")
 
@@ -807,7 +807,7 @@ async def change_subscription_plan(
         raise HTTPException(status_code=400, detail=f"Invalid plan: {new_plan}")
 
     # Déterminer si c'est un upgrade ou downgrade
-    plan_order = {"free": 0, "starter": 1, "pro": 2, "expert": 3}
+    plan_order = {"free": 0, "pro": 1}
     is_upgrade = plan_order.get(new_plan, 0) > plan_order.get(current_plan, 0)
 
     try:
@@ -905,7 +905,7 @@ async def change_subscription_plan(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ⬆️ UPGRADE — Pro → Expert (proration immédiate)
+# ⬆️ UPGRADE — Free → Pro (proration immédiate) [DEPRECATED - use /change-plan]
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -916,7 +916,7 @@ async def upgrade_subscription(
     session: AsyncSession = Depends(get_session),
 ):
     """
-    ⬆️ Upgrade de plan (Pro → Expert).
+    ⬆️ Upgrade de plan (Free → Pro). DEPRECATED - utilisez /change-plan.
     Utilise stripe.Subscription.modify() avec proration immédiate.
     """
     if not STRIPE_CONFIG.get("ENABLED"):
@@ -928,7 +928,7 @@ async def upgrade_subscription(
     target = request.target_plan.lower()
 
     # Valider que c'est bien un upgrade
-    if target not in ("pro", "expert"):
+    if target != "pro":
         raise HTTPException(status_code=400, detail=f"Invalid target plan: {target}")
 
     if not plan_is_upgrade(current_plan, target):
@@ -1019,7 +1019,7 @@ async def upgrade_subscription(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ⬇️ DOWNGRADE — Expert → Pro (fin de période)
+# ⬇️ DOWNGRADE — Pro → Free (fin de période) [DEPRECATED - use /cancel]
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
@@ -1030,7 +1030,7 @@ async def downgrade_subscription(
     session: AsyncSession = Depends(get_session),
 ):
     """
-    ⬇️ Downgrade de plan (Expert → Pro).
+    ⬇️ Downgrade de plan (Pro → Free). DEPRECATED - utilisez /cancel.
     Le changement est programmé à la fin de la période de facturation (pas de prorata inverse).
     """
     if not STRIPE_CONFIG.get("ENABLED"):
@@ -1041,7 +1041,7 @@ async def downgrade_subscription(
     current_plan = current_user.plan or "free"
     target = request.target_plan.lower()
 
-    if target not in ("free", "pro", "expert"):
+    if target != "free":
         raise HTTPException(status_code=400, detail=f"Invalid target plan: {target}")
 
     # Valider que c'est bien un downgrade
@@ -2264,9 +2264,9 @@ async def get_api_key_status(
 ):
     """
     🔑 Vérifier le status de la clé API de l'utilisateur.
-    Disponible uniquement pour le plan Expert.
+    Disponible uniquement pour le plan Pro.
     """
-    plan_eligible = current_user.plan in ["expert", "unlimited"]
+    plan_eligible = current_user.plan in ["pro", "unlimited"]
 
     return ApiKeyStatusResponse(
         has_api_key=bool(current_user.api_key_hash),
@@ -2288,17 +2288,17 @@ async def generate_user_api_key(
     ⚠️ IMPORTANT: La clé complète n'est affichée QU'UNE SEULE FOIS.
     Sauvegardez-la immédiatement car elle ne pourra plus être récupérée.
 
-    Disponible uniquement pour le plan Expert.
+    Disponible uniquement pour le plan Pro.
     """
     # Vérifier le plan
-    if current_user.plan not in ["expert", "unlimited"]:
+    if current_user.plan not in ["pro", "unlimited"]:
         raise HTTPException(
             status_code=403,
             detail={
                 "code": "plan_required",
-                "message": "API access requires Expert plan. Upgrade at /upgrade",
+                "message": "API access requires Pro plan. Upgrade at /upgrade",
                 "current_plan": current_user.plan,
-                "required_plan": "expert",
+                "required_plan": "pro",
             },
         )
 
@@ -2342,15 +2342,15 @@ async def regenerate_user_api_key(
     ⚠️ ATTENTION: L'ancienne clé sera immédiatement invalidée.
     Toutes les applications utilisant l'ancienne clé cesseront de fonctionner.
 
-    Disponible uniquement pour le plan Expert.
+    Disponible uniquement pour le plan Pro.
     """
     # Vérifier le plan
-    if current_user.plan not in ["expert", "unlimited"]:
+    if current_user.plan not in ["pro", "unlimited"]:
         raise HTTPException(
             status_code=403,
             detail={
                 "code": "plan_required",
-                "message": "API access requires Expert plan.",
+                "message": "API access requires Pro plan.",
                 "current_plan": current_user.plan,
             },
         )
