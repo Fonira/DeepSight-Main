@@ -23,7 +23,6 @@ from enum import Enum
 
 from db.database import User, CreditTransaction, Summary, ChatQuota, WebSearchUsage
 from core.config import PLAN_LIMITS
-from billing.plan_config import normalize_plan_id
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -387,6 +386,7 @@ async def check_and_reset_monthly_credits(
     session: AsyncSession,
     user: User
 ) -> Tuple[int, bool]:
+    from billing.plan_config import normalize_plan_id  # lazy import to avoid circular dependency
     normalized_plan = normalize_plan_id(user.plan)
     if normalized_plan == "free":
         return user.credits or 0, False
