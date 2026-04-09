@@ -215,23 +215,6 @@ const PLANS: PlanConfig[] = [
       { text: { fr: 'Playlists', en: 'Playlists' }, included: true },
     ],
   },
-  {
-    id: 'expert',
-    name: { fr: 'Expert', en: 'Expert' },
-    description: { fr: 'Créateurs & professionnels', en: 'Creators & professionals' },
-    price: PLANS_INFO.expert.priceMonthly / 100,
-    icon: Crown,
-    color: 'text-amber-400',
-    gradient: 'from-amber-500 to-orange-600',
-    features: [
-      { text: { fr: `${PLAN_LIMITS.expert.monthlyAnalyses} analyses/mois`, en: `${PLAN_LIMITS.expert.monthlyAnalyses} analyses/month` }, included: true },
-      { text: { fr: 'Mistral Large (262K context)', en: 'Mistral Large (262K context)' }, included: true, highlight: true },
-      { text: { fr: 'Deep Research', en: 'Deep Research' }, included: true, highlight: true },
-      { text: { fr: `Chat vocal ${PLAN_LIMITS.expert.voiceChatMonthlyMinutes} min`, en: `Voice chat ${PLAN_LIMITS.expert.voiceChatMonthlyMinutes} min` }, included: true, highlight: true },
-      { text: { fr: `${PLAN_LIMITS.expert.concurrentAnalyses + 1} analyses simultanées`, en: `${PLAN_LIMITS.expert.concurrentAnalyses + 1} concurrent analyses` }, included: true },
-      { text: { fr: 'Tout le plan Pro inclus', en: 'Everything in Pro included' }, included: true },
-    ],
-  },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1410,8 +1393,6 @@ const LandingPage: React.FC = () => {
                       className={`w-full py-2.5 rounded-lg font-medium text-sm transition-all ${
                         isPopular
                           ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:opacity-90 shadow-lg'
-                          : plan.id === 'expert'
-                          ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white hover:opacity-90 shadow-lg'
                           : 'bg-bg-tertiary text-text-secondary hover:text-text-primary hover:bg-bg-hover border border-border-subtle'
                       }`}
                       whileHover={{ scale: 1.01 }}
