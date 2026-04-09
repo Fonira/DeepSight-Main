@@ -21,6 +21,7 @@ import { CitationExport } from '../CitationExport';
 import { StudyToolsModal } from '../StudyToolsModal';
 import { KeywordsModal } from '../KeywordsModal';
 import { videoApi, shareApi } from '../../services/api';
+import { sanitizeTitle } from '../../utils/sanitize';
 import type { Summary, EnrichedConcept } from '../../services/api';
 import type { TimecodeInfo } from '../TimecodeRenderer';
 
@@ -210,7 +211,7 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
           {/* Audio Summary — Podcast Mode */}
           <AudioSummaryButton
             summaryId={selectedSummary.id}
-            videoTitle={selectedSummary.video_title || ''}
+            videoTitle={sanitizeTitle(selectedSummary.video_title || '')}
             language={language}
             compact
           />
@@ -372,8 +373,8 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
         isOpen={showCitationModal}
         onClose={() => setShowCitationModal(false)}
         video={{
-          title: selectedSummary.video_title || 'Vidéo sans titre',
-          channel: selectedSummary.video_channel || 'Chaîne inconnue',
+          title: sanitizeTitle(selectedSummary.video_title || 'Vidéo sans titre'),
+          channel: sanitizeTitle(selectedSummary.video_channel || 'Chaîne inconnue'),
           videoId: selectedSummary.video_id,
           publishedDate: selectedSummary.created_at,
           duration: selectedSummary.video_duration,
@@ -387,7 +388,7 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
           isOpen={showStudyToolsModal}
           onClose={() => setShowStudyToolsModal(false)}
           summaryId={selectedSummary.id}
-          videoTitle={selectedSummary.video_title || 'Vidéo'}
+          videoTitle={sanitizeTitle(selectedSummary.video_title || 'Vidéo')}
           language={language}
         />
       )}
@@ -397,7 +398,7 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
         <KeywordsModal
           isOpen={showKeywordsModal}
           onClose={() => setShowKeywordsModal(false)}
-          videoTitle={selectedSummary.video_title || 'Vidéo'}
+          videoTitle={sanitizeTitle(selectedSummary.video_title || 'Vidéo')}
           concepts={keywordsConcepts}
           loading={keywordsLoading}
         />

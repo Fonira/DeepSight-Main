@@ -8,6 +8,7 @@ import { Shield } from 'lucide-react';
 import { FreshnessIndicator } from '../FreshnessIndicator';
 import { FactCheckLite } from '../FactCheckLite';
 import { DeepResearchSources } from '../SummaryReader';
+import { sanitizeTitle } from '../../utils/sanitize';
 import type { Summary, ReliabilityResult } from '../../services/api';
 
 interface ReliabilityTabProps {
@@ -62,7 +63,7 @@ export const ReliabilityTab: React.FC<ReliabilityTabProps> = ({
       {reliabilityData?.freshness?.warning_level !== 'none' && (
         <FreshnessIndicator
           summaryId={selectedSummary.id}
-          videoTitle={selectedSummary.video_title}
+          videoTitle={sanitizeTitle(selectedSummary.video_title)}
           freshnessData={reliabilityData?.freshness}
           onRequestVerification={() => {
             onOpenChat(

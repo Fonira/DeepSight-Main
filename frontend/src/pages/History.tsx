@@ -50,6 +50,7 @@ import { DebateHistoryCard } from "../components/debate";
 import { normalizePlanId, PLAN_LIMITS } from "../config/planPrivileges";
 import { VoiceModal } from "../components/voice/VoiceModal";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
+import { sanitizeTitle } from "../utils/sanitize";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🌐 API CONFIGURATION
@@ -1230,7 +1231,7 @@ export const History: React.FC = () => {
                       <div className="flex-1 p-4 sm:p-5">
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <h2 className="font-semibold text-lg sm:text-xl leading-tight text-text-primary line-clamp-2">
-                            {selectedVideoDetail.video_title}
+                            {sanitizeTitle(selectedVideoDetail.video_title)}
                           </h2>
                           <a
                             href={`https://youtube.com/watch?v=${selectedVideoDetail.video_id}`}
@@ -1242,7 +1243,7 @@ export const History: React.FC = () => {
                           </a>
                         </div>
                         <p className="text-text-secondary text-xs sm:text-sm mb-3">
-                          {selectedVideoDetail.video_channel}
+                          {sanitizeTitle(selectedVideoDetail.video_channel)}
                         </p>
                         <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3">
                           <span className="badge">
@@ -1859,9 +1860,9 @@ const VideoCard: React.FC<{
           </div>
           <div className="flex-1 min-w-0 cursor-pointer" onClick={onView}>
             <h3 className="font-medium text-text-primary line-clamp-1 group-hover:text-accent-primary transition-colors">
-              {video.video_title}
+              {sanitizeTitle(video.video_title)}
             </h3>
-            <p className="text-sm text-text-tertiary">{video.video_channel}</p>
+            <p className="text-sm text-text-tertiary">{sanitizeTitle(video.video_channel)}</p>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-xs text-text-muted">{emoji} {video.category}</span>
               <span className="text-xs text-text-muted">• {formatRelativeDate(video.created_at, language)}</span>

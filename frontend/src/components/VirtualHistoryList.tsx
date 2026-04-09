@@ -33,6 +33,7 @@ import {
   Share2,
 } from 'lucide-react';
 import { DeepSightSpinnerSmall } from './ui';
+import { sanitizeTitle } from '../utils/sanitize';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
@@ -276,12 +277,12 @@ const SummaryCard = memo<SummaryCardProps>(({
           >
             {/* Title */}
             <h3 className="font-medium text-text-primary line-clamp-2 group-hover:text-accent-primary transition-colors">
-              {item.video_title || 'Sans titre'}
+              {sanitizeTitle(item.video_title) || 'Sans titre'}
             </h3>
-            
+
             {/* Channel */}
             <p className="text-sm text-text-secondary mt-1 truncate">
-              {item.video_channel || 'Chaîne inconnue'}
+              {sanitizeTitle(item.video_channel) || 'Chaîne inconnue'}
             </p>
           </button>
           

@@ -57,6 +57,7 @@ import { AnalysisHub } from "../components/AnalysisHub";
 import { ExportMenu } from "../components/analysis/ExportMenu";
 import { AudioPlayer } from "../components/analysis/AudioPlayer";
 import { ShareButton } from "../components/analysis/ShareButton";
+import { sanitizeTitle } from "../utils/sanitize";
 // 🎙️ Voice Chat
 import VoiceButton from "../components/voice/VoiceButton";
 import { VoiceModal } from "../components/voice/VoiceModal";
@@ -1184,7 +1185,7 @@ export const DashboardPage: React.FC = () => {
                     <div className="flex-1 p-4 sm:p-5">
                       <div className="flex items-start justify-between gap-3 sm:gap-4 mb-2 sm:mb-3">
                         <h2 className="font-semibold text-lg sm:text-xl leading-tight text-text-primary line-clamp-2">
-                          {selectedSummary.video_title}
+                          {sanitizeTitle(selectedSummary.video_title)}
                         </h2>
                         <a
                           href={`https://youtube.com/watch?v=${selectedSummary.video_id}`}
@@ -1197,7 +1198,7 @@ export const DashboardPage: React.FC = () => {
                       </div>
 
                       <p className="text-text-secondary text-xs sm:text-sm mb-3 sm:mb-4">
-                        {selectedSummary.video_channel}
+                        {sanitizeTitle(selectedSummary.video_channel)}
                       </p>
 
                       {/* Badges - scrollable on mobile */}

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { EnrichedMarkdown } from './EnrichedMarkdown';
 import { ThumbnailImage } from './ThumbnailImage';
+import { sanitizeTitle } from '../utils/sanitize';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 TYPES
@@ -282,11 +283,11 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
             </div>
             
             <h1 className="text-xl sm:text-2xl font-bold text-[#e8dcc4] mb-2 line-clamp-2">
-              {summary.video_title}
+              {sanitizeTitle(summary.video_title)}
             </h1>
-            
+
             <p className="text-[#e8dcc4]/60 text-sm mb-4">
-              {summary.video_channel}
+              {sanitizeTitle(summary.video_channel)}
             </p>
             
             <div className="flex flex-wrap items-center gap-4 text-xs text-[#e8dcc4]/50">

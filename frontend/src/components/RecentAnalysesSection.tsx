@@ -10,6 +10,7 @@ import { Clock, Play, History } from 'lucide-react';
 import { videoApi } from '../services/api';
 import type { Summary } from '../services/api';
 import { ThumbnailImage } from './ThumbnailImage';
+import { sanitizeTitle } from '../utils/sanitize';
 
 interface RecentAnalysesSectionProps {
   language: 'fr' | 'en';
@@ -116,10 +117,10 @@ export const RecentAnalysesSection: React.FC<RecentAnalysesSectionProps> = ({
             {/* Text */}
             <div className="flex-1 min-w-0">
               <h3 className="text-xs font-medium text-text-primary line-clamp-2 leading-snug group-hover:text-accent-primary transition-colors">
-                {item.video_title}
+                {sanitizeTitle(item.video_title)}
               </h3>
               <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-text-tertiary">
-                <span className="truncate">{item.video_channel}</span>
+                <span className="truncate">{sanitizeTitle(item.video_channel)}</span>
                 <span className="flex-shrink-0">·</span>
                 <span className="flex-shrink-0 flex items-center gap-0.5">
                   <Clock className="w-2.5 h-2.5" />

@@ -20,6 +20,7 @@ import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
 import { SEO } from "../components/SEO";
 import { videoApi } from "../services/api";
+import { sanitizeTitle } from '../utils/sanitize';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ANIMATION HELPERS
@@ -774,8 +775,8 @@ const LandingPage: React.FC = () => {
                         className="w-28 h-20 sm:w-36 sm:h-24 rounded-lg object-cover flex-shrink-0"
                       />
                       <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-semibold text-text-primary line-clamp-2">{guestResult.video_title}</h3>
-                        <p className="text-xs text-text-tertiary mt-1">{guestResult.video_channel}</p>
+                        <h3 className="text-sm font-semibold text-text-primary line-clamp-2">{sanitizeTitle(guestResult.video_title)}</h3>
+                        <p className="text-xs text-text-tertiary mt-1">{sanitizeTitle(guestResult.video_channel)}</p>
                         <div className="flex items-center gap-2 mt-2">
                           <span className="text-xs px-2 py-0.5 rounded-full bg-accent-primary/10 text-accent-primary">
                             {Math.floor(guestResult.video_duration / 60)}:{(guestResult.video_duration % 60).toString().padStart(2, '0')}

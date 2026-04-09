@@ -35,6 +35,7 @@ import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { StatCard, ActivityChart, UsageProgress, CategoryPieChart } from '../components/analytics';
 
 import { useTranslation } from '../hooks/useTranslation';
+import { sanitizeTitle } from '../utils/sanitize';
 
 // Types
 interface UsageStats {
@@ -492,11 +493,11 @@ export const AnalyticsPage: React.FC = () => {
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <h4 className="text-sm font-medium text-text-primary truncate group-hover:text-accent-primary transition-colors">
-                        {analysis.video_title}
+                        {sanitizeTitle(analysis.video_title)}
                       </h4>
                       <div className="flex items-center gap-2 text-xs text-text-tertiary mt-1">
                         <span>{categoryEmoji[analysis.category || 'general'] || '📺'}</span>
-                        <span className="truncate">{analysis.video_channel}</span>
+                        <span className="truncate">{sanitizeTitle(analysis.video_channel)}</span>
                         <span>•</span>
                         <span>{formatRelativeDate(analysis.created_at)}</span>
                       </div>

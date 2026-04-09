@@ -14,6 +14,7 @@ import ReactMarkdown from 'react-markdown';
 
 import { parseAskQuestions } from '../components/ClickableQuestions';
 import { useTranslation } from '../hooks/useTranslation';
+import { sanitizeTitle } from '../utils/sanitize';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
 import {
@@ -212,8 +213,8 @@ const VideoListItem: React.FC<{
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <h4 className="font-medium text-text-primary truncate">{video.video_title}</h4>
-        <p className="text-sm text-text-secondary truncate">{video.video_channel}</p>
+        <h4 className="font-medium text-text-primary truncate">{sanitizeTitle(video.video_title)}</h4>
+        <p className="text-sm text-text-secondary truncate">{sanitizeTitle(video.video_channel)}</p>
         <div className="flex items-center gap-2 mt-1">
           {isAnalyzed ? (
             <span className="inline-flex items-center gap-1 text-xs text-green-400">
@@ -265,8 +266,8 @@ const VideoDetailPanel: React.FC<{
             <ChevronLeft className="w-5 h-5 text-text-secondary" />
           </button>
           <div>
-            <h3 className="font-semibold text-text-primary text-lg">{video.video_title}</h3>
-            <p className="text-sm text-text-secondary">{video.video_channel} • {formatDuration(video.video_duration || 0)}</p>
+            <h3 className="font-semibold text-text-primary text-lg">{sanitizeTitle(video.video_title)}</h3>
+            <p className="text-sm text-text-secondary">{sanitizeTitle(video.video_channel)} • {formatDuration(video.video_duration || 0)}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -596,7 +597,7 @@ const CorpusChat: React.FC<{
                       <div className="flex flex-wrap gap-1">
                         {msg.sources.map((src, i) => (
                           <span key={i} className="text-xs px-2 py-0.5 bg-white/10 rounded-full">
-                            {src.video_title} ({Math.round(src.relevance_score * 100)}%)
+                            {sanitizeTitle(src.video_title)} ({Math.round(src.relevance_score * 100)}%)
                           </span>
                         ))}
                       </div>
@@ -1254,7 +1255,7 @@ export const PlaylistDetailPage: React.FC = () => {
                         <div className="flex items-start gap-3">
                           <span className="text-sm font-mono text-text-muted w-6">{i + 1}</span>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-text-primary truncate text-sm">{video.video_title}</h4>
+                            <h4 className="font-medium text-text-primary truncate text-sm">{sanitizeTitle(video.video_title)}</h4>
                             <p className="text-xs text-text-muted mt-1 line-clamp-2">
                               {video.summary_content?.substring(0, 200)}...
                             </p>

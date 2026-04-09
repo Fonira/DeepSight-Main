@@ -9,6 +9,7 @@ import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Eye } from "lucide-react";
 import { shareApi, SharedAnalysisResponse } from "../services/api";
+import { sanitizeTitle } from '../utils/sanitize';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -179,13 +180,13 @@ export default function SharedAnalysisPage() {
 
         {/* Title */}
         <h1 className="text-2xl sm:text-3xl font-bold text-text-primary mb-2 leading-tight">
-          {data.video_title}
+          {sanitizeTitle(data.video_title)}
         </h1>
 
         {/* Subtitle metadata */}
         <p className="text-text-muted text-sm sm:text-base mb-6">
           {[
-            analysis.video_channel,
+            sanitizeTitle(analysis.video_channel),
             formatDate(analysis.created_at),
             formatDuration(analysis.video_duration),
             analysis.mode ? `Mode ${analysis.mode}` : null,

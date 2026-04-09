@@ -41,6 +41,8 @@ const ERROR_MAP: Record<string, string> = {
   'video too long': 'Vidéo trop longue pour votre plan',
   'video not found': 'Vidéo introuvable',
   'analysis failed': "L'analyse a échoué, veuillez réessayer",
+  'failed to generate summary': "Service IA temporairement surchargé. Réessayez dans quelques instants.",
+  'ai service temporarily unavailable': "Service IA temporairement surchargé. Réessayez dans quelques instants.",
   'transcript not available': 'Transcription indisponible pour cette vidéo',
   'no transcript found': 'Aucune transcription trouvée pour cette vidéo',
   'transcript extraction failed': "Impossible d'extraire la transcription",

@@ -1362,7 +1362,7 @@ async def _analyze_video_background_v2(
                 )
 
             if not summary_content:
-                raise Exception("Failed to generate summary")
+                raise Exception("AI service temporarily unavailable, please retry")
 
             # 6+7. ⚡ ENTITÉS + FIABILITÉ EN PARALLÈLE (perf v2.0.1)
             _task_store[task_id]["progress"] = 75
@@ -2154,7 +2154,7 @@ async def _analyze_video_background_v2_1(
                 )
 
             if not summary_content:
-                raise Exception("Failed to generate summary")
+                raise Exception("AI service temporarily unavailable, please retry")
 
             # ═══════════════════════════════════════════════════════════════════
             # 9+10. ⚡ ENTITÉS + FIABILITÉ EN PARALLÈLE (perf v2.1.1)
@@ -2766,7 +2766,7 @@ async def _analyze_video_background_v6(
                 )
 
             if not summary_content:
-                raise Exception("Failed to generate summary")
+                raise Exception("AI service temporarily unavailable, please retry")
 
             final_word_count = len(summary_content.split())
             print(f"✅ Summary generated: {final_word_count} words", flush=True)

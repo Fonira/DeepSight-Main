@@ -29,6 +29,7 @@ import { parseAskQuestions } from '../components/ClickableQuestions';
 import { AudioPlayerButton } from '../components/AudioPlayerButton';
 import { TTSToggle } from '../components/TTSToggle';
 import { useTTSContext } from '../contexts/TTSContext';
+import { sanitizeTitle } from '../utils/sanitize';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -397,10 +398,10 @@ const ChatPage: React.FC = () => {
                 <p className={`text-[11px] font-medium truncate leading-tight ${
                   selectedAnalysis?.id === analysis.id ? 'text-cyan-300/90' : 'text-white/55'
                 }`}>
-                  {analysis.video_title}
+                  {sanitizeTitle(analysis.video_title)}
                 </p>
                 <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-[9px] text-white/25 truncate">{analysis.video_channel}</span>
+                  <span className="text-[9px] text-white/25 truncate">{sanitizeTitle(analysis.video_channel)}</span>
                   <span className="text-[9px] text-white/15 flex items-center gap-0.5">
                     <Clock className="w-2 h-2" />
                     {getRelativeTime(analysis.created_at)}
@@ -490,8 +491,8 @@ const ChatPage: React.FC = () => {
                 <img src={selectedAnalysis.thumbnail_url} alt="" className="w-8 h-5 rounded object-cover flex-shrink-0 opacity-70" />
               )}
               <div className="min-w-0">
-                <p className="text-sm text-white/65 truncate font-medium leading-tight">{selectedAnalysis.video_title}</p>
-                <p className="text-[10px] text-white/25 truncate">{selectedAnalysis.video_channel}</p>
+                <p className="text-sm text-white/65 truncate font-medium leading-tight">{sanitizeTitle(selectedAnalysis.video_title)}</p>
+                <p className="text-[10px] text-white/25 truncate">{sanitizeTitle(selectedAnalysis.video_channel)}</p>
               </div>
             </div>
           ) : (
