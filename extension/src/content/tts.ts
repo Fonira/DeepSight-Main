@@ -70,9 +70,9 @@ function saveSettings(): void {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export async function isTTSPremium(): Promise<boolean> {
-  const user = await getStoredUser();
-  const plan = user?.plan || 'free';
-  return (PLAN_RANK[plan] ?? 0) >= 1; // pro+ = TTS enabled
+  // Backend /api/tts endpoint not yet implemented — always show locked buttons
+  // TODO: re-enable when backend TTS (ElevenLabs) endpoint is deployed
+  return false;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

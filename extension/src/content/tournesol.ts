@@ -8,7 +8,7 @@ export async function fetchTournesolScore(videoId: string): Promise<TournesolDat
       action: 'GET_TOURNESOL',
       data: { videoId },
     });
-    if (resp?.success && resp.data) return resp.data as TournesolData;
+    if (resp?.success && resp.result) return resp.result as TournesolData;
     return null;
   } catch {
     return null;

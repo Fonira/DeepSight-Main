@@ -482,11 +482,60 @@ async function handleMessage(message: ExtensionMessage, senderTabId?: number): P
       }
     }
 
+    case 'GET_TOURNESOL': {
+      const { videoId } = message.data as { videoId: string };
+      try {
+        const data = await apiRequest<{
+          found: boolean;
+          data?: {
+            tournesol_score: number | null;
+            n_comparisons: number;
+            n_contributors: number;
+            criteria_scores?: { criteria: string; score: number }[];
+          };
+        }>(`/tournesol/video/${videoId}`);
+        if (data.found && data.data) {
+          return {
+            success: true,
+            result: {
+              found: true,
+              tournesol_score: data.data.tournesol_score,
+              n_comparisons: data.data.n_comparisons,
+              n_contributors: data.data.n_contributors,
+              criteria_scores: data.data.criteria_scores,
+            },
+          };
+        }
+        return { success: true, result: null };
+      } catch {
+        return { success: false, result: null };
+      }
+    }
+
     case 'QUICK_CHAT': {
       const { url, lang } = message.data as { url: string; lang?: string };
       try {
         const result = await quickChat(url, lang || 'fr');
         return { success: true, result };
+      } catch (e) {
+        return { success: false, error: (e as Error).message };
+      }
+    }
+
+    case 'START_GUEST_ANALYSIS': {
+      const { url } = message.data as { url: string };
+      try {
+        const response = await fetch(`${API_BASE_URL}/videos/analyze/guest`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        });
+        if (!response.ok) {
+          const errorBody = await response.json().catch(() => ({ detail: 'Guest analysis failed' }));
+          throw new Error(errorBody.detail || `Error: ${response.status}`);
+        }
+        const data = await response.json();
+        return { success: true, result: data };
       } catch (e) {
         return { success: false, error: (e as Error).message };
       }

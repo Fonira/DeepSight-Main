@@ -132,6 +132,49 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
     setAnalysis({ phase: 'analyzing', progress: 0, message: t.analysis.starting });
 
     try {
+      // Guest mode: synchronous analysis via /videos/analyze/guest (no polling)
+      if (isGuest) {
+        const guestRes = await chrome.runtime.sendMessage({
+          action: 'START_GUEST_ANALYSIS',
+          data: { url: video.url },
+        });
+
+        if (!guestRes.success) {
+          setAnalysis({ phase: 'error', message: guestRes.error || t.analysis.failed });
+          return;
+        }
+
+        const guestData = guestRes.result as {
+          video_title: string;
+          video_channel: string;
+          thumbnail_url: string;
+          summary_content: string;
+          category: string;
+          remaining_analyses: number;
+        };
+
+        await incrementFreeAnalysisCount();
+        setGuestUsed(true);
+
+        setAnalysis({
+          phase: 'complete',
+          summaryId: 0,
+          summary: {
+            id: 0,
+            video_title: guestData.video_title,
+            video_channel: guestData.video_channel,
+            video_url: video.url,
+            thumbnail_url: guestData.thumbnail_url || getThumbnailUrl(video.videoId) || '',
+            category: guestData.category,
+            reliability_score: 0,
+            summary_content: guestData.summary_content,
+            created_at: new Date().toISOString(),
+          },
+        });
+        return;
+      }
+
+      // Authenticated flow: async analysis with polling
       const startRes = await chrome.runtime.sendMessage({
         action: 'START_ANALYSIS',
         data: { url: video.url, options: { mode, lang } },
@@ -156,12 +199,6 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
 
           if (status.status === 'completed' && status.result?.summary_id) {
             if (pollRef.current) clearInterval(pollRef.current);
-
-            // Increment guest counter if guest
-            if (isGuest) {
-              await incrementFreeAnalysisCount();
-              setGuestUsed(true);
-            }
 
             await addRecentAnalysis({
               videoId: video.videoId,
