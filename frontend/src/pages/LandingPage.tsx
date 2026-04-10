@@ -19,8 +19,10 @@ import {
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
 import { SEO } from "../components/SEO";
-import { videoApi } from "../services/api";
+import { videoApi, demoApi } from "../services/api";
+import type { DemoAnalyzeResult } from "../services/api";
 import { sanitizeTitle } from '../utils/sanitize';
+import { DemoResultCard, DemoChatMini, DemoCTA } from '../components/demo';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ANIMATION HELPERS
@@ -405,6 +407,10 @@ const LandingPage: React.FC = () => {
   const guestExhausted = guestRemaining <= 0;
   const guestInputRef = useRef<HTMLInputElement>(null);
 
+  // Enhanced demo state (new ultra-short + chat)
+  const [demoResult, setDemoResult] = useState<DemoAnalyzeResult | null>(null);
+  const [demoChatExhausted, setDemoChatExhausted] = useState(false);
+
   // Extract URL from clipboard text (YouTube mobile sometimes includes title + URL)
   const extractUrlFromText = (text: string): string => {
     const urlMatch = text.match(/https?:\/\/[^\s<>"']+/);
@@ -467,76 +473,55 @@ const LandingPage: React.FC = () => {
     }
 
     setGuestLoading(true);
-
-    const API = import.meta.env.VITE_API_URL || 'https://api.deepsightsynthesis.com';
-    const fetchUrl = `${API}/api/videos/analyze/guest`;
-    const maxRetries = 2;
+    setDemoResult(null);
+    setDemoChatExhausted(false);
 
     try {
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          const resp = await fetch(fetchUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url }),
-          });
+      // Use new demo API (ultra-short summary + session for chat)
+      const result = await demoApi.analyze(url);
+      setDemoResult(result);
 
-          // Retry on 502/503 (Railway cold start)
-          if ((resp.status === 502 || resp.status === 503) && attempt < maxRetries) {
-            await new Promise(r => setTimeout(r, 2000));
-            continue;
-          }
+      // Also set legacy guestResult for backward compat
+      setGuestResult({
+        video_title: result.video_title,
+        video_channel: result.video_channel,
+        video_duration: result.video_duration,
+        thumbnail_url: result.thumbnail_url,
+        summary_content: result.key_points.join('\n'),
+        category: result.category,
+        word_count: result.key_points.join(' ').split(' ').length,
+      });
 
-          if (!resp.ok) {
-            let detail = '';
-            try {
-              const data = await resp.json();
-              detail = data.detail || data.message || '';
-            } catch { /* non-JSON */ }
+      const newCount = guestCount + 1;
+      setGuestCount(newCount);
+      const remaining = result.remaining_analyses ?? (MAX_GUEST_ANALYSES - newCount);
+      setGuestRemaining(remaining);
+      try { localStorage.setItem('ds_guest_count', String(newCount)); } catch {}
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
 
-            // Rate limit / already used
-            if (resp.status === 429 || (typeof detail === 'string' && (detail.includes('analyses gratuites') || detail.includes('essai gratuit')))) {
-              setGuestRemaining(0);
-              try { localStorage.setItem('ds_guest_count', String(MAX_GUEST_ANALYSES)); } catch {}
-            }
-            // Transcript unavailable (common for Shorts)
-            else if (typeof detail === 'string' && (detail.includes('transcription') || detail.includes('transcript'))) {
-              setGuestError(language === 'fr'
-                ? 'Cette vidéo n\'a pas de sous-titres disponibles. Essayez une autre vidéo (les Shorts n\'ont souvent pas de sous-titres).'
-                : 'This video has no available subtitles. Try another video (Shorts often lack subtitles).');
-            }
-            // Video too long
-            else if (typeof detail === 'string' && (detail.includes('5 min') || detail.includes('durée'))) {
-              setGuestError(language === 'fr'
-                ? 'La vidéo dépasse 5 minutes. L\'essai gratuit est limité aux vidéos courtes.'
-                : 'Video exceeds 5 minutes. Free trial is limited to short videos.');
-            }
-            // Other backend error
-            else {
-              setGuestError(language === 'fr'
-                ? 'Impossible d\'analyser cette vidéo. Vérifiez le lien et réessayez.'
-                : 'Unable to analyze this video. Check the link and try again.');
-            }
-            return;
-          }
-
-          const result = await resp.json();
-          setGuestResult(result);
-          const newCount = guestCount + 1;
-          setGuestCount(newCount);
-          const remaining = result.remaining_analyses ?? (MAX_GUEST_ANALYSES - newCount);
-          setGuestRemaining(remaining);
-          try { localStorage.setItem('ds_guest_count', String(newCount)); } catch {}
-          return;
-        } catch {
-          if (attempt < maxRetries) {
-            await new Promise(r => setTimeout(r, 2000));
-            continue;
-          }
-          setGuestError(language === 'fr'
-            ? 'Erreur réseau. Vérifiez votre connexion et réessayez.'
-            : 'Network error. Check your connection and try again.');
-        }
+      // Rate limit
+      if (errorMsg.includes('429') || errorMsg.includes('RATE_LIMITED') || errorMsg.includes('analyses gratuites')) {
+        setGuestRemaining(0);
+        try { localStorage.setItem('ds_guest_count', String(MAX_GUEST_ANALYSES)); } catch {}
+      }
+      // Transcript unavailable
+      else if (errorMsg.includes('transcription') || errorMsg.includes('transcript')) {
+        setGuestError(language === 'fr'
+          ? 'Cette video n\'a pas de sous-titres disponibles. Essayez une autre video.'
+          : 'This video has no available subtitles. Try another video.');
+      }
+      // Video too long
+      else if (errorMsg.includes('5 min') || errorMsg.includes('duree')) {
+        setGuestError(language === 'fr'
+          ? 'La video depasse 5 minutes. L\'essai gratuit est limite aux videos courtes.'
+          : 'Video exceeds 5 minutes. Free trial is limited to short videos.');
+      }
+      // Network / other error
+      else {
+        setGuestError(language === 'fr'
+          ? 'Impossible d\'analyser cette video. Verifiez le lien et reessayez.'
+          : 'Unable to analyze this video. Check the link and try again.');
       }
     } finally {
       setGuestLoading(false);
@@ -757,87 +742,32 @@ const LandingPage: React.FC = () => {
               </div>
             ) : null}
 
-            {/* Guest Result */}
+            {/* Demo Result — Enhanced (ultra-short card + chat) */}
             <AnimatePresence>
-              {guestResult && (
+              {demoResult && (
                 <motion.div
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, ease }}
-                  className="mt-6 text-left"
+                  className="mt-6"
                 >
-                  {/* Video card */}
-                  <div className="rounded-xl bg-surface-secondary/60 border border-border-subtle overflow-hidden">
-                    <div className="flex gap-4 p-4">
-                      <img
-                        src={guestResult.thumbnail_url}
-                        alt={guestResult.video_title}
-                        className="w-28 h-20 sm:w-36 sm:h-24 rounded-lg object-cover flex-shrink-0"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-sm font-semibold text-text-primary line-clamp-2">{sanitizeTitle(guestResult.video_title)}</h3>
-                        <p className="text-xs text-text-tertiary mt-1">{sanitizeTitle(guestResult.video_channel)}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-accent-primary/10 text-accent-primary">
-                            {Math.floor(guestResult.video_duration / 60)}:{(guestResult.video_duration % 60).toString().padStart(2, '0')}
-                          </span>
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400">
-                            {guestResult.category}
-                          </span>
-                          <span className="text-xs text-text-muted">{guestResult.word_count} {language === 'fr' ? 'mots' : 'words'}</span>
-                        </div>
-                      </div>
-                    </div>
+                  {/* Ultra-short summary card */}
+                  <DemoResultCard result={demoResult} />
 
-                    {/* Summary */}
-                    <div className="px-4 pb-4">
-                      <div className="prose prose-sm prose-invert max-w-none text-text-secondary text-sm leading-relaxed whitespace-pre-line">
-                        {guestResult.summary_content}
-                      </div>
-                    </div>
-                  </div>
+                  {/* Mini chat AI */}
+                  {!demoChatExhausted && (
+                    <DemoChatMini
+                      demoSessionId={demoResult.demo_session_id}
+                      videoTitle={demoResult.video_title}
+                      onExhausted={() => setDemoChatExhausted(true)}
+                    />
+                  )}
 
-                  {/* Remaining counter or CTA */}
+                  {/* Actions: try another or CTA */}
                   {guestExhausted ? (
-                    /* Limit reached — strong CTA */
-                    <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-accent-primary/10 via-violet-500/10 to-cyan-500/10 border border-accent-primary/20">
-                      <div className="flex items-start gap-3">
-                        <Lock className="w-5 h-5 text-accent-primary flex-shrink-0 mt-0.5" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-text-primary mb-1">
-                            {language === 'fr' ? 'Vos 3 analyses gratuites sont épuisées' : 'Your 3 free analyses are used up'}
-                          </p>
-                          <p className="text-xs text-text-tertiary mb-3">
-                            {language === 'fr'
-                              ? 'Créez un compte gratuit pour sauvegarder cette analyse et continuer. Accédez au fact-checking sourcé, chat IA, flashcards, cartes mentales, export PDF...'
-                              : 'Create a free account to save this analysis and continue. Access sourced fact-checking, AI chat, flashcards, mind maps, PDF export...'}
-                          </p>
-                          <div className="flex flex-col sm:flex-row gap-2">
-                            <motion.button
-                              onClick={() => navigate('/login?tab=register')}
-                              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors"
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
-                            >
-                              {language === 'fr' ? 'Créer un compte gratuit' : 'Create a free account'}
-                              <ArrowRight className="w-4 h-4" />
-                            </motion.button>
-                            <motion.button
-                              onClick={() => navigate('/upgrade')}
-                              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-violet-500/20 border border-violet-500/30 text-violet-300 text-sm font-medium hover:bg-violet-500/30 transition-colors"
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
-                            >
-                              <Crown className="w-4 h-4" />
-                              {language === 'fr' ? 'Voir les plans' : 'View plans'}
-                            </motion.button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                    <DemoCTA type={demoChatExhausted ? 'both' : 'analyses'} />
                   ) : (
-                    /* Still has analyses left — show remaining + try another */
-                    <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-surface-secondary/40 border border-border-subtle">
+                    <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-3 p-3 rounded-xl bg-surface-secondary/40 border border-border-subtle max-w-2xl mx-auto">
                       <p className="text-xs text-text-tertiary">
                         {language === 'fr'
                           ? `${guestRemaining} analyse${guestRemaining > 1 ? 's' : ''} gratuite${guestRemaining > 1 ? 's' : ''} restante${guestRemaining > 1 ? 's' : ''}`
@@ -845,12 +775,12 @@ const LandingPage: React.FC = () => {
                       </p>
                       <div className="flex gap-2">
                         <motion.button
-                          onClick={() => { setGuestResult(null); setGuestUrl(''); setGuestError(null); }}
+                          onClick={() => { setGuestResult(null); setDemoResult(null); setGuestUrl(''); setGuestError(null); setDemoChatExhausted(false); }}
                           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-surface-secondary border border-border-subtle text-text-secondary text-xs font-medium hover:bg-surface-tertiary transition-colors"
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
-                          {language === 'fr' ? 'Analyser une autre vidéo' : 'Analyze another video'}
+                          {language === 'fr' ? 'Analyser une autre video' : 'Analyze another video'}
                         </motion.button>
                         <motion.button
                           onClick={() => navigate('/login?tab=register')}
@@ -858,11 +788,16 @@ const LandingPage: React.FC = () => {
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
-                          {language === 'fr' ? 'Créer un compte' : 'Sign up'}
+                          {language === 'fr' ? 'Creer un compte' : 'Sign up'}
                           <ArrowRight className="w-3 h-3" />
                         </motion.button>
                       </div>
                     </div>
+                  )}
+
+                  {/* CTA after chat exhausted */}
+                  {demoChatExhausted && !guestExhausted && (
+                    <DemoCTA type="chat" />
                   )}
                 </motion.div>
               )}

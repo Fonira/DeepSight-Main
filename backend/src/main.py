@@ -90,6 +90,7 @@ from admin.finetuning_router import router as finetuning_router
 from exports.router import router as exports_router
 from playlists.router import router as playlists_router
 from history.history_router import router as history_router
+from demo.router import router as demo_router
 from db.database import init_db, close_db
 
 # 🔒 Security Headers
@@ -719,6 +720,7 @@ if RATE_LIMITER_AVAILABLE:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(demo_router, prefix="/api/demo", tags=["Demo"])
 app.include_router(videos_router, prefix="/api/videos", tags=["Videos"])
 app.include_router(chat_router, prefix="/api/chat", tags=["Chat"])
 app.include_router(billing_router, prefix="/api/billing", tags=["Billing"])
