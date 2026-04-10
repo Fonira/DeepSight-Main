@@ -10,9 +10,9 @@
  * - summaryId pour navigation vers l'analyse source
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, ReactNode } from 'react';
 import { useLanguage } from './LanguageContext';
-import { getRandomWord, WordData } from '../data/defaultWords';
+import { getRandomWord, getWordByCategory, WordData } from '../data/defaultWords';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -46,6 +46,11 @@ interface HistoryKeyword {
   confidence: string | null;
 }
 
+export interface CategoryCount {
+  category: string;
+  count: number;
+}
+
 interface LoadingWordContextType {
   currentWord: LoadingWord | null;
   isLoading: boolean;
@@ -60,6 +65,13 @@ interface LoadingWordContextType {
   /** Toggle le widget flottant "Le Saviez-Vous" (pour intégration sidebar) */
   isWidgetVisible: boolean;
   toggleWidget: () => void;
+  /** Sidebar droite "Le Saviez-Vous" — visible sur desktop xl+ */
+  isSidebarVisible: boolean;
+  toggleSidebar: () => void;
+  /** Distribution des catégories de l'utilisateur (top centres d'intérêt) */
+  userCategories: CategoryCount[];
+  /** Nombre total de keywords dans l'historique */
+  historyCount: number;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -139,6 +151,23 @@ function getRandomHistoryKeyword(excludeTerms: string[]): HistoryKeyword | null 
   return available[Math.floor(Math.random() * available.length)];
 }
 
+/**
+ * Calcule la distribution des catégories dans l'historique utilisateur
+ */
+function computeUserCategories(): CategoryCount[] {
+  if (historyKeywordsCache.length === 0) return [];
+
+  const counts: Record<string, number> = {};
+  for (const k of historyKeywordsCache) {
+    const cat = k.category || 'concept';
+    counts[cat] = (counts[cat] || 0) + 1;
+  }
+
+  return Object.entries(counts)
+    .map(([category, count]) => ({ category, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 PROVIDER
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -151,22 +180,33 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [hasHistory, setHasHistory] = useState(false);
   const [isWidgetVisible, setIsWidgetVisible] = useState(false);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
+    try {
+      const stored = localStorage.getItem('ds-sidebar-dyk-visible');
+      return stored !== 'false'; // visible par défaut
+    } catch { return true; }
+  });
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
   /**
-   * Utilise les données locales en fallback
+   * Utilise les données locales en fallback — biaisé vers les centres d'intérêt utilisateur
    */
   const useLocalFallback = useCallback(() => {
     const excludeList = Array.from(displayedWords).slice(-20);
-    const word = getRandomWord(excludeList);
+
+    // Si l'utilisateur a un historique, biaiser vers ses catégories préférées
+    const topCategory = computeUserCategories()[0]?.category;
+    const word = topCategory
+      ? getWordByCategory(topCategory, excludeList)
+      : getRandomWord(excludeList);
     const loadingWord = convertLocalWord(word, language);
 
     setCurrentWord(loadingWord);
     displayedWords.add(loadingWord.term.toLowerCase());
 
     // Limiter la taille du cache
-    if (displayedWords.size > 50) {
+    if (displayedWords.size > 80) {
       const iterator = displayedWords.values();
       displayedWords.delete(iterator.next().value as string);
     }
@@ -301,11 +341,16 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, [fetchWord]);
 
   /**
-   * 🆕 Mot suivant INSTANTANÉ — pas de réseau, pioche dans le cache local
+   * 🆕 Mot suivant INSTANTANÉ — mix 70% historique / 30% local pour variété
    */
   const nextWord = useCallback(() => {
     if (historyKeywordsCache.length > 0) {
-      useHistoryWord();
+      const roll = Math.random();
+      if (roll < 0.7) {
+        useHistoryWord();
+      } else {
+        useLocalFallback();
+      }
     } else {
       useLocalFallback();
     }
@@ -355,6 +400,17 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   }, []);
 
   /**
+   * Toggle la sidebar droite "Le Saviez-Vous" (desktop xl+)
+   */
+  const toggleSidebar = useCallback(() => {
+    setIsSidebarVisible(prev => {
+      const next = !prev;
+      try { localStorage.setItem('ds-sidebar-dyk-visible', String(next)); } catch { /* */ }
+      return next;
+    });
+  }, []);
+
+  /**
    * Démarre le timer de rafraîchissement automatique
    */
   const startTimer = useCallback(() => {
@@ -381,6 +437,10 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
     setIsTimerActive(false);
   }, []);
 
+  // Catégories de l'utilisateur (memoized)
+  const userCategories = useMemo(() => computeUserCategories(), [currentWord]); // eslint-disable-line react-hooks/exhaustive-deps
+  const historyCount = historyKeywordsCache.length;
+
   // Fetch initial au montage — PRIORITÉ ABSOLUE À L'HISTORIQUE
   useEffect(() => {
     isMountedRef.current = true;
@@ -389,13 +449,16 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
     // Attendre fetchWord() pour avoir l'historique en priorité
     fetchWord();
 
-    // Timer: toujours vérifier l'historique d'abord
+    // Timer: mix 70% historique / 30% local pour la variété
     const timer = setInterval(() => {
       if (historyKeywordsCache.length > 0) {
-        // Utiliser l'historique en priorité
-        useHistoryWord();
+        const roll = Math.random();
+        if (roll < 0.7) {
+          useHistoryWord();
+        } else {
+          useLocalFallback();
+        }
       } else {
-        // Re-fetch pour vérifier si nouvel historique disponible
         fetchWord();
       }
     }, REFRESH_INTERVAL);
@@ -424,6 +487,10 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         hasHistory,
         isWidgetVisible,
         toggleWidget,
+        isSidebarVisible,
+        toggleSidebar,
+        userCategories,
+        historyCount,
       }}
     >
       {children}

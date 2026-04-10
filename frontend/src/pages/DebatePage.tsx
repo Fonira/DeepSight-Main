@@ -382,7 +382,7 @@ export const DebatePage: React.FC = () => {
   // ─── Content margin class (responsive with sidebar) ───
   const mainClass = `transition-all duration-200 ease-out relative z-10 ${
     sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'
-  }`;
+  } xl:mr-[280px]`;
 
   // ─── Loading skeleton while debate is being fetched ───
   const renderSkeleton = () => (

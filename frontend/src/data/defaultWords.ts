@@ -534,6 +534,330 @@ export const DEFAULT_WORDS: WordData[] = [
     short_en: "We value what we created ourselves more.",
     category: "misc",
     wiki_url: "https://fr.wikipedia.org/wiki/Effet_IKEA"
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // 🧩 PSYCHOLOGIE (5 mots)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  {
+    term: "Effet de projecteur",
+    term_en: "Spotlight Effect",
+    definition_fr: "Tendance à surestimer l'attention que les autres portent à notre apparence et à nos actions. En réalité, les gens nous remarquent bien moins qu'on ne le croit.",
+    definition_en: "Tendency to overestimate how much others notice our appearance and actions. In reality, people notice us far less than we think.",
+    short_fr: "On surestime l'attention des autres sur nous.",
+    short_en: "We overestimate how much others notice us.",
+    category: "psychology",
+    wiki_url: "https://fr.wikipedia.org/wiki/Effet_de_projecteur"
+  },
+  {
+    term: "Biais de négativité",
+    term_en: "Negativity Bias",
+    definition_fr: "Tendance psychologique à accorder plus de poids aux expériences négatives qu'aux positives. Un seul commentaire négatif peut annuler dix compliments.",
+    definition_en: "Psychological tendency to give more weight to negative experiences than positive ones. A single negative comment can outweigh ten compliments.",
+    short_fr: "Le négatif nous marque plus que le positif.",
+    short_en: "The negative affects us more than the positive.",
+    category: "psychology",
+    wiki_url: "https://fr.wikipedia.org/wiki/Biais_de_n%C3%A9gativit%C3%A9"
+  },
+  {
+    term: "Effet Pratfall",
+    term_en: "Pratfall Effect",
+    definition_fr: "Phénomène où une personne perçue comme compétente devient plus sympathique après avoir commis une maladresse. L'imperfection humanise.",
+    definition_en: "Phenomenon where a person perceived as competent becomes more likeable after making a blunder. Imperfection humanizes.",
+    short_fr: "Une maladresse rend les gens compétents plus sympathiques.",
+    short_en: "A blunder makes competent people more likeable.",
+    category: "psychology",
+    wiki_url: "https://en.wikipedia.org/wiki/Pratfall_effect"
+  },
+  {
+    term: "Fenêtre de tolérance",
+    term_en: "Window of Tolerance",
+    definition_fr: "Zone optimale d'activation émotionnelle dans laquelle on peut fonctionner efficacement. En dehors, on bascule en hyperactivation (anxiété) ou hypoactivation (shutdown).",
+    definition_en: "Optimal zone of emotional arousal where we can function effectively. Outside it, we shift to hyperarousal (anxiety) or hypoarousal (shutdown).",
+    short_fr: "La zone émotionnelle où l'on fonctionne le mieux.",
+    short_en: "The emotional zone where we function best.",
+    category: "psychology",
+    wiki_url: "https://en.wikipedia.org/wiki/Window_of_tolerance"
+  },
+  {
+    term: "Effet de simple mesure",
+    term_en: "Mere Measurement Effect",
+    definition_fr: "Le simple fait de demander à quelqu'un s'il va faire quelque chose augmente la probabilité qu'il le fasse. Mesurer un comportement le modifie.",
+    definition_en: "Simply asking someone if they will do something increases the probability they'll do it. Measuring behavior changes it.",
+    short_fr: "Poser la question influence le comportement.",
+    short_en: "Asking the question influences behavior.",
+    category: "psychology",
+    wiki_url: "https://en.wikipedia.org/wiki/Mere_measurement_effect"
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // 💰 ÉCONOMIE & STRATÉGIE (5 mots)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  {
+    term: "Destruction créatrice",
+    term_en: "Creative Destruction",
+    definition_fr: "Concept de Schumpeter : le progrès économique détruit les anciennes structures pour en créer de nouvelles. L'automobile a tué le cheval, le smartphone a tué le GPS.",
+    definition_en: "Schumpeter's concept: economic progress destroys old structures to create new ones. The car killed the horse, the smartphone killed the GPS.",
+    short_fr: "L'innovation détruit l'ancien pour construire le nouveau.",
+    short_en: "Innovation destroys the old to build the new.",
+    category: "economics",
+    wiki_url: "https://fr.wikipedia.org/wiki/Destruction_cr%C3%A9atrice"
+  },
+  {
+    term: "Coût irrécupérable",
+    term_en: "Sunk Cost Fallacy",
+    definition_fr: "Erreur consistant à poursuivre un investissement à cause de ce qu'on a déjà dépensé, plutôt que de juger objectivement les bénéfices futurs.",
+    definition_en: "Error of continuing an investment because of what's already been spent, rather than objectively judging future benefits.",
+    short_fr: "On s'entête parce qu'on a déjà trop investi.",
+    short_en: "We persist because we've already invested too much.",
+    category: "economics",
+    wiki_url: "https://fr.wikipedia.org/wiki/Co%C3%BBt_irr%C3%A9cup%C3%A9rable"
+  },
+  {
+    term: "Paradoxe de l'abondance",
+    term_en: "Paradox of Choice",
+    definition_fr: "Avoir trop de choix provoque de l'anxiété et de l'insatisfaction. Plus les options sont nombreuses, plus il est difficile de décider et d'être satisfait.",
+    definition_en: "Having too many choices causes anxiety and dissatisfaction. The more options available, the harder it is to decide and be satisfied.",
+    short_fr: "Trop de choix paralyse et rend insatisfait.",
+    short_en: "Too many choices paralyze and dissatisfy.",
+    category: "economics",
+    wiki_url: "https://fr.wikipedia.org/wiki/Paradoxe_du_choix"
+  },
+  {
+    term: "Effet de réseau",
+    term_en: "Network Effect",
+    definition_fr: "Phénomène où la valeur d'un produit augmente avec le nombre d'utilisateurs. Le téléphone est inutile seul, indispensable à des milliards.",
+    definition_en: "Phenomenon where a product's value increases with the number of users. A phone is useless alone, indispensable with billions.",
+    short_fr: "Plus il y a d'utilisateurs, plus le produit a de valeur.",
+    short_en: "The more users, the more valuable the product.",
+    category: "economics",
+    wiki_url: "https://fr.wikipedia.org/wiki/Effet_de_r%C3%A9seau"
+  },
+  {
+    term: "Asymétrie d'information",
+    term_en: "Information Asymmetry",
+    definition_fr: "Situation où une partie d'une transaction possède plus d'informations que l'autre. Le vendeur de voitures d'occasion en sait plus que l'acheteur.",
+    definition_en: "Situation where one party in a transaction has more information than the other. A used car seller knows more than the buyer.",
+    short_fr: "Quand l'un sait plus que l'autre dans un échange.",
+    short_en: "When one party knows more than the other in a deal.",
+    category: "economics",
+    wiki_url: "https://fr.wikipedia.org/wiki/Asym%C3%A9trie_d%27information"
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // 📜 HISTOIRE & CIVILISATION (5 mots)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  {
+    term: "Effet Lindy",
+    term_en: "Lindy Effect",
+    definition_fr: "Plus une idée ou une technologie a survécu longtemps, plus son espérance de vie future est élevée. Un livre lu depuis 500 ans sera probablement lu dans 500 ans.",
+    definition_en: "The longer an idea or technology has survived, the higher its future life expectancy. A book read for 500 years will likely be read in 500 years.",
+    short_fr: "Ce qui dure depuis longtemps durera encore longtemps.",
+    short_en: "What has lasted long will likely last longer.",
+    category: "history",
+    wiki_url: "https://en.wikipedia.org/wiki/Lindy_effect"
+  },
+  {
+    term: "Effet Mandela",
+    term_en: "Mandela Effect",
+    definition_fr: "Phénomène de faux souvenirs collectifs, où un grand nombre de personnes partagent le même souvenir erroné d'un événement ou d'un détail.",
+    definition_en: "Phenomenon of collective false memories, where many people share the same incorrect memory of an event or detail.",
+    short_fr: "Des souvenirs collectifs... qui sont faux.",
+    short_en: "Collective memories... that are false.",
+    category: "history",
+    wiki_url: "https://fr.wikipedia.org/wiki/Effet_Mandela"
+  },
+  {
+    term: "Loi de Brandolini",
+    term_en: "Brandolini's Law",
+    definition_fr: "La quantité d'énergie nécessaire pour réfuter une bêtise est d'un ordre de grandeur supérieur à celle nécessaire pour la produire. Aussi appelée 'loi de l'asymétrie du bullshit'.",
+    definition_en: "The energy needed to refute nonsense is an order of magnitude greater than that needed to produce it. Also called the 'bullshit asymmetry principle'.",
+    short_fr: "Il est plus facile de dire une bêtise que de la réfuter.",
+    short_en: "It's easier to produce nonsense than to refute it.",
+    category: "history",
+    wiki_url: "https://fr.wikipedia.org/wiki/Loi_de_Brandolini"
+  },
+  {
+    term: "Érosion normative",
+    term_en: "Normative Erosion",
+    definition_fr: "Processus graduel par lequel les normes sociales ou institutionnelles perdent leur force contraignante. Chaque petite transgression tolérée abaisse le seuil d'acceptabilité.",
+    definition_en: "Gradual process by which social or institutional norms lose their binding force. Each tolerated small transgression lowers the acceptability threshold.",
+    short_fr: "Les normes s'affaiblissent quand on tolère les petites transgressions.",
+    short_en: "Norms weaken when small transgressions are tolerated.",
+    category: "history",
+    wiki_url: "https://en.wikipedia.org/wiki/Norm_(philosophy)"
+  },
+  {
+    term: "Spirale du silence",
+    term_en: "Spiral of Silence",
+    definition_fr: "Théorie selon laquelle les individus taisent leurs opinions quand ils les perçoivent comme minoritaires, renforçant l'apparente domination de l'opinion majoritaire.",
+    definition_en: "Theory that individuals silence their opinions when they perceive them as minority views, reinforcing the apparent dominance of the majority opinion.",
+    short_fr: "On se tait quand on se croit en minorité.",
+    short_en: "We stay silent when we think we're in the minority.",
+    category: "history",
+    wiki_url: "https://fr.wikipedia.org/wiki/Spirale_du_silence"
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // ⚡ TECHNOLOGIE & NUMÉRIQUE (5 mots)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  {
+    term: "Loi de Moore",
+    term_en: "Moore's Law",
+    definition_fr: "Observation selon laquelle le nombre de transistors dans un circuit intégré double environ tous les deux ans, entraînant une croissance exponentielle de la puissance de calcul.",
+    definition_en: "Observation that the number of transistors in an integrated circuit doubles approximately every two years, leading to exponential growth in computing power.",
+    short_fr: "La puissance des ordinateurs double tous les deux ans.",
+    short_en: "Computing power doubles every two years.",
+    category: "technology",
+    wiki_url: "https://fr.wikipedia.org/wiki/Loi_de_Moore"
+  },
+  {
+    term: "Effet de bulle de filtre",
+    term_en: "Filter Bubble",
+    definition_fr: "Phénomène où les algorithmes de personnalisation enferment l'utilisateur dans une bulle informationnelle, ne lui montrant que du contenu conforme à ses préférences existantes.",
+    definition_en: "Phenomenon where personalization algorithms trap users in an information bubble, showing only content aligned with their existing preferences.",
+    short_fr: "Les algorithmes nous enferment dans nos propres opinions.",
+    short_en: "Algorithms trap us in our own opinions.",
+    category: "technology",
+    wiki_url: "https://fr.wikipedia.org/wiki/Bulle_de_filtre"
+  },
+  {
+    term: "Loi de Metcalfe",
+    term_en: "Metcalfe's Law",
+    definition_fr: "La valeur d'un réseau de télécommunications est proportionnelle au carré du nombre de ses utilisateurs connectés. Chaque nouvel utilisateur enrichit le réseau pour tous les autres.",
+    definition_en: "The value of a telecommunications network is proportional to the square of the number of connected users. Each new user enriches the network for everyone else.",
+    short_fr: "La valeur d'un réseau croît au carré de ses utilisateurs.",
+    short_en: "A network's value grows as the square of its users.",
+    category: "technology",
+    wiki_url: "https://fr.wikipedia.org/wiki/Loi_de_Metcalfe"
+  },
+  {
+    term: "Vallée de l'étrange",
+    term_en: "Uncanny Valley",
+    definition_fr: "Réaction de malaise provoquée par des robots ou avatars qui ressemblent presque parfaitement à des humains, sans y parvenir tout à fait.",
+    definition_en: "Feeling of unease caused by robots or avatars that look almost perfectly human, but not quite.",
+    short_fr: "Plus un robot ressemble à un humain, plus il nous met mal à l'aise.",
+    short_en: "The more a robot looks human, the more uneasy we feel.",
+    category: "technology",
+    wiki_url: "https://fr.wikipedia.org/wiki/Vall%C3%A9e_d%C3%A9rangeante"
+  },
+  {
+    term: "Obsolescence programmée",
+    term_en: "Planned Obsolescence",
+    definition_fr: "Stratégie de conception visant à limiter délibérément la durée de vie d'un produit pour forcer le renouvellement. Une pratique controversée de l'industrie technologique.",
+    definition_en: "Design strategy aimed at deliberately limiting a product's lifespan to force renewal. A controversial practice in the tech industry.",
+    short_fr: "Les produits sont conçus pour tomber en panne.",
+    short_en: "Products are designed to break down.",
+    category: "technology",
+    wiki_url: "https://fr.wikipedia.org/wiki/Obsolescence_programm%C3%A9e"
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // 🎨 ART & CRÉATIVITÉ (5 mots)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  {
+    term: "Wabi-sabi",
+    term_en: "Wabi-Sabi",
+    definition_fr: "Esthétique japonaise qui trouve la beauté dans l'imperfection, l'impermanence et l'incomplétude. Un bol fissuré réparé à l'or (kintsugi) incarne cette philosophie.",
+    definition_en: "Japanese aesthetics that finds beauty in imperfection, impermanence, and incompleteness. A cracked bowl repaired with gold (kintsugi) embodies this philosophy.",
+    short_fr: "La beauté dans l'imperfection et l'éphémère.",
+    short_en: "Beauty in imperfection and the ephemeral.",
+    category: "art",
+    wiki_url: "https://fr.wikipedia.org/wiki/Wabi-sabi"
+  },
+  {
+    term: "Synesthésie",
+    term_en: "Synesthesia",
+    definition_fr: "Condition neurologique où la stimulation d'un sens provoque automatiquement une perception dans un autre sens. Certaines personnes 'voient' les sons ou 'goûtent' les mots.",
+    definition_en: "Neurological condition where stimulation of one sense automatically triggers a perception in another. Some people 'see' sounds or 'taste' words.",
+    short_fr: "Quand les sens se mélangent : voir les sons, goûter les mots.",
+    short_en: "When senses mix: seeing sounds, tasting words.",
+    category: "art",
+    wiki_url: "https://fr.wikipedia.org/wiki/Synesth%C3%A9sie"
+  },
+  {
+    term: "Horror vacui",
+    term_en: "Horror Vacui",
+    definition_fr: "Peur du vide en art et en design. Tendance à remplir chaque espace disponible de détails, ornements ou informations. L'opposé du minimalisme.",
+    definition_en: "Fear of empty space in art and design. Tendency to fill every available space with details, ornaments, or information. The opposite of minimalism.",
+    short_fr: "La peur du vide pousse à tout remplir.",
+    short_en: "Fear of emptiness drives us to fill everything.",
+    category: "art",
+    wiki_url: "https://fr.wikipedia.org/wiki/Horror_vacui"
+  },
+  {
+    term: "Catharsis",
+    term_en: "Catharsis",
+    definition_fr: "Purification émotionnelle à travers l'art, décrite par Aristote. Le fait de vivre des émotions intenses à travers la fiction nous libère et nous apaise.",
+    definition_en: "Emotional purification through art, described by Aristotle. Experiencing intense emotions through fiction liberates and soothes us.",
+    short_fr: "L'art nous libère en nous faisant ressentir des émotions intenses.",
+    short_en: "Art liberates us by making us feel intense emotions.",
+    category: "art",
+    wiki_url: "https://fr.wikipedia.org/wiki/Catharsis"
+  },
+  {
+    term: "Anamorphose",
+    term_en: "Anamorphosis",
+    definition_fr: "Image déformée qui ne se révèle correctement que vue sous un angle précis ou à travers un dispositif optique. Un jeu entre illusion et réalité.",
+    definition_en: "Distorted image that only appears correct when viewed from a specific angle or through an optical device. A play between illusion and reality.",
+    short_fr: "Une image qui change selon l'angle de vue.",
+    short_en: "An image that changes depending on the viewing angle.",
+    category: "art",
+    wiki_url: "https://fr.wikipedia.org/wiki/Anamorphose"
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════════════
+  // 🌿 NATURE & VIVANT (5 mots)
+  // ═══════════════════════════════════════════════════════════════════════════════
+  {
+    term: "Biomimétisme",
+    term_en: "Biomimicry",
+    definition_fr: "Démarche d'innovation qui s'inspire des formes, processus et écosystèmes naturels pour résoudre des problèmes humains. Le velcro imite les crochets de la bardane.",
+    definition_en: "Innovation approach inspired by natural forms, processes, and ecosystems to solve human problems. Velcro imitates burdock hooks.",
+    short_fr: "S'inspirer de la nature pour innover.",
+    short_en: "Drawing inspiration from nature to innovate.",
+    category: "nature",
+    wiki_url: "https://fr.wikipedia.org/wiki/Biomim%C3%A9tisme"
+  },
+  {
+    term: "Symbiose",
+    term_en: "Symbiosis",
+    definition_fr: "Association durable entre deux organismes d'espèces différentes, bénéfique pour les deux. Le lichen est une symbiose entre un champignon et une algue.",
+    definition_en: "Lasting association between two organisms of different species, beneficial for both. Lichen is a symbiosis between a fungus and an alga.",
+    short_fr: "Deux espèces qui vivent ensemble pour leur bénéfice mutuel.",
+    short_en: "Two species living together for mutual benefit.",
+    category: "nature",
+    wiki_url: "https://fr.wikipedia.org/wiki/Symbiose"
+  },
+  {
+    term: "Intelligence collective",
+    term_en: "Swarm Intelligence",
+    definition_fr: "Capacité d'un groupe d'agents simples à résoudre des problèmes complexes sans coordination centrale. Les fourmis, les abeilles et les bancs de poissons en sont des exemples.",
+    definition_en: "Ability of simple agents to solve complex problems without central coordination. Ants, bees, and schools of fish are examples.",
+    short_fr: "Des individus simples créent ensemble une intelligence complexe.",
+    short_en: "Simple individuals together create complex intelligence.",
+    category: "nature",
+    wiki_url: "https://fr.wikipedia.org/wiki/Intelligence_collective"
+  },
+  {
+    term: "Effet Allee",
+    term_en: "Allee Effect",
+    definition_fr: "Phénomène écologique où la survie d'une espèce diminue quand la population devient trop petite. En dessous d'un seuil critique, l'extinction s'accélère.",
+    definition_en: "Ecological phenomenon where a species' survival decreases when the population becomes too small. Below a critical threshold, extinction accelerates.",
+    short_fr: "Trop peu d'individus accélère l'extinction d'une espèce.",
+    short_en: "Too few individuals accelerate a species' extinction.",
+    category: "nature",
+    wiki_url: "https://fr.wikipedia.org/wiki/Effet_Allee"
+  },
+  {
+    term: "Panspermie",
+    term_en: "Panspermia",
+    definition_fr: "Hypothèse selon laquelle la vie sur Terre proviendrait de micro-organismes extraterrestres transportés par des météorites ou de la poussière cosmique.",
+    definition_en: "Hypothesis that life on Earth originated from extraterrestrial microorganisms transported by meteorites or cosmic dust.",
+    short_fr: "La vie sur Terre viendrait peut-être de l'espace.",
+    short_en: "Life on Earth may have come from space.",
+    category: "nature",
+    wiki_url: "https://fr.wikipedia.org/wiki/Panspermie"
   }
 ];
 
@@ -548,6 +872,23 @@ export function getRandomWord(excludeTerms: string[] = []): WordData {
   return available.length > 0
     ? available[Math.floor(Math.random() * available.length)]
     : DEFAULT_WORDS[Math.floor(Math.random() * DEFAULT_WORDS.length)];
+}
+
+/**
+ * Retourne un mot aléatoire biaisé vers une catégorie spécifique
+ * 70% de chance de retourner un mot de la catégorie donnée, 30% random
+ */
+export function getWordByCategory(category: string, excludeTerms: string[] = []): WordData {
+  const roll = Math.random();
+  if (roll < 0.7) {
+    const categoryWords = DEFAULT_WORDS.filter(
+      w => w.category === category && !excludeTerms.includes(w.term) && !excludeTerms.includes(w.term_en)
+    );
+    if (categoryWords.length > 0) {
+      return categoryWords[Math.floor(Math.random() * categoryWords.length)];
+    }
+  }
+  return getRandomWord(excludeTerms);
 }
 
 /**

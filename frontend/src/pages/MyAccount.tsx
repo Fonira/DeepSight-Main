@@ -359,7 +359,7 @@ export const MyAccount: React.FC = () => {
 
       <main
         id="main-content"
-        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}
+        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'} xl:mr-[280px]`}
       >
         <div className="min-h-screen pt-14 lg:pt-0 p-4 sm:p-6 lg:p-8 pb-8">
           <div className="max-w-2xl mx-auto space-y-6">

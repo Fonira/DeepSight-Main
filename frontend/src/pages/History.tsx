@@ -958,7 +958,7 @@ export const History: React.FC = () => {
       {/* Hamburger mobile */}
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
 
-      <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
+      <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'} xl:mr-[280px]`}>
         <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-8 pt-14 lg:pt-8">
           <div className="max-w-6xl mx-auto">
             

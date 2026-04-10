@@ -432,7 +432,7 @@ const ChatPage: React.FC = () => {
   // ═══════════════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="h-screen flex overflow-hidden" style={{ background: 'radial-gradient(ellipse at 30% 20%, rgba(6,182,212,0.03) 0%, #0a0a0f 60%)' }}>
+    <div className="h-screen flex overflow-hidden xl:mr-[280px]" style={{ background: 'radial-gradient(ellipse at 30% 20%, rgba(6,182,212,0.03) 0%, #0a0a0f 60%)' }}>
       <SEO title="Chat IA" path="/chat" />
 
       {/* ═══ SIDEBAR — Desktop (fixe à gauche) ═══ */}

@@ -969,7 +969,7 @@ export const PlaylistDetailPage: React.FC = () => {
       <DoodleBackground variant="video" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
-      <main className="flex-1 overflow-x-hidden">
+      <main className="flex-1 overflow-x-hidden xl:mr-[280px]">
         <div className="container max-w-6xl mx-auto px-4 py-8 pb-24 lg:pb-8">
 
           {/* BACK BUTTON */}

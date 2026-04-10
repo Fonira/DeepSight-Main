@@ -127,7 +127,7 @@ const StudyHubPage: React.FC = () => {
       <div className="min-h-screen bg-bg-primary relative">
         <ErrorBoundary fallback={null}><DoodleBackground variant="academic" /></ErrorBoundary>
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'}`}>
+        <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'} xl:mr-[280px]`}>
           <div className="min-h-screen flex items-center justify-center p-6">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md text-center">
               <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center">
@@ -173,7 +173,7 @@ const StudyHubPage: React.FC = () => {
       <ErrorBoundary fallback={null}><DoodleBackground variant="academic" /></ErrorBoundary>
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
-      <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'}`}>
+      <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'} xl:mr-[280px]`}>
         <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-8">
           <div className="max-w-5xl mx-auto">
 

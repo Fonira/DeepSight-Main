@@ -92,6 +92,10 @@ const CATEGORY_ICONS: Record<string, string> = {
   concept: '💡',
   event: '📅',
   place: '📍',
+  psychology: '🧩',
+  economics: '💰',
+  art: '🎨',
+  nature: '🌿',
 };
 
 const CATEGORY_LABELS_FR: Record<string, string> = {
@@ -107,6 +111,10 @@ const CATEGORY_LABELS_FR: Record<string, string> = {
   concept: 'Concept',
   event: 'Événement',
   place: 'Lieu',
+  psychology: 'Psychologie',
+  economics: 'Économie',
+  art: 'Art & Créativité',
+  nature: 'Nature & Vivant',
 };
 
 const CATEGORY_LABELS_EN: Record<string, string> = {
@@ -122,6 +130,10 @@ const CATEGORY_LABELS_EN: Record<string, string> = {
   concept: 'Concept',
   event: 'Event',
   place: 'Place',
+  psychology: 'Psychology',
+  economics: 'Economics',
+  art: 'Art & Creativity',
+  nature: 'Nature & Life',
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -423,6 +435,10 @@ export const LoadingWordGlobal: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // 🔧 Sur desktop xl+, la SidebarDidYouKnow prend le relais — ce widget ne s'affiche que sur mobile/tablette
+  const isDesktopXL = typeof window !== 'undefined' && window.innerWidth >= 1280;
+  if (isDesktopXL) return null;
 
   // 🔧 Utiliser le contexte partagé pour la visibilité (accessible depuis la sidebar)
   const isVisible = isWidgetVisible;
