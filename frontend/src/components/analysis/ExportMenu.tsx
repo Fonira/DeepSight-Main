@@ -4,8 +4,9 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { FileText, FileCode, AlignLeft, Headphones, Download, Loader2, Lock } from 'lucide-react';
+import { FileText, FileCode, AlignLeft, Headphones, Download, Lock } from 'lucide-react';
 import { Dropdown, DropdownItem } from '../ui/Dropdown';
+import { DeepSightSpinnerMicro } from '../ui/DeepSightSpinner';
 import { useToast } from '../Toast';
 import { videoApi, API_URL } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
@@ -80,7 +81,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
       label: 'PDF',
       description: 'Export professionnel mis en page',
       icon: loadingFormat === 'pdf'
-        ? <Loader2 className="w-4 h-4 animate-spin" />
+        ? <DeepSightSpinnerMicro />
         : <FileText className="w-4 h-4" />,
       disabled: loadingFormat !== null,
     },
@@ -89,7 +90,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
       label: 'Markdown',
       description: 'Format éditable',
       icon: loadingFormat === 'md'
-        ? <Loader2 className="w-4 h-4 animate-spin" />
+        ? <DeepSightSpinnerMicro />
         : <FileCode className="w-4 h-4" />,
       disabled: loadingFormat !== null,
     },
@@ -98,7 +99,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
       label: 'Texte brut',
       description: 'Copier-coller universel',
       icon: loadingFormat === 'txt'
-        ? <Loader2 className="w-4 h-4 animate-spin" />
+        ? <DeepSightSpinnerMicro />
         : <AlignLeft className="w-4 h-4" />,
       disabled: loadingFormat !== null,
     },
@@ -108,7 +109,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
       label: canExportAudio ? 'Audio' : 'Audio (Pro+)',
       description: canExportAudio ? 'Écouter l\'analyse' : 'Disponible à partir du plan Pro',
       icon: loadingFormat === 'audio'
-        ? <Loader2 className="w-4 h-4 animate-spin" />
+        ? <DeepSightSpinnerMicro />
         : canExportAudio
           ? <Headphones className="w-4 h-4" />
           : <Lock className="w-4 h-4" />,
@@ -129,7 +130,7 @@ export const ExportMenu: React.FC<ExportMenuProps> = ({
       disabled={loadingFormat !== null}
     >
       {loadingFormat ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
+        <DeepSightSpinnerMicro />
       ) : (
         <Download className="w-4 h-4" />
       )}

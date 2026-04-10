@@ -15,7 +15,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   X, Send, Bot, User, Globe, Copy, Check,
-  ExternalLink, Loader2, Search, Lock, ArrowDown
+  ExternalLink, Search, Lock, ArrowDown
 } from 'lucide-react';
 import { parseAskQuestions } from './ClickableQuestions';
 import { AudioPlayerButton } from './AudioPlayerButton';

@@ -11,8 +11,9 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   GraduationCap, Star, Brain, Target, Clock,
-  ChevronRight, Loader2, BookOpen, Sparkles,
+  ChevronRight, BookOpen, Sparkles,
 } from 'lucide-react';
+import { DeepSightSpinnerSmall } from '../components/ui/DeepSightSpinner';
 import { useStudyStore } from '../store/studyStore';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
@@ -257,7 +258,7 @@ const StudyHubPage: React.FC = () => {
             {/* ── Loading ── */}
             {loading && !stats && (
               <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+                <DeepSightSpinnerSmall />
               </div>
             )}
 

@@ -12,8 +12,8 @@ import {
   X,
   Mail,
   Eye,
-  Loader2,
 } from 'lucide-react';
+import { DeepSightSpinner } from '../ui/DeepSightSpinner';
 import { useToast } from '../Toast';
 import { shareApi } from '../../services/api';
 
@@ -201,7 +201,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ videoId, videoTitle })
                   <div className="p-4 space-y-4">
                     {isLoading ? (
                       <div className="flex items-center justify-center py-8">
-                        <Loader2 className="w-6 h-6 animate-spin text-accent-primary" />
+                        <DeepSightSpinner size="md" />
                       </div>
                     ) : isActive && shareUrl ? (
                       <>

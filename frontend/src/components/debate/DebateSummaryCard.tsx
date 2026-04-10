@@ -4,20 +4,23 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Swords, Clock, CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { Swords, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import type { DebateListItem, DebateStatus } from '../../types/debate';
+import { DeepSightSpinnerMicro } from '../ui/DeepSightSpinner';
 
 interface DebateSummaryCardProps {
   debate: DebateListItem;
   onClick: (id: number) => void;
 }
 
+const SpinnerBadgeIcon = () => <DeepSightSpinnerMicro />;
+
 const STATUS_BADGE: Record<DebateStatus, { label: string; className: string; icon: React.ElementType }> = {
   pending: { label: 'En attente', className: 'bg-white/10 text-white/50', icon: Clock },
-  searching: { label: 'Recherche…', className: 'bg-indigo-500/15 text-indigo-400', icon: Loader2 },
-  analyzing_b: { label: 'Analyse…', className: 'bg-indigo-500/15 text-indigo-400', icon: Loader2 },
-  comparing: { label: 'Comparaison…', className: 'bg-violet-500/15 text-violet-400', icon: Loader2 },
-  fact_checking: { label: 'Vérification…', className: 'bg-cyan-500/15 text-cyan-400', icon: Loader2 },
+  searching: { label: 'Recherche…', className: 'bg-indigo-500/15 text-indigo-400', icon: SpinnerBadgeIcon },
+  analyzing_b: { label: 'Analyse…', className: 'bg-indigo-500/15 text-indigo-400', icon: SpinnerBadgeIcon },
+  comparing: { label: 'Comparaison…', className: 'bg-violet-500/15 text-violet-400', icon: SpinnerBadgeIcon },
+  fact_checking: { label: 'Vérification…', className: 'bg-cyan-500/15 text-cyan-400', icon: SpinnerBadgeIcon },
   completed: { label: 'Terminé', className: 'bg-emerald-500/15 text-emerald-400', icon: CheckCircle2 },
   failed: { label: 'Échec', className: 'bg-red-500/15 text-red-400', icon: XCircle },
 };

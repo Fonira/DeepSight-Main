@@ -10,6 +10,7 @@ import { Helmet } from "react-helmet-async";
 import { Eye } from "lucide-react";
 import { shareApi, SharedAnalysisResponse } from "../services/api";
 import { sanitizeTitle } from '../utils/sanitize';
+import { DeepSightSpinner } from '../components/ui/DeepSightSpinner';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -74,7 +75,7 @@ export default function SharedAnalysisPage() {
     return (
       <div className="min-h-screen bg-bg-primary flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-accent-primary border-t-transparent rounded-full animate-spin" />
+          <DeepSightSpinner size="lg" />
           <span className="text-text-muted text-sm">Chargement de l'analyse...</span>
         </div>
       </div>

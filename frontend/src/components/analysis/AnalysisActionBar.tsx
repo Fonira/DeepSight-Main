@@ -14,8 +14,9 @@ import { motion } from 'framer-motion';
 import {
   Copy, Check, Share2, Download, Brain,
   GraduationCap, FileText, FileCode, AlignLeft, ChevronDown,
-  Lock, Loader2, Sparkles,
+  Lock, Sparkles,
 } from 'lucide-react';
+import { DeepSightSpinner, DeepSightSpinnerSmall } from '../ui/DeepSightSpinner';
 import { useAuth } from '../../hooks/useAuth';
 import { PLAN_LIMITS, normalizePlanId } from '../../config/planPrivileges';
 import { videoApi, shareApi } from '../../services/api';
@@ -142,7 +143,7 @@ const ExportOption: React.FC<ExportOptionProps> = ({ icon, label, description, o
     className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.06] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
   >
     <span className="flex-shrink-0">
-      {loading ? <Loader2 className="w-5 h-5 animate-spin text-white/50" /> : icon}
+      {loading ? <DeepSightSpinnerSmall /> : icon}
     </span>
     <div className="min-w-0">
       <p className="text-sm font-medium text-white/90">{label}</p>
@@ -382,7 +383,7 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
               {/* Partager */}
               <ActionButton
                 icon={sharing
-                  ? <Loader2 className="w-5 h-5 animate-spin" />
+                  ? <DeepSightSpinnerSmall />
                   : shareCopied
                     ? <Check className="w-5 h-5 text-emerald-400" />
                     : <Share2 className="w-5 h-5" />
@@ -400,7 +401,7 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
               <ActionButton
                 ref={exportBtnRef}
                 icon={exportingFormat
-                  ? <Loader2 className="w-5 h-5 animate-spin" />
+                  ? <DeepSightSpinnerSmall />
                   : <Download className="w-5 h-5" />
                 }
                 label="Export"

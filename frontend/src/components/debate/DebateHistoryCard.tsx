@@ -4,8 +4,9 @@
  */
 
 import React from 'react';
-import { Swords, Trash2, Eye, Clock, CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { Swords, Trash2, Eye, Clock, CheckCircle2, XCircle } from 'lucide-react';
 import type { DebateAnalysis } from '../../types/debate';
+import { DeepSightSpinnerMicro } from '../ui/DeepSightSpinner';
 
 interface DebateHistoryCardProps {
   debate: DebateAnalysis;
@@ -13,6 +14,8 @@ interface DebateHistoryCardProps {
   onView: () => void;
   onDelete: () => void;
 }
+
+const SpinnerIcon = () => <DeepSightSpinnerMicro />;
 
 const statusConfig: Record<string, { icon: React.ReactNode; label: { fr: string; en: string }; color: string }> = {
   completed: {
@@ -26,22 +29,22 @@ const statusConfig: Record<string, { icon: React.ReactNode; label: { fr: string;
     color: 'text-amber-500',
   },
   searching: {
-    icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />,
+    icon: <SpinnerIcon />,
     label: { fr: 'Recherche...', en: 'Searching...' },
     color: 'text-blue-500',
   },
   analyzing_b: {
-    icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />,
+    icon: <SpinnerIcon />,
     label: { fr: 'Analyse...', en: 'Analyzing...' },
     color: 'text-blue-500',
   },
   comparing: {
-    icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />,
+    icon: <SpinnerIcon />,
     label: { fr: 'Comparaison...', en: 'Comparing...' },
     color: 'text-purple-500',
   },
   fact_checking: {
-    icon: <Loader2 className="w-3.5 h-3.5 animate-spin" />,
+    icon: <SpinnerIcon />,
     label: { fr: 'Vérification...', en: 'Fact-checking...' },
     color: 'text-cyan-500',
   },

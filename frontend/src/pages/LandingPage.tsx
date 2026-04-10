@@ -13,9 +13,10 @@ import {
   Star, Crown, ListVideo, Briefcase,
   AlertTriangle, Lightbulb,
   Globe, Smartphone, Puzzle,
-  Clipboard, Loader2, ExternalLink, Lock,
+  Clipboard, ExternalLink, Lock,
   Swords, CheckCircle2, GitMerge, Scale
 } from "lucide-react";
+import { DeepSightSpinnerMicro } from '../components/ui/DeepSightSpinner';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
 import { SEO } from "../components/SEO";
@@ -541,7 +542,21 @@ const LandingPage: React.FC = () => {
         title="Analyse YouTube & TikTok par IA"
         description="Analysez et synthétisez vos vidéos YouTube et TikTok avec l'IA française. Résumés intelligents, fact-checking méthodique, points clés, timestamps, et chat interactif."
         path="/"
+        keywords="DeepSight, analyse vidéo YouTube, IA, résumé YouTube, fact-checking, synthèse vidéo, TikTok analyse, Mistral AI, flashcards, quiz"
       />
+      {/* FAQ Schema JSON-LD — Rich snippets Google */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": getFAQs('fr').map(faq => ({
+          "@type": "Question",
+          "name": faq.question,
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": faq.answer,
+          },
+        })),
+      }) }} />
       {/* Gradient mesh background */}
       <div className="fixed inset-0 pointer-events-none" aria-hidden="true">
         <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-accent-primary/[0.07] rounded-full blur-[120px]" />
@@ -689,7 +704,7 @@ const LandingPage: React.FC = () => {
                     whileTap={!guestLoading ? { scale: 0.98 } : {}}
                   >
                     {guestLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <DeepSightSpinnerMicro />
                     ) : (
                       <>
                         {language === 'fr' ? 'Analyser' : 'Analyze'}

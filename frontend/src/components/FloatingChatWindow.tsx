@@ -18,8 +18,9 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import {
   MessageSquare, X, Send, Globe, Bot, User,
   Minimize2, Maximize2, Move, Copy, Check,
-  ExternalLink, Loader2, Trash2, Search, Lock
+  ExternalLink, Trash2, Search, Lock
 } from 'lucide-react';
+import { DeepSightSpinnerMicro } from './ui/DeepSightSpinner';
 import { parseAskQuestions } from './ClickableQuestions';
 import { EnrichedMarkdown, cleanConceptMarkers } from './EnrichedMarkdown';
 
@@ -623,7 +624,7 @@ export const FloatingChatWindow: React.FC<FloatingChatWindowProps> = ({
                   </div>
                   <div className="bg-bg-secondary rounded-xl p-4">
                     <div className="flex items-center gap-2 text-text-muted">
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <DeepSightSpinnerMicro />
                       <span className="text-sm">{t.analyzing}</span>
                     </div>
                   </div>

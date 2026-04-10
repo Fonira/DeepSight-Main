@@ -15,6 +15,7 @@ import {
   RotateCcw, ChevronLeft, ChevronRight, Check, X,
   Shuffle, BookOpen, Sparkles
 } from 'lucide-react';
+import { DeepSightSpinner } from '../ui/DeepSightSpinner';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -188,7 +189,7 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mb-4" />
+        <DeepSightSpinner size="lg" />
         <p className="text-gray-400">{t.loading}</p>
       </div>
     );

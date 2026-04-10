@@ -6,7 +6,8 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Play, Pause, Square, Loader2, Lock } from 'lucide-react';
+import { Play, Pause, Square, Lock } from 'lucide-react';
+import { DeepSightSpinnerMicro } from './ui/DeepSightSpinner';
 import { useTTSContext } from '../contexts/TTSContext';
 
 interface AudioPlayerButtonProps {
@@ -285,7 +286,7 @@ const AudioPlayerButtonInner: React.FC<AudioPlayerButtonProps> = ({
         className="w-7 h-7 rounded-md flex items-center justify-center bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-colors flex-shrink-0"
       >
         {localLoading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <DeepSightSpinnerMicro />
         ) : localPlaying ? (
           <Pause className="w-4 h-4" />
         ) : (

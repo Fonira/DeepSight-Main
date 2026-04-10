@@ -14,6 +14,7 @@ import {
   CheckCircle, XCircle, ChevronRight, Lightbulb,
   Trophy, RotateCcw, HelpCircle, Brain
 } from 'lucide-react';
+import { DeepSightSpinner } from '../ui/DeepSightSpinner';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -181,7 +182,7 @@ export const QuizQuestion: React.FC<QuizQuestionProps> = ({
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mb-4" />
+        <DeepSightSpinner size="lg" />
         <p className="text-gray-400">{t.loading}</p>
       </div>
     );

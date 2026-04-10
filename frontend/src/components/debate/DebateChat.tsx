@@ -5,9 +5,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, MessageCircle, Loader2 } from 'lucide-react';
+import { Send, MessageCircle } from 'lucide-react';
 import { debateApi } from '../../services/api';
 import type { DebateChatMessage } from '../../services/api';
+import { DeepSightSpinnerMicro } from '../ui/DeepSightSpinner';
 
 interface DebateChatProps {
   debateId: number;
@@ -125,7 +126,7 @@ export const DebateChat: React.FC<DebateChatProps> = ({ debateId, debateTopic })
       >
         {loadingHistory ? (
           <div className="flex items-center justify-center h-full">
-            <Loader2 className="w-5 h-5 text-white/30 animate-spin" />
+            <DeepSightSpinnerMicro />
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
@@ -164,7 +165,7 @@ export const DebateChat: React.FC<DebateChatProps> = ({ debateId, debateTopic })
             className="flex justify-start"
           >
             <div className="rounded-lg px-3.5 py-2.5 bg-white/5 border border-white/10">
-              <Loader2 className="w-4 h-4 text-white/40 animate-spin" />
+              <DeepSightSpinnerMicro />
             </div>
           </motion.div>
         )}

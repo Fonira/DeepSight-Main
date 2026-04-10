@@ -9,7 +9,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams, useParams } from 'react-router-dom';
-import { Swords, ArrowLeft, FileText, Loader2, AlertTriangle, Sparkles } from 'lucide-react';
+import { Swords, ArrowLeft, FileText, AlertTriangle, Sparkles } from 'lucide-react';
+import { DeepSightSpinnerSmall } from '../components/ui/DeepSightSpinner';
 import {
   DebateCreateForm,
   DebateVSLayout,
@@ -603,7 +604,7 @@ export const DebatePage: React.FC = () => {
         </div>
         {historyLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-5 h-5 text-white/30 animate-spin" />
+            <DeepSightSpinnerSmall />
           </div>
         ) : debatesList.length > 0 ? (
           <div className="space-y-2">

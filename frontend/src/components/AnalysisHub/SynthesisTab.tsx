@@ -7,7 +7,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   BookOpen, Copy, Check, GraduationCap, Brain, Tags, Mic,
-  Download, ChevronDown, FileText, FileDown, Share2, Loader2, Headphones
+  Download, ChevronDown, FileText, FileDown, Share2, Headphones
 } from 'lucide-react';
 import { DeepSightSpinnerMicro } from '../ui';
 import { AudioPlayerButton } from '../AudioPlayerButton';

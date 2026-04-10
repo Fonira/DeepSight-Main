@@ -15,8 +15,8 @@ import {
   VolumeX,
   Download,
   X,
-  Loader2,
 } from 'lucide-react';
+import { DeepSightSpinnerSmall } from '../ui/DeepSightSpinner';
 
 interface AudioPlayerProps {
   audioUrl: string;
@@ -282,7 +282,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, title, onClo
               disabled={isLoading}
             >
               {isLoading || isBuffering ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <DeepSightSpinnerSmall />
               ) : hasError ? (
                 <span className="text-xs font-medium px-1">Retry</span>
               ) : isPlaying ? (

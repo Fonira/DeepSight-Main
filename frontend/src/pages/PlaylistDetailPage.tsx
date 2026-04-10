@@ -26,13 +26,14 @@ import {
   type CorpusChatResponse,
 } from '../services/api';
 import {
-  ListVideo, Loader2, AlertCircle, Clock, ArrowLeft,
+  ListVideo, AlertCircle, Clock, ArrowLeft,
   ChevronRight, ChevronLeft, CheckCircle, XCircle,
   RefreshCw, Sparkles, BarChart3, PieChart, TrendingUp,
   FileText, Video, Tag, Layers, MessageSquare,
   Target, Send, Trash2, Bot, User, BookOpen,
   ExternalLink, Hash, Pencil, MoreVertical, X, Check,
 } from 'lucide-react';
+import { DeepSightSpinnerMicro, DeepSightSpinner } from '../components/ui/DeepSightSpinner';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -223,7 +224,7 @@ const VideoListItem: React.FC<{
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-xs text-amber-400">
-              <Loader2 className="w-3 h-3" />
+              <DeepSightSpinnerMicro />
               {language === 'fr' ? 'En attente' : 'Pending'}
             </span>
           )}
@@ -455,7 +456,9 @@ const CorpusChat: React.FC<{
   if (isFetchingHistory) {
     return (
       <div className="card p-8 text-center">
-        <Loader2 className="w-8 h-8 animate-spin text-accent-primary mx-auto mb-2" />
+        <div className="flex justify-center mb-2">
+          <DeepSightSpinner size="md" />
+        </div>
         <p className="text-text-muted">{language === 'fr' ? 'Chargement du chat...' : 'Loading chat...'}</p>
       </div>
     );
@@ -621,7 +624,7 @@ const CorpusChat: React.FC<{
             </div>
             <div className="bg-bg-secondary rounded-xl p-4">
               <div className="flex items-center gap-2 text-text-muted">
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <DeepSightSpinnerMicro />
                 <span className="text-sm">{language === 'fr' ? 'Analyse du corpus...' : 'Analyzing corpus...'}</span>
               </div>
             </div>
@@ -928,7 +931,9 @@ export const PlaylistDetailPage: React.FC = () => {
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <Loader2 className="w-12 h-12 animate-spin text-accent-primary mx-auto mb-4" />
+            <div className="flex justify-center mb-4">
+              <DeepSightSpinner size="lg" />
+            </div>
             <p className="text-text-secondary">
               {language === 'fr' ? 'Chargement du corpus...' : 'Loading corpus...'}
             </p>
@@ -1006,7 +1011,7 @@ export const PlaylistDetailPage: React.FC = () => {
                       disabled={isSavingRename || !renameValue.trim()}
                       className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
                     >
-                      {isSavingRename ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                      {isSavingRename ? <DeepSightSpinnerMicro /> : <Check className="w-4 h-4" />}
                     </button>
                     <button
                       onClick={() => setIsRenaming(false)}
@@ -1061,7 +1066,7 @@ export const PlaylistDetailPage: React.FC = () => {
                   className="btn btn-primary"
                 >
                   {isRegenerating ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <DeepSightSpinnerMicro />
                   ) : (
                     <Sparkles className="w-4 h-4" />
                   )}
@@ -1229,7 +1234,7 @@ export const PlaylistDetailPage: React.FC = () => {
                     className="btn btn-primary"
                   >
                     {isRegenerating ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <DeepSightSpinnerMicro />
                     ) : (
                       <Sparkles className="w-4 h-4" />
                     )}
@@ -1392,7 +1397,7 @@ export const PlaylistDetailPage: React.FC = () => {
                   className="px-4 py-2 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
                   {isDeleting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <DeepSightSpinnerMicro />
                   ) : (
                     <Trash2 className="w-4 h-4" />
                   )}

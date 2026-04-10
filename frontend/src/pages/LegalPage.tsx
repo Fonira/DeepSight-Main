@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { Sidebar } from '../components/layout/Sidebar';
 import DoodleBackground from '../components/DoodleBackground';
+import { SEO } from '../components/SEO';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📋 DONNÉES LÉGALES
@@ -862,6 +863,12 @@ const LegalPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-bg-primary relative">
+      <SEO
+        title="Mentions légales"
+        description="Mentions légales, conditions générales d'utilisation et politique de confidentialité de DeepSight."
+        path="/legal"
+        keywords="DeepSight, mentions légales, CGU, RGPD, confidentialité, données personnelles"
+      />
       <DoodleBackground variant="academic" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
 

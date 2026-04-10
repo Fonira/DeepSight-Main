@@ -21,6 +21,7 @@ import { ThemeToggle } from '../components/ThemeToggle';
 import { useToast } from '../components/Toast';
 import DoodleBackground from '../components/DoodleBackground';
 import { SEO } from '../components/SEO';
+import { DeepSightSpinnerSmall } from '../components/ui/DeepSightSpinner';
 
 const VoiceSettingsPanel = React.lazy(() => import('../components/voice/VoiceSettings'));
 
@@ -380,7 +381,7 @@ export const Settings: React.FC = () => {
               <div className="panel-body">
                 <React.Suspense fallback={
                   <div className="flex items-center justify-center p-8">
-                    <div className="animate-spin w-6 h-6 border-2 border-accent-primary border-t-transparent rounded-full" />
+                    <DeepSightSpinnerSmall />
                   </div>
                 }>
                   <VoiceSettingsPanel />

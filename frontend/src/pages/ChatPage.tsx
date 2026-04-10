@@ -15,10 +15,11 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Send, Bot, User, ArrowLeft, Loader2,
+  Send, Bot, User, ArrowLeft,
   Copy, Check, Globe, ExternalLink, Sparkles, MessageSquare,
   Search, Video, Clock, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
+import { DeepSightSpinnerMicro, DeepSightSpinnerSmall } from '../components/ui/DeepSightSpinner';
 import { videoApi, chatApi, Summary } from '../services/api';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from '../hooks/useAuth';
@@ -360,7 +361,7 @@ const ChatPage: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-1.5" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.05) transparent' }}>
         {isLoadingAnalyses ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-4 h-4 text-white/15 animate-spin" />
+            <DeepSightSpinnerMicro />
           </div>
         ) : filteredAnalyses.length === 0 ? (
           <div className="text-center py-8 px-3">
@@ -542,7 +543,7 @@ const ChatPage: React.FC = () => {
                   {/* Loading */}
                   {isLoadingMessages && (
                     <div className="flex items-center justify-center py-12">
-                      <Loader2 className="w-5 h-5 text-white/15 animate-spin" />
+                      <DeepSightSpinnerSmall />
                     </div>
                   )}
 

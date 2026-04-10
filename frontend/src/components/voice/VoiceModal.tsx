@@ -12,12 +12,12 @@ import {
   MicOff,
   Phone,
   PhoneOff,
-  Loader2,
   AlertCircle,
   ArrowUpCircle,
   RotateCcw,
   Settings2,
 } from 'lucide-react';
+import { DeepSightSpinner } from '../ui/DeepSightSpinner';
 import { useTranslation } from '../../hooks/useTranslation';
 
 interface VoiceModalProps {
@@ -217,7 +217,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
       case 'connecting':
         return (
           <div className="flex flex-col items-center gap-4">
-            <Loader2 className="w-10 h-10 text-indigo-400 animate-spin" />
+            <DeepSightSpinner size="lg" />
             <p className="text-white/60 text-sm">
               {tr('Connexion en cours...', 'Connecting...')}
             </p>

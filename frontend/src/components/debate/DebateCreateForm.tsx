@@ -4,7 +4,8 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wand2, Link2, Swords, Loader2, ArrowRight } from 'lucide-react';
+import { Wand2, Link2, Swords, ArrowRight } from 'lucide-react';
+import { DeepSightSpinnerMicro } from '../ui/DeepSightSpinner';
 
 interface DebateCreateFormProps {
   onSubmit: (data: { mode: 'auto' | 'manual'; urlA: string; urlB?: string }) => void;
@@ -135,7 +136,7 @@ export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({ onSubmit, lo
         >
           {loading ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <DeepSightSpinnerMicro />
               Analyse en cours…
             </>
           ) : (

@@ -15,9 +15,10 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  BookOpen, Brain, ChevronLeft, Loader2, AlertCircle,
+  BookOpen, Brain, ChevronLeft, AlertCircle,
   BookMarked, HelpCircle, Star, Zap,
 } from 'lucide-react';
+import { DeepSightSpinner, DeepSightSpinnerMicro } from '../components/ui/DeepSightSpinner';
 import {
   FlashcardDeck, QuizQuestion, StudyProgress, ScoreCard,
   ConfidenceButtons, SessionResults,
@@ -394,7 +395,9 @@ export const StudyPage: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
         <div className="relative z-10 flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <Loader2 className="w-12 h-12 text-indigo-400 animate-spin mx-auto mb-4" />
+            <div className="flex justify-center mb-4">
+              <DeepSightSpinner size="lg" />
+            </div>
             <p className="text-gray-400">{loadingMessage}</p>
             {!autoSession && (
               <p className="text-gray-500 text-sm mt-2">
@@ -599,7 +602,9 @@ export const StudyPage: React.FC = () => {
             ) : (
               /* Loading cards */
               <div className="text-center py-16">
-                <Loader2 className="w-8 h-8 text-indigo-400 animate-spin mx-auto mb-4" />
+                <div className="flex justify-center mb-4">
+                  <DeepSightSpinner size="lg" />
+                </div>
                 <p className="text-gray-400">
                   {language === 'fr' ? 'Chargement des cartes...' : 'Loading cards...'}
                 </p>
@@ -627,7 +632,7 @@ export const StudyPage: React.FC = () => {
                            disabled:opacity-50 transition-all"
                 >
                   {isStartingSession ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <DeepSightSpinnerMicro />
                   ) : (
                     <Zap className="w-4 h-4" />
                   )}

@@ -28,9 +28,9 @@ import {
   History,
   Sparkles,
   ChevronRight,
-  Loader2,
   AlertCircle
 } from 'lucide-react';
+import { DeepSightSpinner } from '../components/ui/DeepSightSpinner';
 import { DashboardLayout } from '../components/layout/DashboardLayout';
 import { StatCard, ActivityChart, UsageProgress, CategoryPieChart } from '../components/analytics';
 
@@ -185,7 +185,9 @@ export const AnalyticsPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 py-8">
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center">
-              <Loader2 className="w-10 h-10 text-accent-primary animate-spin mx-auto mb-4" />
+              <div className="flex justify-center mb-4">
+                <DeepSightSpinner size="lg" />
+              </div>
               <p className="text-text-secondary">
                 {t('Chargement des statistiques...', 'Loading statistics...')}
               </p>

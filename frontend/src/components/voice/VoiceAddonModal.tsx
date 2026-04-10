@@ -5,7 +5,8 @@
 
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Mic, Sparkles, ArrowRight, Loader2, Star, Zap } from 'lucide-react';
+import { X, Mic, Sparkles, ArrowRight, Star, Zap } from 'lucide-react';
+import { DeepSightSpinnerMicro } from '../ui/DeepSightSpinner';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '../../hooks/useTranslation';
 import { voiceApi } from '../../services/api';
@@ -235,7 +236,7 @@ export const VoiceAddonModal: React.FC<VoiceAddonModalProps> = ({
                           )}
                         >
                           {isLoading ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <DeepSightSpinnerMicro />
                           ) : (
                             tr('Acheter', 'Buy')
                           )}

@@ -4,8 +4,9 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Check, Search, BarChart3, Scale, ShieldCheck, Loader2, XCircle } from 'lucide-react';
+import { Check, Search, BarChart3, Scale, ShieldCheck, XCircle } from 'lucide-react';
 import type { DebateStatus } from '../../types/debate';
+import { DeepSightSpinnerMicro } from '../ui/DeepSightSpinner';
 
 interface DebateStatusTrackerProps {
   status: DebateStatus;
@@ -89,7 +90,7 @@ export const DebateStatusTracker: React.FC<DebateStatusTrackerProps> = ({ status
                         animate={{ scale: [1, 1.5, 1], opacity: [0.4, 0, 0.4] }}
                         transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
                       />
-                      <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+                      <DeepSightSpinnerMicro />
                     </>
                   ) : (
                     <StepIcon className="w-4 h-4 text-white/30" />

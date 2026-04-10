@@ -10,7 +10,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { SEO } from '../components/SEO';
 
-import { Mail, Lock, AlertCircle, Eye, EyeOff, ArrowLeft, Loader2 } from 'lucide-react';
+import { Mail, Lock, AlertCircle, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { DeepSightSpinnerMicro } from '../components/ui/DeepSightSpinner';
 
 // === Google Icon ===
 const GoogleIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -396,7 +397,7 @@ export const Login: React.FC = () => {
                     disabled={loading || verificationCode.length !== 6}
                     className="w-full btn btn-primary py-2.5"
                   >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : t.common.confirm}
+                    {loading ? <DeepSightSpinnerMicro /> : t.common.confirm}
                   </button>
                 </form>
 
@@ -490,7 +491,7 @@ export const Login: React.FC = () => {
                     whileTap={{ scale: 0.98 }}
                   >
                     {loading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <DeepSightSpinnerMicro />
                     ) : isRegister ? (
                       t.auth.createAccount
                     ) : (

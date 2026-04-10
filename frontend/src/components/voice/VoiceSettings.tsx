@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { voiceApi } from '../../services/api';
+import { DeepSightSpinner, DeepSightSpinnerMicro } from '../ui/DeepSightSpinner';
 import type {
   VoicePreferences,
   VoiceCatalogEntry,
@@ -110,7 +111,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({ onClose, compact = false 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <div className="animate-spin w-8 h-8 border-2 border-indigo-400 border-t-transparent rounded-full" />
+        <DeepSightSpinner size="md" />
         <span className="ml-3 text-white/60">Chargement des paramètres vocaux...</span>
       </div>
     );
@@ -614,7 +615,7 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({ onClose, compact = false 
       {/* Saving indicator */}
       {saving && (
         <div className="fixed bottom-6 right-6 bg-indigo-500/90 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm">
-          <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+          <DeepSightSpinnerMicro />
           Enregistrement...
         </div>
       )}

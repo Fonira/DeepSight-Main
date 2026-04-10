@@ -22,6 +22,7 @@ import {
   Cpu,
 } from "lucide-react";
 import { statusApi, type DeepSystemStatus, type ServiceStatus } from "../services/api";
+import { SEO } from '../components/SEO';
 
 // ───────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -221,6 +222,12 @@ export default function StatusPage() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary,#0a0a0f)] text-[var(--text-primary,#f5f5f7)]">
+      <SEO
+        title="Statut des services"
+        description="État en temps réel des services DeepSight : API, base de données, IA, paiements."
+        path="/status"
+        keywords="DeepSight, statut, services, API, uptime, monitoring"
+      />
       {/* Header */}
       <header className="border-b border-[var(--border-subtle,#ffffff0d)] bg-[var(--bg-secondary,#111118)]">
         <div className="max-w-3xl mx-auto px-4 py-5 flex items-center justify-between">

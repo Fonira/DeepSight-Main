@@ -4,7 +4,8 @@
  */
 
 import { useState, useCallback } from "react";
-import { Share2, Check, Loader2 } from "lucide-react";
+import { Share2, Check } from "lucide-react";
+import { DeepSightSpinnerMicro } from "./ui/DeepSightSpinner";
 import { shareApi } from "../services/api";
 
 interface ShareButtonProps {
@@ -63,7 +64,7 @@ export function ShareButton({ videoId, videoTitle, className = "", iconOnly = fa
         aria-label="Share analysis"
       >
         {loading ? (
-          <Loader2 className="w-4 h-4 animate-spin" />
+          <DeepSightSpinnerMicro />
         ) : copied ? (
           <Check className="w-4 h-4 text-green-400" />
         ) : (
@@ -81,7 +82,7 @@ export function ShareButton({ videoId, videoTitle, className = "", iconOnly = fa
       aria-label="Share analysis"
     >
       {loading ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
+        <DeepSightSpinnerMicro />
       ) : copied ? (
         <Check className="w-4 h-4 text-green-400" />
       ) : (
