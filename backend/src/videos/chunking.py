@@ -597,5 +597,112 @@ async def process_video_chunks(
             "full_digest_chars": len(full_digest)
         }
     )
-    
+
+    return full_digest
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔄 PIPELINE OPTIMISÉ — Réutilise les VideoChunks existants
+# ═══════════════════════════════════════════════════════════════════════════════
+
+async def build_full_digest_from_existing_chunks(
+    summary_id: int,
+    video_title: str,
+    video_duration: int,
+    db: AsyncSession,
+    category: str = "general",
+) -> str:
+    """
+    Assemble le full_digest à partir des VideoChunks DÉJÀ créés par
+    long_video_analyzer (System A), sans re-chunker ni re-digester.
+
+    Si les chunks existent en DB avec chunk_digest rempli → on assemble
+    directement le full_digest (1 seul appel Mistral Large au lieu de N+1).
+
+    Si les chunks existent SANS digest → on digeste chaque chunk, puis assemble.
+    Si aucun chunk n'existe → fallback vers le pipeline complet.
+
+    Returns:
+        Le full_digest assemblé, ou "" si pas de chunks.
+    """
+    from db.database import VideoChunk, Summary
+
+    # Charger les chunks existants
+    result = await db.execute(
+        select(VideoChunk)
+        .where(VideoChunk.summary_id == summary_id)
+        .order_by(VideoChunk.chunk_index)
+    )
+    db_chunks = result.scalars().all()
+
+    if not db_chunks:
+        logger.info(
+            "no_existing_chunks_for_digest",
+            extra={"summary_id": summary_id}
+        )
+        return ""
+
+    logger.info(
+        "building_digest_from_existing_chunks",
+        extra={"summary_id": summary_id, "chunk_count": len(db_chunks)}
+    )
+
+    # Convertir les DB chunks en ChunkData
+    chunks_data = []
+    needs_digesting = False
+
+    for db_chunk in db_chunks:
+        chunk = ChunkData(
+            index=db_chunk.chunk_index,
+            start_seconds=db_chunk.start_seconds or 0,
+            end_seconds=db_chunk.end_seconds or 0,
+            text=db_chunk.chunk_text or "",
+            digest=db_chunk.chunk_digest,
+        )
+        chunks_data.append(chunk)
+        if not chunk.digest:
+            needs_digesting = True
+
+    # Si certains chunks n'ont pas de digest → les digester
+    if needs_digesting:
+        logger.info("digesting_missing_chunks", extra={"summary_id": summary_id})
+        semaphore = asyncio.Semaphore(MAX_CONCURRENT_DIGESTS)
+
+        async def digest_if_missing(chunk: ChunkData) -> ChunkData:
+            if not chunk.digest and chunk.text:
+                async with semaphore:
+                    chunk.digest = await digest_chunk(chunk, video_title, category)
+                    # Mettre à jour en DB aussi
+                    for db_c in db_chunks:
+                        if db_c.chunk_index == chunk.index:
+                            db_c.chunk_digest = chunk.digest
+                            break
+            return chunk
+
+        tasks = [digest_if_missing(c) for c in chunks_data]
+        chunks_data = await asyncio.gather(*tasks)
+        await db.flush()
+
+    # Assembler le full_digest
+    full_digest = await build_full_digest(
+        chunks_data, video_title, video_duration, category
+    )
+
+    # Sauvegarder dans Summary
+    result = await db.execute(select(Summary).where(Summary.id == summary_id))
+    summary = result.scalar_one_or_none()
+    if summary:
+        summary.full_digest = full_digest
+
+    await db.commit()
+
+    logger.info(
+        "digest_from_existing_chunks_complete",
+        extra={
+            "summary_id": summary_id,
+            "chunk_count": len(chunks_data),
+            "full_digest_chars": len(full_digest),
+        }
+    )
+
     return full_digest

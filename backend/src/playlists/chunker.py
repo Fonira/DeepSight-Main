@@ -36,13 +36,8 @@ CHUNK_CONFIGS = {
     "ultra":     {"chunk_words": 1800, "overlap": 250, "max_summary_tokens": 800},
 }
 
-# Limites Mistral (en tokens, ~4 chars/token)
-MISTRAL_CONTEXT_LIMITS = {
-    "mistral-small-2603": 32000,
-    "mistral-medium-2508": 128000,
-    "mistral-large-2512": 128000,
-    "ministral-8b-2410": 128000,
-}
+# Limites Mistral — importées depuis core/config (source of truth unique)
+from core.config import MISTRAL_CONTEXT_WINDOWS as MISTRAL_CONTEXT_LIMITS
 
 # Estimation chars → tokens
 CHARS_PER_TOKEN = 4

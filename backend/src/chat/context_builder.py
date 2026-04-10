@@ -51,9 +51,20 @@ SHORT_VIDEO_TRANSCRIPT_LIMIT = 25_000   # < 30 min → transcript complet
 MEDIUM_VIDEO_TRANSCRIPT_LIMIT = 80_000  # 30 min – 1h30 → digest + segments
 # > 80K → digest + résumé structuré uniquement
 
-# Limites par consumer
-MAX_CONTEXT_VOICE = 12_000    # ElevenLabs — réduit pour baisser la latence (was 28K)
+# Limites par consumer — chat
 MAX_CONTEXT_CHAT = 50_000     # Mistral (mode expert 25K tokens ≈ 50K chars)
+
+# Limites voice adaptatives par tier — v3.0
+# Plus la vidéo est longue, plus le full_digest est important et doit rentrer.
+MAX_CONTEXT_VOICE = 12_000    # Fallback par défaut
+MAX_CONTEXT_VOICE_BY_TIER = {
+    "micro": 8_000,       # Vidéo très courte, peu de contexte nécessaire
+    "short": 10_000,
+    "medium": 12_000,
+    "long": 16_000,       # Conférences : le digest aide beaucoup
+    "extended": 20_000,   # Podcasts 1h+ : full_digest (6-10K) + metadata
+    "marathon": 24_000,   # 2h+ : full_digest complet + summary key points
+}
 
 # Taille des sections
 MAX_FACT_CHECK_CHARS = 3_000
@@ -107,8 +118,13 @@ class RichContext:
     total_chars: int = 0
 
     def format_for_voice(self, language: str = "fr") -> str:
-        """Formate le contexte complet pour le system prompt vocal ElevenLabs."""
-        return _format_context(self, max_chars=MAX_CONTEXT_VOICE, language=language, mode="voice")
+        """Formate le contexte complet pour le system prompt vocal ElevenLabs.
+
+        v3.0 : Limite adaptative par tier. Les vidéos longues obtiennent plus
+        de contexte pour inclure le full_digest complet.
+        """
+        voice_limit = MAX_CONTEXT_VOICE_BY_TIER.get(self.video_tier, MAX_CONTEXT_VOICE)
+        return _format_context(self, max_chars=voice_limit, language=language, mode="voice")
 
     def format_for_chat(self, language: str = "fr", mode: str = "standard") -> str:
         """Formate le contexte complet pour le chat textuel Mistral."""

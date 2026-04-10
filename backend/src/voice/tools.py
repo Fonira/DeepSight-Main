@@ -115,15 +115,42 @@ async def search_in_transcript(
         if not transcript or not transcript.strip():
             return "Aucun transcript disponible pour cette vidéo."
 
-        segments = split_into_segments(transcript, max_words=200)
-        if not segments:
-            return "Le transcript est vide."
-
         query_words = set(query.lower().split())
         if not query_words:
             return "La requête de recherche est vide."
 
-        # ── Scoring amélioré : intersection + bonus phrase exacte ───────
+        # ── v3.0 : Utiliser smart_search BM25 (même scoring que le chat) ───────
+        try:
+            from videos.smart_search import (
+                search_relevant_passages,
+                format_passages_for_chat,
+            )
+
+            video_duration = summary.video_duration or 0
+            passages = search_relevant_passages(
+                question=query,
+                transcript=transcript,
+                video_duration=video_duration,
+                max_passages=5,
+            )
+            if passages:
+                # Formater pour la lecture vocale (max 1500 mots)
+                result = format_passages_for_chat(passages, max_total_words=1500)
+                if result:
+                    logger.info(
+                        "search_in_transcript: smart_search found %d passages",
+                        len(passages),
+                        extra={"summary_id": summary_id, "result_chars": len(result)},
+                    )
+                    return result
+        except Exception as e:
+            logger.warning("search_in_transcript: smart_search fallback: %s", e)
+
+        # ── Fallback : scoring par intersection (legacy) ───────
+        segments = split_into_segments(transcript, max_words=200)
+        if not segments:
+            return "Le transcript est vide."
+
         query_lower = query.lower()
         scored: list[tuple[float, int, str]] = []
         for idx, segment in enumerate(segments):
@@ -132,11 +159,9 @@ async def search_in_transcript(
             intersection = query_words & segment_words
             base_score = len(intersection) / len(query_words)
 
-            # Bonus si la phrase exacte (ou sous-chaîne significative) est trouvée
             if query_lower in segment_lower:
                 base_score += 0.5
             elif len(query_lower) > 10:
-                # Bonus partiel pour sous-phrases de 3+ mots
                 query_parts = query_lower.split()
                 for i in range(len(query_parts) - 2):
                     sub = " ".join(query_parts[i:i+3])
@@ -148,7 +173,7 @@ async def search_in_transcript(
                 scored.append((base_score, idx, segment))
 
         scored.sort(key=lambda x: x[0], reverse=True)
-        top = scored[:5]  # Top 5 pour meilleure couverture
+        top = scored[:5]
 
         if not top:
             return (
@@ -158,7 +183,6 @@ async def search_in_transcript(
 
         parts: list[str] = []
         for score, idx, segment in top:
-            # Tronquer si trop long pour la lecture vocale
             display = segment[:600] + "..." if len(segment) > 600 else segment
             parts.append(f"[Segment {idx + 1}] {display}")
 

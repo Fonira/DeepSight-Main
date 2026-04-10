@@ -1,6 +1,6 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
-║  🎬 DURATION ROUTER v2.0 — Routeur intelligent adaptatif par durée de vidéo       ║
+║  🎬 DURATION ROUTER v3.0 — Routeur intelligent adaptatif par durée de vidéo       ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
 ║  Catégorise les vidéos AVANT l'analyse et route vers le pipeline adapté.          ║
 ║                                                                                   ║
@@ -12,7 +12,10 @@
 ║  5. EXTENDED (45min-2h) — Podcasts/cours : chunking complet                      ║
 ║  6. MARATHON (2h+)      — Interviews/playlists : chunking large + résumé hiérar. ║
 ║                                                                                   ║
-║  Features v2.0 :                                                                  ║
+║  Features v3.0 :                                                                  ║
+║  • Routage intelligent des modèles Mistral par (tier × plan × tâche)             ║
+║  • Concurrence adaptative par tier (2→4 chunks simultanés)                       ║
+║  • Synthèse hiérarchique pour vidéos ultra-longues (6h+, >25 chunks)             ║
 ║  • Stop-words bilingues FR+EN (détection auto de la langue)                       ║
 ║  • N-grams (bigrams) pour concepts multi-mots                                    ║
 ║  • Fallback intelligent quand pas de timestamps (estimation par chars/seconde)    ║
@@ -152,6 +155,200 @@ TIER_CONFIG = {
         "chat_chunk_context": 5000,
     },
 }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🧠 ROUTAGE INTELLIGENT DES MODÈLES MISTRAL v3.0
+# ═══════════════════════════════════════════════════════════════════════════════
+# Sélection du modèle optimal selon (tier × plan × tâche).
+# Règle clé : la synthèse finale utilise le meilleur modèle accessible,
+# y compris un upgrade automatique pour les vidéos longues, car c'est 1 seul
+# appel API et la différence de qualité est massive.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Modèles Mistral disponibles (importés depuis core/config si possible, sinon inline)
+_MODEL_SMALL = "mistral-small-2603"
+_MODEL_MEDIUM = "mistral-medium-2508"
+_MODEL_LARGE = "mistral-large-2512"
+_MODEL_INTERNAL = "ministral-8b-2512"
+
+# Concurrence adaptative par tier pour le chunking parallèle
+CONCURRENT_CHUNKS_BY_TIER = {
+    VideoTier.MICRO: 1,
+    VideoTier.SHORT: 1,
+    VideoTier.MEDIUM: 2,
+    VideoTier.LONG: 2,
+    VideoTier.EXTENDED: 3,    # Était 2 — optimisé pour réduire le temps de traitement
+    VideoTier.MARATHON: 4,    # Était 2 — une vidéo 3h passe de 3min à 1.5min
+}
+
+# Seuil de chunks au-delà duquel on utilise la synthèse hiérarchique
+HIERARCHICAL_SYNTHESIS_THRESHOLD = 25
+
+# Taille des groupes pour la synthèse hiérarchique
+HIERARCHICAL_GROUP_SIZE = 8
+
+
+# ── Matrice de sélection modèle ──────────────────────────────────────────────
+# Format : _MODEL_MATRIX[task][(tier_group, plan)] = (model_id, max_tokens)
+#
+# tier_group:
+#   "light"  = MICRO, SHORT
+#   "medium" = MEDIUM, LONG
+#   "heavy"  = EXTENDED, MARATHON
+
+_TIER_GROUP = {
+    VideoTier.MICRO: "light",
+    VideoTier.SHORT: "light",
+    VideoTier.MEDIUM: "medium",
+    VideoTier.LONG: "medium",
+    VideoTier.EXTENDED: "heavy",
+    VideoTier.MARATHON: "heavy",
+}
+
+_MODEL_MATRIX = {
+    # ── Analyse de chunk individuel (léger, rapide, beaucoup d'appels) ──
+    "chunk_analysis": {
+        ("light", "free"):    (_MODEL_SMALL,    1500),
+        ("light", "plus"):    (_MODEL_SMALL,    1500),
+        ("light", "pro"):     (_MODEL_SMALL,    1500),
+        ("medium", "free"):   (_MODEL_SMALL,    2000),
+        ("medium", "plus"):   (_MODEL_SMALL,    2000),
+        ("medium", "pro"):    (_MODEL_SMALL,    2000),
+        ("heavy", "free"):    (_MODEL_SMALL,    2000),
+        ("heavy", "plus"):    (_MODEL_SMALL,    2000),
+        ("heavy", "pro"):     (_MODEL_SMALL,    2000),
+    },
+
+    # ── Synthèse finale (1 appel, qualité critique) ──
+    # Upgrade automatique pour les vidéos longues : un user free obtient
+    # quand même medium pour la synthèse d'une vidéo EXTENDED/MARATHON.
+    "synthesis": {
+        ("light", "free"):    (_MODEL_SMALL,    3000),
+        ("light", "plus"):    (_MODEL_MEDIUM,   4000),
+        ("light", "pro"):     (_MODEL_MEDIUM,   4000),
+        ("medium", "free"):   (_MODEL_MEDIUM,   4000),   # upgrade auto
+        ("medium", "plus"):   (_MODEL_MEDIUM,   5000),
+        ("medium", "pro"):    (_MODEL_LARGE,    6000),
+        ("heavy", "free"):    (_MODEL_MEDIUM,   5000),   # upgrade auto
+        ("heavy", "plus"):    (_MODEL_LARGE,    6000),   # upgrade auto
+        ("heavy", "pro"):     (_MODEL_LARGE,    8000),
+    },
+
+    # ── Synthèse intermédiaire (hiérarchique, groupes de 8-10 chunks) ──
+    "intermediate_synthesis": {
+        ("light", "free"):    (_MODEL_SMALL,    2000),
+        ("light", "plus"):    (_MODEL_SMALL,    2000),
+        ("light", "pro"):     (_MODEL_SMALL,    2000),
+        ("medium", "free"):   (_MODEL_SMALL,    2500),
+        ("medium", "plus"):   (_MODEL_SMALL,    2500),
+        ("medium", "pro"):    (_MODEL_MEDIUM,   3000),
+        ("heavy", "free"):    (_MODEL_SMALL,    2500),
+        ("heavy", "plus"):    (_MODEL_MEDIUM,   3000),
+        ("heavy", "pro"):     (_MODEL_MEDIUM,   3000),
+    },
+
+    # ── Digest background (chunking.py — plus léger, moins critique) ──
+    "digest": {
+        ("light", "free"):    (_MODEL_INTERNAL, 700),
+        ("light", "plus"):    (_MODEL_INTERNAL, 700),
+        ("light", "pro"):     (_MODEL_INTERNAL, 700),
+        ("medium", "free"):   (_MODEL_INTERNAL, 700),
+        ("medium", "plus"):   (_MODEL_INTERNAL, 700),
+        ("medium", "pro"):    (_MODEL_INTERNAL, 700),
+        ("heavy", "free"):    (_MODEL_SMALL,    800),   # upgrade pour MARATHON
+        ("heavy", "plus"):    (_MODEL_SMALL,    800),
+        ("heavy", "pro"):     (_MODEL_SMALL,    800),
+    },
+
+    # ── Assemblage du full_digest (1 appel, qualité importante) ──
+    "digest_assembly": {
+        ("light", "free"):    (_MODEL_SMALL,    2000),
+        ("light", "plus"):    (_MODEL_MEDIUM,   3000),
+        ("light", "pro"):     (_MODEL_MEDIUM,   3000),
+        ("medium", "free"):   (_MODEL_MEDIUM,   3000),
+        ("medium", "plus"):   (_MODEL_MEDIUM,   4000),
+        ("medium", "pro"):    (_MODEL_LARGE,    4000),
+        ("heavy", "free"):    (_MODEL_MEDIUM,   4000),
+        ("heavy", "plus"):    (_MODEL_LARGE,    4000),
+        ("heavy", "pro"):     (_MODEL_LARGE,    5000),
+    },
+}
+
+
+def get_optimal_model(
+    tier: VideoTier,
+    user_plan: str = "free",
+    task: str = "chunk_analysis",
+    transcript_words: int = 0,
+) -> Tuple[str, int]:
+    """
+    Retourne (model_id, max_tokens) optimaux pour une tâche donnée.
+
+    Le routage prend en compte :
+    - Le tier de la vidéo (durée)
+    - Le plan de l'utilisateur (free/plus/pro)
+    - Le type de tâche (chunk_analysis, synthesis, digest, etc.)
+    - Le nombre de mots du transcript (bonus pour les ultra-longs)
+
+    La synthèse finale utilise toujours le meilleur modèle accessible
+    car c'est 1 seul appel API et la qualité change tout.
+
+    Args:
+        tier: Tier de la vidéo (VideoTier enum)
+        user_plan: Plan de l'utilisateur ("free", "plus", "pro")
+        task: Type de tâche
+        transcript_words: Nombre de mots dans le transcript (optionnel)
+
+    Returns:
+        Tuple (model_id, max_tokens)
+    """
+    # Normaliser le plan
+    plan = user_plan.lower().strip()
+    if plan in ("starter", "student", "étudiant"):
+        plan = "plus"
+    elif plan in ("expert", "equipe", "unlimited", "team"):
+        plan = "pro"
+    elif plan not in ("free", "plus", "pro"):
+        plan = "free"
+
+    # Déterminer le groupe de tier
+    tier_group = _TIER_GROUP.get(tier, "medium")
+
+    # Lookup dans la matrice
+    matrix = _MODEL_MATRIX.get(task, _MODEL_MATRIX["chunk_analysis"])
+    key = (tier_group, plan)
+    model_id, max_tokens = matrix.get(key, (_MODEL_SMALL, 2000))
+
+    # Bonus tokens pour les transcripts ultra-longs (>45K mots ≈ 3h)
+    if transcript_words > 45000 and task == "synthesis":
+        max_tokens = min(max_tokens + 2000, 12000)
+    elif transcript_words > 15000 and task == "synthesis":
+        max_tokens = min(max_tokens + 1000, 10000)
+
+    logger.info(
+        "model_routed",
+        extra={
+            "tier": tier.value,
+            "plan": plan,
+            "task": task,
+            "model": model_id,
+            "max_tokens": max_tokens,
+            "transcript_words": transcript_words,
+        }
+    )
+
+    return model_id, max_tokens
+
+
+def get_concurrent_chunks(tier: VideoTier) -> int:
+    """Retourne le nombre de chunks à traiter en parallèle selon le tier."""
+    return CONCURRENT_CHUNKS_BY_TIER.get(tier, 2)
+
+
+def needs_hierarchical_synthesis(num_chunks: int) -> bool:
+    """Détermine si la synthèse hiérarchique est nécessaire (>25 chunks)."""
+    return num_chunks > HIERARCHICAL_SYNTHESIS_THRESHOLD
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

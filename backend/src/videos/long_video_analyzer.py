@@ -1,6 +1,6 @@
 """
 ╔════════════════════════════════════════════════════════════════════════════════════╗
-║  📚 LONG VIDEO ANALYZER v2.0 — TRAITEMENT INTÉGRAL GARANTI                         ║
+║  📚 LONG VIDEO ANALYZER v3.0 — TRAITEMENT INTÉGRAL GARANTI                         ║
 ║  Analyse COMPLÈTE des vidéos longues (2h+) par chunking exhaustif                  ║
 ╠════════════════════════════════════════════════════════════════════════════════════╣
 ║  🎯 GARANTIE: 100% du transcript est analysé, AUCUNE partie ignorée                ║
@@ -10,6 +10,12 @@
 ║  2. Analyser TOUS les chunks (avec retry si échec)                                 ║
 ║  3. Fusionner TOUTES les analyses en synthèse finale                               ║
 ║  4. Vérifier la couverture à 100%                                                  ║
+║                                                                                    ║
+║  v3.0 :                                                                            ║
+║  • Routage intelligent des modèles via get_optimal_model()                         ║
+║  • Concurrence adaptative par tier (2→4 chunks simultanés)                         ║
+║  • Synthèse hiérarchique pour vidéos ultra-longues (6h+, >25 chunks)              ║
+║  • Stockage des chunks en DB pour réutilisation par le digest pipeline             ║
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
@@ -30,25 +36,27 @@ from core.http_client import shared_http_client
 # Seuils pour déclencher le chunking
 LONG_VIDEO_THRESHOLD_WORDS = 5000       # ~20 min de vidéo
 VERY_LONG_VIDEO_THRESHOLD_WORDS = 15000 # ~1h de vidéo
-ULTRA_LONG_VIDEO_THRESHOLD_WORDS = 45000 # ~3h de vidéo (NOUVEAU)
+ULTRA_LONG_VIDEO_THRESHOLD_WORDS = 45000 # ~3h de vidéo
 
 # Taille des chunks — OPTIMISÉE pour garantir un traitement complet
 CHUNK_SIZE_WORDS = 2500                 # 2500 mots max par chunk (plus petit = plus sûr)
 CHUNK_OVERLAP_WORDS = 300               # Chevauchement augmenté pour meilleur contexte
 
 # Retry et robustesse
-MAX_RETRIES_PER_CHUNK = 4               # 4 tentatives par chunk (augmenté)
+MAX_RETRIES_PER_CHUNK = 4               # 4 tentatives par chunk
 RETRY_DELAY_SECONDS = 3                 # Délai entre les tentatives
 
-# Concurrence - réduite pour éviter rate limiting sur vidéos très longues
-MAX_CONCURRENT_CHUNKS = 2               # 2 chunks simultanés max
-CHUNK_TIMEOUT_SECONDS = 180             # Timeout augmenté à 3 min par chunk
+# ⚠️ LEGACY — la concurrence est maintenant gérée par get_concurrent_chunks(tier)
+# dans duration_router.py. Cette constante reste en fallback si tier non fourni.
+MAX_CONCURRENT_CHUNKS = 2               # Fallback si pas de tier
 
-# 🆕 GARANTIE 100% - PAS DE LIMITE sur le nombre de chunks
+CHUNK_TIMEOUT_SECONDS = 180             # Timeout 3 min par chunk
+
+# GARANTIE 100% - PAS DE LIMITE sur le nombre de chunks
 MAX_CHUNKS = None                       # Illimité - on traite TOUT le transcript
 
-# 🆕 Pour le stockage du transcript complet pour le chat IA
-STORE_FULL_TRANSCRIPT = True            # Stocker le transcript complet
+# Pour le stockage du transcript complet pour le chat IA
+STORE_FULL_TRANSCRIPT = True
 MAX_TRANSCRIPT_STORAGE_CHARS = 500000   # 500k caractères max en BDD (~3h de vidéo)
 
 
@@ -562,11 +570,16 @@ async def analyze_chunks_parallel(
     mode: str,
     model: str = "mistral-small-2603",
     max_concurrent: int = MAX_CONCURRENT_CHUNKS,
-    progress_callback = None
+    progress_callback = None,
+    max_tokens_per_chunk: int = 2000,
 ) -> Tuple[List[ChunkAnalysis], AnalysisReport]:
     """
-    🎯 Analyse TOUS les chunks en parallèle avec GARANTIE de traitement complet.
-    
+    Analyse TOUS les chunks en parallèle avec GARANTIE de traitement complet.
+
+    Args:
+        max_concurrent: Nombre de chunks traités en parallèle (adaptatif via tier).
+        max_tokens_per_chunk: Tokens max par réponse de chunk (via get_optimal_model).
+
     Returns:
         Tuple[analyses, report] - Liste des analyses ET rapport de couverture
     """
@@ -695,16 +708,18 @@ async def synthesize_chunk_analyses(
     category: str,
     lang: str,
     mode: str,
-    model: str = "mistral-large-2512",  # Utiliser un modèle plus puissant pour la synthèse
+    model: str = "mistral-large-2512",
     api_key: str = None,
     web_context: str = None,
     upload_date: str = "",
-    view_count: int = 0
+    view_count: int = 0,
+    max_tokens: int = 0,
 ) -> Optional[str]:
     """
     Fusionne les analyses de chunks en une synthèse finale cohérente.
-    
-    Cette étape utilise un modèle plus puissant car c'est la synthèse finale.
+
+    v3.0 : max_tokens est fourni par get_optimal_model().
+    Si max_tokens=0, on utilise les valeurs par défaut par mode.
     """
     api_key = api_key or get_mistral_key()
     if not api_key:
@@ -832,12 +847,14 @@ Crée maintenant la SYNTHÈSE FINALE en {"français" if lang == "fr" else "angla
 ═══════════════════════════════════════════════════════════════════════════════
 """
 
-    # Utiliser plus de tokens pour la synthèse finale
-    max_tokens = {
-        "accessible": 2000,
-        "standard": 4000,
-        "expert": 6000
-    }.get(mode, 4000)
+    # max_tokens : priorité au paramètre fourni par get_optimal_model(),
+    # sinon fallback sur les valeurs par défaut par mode.
+    if not max_tokens:
+        max_tokens = {
+            "accessible": 2000,
+            "standard": 4000,
+            "expert": 6000
+        }.get(mode, 4000)
 
     try:
         async with shared_http_client() as client:
@@ -888,24 +905,22 @@ async def analyze_long_video(
     model: str = "mistral-small-2603",
     web_context: str = None,
     progress_callback = None,
-    transcript_timestamped: str = None,  # 🆕 v3.0: Transcript avec vrais timestamps
-    upload_date: str = "",   # 📅 Contextualisation temporelle
-    view_count: int = 0
+    transcript_timestamped: str = None,
+    upload_date: str = "",
+    view_count: int = 0,
+    user_plan: str = "free",
 ) -> Optional[str]:
     """
-    🎬 Analyse COMPLÈTE d'une vidéo longue avec GARANTIE de traitement intégral.
-    
-    🆕 v3.0: Support des VRAIS timestamps YouTube (plus de timecodes estimés!)
-    
-    ⚠️ GARANTIE: 100% du transcript est analysé. Aucune partie n'est ignorée.
-    
-    Cette fonction:
-    1. Détecte si le chunking est nécessaire
-    2. Divise le transcript en chunks SANS PERTE (avec vrais timestamps)
-    3. Analyse TOUS les chunks (avec retry si échec)
-    4. Vérifie la couverture à 100%
-    5. Fusionne TOUTES les analyses en synthèse finale
-    
+    Analyse COMPLÈTE d'une vidéo longue avec GARANTIE de traitement intégral.
+
+    v3.0 :
+    - Routage intelligent des modèles via get_optimal_model(tier, plan, task)
+    - Concurrence adaptative par tier (2→4 chunks simultanés)
+    - Synthèse hiérarchique pour ultra-longs (>25 chunks / 6h+)
+    - Support des VRAIS timestamps YouTube
+
+    GARANTIE: 100% du transcript est analysé. Aucune partie n'est ignorée.
+
     Args:
         title: Titre de la vidéo
         transcript: Transcript COMPLET (texte brut)
@@ -913,34 +928,58 @@ async def analyze_long_video(
         category: Catégorie détectée
         lang: Langue (fr/en)
         mode: Mode d'analyse (accessible/standard/expert)
-        model: Modèle Mistral à utiliser
+        model: Modèle Mistral (legacy, sera overridé par le routage intelligent)
         web_context: Contexte web optionnel (Perplexity)
         progress_callback: Fonction(progress, message) pour le suivi
-        transcript_timestamped: 🆕 Transcript avec timestamps réels [00:30] text
-    
+        transcript_timestamped: Transcript avec timestamps réels [00:30] text
+        upload_date: Date de publication
+        view_count: Nombre de vues
+        user_plan: Plan utilisateur ("free", "plus", "pro")
+
     Returns:
         Synthèse finale COMPLÈTE ou None si erreur critique
     """
+    from .duration_router import (
+        categorize_video, get_optimal_model, get_concurrent_chunks,
+        needs_hierarchical_synthesis, HIERARCHICAL_GROUP_SIZE, VideoTier,
+    )
+
     needs_chunk, word_count, reason = needs_chunking(transcript)
-    
+
     if not needs_chunk:
         print(f"📝 Standard analysis (no chunking needed): {word_count} words", flush=True)
         return None  # Utiliser l'analyse standard
-    
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # 0. ROUTAGE INTELLIGENT — Modèle + Concurrence adaptative
+    # ═══════════════════════════════════════════════════════════════════════
+    profile = categorize_video(video_duration, transcript, transcript_timestamped)
+    tier = profile.tier
+
+    chunk_model, chunk_max_tokens = get_optimal_model(
+        tier=tier, user_plan=user_plan, task="chunk_analysis", transcript_words=word_count
+    )
+    synthesis_model, synthesis_max_tokens = get_optimal_model(
+        tier=tier, user_plan=user_plan, task="synthesis", transcript_words=word_count
+    )
+    max_concurrent = get_concurrent_chunks(tier)
+
     print(f"", flush=True)
     print(f"╔══════════════════════════════════════════════════════════════════╗", flush=True)
-    print(f"║  📚 LONG VIDEO ANALYSIS v3.0 - REAL TIMESTAMPS                   ║", flush=True)
+    print(f"║  📚 LONG VIDEO ANALYSIS v3.0 - INTELLIGENT MODEL ROUTING         ║", flush=True)
     print(f"╚══════════════════════════════════════════════════════════════════╝", flush=True)
     print(f"📊 Transcript: {word_count} words", flush=True)
     print(f"⏱️ Duration: {video_duration // 60} min {video_duration % 60} sec", flush=True)
-    print(f"📁 Category: {category}", flush=True)
-    print(f"🎯 Mode: {mode}", flush=True)
+    print(f"📁 Category: {category} | 🎯 Mode: {mode} | 👤 Plan: {user_plan}", flush=True)
+    print(f"🧠 Chunk model: {chunk_model} (max {chunk_max_tokens} tokens)", flush=True)
+    print(f"🧠 Synthesis model: {synthesis_model} (max {synthesis_max_tokens} tokens)", flush=True)
+    print(f"⚡ Concurrence: {max_concurrent} chunks simultanés (tier: {tier.value})", flush=True)
     print(f"⏱️ Real timestamps: {'YES ✅' if transcript_timestamped else 'NO (estimated)'}", flush=True)
     print(f"", flush=True)
-    
+
     if progress_callback:
         progress_callback(35, f"📚 Vidéo longue détectée ({word_count} mots)...")
-    
+
     # ═══════════════════════════════════════════════════════════════════════
     # 1. DÉCOUPAGE EN CHUNKS (AVEC VRAIS TIMESTAMPS)
     # ═══════════════════════════════════════════════════════════════════════
@@ -949,19 +988,19 @@ async def analyze_long_video(
         transcript_timestamped=transcript_timestamped or "",
         video_duration=video_duration
     )
-    
+
     # Vérifier que le découpage couvre tout
     total_chunk_words = sum(c.word_count for c in chunks)
     print(f"✂️ Split into {len(chunks)} chunks covering {total_chunk_words} words", flush=True)
-    
+
     for i, chunk in enumerate(chunks):
         print(f"   └─ Chunk {i + 1}: [{chunk.start_time} → {chunk.end_time}] {chunk.word_count} mots", flush=True)
-    
+
     if progress_callback:
         progress_callback(38, f"✂️ Division en {len(chunks)} parties...")
-    
+
     # ═══════════════════════════════════════════════════════════════════════
-    # 2. ANALYSE DE TOUS LES CHUNKS (AVEC RETRY)
+    # 2. ANALYSE DE TOUS LES CHUNKS (AVEC RETRY + CONCURRENCE ADAPTATIVE)
     # ═══════════════════════════════════════════════════════════════════════
     chunk_analyses, report = await analyze_chunks_parallel(
         chunks=chunks,
@@ -969,11 +1008,12 @@ async def analyze_long_video(
         category=category,
         lang=lang,
         mode=mode,
-        model=model,
-        max_concurrent=MAX_CONCURRENT_CHUNKS,
-        progress_callback=progress_callback
+        model=chunk_model,
+        max_concurrent=max_concurrent,
+        progress_callback=progress_callback,
+        max_tokens_per_chunk=chunk_max_tokens,
     )
-    
+
     # Vérifier la couverture
     if report.coverage_percent < 100:
         print(f"⚠️ WARNING: Coverage is {report.coverage_percent:.1f}% (not 100%)", flush=True)
@@ -981,42 +1021,108 @@ async def analyze_long_video(
             print(f"   {warning}", flush=True)
     else:
         print(f"✅ PERFECT: 100% coverage achieved!", flush=True)
-    
+
     if not chunk_analyses:
         print("❌ CRITICAL: No chunk analyses succeeded at all!", flush=True)
         return None
-    
+
     if len(chunk_analyses) < len(chunks) * 0.5:
         print(f"❌ CRITICAL: Too many chunks failed ({len(chunk_analyses)}/{len(chunks)})", flush=True)
-        # Quand même essayer de générer une synthèse partielle
-    
+
     if progress_callback:
         if report.coverage_percent == 100:
             progress_callback(78, f"✅ {len(chunk_analyses)} parties analysées (100%)")
         else:
             progress_callback(78, f"⚠️ {len(chunk_analyses)}/{len(chunks)} parties analysées ({report.coverage_percent:.0f}%)")
-    
+
     # ═══════════════════════════════════════════════════════════════════════
-    # 3. FUSION EN SYNTHÈSE FINALE
+    # 3. FUSION EN SYNTHÈSE FINALE (HIÉRARCHIQUE SI >25 CHUNKS)
     # ═══════════════════════════════════════════════════════════════════════
     if progress_callback:
         progress_callback(80, f"🔄 Fusion des {len(chunk_analyses)} analyses...")
-    
-    # Utiliser un modèle plus puissant pour la synthèse si disponible
-    synthesis_model = "mistral-large-2512" if "large" in model or mode == "expert" else model
-    
-    final_summary = await synthesize_chunk_analyses(
-        analyses=chunk_analyses,
-        video_title=title,
-        video_duration=video_duration,
-        category=category,
-        lang=lang,
-        mode=mode,
-        model=synthesis_model,
-        web_context=web_context,
-        upload_date=upload_date,
-        view_count=view_count
-    )
+
+    if needs_hierarchical_synthesis(len(chunk_analyses)):
+        # ── Synthèse hiérarchique (vidéos ultra-longues 6h+) ──
+        print(f"🏗️ Hierarchical synthesis: {len(chunk_analyses)} chunks > {HIERARCHICAL_GROUP_SIZE} threshold", flush=True)
+
+        inter_model, inter_max_tokens = get_optimal_model(
+            tier=tier, user_plan=user_plan, task="intermediate_synthesis", transcript_words=word_count
+        )
+
+        # Étape 1 : Grouper par blocs et synthétiser chaque groupe
+        groups = []
+        for i in range(0, len(chunk_analyses), HIERARCHICAL_GROUP_SIZE):
+            groups.append(chunk_analyses[i:i + HIERARCHICAL_GROUP_SIZE])
+
+        print(f"   └─ {len(groups)} groupes de ~{HIERARCHICAL_GROUP_SIZE} chunks", flush=True)
+
+        intermediate_analyses = []
+        for g_idx, group in enumerate(groups):
+            if progress_callback:
+                progress_callback(80 + int((g_idx / len(groups)) * 10),
+                                  f"🔄 Synthèse groupe {g_idx + 1}/{len(groups)}...")
+
+            inter_summary = await synthesize_chunk_analyses(
+                analyses=group,
+                video_title=title,
+                video_duration=video_duration,
+                category=category,
+                lang=lang,
+                mode=mode,
+                model=inter_model,
+                max_tokens=inter_max_tokens,
+                web_context=None,  # web_context seulement pour la synthèse finale
+                upload_date=upload_date,
+                view_count=view_count,
+            )
+
+            if inter_summary:
+                # Créer un ChunkAnalysis synthétique pour la synthèse finale
+                time_ranges = [a.time_range for a in group if a.time_range]
+                combined_range = f"{time_ranges[0].split(' - ')[0]} - {time_ranges[-1].split(' - ')[-1]}" if time_ranges else ""
+                intermediate_analyses.append(ChunkAnalysis(
+                    chunk_index=g_idx,
+                    summary=inter_summary,
+                    key_points=[],
+                    important_quotes=[],
+                    topics=[],
+                    time_range=combined_range,
+                    word_count_analyzed=sum(a.word_count_analyzed for a in group),
+                ))
+                print(f"   ✅ Groupe {g_idx + 1}: {len(inter_summary)} chars", flush=True)
+
+        # Étape 2 : Synthèse finale des synthèses intermédiaires
+        if progress_callback:
+            progress_callback(92, f"🧠 Synthèse finale ({synthesis_model})...")
+
+        final_summary = await synthesize_chunk_analyses(
+            analyses=intermediate_analyses,
+            video_title=title,
+            video_duration=video_duration,
+            category=category,
+            lang=lang,
+            mode=mode,
+            model=synthesis_model,
+            max_tokens=synthesis_max_tokens,
+            web_context=web_context,
+            upload_date=upload_date,
+            view_count=view_count,
+        )
+    else:
+        # ── Synthèse directe (vidéos <6h, ≤25 chunks) ──
+        final_summary = await synthesize_chunk_analyses(
+            analyses=chunk_analyses,
+            video_title=title,
+            video_duration=video_duration,
+            category=category,
+            lang=lang,
+            mode=mode,
+            model=synthesis_model,
+            max_tokens=synthesis_max_tokens,
+            web_context=web_context,
+            upload_date=upload_date,
+            view_count=view_count,
+        )
     
     # ═══════════════════════════════════════════════════════════════════════
     # 4. AJOUTER LE RAPPORT DE COUVERTURE À LA SYNTHÈSE

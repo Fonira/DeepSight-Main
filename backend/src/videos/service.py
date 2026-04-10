@@ -482,14 +482,39 @@ async def _run_chunking_background(
     """
     Lance le pipeline de chunking en arrière-plan, sans bloquer le flux principal.
 
+    v3.0 : Essaie d'abord de réutiliser les VideoChunks existants (créés par
+    long_video_analyzer pendant l'analyse synchrone). Si des chunks existent,
+    on évite de re-chunker et re-digester → -50% d'appels API.
+
     Gestion d'erreur robuste : si le chunking échoue, la vidéo est déjà sauvegardée
     (ce n'est qu'une amélioration asynchrone).
     """
     try:
-        from videos.chunking import process_video_chunks
+        from videos.chunking import (
+            process_video_chunks,
+            build_full_digest_from_existing_chunks,
+        )
         from db.database import async_session_maker
 
         async with async_session_maker() as db:
+            # Essayer de réutiliser les chunks existants (System A)
+            full_digest = await build_full_digest_from_existing_chunks(
+                summary_id=summary_id,
+                video_title=video_title,
+                video_duration=video_duration,
+                db=db,
+                category=category,
+            )
+
+            if full_digest:
+                logger.info(
+                    "background_digest_from_existing_chunks",
+                    summary_id=summary_id,
+                    digest_chars=len(full_digest),
+                )
+                return
+
+            # Fallback : pas de chunks existants → pipeline complet
             full_digest = await process_video_chunks(
                 transcript=transcript,
                 video_duration=video_duration,

@@ -1328,7 +1328,8 @@ async def _analyze_video_background_v2(
                     progress_callback=update_progress,
                     transcript_timestamped=transcript_timestamped,
                     upload_date=video_info.get("upload_date", ""),
-                    view_count=video_info.get("view_count") or 0
+                    view_count=video_info.get("view_count") or 0,
+                    user_plan=user_plan,
                 )
             else:
                 # 📊 Calculate engagement rate for prompt
@@ -2120,7 +2121,8 @@ async def _analyze_video_background_v2_1(
                     progress_callback=update_progress,
                     transcript_timestamped=transcript_timestamped,
                     upload_date=video_info.get("upload_date", ""),
-                    view_count=video_info.get("view_count") or 0
+                    view_count=video_info.get("view_count") or 0,
+                    user_plan=user_plan,
                 )
             else:
                 # 📊 Calculate engagement rate for prompt
@@ -2693,7 +2695,7 @@ async def _analyze_video_background_v6(
                     _task_store[task_id]["progress"] = progress
                     _task_store[task_id]["message"] = message
                 
-                # 🆕 v3.0: Analyser avec les VRAIS timestamps YouTube
+                # v3.0: Analyser avec les VRAIS timestamps YouTube + routage intelligent
                 summary_content = await analyze_long_video(
                     title=video_info["title"],
                     transcript=transcript_to_analyze,
@@ -2704,7 +2706,8 @@ async def _analyze_video_background_v6(
                     model=model,
                     web_context=web_context,
                     progress_callback=update_progress,
-                    transcript_timestamped=transcript_timestamped  # 🆕 Vrais timestamps!
+                    transcript_timestamped=transcript_timestamped,
+                    user_plan=user_plan,
                 )
                 
                 if not summary_content:

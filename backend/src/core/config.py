@@ -542,6 +542,23 @@ def resolve_mistral_model(model_id: str) -> str:
     """Résout un alias de modèle legacy vers le nouveau modèle."""
     return MISTRAL_MODEL_ALIASES.get(model_id, model_id)
 
+
+# Context windows centralisés — source of truth unique
+# Valeurs en tokens (pas en caractères).
+MISTRAL_CONTEXT_WINDOWS: Dict[str, int] = {
+    "ministral-8b-2512": 131_072,
+    "mistral-small-2603": 131_072,
+    "mistral-medium-2508": 131_072,
+    "mistral-large-2512": 262_144,
+}
+
+
+def get_context_window(model_id: str) -> int:
+    """Retourne la taille du context window en tokens pour un modèle Mistral."""
+    resolved = resolve_mistral_model(model_id)
+    return MISTRAL_CONTEXT_WINDOWS.get(resolved, 131_072)
+
+
 # =============================================================================
 # CATEGORIES
 # =============================================================================
