@@ -3,7 +3,7 @@ Demo Schemas — Pydantic models for landing page demo endpoints.
 """
 
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -39,6 +39,7 @@ class DemoAnalyzeResponse(BaseModel):
     key_points: List[str] = Field(..., description="3-5 points cles de la video")
     conclusion: str = Field(..., description="Conclusion en 1-2 phrases")
     keywords: List[str] = Field(..., description="3-6 mots-cles")
+    keyword_definitions: Dict[str, str] = Field(default_factory=dict, description="Definition courte de chaque mot-cle")
     # Quota info
     remaining_analyses: int = Field(..., description="Analyses restantes pour cette IP")
 

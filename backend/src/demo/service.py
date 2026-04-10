@@ -159,13 +159,15 @@ Reponds en JSON strict (aucun texte avant/apres) :
 {{
   "key_points": ["point 1", "point 2", "point 3"],
   "conclusion": "Conclusion en 1-2 phrases maximum",
-  "keywords": ["mot1", "mot2", "mot3"]
+  "keywords": ["mot1", "mot2", "mot3"],
+  "keyword_definitions": {{"mot1": "Definition courte en 1 phrase", "mot2": "Definition courte en 1 phrase", "mot3": "Definition courte en 1 phrase"}}
 }}
 
 Contraintes :
 - Exactement 3 a 5 points cles (phrases courtes, percutantes, < 20 mots chacune)
 - Conclusion : 1-2 phrases max
 - 3 a 6 mots-cles pertinents
+- Pour chaque mot-cle, une definition courte (1 phrase, < 20 mots) accessible et pedagogique
 - Langage accessible, pas de jargon"""
 
 
@@ -173,10 +175,10 @@ async def generate_demo_summary(
     title: str,
     channel: str,
     transcript: str,
-) -> Tuple[List[str], str, List[str]]:
+) -> Tuple[List[str], str, List[str], Dict[str, str]]:
     """
     Generate ultra-short demo summary using Mistral.
-    Returns (key_points, conclusion, keywords).
+    Returns (key_points, conclusion, keywords, keyword_definitions).
     """
     from core.config import get_mistral_key
 
@@ -213,12 +215,13 @@ async def generate_demo_summary(
         key_points = data.get("key_points", [])[:5]
         conclusion = data.get("conclusion", "")
         keywords = data.get("keywords", [])[:6]
+        keyword_definitions = data.get("keyword_definitions", {})
 
         if not key_points:
             raise ValueError("No key_points in response")
 
         logger.info(f"[DEMO] Summary generated: {len(key_points)} points, {len(keywords)} keywords")
-        return key_points, conclusion, keywords
+        return key_points, conclusion, keywords, keyword_definitions
 
     except Exception as e:
         logger.error(f"[DEMO] Summary generation failed: {e}")

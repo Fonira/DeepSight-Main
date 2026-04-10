@@ -3,7 +3,8 @@
  * Affiche thumbnail, metadata, points cles animes, conclusion et keywords.
  */
 
-import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import type { DemoAnalyzeResult } from '../../services/api';
 
 interface DemoResultCardProps {
@@ -11,6 +12,11 @@ interface DemoResultCardProps {
 }
 
 export default function DemoResultCard({ result }: DemoResultCardProps) {
+  const [activeKeyword, setActiveKeyword] = useState<string | null>(null);
+
+  const handleKeywordClick = (keyword: string) => {
+    setActiveKeyword(prev => prev === keyword ? null : keyword);
+  };
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -110,7 +116,7 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
           </motion.div>
         )}
 
-        {/* Keywords */}
+        {/* Keywords — cliquables avec definitions */}
         {result.keywords.length > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -120,14 +126,40 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
           >
             <div className="flex flex-wrap gap-1.5">
               {result.keywords.map((keyword, index) => (
-                <span
+                <button
                   key={index}
-                  className="px-2.5 py-1 bg-white/[0.03] border border-white/[0.06] rounded-full text-[11px] text-white/40"
+                  onClick={() => handleKeywordClick(keyword)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] transition-all duration-200 cursor-pointer ${
+                    activeKeyword === keyword
+                      ? 'bg-indigo-500/15 border border-indigo-500/30 text-indigo-300'
+                      : 'bg-white/[0.03] border border-white/[0.06] text-white/40 hover:bg-white/[0.06] hover:text-white/60 hover:border-white/10'
+                  }`}
                 >
                   #{keyword}
-                </span>
+                </button>
               ))}
             </div>
+
+            {/* Definition popover */}
+            <AnimatePresence>
+              {activeKeyword && result.keyword_definitions?.[activeKeyword] && (
+                <motion.div
+                  key={activeKeyword}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.2 }}
+                  className="mt-2.5 p-3 rounded-xl backdrop-blur-xl bg-white/[0.06] border border-white/10"
+                >
+                  <div className="flex items-start gap-2">
+                    <span className="text-indigo-400 text-xs font-semibold shrink-0">#{activeKeyword}</span>
+                    <p className="text-white/60 text-xs leading-relaxed">
+                      {result.keyword_definitions[activeKeyword]}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
 

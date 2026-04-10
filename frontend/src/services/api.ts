@@ -784,6 +784,7 @@ export interface DemoAnalyzeResult {
   key_points: string[];
   conclusion: string;
   keywords: string[];
+  keyword_definitions?: Record<string, string>;
   remaining_analyses: number;
 }
 

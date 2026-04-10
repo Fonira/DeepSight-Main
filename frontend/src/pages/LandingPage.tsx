@@ -23,7 +23,7 @@ import { SEO } from "../components/SEO";
 import { videoApi, demoApi } from "../services/api";
 import type { DemoAnalyzeResult } from "../services/api";
 import { sanitizeTitle } from '../utils/sanitize';
-import { DemoResultCard, DemoChatMini, DemoCTA } from '../components/demo';
+import { DemoResultCard, DemoChatMini, DemoCTA, DemoFeaturesShowcase } from '../components/demo';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ANIMATION HELPERS
@@ -411,6 +411,13 @@ const LandingPage: React.FC = () => {
   // Enhanced demo state (new ultra-short + chat)
   const [demoResult, setDemoResult] = useState<DemoAnalyzeResult | null>(null);
   const [demoChatExhausted, setDemoChatExhausted] = useState(false);
+  const demoResultRef = useRef<HTMLDivElement>(null);
+
+  const scrollToDemoResult = () => {
+    setTimeout(() => {
+      demoResultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 400);
+  };
 
   // Extract URL from clipboard text (YouTube mobile sometimes includes title + URL)
   const extractUrlFromText = (text: string): string => {
@@ -481,6 +488,7 @@ const LandingPage: React.FC = () => {
       // Use new demo API (ultra-short summary + session for chat)
       const result = await demoApi.analyze(url);
       setDemoResult(result);
+      scrollToDemoResult();
 
       // Also set legacy guestResult for backward compat
       setGuestResult({
@@ -761,6 +769,7 @@ const LandingPage: React.FC = () => {
             <AnimatePresence>
               {demoResult && (
                 <motion.div
+                  ref={demoResultRef}
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5, ease }}
@@ -768,6 +777,9 @@ const LandingPage: React.FC = () => {
                 >
                   {/* Ultra-short summary card */}
                   <DemoResultCard result={demoResult} />
+
+                  {/* Features showcase — conversation IA vocale, flashcards, etc. */}
+                  <DemoFeaturesShowcase language={language} onSignup={() => navigate('/login?tab=register')} />
 
                   {/* Mini chat AI */}
                   {!demoChatExhausted && (

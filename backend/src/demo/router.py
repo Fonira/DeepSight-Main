@@ -194,7 +194,7 @@ async def demo_analyze(request: DemoAnalyzeRequest, raw_request: Request):
     video_channel = video_info.get("channel", video_info.get("author", ""))
 
     try:
-        key_points, conclusion, keywords = await generate_demo_summary(
+        key_points, conclusion, keywords, keyword_definitions = await generate_demo_summary(
             title=video_title,
             channel=video_channel,
             transcript=transcript_text,
@@ -230,6 +230,7 @@ async def demo_analyze(request: DemoAnalyzeRequest, raw_request: Request):
         key_points=key_points,
         conclusion=conclusion,
         keywords=keywords,
+        keyword_definitions=keyword_definitions,
         remaining_analyses=max(0, analyses_remaining),
     )
 

@@ -75,14 +75,20 @@ export default function DemoChatMini({ demoSessionId, videoTitle, onExhausted }:
         onExhausted();
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Erreur';
-      if (errorMessage.includes('DEMO_CHAT_LIMIT') || errorMessage.includes('429')) {
+      const status = (err as { status?: number }).status;
+      const errorMessage = err instanceof Error ? err.message : '';
+      if (status === 429 || errorMessage.includes('DEMO_CHAT_LIMIT')) {
         setExhausted(true);
         onExhausted();
+      } else if (status === 404) {
+        setMessages(prev => [
+          ...prev,
+          { role: 'assistant', content: 'Session expiree. Relancez une analyse pour continuer.' },
+        ]);
       } else {
         setMessages(prev => [
           ...prev,
-          { role: 'assistant', content: 'Desole, une erreur est survenue. Reessayez.' },
+          { role: 'assistant', content: 'Erreur temporaire. Reessayez dans quelques secondes.' },
         ]);
       }
     } finally {
