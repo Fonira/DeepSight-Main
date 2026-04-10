@@ -922,7 +922,7 @@ async def analyze_long_video(
     upload_date: str = "",
     view_count: int = 0,
     user_plan: str = "free",
-) -> Optional[str]:
+) -> Optional[LongVideoResult]:
     """
     Analyse COMPLÈTE d'une vidéo longue avec GARANTIE de traitement intégral.
 

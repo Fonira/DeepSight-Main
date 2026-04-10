@@ -1336,6 +1336,21 @@ async def _analyze_video_background_v2(
                     user_plan=user_plan,
                 )
                 summary_content = _long_video_result.summary if isinstance(_long_video_result, LongVideoResult) else _long_video_result
+                # Fallback si la synthèse a échoué
+                if not summary_content:
+                    print("⚠️ [v3.0] Long video analysis returned empty summary, falling back to truncated", flush=True)
+                    truncated = " ".join(transcript_to_analyze.split()[:8000])
+                    summary_content = await generate_summary(
+                        title=video_info["title"], transcript=truncated,
+                        category=category, lang=lang, mode=mode, model=model,
+                        duration=video_duration, channel=video_info.get("channel", ""),
+                        description=video_info.get("description", "") + "\n\n⚠️ NOTE: Cette vidéo est très longue. Seule la première partie a été analysée.",
+                        web_context=full_context, video_id=video_id,
+                        upload_date=video_info.get("upload_date", ""),
+                        view_count=video_info.get("view_count") or 0,
+                        like_count=video_info.get("like_count") or 0,
+                        channel_follower_count=video_info.get("channel_follower_count") or 0,
+                    )
             else:
                 # 📊 Calculate engagement rate for prompt
                 _vi_vc = video_info.get("view_count") or 0
@@ -2140,6 +2155,21 @@ async def _analyze_video_background_v2_1(
                     user_plan=user_plan,
                 )
                 summary_content = _long_video_result2.summary if isinstance(_long_video_result2, LongVideoResult) else _long_video_result2
+                # Fallback si la synthèse a échoué
+                if not summary_content:
+                    print("⚠️ [v3.0] Long video analysis returned empty summary, falling back to truncated", flush=True)
+                    truncated = " ".join(transcript_to_analyze.split()[:8000])
+                    summary_content = await generate_summary(
+                        title=video_info["title"], transcript=truncated,
+                        category=category, lang=lang, mode=mode, model=model,
+                        duration=video_duration, channel=video_info.get("channel", ""),
+                        description=video_info.get("description", "") + "\n\n⚠️ NOTE: Cette vidéo est très longue. Seule la première partie a été analysée.",
+                        web_context=full_context, video_id=video_id,
+                        upload_date=video_info.get("upload_date", ""),
+                        view_count=video_info.get("view_count") or 0,
+                        like_count=video_info.get("like_count") or 0,
+                        channel_follower_count=video_info.get("channel_follower_count") or 0,
+                    )
             else:
                 # 📊 Calculate engagement rate for prompt
                 _vi_vc2 = video_info.get("view_count") or 0
