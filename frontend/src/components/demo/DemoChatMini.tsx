@@ -50,9 +50,11 @@ export default function DemoChatMini({ demoSessionId, videoTitle, onExhausted }:
     loadSuggestions();
   }, [demoSessionId]);
 
-  // Auto-scroll
+  // Auto-scroll only when there are messages (avoid scrolling page on initial render)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages]);
 
   const sendMessage = async (text: string) => {
