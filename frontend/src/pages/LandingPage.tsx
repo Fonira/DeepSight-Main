@@ -470,7 +470,7 @@ const LandingPage: React.FC = () => {
 
   const handleGuestAnalyze = async () => {
     const url = guestUrl.trim();
-    if (!url || guestLoading || guestExhausted) return;
+    if (!url || guestLoading) return;
     setGuestError(null);
 
     // Validate URL format before calling API
@@ -662,28 +662,8 @@ const LandingPage: React.FC = () => {
             transition={{ duration: 0.6, ease, delay: 0.4 }}
             className="mb-16 max-w-xl mx-auto"
           >
-            {guestExhausted && !guestResult ? (
-              /* All analyses used — CTA to register */
-              <div className="flex flex-col items-center gap-3">
-                <p className="text-sm text-text-tertiary">
-                  {language === 'fr' ? 'Vous avez utilisé vos 3 analyses gratuites' : 'You\'ve used your 3 free analyses'}
-                </p>
-                <motion.button
-                  onClick={() => navigate('/login?tab=register')}
-                  className="inline-flex items-center justify-center gap-2 px-7 py-3 rounded-lg bg-accent-primary text-white font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  {language === 'fr' ? 'Créer un compte gratuit' : 'Create a free account'}
-                  <ArrowRight className="w-4 h-4" />
-                </motion.button>
-                <p className="text-xs text-text-muted">
-                  {language === 'fr' ? '3 analyses/mois gratuites avec un compte' : '3 free analyses/month with an account'}
-                </p>
-              </div>
-            ) : !guestResult || (!guestExhausted && guestResult) ? (
-              /* Input inline */
-              <div className="space-y-3">
+            {/* Input inline — always visible, backend enforces rate limit */}
+            <div className="space-y-3">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleGuestPaste}
@@ -763,7 +743,6 @@ const LandingPage: React.FC = () => {
                   )}
                 </AnimatePresence>
               </div>
-            ) : null}
 
             {/* Demo Result — Enhanced (ultra-short card + chat) */}
             <AnimatePresence>
