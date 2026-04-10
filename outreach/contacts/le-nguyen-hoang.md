@@ -88,38 +88,44 @@ Tournesol est deja integre dans DeepSight sur toutes les plateformes (web, mobil
 
 ## Brouillons
 
-### Email v1 — 2026-04-10 (version initiale, remplacee par v2)
+### Email v1 — 2026-04-10 (version initiale — archivee)
 
-~~Version business/partenariat classique — archivee.~~
+~~Version business/partenariat classique.~~
 
-### Email v2 — 2026-04-10 (version finale, angle ethique/regulation)
+### Email v2 — 2026-04-10 (angle ethique — archivee)
 
-**Objet** : DeepSight x Tournesol — Pour une IA au service de la comprehension, pas du chaos
+~~Bon angle ethique mais ne mentionne pas le stade pre-lancement.~~
+
+### Email v3 — 2026-04-10 (VERSION FINALE — transparent, pre-lancement, ethique)
+
+**Objet** : DeepSight x Tournesol — Integration de vos scores avant notre lancement
 
 Bonjour Le,
 
-Je me permets de vous ecrire parce que je crois qu'on partage une conviction fondamentale : l'IA doit etre un outil au service de la comprehension et de l'esprit critique, pas une machine a engagement ou a profit.
+Je me permets de vous ecrire parce que je crois qu'on partage une conviction : l'IA doit etre un outil au service de la comprehension et de l'esprit critique, pas une machine a engagement ou a profit.
 
-Je suis Maxime Le Parc, fondateur de DeepSight (deepsightsynthesis.com). On developpe un outil d'analyse de videos YouTube propulse par Mistral AI — syntheses structurees, fact-checking, flashcards, quiz. L'idee n'est pas de consommer plus de contenu, mais de mieux comprendre celui qu'on regarde.
+Je suis Maxime Le Parc, fondateur de DeepSight (deepsightsynthesis.com). Je developpe un outil d'analyse de videos YouTube propulse par Mistral AI — syntheses structurees, fact-checking, flashcards, quiz. L'idee n'est pas de consommer plus de contenu, mais de mieux comprendre celui qu'on regarde.
 
-Et c'est exactement pour ca que nous avons integre Tournesol dans notre plateforme.
+Je suis transparent : DeepSight est en phase de pre-lancement. Le produit est fonctionnel (web, mobile, extension Chrome), mais je n'ai pas encore d'utilisateurs. Je vous contacte maintenant, avant le lancement, justement parce que je veux construire les choses correctement des le depart.
 
-Concretement, depuis plusieurs mois, sur nos 3 interfaces (web, mobile, extension Chrome) :
+Et Tournesol fait partie des fondations.
+
+Concretement, j'ai integre Tournesol dans les 3 interfaces de DeepSight :
 - Chaque video analysee affiche son score Tournesol avec les 10 criteres
-- Vos scores alimentent notre algorithme de decouverte (20% du poids)
-- Une section "Recommandations Tournesol" figure sur notre dashboard
-- Le badge 🌻 redirige nos utilisateurs vers tournesol.app pour qu'ils contribuent
+- Vos scores alimentent l'algorithme de decouverte (20% du poids)
+- Une section "Recommandations Tournesol" figure sur le dashboard
+- Le badge 🌻 redirige vers tournesol.app pour inciter a contribuer
 
-Nous avons vu que la base de donnees publique est sous licence ODC-By, et nous vous attribuons dans nos credits, notre footer et nos pages "A propos". Mais au-dela de la licence, je tenais a vous contacter directement : est-ce que cette utilisation vous convient ? Et surtout, est-ce qu'on peut faire mieux ensemble ?
+J'ai vu que la base de donnees publique est sous licence ODC-By, et j'attribue Tournesol dans les credits, le footer et les pages "A propos". Mais au-dela de la licence, je tenais a vous ecrire directement : est-ce que cette utilisation vous convient ?
 
-Ce qui nous rapproche, je crois, c'est la meme lecture du probleme : les algorithmes de recommandation actuels amplifient le bruit, la desinformation et l'engagement toxique. Tournesol propose une alternative citoyenne par le jugement collaboratif. DeepSight propose une alternative individuelle par l'analyse en profondeur et la verification. Les deux approches se completent.
+Ce qui m'a amene vers Tournesol, c'est la meme lecture du probleme : les algorithmes de recommandation actuels amplifient le bruit, la desinformation et l'engagement toxique. Tournesol propose une alternative citoyenne par le jugement collaboratif. DeepSight propose une alternative individuelle par l'analyse en profondeur et la verification. Je crois que les deux approches se completent.
 
-Ce que DeepSight apporte a Tournesol aujourd'hui :
-- Vos scores exposes a nos utilisateurs sur 3 plateformes
-- Du trafic vers tournesol.app (deep links, badge cliquable)
-- Un cas concret d'integration de votre plateforme dans un produit
+A terme, quand DeepSight aura des utilisateurs, ca representera :
+- Vos scores exposes sur 3 plateformes a un public qui ne connait pas forcement Tournesol
+- Du trafic redirige vers tournesol.app
+- De nouveaux contributeurs potentiels pour vos comparaisons
 
-DeepSight est 100% propulse par Mistral AI, donnees hebergees en Europe. On ne vend pas de l'attention — on essaie d'outiller les gens pour qu'ils pensent mieux.
+DeepSight est 100% propulse par Mistral AI, donnees hebergees en Europe. Je ne vends pas de l'attention — j'essaie d'outiller les gens pour qu'ils pensent mieux.
 
 Si vous etes ouvert a un echange, meme court, j'en serais tres heureux.
 
@@ -128,6 +134,55 @@ Maxime Le Parc
 Fondateur, DeepSight
 maxime@deepsightsynthesis.com
 https://www.deepsightsynthesis.com
+
+---
+
+## Pieces jointes a envoyer avec le mail
+
+1. **Screenshot #1** : Section "Recommandations Tournesol" sur le dashboard
+   - URL : deepsightsynthesis.com → se connecter → dashboard (sans video selectionnee)
+   - Montre : grille 12 videos, badges scores couleur, criteres fiabilite/pedagogie
+   - C'est LE screenshot le plus impactant
+
+2. **Screenshot #2** : Widget Tournesol detaille sur une analyse
+   - URL : dashboard → analyser une video qui a un score Tournesol
+   - Montre : grand score dore, 10 criteres avec barres, bouton "Comparer"
+   - Cliquer sur l'icone info pour deplier le detail
+
+3. **Screenshot #3** (optionnel) : Badges inline dans l'historique
+   - URL : /history
+   - Montre : liste de videos avec petit badge 🌻 + score a cote de chaque titre
+
+4. **One-pager** : Fichier `outreach/campaigns/tournesol-one-pager.txt`
+   - Resume technique de l'integration (endpoints, attribution, pourquoi)
+   - A joindre en PDF ou copier dans le corps du mail si les screenshots suffisent
+
+---
+
+## Strategie d'envoi
+
+### Avant d'envoyer
+- [ ] Prendre les 2-3 screenshots sur deepsightsynthesis.com (mode sombre)
+- [ ] Relire le mail, adapter a ta voix si besoin
+- [ ] Verifier que l'envoi est depuis maxime@deepsightsynthesis.com
+- [ ] Joindre screenshots + optionnellement le one-pager
+
+### Timing
+- **Ce soir** : envoyer l'email a len@science4all.org
+- **J+2 a J+4** : rejoindre le Discord Tournesol (discord.gg/WvcSG55Bf3), observer quelques messages
+- **J+5** : se presenter dans #general (version courte, voir campaigns/tournesol-partenariat.md)
+- **J+7 sans reponse** : relance legere par LinkedIn
+- **J+14 sans reponse** : dernier message LinkedIn, puis passer a autre chose pour l'instant
+
+### Scenarios probables
+
+| Scenario | Proba | Reaction |
+|----------|-------|----------|
+| Pas de reponse | 55-60% | Relance Discord J+5, LinkedIn J+7. Revenir post-lancement avec metriques. |
+| "OK, pas de souci" | 25-30% | Remercier, demander si mention wiki possible, proposer un call. |
+| Interet actif | 10-12% | Proposer un call, discuter mention croisee, contribution repo. |
+| Reserves | 5-8% | Respecter a la lettre, remercier, revenir avec metriques. |
+| Refus | <2% | Quasi impossible vu la licence ODC-By. Remercier et continuer. |
 
 ---
 

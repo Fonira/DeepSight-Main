@@ -1,0 +1,103 @@
+DeepSight x Tournesol — Integration Overview
+=============================================
+
+Qu'est-ce que DeepSight ?
+-------------------------
+
+DeepSight est un outil d'analyse de videos YouTube propulse par Mistral AI.
+Il transforme n'importe quelle video en synthese structuree avec fact-checking,
+timestamps cliquables, flashcards, quiz et mind maps.
+
+DeepSight est disponible sur 3 plateformes : web, mobile (iOS/Android),
+et extension Chrome.
+
+DeepSight est en phase de pre-lancement. Le produit est fonctionnel
+et l'integration Tournesol est deja en production.
+
+Site : https://www.deepsightsynthesis.com
+Stack IA : 100% Mistral AI — donnees hebergees en Europe
+
+
+Comment Tournesol est integre
+-----------------------------
+
+1. WIDGET TOURNESOL (sur chaque analyse de video)
+   - Score global affiche avec l'icone tournesol
+   - Les 10 criteres detailles : fiabilite, pedagogie, importance,
+     accessibilite, diversite, engagement, meilleures habitudes...
+   - Barres de progression colorees pour chaque critere
+   - Bouton "Comparer" → lien direct vers tournesol.app/comparison
+   - Section educative expliquant pourquoi Tournesol existe
+
+2. RECOMMANDATIONS TOURNESOL (dashboard principal)
+   - Grille de 12 videos recommandees par Tournesol
+   - Scores codes par couleur (vert >60, jaune 40-59, orange <40)
+   - Mini-criteres affiches (fiabilite, pedagogie)
+   - Nombre de contributeurs par video
+   - Filtre par langue (FR / EN / Tous)
+   - Offset aleatoire pour varier les recommandations
+
+3. ALGORITHME DE DECOUVERTE
+   - Les scores Tournesol representent 20% du poids dans le classement
+   - Les videos avec un score > 0.55 recoivent le badge "Tournesol Pick"
+   - L'objectif : mettre en avant les videos de qualite evaluees
+     par la communaute citoyenne Tournesol
+
+4. BADGE INLINE (historique et listes)
+   - Chaque video dans l'historique affiche un badge tournesol compact
+   - Score visible en un coup d'oeil
+   - Clic → redirection vers tournesol.app pour contribuer
+
+
+Attribution
+-----------
+
+Tournesol est credite dans :
+- La page "A propos" (web + mobile)
+- Le footer du site
+- Le fichier CREDITS.md du projet
+- Le header "Powered by tournesol.app" sur la section recommandations
+
+Les requetes API incluent le header :
+User-Agent: DeepSight/1.0 (tournesol-integration)
+
+
+Donnees techniques
+------------------
+
+API utilisee     : api.tournesol.app (publique, sans authentification)
+Endpoints        : /polls/videos/entities/yt:{id}
+                   /polls/videos/recommendations/
+Licence donnees  : ODC-By v1.0 (Open Data Commons Attribution)
+Proxy CORS       : Le backend DeepSight relaye les requetes
+                   (l'API Tournesol ne renvoie pas de headers CORS)
+Batch            : Maximum 20 videos par requete
+Cache            : En memoire par session de decouverte
+
+
+Pourquoi Tournesol dans DeepSight
+---------------------------------
+
+DeepSight et Tournesol partagent la meme lecture du probleme :
+les algorithmes de recommandation actuels maximisent le temps d'ecran,
+pas la qualite ni la veracite du contenu.
+
+Tournesol propose une alternative citoyenne : des evaluations
+collaboratives par des humains, agreges par un algorithme transparent.
+
+DeepSight propose une alternative individuelle : une analyse en profondeur
+de chaque video, avec verification des sources et outils d'apprentissage.
+
+Les deux approches se completent.
+Integrer Tournesol dans DeepSight, c'est dire a nos futurs utilisateurs :
+"Ne faites pas confiance aveuglément aux algorithmes. Voici ce que
+la communaute citoyenne pense de cette video."
+
+
+Contact
+-------
+
+Maxime Le Parc
+Fondateur, DeepSight
+maxime@deepsightsynthesis.com
+https://www.deepsightsynthesis.com
