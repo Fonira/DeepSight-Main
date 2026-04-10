@@ -519,7 +519,17 @@ async function request<T>(
             .join(', ');
         } else if (rawDetail && typeof rawDetail === 'object') {
           const detailObj = rawDetail as Record<string, unknown>;
-          errorMessage = (detailObj.message as string) || (detailObj.error as string) || errorMessage;
+          if (typeof detailObj.message === 'string') {
+            errorMessage = detailObj.message;
+          } else if (typeof detailObj.error === 'string') {
+            errorMessage = detailObj.error;
+          } else if (detailObj.error && typeof detailObj.error === 'object') {
+            // Nested error object: {"status": "error", "error": {"code": "...", "message": "..."}}
+            const nestedError = detailObj.error as Record<string, unknown>;
+            errorMessage = (typeof nestedError.message === 'string' ? nestedError.message : null)
+              || (typeof nestedError.code === 'string' ? nestedError.code : null)
+              || errorMessage;
+          }
         } else if (errorData.message && typeof errorData.message === 'string') {
           errorMessage = errorData.message;
         }
