@@ -38,6 +38,12 @@ router = APIRouter()
 MAX_DEMO_ANALYSES = 3
 _demo_usage: Dict[str, List[float]] = {}
 
+# Whitelisted IPs bypass demo rate limits (env: DEMO_WHITELIST_IPS, comma-separated)
+import os
+_WHITELIST_IPS: set = set(
+    ip.strip() for ip in os.environ.get("DEMO_WHITELIST_IPS", "").split(",") if ip.strip()
+)
+
 
 def _get_client_ip(request: Request) -> str:
     """Extract client IP from request."""
@@ -49,6 +55,9 @@ def _get_client_ip(request: Request) -> str:
 
 def _check_rate_limit(client_ip: str) -> int:
     """Check and enforce rate limit. Returns remaining analyses."""
+    if client_ip in _WHITELIST_IPS:
+        return 999
+
     now = time.time()
 
     # Clean expired timestamps
@@ -62,6 +71,9 @@ def _check_rate_limit(client_ip: str) -> int:
 
 def _record_usage(client_ip: str) -> int:
     """Record an analysis usage. Returns remaining after this one."""
+    if client_ip in _WHITELIST_IPS:
+        return 999
+
     now = time.time()
     if client_ip not in _demo_usage:
         _demo_usage[client_ip] = []
