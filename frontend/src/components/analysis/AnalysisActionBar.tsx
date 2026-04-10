@@ -97,10 +97,10 @@ const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
       whileHover={{ scale: 1.04 }}
       whileTap={{ scale: 0.96 }}
       className={`
-        flex items-center gap-2.5
-        px-4 py-2.5 sm:px-5 sm:py-3
-        rounded-xl
-        text-sm font-medium
+        flex items-center gap-2
+        px-3 py-2 sm:px-4 sm:py-2.5
+        rounded-lg
+        text-[13px] font-medium
         transition-all duration-200
         outline-none
         focus-visible:ring-2 focus-visible:ring-indigo-500/40
@@ -290,8 +290,8 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
           style={{ background: 'linear-gradient(90deg, transparent, #6366f1, #8b5cf6, #06b6d4, transparent)' }}
         />
 
-        <div className="px-4 py-4 sm:px-6 sm:py-5">
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
+        <div className="px-3 py-3 sm:px-4 sm:py-3.5">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
 
             {/* ═══════════════════════════════════════════════════════════
                  HERO CTA — Voice Agent (ElevenLabs)
@@ -300,10 +300,10 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
               onClick={isVoiceLocked ? undefined : onOpenVoice}
               disabled={isVoiceLocked}
               className={`
-                relative flex items-center gap-3 sm:gap-4
-                px-5 sm:px-7 py-3.5 sm:py-4
+                relative flex items-center gap-2.5 sm:gap-3
+                px-4 sm:px-5 py-2.5 sm:py-3
                 rounded-xl
-                font-semibold text-sm sm:text-base
+                font-semibold text-sm
                 transition-all duration-300
                 outline-none
                 focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0f]
@@ -324,13 +324,13 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
             >
               {/* Icon container */}
               <div className={`
-                relative flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center
+                relative flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center
                 ${isVoiceLocked ? 'bg-white/5' : 'bg-gradient-to-br from-indigo-500/30 to-violet-500/30'}
               `}>
                 {isVoiceLocked ? (
-                  <Lock className="w-5 h-5 sm:w-6 sm:h-6 text-white/30" />
+                  <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-white/30" />
                 ) : (
-                  <VoiceAgentIcon className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-300 group-hover:text-indigo-200 transition-colors" />
+                  <VoiceAgentIcon className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-300 group-hover:text-indigo-200 transition-colors" />
                 )}
                 {!isVoiceLocked && (
                   <div className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -341,7 +341,7 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
               <div className="flex flex-col items-start min-w-0">
                 <span className={`
                   font-bold tracking-tight truncate
-                  ${isVoiceLocked ? 'text-white/40 text-sm' : 'text-white/90 group-hover:text-white text-sm sm:text-base'}
+                  ${isVoiceLocked ? 'text-white/40 text-[13px]' : 'text-white/90 group-hover:text-white text-[13px] sm:text-sm'}
                   transition-colors
                 `}>
                   {isVoiceLocked
@@ -369,7 +369,7 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
             {/* ═══════════════════════════════════════════════════════════
                  ACTION BUTTONS
                  ═══════════════════════════════════════════════════════════ */}
-            <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap lg:flex-nowrap lg:ml-auto">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap lg:flex-nowrap lg:ml-auto">
 
               {/* Copier */}
               <ActionButton
