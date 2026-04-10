@@ -63,7 +63,8 @@ from .analysis import (
     calculate_reliability_score, CATEGORIES as ANALYSIS_CATEGORIES
 )
 from .long_video_analyzer import (
-    needs_chunking, analyze_long_video, get_chunk_stats
+    needs_chunking, analyze_long_video, get_chunk_stats,
+    LongVideoResult, store_chunks_in_db,
 )
 from .web_enrichment import (
     get_pre_analysis_context, get_enrichment_level, get_enrichment_badge,
@@ -1309,6 +1310,9 @@ async def _analyze_video_background_v2(
             video_duration = video_info.get("duration", 0)
             needs_chunk, word_count, chunk_reason = needs_chunking(transcript_to_analyze)
 
+            # Variable pour stocker les chunks (remplie si vidéo longue)
+            _long_video_result = None
+
             if needs_chunk:
                 _task_store[task_id]["message"] = f"📚 Vidéo longue ({word_count} mots)..."
 
@@ -1316,7 +1320,7 @@ async def _analyze_video_background_v2(
                     _task_store[task_id]["progress"] = progress
                     _task_store[task_id]["message"] = message
 
-                summary_content = await analyze_long_video(
+                _long_video_result = await analyze_long_video(
                     title=video_info["title"],
                     transcript=transcript_to_analyze,
                     video_duration=video_duration,
@@ -1331,6 +1335,7 @@ async def _analyze_video_background_v2(
                     view_count=video_info.get("view_count") or 0,
                     user_plan=user_plan,
                 )
+                summary_content = _long_video_result.summary if isinstance(_long_video_result, LongVideoResult) else _long_video_result
             else:
                 # 📊 Calculate engagement rate for prompt
                 _vi_vc = video_info.get("view_count") or 0
@@ -1464,6 +1469,13 @@ async def _analyze_video_background_v2(
                 video_info.get("duration", 0),
                 transcript, transcript_timestamped
             )
+
+            # v3.0: Stocker les VideoChunks pour réutilisation par le digest pipeline
+            if isinstance(_long_video_result, LongVideoResult) and _long_video_result.chunks:
+                try:
+                    await store_chunks_in_db(_long_video_result, summary_id, session)
+                except Exception as chunk_err:
+                    print(f"⚠️ [v3.0] VideoChunk storage failed (non-blocking): {chunk_err}", flush=True)
 
             # Incrémenter le quota quotidien
             try:
@@ -2102,6 +2114,9 @@ async def _analyze_video_background_v2_1(
             video_duration = video_info.get("duration", 0)
             needs_chunk, word_count, chunk_reason = needs_chunking(transcript_to_analyze)
 
+            # Variable pour stocker les chunks (remplie si vidéo longue)
+            _long_video_result2 = None
+
             if needs_chunk:
                 _task_store[task_id]["message"] = f"📚 Vidéo longue ({word_count} mots)..."
 
@@ -2109,7 +2124,7 @@ async def _analyze_video_background_v2_1(
                     _task_store[task_id]["progress"] = progress
                     _task_store[task_id]["message"] = message
 
-                summary_content = await analyze_long_video(
+                _long_video_result2 = await analyze_long_video(
                     title=video_info["title"],
                     transcript=transcript_to_analyze,
                     video_duration=video_duration,
@@ -2124,6 +2139,7 @@ async def _analyze_video_background_v2_1(
                     view_count=video_info.get("view_count") or 0,
                     user_plan=user_plan,
                 )
+                summary_content = _long_video_result2.summary if isinstance(_long_video_result2, LongVideoResult) else _long_video_result2
             else:
                 # 📊 Calculate engagement rate for prompt
                 _vi_vc2 = video_info.get("view_count") or 0
@@ -2273,6 +2289,13 @@ async def _analyze_video_background_v2_1(
                 video_info.get("duration", 0),
                 transcript, transcript_timestamped
             )
+
+            # v3.0: Stocker les VideoChunks pour réutilisation par le digest pipeline
+            if isinstance(_long_video_result2, LongVideoResult) and _long_video_result2.chunks:
+                try:
+                    await store_chunks_in_db(_long_video_result2, summary_id, session)
+                except Exception as chunk_err:
+                    print(f"⚠️ [v3.0] VideoChunk storage failed (non-blocking): {chunk_err}", flush=True)
 
             # Incrémenter le quota
             try:
@@ -2683,20 +2706,23 @@ async def _analyze_video_background_v6(
             
             needs_chunk, word_count, chunk_reason = needs_chunking(transcript_to_analyze)
             
+            # Variable pour stocker les chunks (remplie si vidéo longue)
+            _long_video_result3 = None
+
             if needs_chunk:
                 # ════════════════════════════════════════════════════════════
                 # 📚 VIDÉO LONGUE — Analyse par chunks
                 # ════════════════════════════════════════════════════════════
                 print(f"📚 [v7.0] LONG VIDEO DETECTED: {word_count} words ({chunk_reason})", flush=True)
                 _task_store[task_id]["message"] = f"📚 Vidéo longue détectée ({word_count} mots)..."
-                
+
                 # Fonction de callback pour le progress
                 def update_progress(progress: int, message: str):
                     _task_store[task_id]["progress"] = progress
                     _task_store[task_id]["message"] = message
-                
+
                 # v3.0: Analyser avec les VRAIS timestamps YouTube + routage intelligent
-                summary_content = await analyze_long_video(
+                _long_video_result3 = await analyze_long_video(
                     title=video_info["title"],
                     transcript=transcript_to_analyze,
                     video_duration=video_duration,
@@ -2709,7 +2735,8 @@ async def _analyze_video_background_v6(
                     transcript_timestamped=transcript_timestamped,
                     user_plan=user_plan,
                 )
-                
+                summary_content = _long_video_result3.summary if isinstance(_long_video_result3, LongVideoResult) else _long_video_result3
+
                 if not summary_content:
                     print("⚠️ [v7.0] Chunking failed, falling back to truncated analysis", flush=True)
                     # Fallback: analyser seulement les premiers 8000 mots
@@ -2881,6 +2908,13 @@ async def _analyze_video_background_v6(
                 video_info.get("duration", 0),
                 transcript, transcript_timestamped
             )
+
+            # v3.0: Stocker les VideoChunks pour réutilisation par le digest pipeline
+            if isinstance(_long_video_result3, LongVideoResult) and _long_video_result3.chunks:
+                try:
+                    await store_chunks_in_db(_long_video_result3, summary_id, session)
+                except Exception as chunk_err:
+                    print(f"⚠️ [v3.0] VideoChunk storage failed (non-blocking): {chunk_err}", flush=True)
 
             # ⚡ Cache + quota en parallèle (perf v6.2)
             async def _cache_analysis():

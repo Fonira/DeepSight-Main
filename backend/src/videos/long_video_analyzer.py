@@ -102,6 +102,19 @@ class AnalysisReport:
     warnings: List[str] = field(default_factory=list)
 
 
+@dataclass
+class LongVideoResult:
+    """Résultat complet de l'analyse d'une vidéo longue.
+
+    Contient le summary ET les chunks analysés pour permettre au router
+    de stocker les VideoChunks en DB (réutilisés par le digest pipeline).
+    """
+    summary: str
+    chunks: List[TranscriptChunk] = field(default_factory=list)
+    chunk_analyses: List[ChunkAnalysis] = field(default_factory=list)
+    report: Optional[AnalysisReport] = None
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📏 DÉTECTION ET DÉCOUPAGE
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1157,8 +1170,84 @@ async def analyze_long_video(
     print(f"📊 Coverage: {report.coverage_percent:.1f}%", flush=True)
     print(f"📝 Final summary: {len(final_summary.split()) if final_summary else 0} words", flush=True)
     print(f"", flush=True)
-    
-    return final_summary
+
+    # Retourner le résultat complet avec les chunks pour stockage ultérieur
+    return LongVideoResult(
+        summary=final_summary or "",
+        chunks=chunks,
+        chunk_analyses=chunk_analyses,
+        report=report,
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 💾 STOCKAGE DES CHUNKS EN DB
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _parse_time_to_seconds(time_str: Optional[str]) -> int:
+    """Convertit un timestamp 'MM:SS' ou 'HH:MM:SS' en secondes."""
+    if not time_str:
+        return 0
+    parts = time_str.split(":")
+    try:
+        if len(parts) == 3:
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+        elif len(parts) == 2:
+            return int(parts[0]) * 60 + int(parts[1])
+    except (ValueError, IndexError):
+        pass
+    return 0
+
+
+async def store_chunks_in_db(
+    result: LongVideoResult,
+    summary_id: int,
+    db,  # AsyncSession
+) -> int:
+    """
+    Stocke les TranscriptChunks de long_video_analyzer dans la table VideoChunk.
+
+    Cela permet au background digest pipeline (chunking.py) de réutiliser
+    les chunks existants via build_full_digest_from_existing_chunks(),
+    évitant de re-chunker et re-digester (-50% d'appels API).
+
+    Returns:
+        Nombre de chunks stockés
+    """
+    from db.database import VideoChunk
+
+    if not result.chunks:
+        return 0
+
+    stored = 0
+    for chunk in result.chunks:
+        # Trouver l'analyse correspondante pour remplir chunk_digest
+        chunk_digest = None
+        for analysis in result.chunk_analyses:
+            if analysis.chunk_index == chunk.index:
+                # Construire un digest compact depuis l'analyse complète
+                parts = []
+                if analysis.summary:
+                    parts.append(analysis.summary[:800])
+                if analysis.key_points:
+                    parts.append(" | ".join(analysis.key_points[:3]))
+                chunk_digest = " ".join(parts)[:1000] if parts else None
+                break
+
+        db_chunk = VideoChunk(
+            summary_id=summary_id,
+            chunk_index=chunk.index,
+            start_seconds=_parse_time_to_seconds(chunk.start_time),
+            end_seconds=_parse_time_to_seconds(chunk.end_time),
+            chunk_text=chunk.text,
+            chunk_digest=chunk_digest,
+        )
+        db.add(db_chunk)
+        stored += 1
+
+    await db.flush()
+    print(f"💾 Stored {stored} VideoChunks for summary {summary_id}", flush=True)
+    return stored
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
