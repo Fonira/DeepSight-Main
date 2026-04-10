@@ -733,11 +733,7 @@ async def health_ready():
         from core.http_client import get_http_client_optional
         client = get_http_client_optional()
         if client is not None:
-            pool = client._pool
-            checks["http_pool"] = {
-                "status": "ok",
-                "connections_in_pool": len(pool._pool) if hasattr(pool, '_pool') else "unknown",
-            }
+            checks["http_pool"] = {"status": "ok"}
         else:
             checks["http_pool"] = {"status": "not_initialized"}
     except Exception as e:
