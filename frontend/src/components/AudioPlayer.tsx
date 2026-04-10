@@ -18,6 +18,7 @@ import {
   Volume2 as SpeakerWaveIcon,
   VolumeX as SpeakerXMarkIcon,
 } from 'lucide-react';
+import { DeepSightSpinnerMicro } from './ui/DeepSightSpinner';
 
 interface AudioPlayerProps {
   /** Audio source URL */
@@ -242,7 +243,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
           title={title}
         >
           {isLoading ? (
-            <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            <DeepSightSpinnerMicro />
           ) : isPlaying ? (
             <PauseIcon className="w-5 h-5" />
           ) : (
@@ -293,7 +294,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
           aria-label={isPlaying ? 'Pause audio' : 'Play audio'}
         >
           {isLoading ? (
-            <span className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            <DeepSightSpinnerMicro />
           ) : isPlaying ? (
             <PauseIcon className="w-6 h-6" />
           ) : (

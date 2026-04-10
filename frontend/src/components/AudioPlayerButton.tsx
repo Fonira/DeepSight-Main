@@ -286,7 +286,7 @@ const AudioPlayerButtonInner: React.FC<AudioPlayerButtonProps> = ({
         className="w-7 h-7 rounded-md flex items-center justify-center bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-colors flex-shrink-0"
       >
         {localLoading ? (
-          <DeepSightSpinnerMicro />
+          <DeepSightSpinnerMicro onLight />
         ) : localPlaying ? (
           <Pause className="w-4 h-4" />
         ) : (

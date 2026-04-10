@@ -27,6 +27,7 @@ import { CrispChat } from "./components/CrispChat";
 import { CookieBanner } from "./components/CookieBanner";
 import { UpgradeModal } from "./components/UpgradeModal";
 import { analytics } from "./services/analytics";
+import { DeepSightSpinner } from "./components/ui/DeepSightSpinner";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 QUERY CLIENT CONFIGURATION
@@ -362,10 +363,7 @@ const HomeRoute = () => {
         aria-live="polite"
       >
         <div className="flex flex-col items-center gap-4">
-          <div 
-            className="w-12 h-12 border-3 border-accent-primary border-t-transparent rounded-full animate-spin"
-            aria-hidden="true" 
-          />
+          <DeepSightSpinner size="lg" />
           <span className="text-text-secondary">Chargement...</span>
         </div>
       </div>

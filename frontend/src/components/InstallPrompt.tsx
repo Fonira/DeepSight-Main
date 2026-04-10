@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { usePWA } from '../hooks/usePWA';
 import { X, Download, Smartphone, Share, Plus, Monitor } from 'lucide-react';
+import { DeepSightSpinnerMicro } from './ui/DeepSightSpinner';
 
 interface InstallPromptProps {
   /** Style de présentation */
@@ -166,7 +167,7 @@ export const InstallPrompt: React.FC<InstallPromptProps> = ({
       >
         {isInstalling ? (
           <>
-            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            <DeepSightSpinnerMicro />
             Installation...
           </>
         ) : (

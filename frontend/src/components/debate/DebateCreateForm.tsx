@@ -136,7 +136,7 @@ export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({ onSubmit, lo
         >
           {loading ? (
             <>
-              <DeepSightSpinnerMicro />
+              <DeepSightSpinnerMicro onLight />
               Analyse en cours…
             </>
           ) : (

@@ -16,7 +16,7 @@ import {
   Clipboard, ExternalLink, Lock,
   Swords, CheckCircle2, GitMerge, Scale
 } from "lucide-react";
-import { DeepSightSpinnerMicro } from '../components/ui/DeepSightSpinner';
+import { DeepSightSpinner, DeepSightSpinnerMicro } from '../components/ui/DeepSightSpinner';
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
 import { SEO } from "../components/SEO";
@@ -695,23 +695,23 @@ const LandingPage: React.FC = () => {
                     className="flex-1 min-w-0 px-4 py-3 rounded-lg bg-surface-secondary/60 border border-border-subtle text-text-primary placeholder:text-text-muted text-sm focus:outline-none focus:ring-2 focus:ring-accent-primary/40 focus:border-accent-primary/40 transition-all"
                     disabled={guestLoading}
                   />
-                  <motion.button
-                    onClick={handleGuestAnalyze}
-                    disabled={!guestUrl.trim() || guestLoading}
-                    className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25 disabled:opacity-50 disabled:cursor-not-allowed"
-                    animate={!guestLoading && !guestUrl.trim() ? floatAnimation : {}}
-                    whileHover={!guestLoading ? { scale: 1.02 } : {}}
-                    whileTap={!guestLoading ? { scale: 0.98 } : {}}
-                  >
-                    {guestLoading ? (
-                      <DeepSightSpinnerMicro />
-                    ) : (
-                      <>
-                        {language === 'fr' ? 'Analyser' : 'Analyze'}
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </motion.button>
+                  {guestLoading ? (
+                    <div className="flex-shrink-0 flex items-center justify-center" style={{ width: 48, height: 48 }}>
+                      <DeepSightSpinner size="sm" speed="fast" />
+                    </div>
+                  ) : (
+                    <motion.button
+                      onClick={handleGuestAnalyze}
+                      disabled={!guestUrl.trim()}
+                      className="flex-shrink-0 inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-accent-primary text-white text-sm font-medium hover:bg-accent-primary-hover transition-colors shadow-lg shadow-accent-primary/25 disabled:opacity-50 disabled:cursor-not-allowed"
+                      animate={!guestUrl.trim() ? floatAnimation : {}}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {language === 'fr' ? 'Analyser' : 'Analyze'}
+                      <ArrowRight className="w-4 h-4" />
+                    </motion.button>
+                  )}
                 </div>
 
                 {/* Helper text + remaining + Shorts/TikTok guidance */}

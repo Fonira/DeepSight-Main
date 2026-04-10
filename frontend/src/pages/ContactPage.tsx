@@ -273,7 +273,7 @@ const ContactPage: React.FC = () => {
                   >
                     {sending ? (
                       <>
-                        <DeepSightSpinnerMicro />
+                        <DeepSightSpinnerMicro onLight />
                         Envoi en cours...
                       </>
                     ) : (

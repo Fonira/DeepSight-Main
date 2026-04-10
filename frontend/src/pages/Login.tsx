@@ -397,7 +397,7 @@ export const Login: React.FC = () => {
                     disabled={loading || verificationCode.length !== 6}
                     className="w-full btn btn-primary py-2.5"
                   >
-                    {loading ? <DeepSightSpinnerMicro /> : t.common.confirm}
+                    {loading ? <DeepSightSpinnerMicro onLight /> : t.common.confirm}
                   </button>
                 </form>
 
@@ -491,7 +491,7 @@ export const Login: React.FC = () => {
                     whileTap={{ scale: 0.98 }}
                   >
                     {loading ? (
-                      <DeepSightSpinnerMicro />
+                      <DeepSightSpinnerMicro onLight />
                     ) : isRegister ? (
                       t.auth.createAccount
                     ) : (

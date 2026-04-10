@@ -1011,7 +1011,7 @@ export const PlaylistDetailPage: React.FC = () => {
                       disabled={isSavingRename || !renameValue.trim()}
                       className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
                     >
-                      {isSavingRename ? <DeepSightSpinnerMicro /> : <Check className="w-4 h-4" />}
+                      {isSavingRename ? <DeepSightSpinnerMicro onLight /> : <Check className="w-4 h-4" />}
                     </button>
                     <button
                       onClick={() => setIsRenaming(false)}
@@ -1066,7 +1066,7 @@ export const PlaylistDetailPage: React.FC = () => {
                   className="btn btn-primary"
                 >
                   {isRegenerating ? (
-                    <DeepSightSpinnerMicro />
+                    <DeepSightSpinnerMicro onLight />
                   ) : (
                     <Sparkles className="w-4 h-4" />
                   )}
@@ -1234,7 +1234,7 @@ export const PlaylistDetailPage: React.FC = () => {
                     className="btn btn-primary"
                   >
                     {isRegenerating ? (
-                      <DeepSightSpinnerMicro />
+                      <DeepSightSpinnerMicro onLight />
                     ) : (
                       <Sparkles className="w-4 h-4" />
                     )}
@@ -1397,7 +1397,7 @@ export const PlaylistDetailPage: React.FC = () => {
                   className="px-4 py-2 rounded-lg bg-red-500 text-white font-medium hover:bg-red-600 transition-colors flex items-center gap-2 disabled:opacity-50"
                 >
                   {isDeleting ? (
-                    <DeepSightSpinnerMicro />
+                    <DeepSightSpinnerMicro onLight />
                   ) : (
                     <Trash2 className="w-4 h-4" />
                   )}

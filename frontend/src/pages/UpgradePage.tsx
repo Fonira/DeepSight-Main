@@ -299,7 +299,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
               className="w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:opacity-90 shadow-lg min-h-[44px] active:scale-95"
             >
               {trialLoading ? (
-                <DeepSightSpinnerMicro />
+                <DeepSightSpinnerMicro onLight />
               ) : (
                 <>
                   <Gift className="w-4 h-4" />
@@ -322,7 +322,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
               }`}
             >
               {loading === plan.id ? (
-                <DeepSightSpinnerMicro />
+                <DeepSightSpinnerMicro onLight={isUpgrade || isCurrent} />
               ) : isCurrent ? (
                 <>
                   <Check className="w-4 h-4" />
@@ -628,7 +628,7 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
                 }`}
               >
                 {loading === plan.id ? (
-                  <DeepSightSpinnerMicro />
+                  <DeepSightSpinnerMicro onLight={plan.is_upgrade || plan.is_current} />
                 ) : plan.is_current ? (
                   lang === 'fr' ? 'Actuel' : 'Current'
                 ) : plan.is_upgrade ? (
@@ -1017,7 +1017,7 @@ export const UpgradePage: React.FC = () => {
                       className="w-full md:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold text-sm sm:text-lg shadow-xl shadow-blue-500/30 hover:opacity-90 transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-95"
                     >
                       {trialLoading ? (
-                        <DeepSightSpinnerMicro />
+                        <DeepSightSpinnerMicro onLight />
                       ) : (
                         <>
                           <Gift className="w-4 h-4 sm:w-5 sm:h-5" />

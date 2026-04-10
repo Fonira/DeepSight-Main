@@ -632,7 +632,7 @@ export const StudyPage: React.FC = () => {
                            disabled:opacity-50 transition-all"
                 >
                   {isStartingSession ? (
-                    <DeepSightSpinnerMicro />
+                    <DeepSightSpinnerMicro onLight />
                   ) : (
                     <Zap className="w-4 h-4" />
                   )}

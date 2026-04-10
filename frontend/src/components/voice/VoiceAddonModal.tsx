@@ -236,7 +236,7 @@ export const VoiceAddonModal: React.FC<VoiceAddonModalProps> = ({
                           )}
                         >
                           {isLoading ? (
-                            <DeepSightSpinnerMicro />
+                            <DeepSightSpinnerMicro onLight />
                           ) : (
                             tr('Acheter', 'Buy')
                           )}

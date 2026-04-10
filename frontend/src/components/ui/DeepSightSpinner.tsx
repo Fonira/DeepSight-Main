@@ -1,10 +1,11 @@
 /**
  * ╔════════════════════════════════════════════════════════════════════════════════════╗
- * ║  ✨ DEEPSIGHT SPINNER v3.0 — Gouvernail cosmique officiel                         ║
+ * ║  ✨ DEEPSIGHT SPINNER v3.1 — Gouvernail cosmique officiel                         ║
  * ╠════════════════════════════════════════════════════════════════════════════════════╣
  * ║  Flammes cosmiques fixes (arrière-plan) + Gouvernail argenté/doré qui tourne      ║
  * ║  Images : /spinner-cosmic.jpg (flammes) + /spinner-wheel.jpg (gouvernail)         ║
- * ║  mix-blend-mode: screen — s'intègre naturellement sur fond sombre                 ║
+ * ║  - Sur fond sombre (défaut) : mix-blend-mode: screen pour intégration naturelle   ║
+ * ║  - Sur fond clair/coloré (boutons) : blend normal, fond noir circulaire           ║
  * ║  Tailles: xs (24px) → xxl (350px)                                                 ║
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
@@ -28,6 +29,12 @@ interface DeepSightSpinnerProps {
   showLabel?: boolean;
   /** Vitesse de rotation */
   speed?: 'slow' | 'normal' | 'fast';
+  /**
+   * Mode fond clair : pour usage dans boutons/surfaces claires.
+   * Ajoute un fond noir circulaire et désactive mix-blend-mode
+   * afin que le spinner reste visible sur fond coloré.
+   */
+  onLight?: boolean;
 }
 
 const sizeConfig: Record<SpinnerSize, { container: number; wheel: number }> = {
@@ -55,6 +62,7 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
   label = 'Chargement...',
   showLabel = false,
   speed = 'normal',
+  onLight = false,
 }) => {
   const isPreset = typeof size === 'string';
   const containerPx = isPreset ? sizeConfig[size as SpinnerSize].container : size;
@@ -76,6 +84,12 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
         style={{
           width: containerPx,
           height: containerPx,
+          // Sur fond clair : fond noir circulaire pour que screen blend fonctionne
+          ...(onLight && {
+            backgroundColor: '#000',
+            borderRadius: '50%',
+            overflow: 'hidden',
+          }),
         }}
       >
         {/* FLAMMES COSMIQUES — fixes (arrière-plan) */}
@@ -103,7 +117,7 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
                 black 100%
               )`,
               zIndex: 1,
-              mixBlendMode: 'screen',
+              mixBlendMode: onLight ? 'normal' : 'screen',
               borderRadius: '50%',
             }}
           />
@@ -119,7 +133,7 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
             height: wheelPx,
             position: 'relative',
             zIndex: 10,
-            mixBlendMode: 'screen',
+            mixBlendMode: onLight ? 'normal' : 'screen',
             opacity: 0.85,
             filter: 'brightness(1.2) contrast(1.25) saturate(1.1)',
             animation: `deepsight-gouvernail-spin ${duration}s linear infinite`,
@@ -138,7 +152,7 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
       {/* Accessibilité */}
       <span className="sr-only">{label}</span>
 
-      {/* Keyframes (injection unique via CSS-in-JS) */}
+      {/* Keyframes */}
       <style>{`
         @keyframes deepsight-gouvernail-spin {
           from { transform: rotate(0deg); }
@@ -150,16 +164,16 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// VARIANTS PRATIQUES — Exports nommés pour usage rapide
+// VARIANTS PRATIQUES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** 24px — Inline dans boutons, badges, à côté de texte */
-export const DeepSightSpinnerMicro: React.FC<{ className?: string }> = (props) => (
+/** 24px — Inline dans boutons, badges, à côté de texte (fond sombre) */
+export const DeepSightSpinnerMicro: React.FC<{ className?: string; onLight?: boolean }> = (props) => (
   <DeepSightSpinner size="xs" speed="fast" {...props} />
 );
 
 /** 40px — Boutons moyens, headers de section */
-export const DeepSightSpinnerSmall: React.FC<{ className?: string }> = (props) => (
+export const DeepSightSpinnerSmall: React.FC<{ className?: string; onLight?: boolean }> = (props) => (
   <DeepSightSpinner size="sm" speed="normal" {...props} />
 );
 
