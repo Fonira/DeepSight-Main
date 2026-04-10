@@ -16,6 +16,7 @@ import httpx
 from db.database import get_session, User, Summary, AcademicPaper as AcademicPaperDB
 from auth.dependencies import get_current_user, get_verified_user
 from core.config import get_plan_limits, get_mistral_key
+from billing.plan_config import get_limits
 
 from .schemas import (
     AcademicPaper,
@@ -849,6 +850,5 @@ async def _get_papers_by_ids(
 
 
 def _can_export_bibliography(plan: str) -> bool:
-    """Check if plan allows bibliography export (Pro and above)"""
-    allowed_plans = ["pro"]  # After normalization, all paid plans are "pro"
-    return plan in allowed_plans
+    """Check if plan allows bibliography export using config system."""
+    return get_limits(plan).get("bibliography_export", False)

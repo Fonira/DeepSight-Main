@@ -1,13 +1,13 @@
 // ⚠️ MIROIR de backend/src/billing/plan_config.py — Synchroniser les deux fichiers
-// Migration Avril 2026 : 2 plans uniquement (Free + Pro 6.99€)
+// Migration Avril 2026 : 3 plans (Free / Plus 4.99€ / Pro 9.99€)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type PlanId = 'free' | 'pro';
+export type PlanId = 'free' | 'plus' | 'pro';
 
-export const PLAN_HIERARCHY: PlanId[] = ['free', 'pro'];
+export const PLAN_HIERARCHY: PlanId[] = ['free', 'plus', 'pro'];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // LIMITES PAR PLAN
@@ -52,6 +52,10 @@ export interface PlanLimits {
   debateMonthly: number;
   debateCreditsPerDebate: number;
   debateChatDaily: number;
+
+  deepResearchEnabled: boolean;
+  factcheckEnabled: boolean;
+  ttsEnabled: boolean;
 }
 
 export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
@@ -76,7 +80,7 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     allowedModels: ['mistral-small-2603'],
     defaultModel: 'mistral-small-2603',
     academicSearch: false,
-    academicPapersPerAnalysis: 0,
+    academicPapersPerAnalysis: 5,
     bibliographyExport: false,
     voiceChatEnabled: false,
     voiceChatMonthlyMinutes: 0,
@@ -84,22 +88,59 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     debateMonthly: 0,
     debateCreditsPerDebate: 0,
     debateChatDaily: 0,
+    deepResearchEnabled: false,
+    factcheckEnabled: false,
+    ttsEnabled: false,
+  },
+
+  plus: {
+    monthlyAnalyses: 25,
+    maxVideoLengthMin: 60,
+    concurrentAnalyses: 1,
+    priorityQueue: false,
+    chatQuestionsPerVideo: 25,
+    chatDailyLimit: 50,
+    flashcardsEnabled: true,
+    mindmapEnabled: true,
+    webSearchEnabled: true,
+    webSearchMonthly: 20,
+    playlistsEnabled: false,
+    maxPlaylists: 0,
+    maxPlaylistVideos: 0,
+    exportFormats: ['txt', 'md', 'pdf'],
+    exportMarkdown: true,
+    exportPdf: true,
+    historyRetentionDays: -1,
+    allowedModels: ['mistral-small-2603', 'mistral-medium-2508'],
+    defaultModel: 'mistral-medium-2508',
+    academicSearch: true,
+    academicPapersPerAnalysis: 15,
+    bibliographyExport: true,
+    voiceChatEnabled: false,
+    voiceChatMonthlyMinutes: 0,
+    debateEnabled: true,
+    debateMonthly: 3,
+    debateCreditsPerDebate: 6,
+    debateChatDaily: 10,
+    deepResearchEnabled: false,
+    factcheckEnabled: true,
+    ttsEnabled: false,
   },
 
   pro: {
-    monthlyAnalyses: 50,
+    monthlyAnalyses: 100,
     maxVideoLengthMin: 240,
-    concurrentAnalyses: 2,
+    concurrentAnalyses: 3,
     priorityQueue: true,
     chatQuestionsPerVideo: -1,
     chatDailyLimit: -1,
     flashcardsEnabled: true,
     mindmapEnabled: true,
     webSearchEnabled: true,
-    webSearchMonthly: 30,
+    webSearchMonthly: 60,
     playlistsEnabled: true,
-    maxPlaylists: 5,
-    maxPlaylistVideos: 10,
+    maxPlaylists: 10,
+    maxPlaylistVideos: 20,
     exportFormats: ['txt', 'md', 'pdf'],
     exportMarkdown: true,
     exportPdf: true,
@@ -107,14 +148,17 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     allowedModels: ['mistral-small-2603', 'mistral-medium-2508', 'mistral-large-2512'],
     defaultModel: 'mistral-large-2512',
     academicSearch: true,
-    academicPapersPerAnalysis: 30,
+    academicPapersPerAnalysis: 50,
     bibliographyExport: true,
     voiceChatEnabled: true,
-    voiceChatMonthlyMinutes: 15,
+    voiceChatMonthlyMinutes: 45,
     debateEnabled: true,
-    debateMonthly: -1,
+    debateMonthly: 20,
     debateCreditsPerDebate: 4,
     debateChatDaily: -1,
+    deepResearchEnabled: true,
+    factcheckEnabled: true,
+    ttsEnabled: true,
   },
 };
 
@@ -136,6 +180,8 @@ export interface PlanFeatures {
   bibliographyExport: boolean;
   voiceChat: boolean;
   debate: boolean;
+  deepResearch: boolean;
+  factcheck: boolean;
 }
 
 export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
@@ -153,6 +199,25 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     bibliographyExport: false,
     voiceChat: false,
     debate: false,
+    deepResearch: false,
+    factcheck: false,
+  },
+  plus: {
+    flashcards: true,
+    mindmap: true,
+    webSearch: true,
+    playlists: false,
+    exportPdf: true,
+    exportMarkdown: true,
+    ttsAudio: false,
+    apiAccess: false,
+    prioritySupport: false,
+    academicSearch: true,
+    bibliographyExport: true,
+    voiceChat: false,
+    debate: true,
+    deepResearch: false,
+    factcheck: true,
   },
   pro: {
     flashcards: true,
@@ -162,12 +227,14 @@ export const PLAN_FEATURES: Record<PlanId, PlanFeatures> = {
     exportPdf: true,
     exportMarkdown: true,
     ttsAudio: true,
-    apiAccess: true,
+    apiAccess: false,
     prioritySupport: true,
     academicSearch: true,
     bibliographyExport: true,
     voiceChat: true,
     debate: true,
+    deepResearch: true,
+    factcheck: true,
   },
 };
 
@@ -198,13 +265,26 @@ export const PLANS_INFO: Record<PlanId, PlanInfo> = {
     id: 'free',
     name: 'Gratuit',
     nameEn: 'Free',
-    description: 'Analysez, chattez et revisez — sans engagement',
-    descriptionEn: 'Analyze, chat and study — no commitment',
+    description: 'Découvrez DeepSight gratuitement',
+    descriptionEn: 'Discover DeepSight for free',
     priceMonthly: 0,
     color: '#6B7280',
     icon: 'Zap',
     badge: null,
     popular: false,
+  },
+
+  plus: {
+    id: 'plus',
+    name: 'Plus',
+    nameEn: 'Plus',
+    description: "L'essentiel pour apprendre mieux, plus vite",
+    descriptionEn: 'Everything you need to learn better, faster',
+    priceMonthly: 499,
+    color: '#3B82F6',
+    icon: 'Star',
+    badge: { text: 'Populaire', color: '#3B82F6' },
+    popular: true,
   },
 
   pro: {
@@ -213,11 +293,11 @@ export const PLANS_INFO: Record<PlanId, PlanInfo> = {
     nameEn: 'Pro',
     description: 'Toute la puissance de DeepSight, sans limites',
     descriptionEn: 'The full power of DeepSight, unlimited',
-    priceMonthly: 699,
-    color: '#6366F1',
-    icon: 'Zap',
-    badge: { text: 'Recommande', color: '#6366F1' },
-    popular: true,
+    priceMonthly: 999,
+    color: '#8B5CF6',
+    icon: 'Crown',
+    badge: { text: 'Le + puissant', color: '#8B5CF6' },
+    popular: false,
   },
 };
 
@@ -272,28 +352,30 @@ export const CONVERSION_TRIGGERS = {
   freeAnalysisWarning: 3,
   trialEnabled: false,
   trialDays: 0,
-  trialPlan: 'pro' as PlanId,
+  trialPlan: 'plus' as PlanId,
 };
 
-/** Normalise les alias de plans (etudiant→pro, starter→pro, expert→pro, etc.) */
+/** Normalise les alias de plans (etudiant→plus, starter→plus, expert→pro, etc.) */
 export function normalizePlanId(raw: string | undefined | null): PlanId {
   if (!raw) return 'free';
   const lower = raw.toLowerCase().trim();
   const aliases: Record<string, PlanId> = {
     free: 'free',
     gratuit: 'free',
-    // Anciens plans payants → tous mappés vers pro
-    student: 'pro',
-    etudiant: 'pro',
-    'étudiant': 'pro',
-    starter: 'pro',
+    // Anciens plans intermédiaires → plus
+    student: 'plus',
+    etudiant: 'plus',
+    'étudiant': 'plus',
+    starter: 'plus',
+    // Anciens plans premium → pro
     expert: 'pro',
     team: 'pro',
     equipe: 'pro',
     'équipe': 'pro',
     unlimited: 'pro',
     admin: 'pro',
-    // Plan actuel
+    // Plans actuels
+    plus: 'plus',
     pro: 'pro',
   };
   return aliases[lower] ?? 'free';
@@ -388,7 +470,7 @@ export const TESTIMONIALS: Testimonial[] = [
       fr: 'Les flashcards automatiques ont transforme mes revisions. Je retiens 3x mieux.',
       en: 'Auto flashcards transformed my study sessions. I retain 3x better.',
     },
-    plan: 'pro',
+    plan: 'plus',
   },
   {
     avatar: '🎬',
@@ -408,7 +490,7 @@ export const TESTIMONIALS: Testimonial[] = [
       fr: 'Je cree des supports de cours a partir de documentaires en un clic.',
       en: 'I create course materials from documentaries in one click.',
     },
-    plan: 'pro',
+    plan: 'plus',
   },
 ];
 

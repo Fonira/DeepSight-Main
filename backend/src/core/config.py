@@ -72,6 +72,8 @@ class _DeepSightSettings(BaseSettings):
     STRIPE_PUBLISHABLE_KEY_TEST: str = ""
     STRIPE_PUBLISHABLE_KEY_LIVE: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PRICE_PLUS_TEST: str = ""
+    STRIPE_PRICE_PLUS_LIVE: str = ""
     STRIPE_PRICE_PRO_TEST: str = ""
     STRIPE_PRICE_PRO_LIVE: str = ""
 
@@ -268,10 +270,15 @@ STRIPE_CONFIG = {
     "PUBLISHABLE_KEY_LIVE": _settings.STRIPE_PUBLISHABLE_KEY_LIVE,
     "WEBHOOK_SECRET": _settings.STRIPE_WEBHOOK_SECRET,
     "PRICES": {
+        "plus": {
+            "test": _settings.STRIPE_PRICE_PLUS_TEST,
+            "live": _settings.STRIPE_PRICE_PLUS_LIVE,
+            "amount": 499, "name": "Plus"
+        },
         "pro": {
             "test": _settings.STRIPE_PRICE_PRO_TEST,
             "live": _settings.STRIPE_PRICE_PRO_LIVE,
-            "amount": 699, "name": "Pro"
+            "amount": 999, "name": "Pro"
         },
     },
 }
@@ -338,7 +345,7 @@ def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
         from billing.plan_config import PLANS, PlanId, get_limits
 
         legacy = {}
-        for plan_id in [PlanId.FREE, PlanId.PRO]:
+        for plan_id in [PlanId.FREE, PlanId.PLUS, PlanId.PRO]:
             plan = PLANS[plan_id]
             limits = plan["limits"]
             key = plan_id.value
@@ -360,25 +367,32 @@ def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
                 "deep_research_enabled": limits.get("deep_research_enabled", False),
                 "voice_chat_enabled": limits.get("voice_chat_enabled", False),
                 "voice_monthly_minutes": limits.get("voice_monthly_minutes", 0),
-                "blocked_features": [] if key == "pro" else [
-                    "playlists", "export_csv", "export_excel", "batch_api",
-                    "tts", "deep_research", "voice_chat", "mindmap",
-                ],
+                "blocked_features": (
+                    [] if key == "pro" else
+                    ["playlists", "deep_research", "voice_chat", "tts"] if key == "plus" else
+                    ["playlists", "export_csv", "export_excel", "batch_api",
+                     "tts", "deep_research", "voice_chat", "mindmap"]
+                ),
                 "upgrade_prompt": {
                     "fr": ("Vous avez le plan Pro, toutes les fonctionnalités sont débloquées !"
                            if key == "pro"
-                           else "Passez à Pro pour débloquer plus d'analyses et de fonctionnalités !"),
+                           else "Passez à Plus pour débloquer mind maps, exports et recherche web !"
+                           if key == "free"
+                           else "Passez à Pro pour débloquer playlists, Deep Research et chat vocal !"),
                     "en": ("You have the Pro plan, all features are unlocked!"
                            if key == "pro"
-                           else "Upgrade to Pro to unlock more analyses and features!"),
+                           else "Upgrade to Plus to unlock mind maps, exports and web search!"
+                           if key == "free"
+                           else "Upgrade to Pro to unlock playlists, Deep Research and voice chat!"),
                 },
             }
         return legacy
     except Exception:
         # Fallback minimal si plan_config n'est pas chargeable (tests unitaires)
         return {
-            "free": {"monthly_credits": 250, "daily_analyses": 5, "blocked_features": [], "models": ["mistral-small-2603"], "default_model": "mistral-small-2603"},
-            "pro": {"monthly_credits": 10000, "daily_analyses": 50, "blocked_features": [], "models": ["mistral-large-2512"], "default_model": "mistral-large-2512"},
+            "free": {"monthly_credits": 250, "daily_analyses": 5, "blocked_features": ["playlists", "tts", "deep_research", "voice_chat", "mindmap"], "models": ["mistral-small-2603"], "default_model": "mistral-small-2603"},
+            "plus": {"monthly_credits": 3000, "daily_analyses": 25, "blocked_features": ["playlists", "deep_research", "voice_chat", "tts"], "models": ["mistral-small-2603", "mistral-medium-2508"], "default_model": "mistral-medium-2508"},
+            "pro": {"monthly_credits": 15000, "daily_analyses": 100, "blocked_features": [], "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"], "default_model": "mistral-large-2512"},
         }
 
 
@@ -418,7 +432,8 @@ R2_CONFIG = {
 
 VOICE_LIMITS: Dict[str, Dict[str, Any]] = {
     "free": {"enabled": False, "monthly_minutes": 0,  "max_session_minutes": 0},
-    "pro":  {"enabled": True,  "monthly_minutes": 15, "max_session_minutes": 15},
+    "plus": {"enabled": False, "monthly_minutes": 0,  "max_session_minutes": 0},
+    "pro":  {"enabled": True,  "monthly_minutes": 45, "max_session_minutes": 15},
 }
 
 VOICE_CHAT_CONFIG: Dict[str, Any] = {
@@ -447,7 +462,7 @@ MISTRAL_MODELS = {
         "quality": "adequate",
         "cost_input_per_1m": 0.10,
         "cost_output_per_1m": 0.10,
-        "plans": ["free", "pro"],
+        "plans": ["free", "plus", "pro"],
         "internal_only": True,
         "use_cases": ["entity_extraction", "flashcards", "classification", "study_tools"],
         "description": {
@@ -456,7 +471,7 @@ MISTRAL_MODELS = {
         }
     },
 
-    # ── Tier 1 : Standard (Free + Pro) ──
+    # ── Tier 1 : Standard (Free + Plus + Pro) ──
     "mistral-small-2603": {
         "name": "Mistral Small 3.1",
         "context": 128000,
@@ -464,14 +479,14 @@ MISTRAL_MODELS = {
         "quality": "good",
         "cost_input_per_1m": 0.10,
         "cost_output_per_1m": 0.30,
-        "plans": ["free", "pro"],
+        "plans": ["free", "plus", "pro"],
         "description": {
             "fr": "Rapide et intelligent, idéal pour les analyses courantes",
             "en": "Fast and smart, ideal for standard analyses"
         }
     },
 
-    # ── Tier 2 : Avancé (Pro) ──
+    # ── Tier 2 : Avancé (Plus + Pro) ──
     "mistral-medium-2508": {
         "name": "Mistral Medium 3.1",
         "context": 131000,
@@ -479,14 +494,14 @@ MISTRAL_MODELS = {
         "quality": "very_good",
         "cost_input_per_1m": 0.40,
         "cost_output_per_1m": 2.00,
-        "plans": ["pro"],
+        "plans": ["plus", "pro"],
         "description": {
             "fr": "Analyses approfondies, raisonnement de niveau GPT-4",
             "en": "Deep analyses, GPT-4 level reasoning"
         }
     },
 
-    # ── Tier 3 : Premium (Pro) ──
+    # ── Tier 3 : Premium (Pro uniquement) ──
     "mistral-large-2512": {
         "name": "Mistral Large 3",
         "context": 262000,

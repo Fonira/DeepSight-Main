@@ -1,5 +1,5 @@
 /**
- * UpgradePage v7.0 — Pricing simplifié (Free + Pro mensuel uniquement)
+ * UpgradePage v8.0 — Pricing 3 plans (Free / Plus / Pro)
  *
  * Fetch GET /api/billing/plans?platform=web au mount.
  * Fallback sur planPrivileges.ts si API échoue (snake_case mapping).
@@ -37,12 +37,14 @@ import {
 
 const PLAN_ICON_MAP: Record<string, React.ElementType> = {
   free: Zap,
-  pro: Star,
+  plus: Star,
+  pro: Crown,
 };
 
 const PLAN_GRADIENT_MAP: Record<string, string> = {
   free: 'from-gray-500 to-gray-600',
-  pro: 'from-blue-500 to-blue-600',
+  plus: 'from-blue-500 to-blue-600',
+  pro: 'from-violet-500 to-purple-600',
 };
 
 function formatPriceFr(cents: number): string {
@@ -219,8 +221,8 @@ const PlanCard: React.FC<PlanCardProps> = ({
       {plan.popular && !isCurrent && (
         <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-500" />
       )}
-      {/* Bandeau essai gratuit 7 jours — Pro uniquement */}
-      {plan.id === 'pro' && !isCurrent && trialEligible && (
+      {/* Bandeau essai gratuit 7 jours — Plus uniquement */}
+      {plan.id === 'plus' && !isCurrent && trialEligible && (
         <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] font-bold text-center py-1">
           {lang === 'fr' ? '🎁 Essai gratuit 7 jours' : '🎁 7-day free trial'}
         </div>
@@ -290,7 +292,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
 
         {/* CTA */}
         <div className="mt-auto">
-          {trialEligible && plan.id === 'pro' && plan.is_upgrade ? (
+          {trialEligible && plan.id === 'plus' && plan.is_upgrade ? (
             <button
               onClick={onStartTrial}
               disabled={trialLoading}
@@ -437,6 +439,38 @@ function buildComparisonData(plans: ApiBillingPlan[], lang: 'fr' | 'en'): Compar
       rows: [
         { label: 'Markdown', values: plans.map(p => fmt(L(p, 'export_markdown'))) },
         { label: 'PDF', values: plans.map(p => fmt(L(p, 'export_pdf'))) },
+      ],
+    },
+    {
+      name: lang === 'fr' ? '🔬 Deep Research' : '🔬 Deep Research',
+      rows: [
+        { label: 'Deep Research', values: plans.map(p => fmt(L(p, 'deep_research_enabled'))) },
+        { label: 'Fact-check', values: plans.map(p => fmt(L(p, 'factcheck_enabled'))) },
+      ],
+    },
+    {
+      name: lang === 'fr' ? '📚 Académique' : '📚 Academic',
+      rows: [
+        { label: lang === 'fr' ? 'Papers/analyse' : 'Papers/analysis', values: plans.map(p => fmt(L(p, 'academic_papers_per_analysis'))) },
+        { label: lang === 'fr' ? 'Export biblio' : 'Biblio export', values: plans.map(p => fmt(L(p, 'bibliography_export'))) },
+        { label: lang === 'fr' ? 'Texte intégral' : 'Full text', values: plans.map(p => fmt(L(p, 'academic_full_text'))) },
+      ],
+    },
+    {
+      name: lang === 'fr' ? '🎙️ Audio & Vocal' : '🎙️ Audio & Voice',
+      rows: [
+        { label: lang === 'fr' ? 'Chat vocal' : 'Voice chat', values: plans.map(p => fmt(L(p, 'voice_chat_enabled'))) },
+        {
+          label: lang === 'fr' ? 'Minutes/mois' : 'Minutes/month',
+          values: plans.map(p => L(p, 'voice_chat_enabled') ? fmt(L(p, 'voice_monthly_minutes')) : false),
+        },
+        { label: 'TTS Audio', values: plans.map(p => fmt(L(p, 'tts_enabled'))) },
+      ],
+    },
+    {
+      name: lang === 'fr' ? '⚔️ Débat IA' : '⚔️ AI Debate',
+      rows: [
+        { label: lang === 'fr' ? 'Débats/mois' : 'Debates/month', values: plans.map(p => fmt(L(p, 'debate_monthly'))) },
       ],
     },
     {
@@ -860,7 +894,7 @@ export const UpgradePage: React.FC = () => {
     <div className="min-h-screen bg-bg-primary relative">
       <SEO
         title="Mon plan"
-        description="Découvrez les plans DeepSight : Gratuit et Pro (6,99€/mois). Analysez vos vidéos YouTube et TikTok avec l'IA."
+        description="Découvrez les plans DeepSight : Gratuit, Plus (4,99€/mois) et Pro (9,99€/mois). Analysez vos vidéos YouTube et TikTok avec l'IA."
         path="/upgrade"
       />
       <DoodleBackground variant="creative" />
@@ -956,16 +990,16 @@ export const UpgradePage: React.FC = () => {
                       {lang === 'fr' ? 'Essai gratuit 7 jours' : '7-day free trial'}
                     </div>
                     <h2 className="text-lg sm:text-2xl font-bold text-text-primary mb-2">
-                      {lang === 'fr' ? 'Essayez Pro gratuitement pendant 7 jours' : 'Try Pro free for 7 days'}
+                      {lang === 'fr' ? 'Essayez Plus gratuitement pendant 7 jours' : 'Try Plus free for 7 days'}
                     </h2>
                     <p className="text-text-secondary text-xs sm:text-base mb-4 max-w-xl">
                       {lang === 'fr'
-                        ? 'Accédez à toutes les fonctionnalités Pro — 3,99€/mois après l\'essai. Sans engagement.'
-                        : 'Access all Pro features — €3.99/mo after trial. No commitment.'}
+                        ? 'Accédez à toutes les fonctionnalités Plus — 4,99€/mois après l\'essai. Sans engagement.'
+                        : 'Access all Plus features — €4.99/mo after trial. No commitment.'}
                     </p>
                     <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 justify-center md:justify-start">
                       {[
-                        { icon: Crown, text: lang === 'fr' ? '50 analyses' : '50 analyses' },
+                        { icon: Crown, text: lang === 'fr' ? '25 analyses' : '25 analyses' },
                         { icon: InfinityIcon, text: lang === 'fr' ? 'Chat illimité' : 'Unlimited chat' },
                         { icon: Clock, text: lang === 'fr' ? '7 jours gratuits' : '7 days free' },
                       ].map((item, idx) => (

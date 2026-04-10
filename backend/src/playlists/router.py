@@ -34,6 +34,7 @@ from db.database import (
 )
 from auth.dependencies import get_current_user
 from core.config import PLAN_LIMITS, get_mistral_key
+from billing.plan_config import get_limits
 from videos.web_search_provider import web_search_and_synthesize, WebSearchResult
 from videos.analysis import generate_summary, detect_category
 from transcripts import (
@@ -96,13 +97,6 @@ class ChatCorpusResponse(BaseModel):
 
 _playlist_task_store: Dict[str, Dict[str, Any]] = {}
 
-PLAN_VIDEO_LIMITS = {
-    "free": 10,
-    "starter": 20,
-    "pro": 50,
-    "expert": 100,
-    "unlimited": 100
-}
 
 PLAN_MODELS = {
     "free": "mistral-small-2603",
@@ -483,7 +477,7 @@ async def analyze_playlist(
         raise HTTPException(status_code=400, detail="URL de playlist invalide")
     
     plan = current_user.plan or "free"
-    max_allowed = PLAN_VIDEO_LIMITS.get(plan, 10)
+    max_allowed = get_limits(plan).get("max_playlist_videos", 10)
     max_videos = min(request.max_videos, max_allowed)
     
     if current_user.credits < max_videos:
@@ -562,8 +556,8 @@ async def analyze_corpus(
     print(f"   Videos: {len(request.urls)}", flush=True)
     
     plan = current_user.plan or "free"
-    max_allowed = PLAN_VIDEO_LIMITS.get(plan, 10)
-    
+    max_allowed = get_limits(plan).get("max_playlist_videos", 10)
+
     if len(request.urls) > max_allowed:
         raise HTTPException(
             status_code=403,

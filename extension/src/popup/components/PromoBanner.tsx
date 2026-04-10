@@ -36,6 +36,7 @@ type PromoTier = 'free' | 'pro';
 
 function getPromoTier(planId?: string): PromoTier {
   switch (planId) {
+    case 'plus':
     case 'pro':
     case 'expert':
     case 'etudiant':

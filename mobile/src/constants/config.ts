@@ -41,14 +41,16 @@ export const STORAGE_KEYS = {
   ONBOARDING_COMPLETE: 'deepsight_onboarding_complete',
 };
 
-// Plans - matches backend plan IDs (3-plan architecture: free/pro/expert)
+// Plans - matches backend plan IDs (3-plan architecture: free/plus/pro)
 export const PLANS = {
   FREE: 'free',
+  PLUS: 'plus',
   PRO: 'pro',
-  EXPERT: 'expert',
   // Legacy aliases for rétrocompatibilité
-  STUDENT: 'pro',
-  STARTER: 'pro',
+  STUDENT: 'plus',
+  STARTER: 'plus',
+  EXPERT: 'pro',
+  TEAM: 'pro',
 } as const;
 
 export type PlanType = typeof PLANS[keyof typeof PLANS];

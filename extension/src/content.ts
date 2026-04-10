@@ -403,7 +403,7 @@ const FEATURE_TEASERS: FeatureTeaser[] = [
   { icon: '\u{1F4CB}', label: 'Playlists enti\u00E8res', minPlan: 'pro', url: `${WEBAPP_URL}/upgrade` },
 ];
 
-const PLAN_RANK: Record<string, number> = { free: 0, decouverte: 0, pro: 1, expert: 1, etudiant: 1, student: 1, starter: 1 };
+const PLAN_RANK: Record<string, number> = { free: 0, decouverte: 0, plus: 1, pro: 2, expert: 2, etudiant: 1, student: 1, starter: 1 };
 
 const PLAN_PRICE_LABEL: Record<string, string> = {
   pro: 'Pro 5,99\u20AC',

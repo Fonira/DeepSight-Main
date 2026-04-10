@@ -1,7 +1,7 @@
 """
 PLAN_CONFIG — Single Source of Truth pour les plans DeepSight.
 
-Migration Avril 2026 : 2 plans uniquement (Free + Pro 6.99€).
+Migration Avril 2026 : 3 plans (Free / Plus 4.99€ / Pro 9.99€).
 Chaque plan définit : limites, features, affichage, prix, plateformes.
 Convention : -1 = illimité.
 """
@@ -15,26 +15,28 @@ logger = logging.getLogger(__name__)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PLAN IDs & HIERARCHY — 2 plans uniquement (Avril 2026)
+# PLAN IDs & HIERARCHY — 3 plans (Avril 2026)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 
 class PlanId(str, Enum):
     FREE = "free"
+    PLUS = "plus"
     PRO = "pro"
 
 
 PLAN_HIERARCHY: list[PlanId] = [
     PlanId.FREE,
+    PlanId.PLUS,
     PlanId.PRO,
 ]
 
 # Aliases rétrocompatibilité — anciens plan IDs → plan valide actuel
-# Tous les anciens plans payants sont mappés vers "pro"
+# Les anciens plans intermédiaires → plus, les anciens plans premium → pro
 PLAN_ALIASES: dict[str, str] = {
-    "etudiant": "pro",
-    "starter": "pro",
-    "student": "pro",
+    "etudiant": "plus",
+    "starter": "plus",
+    "student": "plus",
     "expert": "pro",
     "equipe": "pro",
     "team": "pro",
@@ -100,9 +102,12 @@ PLANS: dict[str, dict[str, Any]] = {
             "default_model": "mistral-small-2603",
             "voice_chat_enabled": False,
             "voice_monthly_minutes": 0,
-            "academic_papers_per_analysis": 0,
+            "academic_papers_per_analysis": 5,
             "bibliography_export": False,
             "academic_full_text": False,
+            "debate_enabled": False,
+            "debate_monthly": 0,
+            "tts_enabled": False,
         },
         "features_display": [
             {"text": "5 analyses / mois", "icon": "📊"},
@@ -113,11 +118,11 @@ PLANS: dict[str, dict[str, Any]] = {
             {"text": "Historique 60 jours", "icon": "🗂️"},
         ],
         "features_locked": [
-            {"text": "Cartes mentales & Fact-check", "unlock_plan": "pro"},
-            {"text": "Recherche web IA", "unlock_plan": "pro"},
-            {"text": "Playlists", "unlock_plan": "pro"},
-            {"text": "Export PDF & Markdown", "unlock_plan": "pro"},
-            {"text": "Chat vocal", "unlock_plan": "pro"},
+            {"text": "Cartes mentales & Fact-check", "unlock_plan": "plus"},
+            {"text": "Export PDF & Markdown", "unlock_plan": "plus"},
+            {"text": "Recherche web IA", "unlock_plan": "plus"},
+            {"text": "Playlists & Deep Research", "unlock_plan": "pro"},
+            {"text": "Chat vocal & TTS", "unlock_plan": "pro"},
         ],
         "platforms": {
             "web": {
@@ -133,6 +138,8 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": False,
                 "history": True,
                 "voice_chat": False,
+                "debate": False,
+                "deep_research": False,
             },
             "mobile": {
                 "analyse": True,
@@ -147,6 +154,8 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": False,
                 "history": True,
                 "voice_chat": False,
+                "debate": False,
+                "deep_research": False,
             },
             "extension": {
                 "analyse": True,
@@ -161,28 +170,152 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": False,
                 "history": True,
                 "voice_chat": False,
+                "debate": False,
+                "deep_research": False,
             },
         },
     },
-    # ─── PRO (6.99€/mois) — Plan unique payant, Avril 2026 ──────────────
-    # Fusionne les features des anciens plans Pro + Expert
+    # ─── PLUS (4.99€/mois) — Plan intermédiaire, Avril 2026 ──────────────
+    # Expérience enrichie : meilleur modèle, exports, mind maps, web search
+    PlanId.PLUS: {
+        "name": "Plus",
+        "name_en": "Plus",
+        "description": "L'essentiel pour apprendre mieux, plus vite",
+        "description_en": "Everything you need to learn better, faster",
+        "price_monthly_cents": 499,
+        "stripe_price_id_test": None,
+        "stripe_price_id_live": None,
+        "color": "#3B82F6",
+        "icon": "⭐",
+        "badge": {"text": "Populaire", "color": "#3B82F6"},
+        "popular": True,
+        "limits": {
+            "monthly_credits": 3000,
+            "monthly_analyses": 25,
+            "max_video_length_min": 60,
+            "concurrent_analyses": 1,
+            "priority_queue": False,
+            "chat_questions_per_video": 25,
+            "chat_daily_limit": 50,
+            "flashcards_enabled": True,
+            "quiz_enabled": True,
+            "mindmap_enabled": True,
+            "factcheck_enabled": True,
+            "deep_research_enabled": False,
+            "web_search_enabled": True,
+            "web_search_monthly": 20,
+            "playlists_enabled": False,
+            "max_playlists": 0,
+            "max_playlist_videos": 0,
+            "export_formats": ["txt", "md", "pdf"],
+            "export_markdown": True,
+            "export_pdf": True,
+            "history_retention_days": -1,
+            "allowed_models": [
+                "mistral-small-2603",
+                "mistral-medium-2508",
+            ],
+            "default_model": "mistral-medium-2508",
+            "voice_chat_enabled": False,
+            "voice_monthly_minutes": 0,
+            "academic_papers_per_analysis": 15,
+            "bibliography_export": True,
+            "academic_full_text": False,
+            "debate_enabled": True,
+            "debate_monthly": 3,
+            "tts_enabled": False,
+        },
+        "features_display": [
+            {"text": "25 analyses / mois", "icon": "📊"},
+            {"text": "Vidéos jusqu'à 1h", "icon": "⏱️"},
+            {"text": "Chat IA (25 q/vidéo, 50/jour)", "icon": "💬"},
+            {"text": "Flashcards, Quiz, Mind Maps", "icon": "🧠", "highlight": True},
+            {"text": "Fact-check automatique", "icon": "🔍", "highlight": True},
+            {"text": "Recherche web IA (20/mois)", "icon": "🌐", "highlight": True},
+            {"text": "Export PDF + Markdown", "icon": "📄"},
+            {"text": "Papers académiques (15/analyse)", "icon": "📚"},
+            {"text": "Débat IA (3/mois)", "icon": "⚔️"},
+            {"text": "Modèle Mistral Medium", "icon": "🤖"},
+            {"text": "Historique permanent", "icon": "♾️"},
+        ],
+        "features_locked": [
+            {"text": "Playlists (jusqu'à 10)", "unlock_plan": "pro"},
+            {"text": "Deep Research", "unlock_plan": "pro"},
+            {"text": "Chat vocal ElevenLabs", "unlock_plan": "pro"},
+            {"text": "Lecture audio TTS", "unlock_plan": "pro"},
+            {"text": "Modèle Mistral Large", "unlock_plan": "pro"},
+            {"text": "File prioritaire", "unlock_plan": "pro"},
+        ],
+        "platforms": {
+            "web": {
+                "analyse": True,
+                "chat": True,
+                "tts": False,
+                "flashcards": True,
+                "quiz": True,
+                "mindmap": True,
+                "web_search": True,
+                "export_md": True,
+                "export_pdf": True,
+                "playlists": False,
+                "history": True,
+                "voice_chat": False,
+                "debate": True,
+                "deep_research": False,
+            },
+            "mobile": {
+                "analyse": True,
+                "chat": True,
+                "tts": False,
+                "flashcards": True,
+                "quiz": True,
+                "mindmap": False,
+                "web_search": False,
+                "export_md": False,
+                "export_pdf": False,
+                "playlists": False,
+                "history": True,
+                "voice_chat": False,
+                "debate": False,
+                "deep_research": False,
+            },
+            "extension": {
+                "analyse": True,
+                "chat": True,
+                "tts": False,
+                "flashcards": False,
+                "quiz": False,
+                "mindmap": False,
+                "web_search": False,
+                "export_md": False,
+                "export_pdf": False,
+                "playlists": False,
+                "history": True,
+                "voice_chat": False,
+                "debate": False,
+                "deep_research": False,
+            },
+        },
+    },
+    # ─── PRO (9.99€/mois) — Plan premium complet, Avril 2026 ─────────────
+    # Features lourdes et coûteux : ElevenLabs, Deep Research, playlists, Mistral Large
     PlanId.PRO: {
         "name": "Pro",
         "name_en": "Pro",
         "description": "Toute la puissance de DeepSight, sans limites",
         "description_en": "The full power of DeepSight, unlimited",
-        "price_monthly_cents": 699,
+        "price_monthly_cents": 999,
         "stripe_price_id_test": None,
         "stripe_price_id_live": None,
-        "color": "#6366F1",
-        "icon": "⚡",
-        "badge": {"text": "Recommandé", "color": "#6366F1"},
-        "popular": True,
+        "color": "#8B5CF6",
+        "icon": "👑",
+        "badge": {"text": "Le + puissant", "color": "#8B5CF6"},
+        "popular": False,
         "limits": {
-            "monthly_credits": 10000,
-            "monthly_analyses": 50,
+            "monthly_credits": 15000,
+            "monthly_analyses": 100,
             "max_video_length_min": 240,
-            "concurrent_analyses": 2,
+            "concurrent_analyses": 3,
             "priority_queue": True,
             "chat_questions_per_video": -1,
             "chat_daily_limit": -1,
@@ -192,10 +325,10 @@ PLANS: dict[str, dict[str, Any]] = {
             "factcheck_enabled": True,
             "deep_research_enabled": True,
             "web_search_enabled": True,
-            "web_search_monthly": 30,
+            "web_search_monthly": 60,
             "playlists_enabled": True,
-            "max_playlists": 5,
-            "max_playlist_videos": 10,
+            "max_playlists": 10,
+            "max_playlist_videos": 20,
             "export_formats": ["txt", "md", "pdf"],
             "export_markdown": True,
             "export_pdf": True,
@@ -207,28 +340,33 @@ PLANS: dict[str, dict[str, Any]] = {
             ],
             "default_model": "mistral-large-2512",
             "voice_chat_enabled": True,
-            "voice_monthly_minutes": 15,
-            "academic_papers_per_analysis": 30,
+            "voice_monthly_minutes": 45,
+            "academic_papers_per_analysis": 50,
             "bibliography_export": True,
             "academic_full_text": True,
+            "debate_enabled": True,
+            "debate_monthly": 20,
+            "tts_enabled": True,
         },
         "features_display": [
-            {"text": "50 analyses / mois", "icon": "📊"},
+            {"text": "100 analyses / mois", "icon": "📊"},
             {"text": "Vidéos jusqu'à 4h", "icon": "⏱️"},
             {"text": "Chat IA illimité", "icon": "💬", "highlight": True},
-            {"text": "2 analyses simultanées", "icon": "⚡"},
+            {"text": "3 analyses simultanées", "icon": "⚡"},
             {"text": "Deep Research", "icon": "🔬", "highlight": True},
             {
                 "text": "Flashcards, Quiz, Mind Maps, Fact-check",
                 "icon": "🧠",
                 "highlight": True,
             },
-            {"text": "Recherche web IA (30/mois)", "icon": "🔍", "highlight": True},
-            {"text": "Playlists (5 max, 10 vidéos)", "icon": "📋"},
-            {"text": "Chat vocal (15 min/mois)", "icon": "🎙️"},
+            {"text": "Recherche web IA (60/mois)", "icon": "🌐", "highlight": True},
+            {"text": "Playlists (10 max, 20 vidéos)", "icon": "📋", "highlight": True},
+            {"text": "Chat vocal ElevenLabs (45 min/mois)", "icon": "🎙️", "highlight": True},
+            {"text": "Lecture audio TTS", "icon": "🔊", "highlight": True},
+            {"text": "Débat IA (20/mois)", "icon": "⚔️"},
             {"text": "Export PDF + Markdown", "icon": "📄"},
-            {"text": "Papers académiques (30/analyse)", "icon": "📚"},
-            {"text": "Modèle Mistral Large", "icon": "🤖"},
+            {"text": "Papers académiques (50/analyse + texte intégral)", "icon": "📚"},
+            {"text": "Modèle Mistral Large", "icon": "🤖", "highlight": True},
             {"text": "Historique permanent", "icon": "♾️"},
             {"text": "File prioritaire", "icon": "🏃"},
         ],
@@ -247,6 +385,8 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": True,
                 "history": True,
                 "voice_chat": True,
+                "debate": True,
+                "deep_research": True,
             },
             "mobile": {
                 "analyse": True,
@@ -261,6 +401,8 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": True,
                 "history": True,
                 "voice_chat": True,
+                "debate": False,
+                "deep_research": False,
             },
             "extension": {
                 "analyse": True,
@@ -275,6 +417,8 @@ PLANS: dict[str, dict[str, Any]] = {
                 "playlists": False,
                 "history": True,
                 "voice_chat": False,
+                "debate": False,
+                "deep_research": False,
             },
         },
     },
@@ -331,17 +475,31 @@ def init_stripe_prices() -> None:
     """Charge les stripe_price_id depuis les variables d'environnement.
 
     Env vars attendues :
+      STRIPE_PRICE_PLUS_TEST / STRIPE_PRICE_PLUS_LIVE
       STRIPE_PRICE_PRO_TEST / STRIPE_PRICE_PRO_LIVE
     """
-    test_id = os.environ.get("STRIPE_PRICE_PRO_TEST", "")
-    live_id = os.environ.get("STRIPE_PRICE_PRO_LIVE", "")
-    PLANS[PlanId.PRO]["stripe_price_id_test"] = test_id or None
-    PLANS[PlanId.PRO]["stripe_price_id_live"] = live_id or None
-    if test_id or live_id:
+    # Plus
+    plus_test = os.environ.get("STRIPE_PRICE_PLUS_TEST", "")
+    plus_live = os.environ.get("STRIPE_PRICE_PLUS_LIVE", "")
+    PLANS[PlanId.PLUS]["stripe_price_id_test"] = plus_test or None
+    PLANS[PlanId.PLUS]["stripe_price_id_live"] = plus_live or None
+    if plus_test or plus_live:
+        logger.info(
+            "Stripe price loaded for PLUS: test=%s live=%s",
+            bool(plus_test),
+            bool(plus_live),
+        )
+
+    # Pro
+    pro_test = os.environ.get("STRIPE_PRICE_PRO_TEST", "")
+    pro_live = os.environ.get("STRIPE_PRICE_PRO_LIVE", "")
+    PLANS[PlanId.PRO]["stripe_price_id_test"] = pro_test or None
+    PLANS[PlanId.PRO]["stripe_price_id_live"] = pro_live or None
+    if pro_test or pro_live:
         logger.info(
             "Stripe price loaded for PRO: test=%s live=%s",
-            bool(test_id),
-            bool(live_id),
+            bool(pro_test),
+            bool(pro_live),
         )
 
 
@@ -374,7 +532,7 @@ def is_feature_available(plan_id: str, feature: str, platform: str = "web") -> b
 
 
 def get_plan_index(plan_id: str) -> int:
-    """Retourne l'index du plan dans la hiérarchie (0 = free)."""
+    """Retourne l'index du plan dans la hiérarchie (0 = free, 1 = plus, 2 = pro)."""
     try:
         normalized = normalize_plan_id(plan_id)
         return PLAN_HIERARCHY.index(PlanId(normalized))

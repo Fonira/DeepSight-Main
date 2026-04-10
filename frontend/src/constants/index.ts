@@ -222,8 +222,8 @@ export const detectVolatileTopics = (
 // Toute nouvelle feature doit importer depuis config/planPrivileges.ts
 // ═══════════════════════════════════════════════════════════════════════════════
 
-/** @deprecated Use PlanId from config/planPrivileges.ts — 3 plans: free/pro/expert */
-export type PlanType = 'free' | 'pro' | 'expert' | 'etudiant' | 'starter' | 'student' | 'unlimited' | 'team'; // Aliases pour rétrocompat
+/** @deprecated Use PlanId from config/planPrivileges.ts — 3 plans: free/plus/pro */
+export type PlanType = 'free' | 'plus' | 'pro' | 'expert' | 'etudiant' | 'starter' | 'student' | 'unlimited' | 'team'; // Aliases pour rétrocompat
 
 /** @deprecated Use PLAN_LIMITS + PLANS_INFO from config/planPrivileges.ts */
 export interface PlanConfig {
@@ -262,11 +262,28 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     history_days: 3,
     models: ["mistral-small-2603"],
   },
-  /** @deprecated Alias → pro */
+  plus: {
+    id: "plus",
+    name_fr: "Plus",
+    name_en: "Plus",
+    icon: "⭐",
+    color: "#3B82F6",
+    price: 499, // 4.99€
+    monthly_credits: 25,
+    chat_daily_limit: -1,
+    chat_per_video_limit: 20,
+    web_search_monthly: 10,
+    web_search_enabled: true,
+    can_use_playlists: false,
+    max_playlist_videos: 0,
+    history_days: -1,
+    models: ["mistral-medium-2508"],
+  },
+  /** @deprecated Alias → plus */
   student: {
     id: "student",
-    name_fr: "Pro",
-    name_en: "Pro",
+    name_fr: "Plus",
+    name_en: "Plus",
     icon: "⭐",
     color: "#3B82F6",
     price: 599,
@@ -280,21 +297,21 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     history_days: -1,
     models: ["mistral-small-2603"],
   },
-  /** @deprecated Alias → pro */
+  /** @deprecated Alias → plus */
   starter: {
     id: "starter",
-    name_fr: "Pro",
-    name_en: "Pro",
+    name_fr: "Plus",
+    name_en: "Plus",
     icon: "⭐",
     color: "#3B82F6",
-    price: 599,
-    monthly_credits: 30,
+    price: 499,
+    monthly_credits: 25,
     chat_daily_limit: -1,
-    chat_per_video_limit: 25,
-    web_search_monthly: 20,
+    chat_per_video_limit: 20,
+    web_search_monthly: 10,
     web_search_enabled: true,
-    can_use_playlists: true,
-    max_playlist_videos: 5,
+    can_use_playlists: false,
+    max_playlist_videos: 0,
     history_days: -1,
     models: ["mistral-medium-2508"],
   },
@@ -302,28 +319,29 @@ export const PLAN_CONFIGS: Record<PlanType, PlanConfig> = {
     id: "pro",
     name_fr: "Pro",
     name_en: "Pro",
-    icon: "⭐",
-    color: "#3B82F6",
-    price: 599, // 5.99€
-    monthly_credits: 30,
+    icon: "👑",
+    color: "#8B5CF6",
+    price: 999, // 9.99€
+    monthly_credits: 100,
     chat_daily_limit: -1,
-    chat_per_video_limit: 25,
-    web_search_monthly: 20,
+    chat_per_video_limit: -1, // illimité
+    web_search_monthly: 60,
     web_search_enabled: true,
     can_use_playlists: true,
-    max_playlist_videos: 5,
+    max_playlist_videos: 20,
     history_days: -1, // permanent
-    models: ["mistral-medium-2508"],
+    models: ["mistral-large-2512"],
   },
+  /** @deprecated Alias → pro */
   expert: {
     id: "expert",
-    name_fr: "Expert",
-    name_en: "Expert",
+    name_fr: "Pro",
+    name_en: "Pro",
     icon: "👑",
-    color: "#F59E0B",
-    price: 1499, // 14.99€
+    color: "#8B5CF6",
+    price: 999,
     monthly_credits: 100,
-    chat_daily_limit: -1, // illimité
+    chat_daily_limit: -1,
     chat_per_video_limit: -1,
     web_search_monthly: 60,
     web_search_enabled: true,

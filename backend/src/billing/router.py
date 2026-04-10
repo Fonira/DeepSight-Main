@@ -100,9 +100,9 @@ class BillingInfoResponse(BaseModel):
 
 
 class UpgradeRequest(BaseModel):
-    """Requête pour upgrade Free → Pro (deprecated - use /change-plan instead)"""
+    """Requête pour upgrade (deprecated - use /change-plan instead)"""
 
-    target_plan: str = "pro"
+    target_plan: str = "plus"
 
 
 class DowngradeRequest(BaseModel):
@@ -224,7 +224,7 @@ class TrialEligibilityResponse(BaseModel):
     eligible: bool
     reason: Optional[str] = None
     trial_days: int = 7
-    trial_plan: str = "pro"
+    trial_plan: str = "plus"
 
 
 @router.get("/trial-eligibility", response_model=TrialEligibilityResponse)
@@ -246,7 +246,7 @@ async def check_trial_eligibility(
             eligible=False,
             reason="Vous avez déjà un abonnement actif",
             trial_days=0,
-            trial_plan="pro",
+            trial_plan="plus",
         )
 
     # Vérifier s'il a déjà eu un abonnement
@@ -255,7 +255,7 @@ async def check_trial_eligibility(
             eligible=False,
             reason="Vous avez déjà bénéficié d'un abonnement",
             trial_days=0,
-            trial_plan="pro",
+            trial_plan="plus",
         )
 
     # Vérifier les transactions passées (si déjà eu des crédits achetés)
@@ -272,11 +272,11 @@ async def check_trial_eligibility(
             eligible=False,
             reason="Vous avez déjà bénéficié d'un essai ou d'un abonnement",
             trial_days=0,
-            trial_plan="pro",
+            trial_plan="plus",
         )
 
     return TrialEligibilityResponse(
-        eligible=True, reason=None, trial_days=7, trial_plan="pro"
+        eligible=True, reason=None, trial_days=7, trial_plan="plus"
     )
 
 
@@ -309,9 +309,9 @@ async def start_pro_trial(
     if not init_stripe():
         raise HTTPException(status_code=500, detail="Stripe not configured")
 
-    price_id = get_price_id("pro")
+    price_id = get_price_id("plus")
     if not price_id:
-        raise HTTPException(status_code=400, detail="Pro plan not configured")
+        raise HTTPException(status_code=400, detail="Plus plan not configured")
 
     # Créer ou récupérer le client Stripe
     try:
@@ -332,12 +332,12 @@ async def start_pro_trial(
                 "trial_period_days": 7,
                 "metadata": {"user_id": str(current_user.id), "is_trial": "true"},
             },
-            success_url=f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan=pro&trial=true",
+            success_url=f"{FRONTEND_URL}/payment/success?session_id={{CHECKOUT_SESSION_ID}}&plan=plus&trial=true",
             cancel_url=f"{FRONTEND_URL}/upgrade",
             allow_promotion_codes=False,  # Pas de code promo pour les essais
             metadata={
                 "user_id": str(current_user.id),
-                "plan": "pro",
+                "plan": "plus",
                 "is_trial": "true",
             },
         )
@@ -348,7 +348,7 @@ async def start_pro_trial(
             "checkout_url": checkout_session.url,
             "session_id": checkout_session.id,
             "trial_days": 7,
-            "plan": "pro",
+            "plan": "plus",
         }
 
     except stripe.error.StripeError as e:
@@ -524,11 +524,12 @@ async def create_checkout_session(
     if not init_stripe():
         raise HTTPException(status_code=500, detail="Stripe not configured")
 
-    # Valider le plan
-    if request.plan != "pro":
+    # Valider le plan (doit être un plan payant dans la hiérarchie)
+    paid_plans = [p for p in PLAN_HIERARCHY if p != "free"]
+    if request.plan not in paid_plans:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid plan: {request.plan}. Must be 'pro'.",
+            detail=f"Invalid plan: {request.plan}. Must be one of: {', '.join(paid_plans)}.",
         )
 
     price_id = get_price_id(request.plan)
@@ -740,8 +741,8 @@ async def change_subscription_plan(
     new_plan = request.new_plan.lower()
     current_plan = current_user.plan or "free"
 
-    # Validation du nouveau plan
-    valid_plans = ["pro"]
+    # Validation du nouveau plan (tous les plans payants)
+    valid_plans = [p for p in PLAN_HIERARCHY if p != "free"]
     if new_plan not in valid_plans:
         raise HTTPException(status_code=400, detail=f"Invalid plan: {new_plan}")
 
@@ -926,8 +927,9 @@ async def upgrade_subscription(
     current_plan = current_user.plan or "free"
     target = request.target_plan.lower()
 
-    # Valider que c'est bien un upgrade
-    if target != "pro":
+    # Valider que c'est bien un plan payant valide
+    paid_plans = [p for p in PLAN_HIERARCHY if p != "free"]
+    if target not in paid_plans:
         raise HTTPException(status_code=400, detail=f"Invalid target plan: {target}")
 
     if not plan_is_upgrade(current_plan, target):
@@ -2065,7 +2067,7 @@ async def handle_trial_will_end(session: AsyncSession, data: dict):
             to=user.email,
             username=user.username,
             trial_end_date=formatted_date,
-            plan=user.plan or "pro",
+            plan=user.plan or "plus",
         )
         logger.info(f"Trial ending reminder sent to {user.email}")
     except Exception as e:
@@ -2265,7 +2267,8 @@ async def get_api_key_status(
     🔑 Vérifier le status de la clé API de l'utilisateur.
     Disponible uniquement pour le plan Pro.
     """
-    plan_eligible = current_user.plan in ["pro"]
+    # API keys are Pro-only
+    plan_eligible = current_user.plan == "pro"
 
     return ApiKeyStatusResponse(
         has_api_key=bool(current_user.api_key_hash),
@@ -2290,7 +2293,7 @@ async def generate_user_api_key(
     Disponible uniquement pour le plan Pro.
     """
     # Vérifier le plan
-    if current_user.plan not in ["pro"]:
+    if current_user.plan != "pro":
         raise HTTPException(
             status_code=403,
             detail={
@@ -2344,7 +2347,7 @@ async def regenerate_user_api_key(
     Disponible uniquement pour le plan Pro.
     """
     # Vérifier le plan
-    if current_user.plan not in ["pro"]:
+    if current_user.plan != "pro":
         raise HTTPException(
             status_code=403,
             detail={

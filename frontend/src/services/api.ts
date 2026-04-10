@@ -29,7 +29,7 @@ export interface User {
   username: string;
   email: string;
   email_verified: boolean;
-  plan: 'free' | 'etudiant' | 'starter' | 'pro' | 'student' | 'team' | 'expert' | 'unlimited'; // Aliases pour rétrocompat
+  plan: 'free' | 'plus' | 'pro' | 'etudiant' | 'starter' | 'student' | 'team' | 'expert' | 'unlimited'; // Aliases pour rétrocompat
   credits: number;
   credits_monthly: number;
   is_admin: boolean;
@@ -768,7 +768,71 @@ export const authApi = {
 // 📹 VIDEO API
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// 🆓 Guest demo analysis result
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🎪 DEMO API (Landing Page — No Auth)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface DemoAnalyzeResult {
+  status: string;
+  demo_session_id: string;
+  video_title: string;
+  video_channel: string;
+  video_duration: number;
+  thumbnail_url: string;
+  platform: string;
+  category: string;
+  key_points: string[];
+  conclusion: string;
+  keywords: string[];
+  remaining_analyses: number;
+}
+
+export interface DemoChatResult {
+  status: string;
+  response: string;
+  messages_remaining: number;
+}
+
+export interface DemoSuggestionsResult {
+  status: string;
+  suggestions: string[];
+}
+
+export const demoApi = {
+  /** Analyse demo ultra-courte (3-5 points cles) */
+  async analyze(url: string): Promise<DemoAnalyzeResult> {
+    return request('/api/demo/analyze', {
+      method: 'POST',
+      body: { url },
+      skipAuth: true,
+      skipCredentials: true,
+      timeout: 60000,
+    });
+  },
+
+  /** Chat demo (3 messages max) */
+  async chat(demoSessionId: string, question: string): Promise<DemoChatResult> {
+    return request('/api/demo/chat', {
+      method: 'POST',
+      body: { demo_session_id: demoSessionId, question },
+      skipAuth: true,
+      skipCredentials: true,
+      timeout: 30000,
+    });
+  },
+
+  /** Get question suggestions for demo chat */
+  async getSuggestions(demoSessionId: string): Promise<DemoSuggestionsResult> {
+    return request(`/api/demo/suggestions/${demoSessionId}`, {
+      method: 'GET',
+      skipAuth: true,
+      skipCredentials: true,
+      timeout: 15000,
+    });
+  },
+};
+
+// 🆓 Guest demo analysis result (legacy)
 interface GuestAnalysisResult {
   video_title: string;
   video_channel: string;
