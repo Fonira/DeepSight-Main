@@ -1,5 +1,7 @@
 # Stratégie Tournesol × DeepSight — Approche Partenariat
 
+> **Suivi opérationnel** : voir `outreach/campaigns/tournesol-partenariat.md` pour le tracker, les messages et le statut des échanges.
+
 **Version** : 1.0 — Mars 2026
 **Objectif** : Approcher l'équipe Tournesol pour formaliser l'intégration et proposer un partenariat mutuellement bénéfique.
 
