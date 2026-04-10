@@ -185,6 +185,97 @@ async def transcribe_audio_groq(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🎙️ TRANSCRIPTION VOXTRAL STT (MISTRAL AI — PRIORITAIRE)
+# v7.2 — Supporte 3h audio, 13 langues, timestamps segment-level
+# ═══════════════════════════════════════════════════════════════════════════════
+
+VOXTRAL_STT_URL = "https://api.mistral.ai/v1/audio/transcriptions"
+VOXTRAL_STT_MODEL = "voxtral-mini-latest"
+
+
+async def transcribe_audio_voxtral(
+    audio_data: bytes,
+    audio_ext: str = ".mp3",
+    source_name: str = "AUDIO",
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    Transcrit un fichier audio via Voxtral STT (Mistral AI).
+
+    Avantages vs Groq Whisper:
+    - Pas de limite 25MB
+    - Supporte jusqu'à 3h d'audio
+    - Même clé API que Mistral LLM (inclus dans Scale tier)
+
+    Returns:
+        (full_text, timestamped_text, detected_language) ou (None, None, None)
+    """
+    from core.config import get_mistral_key
+
+    mistral_key = get_mistral_key()
+    if not mistral_key:
+        print(f"  ⏭️ [{source_name}] VOXTRAL-STT: No Mistral API key", flush=True)
+        return None, None, None
+
+    print(f"  🎙️ [{source_name}] Sending {len(audio_data)/1024/1024:.1f}MB to Voxtral STT...", flush=True)
+
+    try:
+        mime_type = AUDIO_MIME_TYPES.get(audio_ext, 'audio/mpeg')
+
+        async with httpx.AsyncClient() as client:
+            files = {"file": (f"audio{audio_ext}", audio_data, mime_type)}
+            data = {
+                "model": VOXTRAL_STT_MODEL,
+                "timestamp_granularities": "segment",
+            }
+
+            start_time = time.time()
+            response = await client.post(
+                VOXTRAL_STT_URL,
+                headers={"Authorization": f"Bearer {mistral_key}"},
+                files=files,
+                data=data,
+                timeout=360,
+            )
+            elapsed = time.time() - start_time
+            print(f"  🎙️ [{source_name}] Voxtral response in {elapsed:.1f}s: {response.status_code}", flush=True)
+
+            if response.status_code == 200:
+                result = response.json()
+                full_text = result.get("text", "")
+                segments = result.get("segments", [])
+                detected_lang = result.get("language", "fr")
+
+                if full_text:
+                    if segments:
+                        timestamped_parts = []
+                        last_ts = -30
+                        for seg in segments:
+                            text = seg.get("text", "").strip()
+                            start = seg.get("start", 0)
+                            if not text:
+                                continue
+                            if start - last_ts >= 30:
+                                ts = format_seconds_to_timestamp(start)
+                                timestamped_parts.append(f"\n[{ts}] {text}")
+                                last_ts = start
+                            else:
+                                timestamped_parts.append(f" {text}")
+                        timestamped = "".join(timestamped_parts).strip()
+                    else:
+                        timestamped = full_text
+
+                    print(f"  ✅ [{source_name}] Voxtral STT OK: {len(full_text)} chars, lang={detected_lang}", flush=True)
+                    return full_text, timestamped, detected_lang
+            else:
+                print(f"  ❌ [{source_name}] Voxtral STT error {response.status_code}: {response.text[:200]}", flush=True)
+
+    except Exception as e:
+        print(f"  ❌ [{source_name}] Voxtral STT error: {e}", flush=True)
+
+    return None, None, None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 📥 TÉLÉCHARGEMENT AUDIO VIA YT-DLP (générique — YouTube, TikTok, etc.)
 # ═══════════════════════════════════════════════════════════════════════════════
 

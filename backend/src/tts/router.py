@@ -508,14 +508,18 @@ async def list_voices(
 @router.get("/status")
 async def tts_status():
     """Check TTS availability and active provider."""
-    from tts.providers import ElevenLabsTTSProvider, OpenAITTSProvider
+    from tts.providers import ElevenLabsTTSProvider, VoxtralTTSProvider, OpenAITTSProvider
+    from core.config import settings as _settings
 
     elevenlabs_available = ElevenLabsTTSProvider().is_available()
+    voxtral_available = VoxtralTTSProvider().is_available()
     openai_available = OpenAITTSProvider().is_available()
 
-    # Determine active provider
+    # Determine active provider (same priority as get_tts_provider)
     if elevenlabs_available:
         active_provider = "elevenlabs"
+    elif voxtral_available:
+        active_provider = "voxtral"
     elif openai_available:
         active_provider = "openai"
     else:
@@ -528,6 +532,10 @@ async def tts_status():
             "elevenlabs": {
                 "available": elevenlabs_available,
                 "model": "eleven_multilingual_v2",
+            },
+            "voxtral": {
+                "available": voxtral_available,
+                "model": _settings.VOXTRAL_MODEL,
             },
             "openai": {
                 "available": openai_available,

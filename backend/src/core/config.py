@@ -110,6 +110,13 @@ class _DeepSightSettings(BaseSettings):
     ELEVENLABS_VOICE_ID: str = ""
     ELEVENLABS_MODEL_ID: str = "eleven_flash_v2_5"
 
+    # -- Voxtral TTS (Mistral) --
+    VOXTRAL_MODEL: str = "voxtral-mini-tts-2603"
+    VOXTRAL_VOICE_FR_FEMALE: str = ""   # voice_id created via Mistral Voices API
+    VOXTRAL_VOICE_FR_MALE: str = ""
+    VOXTRAL_VOICE_EN_FEMALE: str = ""
+    VOXTRAL_VOICE_EN_MALE: str = ""
+
     # -- Legal --
     LEGAL_OWNER_NAME: str = "LEPARC Maxime Bertrand"
     LEGAL_SIRET: str = "994 558 898 00015"
@@ -505,6 +512,13 @@ MISTRAL_MODEL_ALIASES: Dict[str, str] = {
 # Modèle dédié aux micro-tâches internes (entités, flashcards, classification)
 MISTRAL_INTERNAL_MODEL = "ministral-8b-2512"
 
+# Modèle par défaut pour l'Agent Mistral (web search)
+MISTRAL_AGENT_MODEL = "mistral-small-2603"
+
+# Agent Mistral — web search natif (remplace pipeline Brave+Mistral)
+# L'Agent est créé au runtime si activé. Brave reste en fallback.
+MISTRAL_AGENT_ENABLED = True  # Set False to force Brave-only pipeline
+
 # Modèle de modération contenu
 MISTRAL_MODERATION_MODEL = "mistral-moderation-latest"
 
@@ -598,6 +612,11 @@ def is_web_search_available() -> bool:
     return bool(BRAVE_SEARCH_API_KEY and MISTRAL_API_KEY)
 
 
+def is_mistral_agent_available() -> bool:
+    """Check if Mistral Agent web search is enabled and configured."""
+    return bool(MISTRAL_AGENT_ENABLED and MISTRAL_API_KEY)
+
+
 def get_plan_limits(plan: str) -> Dict[str, Any]:
     return PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
 
@@ -616,6 +635,39 @@ def get_assemblyai_key() -> Optional[str]:
 
 def get_elevenlabs_key() -> Optional[str]:
     return _settings.ELEVENLABS_API_KEY or None
+
+
+# =============================================================================
+# VOXTRAL TTS CONFIG
+# =============================================================================
+
+_VOXTRAL_VOICE_MAP = {
+    ("fr", "female"): lambda: _settings.VOXTRAL_VOICE_FR_FEMALE,
+    ("fr", "male"): lambda: _settings.VOXTRAL_VOICE_FR_MALE,
+    ("en", "female"): lambda: _settings.VOXTRAL_VOICE_EN_FEMALE,
+    ("en", "male"): lambda: _settings.VOXTRAL_VOICE_EN_MALE,
+}
+
+
+def get_voxtral_voice_id(language: str = "fr", gender: str = "female") -> Optional[str]:
+    """Get Voxtral voice_id for a language/gender combo. Returns None if not configured."""
+    getter = _VOXTRAL_VOICE_MAP.get((language, gender))
+    if getter:
+        val = getter()
+        return val if val else None
+    # Fallback: try any configured voice
+    for g in [getter for getter in _VOXTRAL_VOICE_MAP.values()]:
+        val = g()
+        if val:
+            return val
+    return None
+
+
+def is_voxtral_available() -> bool:
+    """Voxtral TTS is available if we have a Mistral key + at least one voice configured."""
+    if not get_mistral_key():
+        return False
+    return bool(get_voxtral_voice_id("fr", "female") or get_voxtral_voice_id("en", "female"))
 
 
 # =============================================================================

@@ -86,6 +86,7 @@ from videos.router import router as videos_router
 from chat.router import router as chat_router
 from billing.router import router as billing_router
 from admin.router import router as admin_router
+from admin.finetuning_router import router as finetuning_router
 from exports.router import router as exports_router
 from playlists.router import router as playlists_router
 from history.history_router import router as history_router
@@ -301,6 +302,14 @@ try:
 except ImportError as e:
     STUDY_REVIEW_ROUTER_AVAILABLE = False
     print(f"⚠️ Study review router not available: {e}", flush=True)
+
+# 📄 Documents router (Mistral OCR — PDF/Image analysis)
+try:
+    from documents.router import router as documents_router
+    DOCUMENTS_ROUTER_AVAILABLE = True
+except ImportError as e:
+    DOCUMENTS_ROUTER_AVAILABLE = False
+    print(f"⚠️ Documents router not available: {e}", flush=True)
 
 # Global video cache instance
 _video_cache: "VideoContentCacheService | None" = None
@@ -716,6 +725,7 @@ app.include_router(billing_router, prefix="/api/billing", tags=["Billing"])
 app.include_router(billing_router, prefix="/api/stripe", tags=["Stripe"], include_in_schema=False)
 print("Billing router loaded (available at /api/billing and /api/stripe)", flush=True)
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
+app.include_router(finetuning_router, prefix="/api/admin/finetune", tags=["Fine-tuning"])
 app.include_router(exports_router, prefix="/api/exports", tags=["Exports"])
 app.include_router(playlists_router, prefix="/api/playlists", tags=["Playlists"])
 app.include_router(history_router, prefix="/api/history", tags=["History"])
@@ -834,6 +844,11 @@ if GAMIFICATION_ROUTER_AVAILABLE:
 if STUDY_REVIEW_ROUTER_AVAILABLE:
     app.include_router(study_review_router, prefix="/api/study/review", tags=["Study Review"])
     print("📖 Study review router loaded (POST /api/study/review/submit, GET /due)", flush=True)
+
+# 📄 Documents router (Mistral OCR — PDF/Image analysis)
+if DOCUMENTS_ROUTER_AVAILABLE:
+    app.include_router(documents_router, prefix="/api/documents", tags=["Documents"])
+    print("📄 Documents router loaded (POST /api/documents/analyze-url, /analyze-upload, /ocr-only)", flush=True)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ENDPOINTS DE BASE

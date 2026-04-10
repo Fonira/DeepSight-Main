@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from transcripts.audio_utils import (
     download_audio_ytdlp,
     transcribe_audio_groq,
+    transcribe_audio_voxtral,
     compress_audio,
     executor as audio_executor,
 )
@@ -961,7 +962,21 @@ async def _transcribe_safely(
     vid: str,
     label: str,
 ) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    """Transcrit de manière sécurisée avec logging."""
+    """Transcrit avec fallback: Voxtral STT (prioritaire) → Groq Whisper."""
+    # ── 1. Voxtral STT (Mistral — prioritaire, pas de limite 25MB) ──────
+    try:
+        full_text, timestamped, lang = await transcribe_audio_voxtral(
+            audio_data=audio_data,
+            audio_ext=audio_ext,
+            source_name=f"TIKTOK-{label}",
+        )
+        if full_text:
+            logger.info(f"[TIKTOK] Transcript OK via Voxtral ({label}): {len(full_text)} chars, lang={lang}, vid={vid}")
+            return full_text, timestamped, lang
+    except Exception as e:
+        logger.warning(f"[TIKTOK] Voxtral STT failed ({label}): {e}")
+
+    # ── 2. Groq Whisper (fallback) ──────────────────────────────────────
     try:
         full_text, timestamped, lang = await transcribe_audio_groq(
             audio_data=audio_data,
@@ -969,7 +984,7 @@ async def _transcribe_safely(
             source_name=f"TIKTOK-{label}",
         )
         if full_text:
-            logger.info(f"[TIKTOK] Transcript OK ({label}): {len(full_text)} chars, lang={lang}, vid={vid}")
+            logger.info(f"[TIKTOK] Transcript OK via Groq ({label}): {len(full_text)} chars, lang={lang}, vid={vid}")
         return full_text, timestamped, lang
     except Exception as e:
         logger.error(f"[TIKTOK] Transcription error ({label}): {e}")

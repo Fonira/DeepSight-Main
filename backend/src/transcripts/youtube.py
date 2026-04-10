@@ -54,7 +54,7 @@ import contextvars
 from core.config import (
     get_supadata_key, get_groq_key, get_deepgram_key,
     get_openai_key, get_assemblyai_key, get_elevenlabs_key,
-    get_youtube_proxy, TRANSCRIPT_CONFIG
+    get_mistral_key, get_youtube_proxy, TRANSCRIPT_CONFIG
 )
 
 # 💾 Cache pour les transcripts (TTL 24h)
@@ -91,6 +91,7 @@ TIMEOUTS = {
     "ytdlp_auto": 90,         # 60 → 90 (anti-bot delays)
     "whisper_download": 240,  # 180 → 240 (vidéos longues)
     "whisper_transcribe": 360,# 300 → 360 (fichiers volumineux)
+    "voxtral_stt": 300,       # v7.2 - Mistral Voxtral STT (3h audio max)
     "openai_whisper": 360,    # Nouveau - OpenAI Whisper
     "deepgram": 300,          # Deepgram Nova-2
     "assemblyai": 300,        # Nouveau - AssemblyAI
@@ -107,10 +108,22 @@ TIMEOUTS_SHORT = {
     "ytdlp_auto": 45,         # 90 → 45
     "whisper_download": 60,   # 240 → 60 (fichier audio petit)
     "whisper_transcribe": 90, # 360 → 90 (transcription rapide)
+    "voxtral_stt": 90,        # 300 → 90
     "openai_whisper": 90,     # 360 → 90
     "deepgram": 60,           # 300 → 60
     "assemblyai": 60,         # 300 → 60
     "elevenlabs_scribe": 60,  # 300 → 60
+}
+
+
+# MIME types pour multipart uploads (Voxtral STT, etc.)
+AUDIO_MIME_TYPES = {
+    '.mp3': 'audio/mpeg',
+    '.m4a': 'audio/mp4',
+    '.webm': 'audio/webm',
+    '.opus': 'audio/opus',
+    '.wav': 'audio/wav',
+    '.ogg': 'audio/ogg',
 }
 
 
@@ -338,10 +351,11 @@ class TranscriptSource(Enum):
     PIPED = "piped"  # Nouveau
     YTDLP = "yt-dlp"
     YTDLP_AUTO = "yt-dlp-auto"
+    VOXTRAL_STT = "voxtral-stt"  # v7.2 — Mistral Voxtral STT (prioritaire Phase 3)
     WHISPER = "groq-whisper"
-    OPENAI_WHISPER = "openai-whisper"  # Nouveau
+    OPENAI_WHISPER = "openai-whisper"
     DEEPGRAM = "deepgram-nova2"
-    ASSEMBLYAI = "assemblyai"  # Nouveau
+    ASSEMBLYAI = "assemblyai"
     ELEVENLABS_SCRIBE = "elevenlabs-scribe"
     CACHE = "cache"
     NONE = "none"
@@ -1411,6 +1425,126 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# 🎙️ MÉTHODE 6b: VOXTRAL STT (MISTRAL AI — PRIORITAIRE PHASE 3)
+# v7.2 — Supporte jusqu'à 3h d'audio, multilingue 13 langues,
+#         timestamps segment-level, même clé API que Mistral LLM.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+VOXTRAL_STT_URL = "https://api.mistral.ai/v1/audio/transcriptions"
+VOXTRAL_STT_MODEL = "voxtral-mini-latest"
+VOXTRAL_MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB (Mistral est très généreux)
+
+
+async def get_transcript_voxtral(
+    video_id: str,
+    audio_data: bytes = None,
+    audio_ext: str = ".mp3",
+) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """
+    🎙️ Voxtral STT (Mistral AI) — Transcription prioritaire Phase 3.
+
+    Avantages vs Groq/OpenAI Whisper:
+    - Jusqu'à 3h d'audio par requête
+    - Pas de limite de taille à 25MB
+    - Timestamps segment-level
+    - Même clé API que Mistral (pas de coût supplémentaire avec Scale tier)
+    - Multilingue 13 langues avec détection auto
+
+    API: POST /v1/audio/transcriptions (multipart/form-data)
+    Model: voxtral-mini-latest
+    """
+    mistral_key = get_mistral_key()
+    if not mistral_key:
+        print(f"  ⏭️ [VOXTRAL-STT] Skipped: No Mistral API key", flush=True)
+        return None, None, None
+
+    print(f"  🎙️ [VOXTRAL-STT] Starting...", flush=True)
+
+    # ── Télécharger l'audio si pas fourni ────────────────────────────────
+    if not audio_data:
+        audio_data, audio_ext = await _download_audio_for_transcription(video_id)
+        if not audio_data:
+            print(f"  ❌ [VOXTRAL-STT] Failed to download audio", flush=True)
+            return None, None, None
+
+    if len(audio_data) > VOXTRAL_MAX_FILE_SIZE:
+        print(f"  ❌ [VOXTRAL-STT] Audio too large: {len(audio_data)/1024/1024:.1f}MB > {VOXTRAL_MAX_FILE_SIZE/1024/1024:.0f}MB", flush=True)
+        return None, None, None
+
+    print(f"  🎙️ [VOXTRAL-STT] Sending {len(audio_data)/1024/1024:.1f}MB to Mistral Voxtral...", flush=True)
+
+    try:
+        mime_type = AUDIO_MIME_TYPES.get(audio_ext, 'audio/mpeg')
+
+        async with httpx.AsyncClient() as client:
+            # Multipart form-data: file + model + timestamp_granularities
+            files = {
+                "file": (f"audio{audio_ext}", audio_data, mime_type),
+            }
+            data = {
+                "model": VOXTRAL_STT_MODEL,
+                "timestamp_granularities": "segment",
+            }
+
+            start_time = time.time()
+            response = await client.post(
+                VOXTRAL_STT_URL,
+                headers={"Authorization": f"Bearer {mistral_key}"},
+                files=files,
+                data=data,
+                timeout=_t("voxtral_stt"),
+            )
+            elapsed = time.time() - start_time
+            print(f"  🎙️ [VOXTRAL-STT] Response in {elapsed:.1f}s: {response.status_code}", flush=True)
+
+            if response.status_code == 200:
+                result = response.json()
+
+                # Voxtral returns { "text": "...", "segments": [...] }
+                full_text = result.get("text", "")
+
+                if not full_text:
+                    print(f"  ❌ [VOXTRAL-STT] Empty transcription returned", flush=True)
+                    return None, None, None
+
+                # ── Build timestamped text from segments ─────────────────
+                segments = result.get("segments", [])
+                detected_lang = result.get("language", "fr")
+
+                if segments:
+                    timestamped_parts = []
+                    last_ts = -30
+                    for seg in segments:
+                        text = seg.get("text", "").strip()
+                        start = seg.get("start", 0)
+                        if not text:
+                            continue
+                        if start - last_ts >= 30:
+                            ts = format_seconds_to_timestamp(start)
+                            timestamped_parts.append(f"\n[{ts}] {text}")
+                            last_ts = start
+                        else:
+                            timestamped_parts.append(f" {text}")
+                    timestamped = "".join(timestamped_parts).strip()
+                else:
+                    timestamped = full_text
+
+                print(f"  ✅ [VOXTRAL-STT] Success: {len(full_text)} chars, lang={detected_lang}, {elapsed:.1f}s", flush=True)
+                return full_text, timestamped, detected_lang
+
+            else:
+                error_body = response.text[:200]
+                print(f"  ❌ [VOXTRAL-STT] Error {response.status_code}: {error_body}", flush=True)
+
+    except httpx.TimeoutException:
+        print(f"  ❌ [VOXTRAL-STT] Timeout ({_t('voxtral_stt')}s)", flush=True)
+    except Exception as e:
+        print(f"  ❌ [VOXTRAL-STT] Transcription error: {e}", flush=True)
+
+    return None, None, None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # 🎙️ MÉTHODE 7: DEEPGRAM NOVA-2 (ALTERNATIVE À WHISPER - ULTRA-RAPIDE)
 # ═══════════════════════════════════════════════════════════════════════════════
 
@@ -2244,6 +2378,7 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
             print(f"  ❌ Failed to download audio - trying services anyway", flush=True)
 
         phase3_methods = [
+            ("Voxtral STT", "voxtral_stt", lambda: get_transcript_voxtral(video_id, audio_data, audio_ext)),
             ("Groq Whisper", "whisper", lambda: get_transcript_whisper(video_id)),
             ("OpenAI Whisper", "openai_whisper", lambda: get_transcript_openai_whisper(video_id, audio_data, audio_ext)),
             ("Deepgram Nova-2", "deepgram", lambda: get_transcript_deepgram(video_id)),
@@ -2277,7 +2412,7 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
     print(f"", flush=True)
     print(f"❌ FAILED: All methods failed for {video_id} (is_short={is_short})", flush=True)
     # Log l'état des circuit breakers pour diagnostic
-    for cb_name in ["supadata", "ytapi", "invidious", "piped", "ytdlp", "ytdlp_auto", "whisper", "openai_whisper", "deepgram", "assemblyai", "elevenlabs_scribe"]:
+    for cb_name in ["supadata", "ytapi", "invidious", "piped", "ytdlp", "ytdlp_auto", "voxtral_stt", "whisper", "openai_whisper", "deepgram", "assemblyai", "elevenlabs_scribe"]:
         cb = get_circuit_breaker(cb_name)
         if cb.state != CircuitState.CLOSED:
             print(f"  🔌 [{cb_name}] circuit={cb.state.value} failures={cb.failures}", flush=True)
@@ -2439,6 +2574,7 @@ __all__ = [
     "get_transcript_ytdlp",
     "get_transcript_ytdlp_auto",
     # Phase 3: Audio transcription
+    "get_transcript_voxtral",  # v7.2 — Mistral Voxtral STT (prioritaire)
     "get_transcript_whisper",
     "get_transcript_openai_whisper",  # v6.0
     "get_transcript_deepgram",

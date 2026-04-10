@@ -189,10 +189,67 @@ async def _generate_audio_bytes(
     speed: float = 1.0,
 ) -> bytes:
     """
-    Call ElevenLabs TTS API and collect all audio bytes.
+    Generate audio bytes with multi-provider fallback.
 
-    Raises RuntimeError if generation fails.
+    Priority:
+        1. ElevenLabs (if available)
+        2. Voxtral (if voice_ids configured) — uses non-streaming generate_bytes()
+        3. OpenAI (fallback)
+
+    All providers ultimately return raw MP3 bytes for R2 upload.
+    Raises RuntimeError if all providers fail.
     """
+    from tts.providers import (
+        ElevenLabsTTSProvider,
+        VoxtralTTSProvider,
+        OpenAITTSProvider,
+    )
+
+    errors: list[str] = []
+
+    # ── 1. ElevenLabs (primary) ──────────────────────────────────────────
+    elevenlabs = ElevenLabsTTSProvider()
+    if elevenlabs.is_available():
+        try:
+            return await _elevenlabs_generate_bytes(text, language, gender, voice_id, speed)
+        except Exception as e:
+            errors.append(f"ElevenLabs: {e}")
+            logger.warning("ElevenLabs audio_summary failed: %s", e)
+
+    # ── 2. Voxtral (secondary) ──────────────────────────────────────────
+    voxtral = VoxtralTTSProvider()
+    if voxtral.is_available():
+        try:
+            return await voxtral.generate_bytes(
+                text=text, voice_id=voice_id,
+                language=language, gender=gender, speed=speed,
+            )
+        except Exception as e:
+            errors.append(f"Voxtral: {e}")
+            logger.warning("Voxtral audio_summary failed: %s", e)
+
+    # ── 3. OpenAI (fallback) ────────────────────────────────────────────
+    openai_provider = OpenAITTSProvider()
+    if openai_provider.is_available():
+        try:
+            return await _stream_to_bytes(openai_provider, text, language, gender, voice_id, speed)
+        except Exception as e:
+            errors.append(f"OpenAI: {e}")
+            logger.warning("OpenAI audio_summary failed: %s", e)
+
+    raise RuntimeError(
+        f"All TTS providers failed for audio summary: {'; '.join(errors)}"
+    )
+
+
+async def _elevenlabs_generate_bytes(
+    text: str,
+    language: str,
+    gender: str,
+    voice_id: Optional[str],
+    speed: float,
+) -> bytes:
+    """Direct ElevenLabs call (non-streaming, full bytes)."""
     api_key = get_elevenlabs_key()
     if not api_key:
         raise RuntimeError("ElevenLabs API key not configured")
@@ -239,6 +296,25 @@ async def _generate_audio_bytes(
 
         elevenlabs_circuit.record_success()
         return response.content
+
+
+async def _stream_to_bytes(
+    provider,
+    text: str,
+    language: str,
+    gender: str,
+    voice_id: Optional[str],
+    speed: float,
+) -> bytes:
+    """Collect streaming provider output into full bytes (for OpenAI fallback)."""
+    stream, _client, _media = await provider.generate_stream(
+        text=text, voice_id=voice_id,
+        language=language, gender=gender, speed=speed,
+    )
+    chunks = []
+    async for chunk in stream:
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

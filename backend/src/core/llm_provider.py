@@ -498,3 +498,101 @@ async def llm_complete_stream(
             continue
 
     yield "Error: AI service temporarily unavailable, please retry"
+
+
+# =============================================================================
+# PUBLIC: llm_complete_batch — Batch processing (50% cheaper, async)
+# =============================================================================
+
+async def llm_complete_batch(
+    items: List[Dict[str, any]],
+    model: str = "mistral-small-2603",
+    max_tokens: int = 4000,
+    temperature: float = 0.3,
+    max_wait: float = 600.0,
+    on_progress: Optional[callable] = None,
+) -> List[Optional[LLMResult]]:
+    """
+    Submit multiple LLM calls as a single Mistral Batch job (50% cost reduction).
+
+    Each item in `items` must have:
+        - "id": str — unique identifier to match results
+        - "messages": List[Dict] — chat messages (system + user)
+        - Optionally "max_tokens", "temperature" to override defaults
+
+    Returns:
+        List of LLMResult (one per item, in same order). None for failed items.
+
+    Usage:
+        items = [
+            {"id": "video_1", "messages": [{"role": "system", "content": "..."}, ...]},
+            {"id": "video_2", "messages": [{"role": "user", "content": "..."}]},
+        ]
+        results = await llm_complete_batch(items, model="mistral-small-2603")
+        for item, result in zip(items, results):
+            if result:
+                print(f"{item['id']}: {result.content[:100]}")
+    """
+    if not items:
+        return []
+
+    try:
+        from core.mistral_batch import BatchRequest, submit_and_wait
+    except ImportError:
+        print("❌ [LLM-BATCH] mistral_batch module not available", flush=True)
+        return [None] * len(items)
+
+    # Convert items to BatchRequests
+    batch_requests = []
+    for item in items:
+        batch_requests.append(BatchRequest(
+            custom_id=item["id"],
+            messages=item["messages"],
+            model=model,
+            max_tokens=item.get("max_tokens", max_tokens),
+            temperature=item.get("temperature", temperature),
+        ))
+
+    print(
+        f"📦 [LLM-BATCH] Submitting {len(batch_requests)} requests "
+        f"(model={model}, max_wait={max_wait}s)",
+        flush=True,
+    )
+
+    # Submit and wait
+    batch_results = await submit_and_wait(
+        batch_requests, max_wait=max_wait, on_progress=on_progress,
+    )
+
+    # Build a map of custom_id → BatchResult
+    result_map = {r.custom_id: r for r in batch_results}
+
+    # Return in same order as input items
+    output: List[Optional[LLMResult]] = []
+    for item in items:
+        br = result_map.get(item["id"])
+        if br and br.success:
+            output.append(LLMResult(
+                content=br.content,
+                model_used=model,
+                provider="mistral_batch",
+                tokens_input=br.tokens_input,
+                tokens_output=br.tokens_output,
+                tokens_total=br.tokens_total,
+                fallback_used=False,
+                attempts=1,
+            ))
+        else:
+            error = br.error if br else "No result returned"
+            print(f"⚠️ [LLM-BATCH] Item {item['id']} failed: {error}", flush=True)
+            output.append(None)
+
+    success_count = sum(1 for r in output if r is not None)
+    total_tokens = sum(r.tokens_total for r in output if r is not None)
+    print(
+        f"✅ [LLM-BATCH] Complete: {success_count}/{len(items)} success, "
+        f"{total_tokens:,} tokens (50% discount applied by Mistral)",
+        flush=True,
+    )
+
+    return output
