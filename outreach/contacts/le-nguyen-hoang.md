@@ -88,37 +88,46 @@ Tournesol est deja integre dans DeepSight sur toutes les plateformes (web, mobil
 
 ## Brouillons
 
-### Email — 2026-04-10
+### Email v1 — 2026-04-10 (version initiale, remplacee par v2)
 
-**Objet** : DeepSight x Tournesol — Integration existante et collaboration
+~~Version business/partenariat classique — archivee.~~
+
+### Email v2 — 2026-04-10 (version finale, angle ethique/regulation)
+
+**Objet** : DeepSight x Tournesol — Pour une IA au service de la comprehension, pas du chaos
 
 Bonjour Le,
 
-Je suis Maxime, fondateur de DeepSight (deepsightsynthesis.com), un SaaS francais d'analyse IA de videos YouTube. Notre outil propose des syntheses structurees, du fact-checking et des outils d'etude (flashcards, quiz, mind maps), le tout propulse par Mistral AI.
+Je me permets de vous ecrire parce que je crois qu'on partage une conviction fondamentale : l'IA doit etre un outil au service de la comprehension et de l'esprit critique, pas une machine a engagement ou a profit.
 
-**Nous integrons deja Tournesol** dans notre plateforme depuis plusieurs mois, sur nos 3 interfaces (web, mobile, extension Chrome) :
-- Les scores Tournesol sont affiches pour chaque video analysee (widget avec les 10 criteres)
-- Vos scores alimentent notre algorithme de decouverte a hauteur de 20%
+Je suis Maxime Le Parc, fondateur de DeepSight (deepsightsynthesis.com). On developpe un outil d'analyse de videos YouTube propulse par Mistral AI — syntheses structurees, fact-checking, flashcards, quiz. L'idee n'est pas de consommer plus de contenu, mais de mieux comprendre celui qu'on regarde.
+
+Et c'est exactement pour ca que nous avons integre Tournesol dans notre plateforme.
+
+Concretement, depuis plusieurs mois, sur nos 3 interfaces (web, mobile, extension Chrome) :
+- Chaque video analysee affiche son score Tournesol avec les 10 criteres
+- Vos scores alimentent notre algorithme de decouverte (20% du poids)
 - Une section "Recommandations Tournesol" figure sur notre dashboard
-- Le badge sunflower redirige nos utilisateurs vers tournesol.app
+- Le badge 🌻 redirige nos utilisateurs vers tournesol.app pour qu'ils contribuent
 
-Nous avons note que la base de donnees publique est sous licence ODC-By, et nous attribuons Tournesol dans nos credits, notre footer et nos pages "A propos". Nous vous contactons neanmoins pour nous assurer que cette utilisation vous convient et pour explorer une eventuelle collaboration plus formelle.
+Nous avons vu que la base de donnees publique est sous licence ODC-By, et nous vous attribuons dans nos credits, notre footer et nos pages "A propos". Mais au-dela de la licence, je tenais a vous contacter directement : est-ce que cette utilisation vous convient ? Et surtout, est-ce qu'on peut faire mieux ensemble ?
 
-**Ce que DeepSight apporte a Tournesol** :
-- Distribution de vos scores aupres de nos utilisateurs sur 3 plateformes
-- Un cas d'usage commercial concret de votre plateforme
-- Feedback technique en tant qu'integrateur API
-- Trafic dirige vers tournesol.app (deep links, badge cliquable)
+Ce qui nous rapproche, je crois, c'est la meme lecture du probleme : les algorithmes de recommandation actuels amplifient le bruit, la desinformation et l'engagement toxique. Tournesol propose une alternative citoyenne par le jugement collaboratif. DeepSight propose une alternative individuelle par l'analyse en profondeur et la verification. Les deux approches se completent.
 
-Nous partageons vos valeurs : IA ethique, souverainete europeenne (100% Mistral AI, donnees hebergees en UE), et promotion du contenu de qualite.
+Ce que DeepSight apporte a Tournesol aujourd'hui :
+- Vos scores exposes a nos utilisateurs sur 3 plateformes
+- Du trafic vers tournesol.app (deep links, badge cliquable)
+- Un cas concret d'integration de votre plateforme dans un produit
 
-Seriez-vous disponible pour un court echange ?
+DeepSight est 100% propulse par Mistral AI, donnees hebergees en Europe. On ne vend pas de l'attention — on essaie d'outiller les gens pour qu'ils pensent mieux.
+
+Si vous etes ouvert a un echange, meme court, j'en serais tres heureux.
 
 Cordialement,
 Maxime Le Parc
 Fondateur, DeepSight
 maxime@deepsightsynthesis.com
-deepsightsynthesis.com
+https://www.deepsightsynthesis.com
 
 ---
 
