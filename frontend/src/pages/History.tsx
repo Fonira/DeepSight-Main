@@ -48,6 +48,7 @@ import type { Summary, ReliabilityResult, EnrichedConcept } from "../services/ap
 import type { DebateAnalysis } from "../types/debate";
 import { DebateHistoryCard } from "../components/debate";
 import { normalizePlanId, PLAN_LIMITS } from "../config/planPrivileges";
+import { AnalysisActionBar } from "../components/analysis/AnalysisActionBar";
 import { VoiceModal } from "../components/voice/VoiceModal";
 import { useVoiceChat } from "../components/voice/useVoiceChat";
 import { sanitizeTitle } from "../utils/sanitize";
@@ -1342,66 +1343,31 @@ export const History: React.FC = () => {
                     </div>
                   ) : (
                   <div className="card">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-5 border-b border-border-subtle">
-                      <h3 className="font-semibold text-text-primary flex items-center gap-2">
+                    {/* Action Bar v2 — Unified */}
+                    <div className="p-4 sm:p-5 border-b border-border-subtle">
+                      <div className="flex items-center gap-2 mb-4">
                         <BookOpen className="w-5 h-5 text-accent-primary" />
-                        {language === 'fr' ? 'Analyse' : 'Analysis'}
-                      </h3>
-                      <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0">
-                        <button onClick={handleDetailCopy} className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]">
-                          {detailCopied ? <Check className="w-4 h-4 text-accent-success" /> : <Copy className="w-4 h-4" />}
-                          <span className="hidden sm:inline">{detailCopied ? (language === 'fr' ? 'Copié' : 'Copied') : (language === 'fr' ? 'Copier' : 'Copy')}</span>
-                        </button>
-                        <button onClick={() => setDetailShowCitationModal(true)} className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]">
-                          <GraduationCap className="w-4 h-4" />
-                          <span className="hidden sm:inline">{language === 'fr' ? 'Citer' : 'Cite'}</span>
-                        </button>
-                        <button onClick={() => setDetailShowStudyToolsModal(true)} className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]">
-                          <Brain className="w-4 h-4" />
-                          <span className="hidden sm:inline">{language === 'fr' ? 'Réviser' : 'Study'}</span>
-                        </button>
-                        <button onClick={handleDetailOpenKeywords} className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]">
-                          <Tags className="w-4 h-4" />
-                          <span className="hidden sm:inline">{language === 'fr' ? 'Mots-clés' : 'Keywords'}</span>
-                        </button>
-                        {voiceEnabled && (
-                          <button
-                            onClick={() => setIsVoiceModalOpen(true)}
-                            className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
-                          >
-                            <Mic className="w-4 h-4" />
-                            <span className="hidden sm:inline">{language === 'fr' ? 'Vocal' : 'Voice'}</span>
-                          </button>
-                        )}
-                        <div className="flex-shrink-0">
-                          <button ref={detailExportBtnRef} onClick={() => { const pos = calcExportMenuPos(detailExportBtnRef); setDetailExportMenuPos(pos); setDetailShowExportMenu(!detailShowExportMenu); }} className="btn btn-ghost text-xs min-h-[36px] sm:min-h-[32px]" disabled={detailExporting}>
-                            {detailExporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
-                            <span className="hidden sm:inline">Export</span>
-                            <ChevronDown className="w-3 h-3" />
-                          </button>
-                          {detailShowExportMenu && createPortal(
-                            <div ref={detailExportMenuRef} className="fixed w-52 bg-bg-elevated border border-border-default rounded-lg shadow-xl py-1 animate-fadeIn" style={{ top: detailExportMenuPos.top, left: detailExportMenuPos.left, zIndex: 9999 }}>
-                              <button onClick={() => handleDetailExport('pdf')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
-                                <FileText className="w-4 h-4" /> PDF
-                              </button>
-                              <button onClick={() => handleDetailExport('md')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
-                                <FileDown className="w-4 h-4" /> Markdown
-                              </button>
-                              <button onClick={() => handleDetailExport('txt')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
-                                <FileText className="w-4 h-4" /> Texte
-                              </button>
-                              <div className="border-t border-border-subtle my-1" />
-                              <button onClick={() => handleDetailAudioExport('full')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
-                                <Headphones className="w-4 h-4" /> {language === 'fr' ? 'Audio complet' : 'Full audio'}
-                              </button>
-                              <button onClick={() => handleDetailAudioExport('condensed')} className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2">
-                                <Headphones className="w-4 h-4 opacity-60" /> {language === 'fr' ? 'Audio résumé (~2 min)' : 'Short audio (~2 min)'}
-                              </button>
-                            </div>,
-                            document.body
-                          )}
-                        </div>
+                        <h3 className="font-semibold text-text-primary">
+                          {language === 'fr' ? 'Analyse' : 'Analysis'}
+                        </h3>
                       </div>
+                      {selectedVideoDetail && (
+                        <AnalysisActionBar
+                          summary={{
+                            id: selectedVideoDetail.id,
+                            video_id: selectedVideoDetail.video_id,
+                            video_title: selectedVideoDetail.video_title,
+                            summary_content: selectedVideoDetail.summary_content,
+                          }}
+                          language={language as 'fr' | 'en'}
+                          onOpenVoice={voiceEnabled ? () => setIsVoiceModalOpen(true) : undefined}
+                          onOpenStudyTools={() => setDetailShowStudyToolsModal(true)}
+                          onOpenCitation={() => setDetailShowCitationModal(true)}
+                          showStudyTools={true}
+                          showCitation={true}
+                          sticky={false}
+                        />
+                      )}
                     </div>
                     <div className="p-4 sm:p-5 prose max-w-none">
                       <EnrichedMarkdown

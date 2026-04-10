@@ -20,6 +20,7 @@ import { AnalysisValueDisplay } from '../AnalysisValueDisplay';
 import { CitationExport } from '../CitationExport';
 import { StudyToolsModal } from '../StudyToolsModal';
 import { KeywordsModal } from '../KeywordsModal';
+import { AnalysisActionBar } from '../analysis/AnalysisActionBar';
 import { videoApi, shareApi } from '../../services/api';
 import { sanitizeTitle } from '../../utils/sanitize';
 import type { Summary, EnrichedConcept } from '../../services/api';
@@ -179,143 +180,32 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
 
   return (
     <div>
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-5 border-b border-border-subtle">
-        <h3 className="font-semibold text-text-primary flex items-center gap-2">
+      {/* Toolbar v2 — Unified Action Bar */}
+      <div className="p-4 sm:p-5 border-b border-border-subtle">
+        <div className="flex items-center gap-2 mb-4">
           <BookOpen className="w-5 h-5 text-accent-primary" />
-          {language === 'fr' ? 'Synthèse' : 'Summary'}
+          <h3 className="font-semibold text-text-primary">
+            {language === 'fr' ? 'Synthèse' : 'Summary'}
+          </h3>
           {selectedSummary?.summary_content && (
             <AudioPlayerButton text={selectedSummary.summary_content.slice(0, 5000)} size="sm" />
           )}
-        </h3>
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap pb-2 sm:pb-0">
-          {/* Copy */}
-          <button
-            onClick={handleCopy}
-            className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
-          >
-            {copied ? <Check className="w-4 h-4 text-accent-success" /> : <Copy className="w-4 h-4" />}
-            <span className="hidden sm:inline">{copied ? (language === 'fr' ? 'Copié' : 'Copied') : (language === 'fr' ? 'Copier' : 'Copy')}</span>
-          </button>
-
-          {/* Citation */}
-          <button
-            onClick={() => setShowCitationModal(true)}
-            className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
-            title={language === 'fr' ? 'Générer une citation académique' : 'Generate academic citation'}
-          >
-            <GraduationCap className="w-4 h-4" />
-            <span className="hidden sm:inline">{language === 'fr' ? 'Citer' : 'Cite'}</span>
-          </button>
-
-          {/* Audio Summary — Podcast Mode */}
-          <AudioSummaryButton
-            summaryId={selectedSummary.id}
-            videoTitle={sanitizeTitle(selectedSummary.video_title || '')}
-            language={language}
-            compact
-          />
-
-          {/* Study Tools (optional — History context) */}
-          {showStudyTools && (
-            <button
-              onClick={() => setShowStudyToolsModal(true)}
-              className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
-              title={language === 'fr' ? 'Fiches de révision et arbre pédagogique' : 'Study cards and concept map'}
-            >
-              <Brain className="w-4 h-4" />
-              <span className="hidden sm:inline">{language === 'fr' ? 'Réviser' : 'Study'}</span>
-            </button>
-          )}
-
-          {/* Keywords (optional — History context) */}
-          {showKeywords && (
-            <button
-              onClick={handleOpenKeywords}
-              className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
-              title={language === 'fr' ? 'Voir les mots-clés extraits' : 'View extracted keywords'}
-            >
-              <Tags className="w-4 h-4" />
-              <span className="hidden sm:inline">{language === 'fr' ? 'Mots-clés' : 'Keywords'}</span>
-            </button>
-          )}
-
-          {/* Voice Chat (optional — History context) */}
-          {showVoice && voiceEnabled && onOpenVoice && (
-            <button
-              onClick={onOpenVoice}
-              className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
-            >
-              <Mic className="w-4 h-4" />
-              <span className="hidden sm:inline">{language === 'fr' ? 'Vocal' : 'Voice'}</span>
-            </button>
-          )}
-
-          {/* Export */}
-          <div className="flex-shrink-0">
-            <button
-              ref={exportBtnRef}
-              onClick={() => setShowExportMenu(!showExportMenu)}
-              className="btn btn-ghost text-xs min-h-[36px] sm:min-h-[32px]"
-              disabled={exporting}
-            >
-              {exporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
-              <span className="hidden sm:inline">Export</span>
-              <ChevronDown className={`w-3 h-3 transition-transform ${showExportMenu ? 'rotate-180' : ''}`} />
-            </button>
-            {showExportMenu && createPortal(
-              <div
-                ref={exportMenuRef}
-                className="fixed w-44 bg-bg-elevated border border-border-default rounded-lg shadow-xl py-1 animate-fadeIn"
-                style={{ top: menuPos.top, left: menuPos.left, zIndex: 9999 }}
-              >
-                <button
-                  onClick={() => handleExport('pdf')}
-                  className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2 transition-colors"
-                >
-                  <FileText className="w-4 h-4" /> PDF
-                </button>
-                <button
-                  onClick={() => handleExport('md')}
-                  className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2 transition-colors"
-                >
-                  <FileDown className="w-4 h-4" /> Markdown
-                </button>
-                <div className="border-t border-border-subtle my-1" />
-                <button
-                  onClick={() => {
-                    setShowExportMenu(false);
-                    const audioBtn = document.querySelector('[data-audio-summary-btn]') as HTMLButtonElement;
-                    if (audioBtn) audioBtn.click();
-                  }}
-                  className="w-full px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2 transition-colors"
-                >
-                  <Headphones className="w-4 h-4" /> Audio (podcast)
-                </button>
-              </div>,
-              document.body
-            )}
-          </div>
-
-          {/* Share */}
-          <button
-            onClick={handleShare}
-            disabled={sharing}
-            className="btn btn-ghost text-xs flex-shrink-0 min-h-[36px] sm:min-h-[32px]"
-            title={shareCopied ? (language === 'fr' ? 'Lien copié !' : 'Link copied!') : (language === 'fr' ? 'Partager l\'analyse' : 'Share analysis')}
-          >
-            {sharing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : shareCopied ? (
-              <Check className="w-4 h-4 text-accent-success" />
-            ) : (
-              <Share2 className="w-4 h-4" />
-            )}
-            <span className="hidden sm:inline">
-              {shareCopied ? (language === 'fr' ? 'Copié !' : 'Copied!') : (language === 'fr' ? 'Partager' : 'Share')}
-            </span>
-          </button>
         </div>
+        <AnalysisActionBar
+          summary={{
+            id: selectedSummary.id,
+            video_id: selectedSummary.video_id,
+            video_title: selectedSummary.video_title,
+            summary_content: selectedSummary.summary_content,
+          }}
+          language={language}
+          onOpenVoice={showVoice && voiceEnabled ? onOpenVoice : undefined}
+          onOpenStudyTools={showStudyTools ? () => setShowStudyToolsModal(true) : undefined}
+          onOpenCitation={() => setShowCitationModal(true)}
+          showStudyTools={showStudyTools}
+          showCitation={true}
+          sticky={false}
+        />
       </div>
 
       {/* Content */}

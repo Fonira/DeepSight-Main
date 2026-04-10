@@ -57,6 +57,7 @@ import { AnalysisHub } from "../components/AnalysisHub";
 import { ExportMenu } from "../components/analysis/ExportMenu";
 import { AudioPlayer } from "../components/analysis/AudioPlayer";
 import { ShareButton } from "../components/analysis/ShareButton";
+import { AnalysisActionBar } from "../components/analysis/AnalysisActionBar";
 import { sanitizeTitle } from "../utils/sanitize";
 // 🎙️ Voice Chat
 import VoiceButton from "../components/voice/VoiceButton";
@@ -1251,18 +1252,22 @@ export const DashboardPage: React.FC = () => {
                   </div>
                 </div>
 
-                {/* 📥 Export & Share Action Bar */}
-                <div className="flex items-center gap-1 px-1">
-                  <ExportMenu
-                    summaryId={selectedSummary.id}
-                    videoTitle={selectedSummary.video_title}
-                    onAudioReady={(url) => setAudioPlayerUrl(url)}
-                  />
-                  <ShareButton
-                    videoId={selectedSummary.video_id}
-                    videoTitle={selectedSummary.video_title}
-                  />
-                </div>
+                {/* 📥 Action Bar v2 — Unified with hero Voice Agent CTA */}
+                <AnalysisActionBar
+                  summary={{
+                    id: selectedSummary.id,
+                    video_id: selectedSummary.video_id,
+                    video_title: selectedSummary.video_title,
+                    video_channel: selectedSummary.video_channel,
+                    summary_content: selectedSummary.summary_content,
+                  }}
+                  language={language}
+                  onOpenVoice={() => setIsVoiceModalOpen(true)}
+                  onAudioReady={(url) => setAudioPlayerUrl(url)}
+                  showStudyTools={false}
+                  showCitation={false}
+                  sticky={false}
+                />
 
                 {/* 💬 Bandeau Chat IA — Design glassmorphism premium */}
                 {!chatOpen && (
@@ -1437,13 +1442,9 @@ export const DashboardPage: React.FC = () => {
         }
       `}</style>
 
-      {/* 🎙️ Voice Chat */}
+      {/* 🎙️ Voice Chat (VoiceButton supprimé — intégré dans AnalysisActionBar) */}
       {selectedSummary && (
         <>
-          <VoiceButton
-            summaryId={selectedSummary.id}
-            onOpen={() => setIsVoiceModalOpen(true)}
-          />
           <VoiceModal
             isOpen={isVoiceModalOpen}
             onClose={() => {
