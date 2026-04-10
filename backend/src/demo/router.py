@@ -182,9 +182,10 @@ async def demo_analyze(request: DemoAnalyzeRequest, raw_request: Request):
     if not transcript_text or len(transcript_text.strip()) < 50:
         raise HTTPException(status_code=400, detail="La transcription est trop courte ou indisponible.")
 
-    # 6. Detect category (sync function — no await)
+    # 6. Detect category (sync function — no await, returns tuple or str)
     try:
-        category = detect_category(transcript_text[:2000])
+        result = detect_category(transcript_text[:2000])
+        category = result[0] if isinstance(result, (tuple, list)) else str(result)
     except Exception:
         category = "general"
 
