@@ -13,5 +13,19 @@
       "NotebookEdit(*)",
       "mcp__*"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ./scripts/setup-ssh.sh",
+            "timeout": 60,
+            "statusMessage": "Configuration SSH Hetzner + GitHub..."
+          }
+        ]
+      }
+    ]
   }
 }
