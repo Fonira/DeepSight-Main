@@ -190,7 +190,10 @@ async def generate_demo_summary(
     )
 
     try:
-        from mistralai import Mistral
+        try:
+            from mistralai import Mistral
+        except ImportError:
+            from mistralai.client import Mistral
 
         client = Mistral(api_key=get_mistral_key())
         response = await client.chat.complete_async(
@@ -286,7 +289,10 @@ async def generate_demo_chat_response(
     )
 
     try:
-        from mistralai import Mistral
+        try:
+            from mistralai import Mistral
+        except ImportError:
+            from mistralai.client import Mistral
 
         client = Mistral(api_key=get_mistral_key())
         response = await client.chat.complete_async(
@@ -338,7 +344,10 @@ async def generate_demo_suggestions(key_points: List[str], conclusion: str) -> L
         summary_context += f"\nConclusion : {conclusion}"
 
     try:
-        from mistralai import Mistral
+        try:
+            from mistralai import Mistral
+        except ImportError:
+            from mistralai.client import Mistral
 
         client = Mistral(api_key=get_mistral_key())
         response = await client.chat.complete_async(
