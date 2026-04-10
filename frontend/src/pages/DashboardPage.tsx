@@ -1336,9 +1336,21 @@ export const DashboardPage: React.FC = () => {
               </div>
             )}
 
-            {/* Empty State → Recent + Trending */}
+            {/* Empty State → Tournesol + Recent */}
             {!selectedSummary && (
               <div className={`animate-fadeIn transition-opacity duration-300 ${loading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                {/* Suggestions Tournesol */}
+                <TournesolTrendingSection
+                  language={language as 'fr' | 'en'}
+                  onVideoSelect={(videoId) => {
+                    setSmartInput({
+                      mode: 'url',
+                      url: `https://www.youtube.com/watch?v=${videoId}`,
+                      searchLanguages: smartInput.searchLanguages || ['fr', 'en'],
+                    });
+                  }}
+                />
+
                 {/* Analyses récentes */}
                 <RecentAnalysesSection
                   language={language as 'fr' | 'en'}
@@ -1351,18 +1363,6 @@ export const DashboardPage: React.FC = () => {
                   }}
                   onOpenAnalysis={(summaryId) => {
                     navigate(`/history?open=${summaryId}`);
-                  }}
-                />
-
-                {/* Suggestions Tournesol */}
-                <TournesolTrendingSection
-                  language={language as 'fr' | 'en'}
-                  onVideoSelect={(videoId) => {
-                    setSmartInput({
-                      mode: 'url',
-                      url: `https://www.youtube.com/watch?v=${videoId}`,
-                      searchLanguages: smartInput.searchLanguages || ['fr', 'en'],
-                    });
                   }}
                 />
               </div>

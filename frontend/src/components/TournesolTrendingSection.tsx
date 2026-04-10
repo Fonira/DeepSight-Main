@@ -9,7 +9,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Sparkles, ExternalLink, Clock, ThumbsUp, RefreshCw } from 'lucide-react';
+import { ExternalLink, Clock, ThumbsUp, RefreshCw } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES — Tournesol API response
@@ -220,12 +220,12 @@ export const TournesolTrendingSection: React.FC<TournesolTrendingSectionProps> =
   }, [fetchRecommendations]);
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-4">
+    <div className="w-full max-w-5xl mx-auto px-4 mb-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-yellow-500/10">
-            <Sparkles className="w-5 h-5 text-yellow-400" />
+            <img src="/platforms/tournesol-icon.svg" alt="Tournesol" className="w-5 h-5" />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
