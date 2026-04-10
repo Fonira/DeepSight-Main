@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.http_client import shared_http_client
 from db.database import get_session, User, Summary
 from sqlalchemy import select as sa_select
 from auth.dependencies import get_current_user
@@ -741,7 +742,6 @@ async def _generate_academic_definitions(terms: List[str]) -> Dict[str, dict]:
     Génère des définitions ACADÉMIQUES et ÉDUCATIVES via Mistral.
     Définitions complètes, synthétiques et instructives.
     """
-    import httpx
     import json
     import re
     from core.config import get_mistral_key
@@ -804,7 +804,7 @@ IMPORTANT:
 - confidence: "high" = terme bien connu, "medium" = assez connu, "low" = incertain"""
 
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        async with shared_http_client() as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
                 headers={
@@ -818,7 +818,8 @@ IMPORTANT:
                     ],
                     "max_tokens": 4000,
                     "temperature": 0.3
-                }
+                },
+                timeout=20.0
             )
 
             if response.status_code != 200:

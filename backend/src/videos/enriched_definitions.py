@@ -18,6 +18,7 @@ import os
 
 from core.config import get_mistral_key
 from core.config import MISTRAL_INTERNAL_MODEL
+from core.http_client import shared_http_client
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -151,7 +152,7 @@ Catégories:
 IMPORTANT: JSON uniquement, pas de texte avant/après. Préférer null à l'incertitude."""
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with shared_http_client() as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
                 headers={

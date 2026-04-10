@@ -30,6 +30,7 @@ import logging
 
 import httpx
 from core.config import MISTRAL_INTERNAL_MODEL
+from core.http_client import shared_http_client
 
 logger = logging.getLogger(__name__)
 
@@ -305,7 +306,7 @@ FORMAT DE RÉPONSE (JSON uniquement):
             return cls._fallback_reformulation(query, language)
         
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with shared_http_client() as client:
                 response = await client.post(
                     "https://api.mistral.ai/v1/chat/completions",
                     headers={
@@ -402,7 +403,7 @@ FORMAT DE RÉPONSE (JSON uniquement):
         try:
             lang_names = {"fr": "français", "en": "anglais", "de": "allemand", "es": "espagnol"}
             
-            async with httpx.AsyncClient(timeout=5.0) as client:
+            async with shared_http_client() as client:
                 response = await client.post(
                     "https://api.mistral.ai/v1/chat/completions",
                     headers={
@@ -730,7 +731,7 @@ class QualityScorer:
     async def _get_tournesol_score(cls, video_id: str) -> float:
         """Récupère le score Tournesol si disponible"""
         try:
-            async with httpx.AsyncClient(timeout=SCORING_TIMEOUT) as client:
+            async with shared_http_client() as client:
                 response = await client.get(
                     f"https://api.tournesol.app/polls/videos/entities/yt:{video_id}",
                     headers={"User-Agent": "DeepSight/4.0 (tournesol-integration)"}
@@ -975,7 +976,7 @@ class TournesolPromotion:
         exclude_ids = exclude_ids or []
         
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with shared_http_client() as client:
                 # Recherche sémantique Tournesol
                 response = await client.get(
                     "https://api.tournesol.app/polls/videos/recommendations/",

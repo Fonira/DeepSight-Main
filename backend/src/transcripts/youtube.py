@@ -56,6 +56,7 @@ from core.config import (
     get_openai_key, get_assemblyai_key, get_elevenlabs_key,
     get_mistral_key, get_youtube_proxy, TRANSCRIPT_CONFIG
 )
+from core.http_client import shared_http_client
 
 # 💾 Cache pour les transcripts (TTL 24h)
 try:
@@ -81,6 +82,11 @@ except ImportError:
 GROQ_MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB max pour Groq
 OPENAI_MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB max pour OpenAI Whisper
 MAX_DURATION_FOR_STT = int(os.environ.get("MAX_DURATION_FOR_STT", "1200"))  # 20 min max pour STT
+
+# 🚦 Semaphore: limite les extractions transcript concurrentes
+# Évite de flood les APIs externes (Supadata, Invidious, Piped, etc.)
+MAX_CONCURRENT_EXTRACTIONS = int(os.environ.get("MAX_CONCURRENT_EXTRACTIONS", "10"))
+_extraction_semaphore = asyncio.Semaphore(MAX_CONCURRENT_EXTRACTIONS)
 
 TIMEOUTS = {
     "supadata": 45,           # 30 → 45 (connexions lentes)
@@ -433,7 +439,7 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
     if supadata_key:
         try:
             yt_url = f"https://www.youtube.com/watch?v={video_id}"
-            async with httpx.AsyncClient(timeout=15.0) as client:
+            async with shared_http_client() as client:
                 resp = await client.get(
                     "https://api.supadata.ai/v1/metadata",
                     params={"url": yt_url},
@@ -485,7 +491,7 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
     # Essayer plusieurs instances Invidious
     for instance in INVIDIOUS_INSTANCES[:5]:  # Essayer 5 instances
         try:
-            async with httpx.AsyncClient() as client:
+            async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/videos/{video_id}",
                     timeout=10,
@@ -525,7 +531,7 @@ async def get_video_info(video_id: str) -> Optional[Dict[str, Any]]:
     print(f"  🔄 [OEMBED] Trying oembed fallback...", flush=True)
     try:
         url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
-        async with httpx.AsyncClient() as client:
+        async with shared_http_client() as client:
             response = await client.get(url, timeout=10, headers={"User-Agent": get_random_user_agent()})
             if response.status_code == 200:
                 data = response.json()
@@ -733,7 +739,7 @@ async def get_transcript_supadata(video_id: str, api_key: str = None) -> Tuple[O
     print(f"  🥇 [SUPADATA] Trying...", flush=True)
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with shared_http_client() as client:
             # ─── Méthode 1 : Endpoint YouTube-specific (segments + timestamps) ───
             for lang in ["fr", "en", "es", "de", "pt", "it", None]:
                 params = {"videoId": video_id}
@@ -969,10 +975,10 @@ async def get_transcript_invidious(video_id: str) -> Tuple[Optional[str], Option
     Contourne le blocage YouTube car Invidious a ses propres IPs
     """
     print(f"  🌐 [INVIDIOUS] Trying captions...", flush=True)
-    
+
     for instance in INVIDIOUS_INSTANCES[:5]:  # Essayer 5 instances max (augmenté de 3)
         try:
-            async with httpx.AsyncClient() as client:
+            async with shared_http_client() as client:
                 # Récupérer la liste des captions
                 response = await client.get(
                     f"{instance}/api/v1/captions/{video_id}",
@@ -1052,7 +1058,7 @@ async def get_transcript_piped(video_id: str) -> Tuple[Optional[str], Optional[s
 
     for instance in healthy_instances[:5]:  # Essayer 5 instances max
         try:
-            async with httpx.AsyncClient() as client:
+            async with shared_http_client() as client:
                 # API Piped pour les streams (inclut les sous-titres)
                 response = await client.get(
                     f"{instance}/streams/{video_id}",
@@ -1249,10 +1255,11 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
     # MÉTHODE A: Essayer via Invidious d'abord (contourne le blocage)
     for instance in INVIDIOUS_INSTANCES[:2]:
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with shared_http_client() as client:
                 # Récupérer les formats audio
                 response = await client.get(
                     f"{instance}/api/v1/videos/{video_id}",
+                    timeout=60,
                     headers={"User-Agent": get_random_user_agent()}
                 )
                 
@@ -1374,8 +1381,8 @@ async def get_transcript_whisper(video_id: str) -> Tuple[Optional[str], Optional
     try:
         mime_types = {'.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.webm': 'audio/webm', '.opus': 'audio/opus', '.wav': 'audio/wav'}
         mime_type = mime_types.get(audio_ext, 'audio/mpeg')
-        
-        async with httpx.AsyncClient() as client:
+
+        async with shared_http_client() as client:
             files = {'file': (f'audio{audio_ext}', audio_data, mime_type)}
             data = {'model': 'whisper-large-v3', 'response_format': 'verbose_json'}
             
@@ -1476,7 +1483,7 @@ async def get_transcript_voxtral(
     try:
         mime_type = AUDIO_MIME_TYPES.get(audio_ext, 'audio/mpeg')
 
-        async with httpx.AsyncClient() as client:
+        async with shared_http_client() as client:
             # Multipart form-data: file + model + timestamp_granularities
             files = {
                 "file": (f"audio{audio_ext}", audio_data, mime_type),
@@ -1566,9 +1573,10 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
     # Télécharger l'audio via Invidious (même logique que Whisper)
     for instance in INVIDIOUS_INSTANCES[:3]:
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/videos/{video_id}",
+                    timeout=60,
                     headers={"User-Agent": get_random_user_agent()}
                 )
 
@@ -1661,7 +1669,7 @@ async def get_transcript_deepgram(video_id: str) -> Tuple[Optional[str], Optiona
         mime_types = {'.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.webm': 'audio/webm', '.opus': 'audio/opus', '.wav': 'audio/wav'}
         mime_type = mime_types.get(audio_ext, 'audio/mpeg')
 
-        async with httpx.AsyncClient() as client:
+        async with shared_http_client() as client:
             start_time = time.time()
             response = await client.post(
                 "https://api.deepgram.com/v1/listen",
@@ -1760,7 +1768,7 @@ async def get_transcript_openai_whisper(video_id: str, audio_data: bytes = None,
         mime_types = {'.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.webm': 'audio/webm', '.opus': 'audio/opus', '.wav': 'audio/wav'}
         mime_type = mime_types.get(audio_ext, 'audio/mpeg')
 
-        async with httpx.AsyncClient() as client:
+        async with shared_http_client() as client:
             files = {'file': (f'audio{audio_ext}', audio_data, mime_type)}
             data = {'model': 'whisper-1', 'response_format': 'verbose_json'}
 
@@ -1833,7 +1841,7 @@ async def get_transcript_assemblyai(video_id: str, audio_data: bytes = None, aud
             return None, None, None
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with shared_http_client() as client:
             # Étape 1: Upload de l'audio
             print(f"  🎙️ [ASSEMBLYAI] Uploading {len(audio_data)/1024/1024:.1f}MB...", flush=True)
             upload_response = await client.post(
@@ -1967,7 +1975,7 @@ async def _elevenlabs_scribe_transcribe(video_id: str, audio_data: bytes = None,
         mime_types = {'.mp3': 'audio/mpeg', '.m4a': 'audio/mp4', '.webm': 'audio/webm', '.opus': 'audio/opus', '.wav': 'audio/wav'}
         mime_type = mime_types.get(audio_ext, 'audio/mpeg')
 
-        async with httpx.AsyncClient() as client:
+        async with shared_http_client() as client:
             files = {'file': (f'audio{audio_ext}', audio_data, mime_type)}
             data = {'model': 'scribe_v2'}
             if language:
@@ -2032,9 +2040,10 @@ async def _download_audio_for_transcription(video_id: str) -> Tuple[Optional[byt
     healthy_instances = get_healthy_instances(INVIDIOUS_INSTANCES)
     for instance in healthy_instances[:3]:
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/videos/{video_id}",
+                    timeout=60,
                     headers={"User-Agent": get_random_user_agent()}
                 )
 
@@ -2169,9 +2178,16 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
     │  10. AssemblyAI (premium, très fiable)                                         │
     └────────────────────────────────────────────────────────────────────────────────┘
     """
+    # 🚦 Semaphore: limite les extractions concurrentes pour protéger les APIs
+    async with _extraction_semaphore:
+        return await _get_transcript_with_timestamps_inner(video_id, supadata_key, is_short, duration)
+
+
+async def _get_transcript_with_timestamps_inner(video_id: str, supadata_key: str = None, is_short: bool = False, duration: int = 0) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Inner function — exécutée sous le semaphore de concurrence."""
     print(f"", flush=True)
     print(f"{'='*70}", flush=True)
-    print(f"🔍 TRANSCRIPT EXTRACTION v7.1 for {video_id} (is_short={is_short})", flush=True)
+    print(f"🔍 TRANSCRIPT EXTRACTION v7.1 for {video_id} (is_short={is_short}) [slots: {MAX_CONCURRENT_EXTRACTIONS - _extraction_semaphore._value}/{MAX_CONCURRENT_EXTRACTIONS}]", flush=True)
     print(f"{'='*70}", flush=True)
 
     # ⚡ v7.1: Activer les timeouts adaptatifs pour vidéos courtes
@@ -2426,11 +2442,11 @@ async def get_transcript_with_timestamps(video_id: str, supadata_key: str = None
 
 async def get_playlist_videos(playlist_id: str, max_videos: int = 50) -> List[Dict[str, Any]]:
     """Récupère les vidéos d'une playlist via yt-dlp ou Invidious"""
-    
+
     # Essayer Invidious d'abord
     for instance in INVIDIOUS_INSTANCES[:2]:
         try:
-            async with httpx.AsyncClient() as client:
+            async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/playlists/{playlist_id}",
                     timeout=30,
@@ -2490,11 +2506,11 @@ async def get_playlist_videos(playlist_id: str, max_videos: int = 50) -> List[Di
 
 async def get_playlist_info(playlist_id: str) -> Optional[Dict[str, Any]]:
     """Récupère les infos d'une playlist"""
-    
+
     # Essayer Invidious d'abord
     for instance in INVIDIOUS_INSTANCES[:2]:
         try:
-            async with httpx.AsyncClient() as client:
+            async with shared_http_client() as client:
                 response = await client.get(
                     f"{instance}/api/v1/playlists/{playlist_id}",
                     timeout=20,

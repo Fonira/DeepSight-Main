@@ -14,6 +14,7 @@
 import json
 import logging
 import math
+import httpx
 from uuid import uuid4
 from datetime import datetime
 from typing import Optional, Dict, Any, List
@@ -25,6 +26,8 @@ logger = logging.getLogger(__name__)
 from db.database import get_session, User, Summary
 from auth.dependencies import get_current_user, get_verified_user, require_plan, check_daily_limit, require_feature, get_current_admin
 from core.config import PLAN_LIMITS, CATEGORIES, get_mistral_key
+from core.http_client import shared_http_client
+from core.http_client import shared_http_client
 
 # Import du système de sécurité
 try:
@@ -300,9 +303,8 @@ async def quick_chat_prepare(
     resolved_url = url
     if platform == "tiktok" and ("vm.tiktok.com" in url or "vt.tiktok.com" in url):
         try:
-            import httpx
-            async with httpx.AsyncClient(timeout=8.0, follow_redirects=True, max_redirects=5) as client:
-                head_resp = await client.head(url)
+            async with shared_http_client() as client:
+                head_resp = await client.head(url, timeout=8.0)
                 if head_resp.status_code in (200, 301, 302) and "tiktok.com" in str(head_resp.url):
                     resolved_url = str(head_resp.url).split("?")[0]  # Drop tracking params
                     print(f"[QUICK CHAT] Resolved short URL → {resolved_url[:80]}", flush=True)
@@ -344,10 +346,10 @@ async def quick_chat_prepare(
     # 3b. Fallback thumbnail TikTok via oEmbed si manquant
     if platform == "tiktok" and not thumbnail_url:
         try:
-            import httpx
-            async with httpx.AsyncClient(timeout=5.0) as client:
+            async with shared_http_client() as client:
                 oembed_resp = await client.get(
                     "https://www.tiktok.com/oembed",
+                    timeout=5.0,
                     params={"url": resolved_url},
                 )
                 if oembed_resp.status_code == 200:
@@ -1516,7 +1518,7 @@ async def _analyze_video_background_v2(
             webhook_url = options.get("webhook_url")
             if webhook_url:
                 try:
-                    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0)) as client:
+                    async with shared_http_client() as client:
                         await client.post(
                             webhook_url,
                             json={
@@ -1526,7 +1528,7 @@ async def _analyze_video_background_v2(
                                 "video_id": video_id,
                                 "status": "completed"
                             },
-                            timeout=10.0
+                            timeout=30.0
                         )
                     print(f"🔔 [v2] Webhook sent to {webhook_url}", flush=True)
                 except Exception as webhook_err:
@@ -2366,7 +2368,7 @@ async def _analyze_video_background_v2_1(
             webhook_url = options.get("webhook_url")
             if webhook_url:
                 try:
-                    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=5.0)) as client:
+                    async with shared_http_client() as client:
                         await client.post(
                             webhook_url,
                             json={
@@ -2377,7 +2379,7 @@ async def _analyze_video_background_v2_1(
                                 "status": "completed",
                                 "version": "v2.1"
                             },
-                            timeout=10.0
+                            timeout=30.0
                         )
                     print(f"🔔 [v2.1] Webhook sent to {webhook_url}", flush=True)
                 except Exception as webhook_err:

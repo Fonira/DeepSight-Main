@@ -14,6 +14,7 @@ from datetime import datetime
 from core.config import get_mistral_key, get_perplexity_key, MISTRAL_MODELS, VERSION
 from core.config import MISTRAL_INTERNAL_MODEL
 from core.llm_provider import llm_complete
+from core.http_client import shared_http_client
 
 try:
     from core.cache import cache_service, make_cache_key
@@ -1530,7 +1531,7 @@ Summary:
 """
     
     try:
-        async with httpx.AsyncClient() as client:
+        async with shared_http_client() as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
                 headers={

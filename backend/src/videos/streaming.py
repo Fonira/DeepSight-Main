@@ -14,6 +14,7 @@
 import json
 import asyncio
 import uuid
+import httpx
 from datetime import datetime
 from typing import Optional, Dict, Any, AsyncGenerator
 from dataclasses import dataclass, field
@@ -31,6 +32,7 @@ from db.database import get_session, Summary, User
 from auth.dependencies import get_current_user_optional
 from core.config import get_mistral_key, get_perplexity_key
 from core.cache import cache, get_cache
+from core.http_client import shared_http_client
 from transcripts.youtube import get_transcript_with_timestamps
 
 # 🌐 Web enrichment pré-analyse (Perplexity)
@@ -183,7 +185,7 @@ async def get_video_metadata(video_id: str) -> Dict[str, Any]:
     
     try:
         # Utiliser l'API YouTube oEmbed (pas besoin de clé)
-        async with httpx.AsyncClient() as client:
+        async with shared_http_client() as client:
             response = await client.get(
                 f"https://www.youtube.com/oembed",
                 params={"url": f"https://www.youtube.com/watch?v={video_id}", "format": "json"},
@@ -400,7 +402,7 @@ Génère une analyse complète et rigoureuse en {"français" if lang == "fr" els
         max_tokens = int(max_tokens * 1.2)
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with shared_http_client() as client:
             async with client.stream(
                 "POST",
                 "https://api.mistral.ai/v1/chat/completions",

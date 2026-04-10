@@ -17,6 +17,7 @@ from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass
 
 from core.config import get_brave_key
+from core.http_client import shared_http_client
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -112,7 +113,7 @@ async def _call_brave_api(query: str, count: int = 5) -> BraveSearchResult:
         query = query[:397] + "..."
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with shared_http_client() as client:
             response = await client.get(
                 "https://api.search.brave.com/res/v1/web/search",
                 params={

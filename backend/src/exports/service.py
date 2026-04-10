@@ -18,6 +18,8 @@ from datetime import datetime
 from typing import Optional, Dict, Any, List, Tuple
 from pathlib import Path
 
+from core.http_client import shared_http_client
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 📦 IMPORTS LAZY — Chargés uniquement quand nécessaire (économie ~80MB RAM)
 # Railway 512MB : chaque MB compte, ces libs ne sont utilisées que pour l'export
@@ -1193,7 +1195,6 @@ async def export_to_audio(
     Returns:
         dict with { file_id, file_path, duration_estimate } or None on failure.
     """
-    import httpx
     from core.config import get_elevenlabs_key
 
     api_key = get_elevenlabs_key()
@@ -1231,7 +1232,7 @@ async def export_to_audio(
     file_path = os.path.join(AUDIO_TMP_DIR, f"{file_id}.mp3")
 
     try:
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        async with shared_http_client() as client:
             audio_parts: list[bytes] = []
 
             for i, chunk_text in enumerate(chunks):
@@ -1253,7 +1254,7 @@ async def export_to_audio(
                     "Accept": "audio/mpeg",
                 }
 
-                response = await client.post(url, json=payload, headers=headers)
+                response = await client.post(url, json=payload, headers=headers, timeout=120.0)
 
                 if response.status_code != 200:
                     _audio_logger.error(

@@ -92,6 +92,7 @@ from playlists.router import router as playlists_router
 from history.history_router import router as history_router
 from demo.router import router as demo_router
 from db.database import init_db, close_db
+from core.http_client import init_http_client, close_http_client
 
 # 🔒 Security Headers
 try:
@@ -524,6 +525,10 @@ async def lifespan(app: FastAPI):
     logger.info("CORS configuration", origins=ALLOWED_ORIGINS)
     logger.info("Sentry status", enabled=SENTRY_ENABLED)
 
+    # 🌐 Initialiser le client HTTP partagé (connection pooling)
+    await init_http_client()
+    logger.info("Shared HTTP client initialized (connection pooling enabled)")
+
     # 🚀 Lancer l'initialisation DB en arrière-plan (NON-BLOQUANT)
     # Cela permet au healthcheck de répondre immédiatement
     asyncio.create_task(initialize_database_background())
@@ -639,6 +644,9 @@ async def lifespan(app: FastAPI):
             logger.info("Video content cache closed")
         except Exception:
             pass
+    # Close shared HTTP client
+    await close_http_client()
+    logger.info("Shared HTTP client closed")
     await close_db()
     logger.info("Application shutdown")
 
@@ -656,7 +664,7 @@ app = FastAPI(
 
 @app.get("/health")
 async def health_check():
-    """Healthcheck pour Hetzner/Docker."""
+    """Healthcheck liveness pour Hetzner/Docker."""
     from fastapi.responses import JSONResponse
     if not _app_state.get("ready", False):
         error = _app_state.get("error")
@@ -670,6 +678,79 @@ async def health_check():
             }
         )
     return {"status": "ok", "db": "ready"}
+
+
+@app.get("/health/ready")
+async def health_ready():
+    """
+    Readiness check enrichi — vérifie DB, Redis, et HTTP client.
+    Retourne le statut détaillé de chaque composant.
+    Utilisé par le monitoring et les alertes.
+    """
+    from fastapi.responses import JSONResponse
+    import time as _t
+
+    checks = {}
+    overall_ok = True
+
+    # 1. App state
+    if not _app_state.get("ready", False):
+        return JSONResponse(status_code=503, content={
+            "status": "starting",
+            "checks": {"app": {"status": "starting"}}
+        })
+
+    # 2. Database check (SELECT 1)
+    try:
+        _db_start = _t.time()
+        from db.database import get_session
+        from sqlalchemy import text
+        async for session in get_session():
+            await session.execute(text("SELECT 1"))
+            break
+        _db_ms = round((_t.time() - _db_start) * 1000, 1)
+        checks["database"] = {"status": "ok", "latency_ms": _db_ms}
+    except Exception as e:
+        checks["database"] = {"status": "error", "error": str(e)[:200]}
+        overall_ok = False
+
+    # 3. Redis check (PING)
+    try:
+        _redis_start = _t.time()
+        from core.cache import cache_service
+        if hasattr(cache_service, 'backend') and hasattr(cache_service.backend, 'redis'):
+            pong = await cache_service.backend.redis.ping()
+            _redis_ms = round((_t.time() - _redis_start) * 1000, 1)
+            checks["redis"] = {"status": "ok" if pong else "error", "latency_ms": _redis_ms}
+        else:
+            checks["redis"] = {"status": "not_configured"}
+    except Exception as e:
+        checks["redis"] = {"status": "error", "error": str(e)[:200]}
+        overall_ok = False
+
+    # 4. HTTP client pool
+    try:
+        from core.http_client import get_http_client_optional
+        client = get_http_client_optional()
+        if client is not None:
+            pool = client._pool
+            checks["http_pool"] = {
+                "status": "ok",
+                "connections_in_pool": len(pool._pool) if hasattr(pool, '_pool') else "unknown",
+            }
+        else:
+            checks["http_pool"] = {"status": "not_initialized"}
+    except Exception as e:
+        checks["http_pool"] = {"status": "error", "error": str(e)[:200]}
+
+    status_code = 200 if overall_ok else 503
+    return JSONResponse(
+        status_code=status_code,
+        content={
+            "status": "ok" if overall_ok else "degraded",
+            "checks": checks,
+        }
+    )
 
 
 # Configuration CORS - CRITIQUE pour éviter les erreurs 502

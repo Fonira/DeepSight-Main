@@ -96,6 +96,11 @@ LENGTH_MULTIPLIERS = {
     "very_long": 2.0,  # > 60 min
 }
 
+# 🚦 Daily spending cap — pourcentage max des crédits mensuels utilisables par jour
+# Protège contre l'abus (un user qui brûle tout en 5 minutes)
+# Configurable via env var, désactivable en mettant 100
+DAILY_SPENDING_CAP_PERCENT = int(__import__('os').environ.get("DAILY_SPENDING_CAP_PERCENT", "50"))
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🧮 CALCUL DES COÛTS
@@ -257,16 +262,43 @@ async def check_credits(
     required: int
 ) -> Tuple[bool, int, str]:
     """
-    Vérifie si l'utilisateur a assez de crédits.
+    Vérifie si l'utilisateur a assez de crédits ET respecte le daily cap.
     Returns: (has_enough, current_credits, message)
     """
     credits, plan = await get_user_credits(session, user_id)
-    
-    if credits >= required:
-        return True, credits, "ok"
-    
-    deficit = required - credits
-    return False, credits, f"insufficient_credits:{deficit}"
+
+    if credits < required:
+        deficit = required - credits
+        return False, credits, f"insufficient_credits:{deficit}"
+
+    # 🚦 Daily spending cap check
+    if DAILY_SPENDING_CAP_PERCENT < 100:
+        monthly_limit = PLAN_CREDITS.get(plan, PLAN_CREDITS["free"])
+        daily_cap = int(monthly_limit * DAILY_SPENDING_CAP_PERCENT / 100)
+
+        if daily_cap > 0:
+            today_spent = await _get_today_spending(session, user_id)
+            if today_spent + required > daily_cap:
+                remaining = max(0, daily_cap - today_spent)
+                return False, credits, f"daily_cap_exceeded:remaining={remaining},cap={daily_cap}"
+
+    return True, credits, "ok"
+
+
+async def _get_today_spending(session: AsyncSession, user_id: int) -> int:
+    """Calcule les crédits dépensés aujourd'hui par l'utilisateur."""
+    from sqlalchemy import func
+    today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    result = await session.execute(
+        select(func.coalesce(func.sum(CreditTransaction.amount), 0))
+        .where(
+            CreditTransaction.user_id == user_id,
+            CreditTransaction.amount < 0,  # Déductions uniquement
+            CreditTransaction.created_at >= today_start,
+        )
+    )
+    total = result.scalar() or 0
+    return abs(total)  # Retourner en positif
 
 
 async def deduct_credits(

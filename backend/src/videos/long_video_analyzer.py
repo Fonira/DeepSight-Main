@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from core.config import get_mistral_key
+from core.http_client import shared_http_client
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # 🔧 CONFIGURATION — OPTIMISÉE POUR TRAITEMENT COMPLET (même 3h+)
@@ -479,7 +480,7 @@ FORMAT DE RÉPONSE (JSON):
 Analyse ce segment INTÉGRALEMENT en {"français" if lang == "fr" else "anglais"}.
 N'omets aucun point important mentionné dans ce segment."""
 
-    async with httpx.AsyncClient() as client:
+    async with shared_http_client() as client:
         response = await client.post(
             "https://api.mistral.ai/v1/chat/completions",
             headers={
@@ -839,7 +840,7 @@ Crée maintenant la SYNTHÈSE FINALE en {"français" if lang == "fr" else "angla
     }.get(mode, 4000)
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with shared_http_client() as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
                 headers={

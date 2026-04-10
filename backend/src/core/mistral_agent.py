@@ -35,8 +35,7 @@ import time
 from dataclasses import dataclass, field
 from typing import AsyncGenerator, Dict, List, Literal, Optional
 
-import httpx
-
+from core.http_client import shared_http_client
 from core.config import get_mistral_key
 
 logger = logging.getLogger(__name__)
@@ -179,7 +178,7 @@ async def ensure_agent(
             return None
 
         try:
-            async with httpx.AsyncClient(timeout=30) as client:
+            async with shared_http_client() as client:
                 response = await client.post(
                     MISTRAL_AGENTS_URL,
                     headers={
@@ -197,6 +196,7 @@ async def ensure_agent(
                             "top_p": 0.95,
                         },
                     },
+                    timeout=30
                 )
 
                 if response.status_code in (200, 201):
@@ -331,7 +331,7 @@ async def agent_web_search(
     start_time = time.time()
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with shared_http_client() as client:
             response = await client.post(
                 MISTRAL_CONVERSATIONS_URL,
                 headers={
@@ -343,6 +343,7 @@ async def agent_web_search(
                     "inputs": user_message,
                     "store": False,  # Don't persist conversation in Mistral cloud
                 },
+                timeout=timeout
             )
 
             latency_ms = int((time.time() - start_time) * 1000)
@@ -445,7 +446,7 @@ async def agent_web_search_stream(
     seen_urls: set = set()
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with shared_http_client() as client:
             async with client.stream(
                 "POST",
                 MISTRAL_CONVERSATIONS_URL,
@@ -459,6 +460,7 @@ async def agent_web_search_stream(
                     "store": False,
                     "stream": True,
                 },
+                timeout=timeout
             ) as response:
                 if response.status_code == 429:
                     _record_agent_failure()
@@ -560,10 +562,11 @@ async def delete_agent() -> bool:
         return False
 
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
+        async with shared_http_client() as client:
             response = await client.delete(
                 f"{MISTRAL_AGENTS_URL}/{_agent_id}",
                 headers={"Authorization": f"Bearer {api_key}"},
+                timeout=15
             )
             if response.status_code in (200, 204, 404):
                 logger.info(f"[AGENT] Deleted agent {_agent_id}")

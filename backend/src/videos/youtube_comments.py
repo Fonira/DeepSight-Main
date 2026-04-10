@@ -13,6 +13,7 @@ from typing import Optional, List, Dict, Any, Tuple
 from datetime import datetime
 
 from core.config import get_mistral_key, MISTRAL_MODELS
+from core.http_client import shared_http_client
 
 from .schemas import (
     YouTubeComment, CommentsAnalysis, SentimentType, CommentCategory
@@ -144,8 +145,8 @@ async def fetch_comments_via_api(
     """
     comments = []
     next_page_token = None
-    
-    async with httpx.AsyncClient() as client:
+
+    async with shared_http_client() as client:
         while len(comments) < limit:
             params = {
                 "part": "snippet",
@@ -410,7 +411,7 @@ TÂCHE: Génère une analyse structurée en JSON avec:
 Réponds UNIQUEMENT avec le JSON, sans markdown."""
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with shared_http_client() as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
                 headers={

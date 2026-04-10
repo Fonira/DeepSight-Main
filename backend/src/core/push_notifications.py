@@ -8,11 +8,11 @@
 ╚════════════════════════════════════════════════════════════════════════════════════╝
 """
 
-import httpx
 from typing import Optional
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.http_client import shared_http_client
 from db.database import PushToken, async_session_maker
 
 EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
@@ -66,7 +66,9 @@ async def send_push(
     invalid_tokens = []
 
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        import httpx as httpx_module  # Only for TimeoutException
+
+        async with shared_http_client() as client:
             response = await client.post(
                 EXPO_PUSH_URL,
                 json=messages,
@@ -74,6 +76,7 @@ async def send_push(
                     "Accept": "application/json",
                     "Content-Type": "application/json",
                 },
+                timeout=15.0
             )
 
             if response.status_code == 200:
@@ -99,10 +102,12 @@ async def send_push(
                     "body": response.text[:200],
                 })
 
-    except httpx.TimeoutException:
-        errors.append({"error": "Expo Push API timeout"})
     except Exception as e:
-        errors.append({"error": str(e)[:200]})
+        # Catch any timeout or other errors
+        if "timeout" in str(e).lower() or "timed out" in str(e).lower():
+            errors.append({"error": "Expo Push API timeout"})
+        else:
+            errors.append({"error": str(e)[:200]})
 
     # Cleanup invalid tokens
     if invalid_tokens:

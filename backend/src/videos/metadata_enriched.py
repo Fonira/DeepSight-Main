@@ -13,6 +13,7 @@ from datetime import datetime
 
 from core.config import get_mistral_key, get_perplexity_key
 from core.config import MISTRAL_INTERNAL_MODEL
+from core.http_client import shared_http_client
 
 from .schemas import (
     VideoMetadataEnriched, PublicFigure, SponsorshipInfo, SponsorshipType,
@@ -391,7 +392,7 @@ Réponds en JSON:
 Réponds UNIQUEMENT avec le JSON."""
 
     try:
-        async with httpx.AsyncClient() as client:
+        async with shared_http_client() as client:
             response = await client.post(
                 "https://api.mistral.ai/v1/chat/completions",
                 headers={

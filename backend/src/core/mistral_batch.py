@@ -35,8 +35,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-import httpx
-
+from core.http_client import shared_http_client
 from core.config import get_mistral_key
 
 logger = logging.getLogger(__name__)
@@ -157,7 +156,7 @@ async def upload_batch_file(
     )
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with shared_http_client() as client:
             response = await client.post(
                 MISTRAL_FILES_URL,
                 headers={"Authorization": f"Bearer {api_key}"},
@@ -165,6 +164,7 @@ async def upload_batch_file(
                     "file": ("batch_requests.jsonl", jsonl_content, "application/jsonl"),
                 },
                 data={"purpose": "batch"},
+                timeout=timeout
             )
 
             if response.status_code in (200, 201):
@@ -214,7 +214,7 @@ async def create_batch_job(
         body["metadata"] = metadata
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with shared_http_client() as client:
             response = await client.post(
                 MISTRAL_BATCH_JOBS_URL,
                 headers={
@@ -222,6 +222,7 @@ async def create_batch_job(
                     "Content-Type": "application/json",
                 },
                 json=body,
+                timeout=timeout
             )
 
             if response.status_code in (200, 201):
@@ -257,10 +258,11 @@ async def poll_batch_job(
         return BatchJobStatus(job_id=job_id, status="ERROR", error="No API key")
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with shared_http_client() as client:
             response = await client.get(
                 f"{MISTRAL_BATCH_JOBS_URL}/{job_id}",
                 headers={"Authorization": f"Bearer {api_key}"},
+                timeout=timeout
             )
 
             if response.status_code == 200:
@@ -303,10 +305,11 @@ async def get_batch_results(
         return []
 
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
+        async with shared_http_client() as client:
             response = await client.get(
                 f"{MISTRAL_FILES_URL}/{output_file_id}/content",
                 headers={"Authorization": f"Bearer {api_key}"},
+                timeout=timeout
             )
 
             if response.status_code != 200:
@@ -442,10 +445,11 @@ async def submit_and_wait(
             # Try to cancel
             try:
                 api_key = get_mistral_key()
-                async with httpx.AsyncClient(timeout=10) as client:
+                async with shared_http_client() as client:
                     await client.post(
                         f"{MISTRAL_BATCH_JOBS_URL}/{job_id}/cancel",
                         headers={"Authorization": f"Bearer {api_key}"},
+                        timeout=10
                     )
             except Exception:
                 pass
@@ -558,7 +562,7 @@ async def submit_inline_batch(
     logger.info(f"[BATCH-INLINE] Submitting {len(requests)} requests (model={model})")
 
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with shared_http_client() as client:
             response = await client.post(
                 MISTRAL_BATCH_JOBS_URL,
                 headers={
@@ -571,6 +575,7 @@ async def submit_inline_batch(
                     "endpoint": "/v1/chat/completions",
                     "metadata": {"source": "deepsight_inline", "count": str(len(requests))},
                 },
+                timeout=30
             )
 
             if response.status_code not in (200, 201):

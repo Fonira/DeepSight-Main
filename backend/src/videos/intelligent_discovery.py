@@ -31,6 +31,8 @@ try:
 except ImportError:
     MISTRAL_INTERNAL_MODEL = "ministral-8b-2512"
 
+from core.http_client import shared_http_client
+
 logger = logging.getLogger(__name__)
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -240,7 +242,7 @@ FORMAT DE RÉPONSE (JSON uniquement):
             return cls._fallback_reformulation(query, language)
         
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with shared_http_client() as client:
                 response = await client.post(
                     "https://api.mistral.ai/v1/chat/completions",
                     headers={
@@ -361,7 +363,7 @@ FORMAT DE RÉPONSE (JSON uniquement):
         try:
             lang_names = {"fr": "français", "en": "anglais", "de": "allemand", "es": "espagnol"}
             
-            async with httpx.AsyncClient(timeout=5.0) as client:
+            async with shared_http_client() as client:
                 response = await client.post(
                     "https://api.mistral.ai/v1/chat/completions",
                     headers={
@@ -726,7 +728,7 @@ class QualityScorer:
         Score > 0.5 = positif, < 0.5 = négatif
         """
         try:
-            async with httpx.AsyncClient(timeout=5.0) as client:
+            async with shared_http_client() as client:
                 # Essayer d'abord l'API v2 (plus complète)
                 response = await client.get(
                     f"https://api.tournesol.app/polls/videos/entities/yt:{video_id}",
@@ -874,7 +876,7 @@ class TournesolPromotion:
             tags = cls._get_relevant_tags(query)
             logger.info(f"🌻 Tournesol tags for '{query}': {tags}")
             
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with shared_http_client() as client:
                 # Essayer d'abord avec les tags spécifiques
                 for search_term in tags[:3]:  # Max 3 search terms
                     video = await cls._search_tournesol(client, search_term, exclude_ids)
@@ -1668,6 +1670,7 @@ class IntelligentDiscoveryService:
 # ═══════════════════════════════════════════════════════════════════════════════
 
 import hashlib
+from core.http_client import shared_http_client
 
 def generate_text_video_id(text: str) -> str:
     """Génère un ID unique pour une analyse de texte brut"""

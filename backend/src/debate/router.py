@@ -18,11 +18,11 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.http_client import shared_http_client
 from auth.dependencies import get_current_user, require_credits
 from core.config import get_mistral_key, PLAN_LIMITS
 from core.llm_provider import llm_complete
@@ -250,11 +250,12 @@ async def _search_opposing_video(
 
     # Step 2: Search YouTube via Brave Search API
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with shared_http_client() as client:
             resp = await client.get(
                 "https://api.search.brave.com/res/v1/web/search",
                 headers={"X-Subscription-Token": brave_key, "Accept": "application/json"},
                 params={"q": f"site:youtube.com {search_query}", "count": 5},
+                timeout=15.0
             )
             resp.raise_for_status()
             results = resp.json().get("web", {}).get("results", [])
