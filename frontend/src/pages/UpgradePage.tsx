@@ -19,8 +19,6 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
-import { RightSidebar } from '../components/layout/RightSidebar';
-import { useRightSidebarStore } from '../store/rightSidebarStore';
 import DoodleBackground from '../components/DoodleBackground';
 import { DeepSightSpinnerMicro } from '../components/ui';
 import { billingApi, type ApiBillingPlan } from '../services/api';
@@ -739,7 +737,6 @@ export const UpgradePage: React.FC = () => {
   const lang = (language as 'fr' | 'en') || 'fr';
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const rightSidebarOpen = useRightSidebarStore((s) => s.isOpen);
   const [plans, setPlans] = useState<ApiBillingPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [loading, setLoading] = useState<string | null>(null);
@@ -902,9 +899,8 @@ export const UpgradePage: React.FC = () => {
       />
       <DoodleBackground variant="creative" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-      <RightSidebar />
 
-      <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'} ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`}>
+      <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
         <div className="min-h-screen p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 pb-24 lg:pb-8">
           <div className="max-w-7xl mx-auto">
             {/* Header */}

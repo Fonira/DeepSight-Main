@@ -22,7 +22,7 @@ import { PrivateRoute } from "./components/PrivateRoute";
 import { SkipLink } from "./components/SkipLink";
 
 import { LoadingWordGlobal } from "./components/LoadingWord";
-import { SidebarDidYouKnow } from "./components/SidebarDidYouKnow";
+import { DidYouKnowCard } from "./components/DidYouKnowCard";
 import { ErrorBoundary as RouteErrorBoundary } from "./components/ErrorBoundary";
 import { CrispChat } from "./components/CrispChat";
 import { CookieBanner } from "./components/CookieBanner";
@@ -660,9 +660,9 @@ const AppRoutes = () => {
               <UpgradeModal />
             </ErrorBoundary>
 
-            {/* 🧠 Sidebar "Le Saviez-Vous" — desktop xl+ (fixe côté droit) */}
+            {/* 🧠 Encart "Le Saviez-Vous" — desktop lg+ (top-right compact) */}
             <ErrorBoundary fallback={null}>
-              <SidebarDidYouKnow />
+              <DidYouKnowCard />
             </ErrorBoundary>
 
             {/* 🧠 Widget "Le Saviez-Vous" flottant — mobile/tablette seulement */}

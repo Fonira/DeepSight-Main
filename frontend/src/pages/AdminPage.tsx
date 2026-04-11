@@ -8,8 +8,6 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
-import { RightSidebar } from '../components/layout/RightSidebar';
-import { useRightSidebarStore } from '../store/rightSidebarStore';
 import DoodleBackground from '../components/DoodleBackground';
 import { 
   Shield, Users, BarChart3, Lock, 
@@ -88,7 +86,6 @@ export const AdminPage: React.FC = () => {
   
   // UI State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const rightSidebarOpen = useRightSidebarStore((s) => s.isOpen);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [loading, setLoading] = useState(true);
@@ -268,8 +265,7 @@ export const AdminPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-bg-primary relative">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
-        <RightSidebar />
-        <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'} ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`}>
+        <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
           <div className="min-h-screen flex items-center justify-center p-6">
             <div className="max-w-md text-center">
               <div className="w-20 h-20 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-6">
@@ -309,9 +305,8 @@ export const AdminPage: React.FC = () => {
     <div className="min-h-screen bg-bg-primary relative">
       <DoodleBackground variant="tech" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
-      <RightSidebar />
 
-      <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'} ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`}>
+      <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
         <div className="min-h-screen pt-14 lg:pt-0 p-4 sm:p-6 lg:p-8 pb-8">
           <div className="max-w-7xl mx-auto">
             

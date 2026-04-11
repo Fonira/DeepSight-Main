@@ -32,8 +32,6 @@ import { VideoPlayer, VideoPlayerRef } from "../components/VideoPlayer";
 import { createTimecodeMarkdownComponents, TimecodeInfo } from "../components/TimecodeRenderer";
 import { TournesolWidget, TournesolMini } from "../components/TournesolWidget";
 import { Sidebar } from "../components/layout/Sidebar";
-import { RightSidebar } from "../components/layout/RightSidebar";
-import { useRightSidebarStore } from "../store/rightSidebarStore";
 import { ChatPanel } from "../components/ChatPanel";
 import DoodleBackground from '../components/DoodleBackground';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -165,7 +163,6 @@ export const DashboardPage: React.FC = () => {
   const [conceptsProvider, setConceptsProvider] = useState<string>('none');
   const [conceptsCategories, setConceptsCategories] = useState<Record<string, { label: string; icon: string; count: number }>>({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const rightSidebarOpen = useRightSidebarStore((s) => s.isOpen);
   const [showTournesolDetails, setShowTournesolDetails] = useState(false);
 
   // 🆕 État pour détection de playlist
@@ -808,10 +805,9 @@ export const DashboardPage: React.FC = () => {
       <SEO title="Analyse" path="/dashboard" />
       <ErrorBoundary fallback={null}><DoodleBackground variant="analysis" /></ErrorBoundary>
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-      <RightSidebar />
 
       {/* Main content - responsive margin */}
-      <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'} ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`}>
+      <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
         <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-8">
           <div className="max-w-5xl mx-auto">
 

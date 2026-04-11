@@ -16,8 +16,6 @@ import { parseAskQuestions } from '../components/ClickableQuestions';
 import { useTranslation } from '../hooks/useTranslation';
 import { sanitizeTitle } from '../utils/sanitize';
 import { Sidebar } from '../components/layout/Sidebar';
-import { RightSidebar } from '../components/layout/RightSidebar';
-import { useRightSidebarStore } from '../store/rightSidebarStore';
 import DoodleBackground from '../components/DoodleBackground';
 import {
   playlistApi,
@@ -687,7 +685,6 @@ export const PlaylistDetailPage: React.FC = () => {
 
   // UI State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const rightSidebarOpen = useRightSidebarStore((s) => s.isOpen);
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -932,8 +929,7 @@ export const PlaylistDetailPage: React.FC = () => {
     return (
       <div className="flex min-h-screen bg-bg-primary">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <RightSidebar />
-        <main className={`flex-1 flex items-center justify-center ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`}>
+        <main className={`flex-1 flex items-center justify-center`}>
           <div className="text-center">
             <div className="flex justify-center mb-4">
               <DeepSightSpinner size="lg" />
@@ -951,8 +947,7 @@ export const PlaylistDetailPage: React.FC = () => {
     return (
       <div className="flex min-h-screen bg-bg-primary">
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <RightSidebar />
-        <main className={`flex-1 flex items-center justify-center ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`}>
+        <main className={`flex-1 flex items-center justify-center`}>
           <div className="text-center max-w-md">
             <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
             <p className="text-text-primary font-semibold mb-2">
@@ -973,9 +968,8 @@ export const PlaylistDetailPage: React.FC = () => {
     <div className="flex min-h-screen bg-bg-primary">
       <DoodleBackground variant="video" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-      <RightSidebar />
 
-      <main className={`flex-1 overflow-x-hidden ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`}>
+      <main className={`flex-1 overflow-x-hidden`}>
         <div className="container max-w-6xl mx-auto px-4 py-8 pb-24 lg:pb-8">
 
           {/* BACK BUTTON */}

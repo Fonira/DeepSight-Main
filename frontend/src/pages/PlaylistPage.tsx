@@ -14,8 +14,6 @@ import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { normalizePlanId, getMinPlanForFeature, PLANS_INFO, CONVERSION_TRIGGERS, hasFeature } from '../config/planPrivileges';
 import { Sidebar } from '../components/layout/Sidebar';
-import { RightSidebar } from '../components/layout/RightSidebar';
-import { useRightSidebarStore } from '../store/rightSidebarStore';
 import DoodleBackground from '../components/DoodleBackground';
 import SmartInputBar, { SmartInputValue } from '../components/SmartInputBar';
 import VideoDiscoveryModal from '../components/VideoDiscoveryModal';
@@ -175,7 +173,6 @@ export const PlaylistPage: React.FC = () => {
 
   // UI State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const rightSidebarOpen = useRightSidebarStore((s) => s.isOpen);
   // Input State
   const [smartInput, setSmartInput] = useState<SmartInputValue>({
     mode: 'url',
@@ -218,8 +215,7 @@ export const PlaylistPage: React.FC = () => {
       <div className="flex min-h-screen bg-bg-primary">
         <DoodleBackground variant="video" />
         <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <RightSidebar />
-        <main className={`flex-1 overflow-x-hidden ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`}>
+        <main className={`flex-1 overflow-x-hidden`}>
           <div className="container max-w-lg mx-auto px-4 py-16 pb-8 text-center">
             <div className="w-16 h-16 rounded-2xl bg-violet-500/10 flex items-center justify-center mx-auto mb-6">
               <Sparkles className="w-8 h-8 text-violet-400" />
@@ -526,9 +522,8 @@ export const PlaylistPage: React.FC = () => {
       <SEO title="Playlists" path="/playlists" />
       <DoodleBackground variant="video" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-      <RightSidebar />
 
-      <main className={`flex-1 overflow-x-hidden ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`}>
+      <main className={`flex-1 overflow-x-hidden`}>
         <div className="container max-w-4xl mx-auto px-4 py-6 sm:py-8 pb-8">
 
           {/* HEADER */}

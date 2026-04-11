@@ -23,8 +23,6 @@ import {
 import { debateApi } from '../services/api';
 import type { DebateAnalysis, DebateListItem } from '../types/debate';
 import { Sidebar } from '../components/layout/Sidebar';
-import { RightSidebar } from '../components/layout/RightSidebar';
-import { useRightSidebarStore } from '../store/rightSidebarStore';
 import DoodleBackground from '../components/DoodleBackground';
 import { DoodleDivider } from '../components/doodles';
 import DoodleEmptyState from '../components/doodles/DoodleEmptyState';
@@ -232,7 +230,6 @@ export const DebatePage: React.FC = () => {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [useMock, setUseMock] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const rightSidebarOpen = useRightSidebarStore((s) => s.isOpen);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ─── Cleanup polling on unmount ───
@@ -385,7 +382,7 @@ export const DebatePage: React.FC = () => {
   // ─── Content margin class (responsive with sidebar) ───
   const mainClass = `transition-all duration-200 ease-out relative z-10 ${
     sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'
-  } ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`;
+  }`;
 
   // ─── Loading skeleton while debate is being fetched ───
   const renderSkeleton = () => (
@@ -645,7 +642,6 @@ export const DebatePage: React.FC = () => {
         collapsed={sidebarCollapsed}
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
       />
-      <RightSidebar />
 
       {/* Main content with sidebar-responsive margin */}
       <main className={mainClass}>

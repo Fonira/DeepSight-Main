@@ -436,9 +436,9 @@ export const LoadingWordGlobal: React.FC = () => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // 🔧 Sur desktop xl+, la SidebarDidYouKnow prend le relais — ce widget ne s'affiche que sur mobile/tablette
-  const isDesktopXL = typeof window !== 'undefined' && window.innerWidth >= 1280;
-  if (isDesktopXL) return null;
+  // 🔧 Sur desktop lg+, le DidYouKnowCard prend le relais — ce widget flottant ne s'affiche que sur mobile/tablette
+  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+  if (isDesktop) return null;
 
   // 🔧 Utiliser le contexte partagé pour la visibilité (accessible depuis la sidebar)
   const isVisible = isWidgetVisible;
