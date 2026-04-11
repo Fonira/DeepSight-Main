@@ -68,10 +68,15 @@ jobs:
           ssh -i ~/.ssh/id_hetzner root@${{ secrets.HETZNER_HOST }} \
             "cd /opt/deepsight/repo && docker build -t deepsight-backend:latest -f deploy/hetzner/Dockerfile ./backend"
 
+      - name: Stop existing backend container
+        run: |
+          ssh -i ~/.ssh/id_hetzner root@${{ secrets.HETZNER_HOST }} \
+            "docker rm -f repo-backend-1 2>/dev/null || true"
+
       - name: Deploy with docker compose
         run: |
           ssh -i ~/.ssh/id_hetzner root@${{ secrets.HETZNER_HOST }} \
-            "cd /opt/deepsight/repo && docker compose -f deploy/hetzner/docker-compose.yml up -d --no-deps backend"
+            "cd /opt/deepsight/repo && docker compose -p repo -f deploy/hetzner/docker-compose.yml up -d --no-deps backend"
 
       - name: Wait for startup
         run: sleep 20
