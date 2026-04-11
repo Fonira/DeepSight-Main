@@ -1,6 +1,6 @@
 """
 Pipeline de génération d'images IA pour "Le Saviez-Vous".
-2 étapes : Mistral (directeur artistique) → Nano Banana 2 via fal.ai (génération).
+2 étapes : Mistral (directeur artistique) → DALL-E 3 via OpenAI (génération).
 """
 
 import hashlib
@@ -13,7 +13,7 @@ from typing import Optional
 import httpx
 from PIL import Image
 
-from core.config import get_mistral_key, get_fal_key, is_fal_available
+from core.config import get_mistral_key, get_openai_key
 from storage.r2 import upload_to_r2
 from images.fun_scoring import calculate_fun_score
 
@@ -24,13 +24,16 @@ logger = logging.getLogger(__name__)
 DEEPSIGHT_STYLE_SUFFIX = (
     "Editorial still-life photograph. Pure black background (#0a0a0f). "
     "Single warm gold rim light from left (#C8903A). Sharp focus, shallow depth of field. "
-    "Clean minimal composition. No text, no people, no watermarks. 512x512."
+    "Clean minimal composition. No text, no people, no watermarks."
 )
 
-FAL_PRIMARY_MODEL = "fal-ai/nano-banana-2"
-FAL_FALLBACK_MODEL = "fal-ai/flux/schnell"
-
+IMAGE_MODEL = "dall-e-3"
 ART_DIRECTOR_MODEL = "mistral-small-2503"
+
+
+def _is_image_gen_available() -> bool:
+    """Check if image generation is available (requires OpenAI key)."""
+    return bool(get_openai_key())
 
 ART_DIRECTOR_PROMPT = """Tu es un directeur artistique brillant et espiègle, mélange entre Magritte et un mémeur intellectuel.
 
@@ -108,37 +111,37 @@ async def _stage1_art_director(
     return data
 
 
-# ─── Stage 2: fal.ai Image Generation ────────────────────────────────────────
+# ─── Stage 2: OpenAI DALL-E 3 Image Generation ───────────────────────────────
 
-async def _stage2_generate_image(
-    visual_prompt: str, model: str = FAL_PRIMARY_MODEL
-) -> bytes:
-    """Call fal.ai to generate the image, return raw bytes."""
-    fal_key = get_fal_key()
+async def _stage2_generate_image(visual_prompt: str) -> tuple[bytes, str]:
+    """Call OpenAI DALL-E 3 to generate the image. Returns (raw_bytes, model_used)."""
+    openai_key = get_openai_key()
     full_prompt = f"{visual_prompt}. {DEEPSIGHT_STYLE_SUFFIX}"
 
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    async with httpx.AsyncClient(timeout=90.0) as client:
         resp = await client.post(
-            f"https://fal.run/{model}",
-            headers={"Authorization": f"Key {fal_key}"},
+            "https://api.openai.com/v1/images/generations",
+            headers={"Authorization": f"Bearer {openai_key}"},
             json={
+                "model": IMAGE_MODEL,
                 "prompt": full_prompt,
-                "image_size": {"width": 512, "height": 512},
-                "num_images": 1,
+                "n": 1,
+                "size": "1024x1024",
+                "quality": "standard",
             },
         )
         resp.raise_for_status()
         result = resp.json()
 
-    image_url = result["images"][0]["url"]
+    image_url = result["data"][0]["url"]
 
     # Download the generated image
     async with httpx.AsyncClient(timeout=30.0) as client:
         img_resp = await client.get(image_url)
         img_resp.raise_for_status()
 
-    logger.info(f"🖼️ Image generated ({model}): {len(img_resp.content)} bytes")
-    return img_resp.content
+    logger.info(f"🖼️ Image generated (DALL-E 3): {len(img_resp.content)} bytes")
+    return img_resp.content, IMAGE_MODEL
 
 
 # ─── Post-processing ─────────────────────────────────────────────────────────
@@ -219,13 +222,13 @@ async def generate_keyword_image(
     category: str | None = None,
     pool=None,
 ) -> Optional[str]:
-    """Full pipeline: Mistral → fal.ai → post-process → R2 → DB.
+    """Full pipeline: Mistral → DALL-E 3 → post-process → R2 → DB.
     Returns image_url on success, None on failure."""
     if not get_mistral_key():
         logger.warning("⚠️ MISTRAL_API_KEY not configured, skipping image generation")
         return None
-    if not is_fal_available():
-        logger.warning("⚠️ FAL_API_KEY not configured, skipping image generation")
+    if not _is_image_gen_available():
+        logger.warning("⚠️ OPENAI_API_KEY not configured, skipping image generation")
         return None
 
     thash = _term_hash(term)
@@ -237,14 +240,8 @@ async def generate_keyword_image(
         metaphor = await _stage1_art_director(term, definition, category)
         visual_prompt = metaphor["visual_prompt"]
 
-        # Stage 2: Image Generation (with fallback)
-        model_used = FAL_PRIMARY_MODEL
-        try:
-            raw_image = await _stage2_generate_image(visual_prompt, FAL_PRIMARY_MODEL)
-        except Exception as e:
-            logger.warning(f"⚠️ Primary model failed, trying fallback: {e}")
-            model_used = FAL_FALLBACK_MODEL
-            raw_image = await _stage2_generate_image(visual_prompt, FAL_FALLBACK_MODEL)
+        # Stage 2: Image Generation (DALL-E 3)
+        raw_image, model_used = await _stage2_generate_image(visual_prompt)
 
         # Post-process
         webp_bytes = _post_process(raw_image)
@@ -350,7 +347,7 @@ async def batch_get_image_urls(terms: list[str], pool=None) -> dict[str, str]:
 async def enqueue_images_for_summary(summary_id: int, pool=None) -> int:
     """Extract concepts from a summary and enqueue image generation for new ones.
     Returns count of enqueued tasks."""
-    if not is_fal_available():
+    if not _is_image_gen_available():
         return 0
 
     if pool is None:

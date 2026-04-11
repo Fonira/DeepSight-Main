@@ -1181,7 +1181,7 @@ async def run_schema_migrations():
             image_url TEXT,
             r2_key VARCHAR(300),
             status VARCHAR(20) NOT NULL DEFAULT 'pending',
-            model VARCHAR(100) DEFAULT 'nano-banana-2',
+            model VARCHAR(100) DEFAULT 'dall-e-3',
             generation_time_ms INTEGER,
             fun_score FLOAT DEFAULT 0.5,
             retry_count INTEGER DEFAULT 0,
