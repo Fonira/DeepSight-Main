@@ -83,6 +83,18 @@ async def check_voice_quota(
     # Charger le user pour voice_bonus_seconds
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalars().first()
+
+    # Admin bypass — voice illimité
+    if user and user.is_admin:
+        return {
+            "can_use": True,
+            "seconds_remaining": 999999,
+            "seconds_used": quota.seconds_used,
+            "seconds_limit": 999999,
+            "bonus_seconds": 0,
+            "warning_level": None,
+        }
+
     bonus_seconds = user.voice_bonus_seconds if user else 0
 
     total_limit = quota.seconds_limit + bonus_seconds

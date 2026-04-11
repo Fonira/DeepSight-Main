@@ -221,13 +221,17 @@ async def check_chat_quota(
     """
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    
+
     if not user:
         return False, "user_not_found", {}
-    
+
+    # Admin bypass — chat illimité
+    if user.is_admin:
+        return True, "unlimited", {"daily_limit": -1, "per_video_limit": -1}
+
     plan = user.plan or "free"
     limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
-    
+
     daily_limit = limits.get("chat_daily_limit", 10)
     per_video_limit = limits.get("chat_per_video_limit", 5)
     
@@ -1199,10 +1203,14 @@ async def check_web_search_quota(
     """
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    
+
     if not user:
         return False, 0, 0
-    
+
+    # Admin bypass — web search illimité
+    if user.is_admin:
+        return True, 0, -1
+
     plan = user.plan or "free"
     limits = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
     

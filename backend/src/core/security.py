@@ -67,6 +67,7 @@ CREDIT_COSTS = {
 RATE_LIMITS = {
     "free": {"requests_per_minute": 60, "burst": 30},
     "pro": {"requests_per_minute": 200, "burst": 80},
+    "unlimited": {"requests_per_minute": 2000, "burst": 500},
 }
 
 # Endpoints exemptés du rate limiting strict
@@ -386,6 +387,10 @@ async def check_and_reset_monthly_credits(
     session: AsyncSession,
     user: User
 ) -> Tuple[int, bool]:
+    # Admin bypass — ne jamais réinitialiser les crédits admin
+    if user.is_admin:
+        return user.credits or 999999, False
+
     from billing.plan_config import normalize_plan_id  # lazy import to avoid circular dependency
     normalized_plan = normalize_plan_id(user.plan)
     if normalized_plan == "free":
@@ -550,10 +555,20 @@ async def check_video_analysis_allowed(
 ) -> Tuple[bool, str, Dict[str, Any]]:
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    
+
     if not user:
         return False, "user_not_found", {}
-    
+
+    # Admin bypass — tous les modèles, crédits illimités
+    if user.is_admin:
+        return True, "ok", {
+            "credits": user.credits or 999999,
+            "available": user.credits or 999999,
+            "cost": 0,
+            "model": model,
+            "plan": user.plan
+        }
+
     plan_limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
     
     allowed_models = plan_limits.get("models", ["mistral-small-2603"])
@@ -592,10 +607,20 @@ async def check_playlist_analysis_allowed(
 ) -> Tuple[bool, str, Dict[str, Any]]:
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    
+
     if not user:
         return False, "user_not_found", {}
-    
+
+    # Admin bypass — playlists illimitées
+    if user.is_admin:
+        return True, "ok", {
+            "credits": user.credits or 999999,
+            "available": user.credits or 999999,
+            "cost": 0,
+            "max_videos": 999,
+            "plan": user.plan
+        }
+
     plan_limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
     
     if not plan_limits.get("can_use_playlists", False):
@@ -642,10 +667,18 @@ async def check_chat_quota(
 ) -> Tuple[bool, str, Dict[str, Any]]:
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    
+
     if not user:
         return False, "user_not_found", {}
-    
+
+    # Admin bypass — chat illimité
+    if user.is_admin:
+        return True, "ok", {
+            "daily_used": 0, "daily_limit": -1,
+            "video_used": 0, "video_limit": -1,
+            "unlimited": True
+        }
+
     plan_limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
     daily_limit = plan_limits.get("chat_daily_limit", 10)
     per_video_limit = plan_limits.get("chat_per_video_limit", 5)
@@ -688,10 +721,14 @@ async def check_web_search_quota(
 ) -> Tuple[bool, str, Dict[str, Any]]:
     result = await session.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    
+
     if not user:
         return False, "user_not_found", {}
-    
+
+    # Admin bypass — web search illimité
+    if user.is_admin:
+        return True, "ok", {"unlimited": True}
+
     plan_limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
     
     if not plan_limits.get("web_search_enabled", False):
