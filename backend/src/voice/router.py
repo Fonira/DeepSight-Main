@@ -58,8 +58,90 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Rate limiting: max 5 web searches per summary_id (in-memory, resets on restart)
+# Rate limiting: in-memory fallback when Redis is unavailable
 _web_search_counts: dict[str, int] = {}
+_WEB_SEARCH_MAX = 5
+_WEB_SEARCH_TTL = 3600  # 1 hour
+
+
+async def _increment_web_search_count(summary_id: str) -> int:
+    """Increment and return the web search count for a summary_id.
+
+    Uses Redis INCR with TTL when available, falls back to the in-memory dict.
+    Returns the count *after* incrementing.
+    """
+    redis_key = f"voice:websearch:{summary_id}"
+
+    try:
+        from core.cache import cache_service
+
+        if cache_service._redis_available:
+            redis_client = cache_service.backend.redis
+            full_key = f"deepsight:{redis_key}"
+            count = await redis_client.incr(full_key)
+            if count == 1:
+                await redis_client.expire(full_key, _WEB_SEARCH_TTL)
+            return count
+    except Exception as exc:
+        logger.warning("Redis INCR failed for %s, falling back to in-memory: %s", redis_key, exc)
+
+    # In-memory fallback
+    current = _web_search_counts.get(summary_id, 0) + 1
+    _web_search_counts[summary_id] = current
+    return current
+
+
+async def verify_tool_request(request: Request, db: AsyncSession) -> tuple[Summary, dict]:
+    """Verify an ElevenLabs tool webhook request.
+
+    Checks:
+    1. Authorization header is present with a Bearer token.
+    2. The request body contains a summary_id.
+    3. The Bearer token matches the summary_id (ElevenLabs sends summary_id as token).
+    4. The summary exists in the database.
+
+    Returns (Summary, parsed_body) or raises HTTPException 401/404.
+    """
+    # 1. Extract Authorization header
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "missing_auth", "message": "Missing or invalid Authorization header."},
+        )
+    token = auth_header.removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "missing_auth", "message": "Empty Bearer token."},
+        )
+
+    # 2. Parse body and extract summary_id
+    body = await request.json()
+    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
+    if not summary_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "missing_summary_id", "message": "No summary_id in request body."},
+        )
+
+    # 3. Token must match summary_id
+    if str(summary_id) != str(token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "token_mismatch", "message": "Bearer token does not match summary_id."},
+        )
+
+    # 4. Summary must exist in DB
+    result = await db.execute(select(Summary).where(Summary.id == int(summary_id)))
+    summary = result.scalar_one_or_none()
+    if not summary:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"code": "summary_not_found", "message": "Summary not found."},
+        )
+
+    return summary, body
 
 
 class AddonCheckoutRequest(BaseModel):
@@ -401,6 +483,26 @@ async def create_voice_session(
         else:
             from core.config import _settings
             voice_id = _settings.ELEVENLABS_VOICE_ID or "21m00Tcm4TlvDq8ikWAM"  # Default: Rachel
+
+        # ── FR accent check: warn if voice is not FR-safe ────────────────
+        # Multilingual voices (Lily, Sarah, Liam, etc.) can produce an accent
+        # when speaking French. FR-safe voices are native French speakers.
+        FR_SAFE_VOICE_IDS = {
+            "5jCmrHdxbpU36l1wb3Ke",  # Sébas
+            "ThT5KcBeYPX3keUQqHPh",  # Charlotte
+            "XrExE9yKIg1WjnnlVkGX",  # Matilda
+            "bIHbv24MWmeRgasZH58o",  # Will
+        }
+        if language == "fr" and voice_id not in FR_SAFE_VOICE_IDS:
+            logger.warning(
+                "Voice %s is not FR-native — may produce accent in French",
+                voice_id,
+                extra={
+                    "user_id": current_user.id,
+                    "voice_id": voice_id,
+                    "language": language,
+                },
+            )
 
         # ── Build first message from agent config ────────────────────────
         if language == "fr":
@@ -956,80 +1058,72 @@ async def create_voice_addon_checkout(
 @router.post("/tools/search-transcript")
 async def tool_search_transcript(request: Request, db: AsyncSession = Depends(get_session)):
     """ElevenLabs tool webhook: search in video transcript."""
-    body = await request.json()
-    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
+    summary, body = await verify_tool_request(request, db)
     query = body.get("query") or body.get("parameters", {}).get("query", "")
-    result = await search_in_transcript(summary_id, query, db)
+    result = await search_in_transcript(summary.id, query, db)
     return {"result": result}
 
 
 @router.post("/tools/analysis-section")
 async def tool_analysis_section(request: Request, db: AsyncSession = Depends(get_session)):
     """ElevenLabs tool webhook: get a specific analysis section."""
-    body = await request.json()
-    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
+    summary, body = await verify_tool_request(request, db)
     section = body.get("section") or body.get("parameters", {}).get("section", "resume")
-    result = await get_analysis_section(summary_id, section, db)
+    result = await get_analysis_section(summary.id, section, db)
     return {"result": result}
 
 
 @router.post("/tools/sources")
 async def tool_sources(request: Request, db: AsyncSession = Depends(get_session)):
     """ElevenLabs tool webhook: get sources and fact-check info."""
-    body = await request.json()
-    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
-    result = await get_sources(summary_id, db)
+    summary, _body = await verify_tool_request(request, db)
+    result = await get_sources(summary.id, db)
     return {"result": result}
 
 
 @router.post("/tools/flashcards")
 async def tool_flashcards(request: Request, db: AsyncSession = Depends(get_session)):
     """ElevenLabs tool webhook: get flashcards for a video."""
-    body = await request.json()
-    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
+    summary, body = await verify_tool_request(request, db)
     count = body.get("count") or body.get("parameters", {}).get("count", 5)
-    result = await get_flashcards(summary_id, int(count), db)
+    result = await get_flashcards(summary.id, int(count), db)
     return {"result": result}
 
 
 @router.post("/tools/web-search")
 async def tool_web_search(request: Request, db: AsyncSession = Depends(get_session)):
     """ElevenLabs tool webhook: web search via Brave."""
-    body = await request.json()
-    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
+    summary, body = await verify_tool_request(request, db)
     query = body.get("query") or body.get("parameters", {}).get("query", "")
 
-    # Rate limiting: max 5 web searches per summary_id
-    key = str(summary_id)
-    count = _web_search_counts.get(key, 0)
-    if count >= 5:
+    # Rate limiting: max 5 web searches per summary_id (Redis with in-memory fallback)
+    key = str(summary.id)
+    count = await _increment_web_search_count(key)
+    if count > _WEB_SEARCH_MAX:
         return {
             "result": "Limite de recherches web atteinte pour cette session. "
             "Utilisez les informations déjà disponibles."
         }
-    _web_search_counts[key] = count + 1
 
-    result = await web_search(summary_id, query, db)
+    result = await web_search(summary.id, query, db)
     return {"result": result}
 
 
 @router.post("/tools/deep-research")
 async def tool_deep_research(request: Request, db: AsyncSession = Depends(get_session)):
     """ElevenLabs tool webhook: deep web research."""
-    body = await request.json()
-    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
+    summary, body = await verify_tool_request(request, db)
     query = body.get("query") or body.get("parameters", {}).get("query", "")
-    result = await deep_research(summary_id, query, db)
+    result = await deep_research(summary.id, query, db)
     return {"result": result}
 
 
 @router.post("/tools/check-fact")
 async def tool_check_fact(request: Request, db: AsyncSession = Depends(get_session)):
     """ElevenLabs tool webhook: fact-check a claim."""
-    body = await request.json()
-    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
+    summary, body = await verify_tool_request(request, db)
     claim = body.get("claim") or body.get("parameters", {}).get("claim", "")
-    result = await check_fact(summary_id, claim, db)
+    result = await check_fact(summary.id, claim, db)
     return {"result": result}
 
 

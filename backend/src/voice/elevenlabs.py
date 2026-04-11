@@ -79,6 +79,9 @@ class ElevenLabsClient:
                     "language": language,
                 },
                 "tts": tts_config,
+                # Reduce first-byte latency at the cost of slight quality loss
+                # Level 4 = maximum optimization, ideal for voice chat
+                "optimize_streaming_latency": 4,
             },
             "tools": tools,
         }

@@ -28,7 +28,7 @@ class VoicePreferences:
     """User voice preferences — maps to ElevenLabs TTS parameters."""
 
     # ── Voice selection ───────────────────────────────────────────────────
-    voice_id: Optional[str] = None          # ElevenLabs voice ID (None = default)
+    voice_id: Optional[str] = "5jCmrHdxbpU36l1wb3Ke"  # Default: Sébas (FR natif)
     voice_name: Optional[str] = None        # Display name for UI
 
     # ── Speed (PROMINENTLY FEATURED) ──────────────────────────────────────
@@ -36,21 +36,22 @@ class VoicePreferences:
     speed: float = 1.0
 
     # ── Voice quality parameters ──────────────────────────────────────────
-    stability: float = 0.5                  # 0.0 (variable) → 1.0 (stable)
-    similarity_boost: float = 0.75          # 0.0 (diverse) → 1.0 (similar)
-    style: float = 0.3                      # 0.0 (none) → 1.0 (exaggerated)
+    # Higher stability + lower style = more consistent voice, fewer accent bugs
+    stability: float = 0.7                  # 0.0 (variable) → 1.0 (stable)
+    similarity_boost: float = 0.8           # 0.0 (diverse) → 1.0 (similar)
+    style: float = 0.0                      # 0.0 (none) → 1.0 (exaggerated)
     use_speaker_boost: bool = True          # High-quality speaker boost
 
     # ── Model selection ───────────────────────────────────────────────────
     # eleven_multilingual_v2 (default, highest quality)
-    # eleven_turbo_v2_5 (fastest, ~300ms latency)
+    # eleven_turbo_v2_5 (fastest, ~300ms latency) ← best for voice chat
     # eleven_flash_v2_5 (balanced)
     tts_model: str = "eleven_multilingual_v2"
-    voice_chat_model: str = "eleven_flash_v2_5"
+    voice_chat_model: str = "eleven_turbo_v2_5"
 
     # ── Language / Gender defaults ────────────────────────────────────────
     language: str = "fr"
-    gender: str = "female"
+    gender: str = "male"
 
     # ── Interaction mode (Phase 1 — PTT) ─────────────────────────────────
     input_mode: str = "ptt"               # "ptt" (push-to-talk) or "vad" (voice activity detection)
@@ -168,6 +169,42 @@ VOICE_CATALOG = [
         "use_case": "narrative",
         "recommended": True,
         "preview_url": "https://storage.googleapis.com/eleven-public-prod/database/workspace/c8653145f827440481dc7d6ec79b65aa/voices/5jCmrHdxbpU36l1wb3Ke/51f292e0-b817-49dc-822e-70a3c1de7219.mp3",
+    },
+    {
+        "voice_id": "ThT5KcBeYPX3keUQqHPh",
+        "name": "Charlotte",
+        "description_fr": "Voix française chaleureuse — ton naturel et rassurant",
+        "description_en": "Warm French voice — natural and reassuring tone",
+        "gender": "female",
+        "accent": "french",
+        "language": "fr",
+        "use_case": "conversational",
+        "recommended": True,
+        "preview_url": "",
+    },
+    {
+        "voice_id": "XrExE9yKIg1WjnnlVkGX",
+        "name": "Matilda",
+        "description_fr": "Neutre et éducative — ton clair et posé",
+        "description_en": "Neutral and educational — clear and steady tone",
+        "gender": "female",
+        "accent": "french",
+        "language": "fr",
+        "use_case": "educational",
+        "recommended": False,
+        "preview_url": "",
+    },
+    {
+        "voice_id": "bIHbv24MWmeRgasZH58o",
+        "name": "Will",
+        "description_fr": "Voix française amicale — ton décontracté et accessible",
+        "description_en": "Friendly French voice — casual and approachable tone",
+        "gender": "male",
+        "accent": "french",
+        "language": "fr",
+        "use_case": "conversational",
+        "recommended": True,
+        "preview_url": "",
     },
     # ── Multilingual female voices ──
     {
