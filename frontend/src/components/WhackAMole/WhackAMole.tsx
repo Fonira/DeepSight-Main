@@ -1,6 +1,7 @@
 /**
  * WhackAMole — Orchestrator component.
  * Renders the mole, particles, and fact card based on game phase.
+ * Supports 'classic' and 'reverse' (image guess) modes.
  * Uses canvas-confetti for celebration bursts.
  */
 
@@ -13,6 +14,7 @@ import { clampFactPosition } from './useWhackAMole';
 import { MoleButton } from './MoleButton';
 import { MoleParticles } from './MoleParticles';
 import { FactRevealCard } from './FactRevealCard';
+import { ImageGuessCard } from './ImageGuessCard';
 import { MOLE_SIZE } from './whackAMoleConstants';
 
 interface WhackAMoleProps {
@@ -28,9 +30,13 @@ export const WhackAMole: React.FC<WhackAMoleProps> = ({ sidebarCollapsed }) => {
     streak,
     enabled,
     visibleDuration,
+    mode,
+    reverseImageUrl,
+    lastGuessResult,
     prefersReducedMotion,
     isConfettiMilestone,
     handleCatch,
+    handleGuess,
     dismissFact,
   } = useWhackAMole({ sidebarCollapsed });
 
@@ -39,7 +45,6 @@ export const WhackAMole: React.FC<WhackAMoleProps> = ({ sidebarCollapsed }) => {
   // Fire confetti on catch
   useEffect(() => {
     if (phase === 'caught' && !prefersReducedMotion) {
-      // Small burst at mole position
       const x = (position.x + MOLE_SIZE / 2) / window.innerWidth;
       const y = (position.y + MOLE_SIZE / 2) / window.innerHeight;
 
@@ -52,7 +57,6 @@ export const WhackAMole: React.FC<WhackAMoleProps> = ({ sidebarCollapsed }) => {
         zIndex: 35,
       });
 
-      // Extra burst for milestones
       if (isConfettiMilestone && !confettiFired.current) {
         confettiFired.current = true;
         setTimeout(() => {
@@ -74,16 +78,20 @@ export const WhackAMole: React.FC<WhackAMoleProps> = ({ sidebarCollapsed }) => {
   // Don't render if disabled or not authenticated
   if (!enabled || !isAuthenticated) return null;
 
+  // Classic mode flags
   const showMole = phase === 'visible' || phase === 'caught' || phase === 'missed';
   const showParticles = phase === 'caught';
-  const showFact = phase === 'revealing' && currentFact;
+  const showClassicFact = phase === 'revealing' && currentFact && mode === 'classic';
+
+  // Reverse mode flags
+  const showGuessCard = (phase === 'guessing' || (phase === 'revealing' && mode === 'reverse')) && currentFact && reverseImageUrl;
 
   const factPosition = currentFact ? clampFactPosition(position) : { x: 0, y: 0 };
 
   return (
     <>
-      {/* Mole button */}
-      {showMole && (
+      {/* Classic: Mole button */}
+      {showMole && mode === 'classic' && (
         <MoleButton
           position={position}
           category={currentFact?.category || 'misc'}
@@ -94,17 +102,36 @@ export const WhackAMole: React.FC<WhackAMoleProps> = ({ sidebarCollapsed }) => {
         />
       )}
 
-      {/* Particle burst */}
-      <MoleParticles position={position} active={showParticles} />
+      {/* Classic: Particle burst */}
+      {mode === 'classic' && (
+        <MoleParticles position={position} active={showParticles} />
+      )}
 
-      {/* Fact reveal card */}
+      {/* Classic: Fact reveal card */}
       <AnimatePresence>
-        {showFact && currentFact && (
+        {showClassicFact && currentFact && (
           <FactRevealCard
             key={currentFact.term}
             fact={currentFact}
             position={factPosition}
             streak={streak}
+            onDismiss={dismissFact}
+            prefersReducedMotion={prefersReducedMotion}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Reverse: Image guess card */}
+      <AnimatePresence>
+        {showGuessCard && currentFact && reverseImageUrl && (
+          <ImageGuessCard
+            key={`reverse-${currentFact.term}`}
+            fact={currentFact}
+            imageUrl={reverseImageUrl}
+            position={position}
+            streak={streak}
+            lastGuessResult={lastGuessResult}
+            onGuess={handleGuess}
             onDismiss={dismissFact}
             prefersReducedMotion={prefersReducedMotion}
           />

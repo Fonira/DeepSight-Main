@@ -2504,6 +2504,29 @@ export const gamificationApi = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// 🖼️ KEYWORD IMAGES API
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export interface KeywordImageResponse {
+  term: string;
+  image_url: string | null;
+  status: 'ready' | 'not_found' | 'pending' | 'error';
+}
+
+export const keywordImageApi = {
+  async getKeywordImage(term: string): Promise<KeywordImageResponse> {
+    try {
+      return await request<KeywordImageResponse>(
+        `/api/images/keyword/${encodeURIComponent(term)}`,
+        { skipAuth: true, timeout: 5000 },
+      );
+    } catch {
+      return { term, image_url: null, status: 'error' };
+    }
+  },
+};
+
 // Export par défaut
 export default {
   auth: authApi,
@@ -2527,4 +2550,5 @@ export default {
   voice: voiceApi,
   debate: debateApi,
   gamification: gamificationApi,
+  keywordImage: keywordImageApi,
 };

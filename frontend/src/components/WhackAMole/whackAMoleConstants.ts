@@ -59,3 +59,9 @@ export const CONFETTI_MILESTONES = [3, 5, 10, 20, 50];
 
 export const LS_ENABLED = 'ds-whack-a-mole-enabled';
 export const LS_DAILY_CATCHES = 'ds-whack-a-mole-daily-catches';
+export const LS_GAME_MODE = 'ds-whack-a-mole-mode';
+
+// ─── Mode Prompt Inverse ────────────────────────────────────────────────────
+
+export const REVERSE_GUESS_DURATION = 15000;
+export const REVERSE_IMAGE_SIZE = 280;
