@@ -1,17 +1,42 @@
-/* DeepSight Content Script Styles */
+/* DeepSight Content Script Styles — Premium Glassmorphism V4.2 */
 
-/* Gouvernail Spinner for injected card */
+/* ══════════════════════════════════════════
+   INJECTED CARD CONTAINER
+══════════════════════════════════════════ */
+
+.deepsight-injected-card {
+  backdrop-filter: blur(24px) saturate(150%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+  border: 1px solid rgba(200, 144, 58, 0.06) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(200, 144, 58, 0.05) !important;
+  background: var(--ds-glass-bg, rgba(10, 10, 15, 0.5)) !important;
+}
+
+/* Light theme variant */
+.deepsight-injected-card.light {
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(166, 120, 40, 0.08) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15), 0 0 20px rgba(200, 144, 58, 0.04) !important;
+}
+
+/* ══════════════════════════════════════════
+   GOUVERNAIL SPINNER — PREMIUM ANIMATION
+══════════════════════════════════════════ */
+
 .ds-gouvernail-spinner {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   animation: ds-gouvernail-spin 2s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(200, 144, 58, 0.3));
 }
 
 .ds-gouvernail-spinner-sm {
   width: 18px;
   height: 18px;
   animation: ds-gouvernail-spin 2s linear infinite;
+  filter: drop-shadow(0 0 3px rgba(200, 144, 58, 0.25));
 }
 
 .ds-gouvernail-spinner svg {
@@ -29,7 +54,10 @@
   }
 }
 
-/* Loading state */
+/* ══════════════════════════════════════════
+   LOADING STATE — ENHANCED VISUAL
+══════════════════════════════════════════ */
+
 .ds-loading {
   display: flex;
   flex-direction: column;
@@ -43,4 +71,21 @@
   color: rgba(255, 255, 255, 0.7);
   font-size: 14px;
   margin: 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* ══════════════════════════════════════════
+   PREMIUM GRADIENT ANIMATIONS
+══════════════════════════════════════════ */
+
+@keyframes ds-gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }

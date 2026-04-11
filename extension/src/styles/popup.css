@@ -1,10 +1,11 @@
 /**
  * DEEPSIGHT EXTENSION — POPUP STYLES
  * Premium dark-first design aligned with deepsightsynthesis.com
+ * Enhanced with glassmorphism, glow effects, and polished interactions
  */
 
 /* ═══════════════════════════════════════════════════
-   BASE
+   BASE & ANIMATIONS
    ═══════════════════════════════════════════════════ */
 
 *, *::before, *::after {
@@ -13,7 +14,29 @@
   padding: 0;
 }
 
+@keyframes shimmer {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 body {
+  position: relative;
   width: 400px;
   min-height: 500px;
   max-height: 600px;
@@ -24,6 +47,27 @@ body {
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle noise texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Ambient glow gradient */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(200, 144, 58, 0.04) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
 }
 
 a {
@@ -76,9 +120,10 @@ a:hover {
   font-weight: 500;
   z-index: var(--z-toast);
   cursor: pointer;
-  animation: slideIn 0.25s ease-out;
+  animation: slideInRight 0.3s ease-out;
   box-shadow: var(--shadow-md);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
 }
 
 .ds-toast-error {
@@ -442,14 +487,25 @@ a:hover {
   align-items: center;
   justify-content: space-between;
   padding: 10px 14px;
-  background: rgba(17, 17, 24, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid transparent;
-  border-image: linear-gradient(to right, transparent, var(--border-accent), transparent) 1;
+  background: rgba(17, 17, 24, 0.65);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border-bottom: 1px solid var(--border-default);
   position: sticky;
   top: 0;
   z-index: var(--z-sticky, 100);
+}
+
+/* Golden accent bar at bottom of header */
+.main-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+  opacity: 0.5;
 }
 
 .main-header-left {
@@ -704,11 +760,18 @@ a:hover {
   gap: 10px;
   padding: 10px;
   border-radius: var(--radius-md);
-  background: rgba(17, 17, 24, 0.6);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border-default);
+  background: rgba(17, 17, 24, 0.65);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgba(200, 144, 58, 0.08);
   border-left: 3px solid var(--accent-primary);
   animation: fadeInUp 0.3s ease-out;
+  transition: all var(--transition-base);
+}
+
+.video-status-card:hover {
+  border-color: rgba(200, 144, 58, 0.14);
+  box-shadow: 0 0 20px rgba(200, 144, 58, 0.1);
 }
 
 .video-thumbnail {
@@ -806,18 +869,19 @@ a:hover {
 .ds-select {
   padding: 8px 10px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: 1px solid rgba(200, 144, 58, 0.08);
   background: var(--bg-secondary);
   color: var(--text-primary);
   font-size: 13px;
   font-family: var(--font-body);
   cursor: pointer;
   outline: none;
-  transition: border-color var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .ds-select:focus {
   border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(200, 144, 58, 0.1);
 }
 
 /* Buttons */
@@ -827,17 +891,19 @@ a:hover {
   border-radius: var(--radius-md);
   border: none;
   background: linear-gradient(135deg, #C8903A, #D4A054);
+  background-size: 200% 200%;
   color: var(--text-inverse);
   font-size: 15px;
   font-weight: 600;
   font-family: var(--font-body);
   cursor: pointer;
   transition: all var(--transition-base);
-  box-shadow: var(--shadow-sm), var(--shadow-glow-sm);
+  box-shadow: 0 4px 15px rgba(200, 144, 58, 0.25);
   letter-spacing: 0.01em;
   min-height: 48px;
   position: relative;
   overflow: hidden;
+  animation: gradient-shift 8s ease infinite;
 }
 
 .analyze-btn::after {
@@ -848,17 +914,12 @@ a:hover {
   width: 100%;
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
-  transition: left 0.5s ease;
-}
-
-.analyze-btn:hover::after {
-  left: 100%;
+  animation: shimmer 2s infinite;
 }
 
 .analyze-btn:hover {
-  background: linear-gradient(135deg, #D4A054, #E5B86A);
-  box-shadow: var(--shadow-md), var(--shadow-glow);
   transform: translateY(-1px);
+  box-shadow: 0 0 25px rgba(200, 144, 58, 0.35);
 }
 
 .analyze-btn-disabled {
@@ -999,15 +1060,16 @@ a:hover {
   padding: 8px 10px;
   border-radius: var(--radius-sm);
   background: var(--bg-secondary);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid rgba(200, 144, 58, 0.04);
   text-decoration: none;
-  transition: all var(--transition-fast);
+  transition: all var(--transition-base);
 }
 
 .recent-item:hover {
-  background: var(--bg-tertiary);
-  border-color: var(--border-default);
-  box-shadow: var(--shadow-xs);
+  background: rgba(17, 17, 24, 0.8);
+  border-color: rgba(200, 144, 58, 0.12);
+  transform: translateY(-1px);
+  box-shadow: 0 0 12px rgba(200, 144, 58, 0.08);
 }
 
 .recent-item img {
@@ -1190,10 +1252,17 @@ a:hover {
 .synthesis-verdict {
   padding: 12px 14px;
   border-radius: var(--radius-md);
-  background: rgba(17, 17, 24, 0.6);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border-default);
+  background: rgba(17, 17, 24, 0.65);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border: 1px solid rgba(200, 144, 58, 0.08);
   border-left: 3px solid var(--accent-primary);
+  transition: all var(--transition-base);
+}
+
+.synthesis-verdict:hover {
+  border-color: rgba(200, 144, 58, 0.14);
+  box-shadow: 0 0 20px rgba(200, 144, 58, 0.1);
 }
 
 .synthesis-verdict p {
@@ -1480,10 +1549,23 @@ a:hover {
   align-items: center;
   gap: 10px;
   padding: 10px 14px;
-  background: rgba(17, 17, 24, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--border-strong);
+  background: rgba(17, 17, 24, 0.65);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border-bottom: 1px solid var(--border-default);
+  position: relative;
+}
+
+/* Golden accent bar at bottom of chat header */
+.chat-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+  opacity: 0.5;
 }
 
 .chat-header-title {
@@ -1707,11 +1789,23 @@ a:hover {
   align-items: center;
   gap: 6px;
   padding: 10px 14px;
-  background: rgba(17, 17, 24, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid transparent;
-  border-image: linear-gradient(to right, transparent, var(--accent-primary-glow), transparent) 1;
+  background: rgba(17, 17, 24, 0.65);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border-top: 1px solid var(--border-default);
+  position: relative;
+}
+
+/* Golden accent bar at top of chat input */
+.chat-input-area::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+  opacity: 0.5;
 }
 
 .chat-ws-toggle {
@@ -1737,17 +1831,18 @@ a:hover {
   flex: 1;
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-default);
+  border: 1px solid rgba(200, 144, 58, 0.08);
   background: var(--bg-secondary);
   color: var(--text-primary);
   font-size: 13px;
   font-family: var(--font-body);
   outline: none;
-  transition: border-color var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 
 .chat-input:focus {
   border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(200, 144, 58, 0.1);
 }
 
 .chat-input::placeholder {
@@ -1770,11 +1865,12 @@ a:hover {
   color: var(--text-inverse);
   cursor: pointer;
   transition: all var(--transition-fast);
+  box-shadow: 0 4px 12px rgba(200, 144, 58, 0.2);
 }
 
 .chat-send-btn:hover:not(:disabled) {
-  box-shadow: var(--shadow-glow-sm);
-  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(200, 144, 58, 0.3);
+  transform: scale(1.08);
 }
 
 .chat-send-btn:disabled {

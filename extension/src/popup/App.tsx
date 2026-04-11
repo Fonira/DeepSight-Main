@@ -3,6 +3,7 @@ import type { User, PlanInfo } from '../types';
 import { LoginView } from './components/LoginView';
 import { MainView } from './components/MainView';
 import { DeepSightSpinner } from './components/DeepSightSpinner';
+import MicroDoodleBackground from './components/MicroDoodleBackground';
 
 type ViewName = 'loading' | 'login' | 'main';
 
@@ -107,8 +108,17 @@ export const App: React.FC = () => {
     setToast({ message: msg, type: 'error' });
   }, []);
 
+  function getCurrentVariant() {
+    if (view === 'loading') return 'default';
+    if (view === 'login') return 'default';
+    if (view === 'main') return 'AI';
+    return 'default';
+  }
+
   return (
-    <div className="app-container">
+    <div className="app-container noise-overlay ambient-glow" style={{ position: 'relative' }}>
+      <MicroDoodleBackground variant={getCurrentVariant()} />
+      <div style={{ position: 'relative', zIndex: 1 }}>
       {/* Toast notification */}
       {toast && (
         <div
@@ -144,6 +154,7 @@ export const App: React.FC = () => {
           onError={showError}
         />
       )}
+      </div>
     </div>
   );
 };

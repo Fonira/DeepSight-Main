@@ -369,7 +369,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                 <p className="quota-exceeded-text">
                   {t.analysis.quotaExceeded} ({planInfo?.analyses_this_month}/{planInfo?.monthly_analyses}) — {t.analysis.quotaExceededText}
                 </p>
-                <button className="analyze-btn analyze-btn-disabled" disabled>
+                <button className="analyze-btn analyze-btn-disabled btn-shimmer" disabled>
                   {t.analysis.analyzeButton}
                 </button>
                 <button
@@ -431,7 +431,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                 >
                   {quickChatLoading ? t.analysis.quickChatPreparing : t.analysis.quickChatButton}
                 </button>
-                <button className="analyze-btn" onClick={startAnalysis}>
+                <button className="analyze-btn btn-shimmer" onClick={startAnalysis} style={{ animation: 'float 3s ease-in-out infinite' }}>
                   {t.analysis.analyzeButton}
                 </button>
                 <div className="mistral-badge">
@@ -463,9 +463,9 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               {analysis.message}
             </p>
             <button
-              className="analyze-btn"
+              className="analyze-btn btn-shimmer"
               onClick={() => setAnalysis({ phase: 'idle' })}
-              style={{ height: '40px', fontSize: '13px' }}
+              style={{ height: '40px', fontSize: '13px', animation: 'float 3s ease-in-out infinite' }}
             >
               {t.common.retry}
             </button>
