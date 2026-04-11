@@ -55,6 +55,7 @@ class _DeepSightSettings(BaseSettings):
     DEEPSEEK_API_KEY: str = ""
     SEMANTIC_SCHOLAR_API_KEY: str = ""
     FAL_API_KEY: str = ""
+    TOGETHER_API_KEY: str = ""
 
     # -- YouTube Proxy (pour contourner le blocage IP YouTube sur VPS) --
     YOUTUBE_PROXY: str = ""  # ex: socks5://user:pass@host:port ou http://user:pass@host:port
@@ -240,6 +241,7 @@ BRAVE_SEARCH_API_KEY = _settings.BRAVE_SEARCH_API_KEY
 OPENAI_API_KEY = _settings.OPENAI_API_KEY
 DEEPSEEK_API_KEY = _settings.DEEPSEEK_API_KEY
 FAL_API_KEY = _settings.FAL_API_KEY
+TOGETHER_API_KEY = _settings.TOGETHER_API_KEY
 YOUTUBE_PROXY = _settings.YOUTUBE_PROXY
 
 
@@ -249,6 +251,14 @@ def get_fal_key() -> str:
 
 def is_fal_available() -> bool:
     return bool(FAL_API_KEY)
+
+
+def get_together_key() -> str:
+    return TOGETHER_API_KEY
+
+
+def is_together_available() -> bool:
+    return bool(TOGETHER_API_KEY)
 
 # =============================================================================
 # CRON
@@ -798,7 +808,4 @@ if __name__ != "__main__":
     print(f"  Cache: Redis={'yes' if _settings.REDIS_URL else 'no (memory fallback)'}"
           f" max_size={_settings.CACHE_MAX_SIZE}", flush=True)
     print(f"  Video Cache L2: {'yes' if _settings.VPS_DATABASE_URL else 'no (VPS_DATABASE_URL not set)'}", flush=True)
-    print(f"  Backup S3: {'yes' if _settings.AWS_ACCESS_KEY_ID else 'local-only'}"
-          f" (cron={_settings.BACKUP_CRON_HOUR:02d}:{_settings.BACKUP_CRON_MINUTE:02d} UTC,"
-          f" retention={_settings.BACKUP_RETENTION_DAYS}d)", flush=True)
-    print(f"  fal.ai (images): {'yes' if is_fal_available() else 'no'}", flush=True)
+    print(f"  Backup S3: {'yes' if _settings.AWS_ACCESS_KEY_ID els

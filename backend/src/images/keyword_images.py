@@ -1,6 +1,10 @@
 """
 Pipeline de génération d'images IA pour "Le Saviez-Vous".
-2 étapes : Mistral (directeur artistique) → DALL-E 3 via OpenAI (génération).
+2 étapes : Mistral (directeur artistique) → Image gen (DALL-E 3 ou FLUX Schnell).
+
+Tiering:
+- Free users → FLUX Schnell via Together AI (~$0.003/image, ~2s)
+- Paying users (Étudiant+) → DALL-E 3 via OpenAI (~$0.04/image, ~15s)
 """
 
 import hashlib
@@ -13,7 +17,7 @@ from typing import Optional
 import httpx
 from PIL import Image
 
-from core.config import get_mistral_key, get_openai_key
+from core.config import get_mistral_key, get_openai_key, get_together_key
 from storage.r2 import upload_to_r2
 from images.fun_scoring import calculate_fun_score
 
@@ -27,13 +31,17 @@ DEEPSIGHT_STYLE_SUFFIX = (
     "Clean minimal composition. No text, no people, no watermarks."
 )
 
-IMAGE_MODEL = "dall-e-3"
+# Premium model (paying users)
+IMAGE_MODEL_PREMIUM = "dall-e-3"
+# Free model (FLUX Schnell via Together AI)
+IMAGE_MODEL_FREE = "black-forest-labs/FLUX.1-schnell-Free"
+
 ART_DIRECTOR_MODEL = "mistral-small-2503"
 
 
 def _is_image_gen_available() -> bool:
-    """Check if image generation is available (requires OpenAI key)."""
-    return bool(get_openai_key())
+    """Check if ANY image generation backend is available."""
+    return bool(get_openai_key()) or bool(get_together_key())
 
 ART_DIRECTOR_PROMPT = """Tu es un directeur artistique brillant et espiègle, mélange entre Magritte et un mémeur intellectuel.
 
@@ -115,9 +123,9 @@ async def _stage1_art_director(
     return data
 
 
-# ─── Stage 2: OpenAI DALL-E 3 Image Generation ───────────────────────────────
+# ─── Stage 2a: DALL-E 3 (Premium) ────────────────────────────────────────────
 
-async def _stage2_generate_image(visual_prompt: str) -> tuple[bytes, str]:
+async def _stage2_dalle3(visual_prompt: str) -> tuple[bytes, str]:
     """Call OpenAI DALL-E 3 to generate the image. Returns (raw_bytes, model_used)."""
     openai_key = get_openai_key()
     full_prompt = f"{visual_prompt}. {DEEPSIGHT_STYLE_SUFFIX}"
@@ -127,7 +135,7 @@ async def _stage2_generate_image(visual_prompt: str) -> tuple[bytes, str]:
             "https://api.openai.com/v1/images/generations",
             headers={"Authorization": f"Bearer {openai_key}"},
             json={
-                "model": IMAGE_MODEL,
+                "model": IMAGE_MODEL_PREMIUM,
                 "prompt": full_prompt,
                 "n": 1,
                 "size": "1024x1024",
@@ -139,13 +147,64 @@ async def _stage2_generate_image(visual_prompt: str) -> tuple[bytes, str]:
 
     image_url = result["data"][0]["url"]
 
-    # Download the generated image
     async with httpx.AsyncClient(timeout=30.0) as client:
         img_resp = await client.get(image_url)
         img_resp.raise_for_status()
 
     logger.info(f"🖼️ Image generated (DALL-E 3): {len(img_resp.content)} bytes")
-    return img_resp.content, IMAGE_MODEL
+    return img_resp.content, IMAGE_MODEL_PREMIUM
+
+
+# ─── Stage 2b: FLUX Schnell (Free) ──────────────────────────────────────────
+
+async def _stage2_flux_schnell(visual_prompt: str) -> tuple[bytes, str]:
+    """Call Together AI FLUX Schnell to generate the image. Returns (raw_bytes, model_used)."""
+    together_key = get_together_key()
+    full_prompt = f"{visual_prompt}. {DEEPSIGHT_STYLE_SUFFIX}"
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(
+            "https://api.together.xyz/v1/images/generations",
+            headers={
+                "Authorization": f"Bearer {together_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": IMAGE_MODEL_FREE,
+                "prompt": full_prompt,
+                "n": 1,
+                "width": 1024,
+                "height": 1024,
+                "steps": 4,
+                "response_format": "b64_json",
+            },
+        )
+        resp.raise_for_status()
+        result = resp.json()
+
+    import base64
+    image_bytes = base64.b64decode(result["data"][0]["b64_json"])
+
+    logger.info(f"🖼️ Image generated (FLUX Schnell): {len(image_bytes)} bytes")
+    return image_bytes, IMAGE_MODEL_FREE
+
+
+# ─── Stage 2: Router (picks model based on premium flag) ────────────────────
+
+async def _stage2_generate_image(visual_prompt: str, premium: bool = False) -> tuple[bytes, str]:
+    """Route to the appropriate image generation backend.
+    premium=True → DALL-E 3 (paying users), premium=False → FLUX Schnell (free).
+    Falls back to the other backend if the preferred one is unavailable."""
+    if premium and get_openai_key():
+        return await _stage2_dalle3(visual_prompt)
+    elif get_together_key():
+        return await _stage2_flux_schnell(visual_prompt)
+    elif get_openai_key():
+        # Fallback: free user but no Together key → use DALL-E 3 anyway
+        logger.warning("⚠️ TOGETHER_API_KEY not set, falling back to DALL-E 3 for free user")
+        return await _stage2_dalle3(visual_prompt)
+    else:
+        raise RuntimeError("No image generation backend available (need OPENAI_API_KEY or TOGETHER_API_KEY)")
 
 
 # ─── Post-processing ─────────────────────────────────────────────────────────
@@ -224,15 +283,17 @@ async def generate_keyword_image(
     term: str,
     definition: str,
     category: str | None = None,
+    premium: bool = False,
     pool=None,
 ) -> Optional[str]:
-    """Full pipeline: Mistral → DALL-E 3 → post-process → R2 → DB.
+    """Full pipeline: Mistral → Image gen → post-process → R2 → DB.
+    premium=True uses DALL-E 3 (paying users), False uses FLUX Schnell (free).
     Returns image_url on success, None on failure."""
     if not get_mistral_key():
         logger.warning("⚠️ MISTRAL_API_KEY not configured, skipping image generation")
         return None
     if not _is_image_gen_available():
-        logger.warning("⚠️ OPENAI_API_KEY not configured, skipping image generation")
+        logger.warning("⚠️ No image generation backend available, skipping")
         return None
 
     thash = _term_hash(term)
@@ -244,8 +305,8 @@ async def generate_keyword_image(
         metaphor = await _stage1_art_director(term, definition, category)
         visual_prompt = metaphor["visual_prompt"]
 
-        # Stage 2: Image Generation (DALL-E 3)
-        raw_image, model_used = await _stage2_generate_image(visual_prompt)
+        # Stage 2: Image Generation (tiered)
+        raw_image, model_used = await _stage2_generate_image(visual_prompt, premium=premium)
 
         # Post-process
         webp_bytes = _post_process(raw_image)
@@ -418,27 +479,4 @@ async def enqueue_images_for_summary(summary_id: int, pool=None) -> int:
         # Insert as pending
         definition = concept.get("definition", concept.get("short_definition", ""))
         category = concept.get("category", "misc")
-        fun_score = calculate_fun_score(concept["term"], category)
-
-        async with pool.acquire() as conn:
-            await conn.execute(
-                """
-                INSERT INTO keyword_images (term, term_hash, category, status, fun_score)
-                VALUES ($1, $2, $3, 'pending', $4)
-                ON CONFLICT (term_hash) DO NOTHING
-                """,
-                concept["term"], thash, category, fun_score,
-            )
-
-        # Enqueue Celery task
-        try:
-            from tasks.image_tasks import generate_keyword_image_task
-            generate_keyword_image_task.delay(
-                concept["term"], definition, category,
-            )
-            enqueued += 1
-        except Exception as e:
-            logger.warning(f"⚠️ Failed to enqueue image task for '{concept['term']}': {e}")
-
-    logger.info(f"📸 Enqueued {enqueued} image tasks from summary #{summary_id}")
-    return enqueued
+        fun_score = cal
