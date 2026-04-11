@@ -443,4 +443,9 @@ def get_elevenlabs_client() -> ElevenLabsClient:
     from core.config import get_elevenlabs_key
 
     api_key = get_elevenlabs_key()
-    if not api_
+    if not api_key:
+        raise ValueError(
+            "ELEVENLABS_API_KEY is not configured — "
+            "set it in .env or environment variables"
+        )
+    return ElevenLabsClient(api_key=api_key)
