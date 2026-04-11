@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mistral AI × DeepSight — Stratégie d'intégration 2026</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface-2: #1a1a2e;
+    --border: rgba(255,255,255,0.08);
+    --text: #e4e4e7;
+    --text-dim: #a1a1aa;
+    --accent: #6366f1;
+    --accent-glow: rgba(99,102,241,0.15);
+    --orange: #f97316;
+    --orange-glow: rgba(249,115,22,0.15);
+    --green: #22c55e;
+    --green-glow: rgba(34,197,94,0.12);
+    --red: #ef4444;
+    --red-glow: rgba(239,68,68,0.12);
+    --cyan: #06b6d4;
+    --violet: #8b5cf6;
+    --yellow: #eab308;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, sans-serif;
+    line-height: 1.7;
+    min-height: 100vh;
+  }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+
+  /* Header */
+  .hero {
+    text-align: center;
+    padding: 60px 0 40px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 48px;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--orange-glow); border: 1px solid rgba(249,115,22,0.3);
+    border-radius: 24px; padding: 6px 16px; font-size: 13px; color: var(--orange);
+    margin-bottom: 20px; font-weight: 500;
+  }
+  .hero h1 {
+    font-size: 42px; font-weight: 800; letter-spacing: -1.5px;
+    background: linear-gradient(135deg, var(--orange) 0%, #f59e0b 50%, var(--accent) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+  }
+  .hero p { font-size: 18px; color: var(--text-dim); max-width: 600px; margin: 0 auto; }
+
+  /* Alert box */
+  .alert {
+    background: var(--red-glow); border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 12px; padding: 20px 24px; margin-bottom: 40px;
+  }
+  .alert-title { color: var(--red); font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+  .alert p { font-size: 14px; color: var(--text-dim); }
+  .alert strong { color: var(--text); }
+  .alert code { background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+  /* Sections */
+  .section { margin-bottom: 48px; }
+  .section-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px; padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .section-header h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .section-header .tag {
+    font-size: 11px; padding: 3px 10px; border-radius: 12px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  /* Cards */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px; transition: border-color 0.2s;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.15); }
+  .card-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .card p { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+  .card .specs { margin-top: 12px; font-size: 12px; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+  .card .specs span { display: inline-block; background: rgba(255,255,255,0.04); padding: 2px 8px; border-radius: 4px; margin: 2px 4px 2px 0; }
+
+  /* Priority badges */
+  .priority-high { background: var(--red-glow); color: var(--red); border: 1px solid rgba(239,68,68,0.3); }
+  .priority-medium { background: var(--orange-glow); color: var(--orange); border: 1px solid rgba(249,115,22,0.3); }
+  .priority-low { background: var(--accent-glow); color: var(--accent); border: 1px solid rgba(99,102,241,0.3); }
+  .priority-game { background: var(--green-glow); color: var(--green); border: 1px solid rgba(34,197,94,0.3); }
+
+  /* Impact indicator */
+  .impact { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 8px; }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13px; }
+  th { text-align: left; padding: 10px 12px; background: var(--surface-2); color: var(--text-dim); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Code */
+  .code-block {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px; margin: 12px 0;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    overflow-x: auto; line-height: 1.5; color: var(--text-dim);
+  }
+  .code-block .comment { color: #6b7280; }
+  .code-block .keyword { color: var(--accent); }
+  .code-block .string { color: var(--green); }
+
+  /* Checklist */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    padding: 8px 0; padding-left: 28px; position: relative;
+    font-size: 14px; color: var(--text-dim);
+  }
+  .checklist li::before {
+    content: "→"; position: absolute; left: 4px; top: 8px;
+    color: var(--accent); font-weight: 700;
+  }
+
+  /* Pricing comparison */
+  .pricing-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 16px 0; }
+  .pricing-card {
+    flex: 1; min-width: 200px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; padding: 16px;
+    text-align: center;
+  }
+  .pricing-card.recommended { border-color: var(--green); box-shadow: 0 0 20px var(--green-glow); }
+  .pricing-card h4 { font-size: 14px; margin-bottom: 4px; }
+  .pricing-card .price { font-size: 28px; font-weight: 800; margin: 8px 0; }
+  .pricing-card .unit { font-size: 12px; color: var(--text-dim); }
+
+  /* Roadmap */
+  .roadmap-item {
+    display: flex; gap: 16px; padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .roadmap-phase {
+    width: 80px; flex-shrink: 0; text-align: center;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; padding-top: 4px;
+  }
+  .roadmap-content { flex: 1; }
+  .roadmap-content h4 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .roadmap-content p { font-size: 13px; color: var(--text-dim); }
+
+  /* Footer */
+  .doc-footer {
+    margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--border);
+    text-align: center; color: var(--text-dim); font-size: 12px;
+  }
+
+  /* Summary stat */
+  .stats-row { display: flex; gap: 16px; flex-wrap: wrap; margin: 20px 0; }
+  .stat-card {
+    flex: 1; min-width: 140px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center;
+  }
+  .stat-card .value { font-size: 28px; font-weight: 800; }
+  .stat-card .label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">🇫🇷 Mistral AI × 🔬 DeepSight</div>
+    <h1>Stratégie d'intégration Mistral 2026</h1>
+    <p>Audit complet des capacités Mistral AI et plan d'optimisation pour maximiser le partenariat DeepSight.</p>
+  </div>
+
+  <!-- ALERT: PROBLÈME ACTUEL -->
+  <div class="alert">
+    <div class="alert-title">🔴 PROBLÈME IMMÉDIAT — Tier Experiment (Gratuit)</div>
+    <p>Tu es sur le <strong>Free Tier (Experiment)</strong> avec <strong>20€ de crédits prépayés</strong> depuis décembre 2025. La recharge automatique est <strong>désactivée</strong>. Tes limites sont :<br>
+    <code>~1 req/sec</code> · <code>500K tokens/min</code> · <code>1B tokens/mois</code><br><br>
+    <strong>→ Action immédiate :</strong> Passer au plan <strong>Scale</strong> sur <code>admin.mistral.ai → Abonnements</code> et activer la <strong>recharge automatique</strong>. Les limites augmentent automatiquement avec tes dépenses cumulées (Tier 1→4).</p>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="value" style="color:var(--orange)">13+</div><div class="label">Capacités Mistral exploitables</div></div>
+    <div class="stat-card"><div class="value" style="color:var(--green)">6</div><div class="label">Intégrations game-changer</div></div>
+    <div class="stat-card"><div class="value" style="color:var(--accent)">-75%</div><div class="label">Réduction coûts possible</div></div>
+    <div class="stat-card"><div class="value" style="color:var(--cyan)">100%</div><div class="label">IA Européenne</div></div>
+  </div>
+
+  <!-- SECTION 1: TIERS & PRICING -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon" style="background:var(--red-glow)">💰</div>
+      <h2>Tiers API & Pricing — Où tu en es</h2>
+      <span class="tag priority-high">Urgent</span>
+    </div>
+
+    <table>
+      <tr><th>Tier</th><th>Dépenses cumulées</th><th>Rate Limit</th><th>Tokens/min</th><th>Statut</th></tr>
+      <tr><td><strong>Experiment (Gratuit)</strong></td><td>0€</td><td>~1 req/s</td><td>500K</td><td style="color:var(--red)">⬅ Tu es ici</td></tr>
+      <tr><td>Scale — Tier 1</td><td>0-20€</td><td>~10 req/s</td><td>500K-1M</td><td style="color:var(--yellow)">Objectif immédiat</td></tr>
+      <tr><td>Scale — Tier 2</td><td>20-100€</td><td>~30 req/s</td><td>~2M</td><td></td></tr>
+      <tr><td>Scale — Tier 3</td><td>100-500€</td><td>~60 req/s</td><td>~4M</td><td style="color:var(--green)">Objectif scaling</td></tr>
+      <tr><td>Scale — Tier 4+</td><td>500€+</td><td>~120 req/s</td><td>Custom</td><td></td></tr>
+    </table>
+
+    <p style="font-size:14px; color:var(--text-dim); margin-top:12px;">
+      <strong>Pricing actuel des modèles (input / output par 1M tokens) :</strong>
+    </p>
+    <table>
+      <tr><th>Modèle</th><th>Input</th><th>Output</th><th>Context</th><th>Usage DeepSight</th></tr>
+      <tr><td>ministral-8b-2512</td><td>$0.10</td><td>$0.10</td><td>128K</td><td>Flashcards, entités, classification</td></tr>
+      <tr><td>mistral-small-2603</td><td>$0.10</td><td>$0.30</td><td>128K</td><td>Analyses Free + Quick Chat</td></tr>
+      <tr><td>mistral-medium-2508</td><td>$0.40</td><td>$2.00</td><td>131K</td><td>Analyses Pro</td></tr>
+      <tr><td>mistral-large-2512</td><td>$0.50</td><td>$1.50</td><td>262K</td><td>Analyses Expert + vidéos longues</td></tr>
+      <tr><td style="color:var(--orange)"><strong>Mistral Small 4 🆕</strong></td><td>$0.20</td><td>$0.60</td><td>128K+</td><td><strong>Pourrait remplacer Medium à 3x moins cher</strong></td></tr>
+      <tr style="background:rgba(255,255,255,0.02)"><td style="color:var(--green)"><strong>Batch API (tout modèle)</strong></td><td colspan="2"><strong>-50% sur tous les prix</strong></td><td>—</td><td>Analyses playlist, batch, corpus</td></tr>
+    </table>
+  </div>
+
+  <!-- SECTION 2: CAPACITÉS MISTRAL 2026 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon" style="background:var(--accent-glow)">🚀</div>
+      <h2>Nouvelles capacités Mistral — Opportunités DeepSight</h2>
+    </div>
+
+    <div class="card-grid">
+
+      <!-- BATCH API -->
+      <div class="card">
+        <div class="card-title">
+          📦 Batch API
+          <span class="impact priority-game">Game-changer</span>
+        </div>
+        <p>Traitement asynchrone avec <strong>50% de réduction</strong> sur tous les modèles. Parfait pour les analyses non-urgentes.</p>
+        <div class="specs">
+          <span>-50% coûts</span><span>Asynchrone</span><span>Bulk processing</span>
+        </div>
+        <p style="margin-top:10px; color:var(--green); font-size:12px;">
+          <strong>→ DeepSight :</strong> Analyses playlist, corpus analysis, batch re-analysis, analyses planifiées. Actuellement tu paies le prix sync pour des tâches qui ne sont pas urgentes.
+        </p>
+      </div>
+
+      <!-- VOXTRAL TTS -->
+      <div class="card">
+        <div class="card-title">
+          🔊 Voxtral TTS (Text-to-Speech)
+          <span class="impact priority-game">Game-changer</span>
+        </div>
+        <p>TTS avec <strong>zero-shot voice cloning</strong> (2-3 sec d'audio suffisent). 20 voix présets + clonage libre. 9 langues dont FR.</p>
+        <div class="specs">
+          <span>70ms latency</span><span>9 langues</span><span>Voice cloning</span><span>32K context</span>
+        </div>
+        <p style="margin-top:10px; color:var(--green); font-size:12px;">
+          <strong>→ DeepSight :</strong> Audio Summaries (écouter les synthèses), voix DeepSight brandée, podcast-style analyses. Remplace ElevenLabs à moindre coût — et c'est du 100% Mistral/Européen.
+        </p>
+      </div>
+
+      <!-- VOXTRAL STT -->
+      <div class="card">
+        <div class="card-title">
+          🎙️ Voxtral STT (Speech-to-Text)
+          <span class="impact priority-medium">Fort potentiel</span>
+        </div>
+        <p>Transcription batch (4% WER, 13 langues) + mode <strong>temps réel</strong> (<200ms latency). Diarization + timestamps word-level.</p>
+        <div class="specs">
+          <span>$0.003/min</span><span>13 langues</span><span>4% WER</span><span>Diarization</span>
+        </div>
+        <p style="margin-top:10px; color:var(--green); font-size:12px;">
+          <strong>→ DeepSight :</strong> Remplacer Groq/OpenAI/Deepgram Whisper dans la Phase 3 (Audio STT fallback). Un seul provider pour tout = simplification + cohérence européenne.
+        </p>
+      </div>
+
+      <!-- DOCUMENT AI / OCR -->
+      <div class="card">
+        <div class="card-title">
+          📄 Document AI (Mistral OCR 3)
+          <span class="impact priority-medium">Fort potentiel</span>
+        </div>
+        <p>OCR 2000 pages/min. Parse PDFs, scans, DOCX, PPTX. Sortie Markdown structurée + extraction JSON custom.</p>
+        <div class="specs">
+          <span>$2/1000 pages</span><span>$1/1000 batch</span><span>11+ langues</span><span>99%+ accuracy</span>
+        </div>
+        <p style="margin-top:10px; color:var(--green); font-size:12px;">
+          <strong>→ DeepSight :</strong> Parser les PDFs académiques (arXiv, papers), extraire metadata structurées pour enrichir les analyses. Feature "Upload un PDF → DeepSight l'analyse comme une vidéo".
+        </p>
+      </div>
+
+      <!-- AGENTS API -->
+      <div class="card">
+        <div class="card-title">
+          🤖 Agents API
+          <span class="impact priority-game">Game-changer</span>
+        </div>
+        <p>Agents avec outils intégrés : <strong>web search</strong>, code execution, image generation, document library. Multi-agent orchestration + MCP support.</p>
+        <div class="specs">
+          <span>Web search natif</span><span>Tool calling</span><span>RAG intégré</span><span>Multi-agent</span>
+        </div>
+        <p style="margin-top:10px; color:var(--green); font-size:12px;">
+          <strong>→ DeepSight :</strong> Remplacer le pipeline Perplexity + Brave Search par un Agent Mistral avec web search natif. Un seul appel API = analyse + fact-check + enrichissement web. Simplifie énormément le code.
+        </p>
+      </div>
+
+      <!-- VISION / PIXTRAL -->
+      <div class="card">
+        <div class="card-title">
+          👁️ Vision (Pixtral + Large 3)
+          <span class="impact priority-low">Nice to have</span>
+        </div>
+        <p>Compréhension d'images native : OCR, lecture de graphiques, VQA. Disponible sur Pixtral 12B et Large 3.</p>
+        <div class="specs">
+          <span>OCR images</span><span>Charts</span><span>Screenshots</span><span>Multilingual</span>
+        </div>
+        <p style="margin-top:10px; color:var(--green); font-size:12px;">
+          <strong>→ DeepSight :</strong> Analyser les thumbnails YouTube, screenshots de vidéos, graphiques dans les slides. Feature "analyse visuelle" des vidéos.
+        </p>
+      </div>
+
+      <!-- FINE-TUNING -->
+      <div class="card">
+        <div class="card-title">
+          🎯 Fine-tuning
+          <span class="impact priority-game">Game-changer</span>
+        </div>
+        <p>Fine-tuner Small pour surpasser Large sur des tâches narrow. <strong>10x réduction de coûts</strong> ($0.20/M vs $2/M).</p>
+        <div class="specs">
+          <span>Small + Medium</span><span>JSONL format</span><span>10x cheaper</span>
+        </div>
+        <p style="margin-top:10px; color:var(--green); font-size:12px;">
+          <strong>→ DeepSight :</strong> Fine-tuner Small sur tes ~500+ analyses existantes. Le modèle apprend le format DeepSight, la structure des synthèses, le ton. Résultat : Small fine-tuné &gt; Large générique, à 1/10ème du prix.
+        </p>
+      </div>
+
+      <!-- EMBEDDINGS -->
+      <div class="card">
+        <div class="card-title">
+          🔍 Embeddings (mistral-embed + codestral-embed)
+          <span class="impact priority-medium">Fort potentiel</span>
+        </div>
+        <p>Embeddings texte (8K context) + code (3072 dimensions). Dimensions customisables.</p>
+        <div class="specs">
+          <span>8K context</span><span>Custom dimensions</span><span>Code + texte</span>
+        </div>
+        <p style="margin-top:10px; color:var(--green); font-size:12px;">
+          <strong>→ DeepSight :</strong> Remplacer les embeddings actuels pour la recherche sémantique. Tout sous un provider = cohérence + performance + RGPD européen.
+        </p>
+      </div>
+
+      <!-- FUNCTION CALLING -->
+      <div class="card">
+        <div class="card-title">
+          🔧 Function Calling avancé
+          <span class="impact priority-medium">Fort potentiel</span>
+        </div>
+        <p>JSON schema pour définir des fonctions. Contrôle : <code>none</code>, <code>auto</code>, <code>any/required</code>. Multimodal + tools combinés.</p>
+        <div class="specs">
+          <span>JSON schema</span><span>Large + Medium</span><span>Multimodal</span>
+        </div>
+        <p style="margin-top:10px; color:var(--green); font-size:12px;">
+          <strong>→ DeepSight :</strong> Structurer les réponses d'analyse en JSON garanti (plus de parsing Markdown fragile). Extraire entités, dates, sources de manière fiable.
+        </p>
+      </div>
+
+      <!-- WORKFLOWS -->
+      <div class="card">
+        <div class="card-title">
+          ⚡ Workflows (Beta)
+          <span class="impact priority-low">Nice to have</span>
+        </div>
+        <p>Orchestration multi-étapes avec UI visuelle. Connecteurs vers cloud storage, SaaS, databases. En beta.</p>
+        <div class="specs">
+          <span>Beta</span><span>Multi-step</span><span>Connectors</span><span>Visual builder</span>
+        </div>
+        <p style="margin-top:10px; color:var(--text-dim); font-size:12px;">
+          <strong>→ DeepSight :</strong> À surveiller. Pourrait orchestrer analyse → fact-check → enrichissement sans code backend custom.
+        </p>
+      </div>
+
+      <!-- CODESTRAL -->
+      <div class="card">
+        <div class="card-title">
+          💻 Codestral 25.01
+          <span class="impact priority-low">Nice to have</span>
+        </div>
+        <p>#1 LMsys Copilot Arena. 86.6% HumanEval. 80+ langages. 2x plus rapide que l'original.</p>
+        <div class="specs">
+          <span>#1 Copilot Arena</span><span>86.6% HumanEval</span><span>80+ langages</span>
+        </div>
+        <p style="margin-top:10px; color:var(--text-dim); font-size:12px;">
+          <strong>→ DeepSight :</strong> Feature "analyse de code" dans les vidéos tutoriels. Pas prioritaire.
+        </p>
+      </div>
+
+      <!-- MISTRAL SMALL 4 -->
+      <div class="card" style="border-color: var(--orange); box-shadow: 0 0 20px var(--orange-glow);">
+        <div class="card-title">
+          🧠 Mistral Small 4 (Mars 2026)
+          <span class="impact priority-high">Critique</span>
+        </div>
+        <p><strong>LE nouveau modèle flagship.</strong> 119B params, activation sélective (6B/activation). Vision + Code + Instruction + Reasoning dans UN modèle. All-in-one à prix budget.</p>
+        <div class="specs">
+          <span>119B params</span><span>$0.20/$0.60 M tokens</span><span>Vision native</span><span>Code + Reasoning</span>
+        </div>
+        <p style="margin-top:10px; color:var(--orange); font-size:12px;">
+          <strong>→ DeepSight :</strong> Potentiellement remplacer Medium ($0.40/$2.00) pour la plupart des usages Pro. <strong>3x moins cher en output</strong> avec des performances comparables. À benchmarker en A/B test.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SECTION 3: DEEPSEEK FALLBACK -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(6,182,212,0.15)">🛡️</div>
+      <h2>DeepSeek — Fallback de résilience</h2>
+      <span class="tag priority-high">Sécurité</span>
+    </div>
+
+    <div class="pricing-row">
+      <div class="pricing-card">
+        <h4>Mistral Small</h4>
+        <div class="price" style="color:var(--orange)">$0.40</div>
+        <div class="unit">/ 1M tokens (in+out)</div>
+      </div>
+      <div class="pricing-card">
+        <h4>DeepSeek Chat V3</h4>
+        <div class="price" style="color:var(--cyan)">$0.70</div>
+        <div class="unit">/ 1M tokens (in+out, cache miss)</div>
+      </div>
+      <div class="pricing-card">
+        <h4>DeepSeek (cache hit)</h4>
+        <div class="price" style="color:var(--green)">$0.45</div>
+        <div class="unit">/ 1M tokens (in+out, cache hit)</div>
+      </div>
+    </div>
+
+    <p style="font-size:14px; color:var(--text-dim);">
+      DeepSeek = filet de sécurité uniquement. <strong>Pas de rate limits</strong>, pas de tier system. Si tous les modèles Mistral sont en 429, on bascule automatiquement sur DeepSeek le temps que ça passe.<br>
+      <strong>⚠️ Inconvénients :</strong> Serveurs en Chine (latence variable), possible 503 en pic, pas "100% EU". À utiliser en fallback uniquement, jamais en primaire.
+    </p>
+  </div>
+
+  <!-- SECTION 4: ROADMAP D'IMPLÉMENTATION -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon" style="background:var(--green-glow)">📋</div>
+      <h2>Roadmap d'implémentation</h2>
+    </div>
+
+    <div class="roadmap-item">
+      <div class="roadmap-phase" style="color:var(--red)">Semaine 1<br>URGENT</div>
+      <div class="roadmap-content">
+        <h4>1. Upgrade Tier + Fallback Chain</h4>
+        <p>Passer au plan Scale Mistral. Implémenter le fallback Mistral → DeepSeek dans le code backend. Activer la recharge automatique. Plus jamais de "AI service temporarily unavailable".</p>
+      </div>
+    </div>
+
+    <div class="roadmap-item">
+      <div class="roadmap-phase" style="color:var(--orange)">Semaine 2-3</div>
+      <div class="roadmap-content">
+        <h4>2. Batch API pour les playlists & corpus</h4>
+        <p>Migrer toutes les analyses non-temps-réel vers le Batch API. -50% de coûts sur les analyses de playlist, batch, re-analyses planifiées. Impact immédiat sur la facture.</p>
+      </div>
+    </div>
+
+    <div class="roadmap-item">
+      <div class="roadmap-phase" style="color:var(--orange)">Semaine 3-4</div>
+      <div class="roadmap-content">
+        <h4>3. Agents API — Remplacer Perplexity + Brave</h4>
+        <p>Créer un Agent Mistral "DeepSight Analyst" avec web search natif. Un seul appel = analyse enrichie + fact-check + sources web. Supprime la dépendance Perplexity et simplifie le code.</p>
+      </div>
+    </div>
+
+    <div class="roadmap-item">
+      <div class="roadmap-phase" style="color:var(--yellow)">Mois 2</div>
+      <div class="roadmap-content">
+        <h4>4. Voxtral TTS — Audio Summaries</h4>
+        <p>Intégrer Voxtral TTS pour les synthèses audio. Voix DeepSight brandée (voix française). Le AudioSummaryPlayer existe déjà côté frontend — il manque juste le backend TTS.</p>
+      </div>
+    </div>
+
+    <div class="roadmap-item">
+      <div class="roadmap-phase" style="color:var(--yellow)">Mois 2</div>
+      <div class="roadmap-content">
+        <h4>5. Voxtral STT — Unifier les fallbacks transcription</h4>
+        <p>Remplacer Groq Whisper, OpenAI Whisper, Deepgram, AssemblyAI par un seul provider : Voxtral STT. Simplifie la Phase 3 du pipeline de transcription.</p>
+      </div>
+    </div>
+
+    <div class="roadmap-item">
+      <div class="roadmap-phase" style="color:var(--accent)">Mois 3</div>
+      <div class="roadmap-content">
+        <h4>6. Fine-tuning — Modèle DeepSight custom</h4>
+        <p>Exporter les ~500+ analyses existantes en JSONL. Fine-tuner mistral-small sur le format/ton/structure DeepSight. Résultat : qualité Large pour le prix de Small. 10x réduction coûts analyses.</p>
+      </div>
+    </div>
+
+    <div class="roadmap-item">
+      <div class="roadmap-phase" style="color:var(--accent)">Mois 3-4</div>
+      <div class="roadmap-content">
+        <h4>7. Document AI — Analyse de PDFs</h4>
+        <p>Feature "Upload un PDF/doc → DeepSight l'analyse". Cible : étudiants, chercheurs. Utilise Mistral OCR pour le parsing, puis le pipeline d'analyse classique.</p>
+      </div>
+    </div>
+
+    <div class="roadmap-item">
+      <div class="roadmap-phase" style="color:var(--text-dim)">Mois 4+</div>
+      <div class="roadmap-content">
+        <h4>8. Mistral Small 4 — A/B Test + Migration</h4>
+        <p>Benchmarker Small 4 vs Medium/Large sur un sample d'analyses. Si performances équivalentes → migrer les plans Pro vers Small 4 pour 3x savings en output.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 5: IMPACT ESTIMÉ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon" style="background:var(--green-glow)">📊</div>
+      <h2>Impact estimé — Avant vs Après</h2>
+    </div>
+
+    <table>
+      <tr><th>Métrique</th><th>Aujourd'hui</th><th>Après optimisation</th><th>Delta</th></tr>
+      <tr>
+        <td>Uptime analyse</td>
+        <td style="color:var(--red)">~95% (429 errors)</td>
+        <td style="color:var(--green)">99.9% (fallback chain)</td>
+        <td style="color:var(--green)">+5%</td>
+      </tr>
+      <tr>
+        <td>Coût moyen / analyse</td>
+        <td>~$0.02-0.05</td>
+        <td>~$0.005-0.02 (batch + fine-tune)</td>
+        <td style="color:var(--green)">-60 à -75%</td>
+      </tr>
+      <tr>
+        <td>Providers IA externes</td>
+        <td>5 (Mistral + Perplexity + Brave + Groq + OpenAI)</td>
+        <td>2 (Mistral + DeepSeek fallback)</td>
+        <td style="color:var(--green)">-3 providers</td>
+      </tr>
+      <tr>
+        <td>Complexité pipeline transcription</td>
+        <td>7 méthodes, 4 STT providers</td>
+        <td>7 méthodes, 1 STT (Voxtral)</td>
+        <td style="color:var(--green)">Simplifié</td>
+      </tr>
+      <tr>
+        <td>Features audio</td>
+        <td>AudioSummaryPlayer (UI only, no TTS)</td>
+        <td>TTS Voxtral + voix brandée</td>
+        <td style="color:var(--green)">Nouvelle feature</td>
+      </tr>
+      <tr>
+        <td>Positionnement</td>
+        <td>~80% européen</td>
+        <td>~98% européen (Mistral for all)</td>
+        <td style="color:var(--green)">🇫🇷🇪🇺</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- SECTION 6: ACTIONS IMMÉDIATES -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-icon" style="background:var(--red-glow)">⚡</div>
+      <h2>Actions immédiates (aujourd'hui)</h2>
+    </div>
+
+    <ul class="checklist">
+      <li><strong>admin.mistral.ai → Abonnements</strong> : passer au plan <strong>Scale</strong></li>
+      <li><strong>admin.mistral.ai → Facturation → Recharge automatique</strong> : activer (seuil 10€, recharge 30€)</li>
+      <li><strong>admin.mistral.ai → Limites</strong> : vérifier les nouvelles limites après upgrade</li>
+      <li><strong>Créer une clé API DeepSeek</strong> sur platform.deepseek.com (gratuit, 5M tokens offerts)</li>
+      <li><strong>Je code le fallback chain</strong> dans le backend — Mistral → DeepSeek automatique</li>
+    </ul>
+  </div>
+
+  <div class="doc-footer">
+    <p>DeepSight × Mistral AI — Stratégie d'intégration 2026 — Généré le 9 avril 2026</p>
+    <p style="margin-top:4px;">🇫🇷 100% IA Française & Européenne — propulsé par Mistral AI</p>
+  </div>
+
+</div>
+</body>
+</html>
