@@ -7,6 +7,8 @@ import { LogoutIcon, PlayIcon, ExternalLinkIcon } from './Icons';
 import { SynthesisView } from './SynthesisView';
 import { ChatDrawer } from './ChatDrawer';
 import { PromoBanner } from './PromoBanner';
+import { DeepSightSpinner } from './DeepSightSpinner';
+import { DoodleIcon } from './doodles/DoodleIcon';
 import { useTranslation } from '../../i18n/useTranslation';
 
 interface MainViewProps {
@@ -40,9 +42,9 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
   const [chatOpen, setChatOpen] = useState(false);
   const [guestUsed, setGuestUsed] = useState(false);
   const [quickChatLoading, setQuickChatLoading] = useState(false);
+  const [showYtBanner, setShowYtBanner] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Check guest analysis count
   useEffect(() => {
     if (isGuest) {
       getFreeAnalysisCount().then((count) => {
@@ -51,7 +53,17 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
     }
   }, [isGuest]);
 
-  // Detect current YouTube or TikTok video
+  useEffect(() => {
+    chrome.storage.local.get('showYouTubeRecommendation', (result) => {
+      if (result.showYouTubeRecommendation) setShowYtBanner(true);
+    });
+  }, []);
+
+  const dismissYtBanner = () => {
+    setShowYtBanner(false);
+    chrome.storage.local.remove('showYouTubeRecommendation');
+  };
+
   useEffect(() => {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       const url = tabs[0]?.url || '';
@@ -74,7 +86,6 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
     setRecentAnalyses(items);
   }
 
-  // ── Quota calculations ──
   const isQuotaExceeded = planInfo
     ? planInfo.analyses_this_month >= planInfo.monthly_analyses
     : false;
@@ -85,17 +96,14 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
     ? (quotaRemaining !== null && quotaRemaining / planInfo.monthly_analyses < 0.2)
     : false;
 
-  // ── Credits urgency ──
   const creditsTotal = planInfo?.credits_monthly || user?.credits_monthly || 0;
   const creditsRemaining = planInfo?.credits ?? user?.credits ?? 0;
   const creditsLow = creditsTotal > 0 && creditsRemaining / creditsTotal < 0.3;
   const creditsCritical = creditsTotal > 0 && creditsRemaining / creditsTotal < 0.1;
 
-  // ── Next plan hint for upsell ──
   const userPlanId = planInfo?.plan_id || user?.plan || 'free';
   const nextPlan = t.upsell[userPlanId as keyof typeof t.upsell] || null;
 
-  // ── Quick Chat ──
   const startQuickChat = useCallback(async () => {
     if (!video) return;
     setQuickChatLoading(true);
@@ -120,7 +128,6 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
   const startAnalysis = useCallback(async () => {
     if (!video) return;
 
-    // Guest mode: check limit
     if (isGuest) {
       const count = await getFreeAnalysisCount();
       if (count >= 3) {
@@ -157,7 +164,6 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
           if (status.status === 'completed' && status.result?.summary_id) {
             if (pollRef.current) clearInterval(pollRef.current);
 
-            // Increment guest counter if guest
             if (isGuest) {
               await incrementFreeAnalysisCount();
               setGuestUsed(true);
@@ -222,22 +228,23 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
       {/* Header */}
       <div className="main-header">
         <div className="main-header-left">
-          <img
-            src={chrome.runtime.getURL('assets/deepsight-logo-cosmic.png')}
-            alt=""
-            className="main-header-logo"
-            width={20}
-            height={20}
-          />
+          <DeepSightSpinner size="xs" speed="slow" />
           {isGuest ? (
-            <h1>Deep Sight</h1>
+            <h1>DeepSight</h1>
           ) : isFree ? (
-            <h1>{'\u26A1'} Deep Sight {planName || (t.plans.free)}</h1>
+            <h1>DeepSight {planName || t.plans.free}</h1>
           ) : (
-            <h1>Deep Sight {planName}</h1>
+            <h1>DeepSight {planName}</h1>
           )}
         </div>
         <div className="main-header-actions">
+          <button
+            className="btn-open-webapp"
+            onClick={() => chrome.tabs.create({ url: WEBAPP_URL })}
+            title="Ouvrir DeepSight"
+          >
+            <ExternalLinkIcon size={12} /> Web
+          </button>
           {isGuest ? (
             <button className="btn-header-login" onClick={onLoginRedirect}>
               {t.common.login}
@@ -250,7 +257,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         </div>
       </div>
 
-      {/* User/Plan bar with credits urgency */}
+      {/* User/Plan bar */}
       {!isGuest && user && (
         <div className="user-bar">
           <span className={`plan-badge plan-${user.plan}`}>
@@ -263,7 +270,6 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
           ) : (
             <span className="user-credits">{user.credits} {t.common.credits}</span>
           )}
-          {/* Credits urgency badge */}
           {creditsLow && (
             <span
               className={`credits-urgency ${creditsCritical ? 'credits-critical' : 'credits-low'}`}
@@ -275,7 +281,6 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         </div>
       )}
 
-      {/* Credits urgency banner — full width when critical */}
       {!isGuest && creditsCritical && (
         <div className="credits-banner-critical">
           <span>{t.credits.critical.replace('{count}', String(creditsRemaining))} </span>
@@ -288,16 +293,35 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         </div>
       )}
 
-      {/* Guest banner */}
       {isGuest && (
         <div className="guest-banner">
           <span>{t.guest.banner}</span>
         </div>
       )}
 
+      {/* YouTube recommendation banner */}
+      {showYtBanner && (
+        <div className="yt-recommend-banner">
+          <div className="yt-recommend-content">
+            <img
+              src={chrome.runtime.getURL('platforms/youtube-icon-red.png')}
+              alt="YouTube"
+              style={{ height: 18, width: 'auto', flexShrink: 0 }}
+            />
+            <div className="yt-recommend-text">
+              <span className="yt-recommend-title">{t.ytRecommend.title}</span>
+              <span className="yt-recommend-subtitle">{t.ytRecommend.subtitle}</span>
+            </div>
+          </div>
+          <button className="yt-recommend-dismiss" onClick={dismissYtBanner} title={t.ytRecommend.dismiss}>
+            {'\u2715'}
+          </button>
+        </div>
+      )}
+
       {/* Content */}
       <div className="main-content">
-        {/* Video status — card with thumbnail when detected, minimal when not */}
+        {/* Video status */}
         {video ? (() => {
           const platform = detectPlatform(video.url);
           const isTikTok = platform === 'tiktok';
@@ -313,8 +337,8 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
               />
             ) : (
-              <div className="video-thumbnail" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(6,182,212,0.1)' }}>
-                <span style={{ fontSize: 20 }}>{'\uD83C\uDFB5'}</span>
+              <div className="video-thumbnail" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(200,144,58,0.1)' }}>
+                <DoodleIcon name="waveform" size={20} color="var(--accent-primary)" />
               </div>
             )}
             <div className="video-status-body">
@@ -329,7 +353,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         })() : (
           <div className="video-status">
             <div className="video-status-icon">
-              <PlayIcon size={16} />
+              <DoodleIcon name="play" size={16} color="var(--text-muted)" />
             </div>
             <span className="video-status-text video-status-none">
               {t.analysis.noVideo}
@@ -340,25 +364,20 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         {/* Analysis controls */}
         {video && analysis.phase === 'idle' && (
           <>
-            {/* Quota exceeded — logged in user */}
             {!isGuest && isQuotaExceeded ? (
               <div className="quota-exceeded">
                 <p className="quota-exceeded-text">
-                  {'\uD83D\uDCCA'} {t.analysis.quotaExceeded} ({planInfo?.analyses_this_month}/{planInfo?.monthly_analyses}) — {t.analysis.quotaExceededText}
+                  {t.analysis.quotaExceeded} ({planInfo?.analyses_this_month}/{planInfo?.monthly_analyses}) — {t.analysis.quotaExceededText}
                 </p>
-                <button
-                  className="analyze-btn analyze-btn-disabled"
-                  disabled
-                >
-                  {'\u2728'} {t.analysis.analyzeButton}
+                <button className="analyze-btn analyze-btn-disabled" disabled>
+                  {t.analysis.analyzeButton}
                 </button>
-                {/* Quick Chat still available even when quota exceeded (0 credits) */}
                 <button
                   className="quickchat-btn"
                   onClick={startQuickChat}
                   disabled={quickChatLoading}
                 >
-                  {quickChatLoading ? t.analysis.quickChatPreparing : `\u{1F4AC} ${t.analysis.quickChatButton}`}
+                  {quickChatLoading ? t.analysis.quickChatPreparing : t.analysis.quickChatButton}
                 </button>
                 <a
                   href={`${WEBAPP_URL}/upgrade`}
@@ -374,7 +393,6 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                 </a>
               </div>
             ) : isGuest && guestUsed ? (
-              /* Guest used their free analysis */
               <div className="guest-exhausted">
                 <p className="guest-exhausted-text">
                   {t.guest.exhaustedText}
@@ -387,7 +405,6 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                 </button>
               </div>
             ) : (
-              /* Normal controls */
               <>
                 <div className="selectors-row">
                   <div className="ds-select-wrapper">
@@ -412,12 +429,11 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                   onClick={startQuickChat}
                   disabled={!video || quickChatLoading}
                 >
-                  {quickChatLoading ? t.analysis.quickChatPreparing : `\u{1F4AC} ${t.analysis.quickChatButton}`}
+                  {quickChatLoading ? t.analysis.quickChatPreparing : t.analysis.quickChatButton}
                 </button>
                 <button className="analyze-btn" onClick={startAnalysis}>
-                  {'\u2728'} {t.analysis.analyzeButton}
+                  {t.analysis.analyzeButton}
                 </button>
-                {/* Mistral AI attribution */}
                 <div className="mistral-badge">
                   <span>{'\uD83C\uDDEB\uD83C\uDDF7'}</span>
                   <span>{t.mistral.badge}</span>
@@ -430,6 +446,9 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         {/* Progress */}
         {analysis.phase === 'analyzing' && (
           <div className="progress-container">
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+              <DeepSightSpinner size="sm" speed="fast" />
+            </div>
             <div className="progress-bar">
               <div className="progress-fill" style={{ width: `${analysis.progress}%` }} />
             </div>
@@ -440,8 +459,8 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         {/* Error */}
         {analysis.phase === 'error' && (
           <div style={{ textAlign: 'center', padding: '12px' }}>
-            <p style={{ color: 'var(--ds-error)', fontSize: '13px', marginBottom: '8px' }}>
-              {'\u274C'} {analysis.message}
+            <p style={{ color: 'var(--error)', fontSize: '13px', marginBottom: '8px' }}>
+              {analysis.message}
             </p>
             <button
               className="analyze-btn"
@@ -463,11 +482,10 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               onOpenChat={() => setChatOpen(true)}
             />
 
-            {/* Post-analysis upsell — plan-aware CTA */}
             {!isGuest && nextPlan && userPlanId !== 'pro' && (
               <div className="post-analysis-upsell">
                 <div className="upsell-content">
-                  <span className="upsell-emoji">{'\u2728'}</span>
+                  <DoodleIcon name="sparkle4pt" size={18} color="var(--accent-primary)" />
                   <div className="upsell-text">
                     <span className="upsell-headline">
                       {nextPlan.feature}
@@ -487,7 +505,6 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
               </div>
             )}
 
-            {/* Guest post-analysis CTA */}
             {isGuest && (
               <div className="guest-post-analysis">
                 <p>{t.guest.exhaustedText}</p>
@@ -516,8 +533,8 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
                   className="recent-item"
                 >
                   {item.platform === 'tiktok' ? (
-                    <div style={{ width: 48, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(6,182,212,0.1)', borderRadius: 4, flexShrink: 0 }}>
-                      <span style={{ fontSize: 16 }}>{'\uD83C\uDFB5'}</span>
+                    <div style={{ width: 48, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(200,144,58,0.1)', borderRadius: 4, flexShrink: 0 }}>
+                      <DoodleIcon name="waveform" size={16} color="var(--accent-primary)" />
                     </div>
                   ) : (
                     <img src={getThumbnailUrl(item.videoId, 'youtube') || ''} alt="" loading="lazy" />
@@ -530,7 +547,7 @@ export const MainView: React.FC<MainViewProps> = ({ user, planInfo, isGuest, onL
         )}
       </div>
 
-      {/* Promo Banner — plan-aware, at the bottom */}
+      {/* Promo Banner */}
       <PromoBanner planInfo={planInfo} />
     </div>
   );

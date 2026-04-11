@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { GoogleIcon } from './Icons';
+import { DoodleIcon } from './doodles/DoodleIcon';
+import { DeepSightSpinner } from './DeepSightSpinner';
 import { useTranslation } from '../../i18n/useTranslation';
 
 interface LoginViewProps {
@@ -48,6 +50,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
 
   return (
     <div className="login-view">
+      {/* Doodle decorations */}
+      <DoodleIcon name="sparkles" size={32} className="doodle-decoration" style={{ top: 20, left: 16, transform: 'rotate(-15deg)' }} />
+      <DoodleIcon name="brain" size={28} className="doodle-decoration" style={{ top: 60, right: 20, transform: 'rotate(10deg)' }} />
+      <DoodleIcon name="lightning" size={24} className="doodle-decoration" style={{ bottom: 80, left: 24, transform: 'rotate(-25deg)' }} />
+      <DoodleIcon name="star" size={20} className="doodle-decoration" style={{ bottom: 120, right: 30, transform: 'rotate(20deg)' }} />
+
       {/* Language toggle */}
       <div className="login-lang-toggle">
         <button
@@ -64,19 +72,15 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
         </button>
       </div>
 
-      {/* Logo */}
+      {/* Hero spinner with platform logos */}
+      <div className="login-hero">
+        <DeepSightSpinner size="lg" speed="slow" showLogos />
+      </div>
       <div className="login-logo">
-        <img
-          src={chrome.runtime.getURL('assets/deepsight-logo-cosmic.png')}
-          alt="DeepSight"
-          className="login-logo-icon"
-          width={56}
-          height={56}
-        />
         <h1>DeepSight</h1>
       </div>
 
-      {/* Tagline — brand identity */}
+      {/* Tagline */}
       <p className="login-tagline">{t.login.tagline}</p>
 
       {/* Platform logos */}
@@ -98,19 +102,19 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
         <img
           src={chrome.runtime.getURL('platforms/mistral-logo-white.png')}
           alt="Mistral AI"
-          className="login-platform-logo login-platform-mistral"
-          style={{ height: 15, width: 'auto', opacity: 0.7 }}
+          className="login-platform-logo"
+          style={{ height: 15, width: 'auto' }}
         />
         <span className="login-platform-sep" />
         <img
           src={chrome.runtime.getURL('platforms/tournesol-logo.png')}
           alt="Tournesol"
           className="login-platform-logo"
-          style={{ height: 16, width: 'auto', opacity: 0.8 }}
+          style={{ height: 16, width: 'auto' }}
         />
       </div>
 
-      {/* FR/EU trust badges */}
+      {/* Trust badges */}
       <div className="login-badges">
         <span className="login-badge">
           <span className="login-badge-flag">{'\uD83C\uDDEB\uD83C\uDDF7'}</span> {t.login.badgeFr}
@@ -172,7 +176,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin, onGoogleLogin, on
         </a>
       </div>
 
-      {/* Legal links — Chrome Web Store requirement */}
+      {/* Legal */}
       <div className="login-legal">
         <a href="https://www.deepsightsynthesis.com/legal/privacy" target="_blank" rel="noreferrer">
           {t.login.privacy}

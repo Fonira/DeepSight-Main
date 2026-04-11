@@ -186,6 +186,11 @@
     "reviewMobile": "Study flashcards on mobile",
     "downloadApp": "Download the app"
   },
+  "ytRecommend": {
+    "title": "Try DeepSight on YouTube!",
+    "subtitle": "Navigate to a video to analyze it with AI",
+    "dismiss": "Close"
+  },
   "onboarding": {
     "welcome": "Welcome to DeepSight!",
     "step1": "Open a YouTube video",

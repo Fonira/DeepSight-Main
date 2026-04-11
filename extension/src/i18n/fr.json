@@ -186,6 +186,11 @@
     "reviewMobile": "Révisez vos flashcards sur mobile",
     "downloadApp": "Télécharger l'app"
   },
+  "ytRecommend": {
+    "title": "Essayez DeepSight sur YouTube !",
+    "subtitle": "Naviguez vers une vidéo pour l'analyser avec l'IA",
+    "dismiss": "Fermer"
+  },
   "onboarding": {
     "welcome": "Bienvenue sur DeepSight !",
     "step1": "Ouvrez une vidéo YouTube",

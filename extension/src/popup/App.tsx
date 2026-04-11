@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import type { User, PlanInfo } from '../types';
 import { LoginView } from './components/LoginView';
 import { MainView } from './components/MainView';
+import { DeepSightSpinner } from './components/DeepSightSpinner';
 
 type ViewName = 'loading' | 'login' | 'main';
 
@@ -120,8 +121,7 @@ export const App: React.FC = () => {
 
       {view === 'loading' && (
         <div className="loading-view">
-          <div className="loading-spinner" />
-          <p className="loading-text">Loading...</p>
+          <DeepSightSpinner size="md" speed="normal" showLabel label="DeepSight" />
         </div>
       )}
 

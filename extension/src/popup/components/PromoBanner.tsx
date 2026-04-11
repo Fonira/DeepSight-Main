@@ -1,35 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import type { PlanInfo } from '../../types';
 import { WEBAPP_URL } from '../../utils/config';
+import { DoodleIcon } from './doodles/DoodleIcon';
 import { useTranslation } from '../../i18n/useTranslation';
-
-// ── Promo definitions per plan tier ──
 
 interface Promo {
   id: string;
-  textKey: number; // index into t.promos[tier]
+  textKey: number;
   url: string;
   gradient: string;
 }
 
 const GRADIENTS = {
-  blueViolet: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
-  violetCyan: 'linear-gradient(135deg, #8b5cf6, #06b6d4)',
-  warmOrange: 'linear-gradient(135deg, #f59e0b, #ef4444)',
-  cyanBlue: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
-  violetOrange: 'linear-gradient(135deg, #8b5cf6, #f59e0b)',
-  greenCyan: 'linear-gradient(135deg, #22c55e, #06b6d4)',
+  goldDark: 'linear-gradient(135deg, rgba(200,144,58,0.15), rgba(155,107,74,0.15))',
+  goldStrong: 'linear-gradient(135deg, rgba(200,144,58,0.2), rgba(200,144,58,0.08))',
+  violetGold: 'linear-gradient(135deg, rgba(155,107,74,0.15), rgba(200,144,58,0.1))',
 };
 
 const PROMOS_FREE: Promo[] = [
-  { id: 'free-flashcards', textKey: 0, url: `${WEBAPP_URL}/upgrade`, gradient: GRADIENTS.blueViolet },
-  { id: 'free-mindmap', textKey: 1, url: `${WEBAPP_URL}/upgrade`, gradient: GRADIENTS.violetCyan },
-  { id: 'free-quota', textKey: 2, url: `${WEBAPP_URL}/upgrade`, gradient: GRADIENTS.warmOrange },
+  { id: 'free-flashcards', textKey: 0, url: `${WEBAPP_URL}/upgrade`, gradient: GRADIENTS.goldStrong },
+  { id: 'free-mindmap', textKey: 1, url: `${WEBAPP_URL}/upgrade`, gradient: GRADIENTS.violetGold },
+  { id: 'free-quota', textKey: 2, url: `${WEBAPP_URL}/upgrade`, gradient: GRADIENTS.goldDark },
 ];
 
 const PROMOS_PRO: Promo[] = [
-  { id: 'pro-mobile', textKey: 0, url: `${WEBAPP_URL}/mobile`, gradient: GRADIENTS.greenCyan },
-  { id: 'pro-web', textKey: 1, url: WEBAPP_URL, gradient: GRADIENTS.blueViolet },
+  { id: 'pro-mobile', textKey: 0, url: `${WEBAPP_URL}/mobile`, gradient: GRADIENTS.goldDark },
+  { id: 'pro-web', textKey: 1, url: WEBAPP_URL, gradient: GRADIENTS.goldStrong },
 ];
 
 type PromoTier = 'free' | 'pro';
@@ -104,15 +100,27 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ planInfo }) => {
   const promo = promos[idx];
   const textData = promoTexts[idx] || promoTexts[0];
 
+  const doodleNames = ['sparkle4pt', 'star', 'crown'];
+
   return (
-    <div className="promo-banner" style={{ background: promo.gradient }}>
+    <div
+      className="promo-banner"
+      style={{
+        background: promo.gradient,
+        borderTop: '1px solid var(--border-accent)',
+      }}
+    >
       <div className="promo-content">
-        <span className="promo-text">{textData.text}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <DoodleIcon name={doodleNames[idx % doodleNames.length]} size={16} color="var(--accent-primary)" />
+          <span className="promo-text" style={{ color: 'var(--text-primary)' }}>{textData.text}</span>
+        </div>
         <a
           href={promo.url}
           target="_blank"
           rel="noreferrer"
           className="promo-cta"
+          style={{ color: 'var(--accent-primary)' }}
           onClick={(e) => {
             e.preventDefault();
             chrome.tabs.create({ url: promo.url });
@@ -121,7 +129,12 @@ export const PromoBanner: React.FC<PromoBannerProps> = ({ planInfo }) => {
           {textData.cta} &rarr;
         </a>
       </div>
-      <button className="promo-close" onClick={handleDismiss} title={t.common.hide}>
+      <button
+        className="promo-close"
+        onClick={handleDismiss}
+        title={t.common.hide}
+        style={{ background: 'var(--accent-primary-muted)', color: 'var(--accent-primary)' }}
+      >
         &times;
       </button>
     </div>

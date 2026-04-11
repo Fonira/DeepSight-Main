@@ -5,6 +5,7 @@ import { escapeHtml, markdownToFullHtml, parseAnalysisToSummary } from '../../ut
 import type { KeyPoint } from '../../utils/sanitize';
 import { WEBAPP_URL } from '../../utils/config';
 import { ChatIcon, ExternalLinkIcon, ChevronDownIcon, ChevronUpIcon, ShareIcon } from './Icons';
+import { DoodleIcon } from './doodles/DoodleIcon';
 import { useTranslation } from '../../i18n/useTranslation';
 
 interface SynthesisViewProps {
@@ -30,10 +31,10 @@ function keyPointClass(type: KeyPoint['type']): string {
   }
 }
 
-// Feature CTA config: features not available in extension but potentially in plan
 interface FeatureCTA {
   key: keyof NonNullable<PlanInfo['features']>;
   icon: string;
+  doodleName: string;
   labelKey: 'flashcards' | 'mindMaps' | 'webSearch' | 'exports' | 'playlists';
   hash: string;
   minPlan: string;
@@ -41,11 +42,11 @@ interface FeatureCTA {
 }
 
 const FEATURE_CTAS: FeatureCTA[] = [
-  { key: 'flashcards', icon: '\uD83D\uDDC2\uFE0F', labelKey: 'flashcards', hash: '#flashcards', minPlan: 'pro', price: '5,99€' },
-  { key: 'mind_maps', icon: '\uD83E\uDDE0', labelKey: 'mindMaps', hash: '#mindmap', minPlan: 'pro', price: '5,99€' },
-  { key: 'web_search', icon: '\uD83C\uDF10', labelKey: 'webSearch', hash: '#websearch', minPlan: 'pro', price: '5,99€' },
-  { key: 'exports', icon: '\uD83D\uDCE4', labelKey: 'exports', hash: '#export', minPlan: 'pro', price: '5,99€' },
-  { key: 'playlists', icon: '\uD83C\uDFAC', labelKey: 'playlists', hash: '#playlists', minPlan: 'pro', price: '5,99€' },
+  { key: 'flashcards', icon: '\uD83D\uDDC2\uFE0F', doodleName: 'book', labelKey: 'flashcards', hash: '#flashcards', minPlan: 'pro', price: '5,99€' },
+  { key: 'mind_maps', icon: '\uD83E\uDDE0', doodleName: 'brain', labelKey: 'mindMaps', hash: '#mindmap', minPlan: 'pro', price: '5,99€' },
+  { key: 'web_search', icon: '\uD83C\uDF10', doodleName: 'globe', labelKey: 'webSearch', hash: '#websearch', minPlan: 'pro', price: '5,99€' },
+  { key: 'exports', icon: '\uD83D\uDCE4', doodleName: 'code', labelKey: 'exports', hash: '#export', minPlan: 'pro', price: '5,99€' },
+  { key: 'playlists', icon: '\uD83C\uDFAC', doodleName: 'camera', labelKey: 'playlists', hash: '#playlists', minPlan: 'pro', price: '5,99€' },
 ];
 
 export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId, planInfo, onOpenChat }) => {
@@ -68,7 +69,6 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId
     chrome.tabs.create({ url });
   };
 
-  // Build feature CTAs
   const availableCTAs: { cta: FeatureCTA; available: boolean }[] = FEATURE_CTAS.map((cta) => ({
     cta,
     available: planInfo?.features?.[cta.key] ?? false,
@@ -85,7 +85,7 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId
         </div>
       </div>
 
-      {/* Platform logos + Tournesol badge */}
+      {/* Platform logos */}
       <div className="synthesis-platforms">
         <img src={chrome.runtime.getURL('platforms/youtube-icon-red.png')} alt="YouTube" style={{ height: 16 }} />
         <span className="synthesis-platform-sep" />
@@ -105,28 +105,17 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId
           className="tournesol-badge"
           title={`Score Tournesol: ${summary.tournesol.tournesol_score} | ${summary.tournesol.n_contributors} contributeurs | ${summary.tournesol.n_comparisons} comparaisons`}
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            padding: '6px 12px',
-            margin: '8px 0',
-            borderRadius: '8px',
             background: summary.tournesol.tournesol_score >= 50 ? 'rgba(34,197,94,0.12)' :
                          summary.tournesol.tournesol_score >= 20 ? 'rgba(234,179,8,0.12)' :
-                         'rgba(255,255,255,0.05)',
+                         'var(--bg-secondary)',
             border: `1px solid ${summary.tournesol.tournesol_score >= 50 ? 'rgba(34,197,94,0.25)' :
                                   summary.tournesol.tournesol_score >= 20 ? 'rgba(234,179,8,0.25)' :
-                                  'rgba(255,255,255,0.1)'}`,
-            fontSize: '12px',
-            color: '#d4d4d8',
-            textDecoration: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease',
+                                  'var(--border-default)'}`,
           }}
         >
           <span style={{ fontSize: '14px' }}>{'\uD83C\uDF3B'}</span>
-          <span style={{ fontWeight: 600 }}>Tournesol: {summary.tournesol.tournesol_score > 0 ? '+' : ''}{Math.round(summary.tournesol.tournesol_score)}</span>
-          <span style={{ opacity: 0.6, fontSize: '11px' }}>({summary.tournesol.n_contributors} votes)</span>
+          <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Tournesol: {summary.tournesol.tournesol_score > 0 ? '+' : ''}{Math.round(summary.tournesol.tournesol_score)}</span>
+          <span style={{ opacity: 0.6, fontSize: '11px', color: 'var(--text-tertiary)' }}>({summary.tournesol.n_contributors} votes)</span>
         </a>
       )}
 
@@ -174,7 +163,6 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId
         {showDetail ? <ChevronUpIcon size={14} /> : <ChevronDownIcon size={14} />}
       </button>
 
-      {/* Detail panel */}
       {showDetail && (
         <div
           className="detail-panel"
@@ -209,7 +197,9 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId
               className="feature-cta feature-cta-available"
               onClick={() => chrome.tabs.create({ url: `${WEBAPP_URL}/summary/${summaryId}${cta.hash}` })}
             >
-              <span className="feature-cta-icon">{cta.icon}</span>
+              <span className="feature-cta-icon">
+                <DoodleIcon name={cta.doodleName} size={16} color="var(--accent-primary)" />
+              </span>
               <span className="feature-cta-label">{t.features[cta.labelKey]}</span>
               <span className="feature-cta-arrow">{'\u2197'}</span>
             </button>
@@ -219,7 +209,9 @@ export const SynthesisView: React.FC<SynthesisViewProps> = ({ summary, summaryId
               className="feature-cta feature-cta-locked"
               onClick={() => chrome.tabs.create({ url: `${WEBAPP_URL}/upgrade` })}
             >
-              <span className="feature-cta-icon">{'\uD83D\uDD12'}</span>
+              <span className="feature-cta-icon">
+                <DoodleIcon name={cta.doodleName} size={16} color="var(--text-muted)" />
+              </span>
               <span className="feature-cta-label">{t.features[cta.labelKey]}</span>
               <span className="feature-cta-price">{t.features.fromPrice.replace('{price}', cta.price)}</span>
             </button>
@@ -253,26 +245,26 @@ function generateShareHtml(
   t: ReturnType<typeof useTranslation>['t'],
   language: string,
 ): string {
-  const scoreClass = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : '#ef4444';
+  const scoreColor = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : '#ef4444';
   const dateLocale = language === 'fr' ? 'fr-FR' : 'en-US';
   const date = new Date(summary.created_at).toLocaleDateString(dateLocale, { day: 'numeric', month: 'long', year: 'numeric' });
 
   const keyPointsHtml = parsed.keyPoints.map(kp => {
     const icon = kp.type === 'solid' ? '\u2705' : kp.type === 'weak' ? '\u26A0\uFE0F' : '\u{1F4A1}';
-    return `<div style="display:flex;gap:10px;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);margin-bottom:8px">
+    return `<div style="display:flex;gap:10px;padding:12px 16px;border-radius:10px;background:rgba(200,144,58,0.06);border:1px solid rgba(200,144,58,0.1);margin-bottom:8px">
       <span style="font-size:16px;flex-shrink:0">${icon}</span>
-      <span style="color:#d4d4d8;font-size:14px;line-height:1.6">${kp.text}</span>
+      <span style="color:#F5F0E8;font-size:14px;line-height:1.6">${kp.text}</span>
     </div>`;
   }).join('');
 
   const tagsHtml = parsed.tags.map(tag =>
-    `<span style="display:inline-block;padding:4px 12px;border-radius:20px;background:rgba(59,130,246,0.12);color:#60a5fa;font-size:12px;font-weight:500">${tag}</span>`
+    `<span style="display:inline-block;padding:4px 12px;border-radius:20px;background:rgba(200,144,58,0.12);color:#C8903A;font-size:12px;font-weight:500">${tag}</span>`
   ).join(' ');
 
   const conceptsHtml = (summary.concepts || []).slice(0, 5).map(c =>
-    `<div style="padding:14px 18px;border-radius:12px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.15)">
-      <div style="font-weight:600;color:#c4b5fd;font-size:14px;margin-bottom:4px">${c.name}</div>
-      <div style="color:#a1a1aa;font-size:13px;line-height:1.5">${c.definition || t.synthesis.generatingDef}</div>
+    `<div style="padding:14px 18px;border-radius:12px;background:rgba(155,107,74,0.08);border:1px solid rgba(155,107,74,0.15)">
+      <div style="font-weight:600;color:#9B6B4A;font-size:14px;margin-bottom:4px;font-family:'Cormorant Garamond',serif">${c.name}</div>
+      <div style="color:#B5A89B;font-size:13px;line-height:1.5">${c.definition || t.synthesis.generatingDef}</div>
     </div>`
   ).join('');
 
@@ -283,31 +275,30 @@ function generateShareHtml(
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${summary.video_title} — ${t.synthesis.shareTitle}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    body{font-family:'Inter',system-ui,sans-serif;background:#0a0a0f;color:#e4e4e7;min-height:100vh}
+    body{font-family:'DM Sans',system-ui,sans-serif;background:#0a0a0f;color:#F5F0E8;min-height:100vh}
     .page{max-width:720px;margin:0 auto;padding:40px 24px 60px}
     .header{text-align:center;margin-bottom:32px}
-    .logo{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#8b5cf6;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:16px}
-    .logo svg{width:18px;height:18px}
-    .video-title{font-size:22px;font-weight:700;line-height:1.35;color:#fafafa;margin-bottom:8px}
-    .video-meta{display:flex;align-items:center;justify-content:center;gap:16px;font-size:13px;color:#71717a;flex-wrap:wrap}
-    .score-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-weight:600;font-size:13px;background:${scoreClass}15;color:${scoreClass}}
+    .logo{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#C8903A;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:16px;font-family:'Cormorant Garamond',serif}
+    .video-title{font-size:22px;font-weight:700;line-height:1.35;color:#F5F0E8;margin-bottom:8px;font-family:'Cormorant Garamond',serif}
+    .video-meta{display:flex;align-items:center;justify-content:center;gap:16px;font-size:13px;color:#7A7068;flex-wrap:wrap}
+    .score-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-weight:600;font-size:13px;background:${scoreColor}15;color:${scoreColor}}
     .section{margin-top:28px}
-    .section-title{font-size:15px;font-weight:600;color:#a1a1aa;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
-    .verdict{padding:20px 24px;border-radius:14px;background:linear-gradient(135deg,rgba(59,130,246,0.08),rgba(139,92,246,0.08));border:1px solid rgba(139,92,246,0.15);font-size:15px;line-height:1.7;color:#d4d4d8}
+    .section-title{font-size:15px;font-weight:600;color:#B5A89B;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:14px;display:flex;align-items:center;gap:8px;font-family:'Cormorant Garamond',serif}
+    .verdict{padding:20px 24px;border-radius:14px;background:rgba(200,144,58,0.06);border:1px solid rgba(200,144,58,0.12);border-left:3px solid #C8903A;font-size:15px;line-height:1.7;color:#F5F0E8}
     .concepts-grid{display:grid;gap:10px}
     .tags{display:flex;flex-wrap:wrap;gap:8px}
-    .footer{margin-top:40px;padding-top:20px;border-top:1px solid rgba(255,255,255,0.06);text-align:center;color:#52525b;font-size:12px}
-    .footer a{color:#8b5cf6;text-decoration:none}
+    .footer{margin-top:40px;padding-top:20px;border-top:1px solid rgba(200,144,58,0.08);text-align:center;color:#45455a;font-size:12px}
+    .footer a{color:#C8903A;text-decoration:none}
     .footer a:hover{text-decoration:underline}
-    .btn-print{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:white;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all 0.2s}
-    .btn-print:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(99,102,241,0.35)}
+    .btn-print{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:10px;background:linear-gradient(135deg,#C8903A,#D4A054);color:#0a0a0f;font-size:13px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all 0.2s}
+    .btn-print:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(200,144,58,0.35)}
     .actions{text-align:center;margin-top:28px;display:flex;gap:12px;justify-content:center}
     @media print{
       body{background:white;color:#1a1a1a}
-      .verdict{background:#f8fafc;border-color:#e2e8f0}
+      .verdict{background:#faf7f2;border-color:#e2e8f0}
       .score-badge{background:#f0fdf4}
       .actions,.btn-print{display:none!important}
       .section-title{color:#64748b}
@@ -318,44 +309,41 @@ function generateShareHtml(
 <body>
   <div class="page">
     <div class="header">
-      <div class="logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-        DeepSight Synthesis
-      </div>
+      <div class="logo">DeepSight Synthesis</div>
       <h1 class="video-title">${summary.video_title}</h1>
       <div class="video-meta">
-        <span>\uD83D\uDCFA ${summary.video_channel}</span>
-        <span>\uD83D\uDCC1 ${summary.category}</span>
+        <span>${summary.video_channel}</span>
+        <span>${summary.category}</span>
         <span>${date}</span>
-        <span class="score-badge">\uD83C\uDFAF ${score}% — ${scoreLabel}</span>
+        <span class="score-badge">${score}% — ${scoreLabel}</span>
       </div>
     </div>
 
     <div class="section">
-      <div class="section-title">\uD83D\uDD0D ${t.synthesis.verdict}</div>
+      <div class="section-title">${t.synthesis.verdict}</div>
       <div class="verdict">${parsed.verdict}</div>
     </div>
 
     ${parsed.keyPoints.length > 0 ? `
     <div class="section">
-      <div class="section-title">\uD83D\uDCCC ${t.synthesis.keyPoints}</div>
+      <div class="section-title">${t.synthesis.keyPoints}</div>
       ${keyPointsHtml}
     </div>` : ''}
 
     ${(summary.concepts || []).length > 0 ? `
     <div class="section">
-      <div class="section-title">\uD83E\uDDE0 ${t.synthesis.concepts}</div>
+      <div class="section-title">${t.synthesis.concepts}</div>
       <div class="concepts-grid">${conceptsHtml}</div>
     </div>` : ''}
 
     ${parsed.tags.length > 0 ? `
     <div class="section">
-      <div class="section-title">\uD83C\uDFF7\uFE0F ${t.synthesis.tags}</div>
+      <div class="section-title">${t.synthesis.tags}</div>
       <div class="tags">${tagsHtml}</div>
     </div>` : ''}
 
     <div class="actions">
-      <button class="btn-print" onclick="window.print()">\uD83D\uDDA8\uFE0F ${t.synthesis.printPdf}</button>
+      <button class="btn-print" onclick="window.print()">${t.synthesis.printPdf}</button>
     </div>
 
     <div class="footer">

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import type { ChatMessage, ChatOptions } from '../../types';
 import { escapeHtml, markdownToFullHtml } from '../../utils/sanitize';
 import { BackIcon, SendIcon } from './Icons';
+import { DoodleIcon } from './doodles/DoodleIcon';
+import { DeepSightSpinner } from './DeepSightSpinner';
 import { useTranslation } from '../../i18n/useTranslation';
 
 // ── [ask:] parser ──────────────────────────────────────────────────
@@ -39,7 +41,6 @@ interface ChatDrawerProps {
   videoTitle: string;
   onClose: () => void;
   onSessionExpired?: () => void;
-  /** User plan id for web search gating */
   userPlan?: string;
 }
 
@@ -62,12 +63,10 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   const canWs = canUseWebSearch(userPlan);
   const suggestions = t.chat.suggestions;
 
-  // Load chat history on mount
   useEffect(() => {
     loadHistory();
   }, [summaryId]);
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     if (messagesRef.current) {
       messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
@@ -176,13 +175,12 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
       <div className="chat-messages" ref={messagesRef}>
         {loadingHistory ? (
           <div className="chat-welcome">
-            <div className="loading-spinner" style={{ width: 24, height: 24, margin: '0 auto' }} />
+            <DeepSightSpinner size="xs" speed="fast" />
           </div>
         ) : messages.length === 0 ? (
           <div className="chat-welcome">
-            <span className="chat-welcome-icon">{'\u{1F4AC}'}</span>
+            <DoodleIcon name="robot" size={32} color="var(--accent-primary)" style={{ opacity: 0.6 }} />
             <p>{t.chat.welcome}</p>
-            {/* Clickable suggestions */}
             <div className="chat-suggestions">
               {suggestions.map((q, i) => (
                 <button
@@ -218,7 +216,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
         )}
       </div>
 
-      {/* Session expired banner */}
+      {/* Session expired */}
       {sessionExpired && (
         <div className="chat-session-expired">
           <span>{'\u{1F512}'} {t.chat.sessionExpired}</span>
@@ -237,7 +235,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
         </div>
       )}
 
-      {/* Input area with web search toggle */}
+      {/* Input area */}
       <div className="chat-input-area">
         <button
           className={`chat-ws-toggle ${webSearchEnabled && canWs ? 'chat-ws-active' : ''}`}
@@ -250,7 +248,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
           }
           style={{ opacity: canWs ? 1 : 0.4 }}
         >
-          {canWs ? '\uD83C\uDF10' : '\uD83D\uDD12'}
+          <DoodleIcon name="globe" size={14} color={webSearchEnabled && canWs ? 'var(--accent-primary)' : 'var(--text-muted)'} />
         </button>
         <input
           type="text"
@@ -275,7 +273,7 @@ export const ChatDrawer: React.FC<ChatDrawerProps> = ({
   );
 };
 
-// ── Message Bubble with [ask:] parsing ───────────────────────────
+// ── Message Bubble ───────────────────────────
 interface MessageBubbleProps {
   msg: ChatMessage;
   onQuestionClick: (question: string) => void;
@@ -293,7 +291,10 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ msg, onQuestionClick, web
       {msg.role === 'assistant' ? (
         <>
           {msg.web_search_used && (
-            <div className="chat-web-badge">{'\u{1F310}'} {webEnrichedLabel}</div>
+            <div className="chat-web-badge">
+              <DoodleIcon name="globe" size={12} color="var(--accent-primary)" style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: 4 }} />
+              {webEnrichedLabel}
+            </div>
           )}
           <div
             className="chat-md-content"
@@ -301,7 +302,6 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ msg, onQuestionClick, web
               __html: markdownToFullHtml(escapeHtml(parsed.text)),
             }}
           />
-          {/* [ask:] question pills */}
           {parsed.questions.length > 0 && (
             <div className="chat-ask-pills">
               {parsed.questions.map((q, i) => (

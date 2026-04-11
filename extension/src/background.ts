@@ -547,7 +547,8 @@ chrome.runtime.onMessage.addListener(
 
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
-    chrome.tabs.create({ url: `${WEBAPP_URL}/extension-welcome` });
+    chrome.tabs.create({ url: WEBAPP_URL });
+    chrome.storage.local.set({ showYouTubeRecommendation: true });
   }
 });
 

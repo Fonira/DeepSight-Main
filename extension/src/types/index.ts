@@ -173,7 +173,8 @@ export type MessageAction =
   | 'GET_PLAN'
   | 'START_GUEST_ANALYSIS'
   | 'SHARE_ANALYSIS'
-  | 'QUICK_CHAT';
+  | 'QUICK_CHAT'
+  | 'CANCEL_ANALYSIS';
 
 export interface ExtensionMessage {
   action: MessageAction;
