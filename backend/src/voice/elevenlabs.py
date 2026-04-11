@@ -64,26 +64,34 @@ class ElevenLabsClient:
             ValueError: on 401 (invalid API key).
             httpx.HTTPStatusError: on 429 (rate limit) or 5xx.
         """
+        # ── TTS config (flat properties since API update April 2026) ──
         tts_config: dict = {
             "voice_id": voice_id,
             "model_id": model_id,
+            # Reduce first-byte latency — level 4 = maximum optimization
+            "optimize_streaming_latency": 4,
         }
+        # Flatten voice_settings into tts_config (no longer nested)
         if voice_settings:
-            tts_config["voice_settings"] = voice_settings
+            for key in ("stability", "similarity_boost", "speed", "style"):
+                if key in voice_settings:
+                    tts_config[key] = voice_settings[key]
+
+        # ── Agent prompt config (tools now live inside agent.prompt) ──
+        prompt_config: dict = {
+            "prompt": system_prompt,
+            "tools": tools,
+        }
 
         body: dict = {
             "conversation_config": {
                 "agent": {
-                    "prompt": {"prompt": system_prompt},
-                    "first_message": first_message,
+                    "prompt": prompt_config,
+                    "first_message": first_message or "",
                     "language": language,
                 },
                 "tts": tts_config,
-                # Reduce first-byte latency at the cost of slight quality loss
-                # Level 4 = maximum optimization, ideal for voice chat
-                "optimize_streaming_latency": 4,
             },
-            "tools": tools,
         }
 
         # Add turn/interruption configuration if provided
@@ -104,6 +112,16 @@ class ElevenLabsClient:
                 "ElevenLabs rate limit exceeded — retry later",
                 request=response.request,
                 response=response,
+            )
+        if response.status_code == 422:
+            # Log the response body for debugging schema mismatches
+            try:
+                error_detail = response.json()
+            except Exception:
+                error_detail = response.text[:500]
+            logger.error(
+                "elevenlabs.create_agent_422",
+                extra={"status": 422, "detail": error_detail},
             )
         response.raise_for_status()
 
@@ -236,22 +254,36 @@ class ElevenLabsClient:
 
         Each tool calls back into the DeepSight API with the user's JWT.
         """
-        auth_header = {"Authorization": f"Bearer {api_token}"}
+        auth_headers = {"Authorization": f"Bearer {api_token}"}
+
+        def _webhook_tool(
+            name: str,
+            description: str,
+            url_path: str,
+            body_schema: dict,
+        ) -> dict:
+            """Build an ElevenLabs webhook tool in the April 2026 API format."""
+            return {
+                "type": "webhook",
+                "name": name,
+                "description": description,
+                "api_schema": {
+                    "url": f"{webhook_base_url}{url_path}",
+                    "method": "POST",
+                    "request_headers": auth_headers,
+                    "request_body_schema": body_schema,
+                },
+            }
 
         return [
-            {
-                "type": "webhook",
-                "name": "search_in_transcript",
-                "description": (
+            _webhook_tool(
+                name="search_in_transcript",
+                description=(
                     "Search the video transcript for an exact passage or keyword. "
                     "Returns matching excerpts with timestamps."
                 ),
-                "api_schema": {
-                    "url": f"{webhook_base_url}/api/voice/tools/search-transcript",
-                    "method": "POST",
-                    "headers": auth_header,
-                },
-                "parameters": {
+                url_path="/api/voice/tools/search-transcript",
+                body_schema={
                     "type": "object",
                     "properties": {
                         "query": {
@@ -265,20 +297,15 @@ class ElevenLabsClient:
                     },
                     "required": ["query", "summary_id"],
                 },
-            },
-            {
-                "type": "webhook",
-                "name": "get_analysis_section",
-                "description": (
+            ),
+            _webhook_tool(
+                name="get_analysis_section",
+                description=(
                     "Retrieve a specific section of the video analysis "
                     "(e.g. key_points, arguments, conclusion)."
                 ),
-                "api_schema": {
-                    "url": f"{webhook_base_url}/api/voice/tools/analysis-section",
-                    "method": "POST",
-                    "headers": auth_header,
-                },
-                "parameters": {
+                url_path="/api/voice/tools/analysis-section",
+                body_schema={
                     "type": "object",
                     "properties": {
                         "section": {
@@ -292,20 +319,15 @@ class ElevenLabsClient:
                     },
                     "required": ["section", "summary_id"],
                 },
-            },
-            {
-                "type": "webhook",
-                "name": "get_sources",
-                "description": (
+            ),
+            _webhook_tool(
+                name="get_sources",
+                description=(
                     "Get fact-check sources and reliability information "
                     "for the claims made in the video."
                 ),
-                "api_schema": {
-                    "url": f"{webhook_base_url}/api/voice/tools/sources",
-                    "method": "POST",
-                    "headers": auth_header,
-                },
-                "parameters": {
+                url_path="/api/voice/tools/sources",
+                body_schema={
                     "type": "object",
                     "properties": {
                         "claim": {
@@ -319,20 +341,15 @@ class ElevenLabsClient:
                     },
                     "required": ["summary_id"],
                 },
-            },
-            {
-                "type": "webhook",
-                "name": "get_flashcards",
-                "description": (
+            ),
+            _webhook_tool(
+                name="get_flashcards",
+                description=(
                     "Get study flashcards generated from the video analysis. "
                     "Use when the user wants to be quizzed or review key concepts."
                 ),
-                "api_schema": {
-                    "url": f"{webhook_base_url}/api/voice/tools/flashcards",
-                    "method": "POST",
-                    "headers": auth_header,
-                },
-                "parameters": {
+                url_path="/api/voice/tools/flashcards",
+                body_schema={
                     "type": "object",
                     "properties": {
                         "summary_id": {
@@ -346,20 +363,15 @@ class ElevenLabsClient:
                     },
                     "required": ["summary_id"],
                 },
-            },
-            {
-                "type": "webhook",
-                "name": "web_search",
-                "description": (
+            ),
+            _webhook_tool(
+                name="web_search",
+                description=(
                     "Search the web for current information about a topic. "
                     "Use when the user asks about recent events, news, or facts not in the video."
                 ),
-                "api_schema": {
-                    "url": f"{webhook_base_url}/api/voice/tools/web-search",
-                    "method": "POST",
-                    "headers": auth_header,
-                },
-                "parameters": {
+                url_path="/api/voice/tools/web-search",
+                body_schema={
                     "type": "object",
                     "properties": {
                         "query": {
@@ -373,20 +385,15 @@ class ElevenLabsClient:
                     },
                     "required": ["query", "summary_id"],
                 },
-            },
-            {
-                "type": "webhook",
-                "name": "deep_research",
-                "description": (
+            ),
+            _webhook_tool(
+                name="deep_research",
+                description=(
                     "Perform in-depth web research combining multiple search queries. "
                     "Use for complex questions requiring comprehensive analysis."
                 ),
-                "api_schema": {
-                    "url": f"{webhook_base_url}/api/voice/tools/deep-research",
-                    "method": "POST",
-                    "headers": auth_header,
-                },
-                "parameters": {
+                url_path="/api/voice/tools/deep-research",
+                body_schema={
                     "type": "object",
                     "properties": {
                         "query": {
@@ -400,20 +407,15 @@ class ElevenLabsClient:
                     },
                     "required": ["query", "summary_id"],
                 },
-            },
-            {
-                "type": "webhook",
-                "name": "check_fact",
-                "description": (
+            ),
+            _webhook_tool(
+                name="check_fact",
+                description=(
                     "Verify a factual claim by searching the web for "
                     "supporting or contradicting evidence."
                 ),
-                "api_schema": {
-                    "url": f"{webhook_base_url}/api/voice/tools/check-fact",
-                    "method": "POST",
-                    "headers": auth_header,
-                },
-                "parameters": {
+                url_path="/api/voice/tools/check-fact",
+                body_schema={
                     "type": "object",
                     "properties": {
                         "claim": {
@@ -427,7 +429,7 @@ class ElevenLabsClient:
                     },
                     "required": ["claim", "summary_id"],
                 },
-            },
+            ),
         ]
 
 
@@ -441,9 +443,4 @@ def get_elevenlabs_client() -> ElevenLabsClient:
     from core.config import get_elevenlabs_key
 
     api_key = get_elevenlabs_key()
-    if not api_key:
-        raise ValueError(
-            "ELEVENLABS_API_KEY is not configured — "
-            "set it in .env or environment variables"
-        )
-    return ElevenLabsClient(api_key=api_key)
+    if not api_
