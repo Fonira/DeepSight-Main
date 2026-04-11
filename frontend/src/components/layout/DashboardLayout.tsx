@@ -8,9 +8,11 @@ import { Outlet } from "react-router-dom";
 import { motion } from 'framer-motion';
 import { Menu } from "lucide-react";
 import { Sidebar } from "./Sidebar";
+import { RightSidebar } from "./RightSidebar";
 import { BottomNav } from "./BottomNav";
 import { Footer } from "../Footer";
 import { useAuth } from "../../hooks/useAuth";
+import { useRightSidebarStore } from "../../store/rightSidebarStore";
 
 interface DashboardLayoutProps {
   children?: React.ReactNode;
@@ -20,6 +22,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const rightSidebarOpen = useRightSidebarStore((s) => s.isOpen);
 
   return (
     <div className="flex min-h-screen bg-bg-primary">
@@ -46,7 +49,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       <div
         className={`flex-1 flex flex-col min-h-screen transition-all duration-200 ease-out ${
           sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'
-        }`}
+        } ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`}
       >
         <main
           id="main-content"
@@ -67,6 +70,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           <Footer />
         </div>
       </div>
+
+      {/* Right Sidebar — Desktop xl+ */}
+      <RightSidebar />
 
       {/* BottomNav - Mobile */}
       <BottomNav />

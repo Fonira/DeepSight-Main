@@ -42,6 +42,7 @@ module.exports = (env, argv) => {
         patterns: [
           { from: 'public/manifest.json', to: 'manifest.json' },
           { from: 'public/popup.html', to: 'popup.html' },
+          { from: 'src/styles/design-tokens.css', to: 'design-tokens.css' },
           { from: 'src/styles/popup.css', to: 'popup.css' },
           { from: 'src/styles/content.css', to: 'content.css' },
           { from: 'icons', to: 'icons' },

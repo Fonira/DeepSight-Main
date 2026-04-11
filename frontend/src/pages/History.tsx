@@ -29,6 +29,8 @@ import { DeepSightSpinner, DeepSightSpinnerMicro } from "../components/ui";
 import { useTranslation } from '../hooks/useTranslation';
 import { useAuth } from "../hooks/useAuth";
 import { Sidebar } from "../components/layout/Sidebar";
+import { RightSidebar } from "../components/layout/RightSidebar";
+import { useRightSidebarStore } from "../store/rightSidebarStore";
 import { TournesolMini } from "../components/TournesolWidget";
 import { createTimecodeMarkdownComponents } from "../components/TimecodeRenderer";
 import { FloatingChatWindow } from "../components/FloatingChatWindow";
@@ -397,6 +399,7 @@ export const History: React.FC = () => {
 
   // États
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const rightSidebarOpen = useRightSidebarStore((s) => s.isOpen);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"videos" | "debates">("videos");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -957,8 +960,9 @@ export const History: React.FC = () => {
       <DoodleBackground variant="video" />
       {/* Hamburger mobile */}
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
+      <RightSidebar />
 
-      <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'} xl:mr-[280px]`}>
+      <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'} ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`}>
         <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-8 pt-14 lg:pt-8">
           <div className="max-w-6xl mx-auto">
             

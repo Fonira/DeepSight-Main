@@ -262,6 +262,18 @@ const SHAPES_ORGANIC = [
   'M2 4l20 16M6 2l16 20M2 8l20 16M2 12l16 12M2 16l12 8M22 8L6 22M22 4L2 20M22 12L10 22',
 ];
 
+// Brand logo doodles (simplified stroke-based versions)
+const ICONS_BRAND = [
+  // YouTube — rounded screen + play triangle
+  'M2.5 7A2.5 2.5 0 015 4.5h14A2.5 2.5 0 0121.5 7v10a2.5 2.5 0 01-2.5 2.5H5A2.5 2.5 0 012.5 17V7zm7.5 2v6l5-3-5-3z',
+  // TikTok — musical note with offset
+  'M9 3h6v10a4 4 0 11-4-4h4V3m2 2a4 4 0 004 4',
+  // Mistral — abstract staircase blocks
+  'M3 4h4v3H3zm6 3h4v3H9zm-6 6h4v3H3zm6 3h4v3H9zm6-9h4v3h-4zm0 6h4v3h-4z',
+  // Tournesol — sunflower with petals and center
+  'M12 8a4 4 0 100 8 4 4 0 000-8zm0-6v3m0 14v3M4.93 4.93l2.12 2.12m9.9 9.9l2.12 2.12M2 12h3m14 0h3M4.93 19.07l2.12-2.12m9.9-9.9l2.12-2.12',
+];
+
 // Small decorative fills + geometric mixed-media elements
 const SHAPES_DECORATIVE = [
   'M12 10a2 2 0 100 4 2 2 0 000-4z',                       // Dot
@@ -295,6 +307,7 @@ const getIconPool = (variant: DoodleVariant): string[] => {
     ...ICONS_VIDEO, ...ICONS_STUDY, ...ICONS_TECH,
     ...ICONS_ANALYTICS, ...ICONS_AI, ...ICONS_CREATIVE, ...ICONS_ABSTRACT,
     ...ICONS_OBJECTS, ...ICONS_WHIMSICAL, ...ICONS_SCIENCE,
+    ...ICONS_BRAND,
   ];
 
   const emphasis: Record<DoodleVariant, string[]> = {
@@ -523,6 +536,22 @@ const DoodleBackground: React.FC<DoodleBackgroundProps> = ({
         color: pickColor(s + 9),
         opacity: isDark ? 0.06 + seededRandom(s + 5) * 0.04 : 0.08 + seededRandom(s + 5) * 0.05,
         strokeWidth: sw(s + 10, 1.0),
+        fill: false,
+      });
+    }
+
+    // ── Layer 9: Brand Echoes (subtle brand logo hints) — 6 items ─
+    for (let i = 0; i < 6; i++) {
+      const s = vo + 3000 + i * 67;
+      items.push({
+        path: pick(ICONS_BRAND, s),
+        x: seededRandom(s + 1) * TILE,
+        y: seededRandom(s + 2) * TILE,
+        rotation: rot(s + 3),
+        scale: 0.30 + seededRandom(s + 4) * 0.25,
+        color: pickColor(s + 9),
+        opacity: isDark ? 0.06 + seededRandom(s + 5) * 0.06 : 0.08 + seededRandom(s + 5) * 0.06,
+        strokeWidth: sw(s + 10, 1.2),
         fill: false,
       });
     }

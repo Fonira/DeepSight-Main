@@ -14,6 +14,8 @@ import {
   AlertCircle, CreditCard, RefreshCw, Users, BookOpen
 } from 'lucide-react';
 import { Sidebar } from '../components/layout/Sidebar';
+import { RightSidebar } from '../components/layout/RightSidebar';
+import { useRightSidebarStore } from '../store/rightSidebarStore';
 import DoodleBackground from '../components/DoodleBackground';
 import { SEO } from '../components/SEO';
 
@@ -836,6 +838,7 @@ const LegalPage: React.FC = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<TabType>('mentions');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const rightSidebarOpen = useRightSidebarStore((s) => s.isOpen);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Gérer le hash dans l'URL pour naviguer directement à une section
@@ -871,10 +874,11 @@ const LegalPage: React.FC = () => {
       />
       <DoodleBackground variant="academic" />
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
+      <RightSidebar />
 
       <main
         id="main-content"
-        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}
+        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'} ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`}
       >
         <div className="min-h-screen pt-14 lg:pt-0 p-4 sm:p-6 lg:p-8 pb-8">
           <div className="max-w-4xl mx-auto">

@@ -374,6 +374,12 @@ export const DOODLE_MAP: Record<string, string> = {
   sketchyHeart: SHAPES_ORGANIC[10],
   crossHatch: SHAPES_ORGANIC[11],
 
+  // Brand
+  youtube: ICONS_BRAND[0],
+  tiktok: ICONS_BRAND[1],
+  mistral: ICONS_BRAND[2],
+  tournesol: ICONS_BRAND[3],
+
   // Shapes/Decorative
   dot: SHAPES_DECORATIVE[0],
   cross: SHAPES_DECORATIVE[1],
@@ -392,6 +398,18 @@ export const DOODLE_MAP: Record<string, string> = {
   parallelDashes: SHAPES_DECORATIVE[14],
 };
 
+// ─── BRAND ICONS (4 paths) ───
+export const ICONS_BRAND = [
+  // YouTube — rounded screen + play triangle
+  'M2.5 7A2.5 2.5 0 015 4.5h14A2.5 2.5 0 0121.5 7v10a2.5 2.5 0 01-2.5 2.5H5A2.5 2.5 0 012.5 17V7zm7.5 2v6l5-3-5-3z',
+  // TikTok — musical note with offset
+  'M9 3h6v10a4 4 0 11-4-4h4V3m2 2a4 4 0 004 4',
+  // Mistral — abstract staircase blocks
+  'M3 4h4v3H3zm6 3h4v3H9zm-6 6h4v3H3zm6 3h4v3H9zm6-9h4v3h-4zm0 6h4v3h-4z',
+  // Tournesol — sunflower with petals and center
+  'M12 8a4 4 0 100 8 4 4 0 000-8zm0-6v3m0 14v3M4.93 4.93l2.12 2.12m9.9 9.9l2.12 2.12M2 12h3m14 0h3M4.93 19.07l2.12-2.12m9.9-9.9l2.12-2.12',
+];
+
 /**
  * DOODLE_CATEGORIES: Organized by category for themed selections
  */
@@ -408,4 +426,5 @@ export const DOODLE_CATEGORIES = {
   science: ICONS_SCIENCE,
   organic: SHAPES_ORGANIC,
   shapes: SHAPES_DECORATIVE,
+  brand: ICONS_BRAND,
 };

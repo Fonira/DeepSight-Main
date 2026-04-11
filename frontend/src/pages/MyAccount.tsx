@@ -9,6 +9,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
 import { Sidebar } from '../components/layout/Sidebar';
+import { RightSidebar } from '../components/layout/RightSidebar';
+import { useRightSidebarStore } from '../store/rightSidebarStore';
 import { billingApi, authApi, type ApiBillingMyPlan } from '../services/api';
 import { PLANS_INFO, getMinPlanForFeature, normalizePlanId, type PlanId } from '../config/planPrivileges';
 import { useToast } from '../components/Toast';
@@ -55,6 +57,7 @@ export const MyAccount: React.FC = () => {
   const navigate = useNavigate();
   const { showToast, ToastComponent } = useToast();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const rightSidebarOpen = useRightSidebarStore((s) => s.isOpen);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // 🔑 API Key State
@@ -356,10 +359,11 @@ export const MyAccount: React.FC = () => {
       <DoodleBackground variant="tech" />
       {/* Hamburger mobile */}
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
+      <RightSidebar />
 
       <main
         id="main-content"
-        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'} xl:mr-[280px]`}
+        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'} ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`}
       >
         <div className="min-h-screen pt-14 lg:pt-0 p-4 sm:p-6 lg:p-8 pb-8">
           <div className="max-w-2xl mx-auto space-y-6">

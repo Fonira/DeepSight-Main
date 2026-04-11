@@ -72,6 +72,9 @@ interface LoadingWordContextType {
   userCategories: CategoryCount[];
   /** Nombre total de keywords dans l'historique */
   historyCount: number;
+  /** Mode embarqué : quand true, le widget flottant ne se rend pas (sidebar droite active) */
+  embeddedMode: boolean;
+  setEmbeddedMode: (value: boolean) => void;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -186,6 +189,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
       return stored !== 'false'; // visible par défaut
     } catch { return true; }
   });
+  const [embeddedMode, setEmbeddedMode] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
@@ -491,6 +495,8 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         toggleSidebar,
         userCategories,
         historyCount,
+        embeddedMode,
+        setEmbeddedMode,
       }}
     >
       {children}

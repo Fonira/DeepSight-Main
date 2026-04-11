@@ -10,6 +10,8 @@ import { useTranslation } from '../hooks/useTranslation';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { Sidebar } from '../components/layout/Sidebar';
+import { RightSidebar } from '../components/layout/RightSidebar';
+import { useRightSidebarStore } from '../store/rightSidebarStore';
 import {
   Settings as SettingsIcon, Globe, Moon, Sun, Bell, BellOff,
   Keyboard, Info, Check, RotateCcw,
@@ -49,6 +51,7 @@ export const Settings: React.FC = () => {
   const { isDark } = useTheme();
   const { autoPlayEnabled, setAutoPlayEnabled } = useTTSContext();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const rightSidebarOpen = useRightSidebarStore((s) => s.isOpen);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // Préférences locales (stockées dans localStorage)
@@ -170,10 +173,11 @@ export const Settings: React.FC = () => {
       <DoodleBackground variant="tech" />
       {/* Hamburger mobile */}
       <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
+      <RightSidebar />
 
       <main
         id="main-content"
-        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'} xl:mr-[280px]`}
+        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'} ${rightSidebarOpen ? 'xl:mr-[280px]' : ''}`}
       >
         <div className="min-h-screen pt-14 lg:pt-0 p-4 sm:p-6 lg:p-8 pb-8">
           <div className="max-w-2xl mx-auto space-y-6">
