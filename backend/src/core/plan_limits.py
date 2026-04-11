@@ -67,7 +67,10 @@ async def check_daily_analysis_limit(
     Utilise plan_config.py comme SSOT.
     """
     # Admin bypass — analyses illimitées
-    if getattr(user, 'is_admin', False):
+    from core.config import ADMIN_CONFIG
+    admin_email = ADMIN_CONFIG.get("ADMIN_EMAIL", "").lower()
+    is_admin = getattr(user, 'is_admin', False) or (getattr(user, 'email', '') or '').lower() == admin_email
+    if is_admin:
         return True, None
 
     raw_plan = user.plan or "free"

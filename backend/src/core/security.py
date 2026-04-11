@@ -672,7 +672,10 @@ async def check_chat_quota(
         return False, "user_not_found", {}
 
     # Admin bypass — chat illimité
-    if user.is_admin:
+    from core.config import ADMIN_CONFIG
+    admin_email = ADMIN_CONFIG.get("ADMIN_EMAIL", "").lower()
+    is_admin = user.is_admin or (user.email or "").lower() == admin_email
+    if is_admin:
         return True, "ok", {
             "daily_used": 0, "daily_limit": -1,
             "video_used": 0, "video_limit": -1,
