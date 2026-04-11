@@ -56,6 +56,7 @@ class _DeepSightSettings(BaseSettings):
     SEMANTIC_SCHOLAR_API_KEY: str = ""
     FAL_API_KEY: str = ""
     TOGETHER_API_KEY: str = ""
+    MISTRAL_IMAGE_AGENT_ID: str = ""  # Mistral Agents API — DeepSight Art Director
 
     # -- YouTube Proxy (pour contourner le blocage IP YouTube sur VPS) --
     YOUTUBE_PROXY: str = ""  # ex: socks5://user:pass@host:port ou http://user:pass@host:port
@@ -242,6 +243,7 @@ OPENAI_API_KEY = _settings.OPENAI_API_KEY
 DEEPSEEK_API_KEY = _settings.DEEPSEEK_API_KEY
 FAL_API_KEY = _settings.FAL_API_KEY
 TOGETHER_API_KEY = _settings.TOGETHER_API_KEY
+MISTRAL_IMAGE_AGENT_ID = _settings.MISTRAL_IMAGE_AGENT_ID
 YOUTUBE_PROXY = _settings.YOUTUBE_PROXY
 
 
@@ -251,6 +253,16 @@ def get_fal_key() -> str:
 
 def is_fal_available() -> bool:
     return bool(FAL_API_KEY)
+
+
+def get_together_key() -> Optional[str]:
+    """Get Together AI API key (used for FLUX Schnell image generation)."""
+    return TOGETHER_API_KEY or None
+
+
+def get_mistral_image_agent_id() -> Optional[str]:
+    """Get the Mistral Agent ID for DeepSight Art Director (image generation)."""
+    return MISTRAL_IMAGE_AGENT_ID or None
 
 
 

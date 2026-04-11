@@ -1,10 +1,11 @@
 """
 Pipeline de génération d'images IA pour "Le Saviez-Vous".
-2 étapes : Mistral (directeur artistique) → Image gen (DALL-E 3 ou FLUX Schnell).
+2 étapes : Mistral (directeur artistique) → Image gen (tiered).
 
-Tiering:
-- Free users → FLUX Schnell via Together AI (~$0.003/image, ~2s)
-- Paying users (Étudiant+) → DALL-E 3 via OpenAI (~$0.04/image, ~15s)
+Backends image (par priorité) :
+1. Mistral Agent API (FLUX 1.1 Pro Ultra) — défaut, meilleure qualité, stack unifiée
+2. DALL-E 3 via OpenAI (~$0.04/image) — fallback premium
+3. FLUX Schnell via Together AI (~$0.003/image) — fallback free
 """
 
 import hashlib
@@ -18,7 +19,7 @@ from typing import Optional
 import httpx
 from PIL import Image
 
-from core.config import get_mistral_key, get_openai_key, get_together_key
+from core.config import get_mistral_key, get_openai_key, get_together_key, get_mistral_image_agent_id
 from storage.r2 import upload_to_r2
 from images.fun_scoring import calculate_fun_score
 
@@ -42,7 +43,7 @@ ART_DIRECTOR_MODEL = "mistral-small-2503"
 
 def _is_image_gen_available() -> bool:
     """Check if ANY image generation backend is available."""
-    return bool(get_openai_key()) or bool(get_together_key())
+    return bool(get_mistral_image_agent_id()) or bool(get_openai_key()) or bool(get_together_key())
 
 ART_DIRECTOR_PROMPT = """Tu es un directeur artistique brillant et espiègle, mélange entre Magritte et un mémeur intellectuel.
 
@@ -90,9 +91,9 @@ async def _stage1_art_director(
 ) -> dict:
     """Ask Mistral to invent a visual metaphor for the term."""
     try:
-        from mistralai import Mistral
-    except ImportError:
         from mistralai.client import Mistral
+    except ImportError:
+        from mistralai import Mistral
 
     client = Mistral(api_key=get_mistral_key())
 
@@ -190,22 +191,109 @@ async def _stage2_flux_schnell(visual_prompt: str) -> tuple[bytes, str]:
     return image_bytes, IMAGE_MODEL_FREE
 
 
+# ─── Stage 2c: Mistral Agent (FLUX Pro Ultra via Agents API) ────────────────
+
+async def _stage2_mistral_agent(visual_prompt: str) -> tuple[bytes, str]:
+    """Generate image via Mistral Agent with built-in image_generation tool.
+    The agent uses FLUX 1.1 Pro Ultra (Black Forest Labs) internally.
+    Returns (raw_bytes, model_used)."""
+    try:
+        from mistralai.client import Mistral
+    except ImportError:
+        from mistralai import Mistral
+
+    client = Mistral(api_key=get_mistral_key())
+    agent_id = get_mistral_image_agent_id()
+
+    if not agent_id:
+        raise RuntimeError("MISTRAL_IMAGE_AGENT_ID not configured")
+
+    # Combine the visual prompt with DeepSight style instructions
+    full_prompt = (
+        f"Generate an image for this concept: {visual_prompt}. "
+        f"Style requirements: {DEEPSIGHT_STYLE_SUFFIX}"
+    )
+
+    # Start a conversation with the agent — the agent will invoke image_generation
+    response = client.beta.conversations.start(
+        agent_id=agent_id,
+        inputs=full_prompt,
+    )
+
+    # Extract the generated image file_id from the response
+    # The agent returns outputs containing ToolFileChunk objects with file_id
+    file_id: Optional[str] = None
+    for entry in response.outputs:
+        if hasattr(entry, "content") and entry.content:
+            for chunk in entry.content:
+                # ToolFileChunk has a file_id attribute
+                if hasattr(chunk, "file_id") and chunk.file_id:
+                    file_id = chunk.file_id
+                    break
+        if file_id:
+            break
+
+    if not file_id:
+        # Log what we got for debugging
+        output_types = [
+            type(chunk).__name__
+            for entry in response.outputs
+            if hasattr(entry, "content") and entry.content
+            for chunk in entry.content
+        ]
+        logger.warning(f"⚠️ Mistral Agent response chunk types: {output_types}")
+        raise RuntimeError(
+            "Mistral Agent did not return an image file. "
+            f"Got {len(response.outputs)} output entries."
+        )
+
+    # Download the generated image from Mistral Files API
+    file_bytes = client.files.download(file_id=file_id).read()
+
+    logger.info(
+        f"🖼️ Image generated (Mistral Agent / FLUX Pro Ultra): "
+        f"{len(file_bytes)} bytes, file_id={file_id}"
+    )
+    return file_bytes, "mistral-agent-flux-pro-ultra"
+
+
 # ─── Stage 2: Router (picks model based on premium flag) ────────────────────
 
 async def _stage2_generate_image(visual_prompt: str, premium: bool = False) -> tuple[bytes, str]:
     """Route to the appropriate image generation backend.
-    premium=True → DALL-E 3 (paying users), premium=False → FLUX Schnell (free).
-    Falls back to the other backend if the preferred one is unavailable."""
+
+    Priority order:
+    1. Mistral Agent (FLUX Pro Ultra) — best quality, unified stack (all users)
+    2. DALL-E 3 via OpenAI — premium fallback (paying users)
+    3. FLUX Schnell via Together AI — free fallback
+    4. DALL-E 3 via OpenAI — last resort (any user)
+
+    Each backend is tried in order; if unavailable (no API key/agent_id), skip to next.
+    """
+    # Priority 1: Mistral Agent (all users — best quality + unified stack)
+    if get_mistral_image_agent_id():
+        try:
+            return await _stage2_mistral_agent(visual_prompt)
+        except Exception as e:
+            logger.warning(f"⚠️ Mistral Agent image gen failed, trying fallbacks: {e}")
+
+    # Priority 2: DALL-E 3 (premium users)
     if premium and get_openai_key():
         return await _stage2_dalle3(visual_prompt)
-    elif get_together_key():
+
+    # Priority 3: FLUX Schnell (free users)
+    if get_together_key():
         return await _stage2_flux_schnell(visual_prompt)
-    elif get_openai_key():
-        # Fallback: free user but no Together key → use DALL-E 3 anyway
-        logger.warning("⚠️ TOGETHER_API_KEY not set, falling back to DALL-E 3 for free user")
+
+    # Priority 4: DALL-E 3 (last resort for any user)
+    if get_openai_key():
+        logger.warning("⚠️ Falling back to DALL-E 3 (no Mistral Agent, no Together key)")
         return await _stage2_dalle3(visual_prompt)
-    else:
-        raise RuntimeError("No image generation backend available (need OPENAI_API_KEY or TOGETHER_API_KEY)")
+
+    raise RuntimeError(
+        "No image generation backend available. "
+        "Configure MISTRAL_IMAGE_AGENT_ID, OPENAI_API_KEY, or TOGETHER_API_KEY."
+    )
 
 
 # ─── Post-processing ─────────────────────────────────────────────────────────
