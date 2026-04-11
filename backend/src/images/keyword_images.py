@@ -57,10 +57,14 @@ PROCESSUS OBLIGATOIRE — Raisonne étape par étape :
    - JAMAIS de personne faisant l'action
    - TOUJOURS un objet/scène silencieux, photographiable, 1-2 éléments max
 
-4. DESCRIPTION VISUELLE (en anglais pour le générateur d'images)
+4. DESCRIPTION VISUELLE — OBLIGATOIREMENT EN ANGLAIS (le générateur d'images ne comprend que l'anglais)
+   - Décris la scène en anglais simple et précis
+   - Ex: "A single magnifying glass resting on a dark wooden table..."
+
+CRITICAL: The "visual_prompt" field MUST be written in English. Non-English prompts will fail.
 
 Réponds UNIQUEMENT avec ce JSON strict, sans markdown ni commentaires :
-{"mechanism":"...","lateral_connections":["..."],"chosen_wink":"...","visual_prompt":"..."}"""
+{"mechanism":"...","lateral_connections":["..."],"chosen_wink":"...","visual_prompt":"... (ENGLISH ONLY)"}"""
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
