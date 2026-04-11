@@ -52,6 +52,18 @@ class VoicePreferences:
     language: str = "fr"
     gender: str = "female"
 
+    # ── Interaction mode (Phase 1 — PTT) ─────────────────────────────────
+    input_mode: str = "ptt"               # "ptt" (push-to-talk) or "vad" (voice activity detection)
+    interruptions_enabled: bool = True     # Allow user to interrupt agent
+    turn_eagerness: float = 0.5           # 0.0 (patient) → 1.0 (eager) — VAD mode only
+
+    # ── Voice chat speed (Phase 2) ───────────────────────────────────────
+    voice_chat_speed_preset: str = "1x"   # References VOICE_CHAT_SPEED_PRESETS[].id
+
+    # ── Advanced conversation params (Phase 4) ───────────────────────────
+    turn_timeout: int = 15                # Seconds of silence before agent timeout (5–60)
+    soft_timeout_seconds: int = 300       # Soft session timeout warning in seconds (60–600)
+
     def to_json(self) -> str:
         return json.dumps(asdict(self), ensure_ascii=False)
 
@@ -94,6 +106,49 @@ SPEED_PRESETS = [
     {"id": "ultra", "label_fr": "Ultra", "label_en": "Ultra", "value": 3.0, "icon": "💨"},
     {"id": "max", "label_fr": "Maximum", "label_en": "Maximum", "value": 4.0, "icon": "⚡⚡"},
 ]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Voice Chat Speed Presets — Hybrid API speed + client playback rate (Phase 2)
+# ElevenLabs ConvAI native speed: 0.7–1.2x only.
+# Effective speed = api_speed * playback_rate
+# ═══════════════════════════════════════════════════════════════════════════════
+
+VOICE_CHAT_SPEED_PRESETS = [
+    {"id": "1x",   "label_fr": "Normal",       "label_en": "Normal",       "api_speed": 1.0, "playback_rate": 1.0,  "concise": False},
+    {"id": "1.5x", "label_fr": "Rapide",       "label_en": "Fast",         "api_speed": 1.2, "playback_rate": 1.25, "concise": False},
+    {"id": "2x",   "label_fr": "Très rapide",  "label_en": "Very Fast",    "api_speed": 1.2, "playback_rate": 1.67, "concise": False},
+    {"id": "3x",   "label_fr": "Turbo",        "label_en": "Turbo",        "api_speed": 1.2, "playback_rate": 2.5,  "concise": True},
+    {"id": "4x",   "label_fr": "Maximum",      "label_en": "Maximum",      "api_speed": 1.2, "playback_rate": 3.33, "concise": True},
+]
+
+VALID_VOICE_CHAT_SPEED_IDS = {p["id"] for p in VOICE_CHAT_SPEED_PRESETS}
+
+
+def get_voice_chat_speed_preset(preset_id: str) -> dict | None:
+    """Resolve a voice chat speed preset by ID."""
+    return next((p for p in VOICE_CHAT_SPEED_PRESETS if p["id"] == preset_id), None)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Conciseness Prompts — Injected when speed preset has concise=True (Phase 2)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+CONCISENESS_INJECTION_FR = (
+    "\n\n# MODE RAPIDE ACTIVÉ\n"
+    "L'utilisateur écoute en vitesse accélérée. "
+    "Sois ULTRA concis : 1-2 phrases max par réponse. "
+    "Va droit au fait. Pas d'intro ni de transition. "
+    "Utilise des listes plutôt que des paragraphes."
+)
+
+CONCISENESS_INJECTION_EN = (
+    "\n\n# FAST MODE ENABLED\n"
+    "The user is listening at accelerated speed. "
+    "Be ULTRA concise: 1-2 sentences max per response. "
+    "Get straight to the point. No intros or transitions. "
+    "Use lists rather than paragraphs."
+)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

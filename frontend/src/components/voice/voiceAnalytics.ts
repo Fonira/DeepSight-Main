@@ -23,6 +23,7 @@ export const VoiceAnalyticsEvents = {
   ADDON_PURCHASED: 'voice_chat_addon_purchased',
   UPGRADE_CLICKED: 'voice_chat_upgrade_clicked',
   ERROR: 'voice_chat_error',
+  SPEED_CHANGED: 'voice_chat_speed_changed',
 } as const;
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -91,6 +92,15 @@ export const VoiceAnalytics = {
       error_type: data.errorType,
       plan: data.plan,
       platform: data.platform,
+    });
+  },
+
+  /** Changement de preset de vitesse du chat vocal */
+  trackSpeedChanged(data: { presetId: string; playbackRate: number; concise: boolean }) {
+    analytics.capture(VoiceAnalyticsEvents.SPEED_CHANGED, {
+      preset_id: data.presetId,
+      playback_rate: data.playbackRate,
+      concise: data.concise,
     });
   },
 };

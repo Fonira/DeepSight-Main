@@ -55,7 +55,9 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
 }) => {
   const { user } = useAuth();
   const plan = normalizePlanId(user?.plan);
-  const voiceEnabled = PLAN_LIMITS[plan].voiceChatEnabled;
+  const ADMIN_EMAIL = "maximeleparc3@gmail.com";
+  const isAdmin = user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const voiceEnabled = isAdmin || PLAN_LIMITS[plan].voiceChatEnabled;
 
   // Determine visual state
   const state: VoiceState = disabled

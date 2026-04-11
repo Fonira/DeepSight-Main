@@ -30,6 +30,8 @@ class VoiceSessionResponse(BaseModel):
     expires_at: datetime
     quota_remaining_minutes: float
     max_session_minutes: int
+    input_mode: str = "ptt"           # PTT or VAD mode used for this session
+    playback_rate: float = 1.0        # Client-side playback rate multiplier
 
 
 class VoiceQuotaResponse(BaseModel):
@@ -114,6 +116,33 @@ class VoicePreferencesRequest(BaseModel):
     language: Optional[str] = Field(default=None, description="Preferred language (fr, en)")
     gender: Optional[str] = Field(default=None, description="Preferred voice gender (male, female, neutral)")
 
+    # ── Phase 1: PTT / Interaction ────────────────────────────────────────
+    input_mode: Optional[str] = Field(default=None, description="Input mode: ptt or vad")
+    interruptions_enabled: Optional[bool] = Field(default=None, description="Allow user to interrupt agent")
+    turn_eagerness: Optional[float] = Field(default=None, ge=0.0, le=1.0, description="Turn eagerness 0.0 (patient) to 1.0 (eager) — VAD only")
+
+    # ── Phase 2: Voice chat speed ─────────────────────────────────────────
+    voice_chat_speed_preset: Optional[str] = Field(default=None, description="Voice chat speed preset ID (1x, 1.5x, 2x, 3x, 4x)")
+
+    # ── Phase 4: Advanced params ──────────────────────────────────────────
+    turn_timeout: Optional[int] = Field(default=None, ge=5, le=60, description="Silence timeout in seconds (5-60)")
+    soft_timeout_seconds: Optional[int] = Field(default=None, ge=60, le=600, description="Soft session timeout warning in seconds (60-600)")
+
+    @field_validator("input_mode")
+    @classmethod
+    def validate_input_mode(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in {"ptt", "vad"}:
+            raise ValueError(f"Invalid input_mode: {v}. Valid: ptt, vad")
+        return v
+
+    @field_validator("voice_chat_speed_preset")
+    @classmethod
+    def validate_voice_chat_speed_preset(cls, v: Optional[str]) -> Optional[str]:
+        from voice.preferences import VALID_VOICE_CHAT_SPEED_IDS
+        if v is not None and v not in VALID_VOICE_CHAT_SPEED_IDS:
+            raise ValueError(f"Invalid voice_chat_speed_preset: {v}. Valid: {', '.join(sorted(VALID_VOICE_CHAT_SPEED_IDS))}")
+        return v
+
     @field_validator("tts_model")
     @classmethod
     def validate_tts_model(cls, v: Optional[str]) -> Optional[str]:
@@ -158,6 +187,15 @@ class VoicePreferencesResponse(BaseModel):
     voice_chat_model: str = "eleven_turbo_v2_5"
     language: str = "fr"
     gender: str = "female"
+    # Phase 1
+    input_mode: str = "ptt"
+    interruptions_enabled: bool = True
+    turn_eagerness: float = 0.5
+    # Phase 2
+    voice_chat_speed_preset: str = "1x"
+    # Phase 4
+    turn_timeout: int = 15
+    soft_timeout_seconds: int = 300
 
 
 class VoiceCatalogEntry(BaseModel):
@@ -178,4 +216,5 @@ class VoiceCatalogResponse(BaseModel):
     """Catalogue complet des voix disponibles."""
     voices: List[VoiceCatalogEntry]
     speed_presets: List[dict]
+    voice_chat_speed_presets: List[dict]
     models: List[dict]

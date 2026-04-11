@@ -51,12 +51,14 @@ class ElevenLabsClient:
         language: str = "fr",
         model_id: str = "eleven_flash_v2_5",
         voice_settings: Optional[dict] = None,
+        turn_config: Optional[dict] = None,
     ) -> str:
         """Create a conversational AI agent and return its agent_id.
 
         Args:
             model_id: ElevenLabs TTS model (eleven_flash_v2_5, eleven_turbo_v2_5, eleven_multilingual_v2).
             voice_settings: ElevenLabs voice_settings dict (stability, similarity_boost, style, speed, etc.).
+            turn_config: ElevenLabs turn configuration (mode, turn_timeout, interruptions, eagerness).
 
         Raises:
             ValueError: on 401 (invalid API key).
@@ -80,6 +82,10 @@ class ElevenLabsClient:
             },
             "tools": tools,
         }
+
+        # Add turn/interruption configuration if provided
+        if turn_config:
+            body["conversation_config"]["turn"] = turn_config
 
         logger.info(
             "elevenlabs.create_agent",
@@ -336,6 +342,87 @@ class ElevenLabsClient:
                         },
                     },
                     "required": ["summary_id"],
+                },
+            },
+            {
+                "type": "webhook",
+                "name": "web_search",
+                "description": (
+                    "Search the web for current information about a topic. "
+                    "Use when the user asks about recent events, news, or facts not in the video."
+                ),
+                "api_schema": {
+                    "url": f"{webhook_base_url}/api/voice/tools/web-search",
+                    "method": "POST",
+                    "headers": auth_header,
+                },
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The web search query",
+                        },
+                        "summary_id": {
+                            "type": "string",
+                            "description": "The analysis / summary ID",
+                        },
+                    },
+                    "required": ["query", "summary_id"],
+                },
+            },
+            {
+                "type": "webhook",
+                "name": "deep_research",
+                "description": (
+                    "Perform in-depth web research combining multiple search queries. "
+                    "Use for complex questions requiring comprehensive analysis."
+                ),
+                "api_schema": {
+                    "url": f"{webhook_base_url}/api/voice/tools/deep-research",
+                    "method": "POST",
+                    "headers": auth_header,
+                },
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The research query or topic",
+                        },
+                        "summary_id": {
+                            "type": "string",
+                            "description": "The analysis / summary ID",
+                        },
+                    },
+                    "required": ["query", "summary_id"],
+                },
+            },
+            {
+                "type": "webhook",
+                "name": "check_fact",
+                "description": (
+                    "Verify a factual claim by searching the web for "
+                    "supporting or contradicting evidence."
+                ),
+                "api_schema": {
+                    "url": f"{webhook_base_url}/api/voice/tools/check-fact",
+                    "method": "POST",
+                    "headers": auth_header,
+                },
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "claim": {
+                            "type": "string",
+                            "description": "The factual claim to verify",
+                        },
+                        "summary_id": {
+                            "type": "string",
+                            "description": "The analysis / summary ID",
+                        },
+                    },
+                    "required": ["claim", "summary_id"],
                 },
             },
         ]

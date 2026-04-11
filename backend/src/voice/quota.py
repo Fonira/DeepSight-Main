@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from db.database import VoiceQuota, User
+from core.config import ADMIN_CONFIG
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +86,9 @@ async def check_voice_quota(
     user = result.scalars().first()
 
     # Admin bypass — voice illimité
-    if user and user.is_admin:
+    admin_email = ADMIN_CONFIG.get("ADMIN_EMAIL", "").lower()
+    is_admin = (user and user.is_admin) or (user and (user.email or "").lower() == admin_email)
+    if is_admin:
         return {
             "can_use": True,
             "seconds_remaining": 999999,

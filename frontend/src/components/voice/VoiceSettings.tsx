@@ -6,6 +6,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { voiceApi } from '../../services/api';
 import { DeepSightSpinner, DeepSightSpinnerMicro } from '../ui/DeepSightSpinner';
+import { MessageSquare, Zap, AudioLines, Gauge, Cpu, SlidersHorizontal } from 'lucide-react';
+import { CollapsibleSection } from './CollapsibleSection';
+import { InteractionModeSection } from './InteractionModeSection';
+import { VoiceChatSpeedSection } from './VoiceChatSpeedSection';
 import type {
   VoicePreferences,
   VoiceCatalogEntry,
@@ -35,10 +39,21 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({ onClose, compact = false 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    interaction: true,
+    chatSpeed: true,
+    voiceSelection: false,
+    readingSpeed: false,
+    models: false,
+    advanced: false,
+  });
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const [genderFilter, setGenderFilter] = useState<string>('all');
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const toggleSection = useCallback((key: string) => {
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   // ── Load data ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -165,73 +180,48 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({ onClose, compact = false 
       )}
 
       {/* ══════════════════════════════════════════════════════════════
-          ⚡ SECTION 1: VITESSE (mise en avant)
+          Section 1 : Mode d'interaction (PTT / VAD)
           ══════════════════════════════════════════════════════════════ */}
-      <section className="bg-gradient-to-br from-indigo-500/10 to-violet-500/10 border border-indigo-500/20 rounded-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-2xl">⚡</span>
-          <h3 className="text-xl font-bold text-white">Vitesse de lecture</h3>
-          <span className="ml-auto text-3xl font-bold text-indigo-400">
-            {preferences.speed}x
-          </span>
-        </div>
-        <p className="text-white/50 text-sm mb-5">
-          Ajustez la vitesse de parole — du très lent (0.25x) au maximum (4.0x)
-        </p>
-
-        {/* Speed presets grid */}
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-4">
-          {catalog.speed_presets.map((preset: VoiceSpeedPreset) => (
-            <button
-              key={preset.id}
-              onClick={() => savePreferences({ speed: preset.value })}
-              disabled={saving}
-              className={`
-                flex flex-col items-center gap-1 p-3 rounded-xl transition-all duration-200
-                ${preferences.speed === preset.value
-                  ? 'bg-indigo-500/30 border-2 border-indigo-400 text-indigo-300 scale-105 shadow-lg shadow-indigo-500/20'
-                  : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:border-white/20'
-                }
-              `}
-            >
-              <span className="text-xl">{preset.icon}</span>
-              <span className="text-xs font-medium">{preset.value}x</span>
-              <span className="text-[10px] text-white/40">{preset.label_fr}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Custom speed slider */}
-        <div className="mt-4">
-          <div className="flex items-center gap-4">
-            <span className="text-white/40 text-xs w-12">0.25x</span>
-            <input
-              type="range"
-              min="0.25"
-              max="4.0"
-              step="0.05"
-              value={preferences.speed}
-              onChange={(e) => setPreferences({ ...preferences, speed: parseFloat(e.target.value) })}
-              onMouseUp={() => savePreferences({ speed: preferences.speed })}
-              onTouchEnd={() => savePreferences({ speed: preferences.speed })}
-              className="flex-1 accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
-                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
-                [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg"
-            />
-            <span className="text-white/40 text-xs w-12 text-right">4.0x</span>
-          </div>
-        </div>
-      </section>
+      <CollapsibleSection
+        icon={MessageSquare}
+        title="Mode d'interaction"
+        isOpen={openSections.interaction}
+        onToggle={() => toggleSection('interaction')}
+      >
+        <InteractionModeSection
+          preferences={preferences}
+          saving={saving}
+          onSave={savePreferences}
+          onLocalUpdate={(updates) => setPreferences({ ...preferences, ...updates })}
+        />
+      </CollapsibleSection>
 
       {/* ══════════════════════════════════════════════════════════════
-          🎤 SECTION 2: SELECTION DE VOIX
+          Section 2 : Vitesse du chat vocal
           ══════════════════════════════════════════════════════════════ */}
-      <section className="bg-white/5 border border-white/10 rounded-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <span className="text-2xl">🎤</span>
-          <h3 className="text-xl font-bold text-white">Voix</h3>
-        </div>
+      <CollapsibleSection
+        icon={Zap}
+        title="Vitesse du chat vocal"
+        isOpen={openSections.chatSpeed}
+        onToggle={() => toggleSection('chatSpeed')}
+      >
+        <VoiceChatSpeedSection
+          preferences={preferences}
+          presets={catalog.voice_chat_speed_presets}
+          saving={saving}
+          onSave={savePreferences}
+        />
+      </CollapsibleSection>
 
+      {/* ══════════════════════════════════════════════════════════════
+          Section 3 : Sélection de voix
+          ══════════════════════════════════════════════════════════════ */}
+      <CollapsibleSection
+        icon={AudioLines}
+        title="Sélection de voix"
+        isOpen={openSections.voiceSelection}
+        onToggle={() => toggleSection('voiceSelection')}
+      >
         {/* Gender filter */}
         <div className="flex gap-2 mb-4">
           {[
@@ -322,17 +312,80 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({ onClose, compact = false 
             );
           })}
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* ══════════════════════════════════════════════════════════════
-          🎛️ SECTION 3: MODÈLE TTS
+          Section 4 : Vitesse de lecture (résumés)
           ══════════════════════════════════════════════════════════════ */}
-      <section className="bg-white/5 border border-white/10 rounded-2xl p-6">
+      <CollapsibleSection
+        icon={Gauge}
+        title="Vitesse de lecture (résumés)"
+        isOpen={openSections.readingSpeed}
+        onToggle={() => toggleSection('readingSpeed')}
+        gradient
+      >
         <div className="flex items-center gap-3 mb-4">
-          <span className="text-2xl">🎛️</span>
-          <h3 className="text-xl font-bold text-white">Modèle de synthèse vocale</h3>
+          <span className="ml-auto text-3xl font-bold text-indigo-400">
+            {preferences.speed}x
+          </span>
+        </div>
+        <p className="text-white/50 text-sm mb-5">
+          Ajustez la vitesse de parole — du très lent (0.25x) au maximum (4.0x)
+        </p>
+
+        {/* Speed presets grid */}
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-4">
+          {catalog.speed_presets.map((preset: VoiceSpeedPreset) => (
+            <button
+              key={preset.id}
+              onClick={() => savePreferences({ speed: preset.value })}
+              disabled={saving}
+              className={`
+                flex flex-col items-center gap-1 p-3 rounded-xl transition-all duration-200
+                ${preferences.speed === preset.value
+                  ? 'bg-indigo-500/30 border-2 border-indigo-400 text-indigo-300 scale-105 shadow-lg shadow-indigo-500/20'
+                  : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:border-white/20'
+                }
+              `}
+            >
+              <span className="text-xl">{preset.icon}</span>
+              <span className="text-xs font-medium">{preset.value}x</span>
+              <span className="text-[10px] text-white/40">{preset.label_fr}</span>
+            </button>
+          ))}
         </div>
 
+        {/* Custom speed slider */}
+        <div className="mt-4">
+          <div className="flex items-center gap-4">
+            <span className="text-white/40 text-xs w-12">0.25x</span>
+            <input
+              type="range"
+              min="0.25"
+              max="4.0"
+              step="0.05"
+              value={preferences.speed}
+              onChange={(e) => setPreferences({ ...preferences, speed: parseFloat(e.target.value) })}
+              onMouseUp={() => savePreferences({ speed: preferences.speed })}
+              onTouchEnd={() => savePreferences({ speed: preferences.speed })}
+              className="flex-1 accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5
+                [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg"
+            />
+            <span className="text-white/40 text-xs w-12 text-right">4.0x</span>
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* ══════════════════════════════════════════════════════════════
+          Section 5 : Modèles
+          ══════════════════════════════════════════════════════════════ */}
+      <CollapsibleSection
+        icon={Cpu}
+        title="Modèles"
+        isOpen={openSections.models}
+        onToggle={() => toggleSection('models')}
+      >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* TTS Model */}
           <div>
@@ -400,217 +453,283 @@ const VoiceSettings: React.FC<VoiceSettingsProps> = ({ onClose, compact = false 
             </div>
           </div>
         </div>
-      </section>
+      </CollapsibleSection>
 
       {/* ══════════════════════════════════════════════════════════════
-          🔧 SECTION 4: PARAMÈTRES AVANCÉS (collapsible)
+          Section 6 : Paramètres avancés
           ══════════════════════════════════════════════════════════════ */}
-      <section className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-        <button
-          onClick={() => setShowAdvanced(!showAdvanced)}
-          className="w-full flex items-center justify-between p-6 hover:bg-white/5 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-2xl">🔧</span>
-            <h3 className="text-xl font-bold text-white">Paramètres avancés</h3>
-          </div>
-          <span className={`text-white/40 transition-transform duration-200 ${showAdvanced ? 'rotate-180' : ''}`}>
-            ▼
-          </span>
-        </button>
-
-        {showAdvanced && (
-          <div className="px-6 pb-6 space-y-6">
-            {/* Stability */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-white/70 text-sm font-medium">
-                  Stabilité
-                  <span className="ml-2 text-white/40 text-xs">
-                    (variable ← → stable)
-                  </span>
-                </label>
-                <span className="text-indigo-400 font-mono text-sm">
-                  {preferences.stability.toFixed(2)}
+      <CollapsibleSection
+        icon={SlidersHorizontal}
+        title="Paramètres avancés"
+        isOpen={openSections.advanced}
+        onToggle={() => toggleSection('advanced')}
+      >
+        <div className="space-y-6">
+          {/* Stability */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-white/70 text-sm font-medium">
+                Stabilité
+                <span className="ml-2 text-white/40 text-xs">
+                  (variable ← → stable)
                 </span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={preferences.stability}
-                onChange={(e) => setPreferences({ ...preferences, stability: parseFloat(e.target.value) })}
-                onMouseUp={() => savePreferences({ stability: preferences.stability })}
-                onTouchEnd={() => savePreferences({ stability: preferences.stability })}
-                className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
-                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
-                  [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
-              />
-              <div className="flex justify-between text-[10px] text-white/30 mt-1">
-                <span>Plus expressif</span>
-                <span>Plus constant</span>
-              </div>
+              </label>
+              <span className="text-indigo-400 font-mono text-sm">
+                {preferences.stability.toFixed(2)}
+              </span>
             </div>
-
-            {/* Similarity Boost */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-white/70 text-sm font-medium">
-                  Fidélité de la voix
-                  <span className="ml-2 text-white/40 text-xs">
-                    (diversifié ← → fidèle)
-                  </span>
-                </label>
-                <span className="text-indigo-400 font-mono text-sm">
-                  {preferences.similarity_boost.toFixed(2)}
-                </span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={preferences.similarity_boost}
-                onChange={(e) => setPreferences({ ...preferences, similarity_boost: parseFloat(e.target.value) })}
-                onMouseUp={() => savePreferences({ similarity_boost: preferences.similarity_boost })}
-                onTouchEnd={() => savePreferences({ similarity_boost: preferences.similarity_boost })}
-                className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
-                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
-                  [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
-              />
-              <div className="flex justify-between text-[10px] text-white/30 mt-1">
-                <span>Plus varié</span>
-                <span>Plus fidèle à l'original</span>
-              </div>
-            </div>
-
-            {/* Style */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-white/70 text-sm font-medium">
-                  Style
-                  <span className="ml-2 text-white/40 text-xs">
-                    (neutre ← → expressif)
-                  </span>
-                </label>
-                <span className="text-indigo-400 font-mono text-sm">
-                  {preferences.style.toFixed(2)}
-                </span>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={preferences.style}
-                onChange={(e) => setPreferences({ ...preferences, style: parseFloat(e.target.value) })}
-                onMouseUp={() => savePreferences({ style: preferences.style })}
-                onTouchEnd={() => savePreferences({ style: preferences.style })}
-                className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
-                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
-                  [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
-              />
-              <div className="flex justify-between text-[10px] text-white/30 mt-1">
-                <span>Neutre</span>
-                <span>Très expressif</span>
-              </div>
-            </div>
-
-            {/* Speaker Boost */}
-            <div className="flex items-center justify-between">
-              <div>
-                <label className="text-white/70 text-sm font-medium">Speaker Boost</label>
-                <p className="text-white/40 text-xs mt-0.5">
-                  Améliore la clarté et la qualité de la voix (consomme plus de crédits)
-                </p>
-              </div>
-              <button
-                onClick={() => savePreferences({ use_speaker_boost: !preferences.use_speaker_boost })}
-                disabled={saving}
-                className={`
-                  relative w-12 h-6 rounded-full transition-colors duration-200
-                  ${preferences.use_speaker_boost ? 'bg-indigo-500' : 'bg-white/20'}
-                `}
-              >
-                <span className={`
-                  absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200
-                  ${preferences.use_speaker_boost ? 'translate-x-6' : 'translate-x-0.5'}
-                `} />
-              </button>
-            </div>
-
-            {/* Language + Gender defaults */}
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
-              <div>
-                <label className="text-white/70 text-sm font-medium block mb-2">Langue par défaut</label>
-                <div className="flex gap-2">
-                  {[
-                    { id: 'fr', label: '🇫🇷 Français' },
-                    { id: 'en', label: '🇬🇧 English' },
-                  ].map((lang) => (
-                    <button
-                      key={lang.id}
-                      onClick={() => savePreferences({ language: lang.id })}
-                      disabled={saving}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm transition-all ${
-                        preferences.language === lang.id
-                          ? 'bg-indigo-500/20 border border-indigo-400 text-indigo-300'
-                          : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
-                      }`}
-                    >
-                      {lang.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="text-white/70 text-sm font-medium block mb-2">Genre par défaut</label>
-                <div className="flex gap-2">
-                  {[
-                    { id: 'female', label: '♀ Féminin' },
-                    { id: 'male', label: '♂ Masculin' },
-                  ].map((g) => (
-                    <button
-                      key={g.id}
-                      onClick={() => savePreferences({ gender: g.id })}
-                      disabled={saving}
-                      className={`flex-1 px-3 py-2 rounded-lg text-sm transition-all ${
-                        preferences.gender === g.id
-                          ? 'bg-indigo-500/20 border border-indigo-400 text-indigo-300'
-                          : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
-                      }`}
-                    >
-                      {g.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Reset to defaults */}
-            <div className="pt-4 border-t border-white/10">
-              <button
-                onClick={() => savePreferences({
-                  speed: 1.0,
-                  stability: 0.5,
-                  similarity_boost: 0.75,
-                  style: 0.3,
-                  use_speaker_boost: true,
-                  tts_model: 'eleven_multilingual_v2',
-                  voice_chat_model: 'eleven_flash_v2_5',
-                  language: 'fr',
-                  gender: 'female',
-                })}
-                disabled={saving}
-                className="text-white/40 text-sm hover:text-white/70 transition-colors"
-              >
-                ↺ Réinitialiser les valeurs par défaut
-              </button>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={preferences.stability}
+              onChange={(e) => setPreferences({ ...preferences, stability: parseFloat(e.target.value) })}
+              onMouseUp={() => savePreferences({ stability: preferences.stability })}
+              onTouchEnd={() => savePreferences({ stability: preferences.stability })}
+              className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+                [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
+            />
+            <div className="flex justify-between text-[10px] text-white/30 mt-1">
+              <span>Plus expressif</span>
+              <span>Plus constant</span>
             </div>
           </div>
-        )}
-      </section>
+
+          {/* Similarity Boost */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-white/70 text-sm font-medium">
+                Fidélité de la voix
+                <span className="ml-2 text-white/40 text-xs">
+                  (diversifié ← → fidèle)
+                </span>
+              </label>
+              <span className="text-indigo-400 font-mono text-sm">
+                {preferences.similarity_boost.toFixed(2)}
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={preferences.similarity_boost}
+              onChange={(e) => setPreferences({ ...preferences, similarity_boost: parseFloat(e.target.value) })}
+              onMouseUp={() => savePreferences({ similarity_boost: preferences.similarity_boost })}
+              onTouchEnd={() => savePreferences({ similarity_boost: preferences.similarity_boost })}
+              className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+                [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
+            />
+            <div className="flex justify-between text-[10px] text-white/30 mt-1">
+              <span>Plus varié</span>
+              <span>Plus fidèle à l'original</span>
+            </div>
+          </div>
+
+          {/* Style */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-white/70 text-sm font-medium">
+                Style
+                <span className="ml-2 text-white/40 text-xs">
+                  (neutre ← → expressif)
+                </span>
+              </label>
+              <span className="text-indigo-400 font-mono text-sm">
+                {preferences.style.toFixed(2)}
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={preferences.style}
+              onChange={(e) => setPreferences({ ...preferences, style: parseFloat(e.target.value) })}
+              onMouseUp={() => savePreferences({ style: preferences.style })}
+              onTouchEnd={() => savePreferences({ style: preferences.style })}
+              className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+                [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
+            />
+            <div className="flex justify-between text-[10px] text-white/30 mt-1">
+              <span>Neutre</span>
+              <span>Très expressif</span>
+            </div>
+          </div>
+
+          {/* Speaker Boost */}
+          <div className="flex items-center justify-between">
+            <div>
+              <label className="text-white/70 text-sm font-medium">Speaker Boost</label>
+              <p className="text-white/40 text-xs mt-0.5">
+                Améliore la clarté et la qualité de la voix (consomme plus de crédits)
+              </p>
+            </div>
+            <button
+              onClick={() => savePreferences({ use_speaker_boost: !preferences.use_speaker_boost })}
+              disabled={saving}
+              className={`
+                relative w-12 h-6 rounded-full transition-colors duration-200
+                ${preferences.use_speaker_boost ? 'bg-indigo-500' : 'bg-white/20'}
+              `}
+            >
+              <span className={`
+                absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200
+                ${preferences.use_speaker_boost ? 'translate-x-6' : 'translate-x-0.5'}
+              `} />
+            </button>
+          </div>
+
+          {/* Turn timeout */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-white/70 text-sm font-medium">
+                Délai de relance
+                <span className="ml-2 text-white/40 text-xs">
+                  (silence avant relance)
+                </span>
+              </label>
+              <span className="text-indigo-400 font-mono text-sm">
+                {preferences.turn_timeout}s
+              </span>
+            </div>
+            <input
+              type="range"
+              min="5"
+              max="60"
+              step="1"
+              value={preferences.turn_timeout}
+              onChange={(e) => setPreferences({ ...preferences, turn_timeout: parseInt(e.target.value) })}
+              onMouseUp={() => savePreferences({ turn_timeout: preferences.turn_timeout })}
+              onTouchEnd={() => savePreferences({ turn_timeout: preferences.turn_timeout })}
+              className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+                [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
+            />
+            <div className="flex justify-between text-[10px] text-white/30 mt-1">
+              <span>5s</span>
+              <span>60s</span>
+            </div>
+            <p className="text-white/40 text-xs mt-1">
+              Durée de silence avant que l'agent relance la conversation
+            </p>
+          </div>
+
+          {/* Soft timeout (session) */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-white/70 text-sm font-medium">
+                Alerte de session
+                <span className="ml-2 text-white/40 text-xs">
+                  (avant déconnexion)
+                </span>
+              </label>
+              <span className="text-indigo-400 font-mono text-sm">
+                {Math.round(preferences.soft_timeout_seconds / 60)} min
+              </span>
+            </div>
+            <input
+              type="range"
+              min="60"
+              max="600"
+              step="30"
+              value={preferences.soft_timeout_seconds}
+              onChange={(e) => setPreferences({ ...preferences, soft_timeout_seconds: parseInt(e.target.value) })}
+              onMouseUp={() => savePreferences({ soft_timeout_seconds: preferences.soft_timeout_seconds })}
+              onTouchEnd={() => savePreferences({ soft_timeout_seconds: preferences.soft_timeout_seconds })}
+              className="w-full accent-indigo-500 h-2 bg-white/10 rounded-full appearance-none cursor-pointer
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+                [&::-webkit-slider-thumb]:bg-indigo-500 [&::-webkit-slider-thumb]:rounded-full"
+            />
+            <div className="flex justify-between text-[10px] text-white/30 mt-1">
+              <span>1 min</span>
+              <span>10 min</span>
+            </div>
+            <p className="text-white/40 text-xs mt-1">
+              Alerte avant la fin automatique de session
+            </p>
+          </div>
+
+          {/* Language + Gender defaults */}
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/10">
+            <div>
+              <label className="text-white/70 text-sm font-medium block mb-2">Langue par défaut</label>
+              <div className="flex gap-2">
+                {[
+                  { id: 'fr', label: '🇫🇷 Français' },
+                  { id: 'en', label: '🇬🇧 English' },
+                ].map((lang) => (
+                  <button
+                    key={lang.id}
+                    onClick={() => savePreferences({ language: lang.id })}
+                    disabled={saving}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm transition-all ${
+                      preferences.language === lang.id
+                        ? 'bg-indigo-500/20 border border-indigo-400 text-indigo-300'
+                        : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
+                    }`}
+                  >
+                    {lang.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-white/70 text-sm font-medium block mb-2">Genre par défaut</label>
+              <div className="flex gap-2">
+                {[
+                  { id: 'female', label: '♀ Féminin' },
+                  { id: 'male', label: '♂ Masculin' },
+                ].map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => savePreferences({ gender: g.id })}
+                    disabled={saving}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm transition-all ${
+                      preferences.gender === g.id
+                        ? 'bg-indigo-500/20 border border-indigo-400 text-indigo-300'
+                        : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
+                    }`}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Reset to defaults */}
+          <div className="pt-4 border-t border-white/10">
+            <button
+              onClick={() => savePreferences({
+                speed: 1.0,
+                stability: 0.5,
+                similarity_boost: 0.75,
+                style: 0.3,
+                use_speaker_boost: true,
+                tts_model: 'eleven_multilingual_v2',
+                voice_chat_model: 'eleven_flash_v2_5',
+                language: 'fr',
+                gender: 'female',
+                input_mode: 'ptt',
+                interruptions_enabled: true,
+                turn_eagerness: 0.5,
+                voice_chat_speed_preset: '1x',
+                turn_timeout: 15,
+                soft_timeout_seconds: 300,
+              })}
+              disabled={saving}
+              className="text-white/40 text-sm hover:text-white/70 transition-colors"
+            >
+              ↺ Réinitialiser les valeurs par défaut
+            </button>
+          </div>
+        </div>
+      </CollapsibleSection>
 
       {/* Saving indicator */}
       {saving && (

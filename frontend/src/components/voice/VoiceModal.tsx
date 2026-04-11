@@ -18,7 +18,9 @@ import {
   Settings2,
 } from 'lucide-react';
 import { DeepSightSpinner } from '../ui/DeepSightSpinner';
+import { VoiceToolIndicator } from './VoiceToolIndicator';
 import { useTranslation } from '../../hooks/useTranslation';
+import { VoicePTTButton } from './VoicePTTButton';
 
 interface VoiceModalProps {
   isOpen: boolean;
@@ -40,8 +42,17 @@ interface VoiceModalProps {
   onStop: () => void | Promise<void>;
   onMuteToggle: () => void;
   isMuted: boolean;
+  /** PTT props */
+  inputMode?: 'ptt' | 'vad';
+  isTalking?: boolean;
+  onStartTalking?: () => void;
+  onStopTalking?: () => void;
+  /** Tool en cours d'exécution */
+  activeTool?: string | null;
   /** Erreur eventuelle */
   error?: string;
+  /** Playback rate actif (badge vitesse) */
+  playbackRate?: number;
 }
 
 /** Format seconds to MM:SS */
@@ -117,7 +128,13 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   onStop,
   onMuteToggle,
   isMuted,
+  inputMode = 'ptt',
+  isTalking = false,
+  onStartTalking,
+  onStopTalking,
+  activeTool,
   error,
+  playbackRate,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const transcriptRef = useRef<HTMLDivElement>(null);
@@ -227,10 +244,25 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
       case 'listening':
         return (
           <div className="flex flex-col items-center gap-4">
-            <PulsingMic />
-            <p className="text-green-400 text-sm font-medium">
-              {tr("A l'ecoute...", 'Listening...')}
-            </p>
+            {inputMode === 'ptt' && !isTalking ? (
+              <>
+                <div className="w-10 h-10 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center">
+                  <Mic className="w-5 h-5 text-green-400" />
+                </div>
+                <p className="text-green-400/70 text-sm">
+                  {tr('Maintenez le bouton pour parler', 'Hold the button to talk')}
+                </p>
+              </>
+            ) : (
+              <>
+                <PulsingMic />
+                <p className="text-green-400 text-sm font-medium">
+                  {isTalking
+                    ? tr('Parlez maintenant...', 'Speak now...')
+                    : tr("A l'ecoute...", 'Listening...')}
+                </p>
+              </>
+            )}
           </div>
         );
 
@@ -356,6 +388,11 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 )}
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
+                {playbackRate && playbackRate > 1.0 && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-mono">
+                    {playbackRate}x
+                  </span>
+                )}
                 <a
                   href="/settings"
                   className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/30 hover:text-white/70 hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
@@ -375,6 +412,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
 
             {/* Center — status zone */}
             <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 min-h-[200px]">
+              <VoiceToolIndicator toolName={activeTool} isActive={!!activeTool} />
               {renderCenterContent()}
             </div>
 
@@ -414,37 +452,71 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
               >
-                {/* Mute toggle */}
-                <button
-                  onClick={onMuteToggle}
-                  className={`w-11 h-11 rounded-full flex items-center justify-center transition-all focus-visible:ring-2 focus-visible:ring-indigo-400 ${
-                    isMuted
-                      ? 'bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25'
-                      : 'bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10'
-                  }`}
-                  aria-label={isMuted ? tr('Reactiver le micro', 'Unmute microphone') : tr('Couper le micro', 'Mute microphone')}
-                >
-                  {isMuted ? <MicOff className="w-4.5 h-4.5" /> : <Mic className="w-4.5 h-4.5" />}
-                </button>
+                {inputMode === 'ptt' && onStartTalking && onStopTalking ? (
+                  <>
+                    {/* Timer (left) */}
+                    <div className="flex flex-col items-center min-w-[60px]">
+                      <span className="text-white font-mono text-lg font-medium tabular-nums">
+                        {formatTime(elapsedSeconds)}
+                      </span>
+                      <span className="text-white/30 text-[10px] font-mono tabular-nums">
+                        / {remainingFormatted} {tr('restantes', 'remaining')}
+                      </span>
+                    </div>
 
-                {/* Timer */}
-                <div className="flex flex-col items-center">
-                  <span className="text-white font-mono text-lg font-medium tabular-nums">
-                    {formatTime(elapsedSeconds)}
-                  </span>
-                  <span className="text-white/30 text-[10px] font-mono tabular-nums">
-                    / {remainingFormatted} {tr('restantes', 'remaining')}
-                  </span>
-                </div>
+                    {/* PTT Button (center) */}
+                    <VoicePTTButton
+                      onStartTalking={onStartTalking}
+                      onStopTalking={onStopTalking}
+                      isTalking={isTalking}
+                      disabled={voiceStatus === 'thinking'}
+                    />
 
-                {/* End call */}
-                <button
-                  onClick={safeStop}
-                  className="w-11 h-11 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-red-400"
-                  aria-label={tr('Terminer la conversation', 'End conversation')}
-                >
-                  <PhoneOff className="w-4.5 h-4.5" />
-                </button>
+                    {/* End call (right) */}
+                    <button
+                      onClick={safeStop}
+                      className="w-11 h-11 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-red-400"
+                      aria-label={tr('Terminer la conversation', 'End conversation')}
+                    >
+                      <PhoneOff className="w-4.5 h-4.5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* VAD mode: original layout */}
+                    {/* Mute toggle */}
+                    <button
+                      onClick={onMuteToggle}
+                      className={`w-11 h-11 rounded-full flex items-center justify-center transition-all focus-visible:ring-2 focus-visible:ring-indigo-400 ${
+                        isMuted
+                          ? 'bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25'
+                          : 'bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10'
+                      }`}
+                      aria-label={isMuted ? tr('Reactiver le micro', 'Unmute microphone') : tr('Couper le micro', 'Mute microphone')}
+                    >
+                      {isMuted ? <MicOff className="w-4.5 h-4.5" /> : <Mic className="w-4.5 h-4.5" />}
+                    </button>
+
+                    {/* Timer */}
+                    <div className="flex flex-col items-center">
+                      <span className="text-white font-mono text-lg font-medium tabular-nums">
+                        {formatTime(elapsedSeconds)}
+                      </span>
+                      <span className="text-white/30 text-[10px] font-mono tabular-nums">
+                        / {remainingFormatted} {tr('restantes', 'remaining')}
+                      </span>
+                    </div>
+
+                    {/* End call */}
+                    <button
+                      onClick={safeStop}
+                      className="w-11 h-11 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-red-400"
+                      aria-label={tr('Terminer la conversation', 'End conversation')}
+                    >
+                      <PhoneOff className="w-4.5 h-4.5" />
+                    </button>
+                  </>
+                )}
               </motion.div>
             )}
           </motion.div>

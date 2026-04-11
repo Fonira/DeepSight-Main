@@ -51,11 +51,15 @@ from voice.quota import (
 )
 from voice.elevenlabs import ElevenLabsClient, get_elevenlabs_client
 from voice.tools import search_in_transcript, get_analysis_section, get_sources, get_flashcards
+from voice.web_tools import web_search, deep_research, check_fact
 from voice.agent_types import get_agent_config, list_agent_types, AGENT_REGISTRY
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+# Rate limiting: max 5 web searches per summary_id (in-memory, resets on restart)
+_web_search_counts: dict[str, int] = {}
 
 
 class AddonCheckoutRequest(BaseModel):
@@ -168,7 +172,7 @@ async def update_voice_preferences(
 @router.get("/catalog", response_model=VoiceCatalogResponse)
 async def get_voice_catalog():
     """Return the full ElevenLabs voice catalog, speed presets, and available models."""
-    from voice.preferences import VOICE_CATALOG, SPEED_PRESETS
+    from voice.preferences import VOICE_CATALOG, SPEED_PRESETS, VOICE_CHAT_SPEED_PRESETS
 
     voices = [VoiceCatalogEntry(**v) for v in VOICE_CATALOG]
 
@@ -202,6 +206,7 @@ async def get_voice_catalog():
     return VoiceCatalogResponse(
         voices=voices,
         speed_presets=SPEED_PRESETS,
+        voice_chat_speed_presets=VOICE_CHAT_SPEED_PRESETS,
         models=models,
     )
 
@@ -223,41 +228,48 @@ async def create_voice_session(
     """
     plan = current_user.plan or "free"
 
+    # ── Admin bypass — skip all plan/quota checks ────────────────────────
+    from core.config import ADMIN_CONFIG
+    admin_email = ADMIN_CONFIG.get("ADMIN_EMAIL", "").lower()
+    is_admin = current_user.is_admin or (current_user.email or "").lower() == admin_email
+
     # ── Resolve agent configuration ──────────────────────────────────────
     agent_config = get_agent_config(request.agent_type)
 
     # Check plan minimum for this agent type
-    plan_order = {
-        "free": 0,
-        "etudiant": 1, "starter": 1, "student": 1,  # Legacy aliases → pro
-        "pro": 1,
-        "equipe": 1, "team": 1, "unlimited": 1,     # Legacy aliases → pro
-        "expert": 1,  # Maps to pro
-    }
-    user_plan_level = plan_order.get(plan, 0)
-    required_level = plan_order.get(agent_config.plan_minimum, 0)
-    if user_plan_level < required_level:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "agent_plan_required",
-                "message": f"L'agent '{agent_config.display_name_fr}' nécessite le plan {agent_config.plan_minimum}+.",
-                "action": "upgrade",
-                "required_plan": agent_config.plan_minimum,
-            },
-        )
+    if not is_admin:
+        plan_order = {
+            "free": 0,
+            "etudiant": 1, "starter": 1, "student": 1,  # Legacy aliases → pro
+            "pro": 1,
+            "equipe": 1, "team": 1, "unlimited": 1,     # Legacy aliases → pro
+            "expert": 1,  # Maps to pro
+        }
+        user_plan_level = plan_order.get(plan, 0)
+        required_level = plan_order.get(agent_config.plan_minimum, 0)
+        if user_plan_level < required_level:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "agent_plan_required",
+                    "message": f"L'agent '{agent_config.display_name_fr}' nécessite le plan {agent_config.plan_minimum}+.",
+                    "action": "upgrade",
+                    "required_plan": agent_config.plan_minimum,
+                },
+            )
 
     # Check plan has voice enabled
     plan_limits = VOICE_LIMITS.get(plan, VOICE_LIMITS.get("free", {}))
-    if not plan_limits.get("enabled", False):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "voice_not_available",
-                "message": "Voice chat is not available on your current plan.",
-                "action": "upgrade",
-            },
-        )
+    if not is_admin:
+        if not plan_limits.get("enabled", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={
+                    "code": "voice_not_available",
+                    "message": "Voice chat is not available on your current plan.",
+                    "action": "upgrade",
+                },
+            )
 
     # ── Verify summary ownership (skip for onboarding which has no summary) ──
     summary = None
@@ -412,6 +424,32 @@ async def create_voice_session(
         voice_settings = user_prefs.to_voice_settings()
         voice_chat_model = user_prefs.voice_chat_model or "eleven_turbo_v2_5"
 
+        # ── Build turn configuration from user preferences (Phase 1: PTT) ──
+        from voice.preferences import get_voice_chat_speed_preset, CONCISENESS_INJECTION_FR, CONCISENESS_INJECTION_EN
+        if user_prefs.input_mode == "ptt":
+            turn_config = {
+                "mode": "turn_based",
+                "turn_timeout": user_prefs.turn_timeout,
+                "interruptions": {"enabled": user_prefs.interruptions_enabled},
+            }
+        else:
+            turn_config = {
+                "mode": "auto",
+                "eagerness": user_prefs.turn_eagerness,
+                "turn_timeout": user_prefs.turn_timeout,
+                "interruptions": {"enabled": user_prefs.interruptions_enabled},
+            }
+
+        # ── Speed preset: override api_speed + inject conciseness prompt (Phase 2) ──
+        speed_preset = get_voice_chat_speed_preset(user_prefs.voice_chat_speed_preset)
+        playback_rate = 1.0
+        if speed_preset:
+            voice_settings["speed"] = speed_preset["api_speed"]
+            playback_rate = speed_preset["playback_rate"]
+            if speed_preset["concise"]:
+                concise_block = CONCISENESS_INJECTION_FR if language == "fr" else CONCISENESS_INJECTION_EN
+                system_prompt += concise_block
+
         async with get_elevenlabs_client() as client:
             # Create the agent with user's preferred voice settings
             agent_id = await client.create_conversation_agent(
@@ -422,6 +460,7 @@ async def create_voice_session(
                 language=language,
                 model_id=voice_chat_model,
                 voice_settings=voice_settings,
+                turn_config=turn_config,
             )
 
             # Get the signed WebSocket URL
@@ -486,6 +525,8 @@ async def create_voice_session(
         expires_at=expires_at,
         quota_remaining_minutes=quota_remaining_minutes,
         max_session_minutes=max_session_minutes,
+        input_mode=user_prefs.input_mode,
+        playback_rate=playback_rate,
     )
 
 
@@ -948,6 +989,47 @@ async def tool_flashcards(request: Request, db: AsyncSession = Depends(get_sessi
     summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
     count = body.get("count") or body.get("parameters", {}).get("count", 5)
     result = await get_flashcards(summary_id, int(count), db)
+    return {"result": result}
+
+
+@router.post("/tools/web-search")
+async def tool_web_search(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: web search via Brave."""
+    body = await request.json()
+    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
+    query = body.get("query") or body.get("parameters", {}).get("query", "")
+
+    # Rate limiting: max 5 web searches per summary_id
+    key = str(summary_id)
+    count = _web_search_counts.get(key, 0)
+    if count >= 5:
+        return {
+            "result": "Limite de recherches web atteinte pour cette session. "
+            "Utilisez les informations déjà disponibles."
+        }
+    _web_search_counts[key] = count + 1
+
+    result = await web_search(summary_id, query, db)
+    return {"result": result}
+
+
+@router.post("/tools/deep-research")
+async def tool_deep_research(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: deep web research."""
+    body = await request.json()
+    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
+    query = body.get("query") or body.get("parameters", {}).get("query", "")
+    result = await deep_research(summary_id, query, db)
+    return {"result": result}
+
+
+@router.post("/tools/check-fact")
+async def tool_check_fact(request: Request, db: AsyncSession = Depends(get_session)):
+    """ElevenLabs tool webhook: fact-check a claim."""
+    body = await request.json()
+    summary_id = body.get("summary_id") or body.get("parameters", {}).get("summary_id")
+    claim = body.get("claim") or body.get("parameters", {}).get("claim", "")
+    result = await check_fact(summary_id, claim, db)
     return {"result": result}
 
 
