@@ -64,6 +64,9 @@ TASK_ROUTES = {
     'tasks.send_webhook_task': {'queue': 'notifications', 'routing_key': 'notifications'},
     'tasks.cleanup_cache_task': {'queue': 'maintenance', 'routing_key': 'maintenance'},
     'tasks.sync_stripe_task': {'queue': 'maintenance', 'routing_key': 'maintenance'},
+    'tasks.generate_keyword_image_task': {'queue': 'maintenance', 'routing_key': 'maintenance'},
+    'tasks.batch_generate_missing_images_task': {'queue': 'maintenance', 'routing_key': 'maintenance'},
+    'tasks.generate_default_words_images_task': {'queue': 'maintenance', 'routing_key': 'maintenance'},
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -74,7 +77,7 @@ celery_app = Celery(
     'deepsight',
     broker=CELERY_BROKER_URL,
     backend=CELERY_RESULT_BACKEND,
-    include=['tasks.analysis_tasks', 'tasks.notification_tasks', 'tasks.maintenance_tasks']
+    include=['tasks.analysis_tasks', 'tasks.notification_tasks', 'tasks.maintenance_tasks', 'tasks.image_tasks']
 )
 
 # Configuration
@@ -118,6 +121,10 @@ celery_app.conf.update(
         },
         'tasks.generate_tts_task': {
             'rate_limit': '20/m',   # 20 TTS par minute
+            'time_limit': 120,      # 2 minutes
+        },
+        'tasks.generate_keyword_image_task': {
+            'rate_limit': '5/m',    # 5 images par minute (fal.ai rate limit)
             'time_limit': 120,      # 2 minutes
         },
     },
@@ -175,6 +182,13 @@ celery_app.conf.beat_schedule = {
         'options': {'queue': 'notifications'},
     },
     
+    # Génération d'images keywords manquantes - tous les jours à 2h30
+    'generate-missing-keyword-images-nightly': {
+        'task': 'tasks.batch_generate_missing_images_task',
+        'schedule': crontab(hour=2, minute=30),
+        'options': {'queue': 'maintenance'},
+    },
+
     # Health check - toutes les 5 minutes
     'health-check': {
         'task': 'tasks.health_check_task',

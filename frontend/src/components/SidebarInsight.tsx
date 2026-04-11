@@ -63,7 +63,11 @@ export const SidebarInsight: React.FC<SidebarInsightProps> = ({ collapsed = fals
           onMouseEnter={() => setShowTooltip(true)}
           onMouseLeave={() => setShowTooltip(false)}
         >
-          <span className="text-sm">{catIcon}</span>
+          {localWord.imageUrl ? (
+            <img src={localWord.imageUrl} alt="" className="w-5 h-5 rounded-full object-cover" loading="lazy" />
+          ) : (
+            <span className="text-sm">{catIcon}</span>
+          )}
         </button>
 
         {/* Tooltip */}
@@ -99,7 +103,11 @@ export const SidebarInsight: React.FC<SidebarInsightProps> = ({ collapsed = fals
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
       >
-        <span className="text-xs flex-shrink-0">{catIcon}</span>
+        {localWord.imageUrl ? (
+          <img src={localWord.imageUrl} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" loading="lazy" />
+        ) : (
+          <span className="text-xs flex-shrink-0">{catIcon}</span>
+        )}
         <span className="text-[11px] text-text-tertiary group-hover:text-text-secondary transition-colors truncate font-medium">
           {localWord.term}
         </span>

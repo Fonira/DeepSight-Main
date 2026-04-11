@@ -98,18 +98,39 @@ export const StudyWarmUp: React.FC<StudyWarmUpProps> = ({ category, onStart }) =
 
           {/* Back */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-accent-primary/25 bg-bg-secondary/60 backdrop-blur-sm p-6 text-center"
+            className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-accent-primary/25 bg-bg-secondary/60 backdrop-blur-sm p-6 text-center overflow-hidden"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           >
-            <span className="text-lg mb-2">{catIcon}</span>
-            <p className="font-display text-base font-semibold text-text-primary mb-2">
-              {word.term}
-            </p>
-            <p className="text-xs text-text-secondary leading-relaxed line-clamp-3">
-              {word.shortDefinition}
-            </p>
+            {word.imageUrl ? (
+              <>
+                <img
+                  src={word.imageUrl}
+                  alt={word.term}
+                  className="absolute inset-0 w-full h-full object-cover opacity-30"
+                  loading="lazy"
+                />
+                <div className="relative z-10 flex flex-col items-center">
+                  <p className="font-display text-base font-semibold text-text-primary mb-2">
+                    {word.term}
+                  </p>
+                  <p className="text-xs text-text-secondary leading-relaxed line-clamp-3">
+                    {word.shortDefinition}
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="text-lg mb-2">{catIcon}</span>
+                <p className="font-display text-base font-semibold text-text-primary mb-2">
+                  {word.term}
+                </p>
+                <p className="text-xs text-text-secondary leading-relaxed line-clamp-3">
+                  {word.shortDefinition}
+                </p>
+              </>
+            )}
             {word.source === 'history' && (
-              <p className="text-[9px] text-accent-primary/40 mt-2">
+              <p className="text-[9px] text-accent-primary/40 mt-2 relative z-10">
                 📜 {language === 'fr' ? 'Vos analyses' : 'Your analyses'}
               </p>
             )}

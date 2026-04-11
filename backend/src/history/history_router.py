@@ -728,6 +728,8 @@ class KeywordItem(BaseModel):
     # Sources et confiance (anti-hallucination)
     wiki_url: Optional[str] = None
     confidence: Optional[str] = None  # high|medium|low
+    # Image IA générée
+    image_url: Optional[str] = None
 
 
 class KeywordsResponse(BaseModel):
@@ -974,6 +976,35 @@ async def get_all_keywords(
                     kw["short_definition"] = None
                 if def_data.get("category"):
                     kw["category"] = def_data["category"]
+
+    # Enrichir avec les image_url depuis keyword_images
+    if keywords_raw:
+        try:
+            import hashlib
+            from sqlalchemy import text as sa_text
+
+            term_to_hash = {}
+            for kw in keywords_raw:
+                h = hashlib.sha256(kw["term"].lower().strip().encode("utf-8")).hexdigest()
+                term_to_hash[kw["term"]] = h
+
+            hashes = list(set(term_to_hash.values()))
+            # Build parameterized IN clause for cross-DB compatibility
+            placeholders = ", ".join(f":h{i}" for i in range(len(hashes)))
+            params = {f"h{i}": h for i, h in enumerate(hashes)}
+            img_result = await session.execute(
+                sa_text(f"SELECT term_hash, image_url FROM keyword_images WHERE term_hash IN ({placeholders}) AND status = 'ready'"),
+                params
+            )
+            hash_to_url = {r.term_hash: r.image_url for r in img_result}
+
+            for kw in keywords_raw:
+                h = term_to_hash.get(kw["term"])
+                if h and h in hash_to_url:
+                    kw["image_url"] = hash_to_url[h]
+        except Exception:
+            # Table may not exist yet, or other DB issue — non-blocking
+            pass
 
     keywords = [KeywordItem(**kw) for kw in keywords_raw]
 

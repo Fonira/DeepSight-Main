@@ -2946,6 +2946,13 @@ async def _analyze_video_background_v6(
                 except Exception as chunk_err:
                     print(f"⚠️ [v3.0] VideoChunk storage failed (non-blocking): {chunk_err}", flush=True)
 
+            # 🎨 Enqueue keyword image generation (non-blocking)
+            try:
+                from images.keyword_images import enqueue_images_for_summary
+                await enqueue_images_for_summary(summary_id)
+            except Exception as img_err:
+                print(f"⚠️ [IMAGES] Keyword image enqueue failed (non-blocking): {img_err}", flush=True)
+
             # ⚡ Cache + quota en parallèle (perf v6.2)
             async def _cache_analysis():
                 try:

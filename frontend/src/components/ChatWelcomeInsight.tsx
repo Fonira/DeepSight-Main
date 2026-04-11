@@ -79,13 +79,24 @@ export const ChatWelcomeInsight: React.FC<ChatWelcomeInsightProps> = ({ onPrefil
         )}
 
         {/* Term + definition */}
-        <p className="text-sm text-text-secondary leading-relaxed mb-3">
-          <span className="font-display font-semibold text-text-primary">
-            {word.term}
-          </span>
-          <span className="mx-1.5 text-accent-primary/30">—</span>
-          {word.shortDefinition}
-        </p>
+        <div className="flex items-start gap-3 mb-3">
+          {word.imageUrl && (
+            <img
+              src={word.imageUrl}
+              alt={word.term}
+              className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+              style={{ border: '1.5px solid rgba(200, 144, 58, 0.3)' }}
+              loading="lazy"
+            />
+          )}
+          <p className="text-sm text-text-secondary leading-relaxed">
+            <span className="font-display font-semibold text-text-primary">
+              {word.term}
+            </span>
+            <span className="mx-1.5 text-accent-primary/30">—</span>
+            {word.shortDefinition}
+          </p>
+        </div>
 
         {/* CTA */}
         {onPrefillChat && (

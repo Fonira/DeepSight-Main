@@ -54,6 +54,7 @@ class _DeepSightSettings(BaseSettings):
     ASSEMBLYAI_API_KEY: str = ""
     DEEPSEEK_API_KEY: str = ""
     SEMANTIC_SCHOLAR_API_KEY: str = ""
+    FAL_API_KEY: str = ""
 
     # -- YouTube Proxy (pour contourner le blocage IP YouTube sur VPS) --
     YOUTUBE_PROXY: str = ""  # ex: socks5://user:pass@host:port ou http://user:pass@host:port
@@ -238,7 +239,16 @@ PERPLEXITY_API_KEY = _settings.PERPLEXITY_API_KEY
 BRAVE_SEARCH_API_KEY = _settings.BRAVE_SEARCH_API_KEY
 OPENAI_API_KEY = _settings.OPENAI_API_KEY
 DEEPSEEK_API_KEY = _settings.DEEPSEEK_API_KEY
+FAL_API_KEY = _settings.FAL_API_KEY
 YOUTUBE_PROXY = _settings.YOUTUBE_PROXY
+
+
+def get_fal_key() -> str:
+    return FAL_API_KEY
+
+
+def is_fal_available() -> bool:
+    return bool(FAL_API_KEY)
 
 # =============================================================================
 # CRON
@@ -791,3 +801,4 @@ if __name__ != "__main__":
     print(f"  Backup S3: {'yes' if _settings.AWS_ACCESS_KEY_ID else 'local-only'}"
           f" (cron={_settings.BACKUP_CRON_HOUR:02d}:{_settings.BACKUP_CRON_MINUTE:02d} UTC,"
           f" retention={_settings.BACKUP_RETENTION_DAYS}d)", flush=True)
+    print(f"  fal.ai (images): {'yes' if is_fal_available() else 'no'}", flush=True)

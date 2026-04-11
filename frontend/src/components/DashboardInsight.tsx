@@ -73,20 +73,32 @@ export const DashboardInsight: React.FC = () => {
             className="text-center max-w-3xl"
           >
             {/* Term + short definition on one line */}
-            <p className="text-sm sm:text-base leading-relaxed text-text-secondary">
-              <span className="mr-1.5">{catIcon}</span>
-              <button
-                onClick={handleTermClick}
-                disabled={!isClickable}
-                className={`font-display text-base sm:text-lg font-semibold text-text-primary ${
-                  isClickable ? 'hover:text-accent-primary cursor-pointer transition-colors' : ''
-                }`}
-              >
-                {currentWord.term}
-              </button>
-              <span className="mx-2 text-accent-primary/40">—</span>
-              <span className="font-body">{currentWord.shortDefinition}</span>
-            </p>
+            <div className="flex items-center justify-center gap-3 text-sm sm:text-base leading-relaxed text-text-secondary">
+              {currentWord.imageUrl ? (
+                <img
+                  src={currentWord.imageUrl}
+                  alt={currentWord.term}
+                  className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                  style={{ border: '2px solid #C8903A' }}
+                  loading="lazy"
+                />
+              ) : (
+                <span className="mr-1.5">{catIcon}</span>
+              )}
+              <p>
+                <button
+                  onClick={handleTermClick}
+                  disabled={!isClickable}
+                  className={`font-display text-base sm:text-lg font-semibold text-text-primary ${
+                    isClickable ? 'hover:text-accent-primary cursor-pointer transition-colors' : ''
+                  }`}
+                >
+                  {currentWord.term}
+                </button>
+                <span className="mx-2 text-accent-primary/40">—</span>
+                <span className="font-body">{currentWord.shortDefinition}</span>
+              </p>
+            </div>
 
             {/* Expanded definition */}
             <AnimatePresence>

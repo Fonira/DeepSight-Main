@@ -29,6 +29,8 @@ export interface LoadingWord {
   summaryId?: number;
   videoTitle?: string;
   videoId?: string;
+  // Image IA générée (pipeline Mistral → fal.ai)
+  imageUrl?: string;
 }
 
 interface HistoryKeyword {
@@ -44,6 +46,8 @@ interface HistoryKeyword {
   // Source Wikipedia ou alternative
   wiki_url: string | null;
   confidence: string | null;
+  // Image IA générée
+  image_url: string | null;
 }
 
 export interface CategoryCount {
@@ -141,6 +145,7 @@ function convertHistoryKeyword(keyword: HistoryKeyword): LoadingWord {
     videoTitle: keyword.video_title || undefined,
     videoId: keyword.video_id || undefined,
     wikiUrl: keyword.wiki_url || undefined,
+    imageUrl: keyword.image_url || undefined,
   };
 }
 

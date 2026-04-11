@@ -264,6 +264,14 @@ except ImportError as e:
     COMPARISON_ROUTER_AVAILABLE = False
     print(f"⚠️ Comparison router not available: {e}", flush=True)
 
+# 🎨 Keyword Images router (IA illustrations for "Le Saviez-Vous")
+try:
+    from images.router import router as images_router
+    IMAGES_ROUTER_AVAILABLE = True
+except ImportError as e:
+    IMAGES_ROUTER_AVAILABLE = False
+    print(f"⚠️ Images router not available: {e}", flush=True)
+
 # 🩺 Health check v2 router (deep health checks)
 try:
     from health.router import router as health_v1_router
@@ -898,6 +906,11 @@ if DEBATE_ROUTER_AVAILABLE:
 if COMPARISON_ROUTER_AVAILABLE:
     app.include_router(comparison_router, prefix="/api/comparison", tags=["Comparison"])
     print("🆚 Comparison router loaded (POST /api/comparison/compare)", flush=True)
+
+# 🎨 Keyword Images router (IA illustrations for "Le Saviez-Vous")
+if IMAGES_ROUTER_AVAILABLE:
+    app.include_router(images_router, prefix="/api/images", tags=["Keyword Images"])
+    print("🎨 Images router loaded (GET /api/images/keyword/{term})", flush=True)
 
 # 🩺 Health check v1 router (deep health checks)
 if HEALTH_V1_ROUTER_AVAILABLE:

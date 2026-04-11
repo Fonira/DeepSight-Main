@@ -1169,6 +1169,30 @@ async def run_schema_migrations():
         )
         """,
         "CREATE INDEX IF NOT EXISTS idx_debate_chat_messages_debate ON debate_chat_messages(debate_id)",
+        # 🎨 KeywordImages table (Apr 2026) — IA-generated illustrations for "Le Saviez-Vous"
+        """
+        CREATE TABLE IF NOT EXISTS keyword_images (
+            id SERIAL PRIMARY KEY,
+            term VARCHAR(200) NOT NULL,
+            term_hash VARCHAR(64) NOT NULL UNIQUE,
+            category VARCHAR(50),
+            prompt_used TEXT,
+            metaphor_data TEXT,
+            image_url TEXT,
+            r2_key VARCHAR(300),
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            model VARCHAR(100) DEFAULT 'nano-banana-2',
+            generation_time_ms INTEGER,
+            fun_score FLOAT DEFAULT 0.5,
+            retry_count INTEGER DEFAULT 0,
+            error_message TEXT,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        )
+        """,
+        "CREATE INDEX IF NOT EXISTS idx_ki_hash ON keyword_images(term_hash)",
+        "CREATE INDEX IF NOT EXISTS idx_ki_status ON keyword_images(status)",
+        "CREATE INDEX IF NOT EXISTS idx_ki_fun ON keyword_images(fun_score DESC)",
     ]
     async with engine.begin() as conn:
         for sql in migrations:
