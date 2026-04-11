@@ -142,7 +142,8 @@ async def get_current_user(
             )
     
     # 🔒 Rate limiting (optionnel à ce niveau, plus strict dans les endpoints sensibles)
-    if SECURITY_AVAILABLE:
+    # Admin exempt du rate limiting auth-level (protection DDoS reste au niveau Caddy)
+    if SECURITY_AVAILABLE and not user.is_admin:
         rate_ok, rate_reason, rate_info = await check_rate_limit(user_id, user.plan or "free")
         if not rate_ok:
             raise HTTPException(
@@ -274,6 +275,10 @@ def require_plan(min_plan: str):
     from billing.plan_config import normalize_plan_id, get_plan_index
 
     async def check_plan(current_user: User = Depends(get_verified_user)) -> User:
+        # Admin bypass — accès à tous les plans
+        if current_user.is_admin:
+            return current_user
+
         raw_plan = current_user.plan or "free"
         user_plan = normalize_plan_id(raw_plan)
         normalized_min = normalize_plan_id(min_plan)
@@ -340,6 +345,10 @@ async def check_daily_limit(
     - free: 5 analyses/jour
     - pro: 50 analyses/jour
     """
+    # Admin bypass — analyses illimitées
+    if current_user.is_admin:
+        return current_user
+
     from core.plan_limits import check_daily_analysis_limit
 
     can_analyze, error_info = await check_daily_analysis_limit(
@@ -372,6 +381,10 @@ def require_feature(feature: str):
     async def check_feature(
         current_user: User = Depends(get_verified_user)
     ) -> User:
+        # Admin bypass — toutes les features accessibles
+        if current_user.is_admin:
+            return current_user
+
         from core.plan_limits import check_feature_access
 
         has_access, error_info = check_feature_access(

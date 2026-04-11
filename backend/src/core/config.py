@@ -386,6 +386,25 @@ def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
                            else "Upgrade to Pro to unlock playlists, Deep Research and voice chat!"),
                 },
             }
+        # Admin "unlimited" — copie pro avec limites levées (défense en profondeur)
+        if "pro" in legacy:
+            pro_copy = dict(legacy["pro"])
+            pro_copy.update({
+                "monthly_credits": 999999,
+                "daily_analyses": -1,
+                "chat_daily_limit": -1,
+                "chat_per_video_limit": -1,
+                "web_search_monthly": -1,
+                "web_search_enabled": True,
+                "can_use_playlists": True,
+                "max_playlist_videos": 999,
+                "deep_research_enabled": True,
+                "voice_chat_enabled": True,
+                "voice_monthly_minutes": 999,
+                "blocked_features": [],
+            })
+            legacy["unlimited"] = pro_copy
+
         return legacy
     except Exception:
         # Fallback minimal si plan_config n'est pas chargeable (tests unitaires)
@@ -393,6 +412,7 @@ def _build_legacy_plan_limits() -> Dict[str, Dict[str, Any]]:
             "free": {"monthly_credits": 250, "daily_analyses": 5, "blocked_features": ["playlists", "tts", "deep_research", "voice_chat", "mindmap"], "models": ["mistral-small-2603"], "default_model": "mistral-small-2603"},
             "plus": {"monthly_credits": 3000, "daily_analyses": 25, "blocked_features": ["playlists", "deep_research", "voice_chat", "tts"], "models": ["mistral-small-2603", "mistral-medium-2508"], "default_model": "mistral-medium-2508"},
             "pro": {"monthly_credits": 15000, "daily_analyses": 100, "blocked_features": [], "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"], "default_model": "mistral-large-2512"},
+            "unlimited": {"monthly_credits": 999999, "daily_analyses": -1, "chat_daily_limit": -1, "chat_per_video_limit": -1, "web_search_monthly": -1, "web_search_enabled": True, "blocked_features": [], "models": ["mistral-small-2603", "mistral-medium-2508", "mistral-large-2512"], "default_model": "mistral-large-2512"},
         }
 
 

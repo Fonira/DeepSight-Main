@@ -66,6 +66,10 @@ async def check_daily_analysis_limit(
     Vérifie si l'utilisateur peut effectuer une analyse aujourd'hui.
     Utilise plan_config.py comme SSOT.
     """
+    # Admin bypass — analyses illimitées
+    if getattr(user, 'is_admin', False):
+        return True, None
+
     raw_plan = user.plan or "free"
     plan = normalize_plan_id(raw_plan)
     limits = get_limits(plan)
@@ -108,6 +112,10 @@ def check_feature_access(
     Vérifie si l'utilisateur a accès à une fonctionnalité.
     Utilise plan_config.py comme SSOT.
     """
+    # Admin bypass — toutes les features débloquées
+    if getattr(user, 'is_admin', False):
+        return True, None
+
     raw_plan = user.plan or "free"
     plan = normalize_plan_id(raw_plan)
     limits = get_limits(plan)
