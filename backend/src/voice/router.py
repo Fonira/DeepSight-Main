@@ -528,18 +528,21 @@ async def create_voice_session(
 
         # ── Build turn configuration from user preferences (Phase 1: PTT) ──
         from voice.preferences import get_voice_chat_speed_preset, CONCISENESS_INJECTION_FR, CONCISENESS_INJECTION_EN
+        # ElevenLabs turn config — API April 2026: mode is "turn" or "silence"
+        # "turn" = PTT-style (wait for user turn), "silence" = VAD auto-detect
+        # eagerness renamed to turn_eagerness enum: "patient"|"normal"|"eager"
+        eagerness_map = {"low": "patient", "medium": "normal", "high": "eager"}
+        mapped_eagerness = eagerness_map.get(user_prefs.turn_eagerness, user_prefs.turn_eagerness)
         if user_prefs.input_mode == "ptt":
             turn_config = {
-                "mode": "turn_based",
+                "mode": "turn",
                 "turn_timeout": user_prefs.turn_timeout,
-                "interruptions": {"enabled": user_prefs.interruptions_enabled},
             }
         else:
             turn_config = {
-                "mode": "auto",
-                "eagerness": user_prefs.turn_eagerness,
+                "mode": "silence",
+                "turn_eagerness": mapped_eagerness if mapped_eagerness in ("patient", "normal", "eager") else "normal",
                 "turn_timeout": user_prefs.turn_timeout,
-                "interruptions": {"enabled": user_prefs.interruptions_enabled},
             }
 
         # ── Speed preset: override api_speed + inject conciseness prompt (Phase 2) ──
@@ -1060,81 +1063,4 @@ async def tool_search_transcript(request: Request, db: AsyncSession = Depends(ge
     """ElevenLabs tool webhook: search in video transcript."""
     summary, body = await verify_tool_request(request, db)
     query = body.get("query") or body.get("parameters", {}).get("query", "")
-    result = await search_in_transcript(summary.id, query, db)
-    return {"result": result}
-
-
-@router.post("/tools/analysis-section")
-async def tool_analysis_section(request: Request, db: AsyncSession = Depends(get_session)):
-    """ElevenLabs tool webhook: get a specific analysis section."""
-    summary, body = await verify_tool_request(request, db)
-    section = body.get("section") or body.get("parameters", {}).get("section", "resume")
-    result = await get_analysis_section(summary.id, section, db)
-    return {"result": result}
-
-
-@router.post("/tools/sources")
-async def tool_sources(request: Request, db: AsyncSession = Depends(get_session)):
-    """ElevenLabs tool webhook: get sources and fact-check info."""
-    summary, _body = await verify_tool_request(request, db)
-    result = await get_sources(summary.id, db)
-    return {"result": result}
-
-
-@router.post("/tools/flashcards")
-async def tool_flashcards(request: Request, db: AsyncSession = Depends(get_session)):
-    """ElevenLabs tool webhook: get flashcards for a video."""
-    summary, body = await verify_tool_request(request, db)
-    count = body.get("count") or body.get("parameters", {}).get("count", 5)
-    result = await get_flashcards(summary.id, int(count), db)
-    return {"result": result}
-
-
-@router.post("/tools/web-search")
-async def tool_web_search(request: Request, db: AsyncSession = Depends(get_session)):
-    """ElevenLabs tool webhook: web search via Brave."""
-    summary, body = await verify_tool_request(request, db)
-    query = body.get("query") or body.get("parameters", {}).get("query", "")
-
-    # Rate limiting: max 5 web searches per summary_id (Redis with in-memory fallback)
-    key = str(summary.id)
-    count = await _increment_web_search_count(key)
-    if count > _WEB_SEARCH_MAX:
-        return {
-            "result": "Limite de recherches web atteinte pour cette session. "
-            "Utilisez les informations déjà disponibles."
-        }
-
-    result = await web_search(summary.id, query, db)
-    return {"result": result}
-
-
-@router.post("/tools/deep-research")
-async def tool_deep_research(request: Request, db: AsyncSession = Depends(get_session)):
-    """ElevenLabs tool webhook: deep web research."""
-    summary, body = await verify_tool_request(request, db)
-    query = body.get("query") or body.get("parameters", {}).get("query", "")
-    result = await deep_research(summary.id, query, db)
-    return {"result": result}
-
-
-@router.post("/tools/check-fact")
-async def tool_check_fact(request: Request, db: AsyncSession = Depends(get_session)):
-    """ElevenLabs tool webhook: fact-check a claim."""
-    summary, body = await verify_tool_request(request, db)
-    claim = body.get("claim") or body.get("parameters", {}).get("claim", "")
-    result = await check_fact(summary.id, claim, db)
-    return {"result": result}
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# GET /agents/types — List available agent types
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@router.get("/agents/types")
-async def get_agent_types():
-    """Return all available voice agent types with their descriptions and plan requirements."""
-    return {
-        "agent_types": list_agent_types(),
-        "default": "explorer",
-    }
+    result = await search_in_transcript(summary.id, quer
