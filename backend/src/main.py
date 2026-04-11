@@ -623,6 +623,24 @@ async def lifespan(app: FastAPI):
         )
         logger.info("Onboarding email scheduler registered (every 1 hour)")
 
+        # 🖼️ Keyword image generation (every hour)
+        async def _scheduled_image_gen():
+            """Generate 1 keyword image per hour."""
+            try:
+                from images.keyword_images import generate_hourly_image
+                await generate_hourly_image()
+            except Exception as e:
+                logger.error(f"Hourly image generation failed: {e}")
+
+        scheduler.add_job(
+            _scheduled_image_gen,
+            _IT(hours=1),
+            id="hourly_keyword_image",
+            name="Hourly keyword image generation",
+            replace_existing=True,
+        )
+        logger.info("Keyword image scheduler registered (every 1 hour)")
+
         scheduler.start()
         logger.info(
             f"Backup scheduler started (daily at {BACKUP_CONFIG['CRON_HOUR']:02d}:{BACKUP_CONFIG['CRON_MINUTE']:02d} UTC)"

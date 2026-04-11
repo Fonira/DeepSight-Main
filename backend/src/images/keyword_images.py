@@ -12,6 +12,7 @@ import io
 import json
 import logging
 import time
+from pathlib import Path
 from typing import Optional
 
 import httpx
@@ -233,6 +234,9 @@ def _post_process(image_bytes: bytes) -> bytes:
 
 # ─── Upload & Save ────────────────────────────────────────────────────────────
 
+LOCAL_IMAGE_DIR = Path("/opt/deepsight/keyword-images")
+
+
 async def _upload_and_save(
     webp_bytes: bytes,
     term: str,
@@ -245,9 +249,20 @@ async def _upload_and_save(
     model: str,
     pool,
 ) -> str:
-    """Upload to R2 and INSERT into keyword_images."""
+    """Upload to R2 (or local filesystem fallback) and INSERT into keyword_images."""
+    from storage.r2 import is_r2_available
+
     r2_key = f"keyword-images/{thash}.webp"
-    image_url = await upload_to_r2(webp_bytes, r2_key)
+
+    if is_r2_available():
+        image_url = await upload_to_r2(webp_bytes, r2_key)
+    else:
+        # Fallback: save to local filesystem, serve via /api/images/serve/
+        LOCAL_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+        filepath = LOCAL_IMAGE_DIR / f"{thash}.webp"
+        filepath.write_bytes(webp_bytes)
+        image_url = f"/api/images/serve/{thash}.webp"
+        logger.info(f"📁 Local save: {filepath} ({len(webp_bytes)} bytes)")
 
     async with pool.acquire() as conn:
         await conn.execute(
@@ -479,4 +494,49 @@ async def enqueue_images_for_summary(summary_id: int, pool=None) -> int:
         # Insert as pending
         definition = concept.get("definition", concept.get("short_definition", ""))
         category = concept.get("category", "misc")
-        fun_score = cal
+        fun_score = calculate_fun_score(concept["term"], category)
+        async with pool.acquire() as conn:
+            await conn.execute(
+                """
+                INSERT INTO keyword_images (term, term_hash, category, status, fun_score)
+                VALUES ($1, $2, $3, 'pending', $4)
+                ON CONFLICT (term_hash) DO NOTHING
+                """,
+                concept["term"], thash, category, fun_score,
+            )
+        enqueued += 1
+
+    logger.info(f"📋 Enqueued {enqueued} keyword images for summary {summary_id}")
+    return enqueued
+
+
+# ─── Hourly generation (APScheduler) ─────────────────────────────────────────
+
+async def generate_hourly_image():
+    """Pick 1 keyword without image and generate it. Called hourly by APScheduler."""
+    pool = await _get_pool()
+
+    async with pool.acquire() as conn:
+        # 1. Chercher un keyword pending (du seed ou enqueue)
+        row = await conn.fetchrow(
+            """SELECT term, category FROM keyword_images
+               WHERE status = 'pending'
+               ORDER BY fun_score DESC NULLS LAST
+               LIMIT 1"""
+        )
+
+    if not row:
+        logger.info("⏭️ Hourly image: no pending keywords, skipping")
+        return
+
+    term = row["term"]
+    category = row.get("category", "misc")
+    definition = f"Concept: {term}"
+
+    logger.info(f"⏰ Hourly image generation: '{term}'")
+    result = await generate_keyword_image(term, definition, category, premium=False, pool=pool)
+
+    if result:
+        logger.info(f"✅ Hourly image done: '{term}' → {result}")
+    else:
+        logger.warning(f"❌ Hourly image failed: '{term}'")

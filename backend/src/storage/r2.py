@@ -16,6 +16,11 @@ from core.config import R2_CONFIG
 logger = logging.getLogger(__name__)
 
 
+def is_r2_available() -> bool:
+    """Check if R2 credentials are configured."""
+    return bool(R2_CONFIG.get("ACCESS_KEY_ID")) and bool(R2_CONFIG.get("ACCOUNT_ID"))
+
+
 @lru_cache(maxsize=1)
 def _get_r2_client():
     """Singleton boto3 S3 client configured for Cloudflare R2."""
