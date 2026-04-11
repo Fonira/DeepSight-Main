@@ -2229,6 +2229,74 @@ export interface VoiceSession {
   expires_at: string;
   quota_remaining_minutes: number;
   max_session_minutes: number;
+  input_mode: 'ptt' | 'vad';
+  playback_rate: number;
+}
+
+export interface VoicePreferences {
+  voice_id: string | null;
+  voice_name: string | null;
+  speed: number;
+  stability: number;
+  similarity_boost: number;
+  style: number;
+  use_speaker_boost: boolean;
+  tts_model: string;
+  voice_chat_model: string;
+  language: string;
+  gender: string;
+  input_mode: 'ptt' | 'vad';
+  interruptions_enabled: boolean;
+  turn_eagerness: number;
+  voice_chat_speed_preset: string;
+  turn_timeout: number;
+  soft_timeout_seconds: number;
+}
+
+export interface VoiceCatalogEntry {
+  voice_id: string;
+  name: string;
+  description_fr: string;
+  description_en: string;
+  gender: string;
+  accent: string;
+  language: string;
+  use_case: string;
+  recommended: boolean;
+  preview_url: string;
+}
+
+export interface VoiceSpeedPreset {
+  id: string;
+  label_fr: string;
+  label_en: string;
+  value: number;
+  icon: string;
+}
+
+export interface VoiceChatSpeedPreset {
+  id: string;
+  label_fr: string;
+  label_en: string;
+  api_speed: number;
+  playback_rate: number;
+  concise: boolean;
+}
+
+export interface VoiceModel {
+  id: string;
+  name: string;
+  description_fr: string;
+  description_en: string;
+  latency: string;
+  recommended_for: string;
+}
+
+export interface VoiceCatalog {
+  voices: VoiceCatalogEntry[];
+  speed_presets: VoiceSpeedPreset[];
+  voice_chat_speed_presets: VoiceChatSpeedPreset[];
+  models: VoiceModel[];
 }
 
 export interface VoiceSessionSummary {
@@ -2299,6 +2367,21 @@ export const voiceApi = {
     return request('/api/voice/addon/checkout', {
       method: 'POST',
       body: { pack_id: packId },
+    });
+  },
+
+  async getPreferences(): Promise<VoicePreferences> {
+    return request('/api/voice/preferences');
+  },
+
+  async getCatalog(): Promise<VoiceCatalog> {
+    return request('/api/voice/catalog');
+  },
+
+  async updatePreferences(updates: Partial<VoicePreferences>): Promise<VoicePreferences> {
+    return request('/api/voice/preferences', {
+      method: 'PUT',
+      body: updates,
     });
   },
 };

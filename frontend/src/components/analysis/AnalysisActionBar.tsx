@@ -169,7 +169,9 @@ export const AnalysisActionBar: React.FC<AnalysisActionBarProps> = ({
   const { user } = useAuth();
   const { showToast, ToastComponent } = useToast();
   const plan = normalizePlanId(user?.plan);
-  const voiceEnabled = PLAN_LIMITS[plan]?.voiceChatEnabled ?? false;
+  const ADMIN_EMAIL = "maximeleparc3@gmail.com";
+  const isAdmin = user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const voiceEnabled = isAdmin || (PLAN_LIMITS[plan]?.voiceChatEnabled ?? false);
 
   const [copied, setCopied] = useState(false);
   const [sharing, setSharing] = useState(false);
