@@ -253,12 +253,6 @@ def is_fal_available() -> bool:
     return bool(FAL_API_KEY)
 
 
-def get_together_key() -> str:
-    return TOGETHER_API_KEY
-
-
-def is_together_available() -> bool:
-    return bool(TOGETHER_API_KEY)
 
 # =============================================================================
 # CRON
@@ -808,4 +802,4 @@ if __name__ != "__main__":
     print(f"  Cache: Redis={'yes' if _settings.REDIS_URL else 'no (memory fallback)'}"
           f" max_size={_settings.CACHE_MAX_SIZE}", flush=True)
     print(f"  Video Cache L2: {'yes' if _settings.VPS_DATABASE_URL else 'no (VPS_DATABASE_URL not set)'}", flush=True)
-    print(f"  Backup S3: {'yes' if _settings.AWS_ACCESS_KEY_ID els
+    print(f"  Backup S3: {'yes' if _settings.AWS_ACCESS_KEY_ID else 'no'}", flush=True)

@@ -10,6 +10,7 @@ import { Menu } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { BottomNav } from "./BottomNav";
 import { Footer } from "../Footer";
+import { WhackAMole } from "../WhackAMole/WhackAMole";
 import { useAuth } from "../../hooks/useAuth";
 
 interface DashboardLayoutProps {
@@ -69,6 +70,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       </div>
 
       {/* Right Sidebar — Desktop xl+ */}
+
+      {/* WhackAMole — "Le Saviez-Vous" game mode */}
+      <WhackAMole sidebarCollapsed={sidebarCollapsed} />
 
       {/* BottomNav - Mobile */}
       <BottomNav />

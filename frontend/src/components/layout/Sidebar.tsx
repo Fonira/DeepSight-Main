@@ -25,7 +25,8 @@ import {
   MessageSquare,
   GraduationCap,
   Brain,
-  Menu
+  Menu,
+  Gamepad2,
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
@@ -279,6 +280,50 @@ const UserCard: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
   );
 };
 
+// === WhackAMole Toggle ===
+const WhackAMoleToggle: React.FC<{ collapsed?: boolean }> = ({ collapsed }) => {
+  const [enabled, setEnabled] = useState(() => {
+    try { return localStorage.getItem('ds-whack-a-mole-enabled') !== 'false'; }
+    catch { return true; }
+  });
+
+  const toggle = () => {
+    const next = !enabled;
+    setEnabled(next);
+    try { localStorage.setItem('ds-whack-a-mole-enabled', String(next)); } catch { /* */ }
+    // Dispatch storage event so WhackAMole hook picks up the change
+    window.dispatchEvent(new StorageEvent('storage', { key: 'ds-whack-a-mole-enabled', newValue: String(next) }));
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
+        enabled
+          ? 'text-accent-primary hover:bg-white/5'
+          : 'text-text-tertiary hover:text-text-secondary hover:bg-white/3'
+      }`}
+      title={enabled ? 'Mode Jeu : activé' : 'Mode Jeu : désactivé'}
+    >
+      <Gamepad2 className={`w-4 h-4 flex-shrink-0 ${enabled ? 'text-accent-primary' : 'text-text-quaternary'}`} />
+      {!collapsed && (
+        <span className="text-xs font-medium truncate">
+          Mode Jeu
+        </span>
+      )}
+      {!collapsed && (
+        <span className={`ml-auto text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+          enabled
+            ? 'bg-accent-primary/15 text-accent-primary'
+            : 'bg-white/5 text-text-quaternary'
+        }`}>
+          {enabled ? 'ON' : 'OFF'}
+        </span>
+      )}
+    </button>
+  );
+};
+
 // === Sidebar ===
 interface SidebarProps {
   collapsed?: boolean;
@@ -429,6 +474,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* 💡 Le Saviez-Vous — Sidebar Pulse */}
         <div className="border-t border-border-subtle">
           <SidebarInsight collapsed={collapsed} />
+        </div>
+
+        {/* 🎮 Whack-a-Mole toggle */}
+        <div className="border-t border-border-subtle">
+          <WhackAMoleToggle collapsed={collapsed} />
         </div>
 
         {/* Plan Badge */}
