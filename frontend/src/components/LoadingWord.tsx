@@ -430,7 +430,7 @@ const extractSourceName = (url: string): string => {
 
 export const LoadingWordGlobal: React.FC = () => {
   const navigate = useNavigate();
-  const { currentWord, nextWord, isLoading, isWidgetVisible, toggleWidget, embeddedMode } = useLoadingWord();
+  const { currentWord, nextWord, isLoading, isWidgetVisible, toggleWidget } = useLoadingWord();
   const { language } = useLanguage();
   const { isAuthenticated } = useAuth();
   const [isMinimized, setIsMinimized] = useState(false);
@@ -456,11 +456,6 @@ export const LoadingWordGlobal: React.FC = () => {
 
   // 🔒 Ne pas afficher si l'utilisateur n'est pas connecté
   if (!isAuthenticated) {
-    return null;
-  }
-
-  // 🔒 Ne pas afficher si la sidebar droite est active (embeddedMode)
-  if (embeddedMode) {
     return null;
   }
 

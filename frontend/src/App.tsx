@@ -21,8 +21,7 @@ import { TTSProvider } from "./contexts/TTSContext";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { SkipLink } from "./components/SkipLink";
 
-import { LoadingWordGlobal } from "./components/LoadingWord";
-import { DidYouKnowCard } from "./components/DidYouKnowCard";
+// "Le Saviez-Vous" widgets remplacés par placements organiques dans chaque page
 import { ErrorBoundary as RouteErrorBoundary } from "./components/ErrorBoundary";
 import { CrispChat } from "./components/CrispChat";
 import { CookieBanner } from "./components/CookieBanner";
@@ -660,17 +659,7 @@ const AppRoutes = () => {
               <UpgradeModal />
             </ErrorBoundary>
 
-            {/* 🧠 Encart "Le Saviez-Vous" — desktop lg+ (top-right compact) */}
-            <ErrorBoundary fallback={null}>
-              <DidYouKnowCard />
-            </ErrorBoundary>
-
-            {/* 🧠 Widget "Le Saviez-Vous" flottant — mobile/tablette seulement */}
-            <ErrorBoundary fallback={null}>
-              <LoadingWordGlobal />
-            </ErrorBoundary>
-
-            {/* 🍪 RGPD: Cookie consent banner — wrapped to prevent crash */}
+{/* 🍪 RGPD: Cookie consent banner — wrapped to prevent crash */}
             <ErrorBoundary fallback={null}>
               <CookieBanner />
             </ErrorBoundary>

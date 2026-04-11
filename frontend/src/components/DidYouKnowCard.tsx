@@ -31,7 +31,7 @@ const WHEEL_SIZE = 26;
 
 export const DidYouKnowCard: React.FC = () => {
   const navigate = useNavigate();
-  const { currentWord, nextWord, setEmbeddedMode } = useLoadingWord();
+  const { currentWord, nextWord } = useLoadingWord();
   const { language } = useLanguage();
   const { isAuthenticated } = useAuth();
 
@@ -42,12 +42,6 @@ export const DidYouKnowCard: React.FC = () => {
   });
   const [expanded, setExpanded] = useState(false);
   const [displayedWord, setDisplayedWord] = useState<LoadingWord | null>(null);
-
-  // Tell the floating widget to hide (we take over on desktop)
-  useEffect(() => {
-    setEmbeddedMode(true);
-    return () => setEmbeddedMode(false);
-  }, [setEmbeddedMode]);
 
   // Word transition
   useEffect(() => {

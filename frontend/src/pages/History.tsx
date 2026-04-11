@@ -35,6 +35,7 @@ import { FloatingChatWindow } from "../components/FloatingChatWindow";
 import DoodleBackground from '../components/DoodleBackground';
 import { SEO } from '../components/SEO';
 import { ThumbnailImage } from "../components/ThumbnailImage";
+import { IntellectualProfileBanner } from "../components/IntellectualProfileBanner";
 import { EnrichedMarkdown } from "../components/EnrichedMarkdown";
 import { ConceptsGlossary } from "../components/ConceptsGlossary";
 import { AcademicSourcesPanel } from "../components/academic";
@@ -464,7 +465,9 @@ export const History: React.FC = () => {
   // 🎙️ Voice Chat
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const voiceChat = useVoiceChat({ summaryId: selectedVideoDetail?.id ?? 0, language: language as 'fr' | 'en' });
-  const voiceEnabled = PLAN_LIMITS[normalizePlanId(user?.plan)].voiceChatEnabled;
+  const ADMIN_EMAIL_VOICE = "maximeleparc3@gmail.com";
+  const isAdminVoice = user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL_VOICE.toLowerCase();
+  const voiceEnabled = isAdminVoice || PLAN_LIMITS[normalizePlanId(user?.plan)].voiceChatEnabled;
 
   // 🗑️ Clear History Modal
   const [showClearModal, setShowClearModal] = useState(false);
@@ -1046,6 +1049,9 @@ export const History: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* 💡 Profil Intellectuel — Bannière Le Saviez-Vous */}
+              <IntellectualProfileBanner />
 
               {/* Tabs - Séparation claire Vidéos / Playlists */}
               <div className="flex items-center gap-2 border-b border-border-subtle">

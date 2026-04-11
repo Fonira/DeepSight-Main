@@ -7,12 +7,16 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Scale, Heart, Shield } from "lucide-react";
 import { useTranslation } from "../hooks/useTranslation";
+import { FooterTicker } from "./FooterTicker";
 
 export const Footer: React.FC = () => {
   const { t } = useTranslation();
 
   return (
     <footer className="border-t border-border-subtle bg-bg-secondary/50 py-3.5 px-6 flex-shrink-0">
+      {/* 💡 Knowledge Ticker — termes défilants */}
+      <FooterTicker />
+
       {/* Sovereignty & Ethics badges */}
       <div className="flex flex-wrap items-center justify-center gap-4 mb-3 text-[10px] text-text-tertiary">
         <a

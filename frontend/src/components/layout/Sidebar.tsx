@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
 import { useTranslation } from "../../hooks/useTranslation";
+import { SidebarInsight } from "../SidebarInsight";
 import { PlanBadge } from "../PlanBadge";
 import { normalizePlanId, getMinPlanForFeature, PLANS_INFO, PLAN_HIERARCHY } from "../../config/planPrivileges";
 import type { PlanId } from "../../config/planPrivileges";
@@ -424,6 +425,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="h-px bg-border-subtle my-3 mx-1" />
           <NavItem to="/legal" icon={Scale} label={t.nav.legal} collapsed={collapsed} />
         </nav>
+
+        {/* 💡 Le Saviez-Vous — Sidebar Pulse */}
+        <div className="border-t border-border-subtle">
+          <SidebarInsight collapsed={collapsed} />
+        </div>
 
         {/* Plan Badge */}
         <div className="border-t border-border-subtle">

@@ -30,6 +30,7 @@ import { parseAskQuestions } from '../components/ClickableQuestions';
 import { AudioPlayerButton } from '../components/AudioPlayerButton';
 import { TTSToggle } from '../components/TTSToggle';
 import { useTTSContext } from '../contexts/TTSContext';
+import { ChatWelcomeInsight } from '../components/ChatWelcomeInsight';
 import { sanitizeTitle } from '../utils/sanitize';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -525,6 +526,9 @@ const ChatPage: React.FC = () => {
                     ? 'Sélectionnez une vidéo dans la sidebar pour discuter.'
                     : 'Select a video from the sidebar to start chatting.'}
                 </p>
+
+                {/* 💡 Chat Welcome Oracle — Ghost bubble */}
+                <ChatWelcomeInsight onPrefillChat={(text) => setInputValue(text)} />
               </div>
             </div>
           ) : (

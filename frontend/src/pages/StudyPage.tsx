@@ -30,6 +30,7 @@ import { useStudyStore } from '../store/studyStore';
 import type { SessionEndResult } from '../types/gamification';
 import DoodleBackground from '../components/DoodleBackground';
 import { SEO } from '../components/SEO';
+import { StudyWarmUp } from '../components/StudyWarmUp';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -131,6 +132,7 @@ export const StudyPage: React.FC = () => {
   const [isRating, setIsRating] = useState(false);
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [sessionEndResult, setSessionEndResult] = useState<SessionEndResult | null>(null);
+  const [showWarmUp, setShowWarmUp] = useState(true);
   const autoStartRef = useRef(false);
 
   // ── Store access ──
@@ -486,10 +488,20 @@ export const StudyPage: React.FC = () => {
           {studyData.videoTitle}
         </h2>
 
+        {/* 💡 Warm-Up Card — avant le début de l'étude */}
+        {showWarmUp && !isSessionMode && !showResults && (
+          <AnimatePresence>
+            <StudyWarmUp
+              category={studyData.flashcards[0]?.tags?.[0]}
+              onStart={() => setShowWarmUp(false)}
+            />
+          </AnimatePresence>
+        )}
+
         {/* ══════════════════════════════════════════════════════════════════ */}
         {/* SESSION FSRS MODE                                                */}
         {/* ══════════════════════════════════════════════════════════════════ */}
-        {isSessionMode ? (
+        {showWarmUp && !isSessionMode && !showResults ? null : isSessionMode ? (
           <div className="max-w-xl mx-auto">
             {/* Session Results */}
             {sessionEndResult ? (

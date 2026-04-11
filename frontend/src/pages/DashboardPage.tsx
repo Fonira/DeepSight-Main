@@ -39,7 +39,9 @@ import { SEO } from '../components/SEO';
 import SmartInputBar, { SmartInputValue } from "../components/SmartInputBar";
 import { TournesolTrendingSection } from "../components/TournesolTrendingSection";
 import { RecentAnalysesSection } from "../components/RecentAnalysesSection";
-// LoadingWordWidget désormais global dans App.tsx
+// "Le Saviez-Vous" — placements organiques
+import { DashboardInsight } from "../components/DashboardInsight";
+import { LoadingInsight } from "../components/LoadingInsight";
 import VideoDiscoveryModal from "../components/VideoDiscoveryModal";
 import { ThumbnailImage } from "../components/ThumbnailImage";
 import { FreshnessIndicator } from "../components/FreshnessIndicator";
@@ -1054,6 +1056,9 @@ export const DashboardPage: React.FC = () => {
                     {loadingProgress}%
                   </p>
 
+                  {/* 💡 Knowledge Drip — Le Saviez-Vous pendant le chargement */}
+                  <LoadingInsight />
+
                   {/* 🆕 Message informatif pour longues vidéos */}
                   {loadingProgress > 30 && loadingProgress < 90 && (
                     <p className="text-xs text-text-muted mt-3 max-w-sm">
@@ -1336,9 +1341,12 @@ export const DashboardPage: React.FC = () => {
               </div>
             )}
 
-            {/* Empty State → Tournesol + Recent */}
+            {/* Empty State → Insight + Tournesol + Recent */}
             {!selectedSummary && (
               <div className={`animate-fadeIn transition-opacity duration-300 ${loading ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                {/* 💡 Savoir du Jour — Bandeau citation */}
+                <DashboardInsight />
+
                 {/* Suggestions Tournesol */}
                 <TournesolTrendingSection
                   language={language as 'fr' | 'en'}

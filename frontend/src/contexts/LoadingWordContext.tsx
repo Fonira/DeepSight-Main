@@ -51,6 +51,11 @@ export interface CategoryCount {
   count: number;
 }
 
+interface WordFilter {
+  source?: 'history' | 'local';
+  category?: string;
+}
+
 interface LoadingWordContextType {
   currentWord: LoadingWord | null;
   isLoading: boolean;
@@ -72,9 +77,10 @@ interface LoadingWordContextType {
   userCategories: CategoryCount[];
   /** Nombre total de keywords dans l'historique */
   historyCount: number;
-  /** Mode embarqué : quand true, le widget flottant ne se rend pas (sidebar droite active) */
-  embeddedMode: boolean;
-  setEmbeddedMode: (value: boolean) => void;
+  /** Récupère un mot filtré par source et/ou catégorie */
+  getWordByFilter: (filter: WordFilter) => LoadingWord | null;
+  /** Récupère les N derniers termes uniques (pour ticker, etc.) */
+  getRecentTerms: (count: number) => LoadingWord[];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -189,7 +195,6 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
       return stored !== 'false'; // visible par défaut
     } catch { return true; }
   });
-  const [embeddedMode, setEmbeddedMode] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
@@ -441,6 +446,76 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
     setIsTimerActive(false);
   }, []);
 
+  /**
+   * Récupère un mot filtré par source et/ou catégorie (sans modifier la rotation globale)
+   */
+  const getWordByFilter = useCallback((filter: WordFilter): LoadingWord | null => {
+    const excludeList = Array.from(displayedWords).slice(-10);
+
+    if (filter.source === 'history') {
+      let pool = historyKeywordsCache.filter(k => !excludeList.includes(k.term.toLowerCase()));
+      if (filter.category) {
+        pool = pool.filter(k => k.category === filter.category);
+      }
+      if (pool.length === 0) {
+        pool = historyKeywordsCache.filter(k => !filter.category || k.category === filter.category);
+      }
+      if (pool.length === 0) return null;
+      return convertHistoryKeyword(pool[Math.floor(Math.random() * pool.length)]);
+    }
+
+    if (filter.source === 'local') {
+      const word = filter.category
+        ? getWordByCategory(filter.category, excludeList)
+        : getRandomWord(excludeList);
+      return convertLocalWord(word, language);
+    }
+
+    // No source filter — mix
+    if (historyKeywordsCache.length > 0) {
+      let pool = historyKeywordsCache.filter(k => !excludeList.includes(k.term.toLowerCase()));
+      if (filter.category) {
+        pool = pool.filter(k => k.category === filter.category);
+      }
+      if (pool.length > 0) {
+        return convertHistoryKeyword(pool[Math.floor(Math.random() * pool.length)]);
+      }
+    }
+    const word = filter.category
+      ? getWordByCategory(filter.category, excludeList)
+      : getRandomWord(excludeList);
+    return convertLocalWord(word, language);
+  }, [language]);
+
+  /**
+   * Récupère les N derniers termes uniques pour le ticker/affichage multiple
+   */
+  const getRecentTerms = useCallback((count: number): LoadingWord[] => {
+    const results: LoadingWord[] = [];
+    const seen = new Set<string>();
+
+    // D'abord puiser dans l'historique
+    for (const kw of historyKeywordsCache) {
+      if (seen.has(kw.term.toLowerCase())) continue;
+      seen.add(kw.term.toLowerCase());
+      results.push(convertHistoryKeyword(kw));
+      if (results.length >= count) return results;
+    }
+
+    // Compléter avec du local si besoin
+    const excludeList = Array.from(seen);
+    while (results.length < count) {
+      const word = getRandomWord(excludeList);
+      const converted = convertLocalWord(word, language);
+      if (seen.has(converted.term.toLowerCase())) break; // safety
+      seen.add(converted.term.toLowerCase());
+      excludeList.push(converted.term.toLowerCase());
+      results.push(converted);
+    }
+
+    return results;
+  }, [language]);
+
   // Catégories de l'utilisateur (memoized)
   const userCategories = useMemo(() => computeUserCategories(), [currentWord]); // eslint-disable-line react-hooks/exhaustive-deps
   const historyCount = historyKeywordsCache.length;
@@ -495,8 +570,8 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         toggleSidebar,
         userCategories,
         historyCount,
-        embeddedMode,
-        setEmbeddedMode,
+        getWordByFilter,
+        getRecentTerms,
       }}
     >
       {children}
