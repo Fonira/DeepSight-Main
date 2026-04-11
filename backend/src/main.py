@@ -268,7 +268,7 @@ except ImportError as e:
 try:
     from images.router import router as images_router
     IMAGES_ROUTER_AVAILABLE = True
-except ImportError as e:
+except Exception as e:
     IMAGES_ROUTER_AVAILABLE = False
     print(f"⚠️ Images router not available: {e}", flush=True)
 
