@@ -3,12 +3,12 @@
  * Displays time saved and encourages users to see the benefit of the service
  */
 
-import React, { useMemo } from 'react';
-import { Clock, TrendingUp, Sparkles, Check, ArrowRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from '../hooks/useTranslation';
-import { useAuth } from '../hooks/useAuth';
-import { PLANS_INFO } from '../config/planPrivileges';
+import React, { useMemo } from "react";
+import { Clock, TrendingUp, Sparkles, Check, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "../hooks/useTranslation";
+import { useAuth } from "../hooks/useAuth";
+import { PLANS_INFO } from "../config/planPrivileges";
 
 interface AnalysisValueDisplayProps {
   /** Video duration in seconds */
@@ -31,14 +31,14 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
   conceptsCount = 0,
   showUpgradeCTA = true,
   compact = false,
-  className = '',
+  className = "",
 }) => {
   const { language } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const plan = user?.plan || 'free';
-  const shouldShowUpgrade = showUpgradeCTA && plan === 'free';
+  const plan = user?.plan || "free";
+  const shouldShowUpgrade = showUpgradeCTA && plan === "free";
 
   // Calculate time saved
   const stats = useMemo(() => {
@@ -51,7 +51,7 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
     // Format time
     const formatTime = (seconds: number): string => {
       if (seconds < 60) {
-        return `${Math.round(seconds)} ${language === 'fr' ? 'sec' : 'sec'}`;
+        return `${Math.round(seconds)} ${language === "fr" ? "sec" : "sec"}`;
       }
       const minutes = Math.floor(seconds / 60);
       const hours = Math.floor(minutes / 60);
@@ -64,9 +64,10 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
     };
 
     // Percentage of time saved
-    const percentageSaved = videoDuration > 0
-      ? Math.round((timeSavedSeconds / videoDuration) * 100)
-      : 0;
+    const percentageSaved =
+      videoDuration > 0
+        ? Math.round((timeSavedSeconds / videoDuration) * 100)
+        : 0;
 
     return {
       originalTime: formatTime(videoDuration),
@@ -78,26 +79,28 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
 
   if (compact) {
     return (
-      <div className={`flex items-center gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20 ${className}`}>
+      <div
+        className={`flex items-center gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20 ${className}`}
+      >
         <div className="p-1.5 rounded-lg bg-green-500/20">
           <Clock className="w-4 h-4 text-green-400" />
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-sm text-green-400 font-medium">
-            {language === 'fr'
+            {language === "fr"
               ? `~${stats.timeSaved} économisés`
               : `~${stats.timeSaved} saved`}
           </span>
           <span className="text-xs text-text-tertiary ml-2">
-            ({stats.originalTime} {language === 'fr' ? 'de vidéo' : 'video'})
+            ({stats.originalTime} {language === "fr" ? "de vidéo" : "video"})
           </span>
         </div>
         {shouldShowUpgrade && (
           <button
-            onClick={() => navigate('/upgrade')}
+            onClick={() => navigate("/upgrade")}
             className="text-xs text-accent-primary hover:underline"
           >
-            {language === 'fr' ? 'Upgrade' : 'Upgrade'}
+            {language === "fr" ? "Upgrade" : "Upgrade"}
           </button>
         )}
       </div>
@@ -105,12 +108,14 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
   }
 
   return (
-    <div className={`rounded-xl border border-green-500/20 bg-gradient-to-br from-green-500/5 to-emerald-500/5 overflow-hidden ${className}`}>
+    <div
+      className={`rounded-xl border border-green-500/20 bg-gradient-to-br from-green-500/5 to-emerald-500/5 overflow-hidden ${className}`}
+    >
       {/* Header */}
       <div className="px-4 py-3 border-b border-green-500/10 flex items-center gap-2">
         <Sparkles className="w-4 h-4 text-green-400" />
         <span className="font-medium text-text-primary text-sm">
-          {language === 'fr' ? 'Valeur de cette analyse' : 'Analysis value'}
+          {language === "fr" ? "Valeur de cette analyse" : "Analysis value"}
         </span>
       </div>
 
@@ -123,7 +128,7 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
               ~{stats.timeSaved}
             </div>
             <div className="text-xs text-text-tertiary">
-              {language === 'fr' ? 'Temps économisé' : 'Time saved'}
+              {language === "fr" ? "Temps économisé" : "Time saved"}
             </div>
           </div>
 
@@ -134,7 +139,7 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
                 {keyPointsCount}
               </div>
               <div className="text-xs text-text-tertiary">
-                {language === 'fr' ? 'Points clés' : 'Key points'}
+                {language === "fr" ? "Points clés" : "Key points"}
               </div>
             </div>
           )}
@@ -146,7 +151,7 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
                 {conceptsCount}
               </div>
               <div className="text-xs text-text-tertiary">
-                {language === 'fr' ? 'Concepts' : 'Concepts'}
+                {language === "fr" ? "Concepts" : "Concepts"}
               </div>
             </div>
           )}
@@ -164,14 +169,16 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
           </div>
           <div className="absolute inset-0 flex items-center justify-between px-3 text-xs">
             <span className="text-text-tertiary">0</span>
-            <span className="text-text-secondary font-medium">{stats.originalTime}</span>
+            <span className="text-text-secondary font-medium">
+              {stats.originalTime}
+            </span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 text-xs text-text-tertiary">
           <Check className="w-3 h-3 text-green-400" />
           <span>
-            {language === 'fr'
+            {language === "fr"
               ? `Analysé en ~45 sec au lieu de ${stats.originalTime} de visionnage`
               : `Analyzed in ~45 sec instead of ${stats.originalTime} watching`}
           </span>
@@ -183,22 +190,22 @@ export const AnalysisValueDisplay: React.FC<AnalysisValueDisplayProps> = ({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-text-primary font-medium">
-                  {language === 'fr'
-                    ? 'Analysez plus de vidéos'
-                    : 'Analyze more videos'}
+                  {language === "fr"
+                    ? "Analysez plus de vidéos"
+                    : "Analyze more videos"}
                 </p>
                 <p className="text-xs text-text-tertiary">
-                  {language === 'fr'
-                    ? `Dès ${(PLANS_INFO.pro.priceMonthly / 100).toFixed(2).replace('.', ',')}€/mois`
+                  {language === "fr"
+                    ? `Dès ${(PLANS_INFO.pro.priceMonthly / 100).toFixed(2).replace(".", ",")}€/mois`
                     : `From €${(PLANS_INFO.pro.priceMonthly / 100).toFixed(2)}/mo`}
                 </p>
               </div>
               <button
-                onClick={() => navigate('/upgrade')}
+                onClick={() => navigate("/upgrade")}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-accent-primary/20 text-accent-primary text-sm font-medium hover:bg-accent-primary/30 transition-colors"
               >
                 <TrendingUp className="w-4 h-4" />
-                {language === 'fr' ? 'Voir les plans' : 'View plans'}
+                {language === "fr" ? "Voir les plans" : "View plans"}
                 <ArrowRight className="w-3 h-3" />
               </button>
             </div>

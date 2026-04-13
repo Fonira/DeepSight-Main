@@ -4,25 +4,39 @@
  * Consumes LoadingWordContext via getWordByFilter (does NOT mutate currentWord).
  */
 
-import { useReducer, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useLoadingWord } from '../../contexts/LoadingWordContext';
-import type { LoadingWord } from '../../contexts/LoadingWordContext';
+import { useReducer, useEffect, useRef, useCallback, useMemo } from "react";
+import { useLoadingWord } from "../../contexts/LoadingWordContext";
+import type { LoadingWord } from "../../contexts/LoadingWordContext";
 import {
-  MOLE_VISIBLE_MIN, MOLE_VISIBLE_MAX,
-  COOLDOWN_MIN, COOLDOWN_MAX,
-  FACT_DISPLAY_DURATION, INITIAL_DELAY,
-  MOLE_SIZE, EDGE_PADDING, SAFE_ZONE_BUFFER,
-  POSITION_CANDIDATES, FACT_CARD_WIDTH,
-  LS_ENABLED, LS_DAILY_CATCHES, LS_GAME_MODE,
+  MOLE_VISIBLE_MIN,
+  MOLE_VISIBLE_MAX,
+  COOLDOWN_MIN,
+  COOLDOWN_MAX,
+  FACT_DISPLAY_DURATION,
+  INITIAL_DELAY,
+  MOLE_SIZE,
+  EDGE_PADDING,
+  SAFE_ZONE_BUFFER,
+  POSITION_CANDIDATES,
+  FACT_CARD_WIDTH,
+  LS_ENABLED,
+  LS_DAILY_CATCHES,
+  LS_GAME_MODE,
   CONFETTI_MILESTONES,
   REVERSE_GUESS_DURATION,
-} from './whackAMoleConstants';
-import { keywordImageApi } from '../../services/api';
+} from "./whackAMoleConstants";
+import { keywordImageApi } from "../../services/api";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type GameMode = 'classic' | 'reverse';
-type Phase = 'idle' | 'visible' | 'caught' | 'missed' | 'revealing' | 'guessing';
+export type GameMode = "classic" | "reverse";
+type Phase =
+  | "idle"
+  | "visible"
+  | "caught"
+  | "missed"
+  | "revealing"
+  | "guessing";
 
 interface WhackAMoleState {
   phase: Phase;
@@ -34,19 +48,24 @@ interface WhackAMoleState {
   visibleDuration: number;
   mode: GameMode;
   reverseImageUrl: string | null;
-  lastGuessResult: 'correct' | 'close' | 'wrong' | null;
+  lastGuessResult: "correct" | "close" | "wrong" | null;
 }
 
 type Action =
-  | { type: 'SPAWN'; position: { x: number; y: number }; fact: LoadingWord; duration: number }
-  | { type: 'SPAWN_REVERSE'; fact: LoadingWord; imageUrl: string }
-  | { type: 'CATCH' }
-  | { type: 'MISS' }
-  | { type: 'GUESS_SUBMIT'; result: 'correct' | 'close' | 'wrong' }
-  | { type: 'REVEAL_DONE' }
-  | { type: 'RESET_TO_IDLE' }
-  | { type: 'TOGGLE_ENABLED'; enabled: boolean }
-  | { type: 'SET_MODE'; mode: GameMode };
+  | {
+      type: "SPAWN";
+      position: { x: number; y: number };
+      fact: LoadingWord;
+      duration: number;
+    }
+  | { type: "SPAWN_REVERSE"; fact: LoadingWord; imageUrl: string }
+  | { type: "CATCH" }
+  | { type: "MISS" }
+  | { type: "GUESS_SUBMIT"; result: "correct" | "close" | "wrong" }
+  | { type: "REVEAL_DONE" }
+  | { type: "RESET_TO_IDLE" }
+  | { type: "TOGGLE_ENABLED"; enabled: boolean }
+  | { type: "SET_MODE"; mode: GameMode };
 
 interface Rect {
   x: number;
@@ -59,20 +78,20 @@ interface Rect {
 
 function reducer(state: WhackAMoleState, action: Action): WhackAMoleState {
   switch (action.type) {
-    case 'SPAWN':
+    case "SPAWN":
       return {
         ...state,
-        phase: 'visible',
+        phase: "visible",
         position: action.position,
         currentFact: action.fact,
         visibleDuration: action.duration,
         reverseImageUrl: null,
         lastGuessResult: null,
       };
-    case 'SPAWN_REVERSE':
+    case "SPAWN_REVERSE":
       return {
         ...state,
-        phase: 'guessing',
+        phase: "guessing",
         currentFact: action.fact,
         reverseImageUrl: action.imageUrl,
         visibleDuration: REVERSE_GUESS_DURATION,
@@ -82,31 +101,34 @@ function reducer(state: WhackAMoleState, action: Action): WhackAMoleState {
           y: Math.max(80, (window.innerHeight - 500) / 2),
         },
       };
-    case 'CATCH':
+    case "CATCH":
       return {
         ...state,
-        phase: 'caught',
+        phase: "caught",
         streak: state.streak + 1,
         totalCatches: state.totalCatches + 1,
       };
-    case 'MISS':
-      return { ...state, phase: 'missed', streak: 0 };
-    case 'GUESS_SUBMIT':
+    case "MISS":
+      return { ...state, phase: "missed", streak: 0 };
+    case "GUESS_SUBMIT":
       return {
         ...state,
-        phase: 'revealing',
+        phase: "revealing",
         lastGuessResult: action.result,
-        streak: action.result === 'correct' ? state.streak + 1 : 0,
-        totalCatches: action.result === 'correct' ? state.totalCatches + 1 : state.totalCatches,
+        streak: action.result === "correct" ? state.streak + 1 : 0,
+        totalCatches:
+          action.result === "correct"
+            ? state.totalCatches + 1
+            : state.totalCatches,
       };
-    case 'REVEAL_DONE':
-      return { ...state, phase: 'revealing' };
-    case 'RESET_TO_IDLE':
-      return { ...state, phase: 'idle', lastGuessResult: null };
-    case 'TOGGLE_ENABLED':
-      return { ...state, enabled: action.enabled, phase: 'idle' };
-    case 'SET_MODE':
-      return { ...state, mode: action.mode, phase: 'idle' };
+    case "REVEAL_DONE":
+      return { ...state, phase: "revealing" };
+    case "RESET_TO_IDLE":
+      return { ...state, phase: "idle", lastGuessResult: null };
+    case "TOGGLE_ENABLED":
+      return { ...state, enabled: action.enabled, phase: "idle" };
+    case "SET_MODE":
+      return { ...state, mode: action.mode, phase: "idle" };
     default:
       return state;
   }
@@ -119,7 +141,12 @@ function randomInRange(min: number, max: number): number {
 }
 
 function rectsOverlap(a: Rect, b: Rect): boolean {
-  return !(a.x + a.w < b.x || b.x + b.w < a.x || a.y + a.h < b.y || b.y + b.h < a.y);
+  return !(
+    a.x + a.w < b.x ||
+    b.x + b.w < a.x ||
+    a.y + a.h < b.y ||
+    b.y + b.h < a.y
+  );
 }
 
 function getSafeZones(sidebarCollapsed: boolean, isMobile: boolean): Rect[] {
@@ -141,7 +168,10 @@ function getSafeZones(sidebarCollapsed: boolean, isMobile: boolean): Rect[] {
   return zones;
 }
 
-function computeSafePosition(sidebarCollapsed: boolean, isMobile: boolean): { x: number; y: number } | null {
+function computeSafePosition(
+  sidebarCollapsed: boolean,
+  isMobile: boolean,
+): { x: number; y: number } | null {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const zones = getSafeZones(sidebarCollapsed, isMobile);
@@ -163,7 +193,7 @@ function computeSafePosition(sidebarCollapsed: boolean, isMobile: boolean): { x:
       w: MOLE_SIZE + SAFE_ZONE_BUFFER * 2,
       h: MOLE_SIZE + SAFE_ZONE_BUFFER * 2,
     };
-    const overlaps = zones.some(zone => rectsOverlap(moleRect, zone));
+    const overlaps = zones.some((zone) => rectsOverlap(moleRect, zone));
     if (!overlaps) {
       candidates.push({ x, y });
     }
@@ -174,7 +204,10 @@ function computeSafePosition(sidebarCollapsed: boolean, isMobile: boolean): { x:
 }
 
 /** Clamp fact card position so it doesn't overflow viewport */
-export function clampFactPosition(molePos: { x: number; y: number }): { x: number; y: number } {
+export function clampFactPosition(molePos: { x: number; y: number }): {
+  x: number;
+  y: number;
+} {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
   const cardH = 200;
@@ -211,8 +244,13 @@ function incrementDailyCatches(): number {
   const current = getDailyCatches();
   const next = current + 1;
   try {
-    localStorage.setItem(LS_DAILY_CATCHES, JSON.stringify({ date: today, count: next }));
-  } catch { /* */ }
+    localStorage.setItem(
+      LS_DAILY_CATCHES,
+      JSON.stringify({ date: today, count: next }),
+    );
+  } catch {
+    /* */
+  }
   return next;
 }
 
@@ -222,38 +260,44 @@ function normalizeAnswer(s: string): string {
   return s
     .toLowerCase()
     .trim()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/^(le |la |les |l'|l\u2019|the |a |an )/i, '')
-    .replace(/[^a-z0-9 ]/g, '')
-    .replace(/\s+/g, ' ')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/^(le |la |les |l'|l\u2019|the |a |an )/i, "")
+    .replace(/[^a-z0-9 ]/g, "")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 function levenshtein(a: string, b: string): number {
-  const m = a.length, n = b.length;
+  const m = a.length,
+    n = b.length;
   if (m === 0) return n;
   if (n === 0) return m;
   const dp: number[][] = Array.from({ length: m + 1 }, (_, i) =>
-    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0))
+    Array.from({ length: n + 1 }, (_, j) => (i === 0 ? j : j === 0 ? i : 0)),
   );
   for (let i = 1; i <= m; i++) {
     for (let j = 1; j <= n; j++) {
-      dp[i][j] = a[i - 1] === b[j - 1]
-        ? dp[i - 1][j - 1]
-        : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      dp[i][j] =
+        a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
     }
   }
   return dp[m][n];
 }
 
-function checkGuess(input: string, term: string): 'correct' | 'close' | 'wrong' {
+function checkGuess(
+  input: string,
+  term: string,
+): "correct" | "close" | "wrong" {
   const a = normalizeAnswer(input);
   const b = normalizeAnswer(term);
-  if (!a) return 'wrong';
-  if (a === b) return 'correct';
-  if (a.includes(b) || b.includes(a)) return 'close';
-  if (levenshtein(a, b) <= 3) return 'close';
-  return 'wrong';
+  if (!a) return "wrong";
+  if (a === b) return "correct";
+  if (a.includes(b) || b.includes(a)) return "close";
+  if (levenshtein(a, b) <= 3) return "close";
+  return "wrong";
 }
 
 // ─── Hook ───────────────────────────────────────────────────────────────────
@@ -264,12 +308,12 @@ interface UseWhackAMoleOptions {
 
 export function useWhackAMole({ sidebarCollapsed }: UseWhackAMoleOptions) {
   const { getWordByFilter } = useLoadingWord();
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 1024;
 
   const initialEnabled = useMemo(() => {
     try {
       const stored = localStorage.getItem(LS_ENABLED);
-      return stored !== 'false';
+      return stored !== "false";
     } catch {
       return true;
     }
@@ -278,14 +322,14 @@ export function useWhackAMole({ sidebarCollapsed }: UseWhackAMoleOptions) {
   const initialMode = useMemo((): GameMode => {
     try {
       const stored = localStorage.getItem(LS_GAME_MODE);
-      return stored === 'reverse' ? 'reverse' : 'classic';
+      return stored === "reverse" ? "reverse" : "classic";
     } catch {
-      return 'classic';
+      return "classic";
     }
   }, []);
 
   const [state, dispatch] = useReducer(reducer, {
-    phase: 'idle',
+    phase: "idle",
     position: { x: 0, y: 0 },
     currentFact: null,
     streak: 0,
@@ -298,23 +342,33 @@ export function useWhackAMole({ sidebarCollapsed }: UseWhackAMoleOptions) {
   });
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prefersReducedMotion = useMemo(
-    () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-    []
-  );
+  const prefersReducedMotion = useMemo(() => {
+    try {
+      return (
+        typeof window !== "undefined" &&
+        (window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ??
+          false)
+      );
+    } catch {
+      return false;
+    }
+  }, []);
 
   // Listen for storage events (from Sidebar toggle)
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === LS_ENABLED) {
-        dispatch({ type: 'TOGGLE_ENABLED', enabled: e.newValue !== 'false' });
+        dispatch({ type: "TOGGLE_ENABLED", enabled: e.newValue !== "false" });
       }
       if (e.key === LS_GAME_MODE) {
-        dispatch({ type: 'SET_MODE', mode: e.newValue === 'reverse' ? 'reverse' : 'classic' });
+        dispatch({
+          type: "SET_MODE",
+          mode: e.newValue === "reverse" ? "reverse" : "classic",
+        });
       }
     };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   // Clear any running timer
@@ -326,7 +380,10 @@ export function useWhackAMole({ sidebarCollapsed }: UseWhackAMoleOptions) {
   }, []);
 
   // Try to find a word with an image (for reverse mode)
-  const findWordWithImage = useCallback(async (): Promise<{ fact: LoadingWord; imageUrl: string } | null> => {
+  const findWordWithImage = useCallback(async (): Promise<{
+    fact: LoadingWord;
+    imageUrl: string;
+  } | null> => {
     for (let attempt = 0; attempt < 5; attempt++) {
       const fact = getWordByFilter({});
       if (!fact) continue;
@@ -342,85 +399,110 @@ export function useWhackAMole({ sidebarCollapsed }: UseWhackAMoleOptions) {
   }, [getWordByFilter]);
 
   // Schedule next spawn
-  const scheduleSpawn = useCallback((delay?: number) => {
-    clearTimer();
-    const wait = delay ?? randomInRange(COOLDOWN_MIN, COOLDOWN_MAX);
-    timerRef.current = setTimeout(async () => {
-      if (state.mode === 'reverse') {
-        const result = await findWordWithImage();
-        if (result) {
-          dispatch({ type: 'SPAWN_REVERSE', fact: result.fact, imageUrl: result.imageUrl });
+  const scheduleSpawn = useCallback(
+    (delay?: number) => {
+      clearTimer();
+      const wait = delay ?? randomInRange(COOLDOWN_MIN, COOLDOWN_MAX);
+      timerRef.current = setTimeout(async () => {
+        if (state.mode === "reverse") {
+          const result = await findWordWithImage();
+          if (result) {
+            dispatch({
+              type: "SPAWN_REVERSE",
+              fact: result.fact,
+              imageUrl: result.imageUrl,
+            });
+          } else {
+            // No image found — fall back to classic for this round
+            const pos = computeSafePosition(sidebarCollapsed, isMobile);
+            const fact = getWordByFilter({});
+            if (pos && fact) {
+              const duration = randomInRange(
+                MOLE_VISIBLE_MIN,
+                MOLE_VISIBLE_MAX,
+              );
+              dispatch({ type: "SPAWN", position: pos, fact, duration });
+            } else {
+              scheduleSpawn(3000);
+            }
+          }
         } else {
-          // No image found — fall back to classic for this round
           const pos = computeSafePosition(sidebarCollapsed, isMobile);
           const fact = getWordByFilter({});
           if (pos && fact) {
-            const duration = randomInRange(MOLE_VISIBLE_MIN, MOLE_VISIBLE_MAX);
-            dispatch({ type: 'SPAWN', position: pos, fact, duration });
+            const duration = prefersReducedMotion
+              ? 10000
+              : randomInRange(MOLE_VISIBLE_MIN, MOLE_VISIBLE_MAX);
+            dispatch({ type: "SPAWN", position: pos, fact, duration });
           } else {
             scheduleSpawn(3000);
           }
         }
-      } else {
-        const pos = computeSafePosition(sidebarCollapsed, isMobile);
-        const fact = getWordByFilter({});
-        if (pos && fact) {
-          const duration = prefersReducedMotion
-            ? 10000
-            : randomInRange(MOLE_VISIBLE_MIN, MOLE_VISIBLE_MAX);
-          dispatch({ type: 'SPAWN', position: pos, fact, duration });
-        } else {
-          scheduleSpawn(3000);
-        }
-      }
-    }, wait);
-  }, [clearTimer, sidebarCollapsed, isMobile, getWordByFilter, prefersReducedMotion, state.mode, findWordWithImage]);
+      }, wait);
+    },
+    [
+      clearTimer,
+      sidebarCollapsed,
+      isMobile,
+      getWordByFilter,
+      prefersReducedMotion,
+      state.mode,
+      findWordWithImage,
+    ],
+  );
 
   // Handle catch (classic mode)
   const handleCatch = useCallback(() => {
-    if (state.phase !== 'visible') return;
+    if (state.phase !== "visible") return;
     clearTimer();
-    dispatch({ type: 'CATCH' });
+    dispatch({ type: "CATCH" });
     incrementDailyCatches();
 
     timerRef.current = setTimeout(() => {
-      dispatch({ type: 'REVEAL_DONE' });
+      dispatch({ type: "REVEAL_DONE" });
     }, 500);
   }, [state.phase, clearTimer]);
 
   // Handle guess submission (reverse mode)
-  const handleGuess = useCallback((input: string) => {
-    if (state.phase !== 'guessing' || !state.currentFact) return;
-    clearTimer();
-    const result = checkGuess(input, state.currentFact.term);
-    dispatch({ type: 'GUESS_SUBMIT', result });
-    if (result === 'correct') {
-      incrementDailyCatches();
-    }
-  }, [state.phase, state.currentFact, clearTimer]);
+  const handleGuess = useCallback(
+    (input: string) => {
+      if (state.phase !== "guessing" || !state.currentFact) return;
+      clearTimer();
+      const result = checkGuess(input, state.currentFact.term);
+      dispatch({ type: "GUESS_SUBMIT", result });
+      if (result === "correct") {
+        incrementDailyCatches();
+      }
+    },
+    [state.phase, state.currentFact, clearTimer],
+  );
 
   // Dismiss fact card (manual or auto)
   const dismissFact = useCallback(() => {
     clearTimer();
-    dispatch({ type: 'RESET_TO_IDLE' });
+    dispatch({ type: "RESET_TO_IDLE" });
     scheduleSpawn();
   }, [clearTimer, scheduleSpawn]);
 
   // Toggle enabled
   const toggleEnabled = useCallback(() => {
     const next = !state.enabled;
-    dispatch({ type: 'TOGGLE_ENABLED', enabled: next });
+    dispatch({ type: "TOGGLE_ENABLED", enabled: next });
     try {
       localStorage.setItem(LS_ENABLED, String(next));
-    } catch { /* */ }
+    } catch {
+      /* */
+    }
   }, [state.enabled]);
 
   // Set game mode
   const setMode = useCallback((mode: GameMode) => {
-    dispatch({ type: 'SET_MODE', mode });
+    dispatch({ type: "SET_MODE", mode });
     try {
       localStorage.setItem(LS_GAME_MODE, mode);
-    } catch { /* */ }
+    } catch {
+      /* */
+    }
   }, []);
 
   // Phase-based timer management
@@ -431,31 +513,31 @@ export function useWhackAMole({ sidebarCollapsed }: UseWhackAMoleOptions) {
     }
 
     switch (state.phase) {
-      case 'idle':
+      case "idle":
         break;
-      case 'visible': {
+      case "visible": {
         clearTimer();
         timerRef.current = setTimeout(() => {
-          dispatch({ type: 'MISS' });
+          dispatch({ type: "MISS" });
         }, state.visibleDuration);
         break;
       }
-      case 'missed': {
+      case "missed": {
         clearTimer();
         timerRef.current = setTimeout(() => {
-          dispatch({ type: 'RESET_TO_IDLE' });
+          dispatch({ type: "RESET_TO_IDLE" });
           scheduleSpawn();
         }, 600);
         break;
       }
-      case 'guessing': {
+      case "guessing": {
         clearTimer();
         timerRef.current = setTimeout(() => {
-          dispatch({ type: 'GUESS_SUBMIT', result: 'wrong' });
+          dispatch({ type: "GUESS_SUBMIT", result: "wrong" });
         }, REVERSE_GUESS_DURATION);
         break;
       }
-      case 'revealing': {
+      case "revealing": {
         clearTimer();
         timerRef.current = setTimeout(() => {
           dismissFact();
@@ -476,7 +558,8 @@ export function useWhackAMole({ sidebarCollapsed }: UseWhackAMoleOptions) {
   }, [state.enabled]);
 
   // Check if this catch is a confetti milestone
-  const isConfettiMilestone = state.phase === 'caught' && CONFETTI_MILESTONES.includes(state.streak);
+  const isConfettiMilestone =
+    state.phase === "caught" && CONFETTI_MILESTONES.includes(state.streak);
 
   return {
     phase: state.phase,

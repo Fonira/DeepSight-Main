@@ -79,11 +79,17 @@ const ExtensionWelcomePage = () => {
             <motion.div
               initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.1, ease: [0.34, 1.56, 0.64, 1] }}
+              transition={{
+                duration: 0.6,
+                delay: 0.1,
+                ease: [0.34, 1.56, 0.64, 1],
+              }}
               className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-accent-primary/10 border border-accent-primary/20 mb-8"
             >
               <span className="text-2xl">✅</span>
-              <span className="text-accent-primary font-semibold text-base">Extension installée avec succès</span>
+              <span className="text-accent-primary font-semibold text-base">
+                Extension installée avec succès
+              </span>
             </motion.div>
 
             <motion.h1
@@ -104,7 +110,8 @@ const ExtensionWelcomePage = () => {
               transition={{ delay: 0.4 }}
               className="text-text-secondary text-lg sm:text-xl max-w-xl mx-auto"
             >
-              Ne subissez plus vos vidéos — <strong className="text-text-primary">interrogez-les.</strong>
+              Ne subissez plus vos vidéos —{" "}
+              <strong className="text-text-primary">interrogez-les.</strong>
             </motion.p>
           </motion.div>
 
@@ -127,8 +134,12 @@ const ExtensionWelcomePage = () => {
                   {i + 1}
                 </div>
                 <span className="text-3xl block mb-3">{step.icon}</span>
-                <h3 className="text-text-primary font-bold text-base mb-1.5">{step.title}</h3>
-                <p className="text-text-secondary text-sm leading-relaxed">{step.desc}</p>
+                <h3 className="text-text-primary font-bold text-base mb-1.5">
+                  {step.title}
+                </h3>
+                <p className="text-text-secondary text-sm leading-relaxed">
+                  {step.desc}
+                </p>
               </motion.div>
             ))}
           </motion.div>
@@ -150,7 +161,9 @@ const ExtensionWelcomePage = () => {
                   className="flex flex-col items-center gap-2 p-4 rounded-xl bg-bg-secondary/50 border border-border-default"
                 >
                   <span className="text-2xl">{f.icon}</span>
-                  <span className="text-text-primary text-sm font-medium text-center">{f.label}</span>
+                  <span className="text-text-primary text-sm font-medium text-center">
+                    {f.label}
+                  </span>
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-accent-violet/80 bg-accent-violet/10 px-2 py-0.5 rounded-full">
                     {f.plan}
                   </span>
@@ -169,7 +182,11 @@ const ExtensionWelcomePage = () => {
             {user ? (
               <div className="space-y-4">
                 <p className="text-text-secondary">
-                  Vous êtes connecté en tant que <strong className="text-text-primary">{user.username || user.email}</strong>.
+                  Vous êtes connecté en tant que{" "}
+                  <strong className="text-text-primary">
+                    {user.username || user.email}
+                  </strong>
+                  .
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <button
@@ -221,10 +238,17 @@ const ExtensionWelcomePage = () => {
             className="mt-16 flex justify-center"
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-bg-secondary/50 border border-border-default text-text-tertiary text-xs">
-              <span>{'\uD83C\uDDEB\uD83C\uDDF7\uD83C\uDDEA\uD83C\uDDFA'}</span>
-              <span>IA 100% Fran\u00e7aise & Europ\u00e9enne — propuls\u00e9 par Mistral AI</span>
+              <span>{"\uD83C\uDDEB\uD83C\uDDF7\uD83C\uDDEA\uD83C\uDDFA"}</span>
+              <span>
+                IA 100% Fran\u00e7aise & Europ\u00e9enne — propuls\u00e9 par
+                Mistral AI
+              </span>
               <span className="opacity-40">|</span>
-              <img src="/platforms/tournesol-logo.png" alt="Tournesol" className="h-4 inline" />
+              <img
+                src="/platforms/tournesol-logo.png"
+                alt="Tournesol"
+                className="h-4 inline"
+              />
               <span>Qualit\u00e9 Tournesol</span>
             </div>
           </motion.div>

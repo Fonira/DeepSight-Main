@@ -3,18 +3,18 @@
  * Onglet Quiz : génération lazy + QCM interactif
  */
 
-import React, { useState, useCallback } from 'react';
-import { Brain, Sparkles } from 'lucide-react';
-import { DeepSightSpinner } from '../ui';
-import { QuizQuestion, StudyProgress, ScoreCard } from '../Study';
-import type { QuizQuestionData } from '../Study';
+import React, { useState, useCallback } from "react";
+import { Brain, Sparkles } from "lucide-react";
+import { DeepSightSpinner } from "../ui";
+import { QuizQuestion, StudyProgress, ScoreCard } from "../Study";
+import type { QuizQuestionData } from "../Study";
 
 interface QuizTabProps {
   questions: QuizQuestionData[] | null;
   loading: boolean;
   error: string | null;
   onGenerate: () => void;
-  language: 'fr' | 'en';
+  language: "fr" | "en";
 }
 
 export const QuizTab: React.FC<QuizTabProps> = ({
@@ -24,13 +24,20 @@ export const QuizTab: React.FC<QuizTabProps> = ({
   onGenerate,
   language,
 }) => {
-  const [quizProgress, setQuizProgress] = useState({ current: 0, total: 0, score: 0 });
+  const [quizProgress, setQuizProgress] = useState({
+    current: 0,
+    total: 0,
+    score: 0,
+  });
   const [quizComplete, setQuizComplete] = useState(false);
   const [quizScore, setQuizScore] = useState({ correct: 0, incorrect: 0 });
 
-  const handleQuizProgress = useCallback((current: number, total: number, score: number) => {
-    setQuizProgress({ current, total, score });
-  }, []);
+  const handleQuizProgress = useCallback(
+    (current: number, total: number, score: number) => {
+      setQuizProgress({ current, total, score });
+    },
+    [],
+  );
 
   const handleQuizComplete = useCallback((score: number, total: number) => {
     setQuizComplete(true);
@@ -52,19 +59,19 @@ export const QuizTab: React.FC<QuizTabProps> = ({
           <Brain className="w-8 h-8 text-amber-400" />
         </div>
         <h3 className="text-lg font-semibold text-text-primary mb-2">
-          {language === 'fr' ? 'Quiz de compréhension' : 'Comprehension Quiz'}
+          {language === "fr" ? "Quiz de compréhension" : "Comprehension Quiz"}
         </h3>
         <p className="text-text-secondary text-sm text-center max-w-md mb-6">
-          {language === 'fr'
-            ? 'Testez votre compréhension de la vidéo avec un quiz interactif généré par IA.'
-            : 'Test your understanding of the video with an AI-generated interactive quiz.'}
+          {language === "fr"
+            ? "Testez votre compréhension de la vidéo avec un quiz interactif généré par IA."
+            : "Test your understanding of the video with an AI-generated interactive quiz."}
         </p>
         <button
           onClick={onGenerate}
           className="btn btn-primary flex items-center gap-2 px-6 py-2.5"
         >
           <Sparkles className="w-4 h-4" />
-          {language === 'fr' ? 'Générer le quiz' : 'Generate quiz'}
+          {language === "fr" ? "Générer le quiz" : "Generate quiz"}
         </button>
       </div>
     );
@@ -76,7 +83,7 @@ export const QuizTab: React.FC<QuizTabProps> = ({
       <div className="flex flex-col items-center justify-center py-20">
         <DeepSightSpinner />
         <p className="text-text-secondary text-sm mt-4">
-          {language === 'fr' ? 'Génération du quiz...' : 'Generating quiz...'}
+          {language === "fr" ? "Génération du quiz..." : "Generating quiz..."}
         </p>
       </div>
     );
@@ -88,7 +95,7 @@ export const QuizTab: React.FC<QuizTabProps> = ({
       <div className="flex flex-col items-center justify-center py-16 px-6">
         <p className="text-red-400 text-sm mb-4">{error}</p>
         <button onClick={onGenerate} className="btn btn-ghost text-sm">
-          {language === 'fr' ? 'Réessayer' : 'Retry'}
+          {language === "fr" ? "Réessayer" : "Retry"}
         </button>
       </div>
     );

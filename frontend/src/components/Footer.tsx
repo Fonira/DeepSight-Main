@@ -28,7 +28,9 @@ export const Footer: React.FC = () => {
         >
           <Shield className="w-3 h-3 text-blue-400" />
           <span>IA Mistral</span>
-          <span className="opacity-60">\uD83C\uDDEB\uD83C\uDDF7\uD83C\uDDEA\uD83C\uDDFA</span>
+          <span className="opacity-60">
+            \uD83C\uDDEB\uD83C\uDDF7\uD83C\uDDEA\uD83C\uDDFA
+          </span>
         </a>
         <span className="text-border-default">\u00B7</span>
         <a
@@ -42,7 +44,10 @@ export const Footer: React.FC = () => {
           <span>Qualit\u00e9 Tournesol</span>
         </a>
         <span className="text-border-default">\u00B7</span>
-        <span className="flex items-center gap-1" title="Donn\u00e9es h\u00e9berg\u00e9es en Union Europ\u00e9enne — RGPD natif">
+        <span
+          className="flex items-center gap-1"
+          title="Donn\u00e9es h\u00e9berg\u00e9es en Union Europ\u00e9enne — RGPD natif"
+        >
           <Shield className="w-3 h-3 text-green-400" />
           <span>RGPD &amp; EU AI Act</span>
         </span>
@@ -53,7 +58,9 @@ export const Footer: React.FC = () => {
           {t.footer.copyright}
           <span className="mx-1 text-border-default">\u00B7</span>
           <span className="flex items-center gap-1">
-            {t.footer.madeWith} <Heart className="w-2.5 h-2.5 text-red-400 fill-red-400" /> {t.footer.inFrance}
+            {t.footer.madeWith}{" "}
+            <Heart className="w-2.5 h-2.5 text-red-400 fill-red-400" />{" "}
+            {t.footer.inFrance}
           </span>
         </div>
         <div className="flex items-center gap-3 text-xs">

@@ -2,11 +2,11 @@
  * DebateSummaryCard — Carte résumé d'un débat (pour la liste / historique)
  */
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Swords, Clock, CheckCircle2, XCircle } from 'lucide-react';
-import type { DebateListItem, DebateStatus } from '../../types/debate';
-import { DeepSightSpinnerMicro } from '../ui/DeepSightSpinner';
+import React from "react";
+import { motion } from "framer-motion";
+import { Swords, Clock, CheckCircle2, XCircle } from "lucide-react";
+import type { DebateListItem, DebateStatus } from "../../types/debate";
+import { DeepSightSpinnerMicro } from "../ui/DeepSightSpinner";
 
 interface DebateSummaryCardProps {
   debate: DebateListItem;
@@ -15,26 +15,68 @@ interface DebateSummaryCardProps {
 
 const SpinnerBadgeIcon = () => <DeepSightSpinnerMicro />;
 
-const STATUS_BADGE: Record<DebateStatus, { label: string; className: string; icon: React.ElementType }> = {
-  pending: { label: 'En attente', className: 'bg-white/10 text-white/50', icon: Clock },
-  searching: { label: 'Recherche…', className: 'bg-indigo-500/15 text-indigo-400', icon: SpinnerBadgeIcon },
-  analyzing_b: { label: 'Analyse…', className: 'bg-indigo-500/15 text-indigo-400', icon: SpinnerBadgeIcon },
-  comparing: { label: 'Comparaison…', className: 'bg-violet-500/15 text-violet-400', icon: SpinnerBadgeIcon },
-  fact_checking: { label: 'Vérification…', className: 'bg-cyan-500/15 text-cyan-400', icon: SpinnerBadgeIcon },
-  completed: { label: 'Terminé', className: 'bg-emerald-500/15 text-emerald-400', icon: CheckCircle2 },
-  failed: { label: 'Échec', className: 'bg-red-500/15 text-red-400', icon: XCircle },
+const STATUS_BADGE: Record<
+  DebateStatus,
+  { label: string; className: string; icon: React.ElementType }
+> = {
+  pending: {
+    label: "En attente",
+    className: "bg-white/10 text-white/50",
+    icon: Clock,
+  },
+  searching: {
+    label: "Recherche…",
+    className: "bg-indigo-500/15 text-indigo-400",
+    icon: SpinnerBadgeIcon,
+  },
+  analyzing_b: {
+    label: "Analyse…",
+    className: "bg-indigo-500/15 text-indigo-400",
+    icon: SpinnerBadgeIcon,
+  },
+  comparing: {
+    label: "Comparaison…",
+    className: "bg-violet-500/15 text-violet-400",
+    icon: SpinnerBadgeIcon,
+  },
+  fact_checking: {
+    label: "Vérification…",
+    className: "bg-cyan-500/15 text-cyan-400",
+    icon: SpinnerBadgeIcon,
+  },
+  completed: {
+    label: "Terminé",
+    className: "bg-emerald-500/15 text-emerald-400",
+    icon: CheckCircle2,
+  },
+  failed: {
+    label: "Échec",
+    className: "bg-red-500/15 text-red-400",
+    icon: XCircle,
+  },
 };
 
-export const DebateSummaryCard: React.FC<DebateSummaryCardProps> = ({ debate, onClick }) => {
+export const DebateSummaryCard: React.FC<DebateSummaryCardProps> = ({
+  debate,
+  onClick,
+}) => {
   const badge = STATUS_BADGE[debate.status];
   const BadgeIcon = badge.icon;
-  const isLoading = ['searching', 'analyzing_b', 'comparing', 'fact_checking'].includes(debate.status);
+  const isLoading = [
+    "searching",
+    "analyzing_b",
+    "comparing",
+    "fact_checking",
+  ].includes(debate.status);
 
-  const formattedDate = new Date(debate.created_at).toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
+  const formattedDate = new Date(debate.created_at).toLocaleDateString(
+    "fr-FR",
+    {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    },
+  );
 
   return (
     <motion.button
@@ -75,7 +117,9 @@ export const DebateSummaryCard: React.FC<DebateSummaryCardProps> = ({ debate, on
             <span
               className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${badge.className}`}
             >
-              <BadgeIcon className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
+              <BadgeIcon
+                className={`w-3 h-3 ${isLoading ? "animate-spin" : ""}`}
+              />
               {badge.label}
             </span>
             <span className="text-[10px] text-white/30">{formattedDate}</span>

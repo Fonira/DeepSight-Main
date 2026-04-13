@@ -12,26 +12,51 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Send, Bot, User, ArrowLeft,
-  Copy, Check, Globe, ExternalLink, Sparkles, MessageSquare,
-  Search, Video, Clock, PanelLeftClose, PanelLeftOpen,
-} from 'lucide-react';
-import { DeepSightSpinnerMicro, DeepSightSpinnerSmall } from '../components/ui/DeepSightSpinner';
-import { videoApi, chatApi, Summary } from '../services/api';
-import { useTranslation } from '../hooks/useTranslation';
-import { useAuth } from '../hooks/useAuth';
-import { SEO } from '../components/SEO';
-import { normalizePlanId, CONVERSION_TRIGGERS } from '../config/planPrivileges';
-import { EnrichedMarkdown, cleanConceptMarkers } from '../components/EnrichedMarkdown';
-import { parseAskQuestions } from '../components/ClickableQuestions';
-import { AudioPlayerButton } from '../components/AudioPlayerButton';
-import { TTSToggle } from '../components/TTSToggle';
-import { useTTSContext } from '../contexts/TTSContext';
-import { ChatWelcomeInsight } from '../components/ChatWelcomeInsight';
-import { sanitizeTitle } from '../utils/sanitize';
+  Send,
+  Bot,
+  User,
+  ArrowLeft,
+  Copy,
+  Check,
+  Globe,
+  ExternalLink,
+  Sparkles,
+  MessageSquare,
+  Search,
+  Video,
+  Clock,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react";
+import {
+  DeepSightSpinnerMicro,
+  DeepSightSpinnerSmall,
+} from "../components/ui/DeepSightSpinner";
+import { videoApi, chatApi, Summary } from "../services/api";
+import { useTranslation } from "../hooks/useTranslation";
+import { useAuth } from "../hooks/useAuth";
+import { SEO } from "../components/SEO";
+import { normalizePlanId, CONVERSION_TRIGGERS } from "../config/planPrivileges";
+import {
+  EnrichedMarkdown,
+  cleanConceptMarkers,
+} from "../components/EnrichedMarkdown";
+import { parseAskQuestions } from "../components/ClickableQuestions";
+import { AudioPlayerButton } from "../components/AudioPlayerButton";
+import { TTSToggle } from "../components/TTSToggle";
+import { useTTSContext } from "../contexts/TTSContext";
+import { ChatWelcomeInsight } from "../components/ChatWelcomeInsight";
+import { sanitizeTitle } from "../utils/sanitize";
+import DoodleBackground from "../components/DoodleBackground";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -39,7 +64,7 @@ import { sanitizeTitle } from '../utils/sanitize';
 
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   sources?: { title: string; url: string }[];
   web_search_used?: boolean;
@@ -56,75 +81,83 @@ const ChatPage: React.FC = () => {
   const { user } = useAuth();
 
   const plan = normalizePlanId(user?.plan);
-  const canChat = plan !== 'free';
+  const canChat = plan !== "free";
   const { autoPlayEnabled, playText, stopPlaying } = useTTSContext();
 
   // ── State ──
   const [analyses, setAnalyses] = useState<Summary[]>([]);
   const [isLoadingAnalyses, setIsLoadingAnalyses] = useState(true);
-  const [selectedAnalysis, setSelectedAnalysis] = useState<Summary | null>(null);
+  const [selectedAnalysis, setSelectedAnalysis] = useState<Summary | null>(
+    null,
+  );
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [sidebarSearch, setSidebarSearch] = useState('');
+  const [sidebarSearch, setSidebarSearch] = useState("");
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const urlSummaryId = searchParams.get('summary');
+  const urlSummaryId = searchParams.get("summary");
 
   // ── Textes ──
-  const t = language === 'fr' ? {
-    placeholder: 'Posez votre question...',
-    thinking: 'Réflexion en cours...',
-    copy: 'Copier',
-    copied: 'Copié !',
-    emptyTitle: 'Posez votre première question',
-    emptySubtitle: 'L\'IA a accès au contenu complet de l\'analyse pour vous répondre.',
-    selectVideo: 'Choisir une vidéo',
-    searchPlaceholder: 'Rechercher...',
-    noResults: 'Aucune analyse',
-    analyze: 'Analyser une vidéo',
-    sources: 'Sources',
-    webEnriched: 'Enrichi par le web',
-    upgradeTitle: 'Débloquez le Chat IA',
-    upgradeDesc: 'Le chat contextuel est disponible à partir du plan Starter.',
-    upgrade: 'Voir les plans',
-    back: 'Retour',
-    conversations: 'Conversations',
-    suggestions: [
-      'Résume les points clés',
-      'Quels sont les arguments principaux ?',
-      'Y a-t-il des biais dans le raisonnement ?',
-    ],
-  } : {
-    placeholder: 'Ask your question...',
-    thinking: 'Thinking...',
-    copy: 'Copy',
-    copied: 'Copied!',
-    emptyTitle: 'Ask your first question',
-    emptySubtitle: 'The AI has access to the full analysis content to answer you.',
-    selectVideo: 'Choose a video',
-    searchPlaceholder: 'Search...',
-    noResults: 'No analyses',
-    analyze: 'Analyze a video',
-    sources: 'Sources',
-    webEnriched: 'Web enriched',
-    upgradeTitle: 'Unlock AI Chat',
-    upgradeDesc: 'Contextual chat is available from the Starter plan.',
-    upgrade: 'View plans',
-    back: 'Back',
-    conversations: 'Conversations',
-    suggestions: [
-      'Summarize the key points',
-      'What are the main arguments?',
-      'Are there any reasoning biases?',
-    ],
-  };
+  const t =
+    language === "fr"
+      ? {
+          placeholder: "Posez votre question...",
+          thinking: "Réflexion en cours...",
+          copy: "Copier",
+          copied: "Copié !",
+          emptyTitle: "Posez votre première question",
+          emptySubtitle:
+            "L'IA a accès au contenu complet de l'analyse pour vous répondre.",
+          selectVideo: "Choisir une vidéo",
+          searchPlaceholder: "Rechercher...",
+          noResults: "Aucune analyse",
+          analyze: "Analyser une vidéo",
+          sources: "Sources",
+          webEnriched: "Enrichi par le web",
+          upgradeTitle: "Débloquez le Chat IA",
+          upgradeDesc:
+            "Le chat contextuel est disponible à partir du plan Starter.",
+          upgrade: "Voir les plans",
+          back: "Retour",
+          conversations: "Conversations",
+          suggestions: [
+            "Résume les points clés",
+            "Quels sont les arguments principaux ?",
+            "Y a-t-il des biais dans le raisonnement ?",
+          ],
+        }
+      : {
+          placeholder: "Ask your question...",
+          thinking: "Thinking...",
+          copy: "Copy",
+          copied: "Copied!",
+          emptyTitle: "Ask your first question",
+          emptySubtitle:
+            "The AI has access to the full analysis content to answer you.",
+          selectVideo: "Choose a video",
+          searchPlaceholder: "Search...",
+          noResults: "No analyses",
+          analyze: "Analyze a video",
+          sources: "Sources",
+          webEnriched: "Web enriched",
+          upgradeTitle: "Unlock AI Chat",
+          upgradeDesc: "Contextual chat is available from the Starter plan.",
+          upgrade: "View plans",
+          back: "Back",
+          conversations: "Conversations",
+          suggestions: [
+            "Summarize the key points",
+            "What are the main arguments?",
+            "Are there any reasoning biases?",
+          ],
+        };
 
   // ── Fetch analyses ──
   useEffect(() => {
@@ -135,11 +168,13 @@ const ChatPage: React.FC = () => {
         const items = response.items || [];
         setAnalyses(items);
         if (urlSummaryId) {
-          const found = items.find((a: Summary) => a.id === parseInt(urlSummaryId));
+          const found = items.find(
+            (a: Summary) => a.id === parseInt(urlSummaryId),
+          );
           if (found) setSelectedAnalysis(found);
         }
       } catch (err) {
-        console.error('[ChatPage] Failed to fetch analyses:', err);
+        console.error("[ChatPage] Failed to fetch analyses:", err);
       } finally {
         setIsLoadingAnalyses(false);
       }
@@ -154,16 +189,18 @@ const ChatPage: React.FC = () => {
       try {
         setIsLoadingMessages(true);
         const history = await chatApi.getHistory(selectedAnalysis.id);
-        const mapped: ChatMessage[] = (history || []).map((msg: any, i: number) => ({
-          id: `history-${i}`,
-          role: msg.role,
-          content: msg.content,
-          sources: msg.sources,
-          web_search_used: msg.web_search_used,
-        }));
+        const mapped: ChatMessage[] = (history || []).map(
+          (msg: any, i: number) => ({
+            id: `history-${i}`,
+            role: msg.role,
+            content: msg.content,
+            sources: msg.sources,
+            web_search_used: msg.web_search_used,
+          }),
+        );
         setMessages(mapped);
       } catch (err) {
-        console.error('[ChatPage] Failed to fetch chat history:', err);
+        console.error("[ChatPage] Failed to fetch chat history:", err);
         setMessages([]);
       } finally {
         setIsLoadingMessages(false);
@@ -174,7 +211,7 @@ const ChatPage: React.FC = () => {
 
   // ── Auto scroll ──
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   // ── Select analysis ──
@@ -190,8 +227,8 @@ const ChatPage: React.FC = () => {
   useEffect(() => {
     if (messages.length > prevMsgCountRef.current && autoPlayEnabled) {
       const last = messages[messages.length - 1];
-      if (last?.role === 'assistant') {
-        const text = typeof last.content === 'string' ? last.content : '';
+      if (last?.role === "assistant") {
+        const text = typeof last.content === "string" ? last.content : "";
         playText(text.slice(0, 5000));
       }
     }
@@ -199,46 +236,57 @@ const ChatPage: React.FC = () => {
   }, [messages, autoPlayEnabled, playText]);
 
   // ── Send message ──
-  const handleSend = useCallback(async (text?: string) => {
-    const message = text || inputValue.trim();
-    if (!message || !selectedAnalysis || isSending) return;
+  const handleSend = useCallback(
+    async (text?: string) => {
+      const message = text || inputValue.trim();
+      if (!message || !selectedAnalysis || isSending) return;
 
-    stopPlaying();
-    setInputValue('');
-    if (inputRef.current) inputRef.current.style.height = 'auto';
+      stopPlaying();
+      setInputValue("");
+      if (inputRef.current) inputRef.current.style.height = "auto";
 
-    const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: message,
-    };
-    setMessages(prev => [...prev, userMsg]);
-    setIsSending(true);
-
-    try {
-      const response = await chatApi.send(selectedAnalysis.id, message, false);
-      const assistantMsg: ChatMessage = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: response.response || '',
-        sources: response.sources,
-        web_search_used: response.web_search_used,
+      const userMsg: ChatMessage = {
+        id: `user-${Date.now()}`,
+        role: "user",
+        content: message,
       };
-      setMessages(prev => [...prev, assistantMsg]);
-    } catch (err: any) {
-      console.error('[ChatPage] Chat error:', err);
-      setMessages(prev => [...prev, {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: language === 'fr'
-          ? '❌ Une erreur est survenue. Veuillez réessayer.'
-          : '❌ An error occurred. Please try again.',
-      }]);
-    } finally {
-      setIsSending(false);
-      inputRef.current?.focus();
-    }
-  }, [inputValue, selectedAnalysis, isSending, language]);
+      setMessages((prev) => [...prev, userMsg]);
+      setIsSending(true);
+
+      try {
+        const response = await chatApi.send(
+          selectedAnalysis.id,
+          message,
+          false,
+        );
+        const assistantMsg: ChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content: response.response || "",
+          sources: response.sources,
+          web_search_used: response.web_search_used,
+        };
+        setMessages((prev) => [...prev, assistantMsg]);
+      } catch (err: any) {
+        console.error("[ChatPage] Chat error:", err);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `error-${Date.now()}`,
+            role: "assistant",
+            content:
+              language === "fr"
+                ? "❌ Une erreur est survenue. Veuillez réessayer."
+                : "❌ An error occurred. Please try again.",
+          },
+        ]);
+      } finally {
+        setIsSending(false);
+        inputRef.current?.focus();
+      }
+    },
+    [inputValue, selectedAnalysis, isSending, language],
+  );
 
   // ── Copy ──
   const handleCopy = (id: string, content: string) => {
@@ -251,8 +299,8 @@ const ChatPage: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputValue(e.target.value);
     const el = e.target;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 160) + "px";
   };
 
   // ── Relative time ──
@@ -266,24 +314,34 @@ const ChatPage: React.FC = () => {
     if (diffMin < 60) return `${diffMin}min`;
     if (diffH < 24) return `${diffH}h`;
     if (diffD < 7) return `${diffD}j`;
-    return date.toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', day: 'numeric' });
+    return date.toLocaleDateString(language === "fr" ? "fr-FR" : "en-US", {
+      month: "short",
+      day: "numeric",
+    });
   };
 
-  const filteredAnalyses = analyses.filter(a =>
-    a.video_title?.toLowerCase().includes(sidebarSearch.toLowerCase()) ||
-    a.video_channel?.toLowerCase().includes(sidebarSearch.toLowerCase())
+  const filteredAnalyses = analyses.filter(
+    (a) =>
+      a.video_title?.toLowerCase().includes(sidebarSearch.toLowerCase()) ||
+      a.video_channel?.toLowerCase().includes(sidebarSearch.toLowerCase()),
   );
 
   // ── Extract follow-up suggestions from the last assistant message ──
   const followUpSuggestions = useMemo(() => {
     if (isSending) return []; // Hide while generating
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === 'assistant') {
-        const content = typeof messages[i].content === 'string' ? messages[i].content : '';
+      if (messages[i].role === "assistant") {
+        const content =
+          typeof messages[i].content === "string" ? messages[i].content : "";
         const { questions } = parseAskQuestions(content);
-        return questions.map(q =>
-          q.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, term, display) => display || term)
-        ).slice(0, 5);
+        return questions
+          .map((q) =>
+            q.replace(
+              /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
+              (_, term, display) => display || term,
+            ),
+          )
+          .slice(0, 5);
       }
     }
     return [];
@@ -297,23 +355,29 @@ const ChatPage: React.FC = () => {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-6">
         <div className="max-w-md text-center">
-          <img src="/deepsight-logo-cosmic.png" alt="" className="w-16 h-16 mx-auto mb-6 opacity-40" />
-          <h1 className="text-2xl font-bold text-white/90 mb-3">{t.upgradeTitle}</h1>
+          <img
+            src="/deepsight-logo-cosmic.png"
+            alt=""
+            className="w-16 h-16 mx-auto mb-6 opacity-40"
+          />
+          <h1 className="text-2xl font-bold text-white/90 mb-3">
+            {t.upgradeTitle}
+          </h1>
           <p className="text-white/40 mb-8">{t.upgradeDesc}</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             {CONVERSION_TRIGGERS.trialEnabled && (
               <button
-                onClick={() => navigate('/upgrade?trial=true')}
+                onClick={() => navigate("/upgrade?trial=true")}
                 className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-600 to-blue-600 text-white font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
               >
                 <Sparkles className="w-4 h-4" />
-                {language === 'fr'
+                {language === "fr"
                   ? `Essayer gratuitement ${CONVERSION_TRIGGERS.trialDays} jours`
                   : `Try free for ${CONVERSION_TRIGGERS.trialDays} days`}
               </button>
             )}
             <button
-              onClick={() => navigate('/upgrade')}
+              onClick={() => navigate("/upgrade")}
               className="px-6 py-3 rounded-xl border border-white/[0.08] text-white/50 font-medium hover:text-white/80 hover:border-white/[0.15] transition-all"
             >
               {t.upgrade}
@@ -334,8 +398,14 @@ const ChatPage: React.FC = () => {
       <div className="p-3 border-b border-white/[0.05]">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <img src="/deepsight-logo-cosmic.png" alt="" className="w-6 h-6 opacity-60" />
-            <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">{t.conversations}</span>
+            <img
+              src="/deepsight-logo-cosmic.png"
+              alt=""
+              className="w-6 h-6 opacity-60"
+            />
+            <span className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+              {t.conversations}
+            </span>
           </div>
           {/* Collapse button (desktop only) */}
           <button
@@ -359,7 +429,13 @@ const ChatPage: React.FC = () => {
       </div>
 
       {/* Analyses list */}
-      <div className="flex-1 overflow-y-auto p-1.5" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.05) transparent' }}>
+      <div
+        className="flex-1 overflow-y-auto p-1.5"
+        style={{
+          scrollbarWidth: "thin",
+          scrollbarColor: "rgba(255,255,255,0.05) transparent",
+        }}
+      >
         {isLoadingAnalyses ? (
           <div className="flex items-center justify-center py-8">
             <DeepSightSpinnerMicro />
@@ -369,7 +445,7 @@ const ChatPage: React.FC = () => {
             <Video className="w-8 h-8 text-white/10 mx-auto mb-2" />
             <p className="text-xs text-white/25 mb-3">{t.noResults}</p>
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate("/dashboard")}
               className="text-xs text-blue-400/60 hover:text-blue-400 transition-colors"
             >
               {t.analyze}
@@ -382,14 +458,19 @@ const ChatPage: React.FC = () => {
               onClick={() => handleSelectAnalysis(analysis)}
               className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg mb-0.5 transition-all text-left ${
                 selectedAnalysis?.id === analysis.id
-                  ? 'bg-cyan-500/10 border border-cyan-500/15'
-                  : 'hover:bg-white/[0.04] border border-transparent'
+                  ? "bg-cyan-500/10 border border-cyan-500/15"
+                  : "hover:bg-white/[0.04] border border-transparent"
               }`}
             >
               {/* Thumbnail */}
               <div className="w-10 h-6 rounded overflow-hidden bg-white/[0.04] flex-shrink-0">
                 {analysis.thumbnail_url ? (
-                  <img src={analysis.thumbnail_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  <img
+                    src={analysis.thumbnail_url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Video className="w-2.5 h-2.5 text-white/10" />
@@ -397,13 +478,19 @@ const ChatPage: React.FC = () => {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`text-[11px] font-medium truncate leading-tight ${
-                  selectedAnalysis?.id === analysis.id ? 'text-cyan-300/90' : 'text-white/55'
-                }`}>
+                <p
+                  className={`text-[11px] font-medium truncate leading-tight ${
+                    selectedAnalysis?.id === analysis.id
+                      ? "text-cyan-300/90"
+                      : "text-white/55"
+                  }`}
+                >
                   {sanitizeTitle(analysis.video_title)}
                 </p>
                 <div className="flex items-center gap-1 mt-0.5">
-                  <span className="text-[9px] text-white/25 truncate">{sanitizeTitle(analysis.video_channel)}</span>
+                  <span className="text-[9px] text-white/25 truncate">
+                    {sanitizeTitle(analysis.video_channel)}
+                  </span>
                   <span className="text-[9px] text-white/15 flex items-center gap-0.5">
                     <Clock className="w-2 h-2" />
                     {getRelativeTime(analysis.created_at)}
@@ -418,7 +505,7 @@ const ChatPage: React.FC = () => {
       {/* Back to dashboard */}
       <div className="p-2 border-t border-white/[0.04]">
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate("/dashboard")}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/[0.04] transition-colors text-white/25 hover:text-white/45 text-xs"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
@@ -433,13 +520,22 @@ const ChatPage: React.FC = () => {
   // ═══════════════════════════════════════════════════════════════════════════════
 
   return (
-    <div className="h-screen flex overflow-hidden" style={{ background: 'radial-gradient(ellipse at 30% 20%, rgba(6,182,212,0.03) 0%, #0a0a0f 60%)' }}>
+    <div
+      className="h-screen flex overflow-hidden"
+      style={{
+        background:
+          "radial-gradient(ellipse at 30% 20%, rgba(6,182,212,0.03) 0%, #0a0a0f 60%)",
+      }}
+    >
+      <DoodleBackground variant="default" className="!opacity-[0.35]" />
       <SEO title="Chat IA" path="/chat" />
 
       {/* ═══ SIDEBAR — Desktop (fixe à gauche) ═══ */}
-      <aside className={`hidden lg:flex flex-col flex-shrink-0 border-r border-white/[0.05] bg-[#08080d]/80 backdrop-blur-sm transition-all duration-300 ${
-        sidebarOpen ? 'w-64' : 'w-0 overflow-hidden border-r-0'
-      }`}>
+      <aside
+        className={`hidden lg:flex flex-col flex-shrink-0 border-r border-white/[0.05] bg-[#08080d]/80 backdrop-blur-sm transition-all duration-300 ${
+          sidebarOpen ? "w-64" : "w-0 overflow-hidden border-r-0"
+        }`}
+      >
         {sidebarContent}
       </aside>
 
@@ -456,7 +552,10 @@ const ChatPage: React.FC = () => {
       {/* ═══ SIDEBAR — Mobile (drawer overlay) ═══ */}
       {mobileDrawerOpen && (
         <>
-          <div className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={() => setMobileDrawerOpen(false)} />
+          <div
+            className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            onClick={() => setMobileDrawerOpen(false)}
+          />
           <aside className="lg:hidden fixed inset-y-0 left-0 w-72 bg-[#0c0c14] border-r border-white/[0.06] z-50 flex flex-col shadow-2xl">
             {sidebarContent}
           </aside>
@@ -465,7 +564,6 @@ const ChatPage: React.FC = () => {
 
       {/* ═══ MAIN ZONE — Chat ═══ */}
       <div className="flex-1 flex flex-col min-w-0">
-
         {/* ─── Top bar ─── */}
         <header className="flex items-center gap-3 px-4 py-2.5 border-b border-white/[0.04] flex-shrink-0 bg-[#0a0a0f]/80 backdrop-blur-sm">
           {/* Mobile hamburger */}
@@ -490,16 +588,28 @@ const ChatPage: React.FC = () => {
           {selectedAnalysis ? (
             <div className="flex items-center gap-2.5 min-w-0">
               {selectedAnalysis.thumbnail_url && (
-                <img src={selectedAnalysis.thumbnail_url} alt="" className="w-8 h-5 rounded object-cover flex-shrink-0 opacity-70" />
+                <img
+                  src={selectedAnalysis.thumbnail_url}
+                  alt=""
+                  className="w-8 h-5 rounded object-cover flex-shrink-0 opacity-70"
+                />
               )}
               <div className="min-w-0">
-                <p className="text-sm text-white/65 truncate font-medium leading-tight">{sanitizeTitle(selectedAnalysis.video_title)}</p>
-                <p className="text-[10px] text-white/25 truncate">{sanitizeTitle(selectedAnalysis.video_channel)}</p>
+                <p className="text-sm text-white/65 truncate font-medium leading-tight">
+                  {sanitizeTitle(selectedAnalysis.video_title)}
+                </p>
+                <p className="text-[10px] text-white/25 truncate">
+                  {sanitizeTitle(selectedAnalysis.video_channel)}
+                </p>
               </div>
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <img src="/deepsight-logo-cosmic.png" alt="" className="w-5 h-5 opacity-40" />
+              <img
+                src="/deepsight-logo-cosmic.png"
+                alt=""
+                className="w-5 h-5 opacity-40"
+              />
               <span className="text-sm text-white/35 font-medium">Chat IA</span>
             </div>
           )}
@@ -520,15 +630,19 @@ const ChatPage: React.FC = () => {
                 <div className="w-14 h-14 mx-auto mb-5 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
                   <MessageSquare className="w-7 h-7 text-cyan-400/30" />
                 </div>
-                <h2 className="text-lg font-semibold text-white/65 mb-2">{t.selectVideo}</h2>
+                <h2 className="text-lg font-semibold text-white/65 mb-2">
+                  {t.selectVideo}
+                </h2>
                 <p className="text-sm text-white/30 mb-1">
-                  {language === 'fr'
-                    ? 'Sélectionnez une vidéo dans la sidebar pour discuter.'
-                    : 'Select a video from the sidebar to start chatting.'}
+                  {language === "fr"
+                    ? "Sélectionnez une vidéo dans la sidebar pour discuter."
+                    : "Select a video from the sidebar to start chatting."}
                 </p>
 
                 {/* 💡 Chat Welcome Oracle — Ghost bubble */}
-                <ChatWelcomeInsight onPrefillChat={(text) => setInputValue(text)} />
+                <ChatWelcomeInsight
+                  onPrefillChat={(text) => setInputValue(text)}
+                />
               </div>
             </div>
           ) : (
@@ -536,11 +650,18 @@ const ChatPage: React.FC = () => {
               {/* ═══ Messages area ═══ */}
               <div
                 className="flex-1 overflow-y-auto"
-                style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.05) transparent' }}
+                style={{
+                  scrollbarWidth: "thin",
+                  scrollbarColor: "rgba(255,255,255,0.05) transparent",
+                }}
               >
                 {/* Subtle logo watermark behind messages */}
                 <div className="pointer-events-none fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-0 opacity-[0.015]">
-                  <img src="/deepsight-logo-cosmic.png" alt="" className="w-64 h-64" />
+                  <img
+                    src="/deepsight-logo-cosmic.png"
+                    alt=""
+                    className="w-64 h-64"
+                  />
                 </div>
 
                 <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5 relative z-10">
@@ -557,8 +678,12 @@ const ChatPage: React.FC = () => {
                       <div className="w-12 h-12 rounded-2xl bg-white/[0.03] border border-white/[0.05] flex items-center justify-center mb-5">
                         <Sparkles className="w-6 h-6 text-cyan-400/35" />
                       </div>
-                      <h3 className="text-base font-semibold text-white/65 mb-1.5">{t.emptyTitle}</h3>
-                      <p className="text-sm text-white/28 mb-8 max-w-[300px]">{t.emptySubtitle}</p>
+                      <h3 className="text-base font-semibold text-white/65 mb-1.5">
+                        {t.emptyTitle}
+                      </h3>
+                      <p className="text-sm text-white/28 mb-8 max-w-[300px]">
+                        {t.emptySubtitle}
+                      </p>
                       <div className="flex flex-wrap justify-center gap-2">
                         {t.suggestions.map((s, i) => (
                           <button
@@ -575,38 +700,52 @@ const ChatPage: React.FC = () => {
 
                   {/* Messages */}
                   {messages.map((msg) => {
-                    const contentStr = typeof msg.content === 'string' ? msg.content : String(msg.content || '');
-                    const { beforeQuestions, questions } = msg.role === 'assistant'
-                      ? parseAskQuestions(contentStr)
-                      : { beforeQuestions: contentStr, questions: [] };
-                    const isUser = msg.role === 'user';
+                    const contentStr =
+                      typeof msg.content === "string"
+                        ? msg.content
+                        : String(msg.content || "");
+                    const { beforeQuestions, questions } =
+                      msg.role === "assistant"
+                        ? parseAskQuestions(contentStr)
+                        : { beforeQuestions: contentStr, questions: [] };
+                    const isUser = msg.role === "user";
 
                     return (
-                      <div key={msg.id} className={`flex gap-3 ${isUser ? 'justify-end' : ''}`}>
+                      <div
+                        key={msg.id}
+                        className={`flex gap-3 ${isUser ? "justify-end" : ""}`}
+                      >
                         {!isUser && (
                           <div className="w-7 h-7 rounded-lg bg-cyan-500/10 flex items-center justify-center flex-shrink-0 mt-0.5">
                             <Bot className="w-3.5 h-3.5 text-cyan-400/70" />
                           </div>
                         )}
 
-                        <div className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 relative group ${
-                          isUser
-                            ? 'bg-blue-600/80 text-white rounded-br-md'
-                            : 'bg-white/[0.04] text-white/80 rounded-bl-md'
-                        }`}>
+                        <div
+                          className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-3 relative group ${
+                            isUser
+                              ? "bg-blue-600/80 text-white rounded-br-md"
+                              : "bg-white/[0.04] text-white/80 rounded-bl-md"
+                          }`}
+                        >
                           {/* Web badge */}
                           {!isUser && msg.web_search_used && (
                             <div className="flex items-center gap-1.5 mb-2 pb-2 border-b border-white/[0.06]">
                               <Globe className="w-3 h-3 text-emerald-400/80" />
-                              <span className="text-[10px] font-medium text-emerald-400/70 uppercase tracking-wider">{t.webEnriched}</span>
+                              <span className="text-[10px] font-medium text-emerald-400/70 uppercase tracking-wider">
+                                {t.webEnriched}
+                              </span>
                             </div>
                           )}
 
                           {isUser ? (
-                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{contentStr}</p>
+                            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                              {contentStr}
+                            </p>
                           ) : (
                             <>
-                              <div className="prose prose-invert prose-sm max-w-none
+                              <div
+                                className="prose prose-invert prose-sm max-w-none
                                 prose-p:text-white/70 prose-p:leading-relaxed prose-p:text-sm prose-p:my-2
                                 prose-headings:text-white/85 prose-headings:font-semibold prose-headings:mt-4 prose-headings:mb-2
                                 prose-strong:text-white/85
@@ -616,15 +755,22 @@ const ChatPage: React.FC = () => {
                                 prose-li:text-white/65 prose-li:text-sm
                                 prose-ul:my-2 prose-ol:my-2
                                 prose-blockquote:border-white/10 prose-blockquote:text-white/50
-                              ">
-                                <EnrichedMarkdown language={language} className="text-sm leading-relaxed">
+                              "
+                              >
+                                <EnrichedMarkdown
+                                  language={language}
+                                  className="text-sm leading-relaxed"
+                                >
                                   {beforeQuestions}
                                 </EnrichedMarkdown>
                               </div>
 
                               {/* TTS button */}
                               <div className="mt-2 flex justify-end">
-                                <AudioPlayerButton text={beforeQuestions} size="sm" />
+                                <AudioPlayerButton
+                                  text={beforeQuestions}
+                                  size="sm"
+                                />
                               </div>
 
                               {questions.length > 0 && (
@@ -632,13 +778,23 @@ const ChatPage: React.FC = () => {
                                   {questions.map((q, qi) => (
                                     <button
                                       key={qi}
-                                      onClick={() => !isSending && handleSend(
-                                        q.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, term, display) => display || term)
-                                      )}
+                                      onClick={() =>
+                                        !isSending &&
+                                        handleSend(
+                                          q.replace(
+                                            /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
+                                            (_, term, display) =>
+                                              display || term,
+                                          ),
+                                        )
+                                      }
                                       disabled={isSending}
                                       className="px-3 py-1.5 bg-white/[0.03] hover:bg-white/[0.07] text-white/40 hover:text-white/65 text-xs rounded-lg transition-all disabled:opacity-40"
                                     >
-                                      {q.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, _t, display) => display || _t)}
+                                      {q.replace(
+                                        /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
+                                        (_, _t, display) => display || _t,
+                                      )}
                                     </button>
                                   ))}
                                 </div>
@@ -649,7 +805,9 @@ const ChatPage: React.FC = () => {
                           {/* Sources */}
                           {msg.sources && msg.sources.length > 0 && (
                             <div className="mt-2.5 pt-2 border-t border-white/[0.05]">
-                              <p className="text-[10px] text-white/25 mb-1.5 font-medium uppercase tracking-wider">{t.sources}</p>
+                              <p className="text-[10px] text-white/25 mb-1.5 font-medium uppercase tracking-wider">
+                                {t.sources}
+                              </p>
                               <div className="flex flex-wrap gap-1">
                                 {msg.sources.map((src, i) => (
                                   <a
@@ -660,7 +818,7 @@ const ChatPage: React.FC = () => {
                                     className="text-[11px] px-2.5 py-1 bg-white/[0.03] hover:bg-white/[0.07] rounded-full transition-colors flex items-center gap-1 text-white/35 hover:text-white/55"
                                   >
                                     <ExternalLink className="w-2.5 h-2.5" />
-                                    {src.title || 'Source'}
+                                    {src.title || "Source"}
                                   </a>
                                 ))}
                               </div>
@@ -674,10 +832,19 @@ const ChatPage: React.FC = () => {
                                 onClick={() => handleCopy(msg.id, contentStr)}
                                 className="text-[11px] text-white/20 hover:text-white/50 flex items-center gap-1 transition-colors"
                               >
-                                {copiedId === msg.id
-                                  ? <><Check className="w-3 h-3 text-emerald-400" /><span className="text-emerald-400">{t.copied}</span></>
-                                  : <><Copy className="w-3 h-3" />{t.copy}</>
-                                }
+                                {copiedId === msg.id ? (
+                                  <>
+                                    <Check className="w-3 h-3 text-emerald-400" />
+                                    <span className="text-emerald-400">
+                                      {t.copied}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" />
+                                    {t.copy}
+                                  </>
+                                )}
                               </button>
                             </div>
                           )}
@@ -701,11 +868,22 @@ const ChatPage: React.FC = () => {
                       <div className="bg-white/[0.04] rounded-2xl rounded-bl-md px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <div className="flex gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/50 animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/50 animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400/50 animate-bounce" style={{ animationDelay: '300ms' }} />
+                            <span
+                              className="w-1.5 h-1.5 rounded-full bg-cyan-400/50 animate-bounce"
+                              style={{ animationDelay: "0ms" }}
+                            />
+                            <span
+                              className="w-1.5 h-1.5 rounded-full bg-cyan-400/50 animate-bounce"
+                              style={{ animationDelay: "150ms" }}
+                            />
+                            <span
+                              className="w-1.5 h-1.5 rounded-full bg-cyan-400/50 animate-bounce"
+                              style={{ animationDelay: "300ms" }}
+                            />
                           </div>
-                          <span className="text-xs text-white/25">{t.thinking}</span>
+                          <span className="text-xs text-white/25">
+                            {t.thinking}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -736,16 +914,27 @@ const ChatPage: React.FC = () => {
                   <div className="flex items-center justify-end mb-2">
                     <TTSToggle />
                   </div>
-                  <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex items-end gap-2">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSend();
+                    }}
+                    className="flex items-end gap-2"
+                  >
                     <textarea
                       ref={inputRef}
                       value={inputValue}
                       onChange={handleInputChange}
-                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSend();
+                        }
+                      }}
                       placeholder={t.placeholder}
                       rows={1}
                       className="flex-1 resize-none px-4 py-2.5 rounded-xl bg-white/[0.04] text-white/85 placeholder-white/20 border border-white/[0.06] focus:border-cyan-500/25 focus:ring-1 focus:ring-cyan-500/15 outline-none transition-all text-sm leading-relaxed"
-                      style={{ maxHeight: '160px' }}
+                      style={{ maxHeight: "160px" }}
                       autoFocus
                     />
                     <button

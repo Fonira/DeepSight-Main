@@ -10,7 +10,7 @@ export {
   DeepSightSpinnerSmall,
   DeepSightSpinnerLarge,
   DeepSightSpinnerHero,
-} from './DeepSightSpinner';
+} from "./DeepSightSpinner";
 
 // Motion / Animation
 export {
@@ -32,24 +32,24 @@ export {
   AnimatedNumber,
   motion,
   AnimatePresence,
-} from './motion';
+} from "./motion";
 
 // Skeleton
-export { Skeleton, SkeletonCard, SkeletonRow } from './Skeleton';
+export { Skeleton, SkeletonCard, SkeletonRow } from "./Skeleton";
 
 // Toggle
-export { Toggle } from './Toggle';
+export { Toggle } from "./Toggle";
 
 // Dropdown
-export { Dropdown } from './Dropdown';
-export type { DropdownItem } from './Dropdown';
+export { Dropdown } from "./Dropdown";
+export type { DropdownItem } from "./Dropdown";
 
 // Tooltip
-export { Tooltip } from './Tooltip';
+export { Tooltip } from "./Tooltip";
 
 // DataTable
-export { DataTable } from './DataTable';
-export type { Column } from './DataTable';
+export { DataTable } from "./DataTable";
+export type { Column } from "./DataTable";
 
 // GouvernailSpinner
-export { GouvernailSpinner } from './GouvernailSpinner';
+export { GouvernailSpinner } from "./GouvernailSpinner";

@@ -4,14 +4,14 @@
  * Supporte YouTube et TikTok avec détection automatique de la plateforme
  */
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Shield, Zap, AlertTriangle, Play } from 'lucide-react';
-import type { DebateArgument } from '../../types/debate';
-import type { VideoPlatform } from '../../types/debate';
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { Shield, Zap, AlertTriangle, Play } from "lucide-react";
+import type { DebateArgument } from "../../types/debate";
+import type { VideoPlatform } from "../../types/debate";
 
 interface DebateVideoCardProps {
-  side: 'a' | 'b';
+  side: "a" | "b";
   title: string;
   channel: string;
   thumbnail: string;
@@ -21,52 +21,59 @@ interface DebateVideoCardProps {
   arguments: DebateArgument[];
 }
 
-const STRENGTH_CONFIG: Record<DebateArgument['strength'], {
-  label: string;
-  icon: React.ElementType;
-  className: string;
-}> = {
+const STRENGTH_CONFIG: Record<
+  DebateArgument["strength"],
+  {
+    label: string;
+    icon: React.ElementType;
+    className: string;
+  }
+> = {
   strong: {
-    label: 'Fort',
+    label: "Fort",
     icon: Shield,
-    className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+    className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
   },
   moderate: {
-    label: 'Modéré',
+    label: "Modéré",
     icon: Zap,
-    className: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
+    className: "bg-amber-500/15 text-amber-400 border-amber-500/20",
   },
   weak: {
-    label: 'Faible',
+    label: "Faible",
     icon: AlertTriangle,
-    className: 'bg-red-500/15 text-red-400 border-red-500/20',
+    className: "bg-red-500/15 text-red-400 border-red-500/20",
   },
 };
 
 const SIDE_ACCENT = {
   a: {
-    border: 'border-indigo-500/30',
-    glow: 'shadow-indigo-500/5',
-    badge: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
-    label: 'Vidéo A',
-    gradient: 'from-indigo-500/10 to-transparent',
+    border: "border-indigo-500/30",
+    glow: "shadow-indigo-500/5",
+    badge: "bg-indigo-500/15 text-indigo-400 border-indigo-500/30",
+    label: "Vidéo A",
+    gradient: "from-indigo-500/10 to-transparent",
   },
   b: {
-    border: 'border-violet-500/30',
-    glow: 'shadow-violet-500/5',
-    badge: 'bg-violet-500/15 text-violet-400 border-violet-500/30',
-    label: 'Vidéo B',
-    gradient: 'from-violet-500/10 to-transparent',
+    border: "border-violet-500/30",
+    glow: "shadow-violet-500/5",
+    badge: "bg-violet-500/15 text-violet-400 border-violet-500/30",
+    label: "Vidéo B",
+    gradient: "from-violet-500/10 to-transparent",
   },
 };
 
 /** Detect platform from video ID format if not explicitly provided */
-function detectPlatform(videoId: string, platform?: VideoPlatform): VideoPlatform {
-  if (platform && platform !== 'youtube' && platform !== 'tiktok') return 'youtube';
+function detectPlatform(
+  videoId: string,
+  platform?: VideoPlatform,
+): VideoPlatform {
+  if (platform && platform !== "youtube" && platform !== "tiktok")
+    return "youtube";
   if (platform) return platform;
   // TikTok IDs are long numeric strings (15-20 digits)
-  if (/^\d{10,}$/.test(videoId)) return 'tiktok';
-  return 'youtube';
+  if (/^\d{10,}$/.test(videoId)) return "tiktok";
+  return "youtube";
 }
 
 export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
@@ -86,19 +93,20 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
   // Build thumbnail URL with fallback chain
   const getThumbnailUrl = (): string => {
     if (thumbnail) return thumbnail;
-    if (platform === 'youtube' && videoId) {
+    if (platform === "youtube" && videoId) {
       return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
     }
-    return '';
+    return "";
   };
 
   const thumbnailUrl = getThumbnailUrl();
   const [imgError, setImgError] = useState(false);
 
   // YouTube fallback: maxresdefault → hqdefault → mqdefault
-  const fallbackThumbnail = platform === 'youtube' && videoId
-    ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
-    : '';
+  const fallbackThumbnail =
+    platform === "youtube" && videoId
+      ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
+      : "";
 
   return (
     <div
@@ -107,7 +115,7 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
       {/* Video Player / Thumbnail */}
       <div className="relative aspect-video overflow-hidden bg-black/40">
         {showPlayer && videoId ? (
-          platform === 'tiktok' ? (
+          platform === "tiktok" ? (
             <iframe
               src={`https://www.tiktok.com/embed/v2/${videoId}`}
               title={title}
@@ -143,20 +151,26 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
               />
             ) : (
               /* Placeholder gradient when no thumbnail */
-              <div className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${
-                platform === 'tiktok'
-                  ? 'from-pink-500/20 via-black/40 to-cyan-500/20'
-                  : 'from-red-500/20 via-black/40 to-white/5'
-              }`}>
+              <div
+                className={`w-full h-full flex items-center justify-center bg-gradient-to-br ${
+                  platform === "tiktok"
+                    ? "from-pink-500/20 via-black/40 to-cyan-500/20"
+                    : "from-red-500/20 via-black/40 to-white/5"
+                }`}
+              >
                 <div className="text-center">
-                  <span className="text-3xl">{platform === 'tiktok' ? '🎵' : '▶️'}</span>
+                  <span className="text-3xl">
+                    {platform === "tiktok" ? "🎵" : "▶️"}
+                  </span>
                   <p className="text-white/30 text-xs mt-2">
-                    {platform === 'tiktok' ? 'TikTok' : 'YouTube'}
+                    {platform === "tiktok" ? "TikTok" : "YouTube"}
                   </p>
                 </div>
               </div>
             )}
-            <div className={`absolute inset-0 bg-gradient-to-t ${accent.gradient}`} />
+            <div
+              className={`absolute inset-0 bg-gradient-to-t ${accent.gradient}`}
+            />
             {/* Play button overlay */}
             {videoId && (
               <button
@@ -165,7 +179,10 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
                 aria-label={`Lire ${title}`}
               >
                 <div className="w-14 h-14 rounded-full bg-black/60 border border-white/20 flex items-center justify-center backdrop-blur-sm transition-all group-hover:bg-white/20 group-hover:scale-110">
-                  <Play className="w-6 h-6 text-white ml-0.5" fill="currentColor" />
+                  <Play
+                    className="w-6 h-6 text-white ml-0.5"
+                    fill="currentColor"
+                  />
                 </div>
               </button>
             )}
@@ -177,7 +194,7 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
         >
           {accent.label}
         </span>
-        {platform === 'tiktok' && (
+        {platform === "tiktok" && (
           <span className="absolute top-3 right-3 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-black/50 text-white/70 border border-white/10 z-10">
             TikTok
           </span>
@@ -190,9 +207,7 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
           <h3 className="text-sm font-semibold text-white leading-snug line-clamp-2">
             {title}
           </h3>
-          {channel && (
-            <p className="text-xs text-white/50 mt-1">{channel}</p>
-          )}
+          {channel && <p className="text-xs text-white/50 mt-1">{channel}</p>}
         </div>
 
         {/* Thèse */}
@@ -216,7 +231,7 @@ export const DebateVideoCard: React.FC<DebateVideoCardProps> = ({
             return (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, x: side === 'a' ? -12 : 12 }}
+                initial={{ opacity: 0, x: side === "a" ? -12 : 12 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 * i, duration: 0.3 }}
                 className="rounded-lg bg-white/[0.03] border border-white/5 p-3"

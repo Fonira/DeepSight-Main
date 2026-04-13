@@ -10,8 +10,23 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import { Suspense, lazy, useEffect, useRef, ReactNode, Component, ErrorInfo } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom";
+import {
+  Suspense,
+  lazy,
+  useEffect,
+  useRef,
+  ReactNode,
+  Component,
+  ErrorInfo,
+} from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+  useLocation,
+} from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./hooks/useAuth";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -37,10 +52,14 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 30 * 60 * 1000,   // 30 minutes (anciennement cacheTime)
+      gcTime: 30 * 60 * 1000, // 30 minutes (anciennement cacheTime)
       retry: (failureCount, error: any) => {
         // Ne pas réessayer les erreurs 4xx (sauf 429)
-        if (error?.status >= 400 && error?.status < 500 && error?.status !== 429) {
+        if (
+          error?.status >= 400 &&
+          error?.status < 500 &&
+          error?.status !== 429
+        ) {
           return false;
         }
         return failureCount < 3;
@@ -60,13 +79,13 @@ const queryClient = new QueryClient({
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface SkeletonProps {
-  variant?: 'full' | 'dashboard' | 'simple' | 'form';
+  variant?: "full" | "dashboard" | "simple" | "form";
 }
 
-const PageSkeleton = ({ variant = 'full' }: SkeletonProps) => {
+const PageSkeleton = ({ variant = "full" }: SkeletonProps) => {
   const baseClass = "animate-pulse bg-bg-secondary/50 rounded-lg";
-  
-  if (variant === 'dashboard') {
+
+  if (variant === "dashboard") {
     return (
       <div className="min-h-screen bg-bg-primary p-4 md:p-8">
         {/* Header skeleton */}
@@ -74,10 +93,10 @@ const PageSkeleton = ({ variant = 'full' }: SkeletonProps) => {
           <div className={`${baseClass} h-10 w-48`} />
           <div className={`${baseClass} h-10 w-32`} />
         </div>
-        
+
         {/* Main input area */}
         <div className={`${baseClass} h-40 w-full max-w-3xl mx-auto mb-8`} />
-        
+
         {/* Cards grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {[...Array(6)].map((_, i) => (
@@ -87,8 +106,8 @@ const PageSkeleton = ({ variant = 'full' }: SkeletonProps) => {
       </div>
     );
   }
-  
-  if (variant === 'simple') {
+
+  if (variant === "simple") {
     return (
       <div className="min-h-screen bg-bg-primary flex items-center justify-center">
         <div className="w-full max-w-md p-8">
@@ -98,8 +117,8 @@ const PageSkeleton = ({ variant = 'full' }: SkeletonProps) => {
       </div>
     );
   }
-  
-  if (variant === 'form') {
+
+  if (variant === "form") {
     return (
       <div className="min-h-screen bg-bg-primary p-4 md:p-8">
         <div className="max-w-2xl mx-auto">
@@ -112,7 +131,7 @@ const PageSkeleton = ({ variant = 'full' }: SkeletonProps) => {
       </div>
     );
   }
-  
+
   // Full page skeleton (default)
   return (
     <div className="min-h-screen bg-bg-primary p-4 md:p-8">
@@ -150,10 +169,10 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught:', error, errorInfo);
-    
+    console.error("ErrorBoundary caught:", error, errorInfo);
+
     // Reporter à Sentry
-    import('./lib/sentry').then(({ captureError }) => {
+    import("./lib/sentry").then(({ captureError }) => {
       captureError(error, { componentStack: errorInfo.componentStack });
     });
   }
@@ -163,7 +182,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
       if (this.props.fallback) {
         return this.props.fallback;
       }
-      
+
       return (
         <div className="min-h-screen bg-bg-primary flex items-center justify-center p-4">
           <div className="text-center max-w-md">
@@ -172,7 +191,8 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
               Oups, quelque chose s'est mal passé
             </h1>
             <p className="text-text-secondary mb-6">
-              Une erreur inattendue s'est produite. Essayez de rafraîchir la page.
+              Une erreur inattendue s'est produite. Essayez de rafraîchir la
+              page.
             </p>
             <div className="flex gap-4 justify-center">
               <button
@@ -182,18 +202,20 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                 Rafraîchir
               </button>
               <button
-                onClick={() => window.location.href = '/'}
+                onClick={() => (window.location.href = "/")}
                 className="px-6 py-3 bg-bg-secondary text-text-primary rounded-lg hover:bg-bg-tertiary transition-colors"
               >
                 Retour à l'accueil
               </button>
             </div>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {process.env.NODE_ENV === "development" && this.state.error && (
               <details className="mt-8 text-left bg-red-900/20 p-4 rounded-lg">
-                <summary className="cursor-pointer text-red-400">Détails de l'erreur</summary>
+                <summary className="cursor-pointer text-red-400">
+                  Détails de l'erreur
+                </summary>
                 <pre className="mt-2 text-xs text-red-300 overflow-auto">
                   {this.state.error.toString()}
-                  {'\n\n'}
+                  {"\n\n"}
                   {this.state.error.stack}
                 </pre>
               </details>
@@ -217,15 +239,17 @@ function lazyWithRetry(importFn: () => Promise<any>) {
     importFn().catch((error: any) => {
       // Chunk loading failure after deployment — reload page once
       const isChunkError =
-        error?.message?.includes('Failed to fetch dynamically imported module') ||
-        error?.message?.includes('Loading chunk') ||
-        error?.message?.includes('Loading CSS chunk') ||
-        error?.message?.includes('Unable to preload CSS') ||
-        error?.name === 'ChunkLoadError' ||
-        error?.message?.includes('error loading dynamically imported module');
+        error?.message?.includes(
+          "Failed to fetch dynamically imported module",
+        ) ||
+        error?.message?.includes("Loading chunk") ||
+        error?.message?.includes("Loading CSS chunk") ||
+        error?.message?.includes("Unable to preload CSS") ||
+        error?.name === "ChunkLoadError" ||
+        error?.message?.includes("error loading dynamically imported module");
 
       if (isChunkError) {
-        const RELOAD_KEY = 'chunk_reload_ts';
+        const RELOAD_KEY = "chunk_reload_ts";
         try {
           const lastReload = sessionStorage.getItem(RELOAD_KEY);
           const now = Date.now();
@@ -237,15 +261,15 @@ function lazyWithRetry(importFn: () => Promise<any>) {
           }
         } catch {
           // sessionStorage unavailable (Safari private) — try reload once via URL param
-          if (!window.location.search.includes('_cr=1')) {
-            const sep = window.location.search ? '&' : '?';
-            window.location.href = window.location.href + sep + '_cr=1';
+          if (!window.location.search.includes("_cr=1")) {
+            const sep = window.location.search ? "&" : "?";
+            window.location.href = window.location.href + sep + "_cr=1";
             return new Promise(() => {});
           }
         }
       }
       throw error;
-    })
+    }),
   );
 }
 
@@ -261,12 +285,16 @@ const PaymentCancel = lazyWithRetry(() => import("./pages/PaymentCancel"));
 const StatusPage = lazyWithRetry(() => import("./pages/StatusPage"));
 const ContactPage = lazyWithRetry(() => import("./pages/ContactPage"));
 const AboutPage = lazyWithRetry(() => import("./pages/AboutPage"));
-const SharedAnalysisPage = lazyWithRetry(() => import("./pages/SharedAnalysisPage"));
+const SharedAnalysisPage = lazyWithRetry(
+  () => import("./pages/SharedAnalysisPage"),
+);
 
 // Pages protégées
 const DashboardPage = lazyWithRetry(() => import("./pages/DashboardPage"));
 const PlaylistPage = lazyWithRetry(() => import("./pages/PlaylistPage"));
-const PlaylistDetailPage = lazyWithRetry(() => import("./pages/PlaylistDetailPage"));
+const PlaylistDetailPage = lazyWithRetry(
+  () => import("./pages/PlaylistDetailPage"),
+);
 const History = lazyWithRetry(() => import("./pages/History"));
 const UpgradePage = lazyWithRetry(() => import("./pages/UpgradePage"));
 const Settings = lazyWithRetry(() => import("./pages/Settings"));
@@ -279,7 +307,9 @@ const StudyHubPage = lazyWithRetry(() => import("./pages/StudyHubPage"));
 const ChatPage = lazyWithRetry(() => import("./pages/ChatPage"));
 const DebatePage = lazyWithRetry(() => import("./pages/DebatePage"));
 const NotFoundPage = lazyWithRetry(() => import("./pages/NotFoundPage"));
-const ExtensionWelcomePage = lazyWithRetry(() => import("./pages/ExtensionWelcomePage"));
+const ExtensionWelcomePage = lazyWithRetry(
+  () => import("./pages/ExtensionWelcomePage"),
+);
 const PrivacyPolicy = lazyWithRetry(() => import("./pages/PrivacyPolicy"));
 const ApiDocsPage = lazyWithRetry(() => import("./pages/ApiDocsPage"));
 
@@ -288,29 +318,37 @@ const ApiDocsPage = lazyWithRetry(() => import("./pages/ApiDocsPage"));
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const PREFETCH_MAP: Record<string, string[]> = {
-  '/': ['/dashboard', '/login'],
-  '/login': ['/dashboard'],
-  '/dashboard': ['/history', '/settings', '/debate', '/analytics', '/chat', '/study', '/about'],
-  '/history': ['/dashboard', '/analytics'],
-  '/settings': ['/account'],
-  '/debate': ['/dashboard', '/history'],
-  '/upgrade': ['/dashboard', '/payment/success'],
-  '/analytics': ['/dashboard', '/history'],
+  "/": ["/dashboard", "/login"],
+  "/login": ["/dashboard"],
+  "/dashboard": [
+    "/history",
+    "/settings",
+    "/debate",
+    "/analytics",
+    "/chat",
+    "/study",
+    "/about",
+  ],
+  "/history": ["/dashboard", "/analytics"],
+  "/settings": ["/account"],
+  "/debate": ["/dashboard", "/history"],
+  "/upgrade": ["/dashboard", "/payment/success"],
+  "/analytics": ["/dashboard", "/history"],
 };
 
 const PAGE_LOADERS: Record<string, () => Promise<any>> = {
-  '/dashboard': () => import("./pages/DashboardPage"),
-  '/history': () => import("./pages/History"),
-  '/settings': () => import("./pages/Settings"),
-  '/debate': () => import("./pages/DebatePage"),
-  '/account': () => import("./pages/MyAccount"),
-  '/login': () => import("./pages/Login"),
-  '/upgrade': () => import("./pages/UpgradePage"),
-  '/payment/success': () => import("./pages/PaymentSuccess"),
-  '/analytics': () => import("./pages/AnalyticsPage"),
-  '/chat': () => import("./pages/ChatPage"),
-  '/study': () => import("./pages/StudyHubPage"),
-  '/about': () => import("./pages/AboutPage"),
+  "/dashboard": () => import("./pages/DashboardPage"),
+  "/history": () => import("./pages/History"),
+  "/settings": () => import("./pages/Settings"),
+  "/debate": () => import("./pages/DebatePage"),
+  "/account": () => import("./pages/MyAccount"),
+  "/login": () => import("./pages/Login"),
+  "/upgrade": () => import("./pages/UpgradePage"),
+  "/payment/success": () => import("./pages/PaymentSuccess"),
+  "/analytics": () => import("./pages/AnalyticsPage"),
+  "/chat": () => import("./pages/ChatPage"),
+  "/study": () => import("./pages/StudyHubPage"),
+  "/about": () => import("./pages/AboutPage"),
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -332,7 +370,7 @@ const RoutePrefetcher = () => {
 
     // Précharger après un délai pour ne pas impacter le chargement initial
     const timeoutId = setTimeout(() => {
-      routesToPrefetch.forEach(route => {
+      routesToPrefetch.forEach((route) => {
         if (!prefetchedRef.current.has(route) && PAGE_LOADERS[route]) {
           prefetchedRef.current.add(route);
           PAGE_LOADERS[route]().catch(() => {
@@ -357,7 +395,7 @@ const HomeRoute = () => {
 
   if (loading) {
     return (
-      <div 
+      <div
         className="min-h-screen bg-bg-primary flex items-center justify-center"
         role="status"
         aria-live="polite"
@@ -370,7 +408,9 @@ const HomeRoute = () => {
     );
   }
 
-  return user ? <Navigate to="/dashboard" replace /> : (
+  return user ? (
+    <Navigate to="/dashboard" replace />
+  ) : (
     <RouteErrorBoundary variant="full" componentName="LandingPage">
       <Suspense fallback={<PageSkeleton variant="full" />}>
         <LandingPage />
@@ -384,9 +424,7 @@ const HomeRoute = () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const ProtectedLayout = () => {
-  return (
-    <Outlet />
-  );
+  return <Outlet />;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -401,273 +439,454 @@ const AppRoutes = () => {
       <LoadingWordProvider>
         <AuthProvider value={auth}>
           <TTSProvider>
-          <Router>
-            {/* ♿ Skip Link pour l'accessibilité */}
-            <SkipLink targetId="main-content" />
-            
-            {/* 🔮 Prefetcher intelligent */}
-            <RoutePrefetcher />
-            
-            <ErrorBoundary>
-              <Routes>
-                {/* Routes publiques */}
-                <Route path="/" element={<HomeRoute />} />
-                
-                <Route path="/login" element={
-                  <RouteErrorBoundary variant="full" componentName="Login">
-                    <Suspense fallback={<PageSkeleton variant="simple" />}>
-                      <Login />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                } />
+            <Router>
+              {/* ♿ Skip Link pour l'accessibilité */}
+              <SkipLink targetId="main-content" />
 
-                <Route path="/auth/callback" element={
-                  <RouteErrorBoundary variant="full" componentName="AuthCallback">
-                    <Suspense fallback={<PageSkeleton variant="simple" />}>
-                      <AuthCallback />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                } />
+              {/* 🔮 Prefetcher intelligent */}
+              <RoutePrefetcher />
 
-                <Route path="/legal/cgu" element={
-                  <RouteErrorBoundary variant="full" componentName="LegalCGU">
-                    <Suspense fallback={<PageSkeleton variant="full" />}>
-                      <LegalCGU />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                } />
+              <ErrorBoundary>
+                <Routes>
+                  {/* Routes publiques */}
+                  <Route path="/" element={<HomeRoute />} />
 
-                <Route path="/legal/cgv" element={
-                  <RouteErrorBoundary variant="full" componentName="LegalCGV">
-                    <Suspense fallback={<PageSkeleton variant="full" />}>
-                      <LegalCGV />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                } />
+                  <Route
+                    path="/login"
+                    element={
+                      <RouteErrorBoundary variant="full" componentName="Login">
+                        <Suspense fallback={<PageSkeleton variant="simple" />}>
+                          <Login />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    }
+                  />
 
-                <Route path="/legal/privacy" element={
-                  <RouteErrorBoundary variant="full" componentName="PrivacyPolicy">
-                    <Suspense fallback={<PageSkeleton variant="full" />}>
-                      <PrivacyPolicy />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                } />
+                  <Route
+                    path="/auth/callback"
+                    element={
+                      <RouteErrorBoundary
+                        variant="full"
+                        componentName="AuthCallback"
+                      >
+                        <Suspense fallback={<PageSkeleton variant="simple" />}>
+                          <AuthCallback />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    }
+                  />
 
-                <Route path="/legal" element={
-                  <RouteErrorBoundary variant="full" componentName="LegalPage">
-                    <Suspense fallback={<PageSkeleton variant="full" />}>
-                      <LegalPage />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                } />
+                  <Route
+                    path="/legal/cgu"
+                    element={
+                      <RouteErrorBoundary
+                        variant="full"
+                        componentName="LegalCGU"
+                      >
+                        <Suspense fallback={<PageSkeleton variant="full" />}>
+                          <LegalCGU />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    }
+                  />
 
-                <Route path="/status" element={
-                  <RouteErrorBoundary variant="full" componentName="StatusPage">
-                    <Suspense fallback={<PageSkeleton variant="simple" />}>
-                      <StatusPage />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                } />
+                  <Route
+                    path="/legal/cgv"
+                    element={
+                      <RouteErrorBoundary
+                        variant="full"
+                        componentName="LegalCGV"
+                      >
+                        <Suspense fallback={<PageSkeleton variant="full" />}>
+                          <LegalCGV />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    }
+                  />
 
-                <Route path="/contact" element={
-                  <RouteErrorBoundary variant="full" componentName="ContactPage">
-                    <Suspense fallback={<PageSkeleton variant="full" />}>
-                      <ContactPage />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                } />
+                  <Route
+                    path="/legal/privacy"
+                    element={
+                      <RouteErrorBoundary
+                        variant="full"
+                        componentName="PrivacyPolicy"
+                      >
+                        <Suspense fallback={<PageSkeleton variant="full" />}>
+                          <PrivacyPolicy />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    }
+                  />
 
-                <Route path="/about" element={
-                  <RouteErrorBoundary variant="full" componentName="AboutPage">
-                    <Suspense fallback={<PageSkeleton variant="full" />}>
-                      <AboutPage />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                } />
+                  <Route
+                    path="/legal"
+                    element={
+                      <RouteErrorBoundary
+                        variant="full"
+                        componentName="LegalPage"
+                      >
+                        <Suspense fallback={<PageSkeleton variant="full" />}>
+                          <LegalPage />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    }
+                  />
 
-                <Route path="/payment/success" element={
-                  <RouteErrorBoundary variant="full" componentName="PaymentSuccess">
-                    <Suspense fallback={<PageSkeleton variant="simple" />}>
-                      <PaymentSuccess />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                } />
+                  <Route
+                    path="/status"
+                    element={
+                      <RouteErrorBoundary
+                        variant="full"
+                        componentName="StatusPage"
+                      >
+                        <Suspense fallback={<PageSkeleton variant="simple" />}>
+                          <StatusPage />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    }
+                  />
 
-                <Route path="/payment/cancel" element={
-                  <RouteErrorBoundary variant="full" componentName="PaymentCancel">
-                    <Suspense fallback={<PageSkeleton variant="simple" />}>
-                      <PaymentCancel />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                } />
+                  <Route
+                    path="/contact"
+                    element={
+                      <RouteErrorBoundary
+                        variant="full"
+                        componentName="ContactPage"
+                      >
+                        <Suspense fallback={<PageSkeleton variant="full" />}>
+                          <ContactPage />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    }
+                  />
 
-                <Route path="/api-docs" element={
-                  <RouteErrorBoundary variant="full" componentName="ApiDocsPage">
-                    <Suspense fallback={<PageSkeleton variant="full" />}>
-                      <ApiDocsPage />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                } />
+                  <Route
+                    path="/about"
+                    element={
+                      <RouteErrorBoundary
+                        variant="full"
+                        componentName="AboutPage"
+                      >
+                        <Suspense fallback={<PageSkeleton variant="full" />}>
+                          <AboutPage />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    }
+                  />
 
-                <Route path="/s/:shareToken" element={
-                  <RouteErrorBoundary variant="full" componentName="SharedAnalysisPage">
-                    <Suspense fallback={<PageSkeleton variant="simple" />}>
-                      <SharedAnalysisPage />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                } />
+                  <Route
+                    path="/payment/success"
+                    element={
+                      <RouteErrorBoundary
+                        variant="full"
+                        componentName="PaymentSuccess"
+                      >
+                        <Suspense fallback={<PageSkeleton variant="simple" />}>
+                          <PaymentSuccess />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    }
+                  />
 
-                {/* Routes protégées */}
-                <Route
-                  element={
-                    <PrivateRoute>
-                      <ProtectedLayout />
-                    </PrivateRoute>
-                  }
-                >
-                  <Route path="/dashboard" element={
-                    <RouteErrorBoundary variant="full" componentName="DashboardPage" showDetails>
-                      <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-                        <DashboardPage />
+                  <Route
+                    path="/payment/cancel"
+                    element={
+                      <RouteErrorBoundary
+                        variant="full"
+                        componentName="PaymentCancel"
+                      >
+                        <Suspense fallback={<PageSkeleton variant="simple" />}>
+                          <PaymentCancel />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    }
+                  />
+
+                  <Route
+                    path="/api-docs"
+                    element={
+                      <RouteErrorBoundary
+                        variant="full"
+                        componentName="ApiDocsPage"
+                      >
+                        <Suspense fallback={<PageSkeleton variant="full" />}>
+                          <ApiDocsPage />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    }
+                  />
+
+                  <Route
+                    path="/s/:shareToken"
+                    element={
+                      <RouteErrorBoundary
+                        variant="full"
+                        componentName="SharedAnalysisPage"
+                      >
+                        <Suspense fallback={<PageSkeleton variant="simple" />}>
+                          <SharedAnalysisPage />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    }
+                  />
+
+                  {/* Routes protégées */}
+                  <Route
+                    element={
+                      <PrivateRoute>
+                        <ProtectedLayout />
+                      </PrivateRoute>
+                    }
+                  >
+                    <Route
+                      path="/dashboard"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="DashboardPage"
+                          showDetails
+                        >
+                          <Suspense
+                            fallback={<PageSkeleton variant="dashboard" />}
+                          >
+                            <DashboardPage />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/playlists"
+                      element={<Navigate to="/debate" replace />}
+                    />
+
+                    <Route
+                      path="/playlist/:id"
+                      element={
+                        <Suspense
+                          fallback={<PageSkeleton variant="dashboard" />}
+                        >
+                          <PlaylistDetailPage />
+                        </Suspense>
+                      }
+                    />
+
+                    <Route
+                      path="/history"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="History"
+                        >
+                          <Suspense fallback={<PageSkeleton variant="full" />}>
+                            <History />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/upgrade"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="UpgradePage"
+                        >
+                          <Suspense fallback={<PageSkeleton variant="form" />}>
+                            <UpgradePage />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/usage"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="UsageDashboard"
+                        >
+                          <Suspense
+                            fallback={<PageSkeleton variant="dashboard" />}
+                          >
+                            <UsageDashboard />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/analytics"
+                      element={
+                        <Suspense
+                          fallback={<PageSkeleton variant="dashboard" />}
+                        >
+                          <AnalyticsPage />
+                        </Suspense>
+                      }
+                    />
+
+                    <Route
+                      path="/settings"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="Settings"
+                        >
+                          <Suspense fallback={<PageSkeleton variant="form" />}>
+                            <Settings />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/account"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="MyAccount"
+                        >
+                          <Suspense fallback={<PageSkeleton variant="form" />}>
+                            <MyAccount />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/admin"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="AdminPage"
+                        >
+                          <Suspense
+                            fallback={<PageSkeleton variant="dashboard" />}
+                          >
+                            <AdminPage />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/chat"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="ChatPage"
+                        >
+                          <Suspense fallback={<PageSkeleton variant="full" />}>
+                            <ChatPage />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/study"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="StudyHubPage"
+                        >
+                          <Suspense
+                            fallback={<PageSkeleton variant="dashboard" />}
+                          >
+                            <StudyHubPage />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/study/:summaryId"
+                      element={
+                        <Suspense
+                          fallback={<PageSkeleton variant="dashboard" />}
+                        >
+                          <StudyPage />
+                        </Suspense>
+                      }
+                    />
+
+                    <Route
+                      path="/debate"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="DebatePage"
+                        >
+                          <Suspense
+                            fallback={<PageSkeleton variant="dashboard" />}
+                          >
+                            <DebatePage />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+
+                    <Route
+                      path="/debate/:id"
+                      element={
+                        <RouteErrorBoundary
+                          variant="full"
+                          componentName="DebatePage"
+                        >
+                          <Suspense
+                            fallback={<PageSkeleton variant="dashboard" />}
+                          >
+                            <DebatePage />
+                          </Suspense>
+                        </RouteErrorBoundary>
+                      }
+                    />
+                  </Route>
+
+                  {/* Extension Welcome — post-install landing */}
+                  <Route
+                    path="/extension-welcome"
+                    element={
+                      <RouteErrorBoundary
+                        variant="full"
+                        componentName="ExtensionWelcome"
+                      >
+                        <Suspense fallback={<PageSkeleton variant="simple" />}>
+                          <ExtensionWelcomePage />
+                        </Suspense>
+                      </RouteErrorBoundary>
+                    }
+                  />
+
+                  {/* 404 Page */}
+                  <Route
+                    path="*"
+                    element={
+                      <Suspense fallback={<PageSkeleton variant="simple" />}>
+                        <NotFoundPage />
                       </Suspense>
-                    </RouteErrorBoundary>
-                  } />
+                    }
+                  />
+                </Routes>
+              </ErrorBoundary>
 
-                  <Route path="/playlists" element={<Navigate to="/debate" replace />} />
-                  
-                  <Route path="/playlist/:id" element={
-                    <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-                      <PlaylistDetailPage />
-                    </Suspense>
-                  } />
-                  
-                  <Route path="/history" element={
-                    <RouteErrorBoundary variant="full" componentName="History">
-                      <Suspense fallback={<PageSkeleton variant="full" />}>
-                        <History />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  } />
+              <CrispChat />
 
-                  <Route path="/upgrade" element={
-                    <RouteErrorBoundary variant="full" componentName="UpgradePage">
-                      <Suspense fallback={<PageSkeleton variant="form" />}>
-                        <UpgradePage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  } />
+              {/* 🔒 Modal upgrade global (403/429 interceptor) — wrapped to prevent crash */}
+              <ErrorBoundary fallback={null}>
+                <UpgradeModal />
+              </ErrorBoundary>
 
-                  <Route path="/usage" element={
-                    <RouteErrorBoundary variant="full" componentName="UsageDashboard">
-                      <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-                        <UsageDashboard />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  } />
-                  
-                  <Route path="/analytics" element={
-                    <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-                      <AnalyticsPage />
-                    </Suspense>
-                  } />
-                  
-                  <Route path="/settings" element={
-                    <RouteErrorBoundary variant="full" componentName="Settings">
-                      <Suspense fallback={<PageSkeleton variant="form" />}>
-                        <Settings />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  } />
-
-                  <Route path="/account" element={
-                    <RouteErrorBoundary variant="full" componentName="MyAccount">
-                      <Suspense fallback={<PageSkeleton variant="form" />}>
-                        <MyAccount />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  } />
-
-                  <Route path="/admin" element={
-                    <RouteErrorBoundary variant="full" componentName="AdminPage">
-                      <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-                        <AdminPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  } />
-                  
-                  <Route path="/chat" element={
-                    <RouteErrorBoundary variant="full" componentName="ChatPage">
-                      <Suspense fallback={<PageSkeleton variant="full" />}>
-                        <ChatPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  } />
-
-                  <Route path="/study" element={
-                    <RouteErrorBoundary variant="full" componentName="StudyHubPage">
-                      <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-                        <StudyHubPage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  } />
-
-                  <Route path="/study/:summaryId" element={
-                    <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-                      <StudyPage />
-                    </Suspense>
-                  } />
-
-                  <Route path="/debate" element={
-                    <RouteErrorBoundary variant="full" componentName="DebatePage">
-                      <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-                        <DebatePage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  } />
-
-                  <Route path="/debate/:id" element={
-                    <RouteErrorBoundary variant="full" componentName="DebatePage">
-                      <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-                        <DebatePage />
-                      </Suspense>
-                    </RouteErrorBoundary>
-                  } />
-                </Route>
-
-                {/* Extension Welcome — post-install landing */}
-                <Route path="/extension-welcome" element={
-                  <RouteErrorBoundary variant="full" componentName="ExtensionWelcome">
-                    <Suspense fallback={<PageSkeleton variant="simple" />}>
-                      <ExtensionWelcomePage />
-                    </Suspense>
-                  </RouteErrorBoundary>
-                } />
-
-                {/* 404 Page */}
-                <Route path="*" element={
-                  <Suspense fallback={<PageSkeleton variant="simple" />}>
-                    <NotFoundPage />
-                  </Suspense>
-                } />
-              </Routes>
-            </ErrorBoundary>
-            
-            <CrispChat />
-
-            {/* 🔒 Modal upgrade global (403/429 interceptor) — wrapped to prevent crash */}
-            <ErrorBoundary fallback={null}>
-              <UpgradeModal />
-            </ErrorBoundary>
-
-{/* 🍪 RGPD: Cookie consent banner — wrapped to prevent crash */}
-            <ErrorBoundary fallback={null}>
-              <CookieBanner />
-            </ErrorBoundary>
+              {/* 🍪 RGPD: Cookie consent banner — wrapped to prevent crash */}
+              <ErrorBoundary fallback={null}>
+                <CookieBanner />
+              </ErrorBoundary>
             </Router>
           </TTSProvider>
-          </AuthProvider>
-        </LoadingWordProvider>
-      </LanguageProvider>
+        </AuthProvider>
+      </LoadingWordProvider>
+    </LanguageProvider>
   );
 };
 

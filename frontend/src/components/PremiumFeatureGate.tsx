@@ -8,11 +8,11 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import React, { useState, ReactNode } from 'react';
-import { Lock, Crown, Sparkles, ArrowRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { useTranslation } from '../hooks/useTranslation';
+import React, { useState, ReactNode } from "react";
+import { Lock, Crown, Sparkles, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+import { useTranslation } from "../hooks/useTranslation";
 import {
   PlanId,
   PlanFeatures,
@@ -23,8 +23,8 @@ import {
   getPlanInfo,
   getMinPlanForFeature,
   normalizePlanId,
-} from '../config/planPrivileges';
-import { UpgradePromptModal } from './UpgradePromptModal';
+} from "../config/planPrivileges";
+import { UpgradePromptModal } from "./UpgradePromptModal";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
@@ -42,7 +42,7 @@ interface PremiumFeatureGateProps {
   /** Children to render when feature is available */
   children: ReactNode;
   /** What to show when feature is locked */
-  fallback?: 'hide' | 'blur' | 'placeholder' | 'modal' | 'custom';
+  fallback?: "hide" | "blur" | "placeholder" | "modal" | "custom";
   /** Custom fallback component */
   customFallback?: ReactNode;
   /** Title for the upgrade placeholder */
@@ -50,9 +50,9 @@ interface PremiumFeatureGateProps {
   /** Description for the upgrade placeholder */
   description?: string;
   /** Size of the placeholder */
-  size?: 'sm' | 'md' | 'lg';
+  size?: "sm" | "md" | "lg";
   /** Whether to show inline or as overlay */
-  variant?: 'inline' | 'overlay';
+  variant?: "inline" | "overlay";
   /** Callback when upgrade is clicked */
   onUpgrade?: () => void;
   /** Callback when the gate blocks access */
@@ -69,12 +69,12 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
   currentUsage = 0,
   requiredPlan,
   children,
-  fallback = 'placeholder',
+  fallback = "placeholder",
   customFallback,
   title,
   description,
-  size = 'md',
-  variant = 'inline',
+  size = "md",
+  variant = "inline",
   onUpgrade,
   onBlocked,
 }) => {
@@ -84,7 +84,7 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const userPlan = normalizePlanId(user?.plan);
-  const t = (fr: string, en: string) => (language === 'fr' ? fr : en);
+  const t = (fr: string, en: string) => (language === "fr" ? fr : en);
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 🔍 CHECK ACCESS
@@ -130,9 +130,10 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
       return getPlanInfo(requiredPlan);
     }
     // For limits, suggest the next plan up
-    const planOrder: PlanId[] = ['free', 'pro'];
+    const planOrder: PlanId[] = ["free", "pro"];
     const currentIndex = planOrder.indexOf(userPlan);
-    const nextPlan = planOrder[Math.min(currentIndex + 1, planOrder.length - 1)];
+    const nextPlan =
+      planOrder[Math.min(currentIndex + 1, planOrder.length - 1)];
     return getPlanInfo(nextPlan);
   };
 
@@ -142,10 +143,10 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
 
   const handleUpgradeClick = () => {
     onUpgrade?.();
-    if (fallback === 'modal') {
+    if (fallback === "modal") {
       setShowUpgradeModal(true);
     } else {
-      navigate('/upgrade');
+      navigate("/upgrade");
     }
   };
 
@@ -169,17 +170,17 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
   }, [hasAccess, onBlocked]);
 
   // Hide completely
-  if (fallback === 'hide') {
+  if (fallback === "hide") {
     return null;
   }
 
   // Custom fallback
-  if (fallback === 'custom' && customFallback) {
+  if (fallback === "custom" && customFallback) {
     return <>{customFallback}</>;
   }
 
   // Modal fallback - show modal on click, but render children blurred
-  if (fallback === 'modal') {
+  if (fallback === "modal") {
     return (
       <>
         <div
@@ -193,7 +194,7 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
             <div className="flex items-center gap-2 px-4 py-2 bg-accent-primary/10 border border-accent-primary/20 rounded-full text-accent-primary">
               <Lock className="w-4 h-4" />
               <span className="text-sm font-medium">
-                {t('Fonctionnalité Premium', 'Premium Feature')}
+                {t("Fonctionnalité Premium", "Premium Feature")}
               </span>
             </div>
           </div>
@@ -201,14 +202,20 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
         <UpgradePromptModal
           isOpen={showUpgradeModal}
           onClose={() => setShowUpgradeModal(false)}
-          limitType={feature === 'playlists' ? 'playlist' : feature === 'exportPdf' ? 'export' : 'credits'}
+          limitType={
+            feature === "playlists"
+              ? "playlist"
+              : feature === "exportPdf"
+                ? "export"
+                : "credits"
+          }
         />
       </>
     );
   }
 
   // Blur fallback
-  if (fallback === 'blur') {
+  if (fallback === "blur") {
     return (
       <div className="relative">
         <div className="blur-md pointer-events-none select-none">
@@ -221,7 +228,7 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
           <div className="p-4 bg-bg-elevated/90 backdrop-blur rounded-xl shadow-lg border border-border-default">
             <Lock className="w-6 h-6 text-accent-primary mx-auto mb-2" />
             <p className="text-sm text-text-primary text-center">
-              {t('Cliquez pour débloquer', 'Click to unlock')}
+              {t("Cliquez pour débloquer", "Click to unlock")}
             </p>
           </div>
         </div>
@@ -237,28 +244,28 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
 
   const sizeClasses = {
     sm: {
-      container: 'p-4',
-      icon: 'w-10 h-10',
-      iconInner: 'w-5 h-5',
-      title: 'text-sm',
-      description: 'text-xs',
-      button: 'px-3 py-1.5 text-xs',
+      container: "p-4",
+      icon: "w-10 h-10",
+      iconInner: "w-5 h-5",
+      title: "text-sm",
+      description: "text-xs",
+      button: "px-3 py-1.5 text-xs",
     },
     md: {
-      container: 'p-6',
-      icon: 'w-14 h-14',
-      iconInner: 'w-7 h-7',
-      title: 'text-base',
-      description: 'text-sm',
-      button: 'px-4 py-2 text-sm',
+      container: "p-6",
+      icon: "w-14 h-14",
+      iconInner: "w-7 h-7",
+      title: "text-base",
+      description: "text-sm",
+      button: "px-4 py-2 text-sm",
     },
     lg: {
-      container: 'p-8',
-      icon: 'w-16 h-16',
-      iconInner: 'w-8 h-8',
-      title: 'text-lg',
-      description: 'text-base',
-      button: 'px-5 py-2.5 text-base',
+      container: "p-8",
+      icon: "w-16 h-16",
+      iconInner: "w-8 h-8",
+      title: "text-lg",
+      description: "text-base",
+      button: "px-5 py-2.5 text-base",
     },
   };
 
@@ -267,27 +274,31 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
   // Generate default title and description
   const defaultTitle = t(
     `Fonctionnalité ${requiredPlanInfo.name.fr}`,
-    `${requiredPlanInfo.name.en} Feature`
+    `${requiredPlanInfo.name.en} Feature`,
   );
 
   const defaultDescription = t(
     `Cette fonctionnalité est disponible à partir du plan ${requiredPlanInfo.name.fr}.`,
-    `This feature is available from the ${requiredPlanInfo.name.en} plan.`
+    `This feature is available from the ${requiredPlanInfo.name.en} plan.`,
   );
 
   const displayTitle = title || defaultTitle;
   const displayDescription = description || defaultDescription;
 
   // Overlay variant
-  if (variant === 'overlay') {
+  if (variant === "overlay") {
     return (
       <div className="relative">
         <div className="opacity-30 pointer-events-none select-none">
           {children}
         </div>
         <div className="absolute inset-0 flex items-center justify-center p-4">
-          <div className={`bg-bg-elevated border border-border-default rounded-2xl shadow-xl ${classes.container} max-w-sm text-center`}>
-            <div className={`${classes.icon} mx-auto mb-4 rounded-2xl bg-gradient-to-br ${requiredPlanInfo.gradient} flex items-center justify-center`}>
+          <div
+            className={`bg-bg-elevated border border-border-default rounded-2xl shadow-xl ${classes.container} max-w-sm text-center`}
+          >
+            <div
+              className={`${classes.icon} mx-auto mb-4 rounded-2xl bg-gradient-to-br ${requiredPlanInfo.gradient} flex items-center justify-center`}
+            >
               <Crown className={`${classes.iconInner} text-white`} />
             </div>
             <h3 className={`${classes.title} font-bold text-text-primary mb-2`}>
@@ -301,7 +312,8 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
               className={`${classes.button} w-full flex items-center justify-center gap-2 bg-gradient-to-r ${requiredPlanInfo.gradient} text-white font-medium rounded-xl hover:opacity-90 transition-opacity`}
             >
               <Sparkles className="w-4 h-4" />
-              {t('Passer au plan', 'Upgrade to')} {requiredPlanInfo.name[language === 'fr' ? 'fr' : 'en']}
+              {t("Passer au plan", "Upgrade to")}{" "}
+              {requiredPlanInfo.name[language === "fr" ? "fr" : "en"]}
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
@@ -312,11 +324,17 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
 
   // Inline variant (default)
   return (
-    <div className={`bg-bg-secondary/50 border border-border-default rounded-2xl ${classes.container}`}>
+    <div
+      className={`bg-bg-secondary/50 border border-border-default rounded-2xl ${classes.container}`}
+    >
       <div className="flex flex-col items-center text-center">
         {/* Icon with gradient background */}
-        <div className={`${classes.icon} mb-4 rounded-2xl bg-gradient-to-br ${requiredPlanInfo.gradient} bg-opacity-10 flex items-center justify-center relative overflow-hidden`}>
-          <div className={`absolute inset-0 bg-gradient-to-br ${requiredPlanInfo.gradient} opacity-20`} />
+        <div
+          className={`${classes.icon} mb-4 rounded-2xl bg-gradient-to-br ${requiredPlanInfo.gradient} bg-opacity-10 flex items-center justify-center relative overflow-hidden`}
+        >
+          <div
+            className={`absolute inset-0 bg-gradient-to-br ${requiredPlanInfo.gradient} opacity-20`}
+          />
           <Lock className={`${classes.iconInner} text-white relative z-10`} />
         </div>
 
@@ -326,14 +344,20 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
         </h3>
 
         {/* Description */}
-        <p className={`${classes.description} text-text-secondary mb-4 max-w-sm`}>
+        <p
+          className={`${classes.description} text-text-secondary mb-4 max-w-sm`}
+        >
           {displayDescription}
         </p>
 
         {/* Plan badge */}
-        <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${requiredPlanInfo.gradient} bg-opacity-10 mb-4`}>
-          <span className={`text-xs font-medium bg-gradient-to-r ${requiredPlanInfo.gradient} bg-clip-text text-transparent`}>
-            {requiredPlanInfo.killerFeature[language === 'fr' ? 'fr' : 'en']}
+        <div
+          className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${requiredPlanInfo.gradient} bg-opacity-10 mb-4`}
+        >
+          <span
+            className={`text-xs font-medium bg-gradient-to-r ${requiredPlanInfo.gradient} bg-clip-text text-transparent`}
+          >
+            {requiredPlanInfo.killerFeature[language === "fr" ? "fr" : "en"]}
           </span>
         </div>
 
@@ -343,12 +367,14 @@ export const PremiumFeatureGate: React.FC<PremiumFeatureGateProps> = ({
           className={`${classes.button} flex items-center gap-2 bg-gradient-to-r ${requiredPlanInfo.gradient} text-white font-medium rounded-xl hover:opacity-90 transition-opacity shadow-lg`}
         >
           <Sparkles className="w-4 h-4" />
-          {t('Débloquer avec', 'Unlock with')} {requiredPlanInfo.name[language === 'fr' ? 'fr' : 'en']}
+          {t("Débloquer avec", "Unlock with")}{" "}
+          {requiredPlanInfo.name[language === "fr" ? "fr" : "en"]}
         </button>
 
         {/* Price hint */}
         <p className="mt-3 text-xs text-text-tertiary">
-          {t('À partir de', 'From')} {requiredPlanInfo.priceDisplay[language === 'fr' ? 'fr' : 'en']}
+          {t("À partir de", "From")}{" "}
+          {requiredPlanInfo.priceDisplay[language === "fr" ? "fr" : "en"]}
         </p>
       </div>
     </div>
@@ -375,7 +401,9 @@ interface UseFeatureAccessResult {
   remainingUsage: number | null;
 }
 
-export function useFeatureAccess(options: UseFeatureAccessOptions): UseFeatureAccessResult {
+export function useFeatureAccess(
+  options: UseFeatureAccessOptions,
+): UseFeatureAccessResult {
   const { user } = useAuth();
   const userPlan = normalizePlanId(user?.plan);
 

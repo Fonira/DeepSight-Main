@@ -3,7 +3,7 @@
  * Modal for exporting selected papers in various bibliography formats.
  */
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   X,
   Download,
@@ -12,10 +12,10 @@ import {
   FileText,
   Lock,
   ChevronRight,
-} from 'lucide-react';
-import { DeepSightSpinner } from '../ui';
-import { academicApi, BibliographyFormat } from '../../services/api';
-import { hasFeature, normalizePlanId } from '../../config/planPrivileges';
+} from "lucide-react";
+import { DeepSightSpinner } from "../ui";
+import { academicApi, BibliographyFormat } from "../../services/api";
+import { hasFeature, normalizePlanId } from "../../config/planPrivileges";
 
 interface BibliographyModalProps {
   isOpen: boolean;
@@ -32,12 +32,42 @@ const FORMATS: Array<{
   extension: string;
   description: string;
 }> = [
-  { id: 'bibtex', name: 'BibTeX', extension: '.bib', description: 'LaTeX & academic writing' },
-  { id: 'ris', name: 'RIS', extension: '.ris', description: 'EndNote, Zotero, Mendeley' },
-  { id: 'apa', name: 'APA 7th', extension: '.txt', description: 'American Psychological Association' },
-  { id: 'mla', name: 'MLA 9th', extension: '.txt', description: 'Modern Language Association' },
-  { id: 'chicago', name: 'Chicago', extension: '.txt', description: 'Chicago Manual of Style' },
-  { id: 'harvard', name: 'Harvard', extension: '.txt', description: 'Harvard referencing' },
+  {
+    id: "bibtex",
+    name: "BibTeX",
+    extension: ".bib",
+    description: "LaTeX & academic writing",
+  },
+  {
+    id: "ris",
+    name: "RIS",
+    extension: ".ris",
+    description: "EndNote, Zotero, Mendeley",
+  },
+  {
+    id: "apa",
+    name: "APA 7th",
+    extension: ".txt",
+    description: "American Psychological Association",
+  },
+  {
+    id: "mla",
+    name: "MLA 9th",
+    extension: ".txt",
+    description: "Modern Language Association",
+  },
+  {
+    id: "chicago",
+    name: "Chicago",
+    extension: ".txt",
+    description: "Chicago Manual of Style",
+  },
+  {
+    id: "harvard",
+    name: "Harvard",
+    extension: ".txt",
+    description: "Harvard referencing",
+  },
 ];
 
 export const BibliographyModal: React.FC<BibliographyModalProps> = ({
@@ -45,17 +75,18 @@ export const BibliographyModal: React.FC<BibliographyModalProps> = ({
   onClose,
   paperIds,
   summaryId,
-  userPlan = 'free',
+  userPlan = "free",
   onUpgrade,
 }) => {
-  const [selectedFormat, setSelectedFormat] = useState<BibliographyFormat | null>(null);
+  const [selectedFormat, setSelectedFormat] =
+    useState<BibliographyFormat | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exportedContent, setExportedContent] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const plan = normalizePlanId(userPlan);
-  const canExport = hasFeature(plan, 'bibliographyExport');
+  const canExport = hasFeature(plan, "bibliographyExport");
 
   if (!isOpen) return null;
 
@@ -78,8 +109,8 @@ export const BibliographyModal: React.FC<BibliographyModalProps> = ({
 
       setExportedContent(response.content);
     } catch (err: any) {
-      console.error('Export error:', err);
-      setError(err.message || 'Export failed');
+      console.error("Export error:", err);
+      setError(err.message || "Export failed");
     } finally {
       setLoading(false);
     }
@@ -96,13 +127,15 @@ export const BibliographyModal: React.FC<BibliographyModalProps> = ({
   const handleDownload = () => {
     if (!exportedContent || !selectedFormat) return;
 
-    const formatInfo = FORMATS.find(f => f.id === selectedFormat);
-    const extension = formatInfo?.extension || '.txt';
+    const formatInfo = FORMATS.find((f) => f.id === selectedFormat);
+    const extension = formatInfo?.extension || ".txt";
     const filename = `bibliography${extension}`;
 
-    const blob = new Blob([exportedContent], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob([exportedContent], {
+      type: "text/plain;charset=utf-8",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = filename;
     document.body.appendChild(a);
@@ -119,7 +152,10 @@ export const BibliographyModal: React.FC<BibliographyModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        onClick={onClose}
+      />
       <div className="relative bg-bg-elevated border border-border-default rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[80vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-border-subtle">
@@ -158,10 +194,7 @@ export const BibliographyModal: React.FC<BibliographyModalProps> = ({
               <p className="text-text-secondary text-sm mb-6 max-w-xs mx-auto">
                 Bibliography export requires a Student subscription or higher.
               </p>
-              <button
-                onClick={onUpgrade}
-                className="btn btn-primary"
-              >
+              <button onClick={onUpgrade} className="btn btn-primary">
                 Upgrade Now
               </button>
             </div>
@@ -169,7 +202,8 @@ export const BibliographyModal: React.FC<BibliographyModalProps> = ({
             /* Format selection */
             <div className="space-y-4">
               <p className="text-text-secondary text-sm">
-                Select a format to export {paperIds.length} paper{paperIds.length > 1 ? 's' : ''}:
+                Select a format to export {paperIds.length} paper
+                {paperIds.length > 1 ? "s" : ""}:
               </p>
               <div className="grid grid-cols-2 gap-3">
                 {FORMATS.map((format) => (
@@ -180,9 +214,13 @@ export const BibliographyModal: React.FC<BibliographyModalProps> = ({
                   >
                     <div className="flex items-center gap-2 mb-1">
                       <FileText className="w-4 h-4 text-accent-primary" />
-                      <span className="font-medium text-text-primary">{format.name}</span>
+                      <span className="font-medium text-text-primary">
+                        {format.name}
+                      </span>
                     </div>
-                    <p className="text-xs text-text-tertiary">{format.description}</p>
+                    <p className="text-xs text-text-tertiary">
+                      {format.description}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -190,7 +228,11 @@ export const BibliographyModal: React.FC<BibliographyModalProps> = ({
           ) : loading ? (
             /* Loading */
             <div className="flex flex-col items-center justify-center py-12">
-              <DeepSightSpinner size="md" label="Generating bibliography..." showLabel />
+              <DeepSightSpinner
+                size="md"
+                label="Generating bibliography..."
+                showLabel
+              />
             </div>
           ) : error ? (
             /* Error */
@@ -201,9 +243,7 @@ export const BibliographyModal: React.FC<BibliographyModalProps> = ({
               <h3 className="text-lg font-semibold text-text-primary mb-2">
                 Export Failed
               </h3>
-              <p className="text-text-secondary text-sm mb-6">
-                {error}
-              </p>
+              <p className="text-text-secondary text-sm mb-6">{error}</p>
               <button
                 onClick={() => handleExport(selectedFormat)}
                 className="btn btn-secondary"
@@ -216,7 +256,8 @@ export const BibliographyModal: React.FC<BibliographyModalProps> = ({
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-text-secondary text-sm">
-                  {FORMATS.find(f => f.id === selectedFormat)?.name} format ready
+                  {FORMATS.find((f) => f.id === selectedFormat)?.name} format
+                  ready
                 </p>
                 <div className="flex items-center gap-2">
                   <button
@@ -228,7 +269,7 @@ export const BibliographyModal: React.FC<BibliographyModalProps> = ({
                     ) : (
                       <Copy className="w-4 h-4" />
                     )}
-                    {copied ? 'Copied!' : 'Copy'}
+                    {copied ? "Copied!" : "Copy"}
                   </button>
                   <button
                     onClick={handleDownload}

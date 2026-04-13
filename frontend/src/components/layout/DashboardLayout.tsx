@@ -5,7 +5,7 @@
 
 import React, { useState } from "react";
 import { Outlet } from "react-router-dom";
-import { motion } from 'framer-motion';
+import { motion } from "framer-motion";
 import { Menu } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { BottomNav } from "./BottomNav";
@@ -17,7 +17,9 @@ interface DashboardLayoutProps {
   children?: React.ReactNode;
 }
 
-export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
+  children,
+}) => {
   useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -46,7 +48,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       {/* Main Content */}
       <div
         className={`flex-1 flex flex-col min-h-screen transition-all duration-200 ease-out ${
-          sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'
+          sidebarCollapsed ? "lg:ml-[60px]" : "lg:ml-[240px]"
         }`}
       >
         <main

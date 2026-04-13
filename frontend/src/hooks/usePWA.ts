@@ -1,6 +1,6 @@
 /**
  * 📱 usePWA Hook v1.0
- * 
+ *
  * Hook React pour gérer l'installation de la PWA:
  * - Détection de la possibilité d'installation
  * - Prompt d'installation
@@ -9,12 +9,12 @@
  * - Mise à jour du Service Worker
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
   readonly userChoice: Promise<{
-    outcome: 'accepted' | 'dismissed';
+    outcome: "accepted" | "dismissed";
     platform: string;
   }>;
   prompt(): Promise<void>;
@@ -28,7 +28,7 @@ interface PWAState {
   /** L'app est en cours d'installation */
   isInstalling: boolean;
   /** Plateforme détectée */
-  platform: 'ios' | 'android' | 'desktop' | 'unknown';
+  platform: "ios" | "android" | "desktop" | "unknown";
   /** Service Worker enregistré */
   swRegistered: boolean;
   /** Mise à jour disponible */
@@ -47,37 +47,45 @@ interface PWAActions {
 }
 
 export function usePWA(): PWAState & PWAActions {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [deferredPrompt, setDeferredPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
   const [canInstall, setCanInstall] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [swRegistered, setSwRegistered] = useState(false);
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [installDismissed, setInstallDismissed] = useState(false);
-  const [swRegistration, setSwRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const [swRegistration, setSwRegistration] =
+    useState<ServiceWorkerRegistration | null>(null);
 
   // Détecter la plateforme
-  const detectPlatform = useCallback((): 'ios' | 'android' | 'desktop' | 'unknown' => {
+  const detectPlatform = useCallback(():
+    | "ios"
+    | "android"
+    | "desktop"
+    | "unknown" => {
     const ua = navigator.userAgent.toLowerCase();
-    
+
     if (/iphone|ipad|ipod/.test(ua)) {
-      return 'ios';
+      return "ios";
     }
     if (/android/.test(ua)) {
-      return 'android';
+      return "android";
     }
     if (/windows|mac|linux/.test(ua) && !/mobile/.test(ua)) {
-      return 'desktop';
+      return "desktop";
     }
-    return 'unknown';
+    return "unknown";
   }, []);
 
   // Vérifier si l'app est en mode standalone (installée)
   const isInstalled = (() => {
     try {
-      return typeof window !== 'undefined' && (
-        window.matchMedia?.('(display-mode: standalone)')?.matches ||
-        (window.navigator as Navigator & { standalone?: boolean }).standalone === true ||
-        document.referrer.includes('android-app://')
+      return (
+        typeof window !== "undefined" &&
+        (window.matchMedia?.("(display-mode: standalone)")?.matches ||
+          (window.navigator as Navigator & { standalone?: boolean })
+            .standalone === true ||
+          document.referrer.includes("android-app://"))
       );
     } catch {
       return false;
@@ -88,30 +96,33 @@ export function usePWA(): PWAState & PWAActions {
 
   // Enregistrer le Service Worker
   useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
+    if (!("serviceWorker" in navigator)) return;
 
     let updateInterval: ReturnType<typeof setInterval> | undefined;
 
     const onSwMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'SW_UPDATED') {
+      if (event.data?.type === "SW_UPDATED") {
         setUpdateAvailable(true);
       }
     };
 
-    navigator.serviceWorker.addEventListener('message', onSwMessage);
+    navigator.serviceWorker.addEventListener("message", onSwMessage);
 
     navigator.serviceWorker
-      .register('/sw.js')
+      .register("/sw.js")
       .then((registration) => {
         setSwRegistered(true);
         setSwRegistration(registration);
 
         // Vérifier les mises à jour
-        registration.addEventListener('updatefound', () => {
+        registration.addEventListener("updatefound", () => {
           const newWorker = registration.installing;
           if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            newWorker.addEventListener("statechange", () => {
+              if (
+                newWorker.state === "installed" &&
+                navigator.serviceWorker.controller
+              ) {
                 setUpdateAvailable(true);
               }
             });
@@ -119,16 +130,19 @@ export function usePWA(): PWAState & PWAActions {
         });
 
         // Vérifier périodiquement les mises à jour (toutes les heures)
-        updateInterval = setInterval(() => {
-          registration.update();
-        }, 60 * 60 * 1000);
+        updateInterval = setInterval(
+          () => {
+            registration.update();
+          },
+          60 * 60 * 1000,
+        );
       })
       .catch((error) => {
-        console.error('[PWA] Service Worker registration failed:', error);
+        console.error("[PWA] Service Worker registration failed:", error);
       });
 
     return () => {
-      navigator.serviceWorker.removeEventListener('message', onSwMessage);
+      navigator.serviceWorker.removeEventListener("message", onSwMessage);
       if (updateInterval !== undefined) clearInterval(updateInterval);
     };
   }, []);
@@ -141,17 +155,20 @@ export function usePWA(): PWAState & PWAActions {
       setCanInstall(true);
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
     // Écouter l'installation réussie
-    window.addEventListener('appinstalled', () => {
+    window.addEventListener("appinstalled", () => {
       setDeferredPrompt(null);
       setCanInstall(false);
       setIsInstalling(false);
     });
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt,
+      );
     };
   }, []);
 
@@ -166,19 +183,23 @@ export function usePWA(): PWAState & PWAActions {
     try {
       await deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      
-      if (outcome === 'accepted') {
+
+      if (outcome === "accepted") {
         setDeferredPrompt(null);
         setCanInstall(false);
         return true;
       } else {
         setInstallDismissed(true);
         // Sauvegarder en localStorage pour ne pas redemander trop souvent
-        try { localStorage.setItem('pwa-install-dismissed', Date.now().toString()); } catch { /* */ }
+        try {
+          localStorage.setItem("pwa-install-dismissed", Date.now().toString());
+        } catch {
+          /* */
+        }
         return false;
       }
     } catch (error) {
-      console.error('[PWA] Install prompt error:', error);
+      console.error("[PWA] Install prompt error:", error);
       return false;
     } finally {
       setIsInstalling(false);
@@ -188,7 +209,7 @@ export function usePWA(): PWAState & PWAActions {
   // Appliquer la mise à jour du SW
   const applyUpdate = useCallback(() => {
     if (swRegistration?.waiting) {
-      swRegistration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      swRegistration.waiting.postMessage({ type: "SKIP_WAITING" });
       window.location.reload();
     }
   }, [swRegistration]);
@@ -196,22 +217,29 @@ export function usePWA(): PWAState & PWAActions {
   // Réinitialiser l'état dismissed
   const resetDismissed = useCallback(() => {
     setInstallDismissed(false);
-    try { localStorage.removeItem('pwa-install-dismissed'); } catch { /* Safari private */ }
+    try {
+      localStorage.removeItem("pwa-install-dismissed");
+    } catch {
+      /* Safari private */
+    }
   }, []);
 
   // Vérifier si l'utilisateur a déjà refusé récemment
   useEffect(() => {
     try {
-      const dismissedAt = localStorage.getItem('pwa-install-dismissed');
+      const dismissedAt = localStorage.getItem("pwa-install-dismissed");
       if (dismissedAt) {
-        const daysSinceDismissed = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
+        const daysSinceDismissed =
+          (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
         if (daysSinceDismissed < 7) {
           setInstallDismissed(true);
         } else {
-          localStorage.removeItem('pwa-install-dismissed');
+          localStorage.removeItem("pwa-install-dismissed");
         }
       }
-    } catch { /* Safari private mode */ }
+    } catch {
+      /* Safari private mode */
+    }
   }, []);
 
   return {

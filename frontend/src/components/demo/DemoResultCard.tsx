@@ -3,9 +3,9 @@
  * Affiche thumbnail, metadata, points cles animes, conclusion et keywords.
  */
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import type { DemoAnalyzeResult } from '../../services/api';
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import type { DemoAnalyzeResult } from "../../services/api";
 
 interface DemoResultCardProps {
   result: DemoAnalyzeResult;
@@ -15,19 +15,19 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
   const [activeKeyword, setActiveKeyword] = useState<string | null>(null);
 
   const handleKeywordClick = (keyword: string) => {
-    setActiveKeyword(prev => prev === keyword ? null : keyword);
+    setActiveKeyword((prev) => (prev === keyword ? null : keyword));
   };
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, ease: 'easeOut' }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
       className="w-full max-w-2xl mx-auto"
     >
       <div className="relative backdrop-blur-xl bg-white/[0.03] border border-white/10 rounded-2xl overflow-hidden">
@@ -46,7 +46,11 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-white/20">
-                <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-8 h-8"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path d="M8 5v14l11-7z" />
                 </svg>
               </div>
@@ -67,7 +71,7 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
                 {result.category}
               </span>
               <span className="px-2 py-0.5 bg-violet-500/10 border border-violet-500/20 rounded-full text-[10px] text-violet-300">
-                {result.platform === 'tiktok' ? 'TikTok' : 'YouTube'}
+                {result.platform === "tiktok" ? "TikTok" : "YouTube"}
               </span>
             </div>
           </div>
@@ -92,9 +96,13 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
                 className="flex items-start gap-2.5"
               >
                 <span className="flex-shrink-0 w-5 h-5 rounded-md bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center mt-0.5">
-                  <span className="text-indigo-400 text-[10px] font-bold">{index + 1}</span>
+                  <span className="text-indigo-400 text-[10px] font-bold">
+                    {index + 1}
+                  </span>
                 </span>
-                <span className="text-white/80 text-sm leading-relaxed">{point}</span>
+                <span className="text-white/80 text-sm leading-relaxed">
+                  {point}
+                </span>
               </motion.li>
             ))}
           </ul>
@@ -131,8 +139,8 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
                   onClick={() => handleKeywordClick(keyword)}
                   className={`px-2.5 py-1 rounded-full text-[11px] transition-all duration-200 cursor-pointer ${
                     activeKeyword === keyword
-                      ? 'bg-indigo-500/15 border border-indigo-500/30 text-indigo-300'
-                      : 'bg-white/[0.03] border border-white/[0.06] text-white/40 hover:bg-white/[0.06] hover:text-white/60 hover:border-white/10'
+                      ? "bg-indigo-500/15 border border-indigo-500/30 text-indigo-300"
+                      : "bg-white/[0.03] border border-white/[0.06] text-white/40 hover:bg-white/[0.06] hover:text-white/60 hover:border-white/10"
                   }`}
                 >
                   #{keyword}
@@ -152,7 +160,9 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
                   className="mt-2.5 p-3 rounded-xl backdrop-blur-xl bg-white/[0.06] border border-white/10"
                 >
                   <div className="flex items-start gap-2">
-                    <span className="text-indigo-400 text-xs font-semibold shrink-0">#{activeKeyword}</span>
+                    <span className="text-indigo-400 text-xs font-semibold shrink-0">
+                      #{activeKeyword}
+                    </span>
                     <p className="text-white/60 text-xs leading-relaxed">
                       {result.keyword_definitions[activeKeyword]}
                     </p>
@@ -168,9 +178,7 @@ export default function DemoResultCard({ result }: DemoResultCardProps) {
           <span className="text-[10px] text-white/20">
             Analyse par DeepSight AI
           </span>
-          <span className="text-[10px] text-white/20">
-            Version demo
-          </span>
+          <span className="text-[10px] text-white/20">Version demo</span>
         </div>
       </div>
     </motion.div>

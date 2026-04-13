@@ -1,12 +1,18 @@
-import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
+import { create } from "zustand";
+import { devtools } from "zustand/middleware";
+import { immer } from "zustand/middleware/immer";
 import type {
-  StudyStats, HeatMapData, BadgesData, VideoMasteryData,
-  DueCardsData, ReviewResult, SessionEndResult, BadgeItem,
-} from '../types/gamification';
-import { XP_PER_LEVEL } from '../types/gamification';
-import { gamificationApi } from '../services/api';
+  StudyStats,
+  HeatMapData,
+  BadgesData,
+  VideoMasteryData,
+  DueCardsData,
+  ReviewResult,
+  SessionEndResult,
+  BadgeItem,
+} from "../types/gamification";
+import { XP_PER_LEVEL } from "../types/gamification";
+import { gamificationApi } from "../services/api";
 
 // ── Helpers: normalize API responses ──
 
@@ -14,7 +20,7 @@ function normalizeStats(raw: any): StudyStats {
   const totalXp = raw?.total_xp ?? 0;
   const level = raw?.level ?? 1;
   const xpForNext = raw?.xp_for_next_level ?? XP_PER_LEVEL;
-  const xpInLevel = totalXp - ((level - 1) * XP_PER_LEVEL);
+  const xpInLevel = totalXp - (level - 1) * XP_PER_LEVEL;
   return {
     ...raw,
     total_xp: totalXp,
@@ -56,7 +62,7 @@ function normalizeVideoMastery(raw: any): VideoMasteryData {
     due_cards: v.due_cards ?? 0,
     new_cards: v.new_cards ?? 0,
     title: v.title ?? `Vidéo #${v.summary_id}`,
-    channel: v.channel ?? '',
+    channel: v.channel ?? "",
     mastery_percent: v.mastery_percent ?? 0,
     total_cards: v.total_cards ?? 0,
   }));
@@ -80,7 +86,7 @@ interface StudyStore {
 
   // UI state
   loading: boolean;
-  activeTab: 'overview' | 'videos' | 'badges';
+  activeTab: "overview" | "videos" | "badges";
 
   // Actions
   fetchStats: () => Promise<void>;
@@ -92,11 +98,16 @@ interface StudyStore {
 
   // Session actions
   startSession: (summaryId?: number, type?: string) => Promise<void>;
-  submitReview: (summaryId: number, cardIndex: number, cardFront: string, rating: number) => Promise<ReviewResult | null>;
+  submitReview: (
+    summaryId: number,
+    cardIndex: number,
+    cardFront: string,
+    rating: number,
+  ) => Promise<ReviewResult | null>;
   endSession: () => Promise<SessionEndResult | null>;
 
   // UI actions
-  setActiveTab: (tab: 'overview' | 'videos' | 'badges') => void;
+  setActiveTab: (tab: "overview" | "videos" | "badges") => void;
   resetSession: () => void;
 }
 
@@ -115,14 +126,14 @@ export const useStudyStore = create<StudyStore>()(
       sessionCorrect: 0,
       sessionStartTime: null,
       loading: false,
-      activeTab: 'overview',
+      activeTab: "overview",
 
       fetchStats: async () => {
         try {
           const raw = await gamificationApi.getStats();
           set({ stats: normalizeStats(raw) });
         } catch (error) {
-          console.error('[StudyStore] Failed to fetch stats:', error);
+          console.error("[StudyStore] Failed to fetch stats:", error);
         }
       },
 
@@ -131,7 +142,7 @@ export const useStudyStore = create<StudyStore>()(
           const raw = await gamificationApi.getHeatMap(days);
           set({ heatMap: normalizeHeatMap(raw) });
         } catch (error) {
-          console.error('[StudyStore] Failed to fetch heat map:', error);
+          console.error("[StudyStore] Failed to fetch heat map:", error);
         }
       },
 
@@ -140,7 +151,7 @@ export const useStudyStore = create<StudyStore>()(
           const raw = await gamificationApi.getBadges();
           set({ badges: normalizeBadges(raw) });
         } catch (error) {
-          console.error('[StudyStore] Failed to fetch badges:', error);
+          console.error("[StudyStore] Failed to fetch badges:", error);
         }
       },
 
@@ -149,7 +160,7 @@ export const useStudyStore = create<StudyStore>()(
           const raw = await gamificationApi.getVideoMastery();
           set({ videoMastery: normalizeVideoMastery(raw) });
         } catch (error) {
-          console.error('[StudyStore] Failed to fetch video mastery:', error);
+          console.error("[StudyStore] Failed to fetch video mastery:", error);
         }
       },
 
@@ -159,7 +170,7 @@ export const useStudyStore = create<StudyStore>()(
           const data = await gamificationApi.getDueCards(summaryId);
           set({ dueCards: data, loading: false });
         } catch (error) {
-          console.error('[StudyStore] Failed to fetch due cards:', error);
+          console.error("[StudyStore] Failed to fetch due cards:", error);
           set({ loading: false });
         }
       },
@@ -174,14 +185,17 @@ export const useStudyStore = create<StudyStore>()(
             get().fetchVideoMastery(),
           ]);
         } catch (error) {
-          console.error('[StudyStore] fetchAll error:', error);
+          console.error("[StudyStore] fetchAll error:", error);
         }
         set({ loading: false });
       },
 
-      startSession: async (summaryId, type = 'flashcards') => {
+      startSession: async (summaryId, type = "flashcards") => {
         try {
-          const data = await gamificationApi.startSession({ summary_id: summaryId, session_type: type });
+          const data = await gamificationApi.startSession({
+            summary_id: summaryId,
+            session_type: type,
+          });
           set({
             currentSessionId: data.session_id,
             sessionXP: 0,
@@ -190,7 +204,7 @@ export const useStudyStore = create<StudyStore>()(
             sessionStartTime: Date.now(),
           });
         } catch (error) {
-          console.error('[StudyStore] Failed to start session:', error);
+          console.error("[StudyStore] Failed to start session:", error);
         }
       },
 
@@ -209,17 +223,24 @@ export const useStudyStore = create<StudyStore>()(
           });
           return result;
         } catch (error) {
-          console.error('[StudyStore] Failed to submit review:', error);
+          console.error("[StudyStore] Failed to submit review:", error);
           return null;
         }
       },
 
       endSession: async () => {
-        const { currentSessionId, sessionCards, sessionCorrect, sessionStartTime } = get();
+        const {
+          currentSessionId,
+          sessionCards,
+          sessionCorrect,
+          sessionStartTime,
+        } = get();
         if (!currentSessionId) return null;
 
         try {
-          const duration = sessionStartTime ? Math.floor((Date.now() - sessionStartTime) / 1000) : 0;
+          const duration = sessionStartTime
+            ? Math.floor((Date.now() - sessionStartTime) / 1000)
+            : 0;
           const result = await gamificationApi.endSession({
             session_id: currentSessionId,
             cards_reviewed: sessionCards,
@@ -235,22 +256,23 @@ export const useStudyStore = create<StudyStore>()(
           get().fetchBadges();
           return result;
         } catch (error) {
-          console.error('[StudyStore] Failed to end session:', error);
+          console.error("[StudyStore] Failed to end session:", error);
           return null;
         }
       },
 
       setActiveTab: (tab) => set({ activeTab: tab }),
 
-      resetSession: () => set({
-        currentSessionId: null,
-        sessionXP: 0,
-        sessionCards: 0,
-        sessionCorrect: 0,
-        sessionStartTime: null,
-        dueCards: null,
-      }),
+      resetSession: () =>
+        set({
+          currentSessionId: null,
+          sessionXP: 0,
+          sessionCards: 0,
+          sessionCorrect: 0,
+          sessionStartTime: null,
+          dueCards: null,
+        }),
     })),
-    { name: 'StudyStore' }
-  )
+    { name: "StudyStore" },
+  ),
 );

@@ -38,10 +38,22 @@ export const FACT_CARD_WIDTH = 320;
 // ─── Category icons ─────────────────────────────────────────────────────────
 
 export const CAT_ICONS: Record<string, string> = {
-  cognitive_bias: '🧠', science: '🔬', philosophy: '🎭', culture: '🌍',
-  misc: '✨', history: '📜', technology: '⚡', person: '👤',
-  company: '🏢', concept: '💡', event: '📅', place: '📍',
-  psychology: '🧩', economics: '💰', art: '🎨', nature: '🌿',
+  cognitive_bias: "🧠",
+  science: "🔬",
+  philosophy: "🎭",
+  culture: "🌍",
+  misc: "✨",
+  history: "📜",
+  technology: "⚡",
+  person: "👤",
+  company: "🏢",
+  concept: "💡",
+  event: "📅",
+  place: "📍",
+  psychology: "🧩",
+  economics: "💰",
+  art: "🎨",
+  nature: "🌿",
 };
 
 // ─── Particle burst ─────────────────────────────────────────────────────────
@@ -49,7 +61,7 @@ export const CAT_ICONS: Record<string, string> = {
 export const PARTICLE_COUNT = 8;
 export const PARTICLE_SIZE = 6;
 export const PARTICLE_DISTANCE = 60;
-export const PARTICLE_COLORS = ['#6366f1', '#8b5cf6', '#06b6d4', '#C8903A'];
+export const PARTICLE_COLORS = ["#6366f1", "#8b5cf6", "#06b6d4", "#C8903A"];
 
 // ─── Confetti milestones ────────────────────────────────────────────────────
 
@@ -57,9 +69,9 @@ export const CONFETTI_MILESTONES = [3, 5, 10, 20, 50];
 
 // ─── localStorage keys ──────────────────────────────────────────────────────
 
-export const LS_ENABLED = 'ds-whack-a-mole-enabled';
-export const LS_DAILY_CATCHES = 'ds-whack-a-mole-daily-catches';
-export const LS_GAME_MODE = 'ds-whack-a-mole-mode';
+export const LS_ENABLED = "ds-whack-a-mole-enabled";
+export const LS_DAILY_CATCHES = "ds-whack-a-mole-daily-catches";
+export const LS_GAME_MODE = "ds-whack-a-mole-mode";
 
 // ─── Mode Prompt Inverse ────────────────────────────────────────────────────
 

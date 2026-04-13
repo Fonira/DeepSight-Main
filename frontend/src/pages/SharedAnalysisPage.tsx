@@ -9,8 +9,8 @@ import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { Eye } from "lucide-react";
 import { shareApi, SharedAnalysisResponse } from "../services/api";
-import { sanitizeTitle } from '../utils/sanitize';
-import { DeepSightSpinner } from '../components/ui/DeepSightSpinner';
+import { sanitizeTitle } from "../utils/sanitize";
+import { DeepSightSpinner } from "../components/ui/DeepSightSpinner";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -32,11 +32,26 @@ function formatDuration(seconds: number | undefined): string {
 function formatContent(content: string): string {
   if (!content) return "";
   return content
-    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-text-primary font-semibold">$1</strong>')
-    .replace(/^### (.+)$/gm, '<h3 class="text-lg font-bold text-text-primary mt-6 mb-2">$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold text-accent-primary mt-8 mb-3">$1</h2>')
-    .replace(/^- (.+)$/gm, '<li class="ml-4 text-text-secondary leading-relaxed">$1</li>')
-    .replace(/\n\n/g, '</p><p class="text-text-secondary mb-3 leading-relaxed">')
+    .replace(
+      /\*\*(.*?)\*\*/g,
+      '<strong class="text-text-primary font-semibold">$1</strong>',
+    )
+    .replace(
+      /^### (.+)$/gm,
+      '<h3 class="text-lg font-bold text-text-primary mt-6 mb-2">$1</h3>',
+    )
+    .replace(
+      /^## (.+)$/gm,
+      '<h2 class="text-xl font-bold text-accent-primary mt-8 mb-3">$1</h2>',
+    )
+    .replace(
+      /^- (.+)$/gm,
+      '<li class="ml-4 text-text-secondary leading-relaxed">$1</li>',
+    )
+    .replace(
+      /\n\n/g,
+      '</p><p class="text-text-secondary mb-3 leading-relaxed">',
+    )
     .replace(/\n/g, "<br/>");
 }
 
@@ -76,7 +91,9 @@ export default function SharedAnalysisPage() {
       <div className="min-h-screen bg-bg-primary flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <DeepSightSpinner size="lg" />
-          <span className="text-text-muted text-sm">Chargement de l'analyse...</span>
+          <span className="text-text-muted text-sm">
+            Chargement de l'analyse...
+          </span>
         </div>
       </div>
     );
@@ -88,8 +105,18 @@ export default function SharedAnalysisPage() {
       <div className="min-h-screen bg-bg-primary flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <div className="text-6xl mb-4 text-text-muted">
-            <svg className="w-16 h-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            <svg
+              className="w-16 h-16 mx-auto"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+              />
             </svg>
           </div>
           <h1 className="text-2xl font-bold text-text-primary mb-2">
@@ -115,9 +142,18 @@ export default function SharedAnalysisPage() {
   const thumbnailUrl =
     analysis.thumbnail_url ||
     (videoId ? `https://i.ytimg.com/vi/${videoId}/maxresdefault.jpg` : "");
-  const youtubeUrl = analysis.video_url || `https://www.youtube.com/watch?v=${videoId}`;
-  const tags = analysis.tags ? analysis.tags.split(",").map((t) => t.trim()).filter(Boolean) : [];
-  const description = (data.verdict || analysis.summary_content || "").slice(0, 160);
+  const youtubeUrl =
+    analysis.video_url || `https://www.youtube.com/watch?v=${videoId}`;
+  const tags = analysis.tags
+    ? analysis.tags
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean)
+    : [];
+  const description = (data.verdict || analysis.summary_content || "").slice(
+    0,
+    160,
+  );
   const shareUrl = `https://deepsightsynthesis.com/s/${shareToken}`;
 
   return (
@@ -126,13 +162,19 @@ export default function SharedAnalysisPage() {
       <Helmet>
         <title>{`Analyse DeepSight : ${data.video_title}`}</title>
         <meta property="og:type" content="article" />
-        <meta property="og:title" content={`Analyse DeepSight : ${data.video_title}`} />
+        <meta
+          property="og:title"
+          content={`Analyse DeepSight : ${data.video_title}`}
+        />
         <meta property="og:description" content={description} />
         <meta property="og:image" content={thumbnailUrl} />
         <meta property="og:url" content={shareUrl} />
         <meta property="og:site_name" content="DeepSight" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={`Analyse DeepSight : ${data.video_title}`} />
+        <meta
+          name="twitter:title"
+          content={`Analyse DeepSight : ${data.video_title}`}
+        />
         <meta name="twitter:description" content={description} />
         <meta name="twitter:image" content={thumbnailUrl} />
       </Helmet>
@@ -171,7 +213,11 @@ export default function SharedAnalysisPage() {
             />
             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-colors flex items-center justify-center">
               <div className="w-14 h-14 bg-red-600 rounded-full flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
-                <svg className="w-7 h-7 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                <svg
+                  className="w-7 h-7 text-white ml-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path d="M8 5v14l11-7z" />
                 </svg>
               </div>
@@ -216,7 +262,9 @@ export default function SharedAnalysisPage() {
             <h2 className="text-xs font-semibold text-accent-primary uppercase tracking-wider mb-2">
               Verdict
             </h2>
-            <p className="text-text-primary text-base leading-relaxed">{data.verdict}</p>
+            <p className="text-text-primary text-base leading-relaxed">
+              {data.verdict}
+            </p>
           </div>
         )}
 
@@ -235,12 +283,15 @@ export default function SharedAnalysisPage() {
 
         {/* CTA Block */}
         <div className="bg-gradient-to-br from-accent-primary/5 to-accent-secondary/5 border border-accent-primary/15 rounded-2xl p-6 sm:p-8 text-center mb-10">
-          <div className="text-accent-primary font-bold text-lg mb-1">DeepSight</div>
+          <div className="text-accent-primary font-bold text-lg mb-1">
+            DeepSight
+          </div>
           <h2 className="text-xl sm:text-2xl font-bold text-text-primary mb-2">
             Cette analyse a été générée en quelques secondes
           </h2>
           <p className="text-text-muted mb-6 max-w-lg mx-auto text-sm sm:text-base">
-            Transformez n'importe quelle vidéo YouTube en synthèse intelligente, flashcards, quiz et plus encore.
+            Transformez n'importe quelle vidéo YouTube en synthèse intelligente,
+            flashcards, quiz et plus encore.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Link
@@ -261,7 +312,10 @@ export default function SharedAnalysisPage() {
 
       {/* Footer */}
       <footer className="border-t border-border-subtle py-6 text-center text-text-muted text-xs">
-        <p>&copy; {new Date().getFullYear()} DeepSight &mdash; deepsightsynthesis.com</p>
+        <p>
+          &copy; {new Date().getFullYear()} DeepSight &mdash;
+          deepsightsynthesis.com
+        </p>
       </footer>
     </div>
   );

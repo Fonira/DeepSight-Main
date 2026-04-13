@@ -1,7 +1,7 @@
 /**
  * DEEP SIGHT — StudyProgress Component
  * Barre de progression pour les outils d'étude
- * 
+ *
  * FONCTIONNALITÉS:
  * - 📊 Barre de progression animée
  * - 🎯 Indicateurs de performance
@@ -9,11 +9,15 @@
  * - 📈 Stats en temps réel
  */
 
-import React from 'react';
+import React from "react";
 import {
-  CheckCircle, XCircle, Clock, Target,
-  TrendingUp, Award
-} from 'lucide-react';
+  CheckCircle,
+  XCircle,
+  Clock,
+  Target,
+  TrendingUp,
+  Award,
+} from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -24,10 +28,10 @@ interface StudyProgressProps {
   total: number;
   correct?: number;
   incorrect?: number;
-  mode?: 'flashcard' | 'quiz';
+  mode?: "flashcard" | "quiz";
   showStats?: boolean;
   estimatedTimeLeft?: number; // en secondes
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -39,31 +43,31 @@ export const StudyProgress: React.FC<StudyProgressProps> = ({
   total,
   correct = 0,
   incorrect = 0,
-  mode = 'flashcard',
+  mode = "flashcard",
   showStats = true,
   estimatedTimeLeft,
-  language = 'fr',
+  language = "fr",
 }) => {
   const t = {
     fr: {
-      progress: 'Progression',
-      correct: 'Correct',
-      incorrect: 'À revoir',
-      known: 'Maîtrisé',
-      unknown: 'À revoir',
-      remaining: 'restant',
-      completed: 'Terminé !',
-      accuracy: 'Précision',
+      progress: "Progression",
+      correct: "Correct",
+      incorrect: "À revoir",
+      known: "Maîtrisé",
+      unknown: "À revoir",
+      remaining: "restant",
+      completed: "Terminé !",
+      accuracy: "Précision",
     },
     en: {
-      progress: 'Progress',
-      correct: 'Correct',
-      incorrect: 'Review',
-      known: 'Known',
-      unknown: 'Review',
-      remaining: 'remaining',
-      completed: 'Completed!',
-      accuracy: 'Accuracy',
+      progress: "Progress",
+      correct: "Correct",
+      incorrect: "Review",
+      known: "Known",
+      unknown: "Review",
+      remaining: "remaining",
+      completed: "Completed!",
+      accuracy: "Accuracy",
     },
   }[language];
 
@@ -82,10 +86,10 @@ export const StudyProgress: React.FC<StudyProgressProps> = ({
 
   // Get gradient color based on accuracy
   const getGradientColor = (): string => {
-    if (accuracy >= 80) return 'from-emerald-500 to-emerald-400';
-    if (accuracy >= 60) return 'from-amber-500 to-amber-400';
-    if (accuracy >= 40) return 'from-orange-500 to-orange-400';
-    return 'from-red-500 to-red-400';
+    if (accuracy >= 80) return "from-emerald-500 to-emerald-400";
+    if (accuracy >= 60) return "from-amber-500 to-amber-400";
+    if (accuracy >= 40) return "from-orange-500 to-orange-400";
+    return "from-red-500 to-red-400";
   };
 
   return (
@@ -95,7 +99,9 @@ export const StudyProgress: React.FC<StudyProgressProps> = ({
         <div className="flex justify-between items-center mb-2">
           <div className="flex items-center gap-2">
             <Target className="w-4 h-4 text-amber-400" />
-            <span className="text-sm font-medium text-gray-300">{t.progress}</span>
+            <span className="text-sm font-medium text-gray-300">
+              {t.progress}
+            </span>
           </div>
           <span className="text-sm text-gray-400">
             {isComplete ? (
@@ -108,7 +114,7 @@ export const StudyProgress: React.FC<StudyProgressProps> = ({
             )}
           </span>
         </div>
-        
+
         <div className="relative h-3 bg-gray-700/50 rounded-full overflow-hidden">
           {/* Background segments */}
           <div className="absolute inset-0 flex">
@@ -120,15 +126,15 @@ export const StudyProgress: React.FC<StudyProgressProps> = ({
               />
             ))}
           </div>
-          
+
           {/* Progress fill */}
           <div
             className={`absolute inset-y-0 left-0 bg-gradient-to-r ${
-              answered > 0 ? getGradientColor() : 'from-amber-500 to-amber-400'
+              answered > 0 ? getGradientColor() : "from-amber-500 to-amber-400"
             } transition-all duration-500 ease-out`}
             style={{ width: `${progress}%` }}
           />
-          
+
           {/* Shimmer effect */}
           <div
             className="absolute inset-y-0 left-0 bg-gradient-to-r from-transparent via-white/20 to-transparent
@@ -149,7 +155,7 @@ export const StudyProgress: React.FC<StudyProgressProps> = ({
             <div>
               <p className="text-lg font-bold text-emerald-400">{correct}</p>
               <p className="text-xs text-gray-500">
-                {mode === 'flashcard' ? t.known : t.correct}
+                {mode === "flashcard" ? t.known : t.correct}
               </p>
             </div>
           </div>
@@ -190,7 +196,7 @@ export const StudyProgress: React.FC<StudyProgressProps> = ({
             <div>
               <p className="text-lg font-bold text-red-400">{incorrect}</p>
               <p className="text-xs text-gray-500">
-                {mode === 'flashcard' ? t.unknown : t.incorrect}
+                {mode === "flashcard" ? t.unknown : t.incorrect}
               </p>
             </div>
           </div>

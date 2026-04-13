@@ -25,7 +25,7 @@ export interface VideoPlayerRef {
 
 interface VideoPlayerProps {
   videoId: string;
-  platform?: 'youtube' | 'tiktok';
+  platform?: "youtube" | "tiktok";
   contentType?: string;
   carouselImages?: string[];
   videoTitle?: string;
@@ -46,7 +46,9 @@ const TikTokPlayer: React.FC<{
   const tiktokUrl = `https://www.tiktok.com/video/${videoId}`;
 
   return (
-    <div className={`relative w-full h-full bg-black flex items-center justify-center ${className}`}>
+    <div
+      className={`relative w-full h-full bg-black flex items-center justify-center ${className}`}
+    >
       {/* TikTok embed iframe */}
       <iframe
         src={`https://www.tiktok.com/embed/v2/${videoId}`}
@@ -75,27 +77,37 @@ const TikTokPlayer: React.FC<{
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
-  ({ videoId, platform = 'youtube', contentType, carouselImages, videoTitle, initialTime = 0, onClose, onTimeUpdate, className = "" }, ref) => {
+  (
+    {
+      videoId,
+      platform = "youtube",
+      contentType,
+      carouselImages,
+      videoTitle,
+      initialTime = 0,
+      onClose,
+      onTimeUpdate,
+      className = "",
+    },
+    ref,
+  ) => {
     // TikTok carousel (photo mode) → render gallery instead of embed
-    if (platform === 'tiktok' && contentType === 'carousel' && carouselImages && carouselImages.length > 0) {
+    if (
+      platform === "tiktok" &&
+      contentType === "carousel" &&
+      carouselImages &&
+      carouselImages.length > 0
+    ) {
       return (
         <div className={`w-full ${className}`}>
-          <CarouselGallery
-            images={carouselImages}
-            title={videoTitle}
-          />
+          <CarouselGallery images={carouselImages} title={videoTitle} />
         </div>
       );
     }
 
-    if (platform === 'tiktok') {
+    if (platform === "tiktok") {
       // TikTok n'a pas de seekTo/play/pause API → pas de ref
-      return (
-        <TikTokPlayer
-          videoId={videoId}
-          className={className}
-        />
-      );
+      return <TikTokPlayer videoId={videoId} className={className} />;
     }
 
     // YouTube player (avec ref complète)
@@ -109,7 +121,7 @@ export const VideoPlayer = forwardRef<VideoPlayerRef, VideoPlayerProps>(
         className={className}
       />
     );
-  }
+  },
 );
 
 VideoPlayer.displayName = "VideoPlayer";

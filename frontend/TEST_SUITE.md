@@ -5,6 +5,7 @@ Batterie complète de tests production-ready pour le frontend DeepSight.
 ## 📦 Contenu de la Suite
 
 ### Mocks & Test Utilities
+
 - **`src/__tests__/mocks/api-mocks.ts`** - Mocks API complets avec factories
   - Tous les modules API (auth, video, chat, billing, playlist, reliability)
   - Data factories pour chaque type de donnée
@@ -17,6 +18,7 @@ Batterie complète de tests production-ready pour le frontend DeepSight.
   - Helpers pour créer des états auth
 
 ### Store Tests (Zustand)
+
 - **`src/store/__tests__/analysisStore-complete.test.ts`** - 200+ assertions
   - Lifecycle complet (start → progress → streaming → complete)
   - Chat management et web search
@@ -26,6 +28,7 @@ Batterie complète de tests production-ready pour le frontend DeepSight.
   - Edge cases et state transitions
 
 ### Hook Tests
+
 - **`src/hooks/__tests__/useAuth-complete.test.ts`** - 150+ assertions
   - Login, Register, Logout flows
   - Token refresh et expiration
@@ -35,6 +38,7 @@ Batterie complète de tests production-ready pour le frontend DeepSight.
   - Session state transitions
 
 ### Service Tests
+
 - **`src/services/__tests__/api-complete.test.ts`** - 100+ assertions
   - Token management et HTTP requests
   - Error handling (401, 403, 404, 422, 429, 500)
@@ -44,6 +48,7 @@ Batterie complète de tests production-ready pour le frontend DeepSight.
   - Edge cases et concurrent requests
 
 ### Component Tests
+
 - **`src/components/__tests__/SmartInputBar.test.tsx`** - 60+ assertions
   - Input validation et YouTube URL parsing
   - URL acceptance (long et short format)
@@ -61,6 +66,7 @@ Batterie complète de tests production-ready pour le frontend DeepSight.
   - Edge cases
 
 ### Page Tests
+
 - **`src/pages/__tests__/Login.test.tsx`** - 60+ assertions
   - Form rendering et validation
   - Login flow avec loading states
@@ -70,6 +76,7 @@ Batterie complète de tests production-ready pour le frontend DeepSight.
   - Special characters et edge cases
 
 ### Config Tests
+
 - **`src/config/__tests__/planPrivileges-complete.test.ts`** - 50+ assertions
   - Plan existence et hierarchy (free < etudiant < starter < pro)
   - Pricing progression
@@ -80,6 +87,7 @@ Batterie complète de tests production-ready pour le frontend DeepSight.
   - Utility functions
 
 ### E2E Tests (Playwright)
+
 - **`e2e/auth-complete.spec.ts`** - Authentication flows
   - Login, Register, Logout
   - Form validation et error messages
@@ -105,6 +113,7 @@ Batterie complète de tests production-ready pour le frontend DeepSight.
 ## 🚀 Running Tests
 
 ### Unit Tests (Vitest)
+
 ```bash
 # Run tous les tests
 npm test
@@ -123,6 +132,7 @@ npm test -- --exclude e2e
 ```
 
 ### E2E Tests (Playwright)
+
 ```bash
 # Run tous les E2E tests
 npx playwright test
@@ -145,29 +155,32 @@ npx playwright show-report
 
 ## 📊 Coverage Goals
 
-| Layer | Target | Current |
-|-------|--------|---------|
-| Services API | 95% | ✅ |
-| Stores (Zustand) | 90% | ✅ |
-| Hooks | 85% | ✅ |
-| Components | 80% | ✅ |
-| Pages | 75% | ✅ |
-| E2E | Key flows | ✅ |
+| Layer            | Target    | Current |
+| ---------------- | --------- | ------- |
+| Services API     | 95%       | ✅      |
+| Stores (Zustand) | 90%       | ✅      |
+| Hooks            | 85%       | ✅      |
+| Components       | 80%       | ✅      |
+| Pages            | 75%       | ✅      |
+| E2E              | Key flows | ✅      |
 
 ## 🔍 Test Categories
 
 ### Unit Tests (Vitest)
+
 - **Isolation**: Chaque test vérifie une fonction/composant unique
 - **Mocking**: API et dépendances mockées
 - **Speed**: < 100ms par test
 - **Scope**: Services, hooks, stores, components
 
 ### Integration Tests
+
 - **Provider composition**: Render avec tous les contextes
 - **State flow**: Multiple components + store
 - **Context propagation**: Auth, theme, language
 
 ### E2E Tests (Playwright)
+
 - **User flows**: Scénarios réels d'utilisation
 - **Cross-browser**: Chrome, Firefox, Safari, Mobile
 - **Visual regression**: Screenshots on failure
@@ -175,9 +188,10 @@ npx playwright show-report
 ## 📝 Test Patterns
 
 ### AAA Pattern (Arrange, Act, Assert)
+
 ```typescript
-describe('Feature', () => {
-  it('should do something', async () => {
+describe("Feature", () => {
+  it("should do something", async () => {
     // Arrange - Setup
     const mockFn = vi.fn();
 
@@ -191,12 +205,14 @@ describe('Feature', () => {
 ```
 
 ### Mock Factories
+
 ```typescript
 const mockSummary = createMockSummary({ id: 1, is_favorite: true });
-const mockUser = createMockUser({ plan: 'pro' });
+const mockUser = createMockUser({ plan: "pro" });
 ```
 
 ### Custom Render
+
 ```typescript
 renderWithProviders(<Component />, {
   initialAuthState: { user: mockUser, isAuthenticated: true },
@@ -236,6 +252,7 @@ renderWithProviders(<Component />, {
 ## 🐛 Debugging
 
 ### Vitest Debug
+
 ```bash
 # Debug dans Node
 node --inspect-brk ./node_modules/vitest/vitest.mjs run test.ts
@@ -244,6 +261,7 @@ node --inspect-brk ./node_modules/vitest/vitest.mjs run test.ts
 ```
 
 ### Playwright Debug
+
 ```bash
 # Debug UI
 npx playwright test --debug
@@ -253,17 +271,18 @@ npx playwright test --debug
 ```
 
 ### React DevTools
+
 - Install extension
 - Use in test via `renderWithProviders()`
 
 ## 📈 Performance Benchmarks
 
-| Test Suite | Count | Avg Time | Target |
-|-----------|-------|----------|--------|
-| API Tests | 100+ | 50ms | < 100ms |
-| Store Tests | 200+ | 75ms | < 100ms |
-| Component Tests | 150+ | 100ms | < 150ms |
-| E2E Tests | 50+ | 3s | < 5s |
+| Test Suite      | Count | Avg Time | Target  |
+| --------------- | ----- | -------- | ------- |
+| API Tests       | 100+  | 50ms     | < 100ms |
+| Store Tests     | 200+  | 75ms     | < 100ms |
+| Component Tests | 150+  | 100ms    | < 150ms |
+| E2E Tests       | 50+   | 3s       | < 5s    |
 
 ## ✅ Quality Metrics
 

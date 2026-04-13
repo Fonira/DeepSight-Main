@@ -3,28 +3,28 @@
  * Glassmorphism, hover glow, mouse-tracking gradient, Framer Motion
  */
 
-import React, { useRef, useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef, useState, useCallback } from "react";
+import { motion } from "framer-motion";
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;
-  variant?: 'default' | 'glass' | 'elevated' | 'interactive';
-  padding?: 'none' | 'sm' | 'md' | 'lg';
+  variant?: "default" | "glass" | "elevated" | "interactive";
+  padding?: "none" | "sm" | "md" | "lg";
   hover?: boolean;
 }
 
 const paddings: Record<string, string> = {
-  none: '',
-  sm: 'p-4',
-  md: 'p-5',
-  lg: 'p-6',
+  none: "",
+  sm: "p-4",
+  md: "p-5",
+  lg: "p-6",
 };
 
 export const Card: React.FC<CardProps> = ({
   children,
   className = "",
-  variant = 'default',
-  padding = 'md',
+  variant = "default",
+  padding = "md",
   hover = true,
   ...props
 }) => {
@@ -41,17 +41,17 @@ export const Card: React.FC<CardProps> = ({
   }, []);
 
   const variants: Record<string, string> = {
-    default: 'bg-bg-secondary border border-border-subtle',
-    glass: 'bg-bg-tertiary border border-border-default shadow-sm',
-    elevated: 'bg-bg-elevated border border-border-default shadow-md',
-    interactive: 'bg-bg-secondary border border-border-subtle cursor-pointer',
+    default: "bg-bg-secondary border border-border-subtle",
+    glass: "bg-bg-tertiary border border-border-default shadow-sm",
+    elevated: "bg-bg-elevated border border-border-default shadow-md",
+    interactive: "bg-bg-secondary border border-border-subtle cursor-pointer",
   };
 
   const hoverClass = hover
-    ? variant === 'interactive'
-      ? 'hover:border-border-accent hover:shadow-md hover:-translate-y-0.5'
-      : 'hover:border-border-default hover:shadow-md hover:-translate-y-0.5'
-    : '';
+    ? variant === "interactive"
+      ? "hover:border-border-accent hover:shadow-md hover:-translate-y-0.5"
+      : "hover:border-border-default hover:shadow-md hover:-translate-y-0.5"
+    : "";
 
   return (
     <motion.div
@@ -65,7 +65,7 @@ export const Card: React.FC<CardProps> = ({
         ${className}
       `}
       whileHover={hover ? { scale: 1.005 } : undefined}
-      whileTap={variant === 'interactive' ? { scale: 0.995 } : undefined}
+      whileTap={variant === "interactive" ? { scale: 0.995 } : undefined}
       {...(props as Record<string, unknown>)}
     >
       {/* Mouse-tracking gradient overlay */}
@@ -73,7 +73,7 @@ export const Card: React.FC<CardProps> = ({
         <div
           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-lg"
           style={{
-            background: `radial-gradient(circle at ${mousePos.x}% ${mousePos.y}%, var(--accent-primary-muted) 0%, transparent 60%)`
+            background: `radial-gradient(circle at ${mousePos.x}% ${mousePos.y}%, var(--accent-primary-muted) 0%, transparent 60%)`,
           }}
           aria-hidden="true"
         />
@@ -89,7 +89,10 @@ export const CardHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
   className = "",
   ...props
 }) => (
-  <div className={`pb-4 mb-4 border-b border-border-subtle ${className}`} {...props}>
+  <div
+    className={`pb-4 mb-4 border-b border-border-subtle ${className}`}
+    {...props}
+  >
     {children}
   </div>
 );
@@ -109,7 +112,10 @@ export const CardFooter: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
   className = "",
   ...props
 }) => (
-  <div className={`pt-4 mt-4 border-t border-border-subtle flex items-center gap-3 ${className}`} {...props}>
+  <div
+    className={`pt-4 mt-4 border-t border-border-subtle flex items-center gap-3 ${className}`}
+    {...props}
+  >
     {children}
   </div>
 );

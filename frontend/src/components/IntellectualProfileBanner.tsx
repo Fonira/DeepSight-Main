@@ -4,44 +4,57 @@
  * Glassmorphism, barres animées au mount.
  */
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, ExternalLink, BarChart3 } from 'lucide-react';
-import { useLoadingWord } from '../contexts/LoadingWordContext';
-import { useLanguage } from '../contexts/LanguageContext';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { RefreshCw, ExternalLink, BarChart3 } from "lucide-react";
+import { useLoadingWord } from "../contexts/LoadingWordContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const CAT_ICONS: Record<string, string> = {
-  cognitive_bias: '🧠', science: '🔬', philosophy: '🎭', culture: '🌍',
-  misc: '✨', history: '📜', technology: '⚡', person: '👤',
-  company: '🏢', concept: '💡', event: '📅', place: '📍',
-  psychology: '🧩', economics: '💰', art: '🎨', nature: '🌿',
+  cognitive_bias: "🧠",
+  science: "🔬",
+  philosophy: "🎭",
+  culture: "🌍",
+  misc: "✨",
+  history: "📜",
+  technology: "⚡",
+  person: "👤",
+  company: "🏢",
+  concept: "💡",
+  event: "📅",
+  place: "📍",
+  psychology: "🧩",
+  economics: "💰",
+  art: "🎨",
+  nature: "🌿",
 };
 
 const CAT_LABELS: Record<string, { fr: string; en: string }> = {
-  cognitive_bias: { fr: 'Biais cognitifs', en: 'Cognitive Biases' },
-  science: { fr: 'Science', en: 'Science' },
-  philosophy: { fr: 'Philosophie', en: 'Philosophy' },
-  culture: { fr: 'Culture', en: 'Culture' },
-  technology: { fr: 'Technologie', en: 'Technology' },
-  concept: { fr: 'Concepts', en: 'Concepts' },
-  person: { fr: 'Personnalités', en: 'People' },
-  company: { fr: 'Entreprises', en: 'Companies' },
-  psychology: { fr: 'Psychologie', en: 'Psychology' },
-  economics: { fr: 'Économie', en: 'Economics' },
-  history: { fr: 'Histoire', en: 'History' },
-  art: { fr: 'Art', en: 'Art' },
-  nature: { fr: 'Nature', en: 'Nature' },
-  misc: { fr: 'Divers', en: 'Misc' },
+  cognitive_bias: { fr: "Biais cognitifs", en: "Cognitive Biases" },
+  science: { fr: "Science", en: "Science" },
+  philosophy: { fr: "Philosophie", en: "Philosophy" },
+  culture: { fr: "Culture", en: "Culture" },
+  technology: { fr: "Technologie", en: "Technology" },
+  concept: { fr: "Concepts", en: "Concepts" },
+  person: { fr: "Personnalités", en: "People" },
+  company: { fr: "Entreprises", en: "Companies" },
+  psychology: { fr: "Psychologie", en: "Psychology" },
+  economics: { fr: "Économie", en: "Economics" },
+  history: { fr: "Histoire", en: "History" },
+  art: { fr: "Art", en: "Art" },
+  nature: { fr: "Nature", en: "Nature" },
+  misc: { fr: "Divers", en: "Misc" },
 };
 
 interface IntellectualProfileBannerProps {
   onCategoryFilter?: (category: string) => void;
 }
 
-export const IntellectualProfileBanner: React.FC<IntellectualProfileBannerProps> = ({
-  onCategoryFilter,
-}) => {
-  const { userCategories, currentWord, nextWord, historyCount } = useLoadingWord();
+export const IntellectualProfileBanner: React.FC<
+  IntellectualProfileBannerProps
+> = ({ onCategoryFilter }) => {
+  const { userCategories, currentWord, nextWord, historyCount } =
+    useLoadingWord();
   const { language } = useLanguage();
   const [mounted, setMounted] = useState(false);
 
@@ -64,17 +77,18 @@ export const IntellectualProfileBanner: React.FC<IntellectualProfileBannerProps>
             <div className="flex items-center gap-2 mb-3">
               <BarChart3 className="w-3.5 h-3.5 text-accent-primary/60" />
               <span className="text-[11px] text-text-muted uppercase tracking-wider font-medium">
-                {language === 'fr' ? 'Votre profil' : 'Your profile'}
+                {language === "fr" ? "Votre profil" : "Your profile"}
               </span>
               <span className="text-[10px] text-text-muted/50 ml-auto">
-                {historyCount} {language === 'fr' ? 'termes' : 'terms'}
+                {historyCount} {language === "fr" ? "termes" : "terms"}
               </span>
             </div>
 
             <div className="space-y-2">
               {topCategories.map((cat, i) => {
-                const icon = CAT_ICONS[cat.category] || '📚';
-                const label = CAT_LABELS[cat.category]?.[language] || cat.category;
+                const icon = CAT_ICONS[cat.category] || "📚";
+                const label =
+                  CAT_LABELS[cat.category]?.[language] || cat.category;
                 const widthPercent = (cat.count / maxCount) * 100;
 
                 return (
@@ -92,7 +106,11 @@ export const IntellectualProfileBanner: React.FC<IntellectualProfileBannerProps>
                         className="h-full bg-gradient-to-r from-accent-primary/60 to-accent-primary/30 rounded-full"
                         initial={{ width: 0 }}
                         animate={{ width: mounted ? `${widthPercent}%` : 0 }}
-                        transition={{ duration: 0.6, delay: i * 0.1, ease: [0.4, 0, 0.2, 1] }}
+                        transition={{
+                          duration: 0.6,
+                          delay: i * 0.1,
+                          ease: [0.4, 0, 0.2, 1],
+                        }}
                       />
                     </div>
                     <span className="text-[10px] text-text-muted tabular-nums w-6 text-right">
@@ -110,12 +128,12 @@ export const IntellectualProfileBanner: React.FC<IntellectualProfileBannerProps>
           <div className="flex-1 p-4 sm:p-5 flex flex-col justify-center">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[11px] text-text-muted uppercase tracking-wider font-medium">
-                💡 {language === 'fr' ? 'Le saviez-vous ?' : 'Did you know?'}
+                💡 {language === "fr" ? "Le saviez-vous ?" : "Did you know?"}
               </span>
               <button
                 onClick={nextWord}
                 className="p-1 rounded-md text-text-muted hover:text-accent-primary hover:bg-white/5 transition-all"
-                title={language === 'fr' ? 'Suivant' : 'Next'}
+                title={language === "fr" ? "Suivant" : "Next"}
               >
                 <RefreshCw className="w-3 h-3" />
               </button>
@@ -130,7 +148,7 @@ export const IntellectualProfileBanner: React.FC<IntellectualProfileBannerProps>
                 transition={{ duration: 0.2 }}
               >
                 <p className="font-display text-sm font-semibold text-text-primary mb-1">
-                  {CAT_ICONS[currentWord.category] || '📚'} {currentWord.term}
+                  {CAT_ICONS[currentWord.category] || "📚"} {currentWord.term}
                 </p>
                 <p className="text-[11px] text-text-secondary leading-relaxed line-clamp-3">
                   {currentWord.shortDefinition}
@@ -147,9 +165,9 @@ export const IntellectualProfileBanner: React.FC<IntellectualProfileBannerProps>
                       Source
                     </a>
                   )}
-                  {currentWord.source === 'history' && (
+                  {currentWord.source === "history" && (
                     <span className="text-[9px] text-accent-primary/40">
-                      📜 {language === 'fr' ? 'Vos analyses' : 'Your analyses'}
+                      📜 {language === "fr" ? "Vos analyses" : "Your analyses"}
                     </span>
                   )}
                 </div>

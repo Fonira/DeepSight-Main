@@ -6,15 +6,26 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from "react";
 import {
-  BookOpen, Clock, Tag, ChevronDown, ChevronRight, Play,
-  Lightbulb, Users, Building2, Shield, Copy, Check,
-  ExternalLink, Globe
-} from 'lucide-react';
-import { EnrichedMarkdown } from './EnrichedMarkdown';
-import { ThumbnailImage } from './ThumbnailImage';
-import { sanitizeTitle } from '../utils/sanitize';
+  BookOpen,
+  Clock,
+  Tag,
+  ChevronDown,
+  ChevronRight,
+  Play,
+  Lightbulb,
+  Users,
+  Building2,
+  Shield,
+  Copy,
+  Check,
+  ExternalLink,
+  Globe,
+} from "lucide-react";
+import { EnrichedMarkdown } from "./EnrichedMarkdown";
+import { ThumbnailImage } from "./ThumbnailImage";
+import { sanitizeTitle } from "../utils/sanitize";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 TYPES
@@ -28,7 +39,7 @@ interface Chapter {
 
 interface Insight {
   text: string;
-  type: 'key' | 'takeaway' | 'trend';
+  type: "key" | "takeaway" | "trend";
 }
 
 interface SummaryReaderProps {
@@ -49,9 +60,9 @@ interface SummaryReaderProps {
     created_at: string;
     // 🔬 Deep Research
     deep_research?: boolean;
-    enrichment_sources?: string;  // JSON string
+    enrichment_sources?: string; // JSON string
   };
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
   onTimestampClick?: (seconds: number) => void;
 }
 
@@ -60,7 +71,7 @@ interface SummaryReaderProps {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const parseTimestamp = (ts: string): number => {
-  const parts = ts.split(':').map(Number);
+  const parts = ts.split(":").map(Number);
   if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
   if (parts.length === 2) return parts[0] * 60 + parts[1];
   return 0;
@@ -81,18 +92,18 @@ const formatReadingTime = (wordCount: number): string => {
 
 const getCategoryInfo = (cat: string) => {
   const categories: Record<string, { emoji: string; color: string }> = {
-    tech: { emoji: '💻', color: '#00ffff' },
-    science: { emoji: '🔬', color: '#8b5cf6' },
-    education: { emoji: '📚', color: '#10b981' },
-    finance: { emoji: '💰', color: '#f59e0b' },
-    gaming: { emoji: '🎮', color: '#ec4899' },
-    culture: { emoji: '🎨', color: '#f97316' },
-    news: { emoji: '📰', color: '#ef4444' },
-    health: { emoji: '🏥', color: '#22c55e' },
-    sport: { emoji: '⚽', color: '#3b82f6' },
-    crypto: { emoji: '₿', color: '#f59e0b' },
-    interview_podcast: { emoji: '🎙️', color: '#8b5cf6' },
-    general: { emoji: '📄', color: '#6b7280' },
+    tech: { emoji: "💻", color: "#00ffff" },
+    science: { emoji: "🔬", color: "#8b5cf6" },
+    education: { emoji: "📚", color: "#10b981" },
+    finance: { emoji: "💰", color: "#f59e0b" },
+    gaming: { emoji: "🎮", color: "#ec4899" },
+    culture: { emoji: "🎨", color: "#f97316" },
+    news: { emoji: "📰", color: "#ef4444" },
+    health: { emoji: "🏥", color: "#22c55e" },
+    sport: { emoji: "⚽", color: "#3b82f6" },
+    crypto: { emoji: "₿", color: "#f59e0b" },
+    interview_podcast: { emoji: "🎙️", color: "#8b5cf6" },
+    general: { emoji: "📄", color: "#6b7280" },
   };
   return categories[cat] || categories.general;
 };
@@ -103,14 +114,16 @@ const getCategoryInfo = (cat: string) => {
 
 export const SummaryReader: React.FC<SummaryReaderProps> = ({
   summary,
-  language = 'fr',
+  language = "fr",
   onTimestampClick,
 }) => {
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['summary']));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set(["summary"]),
+  );
   const [copied, setCopied] = useState(false);
 
   const toggleSection = (id: string) => {
-    setExpandedSections(prev => {
+    setExpandedSections((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -137,19 +150,23 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
   // Parse insights/key points
   const insights = useMemo((): Insight[] => {
     if (!summary.summary_content) return [];
-    const lines = summary.summary_content.split('\n');
+    const lines = summary.summary_content.split("\n");
     const result: Insight[] = [];
-    
-    lines.forEach(line => {
+
+    lines.forEach((line) => {
       const trimmed = line.trim();
-      if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
+      if (
+        trimmed.startsWith("•") ||
+        trimmed.startsWith("-") ||
+        trimmed.startsWith("*")
+      ) {
         const text = trimmed.slice(1).trim();
         if (text.length > 20 && text.length < 200) {
-          result.push({ text, type: 'key' });
+          result.push({ text, type: "key" });
         }
       }
     });
-    
+
     return result.slice(0, 5);
   }, [summary.summary_content]);
 
@@ -160,10 +177,10 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
   };
 
   const openVideo = (seconds?: number) => {
-    const url = seconds 
+    const url = seconds
       ? `https://youtube.com/watch?v=${summary.video_id}&t=${seconds}`
       : `https://youtube.com/watch?v=${summary.video_id}`;
-    window.open(url, '_blank');
+    window.open(url, "_blank");
   };
 
   const handleTimestampClick = (seconds: number) => {
@@ -178,34 +195,34 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
 
   const t = {
     fr: {
-      summary: 'Synthèse',
-      chapters: 'Chapitres',
-      insights: 'Points clés',
-      entities: 'Entités',
-      readingTime: 'Temps de lecture',
-      videoDuration: 'Durée vidéo',
-      reliability: 'Fiabilité',
-      watchVideo: 'Voir la vidéo',
-      copy: 'Copier',
-      copied: 'Copié !',
-      persons: 'Personnes',
-      concepts: 'Concepts',
-      organizations: 'Organisations',
+      summary: "Synthèse",
+      chapters: "Chapitres",
+      insights: "Points clés",
+      entities: "Entités",
+      readingTime: "Temps de lecture",
+      videoDuration: "Durée vidéo",
+      reliability: "Fiabilité",
+      watchVideo: "Voir la vidéo",
+      copy: "Copier",
+      copied: "Copié !",
+      persons: "Personnes",
+      concepts: "Concepts",
+      organizations: "Organisations",
     },
     en: {
-      summary: 'Summary',
-      chapters: 'Chapters',
-      insights: 'Key Insights',
-      entities: 'Entities',
-      readingTime: 'Reading time',
-      videoDuration: 'Video duration',
-      reliability: 'Reliability',
-      watchVideo: 'Watch video',
-      copy: 'Copy',
-      copied: 'Copied!',
-      persons: 'People',
-      concepts: 'Concepts',
-      organizations: 'Organizations',
+      summary: "Summary",
+      chapters: "Chapters",
+      insights: "Key Insights",
+      entities: "Entities",
+      readingTime: "Reading time",
+      videoDuration: "Video duration",
+      reliability: "Reliability",
+      watchVideo: "Watch video",
+      copy: "Copy",
+      copied: "Copied!",
+      persons: "People",
+      concepts: "Concepts",
+      organizations: "Organizations",
     },
   }[language];
 
@@ -217,8 +234,9 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
       <div
         className="rounded-2xl overflow-hidden"
         style={{
-          background: 'linear-gradient(135deg, rgba(13, 59, 68, 0.6) 0%, rgba(10, 26, 31, 0.8) 100%)',
-          border: '1px solid rgba(212, 168, 83, 0.2)',
+          background:
+            "linear-gradient(135deg, rgba(13, 59, 68, 0.6) 0%, rgba(10, 26, 31, 0.8) 100%)",
+          border: "1px solid rgba(212, 168, 83, 0.2)",
         }}
       >
         {/* Thumbnail with overlay */}
@@ -233,10 +251,11 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
           <div
             className="absolute inset-0"
             style={{
-              background: 'linear-gradient(to top, rgba(10, 26, 31, 0.95) 0%, rgba(10, 26, 31, 0.3) 50%, transparent 100%)',
+              background:
+                "linear-gradient(to top, rgba(10, 26, 31, 0.95) 0%, rgba(10, 26, 31, 0.3) 50%, transparent 100%)",
             }}
           />
-          
+
           {/* Play button */}
           <button
             onClick={() => openVideo()}
@@ -245,14 +264,17 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
             <div
               className="w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 group-hover:scale-110"
               style={{
-                background: 'rgba(212, 168, 83, 0.9)',
-                boxShadow: '0 4px 20px rgba(212, 168, 83, 0.4)',
+                background: "rgba(212, 168, 83, 0.9)",
+                boxShadow: "0 4px 20px rgba(212, 168, 83, 0.4)",
               }}
             >
-              <Play className="w-7 h-7 text-[#0a1a1f] ml-1" fill="currentColor" />
+              <Play
+                className="w-7 h-7 text-[#0a1a1f] ml-1"
+                fill="currentColor"
+              />
             </div>
           </button>
-          
+
           {/* Video info overlay */}
           <div className="absolute bottom-0 left-0 right-0 p-6">
             <div className="flex items-start gap-3 mb-3">
@@ -266,14 +288,14 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
               >
                 {categoryInfo.emoji} {summary.category}
               </span>
-              
+
               {summary.reliability_score !== undefined && (
                 <span
                   className="px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"
                   style={{
-                    background: 'rgba(16, 185, 129, 0.2)',
-                    color: '#10b981',
-                    border: '1px solid rgba(16, 185, 129, 0.3)',
+                    background: "rgba(16, 185, 129, 0.2)",
+                    color: "#10b981",
+                    border: "1px solid rgba(16, 185, 129, 0.3)",
                   }}
                 >
                   <Shield className="w-3 h-3" />
@@ -281,7 +303,7 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
                 </span>
               )}
             </div>
-            
+
             <h1 className="text-xl sm:text-2xl font-bold text-[#e8dcc4] mb-2 line-clamp-2">
               {sanitizeTitle(summary.video_title)}
             </h1>
@@ -289,7 +311,7 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
             <p className="text-[#e8dcc4]/60 text-sm mb-4">
               {sanitizeTitle(summary.video_channel)}
             </p>
-            
+
             <div className="flex flex-wrap items-center gap-4 text-xs text-[#e8dcc4]/50">
               <span className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
@@ -305,13 +327,13 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
             </div>
           </div>
         </div>
-        
+
         {/* Actions bar */}
         <div
           className="flex items-center justify-between px-6 py-3"
           style={{
-            background: 'rgba(13, 42, 48, 0.5)',
-            borderTop: '1px solid rgba(212, 168, 83, 0.1)',
+            background: "rgba(13, 42, 48, 0.5)",
+            borderTop: "1px solid rgba(212, 168, 83, 0.1)",
           }}
         >
           <div className="flex items-center gap-2">
@@ -319,21 +341,25 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
               onClick={() => openVideo()}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
               style={{
-                background: 'linear-gradient(135deg, #d4a853 0%, #b8923f 100%)',
-                color: '#0a1a1f',
+                background: "linear-gradient(135deg, #d4a853 0%, #b8923f 100%)",
+                color: "#0a1a1f",
               }}
             >
               <ExternalLink className="w-4 h-4" />
               {t.watchVideo}
             </button>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <button
               onClick={copyToClipboard}
               className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-[#e8dcc4]/70 hover:text-[#e8dcc4] hover:bg-white/5 transition-colors"
             >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copied ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                <Copy className="w-4 h-4" />
+              )}
               {copied ? t.copied : t.copy}
             </button>
           </div>
@@ -348,8 +374,8 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
           id="chapters"
           title={t.chapters}
           icon={<Clock className="w-4 h-4" />}
-          isExpanded={expandedSections.has('chapters')}
-          onToggle={() => toggleSection('chapters')}
+          isExpanded={expandedSections.has("chapters")}
+          onToggle={() => toggleSection("chapters")}
           badge={chapters.length}
         >
           <div className="grid gap-2">
@@ -359,23 +385,23 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
                 onClick={() => handleTimestampClick(chapter.seconds)}
                 className="flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-200 group"
                 style={{
-                  background: 'rgba(0, 255, 255, 0.03)',
-                  border: '1px solid rgba(0, 255, 255, 0.1)',
+                  background: "rgba(0, 255, 255, 0.03)",
+                  border: "1px solid rgba(0, 255, 255, 0.1)",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(0, 255, 255, 0.08)';
-                  e.currentTarget.style.borderColor = 'rgba(0, 255, 255, 0.3)';
+                  e.currentTarget.style.background = "rgba(0, 255, 255, 0.08)";
+                  e.currentTarget.style.borderColor = "rgba(0, 255, 255, 0.3)";
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(0, 255, 255, 0.03)';
-                  e.currentTarget.style.borderColor = 'rgba(0, 255, 255, 0.1)';
+                  e.currentTarget.style.background = "rgba(0, 255, 255, 0.03)";
+                  e.currentTarget.style.borderColor = "rgba(0, 255, 255, 0.1)";
                 }}
               >
                 <span
                   className="flex-shrink-0 px-2 py-1 rounded-md text-xs font-mono font-bold"
                   style={{
-                    background: 'rgba(0, 255, 255, 0.1)',
-                    color: '#00ffff',
+                    background: "rgba(0, 255, 255, 0.1)",
+                    color: "#00ffff",
                   }}
                 >
                   {chapter.timestamp}
@@ -397,20 +423,22 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
         id="summary"
         title={t.summary}
         icon={<BookOpen className="w-4 h-4" />}
-        isExpanded={expandedSections.has('summary')}
-        onToggle={() => toggleSection('summary')}
+        isExpanded={expandedSections.has("summary")}
+        onToggle={() => toggleSection("summary")}
       >
         <div
           className="prose prose-lg max-w-none"
-          style={{
-            '--tw-prose-body': '#e8dcc4',
-            '--tw-prose-headings': '#d4a853',
-            '--tw-prose-links': '#00ffff',
-            '--tw-prose-bold': '#e8dcc4',
-            '--tw-prose-bullets': '#d4a853',
-            '--tw-prose-quotes': '#e8dcc4',
-            '--tw-prose-quote-borders': '#d4a853',
-          } as React.CSSProperties}
+          style={
+            {
+              "--tw-prose-body": "#e8dcc4",
+              "--tw-prose-headings": "#d4a853",
+              "--tw-prose-links": "#00ffff",
+              "--tw-prose-bold": "#e8dcc4",
+              "--tw-prose-bullets": "#d4a853",
+              "--tw-prose-quotes": "#e8dcc4",
+              "--tw-prose-quote-borders": "#d4a853",
+            } as React.CSSProperties
+          }
         >
           <div className="text-[#e8dcc4] leading-relaxed space-y-4">
             <EnrichedMarkdown
@@ -442,8 +470,8 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
           id="insights"
           title={t.insights}
           icon={<Lightbulb className="w-4 h-4" />}
-          isExpanded={expandedSections.has('insights')}
-          onToggle={() => toggleSection('insights')}
+          isExpanded={expandedSections.has("insights")}
+          onToggle={() => toggleSection("insights")}
           badge={insights.length}
         >
           <div className="space-y-3">
@@ -452,14 +480,16 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
                 key={i}
                 className="flex items-start gap-3 px-4 py-3 rounded-xl"
                 style={{
-                  background: 'rgba(212, 168, 83, 0.05)',
-                  border: '1px solid rgba(212, 168, 83, 0.15)',
+                  background: "rgba(212, 168, 83, 0.05)",
+                  border: "1px solid rgba(212, 168, 83, 0.15)",
                 }}
               >
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#d4a853]/20 flex items-center justify-center text-xs font-bold text-[#d4a853]">
                   {i + 1}
                 </span>
-                <p className="text-sm text-[#e8dcc4]/90 leading-relaxed">{insight.text}</p>
+                <p className="text-sm text-[#e8dcc4]/90 leading-relaxed">
+                  {insight.text}
+                </p>
               </div>
             ))}
           </div>
@@ -474,28 +504,57 @@ export const SummaryReader: React.FC<SummaryReaderProps> = ({
           id="entities"
           title={t.entities}
           icon={<Tag className="w-4 h-4" />}
-          isExpanded={expandedSections.has('entities')}
-          onToggle={() => toggleSection('entities')}
+          isExpanded={expandedSections.has("entities")}
+          onToggle={() => toggleSection("entities")}
         >
           <div className="space-y-4">
             {Object.entries(summary.entities).map(([type, items]) => {
               if (!items || items.length === 0) return null;
-              
-              const typeInfo: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
-                persons: { icon: <Users className="w-4 h-4" />, label: t.persons, color: '#8b5cf6' },
-                personnes: { icon: <Users className="w-4 h-4" />, label: t.persons, color: '#8b5cf6' },
-                concepts: { icon: <Lightbulb className="w-4 h-4" />, label: t.concepts, color: '#00ffff' },
-                organizations: { icon: <Building2 className="w-4 h-4" />, label: t.organizations, color: '#f59e0b' },
-                organisations: { icon: <Building2 className="w-4 h-4" />, label: t.organizations, color: '#f59e0b' },
+
+              const typeInfo: Record<
+                string,
+                { icon: React.ReactNode; label: string; color: string }
+              > = {
+                persons: {
+                  icon: <Users className="w-4 h-4" />,
+                  label: t.persons,
+                  color: "#8b5cf6",
+                },
+                personnes: {
+                  icon: <Users className="w-4 h-4" />,
+                  label: t.persons,
+                  color: "#8b5cf6",
+                },
+                concepts: {
+                  icon: <Lightbulb className="w-4 h-4" />,
+                  label: t.concepts,
+                  color: "#00ffff",
+                },
+                organizations: {
+                  icon: <Building2 className="w-4 h-4" />,
+                  label: t.organizations,
+                  color: "#f59e0b",
+                },
+                organisations: {
+                  icon: <Building2 className="w-4 h-4" />,
+                  label: t.organizations,
+                  color: "#f59e0b",
+                },
               };
-              
-              const info = typeInfo[type.toLowerCase()] || { icon: <Tag className="w-4 h-4" />, label: type, color: '#6b7280' };
-              
+
+              const info = typeInfo[type.toLowerCase()] || {
+                icon: <Tag className="w-4 h-4" />,
+                label: type,
+                color: "#6b7280",
+              };
+
               return (
                 <div key={type}>
                   <div className="flex items-center gap-2 mb-2">
                     <span style={{ color: info.color }}>{info.icon}</span>
-                    <span className="text-sm font-medium text-[#e8dcc4]/70">{info.label}</span>
+                    <span className="text-sm font-medium text-[#e8dcc4]/70">
+                      {info.label}
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {items.map((item: string, i: number) => (
@@ -548,8 +607,9 @@ const Section: React.FC<SectionProps> = ({
     <div
       className="rounded-2xl overflow-hidden transition-all duration-300"
       style={{
-        background: 'linear-gradient(135deg, rgba(13, 59, 68, 0.4) 0%, rgba(10, 26, 31, 0.6) 100%)',
-        border: '1px solid rgba(212, 168, 83, 0.15)',
+        background:
+          "linear-gradient(135deg, rgba(13, 59, 68, 0.4) 0%, rgba(10, 26, 31, 0.6) 100%)",
+        border: "1px solid rgba(212, 168, 83, 0.15)",
       }}
     >
       <button
@@ -558,13 +618,15 @@ const Section: React.FC<SectionProps> = ({
       >
         <div className="flex items-center gap-3">
           <span className="text-[#d4a853]">{icon}</span>
-          <span className="text-sm font-bold text-[#d4a853] uppercase tracking-wider">{title}</span>
+          <span className="text-sm font-bold text-[#d4a853] uppercase tracking-wider">
+            {title}
+          </span>
           {badge !== undefined && (
             <span
               className="px-2 py-0.5 rounded-full text-xs font-medium"
               style={{
-                background: 'rgba(0, 255, 255, 0.1)',
-                color: '#00ffff',
+                background: "rgba(0, 255, 255, 0.1)",
+                color: "#00ffff",
               }}
             >
               {badge}
@@ -572,20 +634,22 @@ const Section: React.FC<SectionProps> = ({
           )}
         </div>
         <span className="text-[#e8dcc4]/50">
-          {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+          {isExpanded ? (
+            <ChevronDown className="w-5 h-5" />
+          ) : (
+            <ChevronRight className="w-5 h-5" />
+          )}
         </span>
       </button>
-      
+
       {isExpanded && (
         <div
           className="px-5 pb-5"
           style={{
-            borderTop: '1px solid rgba(212, 168, 83, 0.1)',
+            borderTop: "1px solid rgba(212, 168, 83, 0.1)",
           }}
         >
-          <div className="pt-4">
-            {children}
-          </div>
+          <div className="pt-4">{children}</div>
         </div>
       )}
     </div>
@@ -605,8 +669,8 @@ interface EnrichmentSource {
 
 export const DeepResearchSources: React.FC<{
   enrichmentSources?: string;
-  language?: 'fr' | 'en';
-}> = ({ enrichmentSources, language = 'fr' }) => {
+  language?: "fr" | "en";
+}> = ({ enrichmentSources, language = "fr" }) => {
   const sources: EnrichmentSource[] = useMemo(() => {
     if (!enrichmentSources) return [];
     try {
@@ -622,14 +686,20 @@ export const DeepResearchSources: React.FC<{
     <div
       className="mt-6 rounded-xl overflow-hidden"
       style={{
-        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(6, 182, 212, 0.05))',
-        border: '1px solid rgba(139, 92, 246, 0.15)',
+        background:
+          "linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(6, 182, 212, 0.05))",
+        border: "1px solid rgba(139, 92, 246, 0.15)",
       }}
     >
-      <div className="px-5 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(139, 92, 246, 0.1)' }}>
+      <div
+        className="px-5 py-4 flex items-center gap-3"
+        style={{ borderBottom: "1px solid rgba(139, 92, 246, 0.1)" }}
+      >
         <Globe className="w-5 h-5 text-purple-400" />
         <span className="text-sm font-bold text-purple-300 uppercase tracking-wider">
-          {language === 'fr' ? `Sources croisées (${sources.length})` : `Cross-referenced Sources (${sources.length})`}
+          {language === "fr"
+            ? `Sources croisées (${sources.length})`
+            : `Cross-referenced Sources (${sources.length})`}
         </span>
         <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 font-semibold">
           🔬 Deep Research
@@ -643,18 +713,24 @@ export const DeepResearchSources: React.FC<{
             target="_blank"
             rel="noopener noreferrer"
             className="block p-3 rounded-lg transition-all hover:bg-white/5 group"
-            style={{ border: '1px solid rgba(255,255,255,0.05)' }}
+            style={{ border: "1px solid rgba(255,255,255,0.05)" }}
           >
             <div className="flex items-start gap-2">
-              <span className="text-xs text-purple-400/60 font-mono mt-0.5">{i + 1}.</span>
+              <span className="text-xs text-purple-400/60 font-mono mt-0.5">
+                {i + 1}.
+              </span>
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-medium text-purple-200 group-hover:text-purple-100 line-clamp-1">
                   {src.title || src.url}
                 </span>
                 {src.snippet && (
-                  <p className="text-xs text-[#e8dcc4]/50 mt-1 line-clamp-2">{src.snippet}</p>
+                  <p className="text-xs text-[#e8dcc4]/50 mt-1 line-clamp-2">
+                    {src.snippet}
+                  </p>
                 )}
-                <span className="text-[10px] text-[#e8dcc4]/30 mt-1 block truncate">{src.url}</span>
+                <span className="text-[10px] text-[#e8dcc4]/30 mt-1 block truncate">
+                  {src.url}
+                </span>
               </div>
               <ExternalLink className="w-3.5 h-3.5 text-purple-400/40 group-hover:text-purple-400 flex-shrink-0 mt-0.5" />
             </div>

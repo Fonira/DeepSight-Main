@@ -1,7 +1,7 @@
 /**
  * DEEP SIGHT — FlashcardDeck Component
  * Cartes flash interactives avec animation flip 3D
- * 
+ *
  * FONCTIONNALITÉS:
  * - 🔄 Animation flip 3D au clic
  * - ⬅️➡️ Navigation clavier (flèches)
@@ -10,12 +10,18 @@
  * - 📊 Progression
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from "react";
 import {
-  RotateCcw, ChevronLeft, ChevronRight, Check, X,
-  Shuffle, BookOpen, Sparkles
-} from 'lucide-react';
-import { DeepSightSpinner } from '../ui/DeepSightSpinner';
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  X,
+  Shuffle,
+  BookOpen,
+  Sparkles,
+} from "lucide-react";
+import { DeepSightSpinner } from "../ui/DeepSightSpinner";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -32,7 +38,7 @@ interface FlashcardDeckProps {
   onComplete?: (stats: FlashcardStats) => void;
   onProgress?: (current: number, total: number, stats: FlashcardStats) => void;
   isLoading?: boolean;
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
 }
 
 export interface FlashcardStats {
@@ -51,7 +57,7 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   onComplete,
   onProgress,
   isLoading = false,
-  language = 'fr',
+  language = "fr",
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -61,36 +67,36 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
 
   const t = {
     fr: {
-      question: 'QUESTION',
-      answer: 'RÉPONSE',
-      tapToFlip: 'Cliquez pour voir la réponse',
-      swipeHint: 'Utilisez les boutons ou les flèches du clavier',
-      known: 'Maîtrisé',
-      unknown: 'À revoir',
-      shuffle: 'Mélanger',
-      restart: 'Recommencer',
-      loading: 'Génération des flashcards...',
-      empty: 'Aucune flashcard disponible',
-      completed: 'Félicitations !',
-      completedSub: 'Vous avez terminé toutes les cartes',
-      score: 'Score',
-      reviewAgain: 'Revoir les cartes',
+      question: "QUESTION",
+      answer: "RÉPONSE",
+      tapToFlip: "Cliquez pour voir la réponse",
+      swipeHint: "Utilisez les boutons ou les flèches du clavier",
+      known: "Maîtrisé",
+      unknown: "À revoir",
+      shuffle: "Mélanger",
+      restart: "Recommencer",
+      loading: "Génération des flashcards...",
+      empty: "Aucune flashcard disponible",
+      completed: "Félicitations !",
+      completedSub: "Vous avez terminé toutes les cartes",
+      score: "Score",
+      reviewAgain: "Revoir les cartes",
     },
     en: {
-      question: 'QUESTION',
-      answer: 'ANSWER',
-      tapToFlip: 'Click to see the answer',
-      swipeHint: 'Use buttons or arrow keys',
-      known: 'Known',
-      unknown: 'Review',
-      shuffle: 'Shuffle',
-      restart: 'Restart',
-      loading: 'Generating flashcards...',
-      empty: 'No flashcards available',
-      completed: 'Congratulations!',
-      completedSub: 'You have completed all cards',
-      score: 'Score',
-      reviewAgain: 'Review cards',
+      question: "QUESTION",
+      answer: "ANSWER",
+      tapToFlip: "Click to see the answer",
+      swipeHint: "Use buttons or arrow keys",
+      known: "Known",
+      unknown: "Review",
+      shuffle: "Shuffle",
+      restart: "Restart",
+      loading: "Generating flashcards...",
+      empty: "No flashcards available",
+      completed: "Congratulations!",
+      completedSub: "You have completed all cards",
+      score: "Score",
+      reviewAgain: "Review cards",
     },
   }[language];
 
@@ -101,7 +107,10 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
       known,
       unknown,
       total: flashcards.length,
-      percentage: flashcards.length > 0 ? Math.round((known / flashcards.length) * 100) : 0,
+      percentage:
+        flashcards.length > 0
+          ? Math.round((known / flashcards.length) * 100)
+          : 0,
     };
   }, [knownCards.size, unknownCards.size, flashcards.length]);
 
@@ -114,61 +123,64 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isCompleted) return;
-      
+
       switch (e.key) {
-        case ' ':
-        case 'Enter':
+        case " ":
+        case "Enter":
           e.preventDefault();
           handleFlip();
           break;
-        case 'ArrowRight':
+        case "ArrowRight":
           e.preventDefault();
-          handleNext('known');
+          handleNext("known");
           break;
-        case 'ArrowLeft':
+        case "ArrowLeft":
           e.preventDefault();
-          handleNext('unknown');
+          handleNext("unknown");
           break;
-        case 'ArrowUp':
+        case "ArrowUp":
           e.preventDefault();
           handlePrevious();
           break;
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [currentIndex, isFlipped, isCompleted]);
 
   const handleFlip = useCallback(() => {
     setIsFlipped((prev) => !prev);
   }, []);
 
-  const handleNext = useCallback((markAs?: 'known' | 'unknown') => {
-    if (markAs === 'known') {
-      setKnownCards((prev) => new Set(prev).add(currentIndex));
-      setUnknownCards((prev) => {
-        const next = new Set(prev);
-        next.delete(currentIndex);
-        return next;
-      });
-    } else if (markAs === 'unknown') {
-      setUnknownCards((prev) => new Set(prev).add(currentIndex));
-      setKnownCards((prev) => {
-        const next = new Set(prev);
-        next.delete(currentIndex);
-        return next;
-      });
-    }
+  const handleNext = useCallback(
+    (markAs?: "known" | "unknown") => {
+      if (markAs === "known") {
+        setKnownCards((prev) => new Set(prev).add(currentIndex));
+        setUnknownCards((prev) => {
+          const next = new Set(prev);
+          next.delete(currentIndex);
+          return next;
+        });
+      } else if (markAs === "unknown") {
+        setUnknownCards((prev) => new Set(prev).add(currentIndex));
+        setKnownCards((prev) => {
+          const next = new Set(prev);
+          next.delete(currentIndex);
+          return next;
+        });
+      }
 
-    if (currentIndex < flashcards.length - 1) {
-      setCurrentIndex((prev) => prev + 1);
-      setIsFlipped(false);
-    } else {
-      setIsCompleted(true);
-      onComplete?.(getStats());
-    }
-  }, [currentIndex, flashcards.length, onComplete, getStats]);
+      if (currentIndex < flashcards.length - 1) {
+        setCurrentIndex((prev) => prev + 1);
+        setIsFlipped(false);
+      } else {
+        setIsCompleted(true);
+        onComplete?.(getStats());
+      }
+    },
+    [currentIndex, flashcards.length, onComplete, getStats],
+  );
 
   const handlePrevious = useCallback(() => {
     if (currentIndex > 0) {
@@ -214,20 +226,27 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
           <Sparkles className="w-16 h-16 text-amber-400 mx-auto mb-4" />
           <h3 className="text-2xl font-bold text-white mb-2">{t.completed}</h3>
           <p className="text-gray-400 mb-6">{t.completedSub}</p>
-          
+
           <div className="flex justify-center gap-8 mb-6">
             <div className="text-center">
-              <div className="text-3xl font-bold text-emerald-400">{stats.known}</div>
+              <div className="text-3xl font-bold text-emerald-400">
+                {stats.known}
+              </div>
               <div className="text-sm text-gray-400">{t.known}</div>
             </div>
             <div className="text-center">
-              <div className="text-3xl font-bold text-red-400">{stats.unknown}</div>
+              <div className="text-3xl font-bold text-red-400">
+                {stats.unknown}
+              </div>
               <div className="text-sm text-gray-400">{t.unknown}</div>
             </div>
           </div>
 
           <div className="text-lg text-gray-300 mb-6">
-            {t.score}: <span className="text-amber-400 font-bold">{stats.percentage}%</span>
+            {t.score}:{" "}
+            <span className="text-amber-400 font-bold">
+              {stats.percentage}%
+            </span>
           </div>
 
           <button
@@ -289,22 +308,24 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
       <div className="flex-1 flex items-center justify-center perspective-1000 min-h-[300px]">
         <div
           className={`relative w-full max-w-lg aspect-[3/4] cursor-pointer preserve-3d transition-transform duration-500 ${
-            isFlipped ? 'rotate-y-180' : ''
+            isFlipped ? "rotate-y-180" : ""
           }`}
           onClick={handleFlip}
           style={{
-            transformStyle: 'preserve-3d',
-            transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+            transformStyle: "preserve-3d",
+            transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
           }}
         >
           {/* Front */}
           <div
             className="absolute inset-0 glass-panel rounded-2xl p-6 flex flex-col items-center justify-center
                        border-2 border-amber-500/30 backface-hidden"
-            style={{ backfaceVisibility: 'hidden' }}
+            style={{ backfaceVisibility: "hidden" }}
           >
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full 
-                          bg-amber-500/20 text-amber-400 text-xs font-semibold">
+            <div
+              className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full 
+                          bg-amber-500/20 text-amber-400 text-xs font-semibold"
+            >
               {t.question}
             </div>
             <p className="text-lg text-center text-white leading-relaxed">
@@ -319,13 +340,15 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
           <div
             className="absolute inset-0 glass-panel rounded-2xl p-6 flex flex-col items-center justify-center
                        border-2 border-emerald-500/30 rotate-y-180 backface-hidden"
-            style={{ 
-              backfaceVisibility: 'hidden',
-              transform: 'rotateY(180deg)',
+            style={{
+              backfaceVisibility: "hidden",
+              transform: "rotateY(180deg)",
             }}
           >
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full 
-                          bg-emerald-500/20 text-emerald-400 text-xs font-semibold">
+            <div
+              className="absolute top-4 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full 
+                          bg-emerald-500/20 text-emerald-400 text-xs font-semibold"
+            >
               {t.answer}
             </div>
             <p className="text-lg text-center text-white leading-relaxed">
@@ -350,7 +373,7 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
         </button>
 
         <button
-          onClick={() => handleNext('unknown')}
+          onClick={() => handleNext("unknown")}
           className="p-4 rounded-full bg-red-500/20 hover:bg-red-500/30 transition-colors"
         >
           <X className="w-6 h-6 text-red-400" />
@@ -364,7 +387,7 @@ export const FlashcardDeck: React.FC<FlashcardDeckProps> = ({
         </button>
 
         <button
-          onClick={() => handleNext('known')}
+          onClick={() => handleNext("known")}
           className="p-4 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 transition-colors"
         >
           <Check className="w-6 h-6 text-emerald-400" />

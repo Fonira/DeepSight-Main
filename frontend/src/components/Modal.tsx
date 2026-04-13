@@ -3,10 +3,10 @@
  * Backdrop blur, spring animation, focus trap, accessible
  */
 
-import React, { useEffect, useRef, useId } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import React, { useEffect, useRef, useId } from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { X } from "lucide-react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -25,7 +25,7 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   ariaDescription,
   fullScreenMobile = true,
-  maxWidth = 'max-w-2xl',
+  maxWidth = "max-w-2xl",
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
@@ -35,31 +35,32 @@ export const Modal: React.FC<ModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       previousActiveElement.current = document.activeElement as HTMLElement;
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
       requestAnimationFrame(() => {
         modalRef.current?.focus();
       });
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
       if (previousActiveElement.current) {
         previousActiveElement.current.focus();
       }
     }
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         onClose();
         return;
       }
-      if (e.key === 'Tab' && modalRef.current) {
-        const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
+      if (e.key === "Tab" && modalRef.current) {
+        const focusableElements =
+          modalRef.current.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          );
         const firstElement = focusableElements[0];
         const lastElement = focusableElements[focusableElements.length - 1];
         if (e.shiftKey && document.activeElement === firstElement) {
@@ -72,14 +73,14 @@ export const Modal: React.FC<ModalProps> = ({
       }
     };
     if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
     }
   }, [isOpen, onClose]);
 
   const mobileClasses = fullScreenMobile
-    ? 'sm:rounded-xl sm:max-h-[90vh] h-full sm:h-auto w-full sm:w-auto'
-    : 'rounded-xl max-h-[90vh]';
+    ? "sm:rounded-xl sm:max-h-[90vh] h-full sm:h-auto w-full sm:w-auto"
+    : "rounded-xl max-h-[90vh]";
 
   return createPortal(
     <AnimatePresence>
@@ -134,7 +135,9 @@ export const Modal: React.FC<ModalProps> = ({
             )}
 
             {ariaDescription && (
-              <p id={descId} className="sr-only">{ariaDescription}</p>
+              <p id={descId} className="sr-only">
+                {ariaDescription}
+              </p>
             )}
 
             {/* Content */}
@@ -143,6 +146,6 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
       )}
     </AnimatePresence>,
-    document.body
+    document.body,
   );
 };

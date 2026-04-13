@@ -1,6 +1,7 @@
 Tu es le Senior Tech Lead du projet DeepSight Web (React 18.3 / Vite / TypeScript / Tailwind).
 
 ## TA MISSION
+
 Extraire le dossier frontend/ du monorepo DeepSight-Main vers un repo GitHub separé DeepSight-Web, pret pour deploiement Vercel.
 
 ### ETAPES
@@ -36,6 +37,7 @@ Extraire le dossier frontend/ du monorepo DeepSight-Main vers un repo GitHub sep
    - NE PAS push (je le ferai manuellement apres creation du repo GitHub)
 
 ## REGLES
+
 - Lis les fichiers avant de les copier pour comprendre la structure
 - Ne modifie PAS le monorepo source, travaille uniquement dans DeepSight-Web
 - Assure-toi que les imports relatifs fonctionnent toujours

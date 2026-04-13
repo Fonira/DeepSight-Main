@@ -4,16 +4,28 @@
  * S'insère dans le loading state existant du DashboardPage.
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useLoadingWord } from '../contexts/LoadingWordContext';
-import { useLanguage } from '../contexts/LanguageContext';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useLoadingWord } from "../contexts/LoadingWordContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const CAT_ICONS: Record<string, string> = {
-  cognitive_bias: '🧠', science: '🔬', philosophy: '🎭', culture: '🌍',
-  misc: '✨', history: '📜', technology: '⚡', person: '👤',
-  company: '🏢', concept: '💡', event: '📅', place: '📍',
-  psychology: '🧩', economics: '💰', art: '🎨', nature: '🌿',
+  cognitive_bias: "🧠",
+  science: "🔬",
+  philosophy: "🎭",
+  culture: "🌍",
+  misc: "✨",
+  history: "📜",
+  technology: "⚡",
+  person: "👤",
+  company: "🏢",
+  concept: "💡",
+  event: "📅",
+  place: "📍",
+  psychology: "🧩",
+  economics: "💰",
+  art: "🎨",
+  nature: "🌿",
 };
 
 const ROTATION_INTERVAL = 15_000;
@@ -22,19 +34,19 @@ const TYPEWRITER_SPEED = 18; // ms per char
 export const LoadingInsight: React.FC = () => {
   const { currentWord, nextWord } = useLoadingWord();
   const { language } = useLanguage();
-  const [displayedText, setDisplayedText] = useState('');
+  const [displayedText, setDisplayedText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [wordKey, setWordKey] = useState(0);
   const typewriterRef = useRef<NodeJS.Timeout | null>(null);
 
   const fullText = currentWord
     ? `«${currentWord.term}» — ${currentWord.shortDefinition}`
-    : '';
+    : "";
 
   // Typewriter effect
   const startTypewriter = useCallback((text: string) => {
     if (typewriterRef.current) clearInterval(typewriterRef.current);
-    setDisplayedText('');
+    setDisplayedText("");
     setIsTyping(true);
     let i = 0;
     typewriterRef.current = setInterval(() => {
@@ -61,14 +73,14 @@ export const LoadingInsight: React.FC = () => {
   useEffect(() => {
     const timer = setInterval(() => {
       nextWord();
-      setWordKey(k => k + 1);
+      setWordKey((k) => k + 1);
     }, ROTATION_INTERVAL);
     return () => clearInterval(timer);
   }, [nextWord]);
 
   if (!currentWord) return null;
 
-  const catIcon = CAT_ICONS[currentWord.category] || '📚';
+  const catIcon = CAT_ICONS[currentWord.category] || "📚";
 
   return (
     <AnimatePresence mode="wait">
@@ -96,7 +108,7 @@ export const LoadingInsight: React.FC = () => {
             rel="noopener noreferrer"
             className="text-[10px] text-text-muted/50 hover:text-accent-info transition-colors mt-1 inline-block"
           >
-            {language === 'fr' ? 'En savoir plus' : 'Learn more'} →
+            {language === "fr" ? "En savoir plus" : "Learn more"} →
           </a>
         )}
       </motion.div>

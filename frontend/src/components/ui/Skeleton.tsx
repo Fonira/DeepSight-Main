@@ -3,7 +3,7 @@
  * Shimmer effect with gradient animation. No spinners.
  */
 
-import React from 'react';
+import React from "react";
 
 interface SkeletonProps {
   className?: string;
@@ -12,7 +12,7 @@ interface SkeletonProps {
   /** Height as Tailwind class or inline style */
   height?: string;
   /** Shape: default rectangle, circle, or pill */
-  variant?: 'rect' | 'circle' | 'pill' | 'text';
+  variant?: "rect" | "circle" | "pill" | "text";
   /** Number of text lines to render */
   lines?: number;
   /** Animate or static */
@@ -20,20 +20,20 @@ interface SkeletonProps {
 }
 
 export const Skeleton: React.FC<SkeletonProps> = ({
-  className = '',
+  className = "",
   width,
   height,
-  variant = 'rect',
+  variant = "rect",
   lines,
   animate = true,
 }) => {
   const baseClass = `
     bg-gradient-to-r from-bg-tertiary via-[rgba(99,102,241,0.08)] to-bg-tertiary
     bg-[length:200%_100%]
-    ${animate ? 'animate-shimmer' : ''}
+    ${animate ? "animate-shimmer" : ""}
   `;
 
-  if (variant === 'text' || lines) {
+  if (variant === "text" || lines) {
     const count = lines || 3;
     return (
       <div className={`space-y-2.5 ${className}`}>
@@ -41,7 +41,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
           <div
             key={i}
             className={`${baseClass} h-3.5 rounded-sm ${
-              i === count - 1 ? 'w-3/5' : 'w-full'
+              i === count - 1 ? "w-3/5" : "w-full"
             }`}
           />
         ))}
@@ -50,11 +50,11 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   }
 
   const shapeClass =
-    variant === 'circle'
-      ? 'rounded-full aspect-square'
-      : variant === 'pill'
-        ? 'rounded-full'
-        : 'rounded-md';
+    variant === "circle"
+      ? "rounded-full aspect-square"
+      : variant === "pill"
+        ? "rounded-full"
+        : "rounded-md";
 
   return (
     <div
@@ -68,8 +68,12 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 };
 
 /** Card-shaped skeleton for loading states */
-export const SkeletonCard: React.FC<{ className?: string }> = ({ className = '' }) => (
-  <div className={`rounded-lg border border-border-subtle bg-bg-secondary p-5 space-y-4 ${className}`}>
+export const SkeletonCard: React.FC<{ className?: string }> = ({
+  className = "",
+}) => (
+  <div
+    className={`rounded-lg border border-border-subtle bg-bg-secondary p-5 space-y-4 ${className}`}
+  >
     <div className="flex items-center gap-3">
       <Skeleton variant="circle" className="w-10 h-10" />
       <div className="flex-1 space-y-2">
@@ -86,7 +90,9 @@ export const SkeletonCard: React.FC<{ className?: string }> = ({ className = '' 
 );
 
 /** Row skeleton for table/list loading */
-export const SkeletonRow: React.FC<{ className?: string }> = ({ className = '' }) => (
+export const SkeletonRow: React.FC<{ className?: string }> = ({
+  className = "",
+}) => (
   <div className={`flex items-center gap-4 py-3 ${className}`}>
     <Skeleton variant="rect" className="h-10 w-10 rounded-md" />
     <div className="flex-1 space-y-2">

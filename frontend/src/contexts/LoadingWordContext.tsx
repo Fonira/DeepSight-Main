@@ -10,9 +10,22 @@
  * - summaryId pour navigation vers l'analyse source
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo, ReactNode } from 'react';
-import { useLanguage } from './LanguageContext';
-import { getRandomWord, getWordByCategory, WordData } from '../data/defaultWords';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  ReactNode,
+} from "react";
+import { useLanguage } from "./LanguageContext";
+import {
+  getRandomWord,
+  getWordByCategory,
+  WordData,
+} from "../data/defaultWords";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -23,7 +36,7 @@ export interface LoadingWord {
   definition: string;
   shortDefinition: string;
   category: string;
-  source: 'history' | 'local';
+  source: "history" | "local";
   wikiUrl?: string;
   // NOUVEAU: Pour navigation vers l'analyse source
   summaryId?: number;
@@ -56,7 +69,7 @@ export interface CategoryCount {
 }
 
 interface WordFilter {
-  source?: 'history' | 'local';
+  source?: "history" | "local";
   category?: string;
 }
 
@@ -66,7 +79,17 @@ interface LoadingWordContextType {
   error: string | null;
   refreshWord: () => void;
   nextWord: () => void;
-  injectConcepts: (concepts: { term: string; definition: string; short_definition?: string; category?: string; wiki_url?: string; summary_id?: number; video_title?: string }[]) => void;
+  injectConcepts: (
+    concepts: {
+      term: string;
+      definition: string;
+      short_definition?: string;
+      category?: string;
+      wiki_url?: string;
+      summary_id?: number;
+      video_title?: string;
+    }[],
+  ) => void;
   startTimer: () => void;
   stopTimer: () => void;
   isTimerActive: boolean;
@@ -91,7 +114,9 @@ interface LoadingWordContextType {
 // 🏭 CONTEXT
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const LoadingWordContext = createContext<LoadingWordContextType | undefined>(undefined);
+const LoadingWordContext = createContext<LoadingWordContextType | undefined>(
+  undefined,
+);
 
 // Intervalle de rafraîchissement: 60 secondes
 const REFRESH_INTERVAL = 60 * 1000;
@@ -110,37 +135,40 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 function convertLocalWord(word: WordData, lang: string): LoadingWord {
   return {
-    term: lang === 'fr' ? word.term : word.term_en,
-    definition: lang === 'fr' ? word.definition_fr : word.definition_en,
-    shortDefinition: lang === 'fr' ? word.short_fr : word.short_en,
+    term: lang === "fr" ? word.term : word.term_en,
+    definition: lang === "fr" ? word.definition_fr : word.definition_en,
+    shortDefinition: lang === "fr" ? word.short_fr : word.short_en,
     category: word.category,
-    source: 'local',
+    source: "local",
     wikiUrl: word.wiki_url,
   };
 }
 
 function convertHistoryKeyword(keyword: HistoryKeyword): LoadingWord {
   // Utiliser la définition IA si disponible, sinon fallback contextuel
-  const hasAIDefinition = keyword.definition && keyword.definition.trim().length > 0;
+  const hasAIDefinition =
+    keyword.definition && keyword.definition.trim().length > 0;
 
   const definition = hasAIDefinition
     ? keyword.definition!
     : keyword.video_title
       ? `Terme clé de l'analyse "${keyword.video_title}". Cliquez pour voir le contexte.`
-      : 'Terme de votre historique d\'analyses.';
+      : "Terme de votre historique d'analyses.";
 
-  const shortDefinition = hasAIDefinition && keyword.short_definition
-    ? keyword.short_definition
-    : hasAIDefinition
-      ? keyword.definition!.slice(0, 80) + (keyword.definition!.length > 80 ? '...' : '')
-      : 'Cliquez pour voir le contexte dans votre analyse.';
+  const shortDefinition =
+    hasAIDefinition && keyword.short_definition
+      ? keyword.short_definition
+      : hasAIDefinition
+        ? keyword.definition!.slice(0, 80) +
+          (keyword.definition!.length > 80 ? "..." : "")
+        : "Cliquez pour voir le contexte dans votre analyse.";
 
   return {
     term: keyword.term,
     definition: definition,
     shortDefinition: shortDefinition,
-    category: keyword.category || 'concept',
-    source: 'history',
+    category: keyword.category || "concept",
+    source: "history",
     summaryId: keyword.summary_id,
     videoTitle: keyword.video_title || undefined,
     videoId: keyword.video_id || undefined,
@@ -149,17 +177,21 @@ function convertHistoryKeyword(keyword: HistoryKeyword): LoadingWord {
   };
 }
 
-function getRandomHistoryKeyword(excludeTerms: string[]): HistoryKeyword | null {
+function getRandomHistoryKeyword(
+  excludeTerms: string[],
+): HistoryKeyword | null {
   if (historyKeywordsCache.length === 0) return null;
 
   const available = historyKeywordsCache.filter(
-    k => !excludeTerms.includes(k.term.toLowerCase())
+    (k) => !excludeTerms.includes(k.term.toLowerCase()),
   );
 
   if (available.length === 0) {
     // Reset si tout a été affiché
     displayedWords.clear();
-    return historyKeywordsCache[Math.floor(Math.random() * historyKeywordsCache.length)];
+    return historyKeywordsCache[
+      Math.floor(Math.random() * historyKeywordsCache.length)
+    ];
   }
 
   return available[Math.floor(Math.random() * available.length)];
@@ -173,7 +205,7 @@ function computeUserCategories(): CategoryCount[] {
 
   const counts: Record<string, number> = {};
   for (const k of historyKeywordsCache) {
-    const cat = k.category || 'concept';
+    const cat = k.category || "concept";
     counts[cat] = (counts[cat] || 0) + 1;
   }
 
@@ -186,7 +218,9 @@ function computeUserCategories(): CategoryCount[] {
 // 🎯 PROVIDER
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const { language } = useLanguage();
   const [currentWord, setCurrentWord] = useState<LoadingWord | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -196,9 +230,11 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   const [isWidgetVisible, setIsWidgetVisible] = useState(false);
   const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
     try {
-      const stored = localStorage.getItem('ds-sidebar-dyk-visible');
-      return stored !== 'false'; // visible par défaut
-    } catch { return true; }
+      const stored = localStorage.getItem("ds-sidebar-dyk-visible");
+      return stored !== "false"; // visible par défaut
+    } catch {
+      return true;
+    }
   });
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
@@ -251,16 +287,23 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
    * Récupère les mots-clés depuis l'API historique
    * PRIORITÉ ABSOLUE: Ne retourne [] que si l'utilisateur n'a vraiment PAS d'historique
    */
-  const fetchHistoryKeywords = useCallback(async (): Promise<{ keywords: HistoryKeyword[], hasHistory: boolean }> => {
+  const fetchHistoryKeywords = useCallback(async (): Promise<{
+    keywords: HistoryKeyword[];
+    hasHistory: boolean;
+  }> => {
     // Vérifier le cache
     const now = Date.now();
-    if (historyKeywordsCache.length > 0 && (now - lastFetchTime) < CACHE_DURATION) {
+    if (
+      historyKeywordsCache.length > 0 &&
+      now - lastFetchTime < CACHE_DURATION
+    ) {
       return { keywords: historyKeywordsCache, hasHistory: true };
     }
 
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'https://api.deepsightsynthesis.com';
-      const token = localStorage.getItem('access_token');
+      const API_URL =
+        import.meta.env.VITE_API_URL || "https://api.deepsightsynthesis.com";
+      const token = localStorage.getItem("access_token");
 
       if (!token) {
         return { keywords: [], hasHistory: false };
@@ -269,13 +312,16 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes timeout
 
-      const response = await fetch(`${API_URL}/api/history/keywords?limit=200`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${API_URL}/api/history/keywords?limit=200`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          signal: controller.signal,
         },
-        signal: controller.signal
-      });
+      );
 
       clearTimeout(timeoutId);
 
@@ -295,7 +341,10 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         setHasHistory(data.has_history || false);
       }
 
-      return { keywords: historyKeywordsCache, hasHistory: data.has_history || false };
+      return {
+        keywords: historyKeywordsCache,
+        hasHistory: data.has_history || false,
+      };
     } catch (err) {
       // Sur erreur réseau, utiliser le cache si disponible
       if (historyKeywordsCache.length > 0) {
@@ -316,7 +365,8 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
     setError(null);
 
     try {
-      const { keywords, hasHistory: userHasHistory } = await fetchHistoryKeywords();
+      const { keywords, hasHistory: userHasHistory } =
+        await fetchHistoryKeywords();
 
       if (isMountedRef.current) {
         if (keywords.length > 0) {
@@ -334,7 +384,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
         }
       }
     } catch (err) {
-      console.error('[LoadingWord] Critical error:', err);
+      console.error("[LoadingWord] Critical error:", err);
       // Même sur erreur critique, ne pas afficher de mot local si on sait que l'utilisateur a un historique
       if (historyKeywordsCache.length > 0) {
         useHistoryWord();
@@ -374,52 +424,77 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
    * 🆕 Injecte des concepts enrichis (depuis ConceptsGlossary/KeywordsModal)
    * Ces concepts deviennent prioritaires dans la rotation
    */
-  const injectConcepts = useCallback((concepts: { term: string; definition: string; short_definition?: string; category?: string; wiki_url?: string; summary_id?: number; video_title?: string }[]) => {
-    if (!concepts || concepts.length === 0) return;
+  const injectConcepts = useCallback(
+    (
+      concepts: {
+        term: string;
+        definition: string;
+        short_definition?: string;
+        category?: string;
+        wiki_url?: string;
+        summary_id?: number;
+        video_title?: string;
+      }[],
+    ) => {
+      if (!concepts || concepts.length === 0) return;
 
-    const newKeywords: HistoryKeyword[] = concepts.map(c => ({
-      term: c.term,
-      summary_id: c.summary_id || 0,
-      video_title: c.video_title || null,
-      video_id: null,
-      category: c.category || 'concept',
-      created_at: new Date().toISOString(),
-      definition: c.definition,
-      short_definition: c.short_definition || (c.definition.length > 80 ? c.definition.slice(0, 77) + '...' : c.definition),
-      wiki_url: c.wiki_url || null,
-      confidence: 'high',
-    }));
+      const newKeywords: HistoryKeyword[] = concepts.map((c) => ({
+        term: c.term,
+        summary_id: c.summary_id || 0,
+        video_title: c.video_title || null,
+        video_id: null,
+        category: c.category || "concept",
+        created_at: new Date().toISOString(),
+        definition: c.definition,
+        short_definition:
+          c.short_definition ||
+          (c.definition.length > 80
+            ? c.definition.slice(0, 77) + "..."
+            : c.definition),
+        wiki_url: c.wiki_url || null,
+        confidence: "high",
+      }));
 
-    // Injecter en tête du cache (prioritaires)
-    const existingTerms = new Set(historyKeywordsCache.map(k => k.term.toLowerCase()));
-    const fresh = newKeywords.filter(k => !existingTerms.has(k.term.toLowerCase()));
-    historyKeywordsCache = [...fresh, ...historyKeywordsCache];
-    lastFetchTime = Date.now(); // Reset cache timer
+      // Injecter en tête du cache (prioritaires)
+      const existingTerms = new Set(
+        historyKeywordsCache.map((k) => k.term.toLowerCase()),
+      );
+      const fresh = newKeywords.filter(
+        (k) => !existingTerms.has(k.term.toLowerCase()),
+      );
+      historyKeywordsCache = [...fresh, ...historyKeywordsCache];
+      lastFetchTime = Date.now(); // Reset cache timer
 
-    // Afficher immédiatement un des nouveaux concepts
-    if (fresh.length > 0) {
-      const picked = fresh[Math.floor(Math.random() * fresh.length)];
-      const word = convertHistoryKeyword(picked);
-      setCurrentWord(word);
-      displayedWords.add(word.term.toLowerCase());
-      if (isMountedRef.current) setHasHistory(true);
-    }
-  }, []);
+      // Afficher immédiatement un des nouveaux concepts
+      if (fresh.length > 0) {
+        const picked = fresh[Math.floor(Math.random() * fresh.length)];
+        const word = convertHistoryKeyword(picked);
+        setCurrentWord(word);
+        displayedWords.add(word.term.toLowerCase());
+        if (isMountedRef.current) setHasHistory(true);
+      }
+    },
+    [],
+  );
 
   /**
    * Toggle la visibilité du widget flottant (pour intégration sidebar)
    */
   const toggleWidget = useCallback(() => {
-    setIsWidgetVisible(prev => !prev);
+    setIsWidgetVisible((prev) => !prev);
   }, []);
 
   /**
    * Toggle la sidebar droite "Le Saviez-Vous" (desktop xl+)
    */
   const toggleSidebar = useCallback(() => {
-    setIsSidebarVisible(prev => {
+    setIsSidebarVisible((prev) => {
       const next = !prev;
-      try { localStorage.setItem('ds-sidebar-dyk-visible', String(next)); } catch { /* */ }
+      try {
+        localStorage.setItem("ds-sidebar-dyk-visible", String(next));
+      } catch {
+        /* */
+      }
       return next;
     });
   }, []);
@@ -454,72 +529,88 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
   /**
    * Récupère un mot filtré par source et/ou catégorie (sans modifier la rotation globale)
    */
-  const getWordByFilter = useCallback((filter: WordFilter): LoadingWord | null => {
-    const excludeList = Array.from(displayedWords).slice(-10);
+  const getWordByFilter = useCallback(
+    (filter: WordFilter): LoadingWord | null => {
+      const excludeList = Array.from(displayedWords).slice(-10);
 
-    if (filter.source === 'history') {
-      let pool = historyKeywordsCache.filter(k => !excludeList.includes(k.term.toLowerCase()));
-      if (filter.category) {
-        pool = pool.filter(k => k.category === filter.category);
+      if (filter.source === "history") {
+        let pool = historyKeywordsCache.filter(
+          (k) => !excludeList.includes(k.term.toLowerCase()),
+        );
+        if (filter.category) {
+          pool = pool.filter((k) => k.category === filter.category);
+        }
+        if (pool.length === 0) {
+          pool = historyKeywordsCache.filter(
+            (k) => !filter.category || k.category === filter.category,
+          );
+        }
+        if (pool.length === 0) return null;
+        return convertHistoryKeyword(
+          pool[Math.floor(Math.random() * pool.length)],
+        );
       }
-      if (pool.length === 0) {
-        pool = historyKeywordsCache.filter(k => !filter.category || k.category === filter.category);
-      }
-      if (pool.length === 0) return null;
-      return convertHistoryKeyword(pool[Math.floor(Math.random() * pool.length)]);
-    }
 
-    if (filter.source === 'local') {
+      if (filter.source === "local") {
+        const word = filter.category
+          ? getWordByCategory(filter.category, excludeList)
+          : getRandomWord(excludeList);
+        return convertLocalWord(word, language);
+      }
+
+      // No source filter — mix
+      if (historyKeywordsCache.length > 0) {
+        let pool = historyKeywordsCache.filter(
+          (k) => !excludeList.includes(k.term.toLowerCase()),
+        );
+        if (filter.category) {
+          pool = pool.filter((k) => k.category === filter.category);
+        }
+        if (pool.length > 0) {
+          return convertHistoryKeyword(
+            pool[Math.floor(Math.random() * pool.length)],
+          );
+        }
+      }
       const word = filter.category
         ? getWordByCategory(filter.category, excludeList)
         : getRandomWord(excludeList);
       return convertLocalWord(word, language);
-    }
-
-    // No source filter — mix
-    if (historyKeywordsCache.length > 0) {
-      let pool = historyKeywordsCache.filter(k => !excludeList.includes(k.term.toLowerCase()));
-      if (filter.category) {
-        pool = pool.filter(k => k.category === filter.category);
-      }
-      if (pool.length > 0) {
-        return convertHistoryKeyword(pool[Math.floor(Math.random() * pool.length)]);
-      }
-    }
-    const word = filter.category
-      ? getWordByCategory(filter.category, excludeList)
-      : getRandomWord(excludeList);
-    return convertLocalWord(word, language);
-  }, [language]);
+    },
+    [language],
+  );
 
   /**
    * Récupère les N derniers termes uniques pour le ticker/affichage multiple
    */
-  const getRecentTerms = useCallback((count: number): LoadingWord[] => {
-    const results: LoadingWord[] = [];
-    const seen = new Set<string>();
+  const getRecentTerms = useCallback(
+    (count: number): LoadingWord[] => {
+      const results: LoadingWord[] = [];
+      const seen = new Set<string>();
 
-    // D'abord puiser dans l'historique
-    for (const kw of historyKeywordsCache) {
-      if (seen.has(kw.term.toLowerCase())) continue;
-      seen.add(kw.term.toLowerCase());
-      results.push(convertHistoryKeyword(kw));
-      if (results.length >= count) return results;
-    }
+      // D'abord puiser dans l'historique
+      for (const kw of historyKeywordsCache) {
+        if (seen.has(kw.term.toLowerCase())) continue;
+        seen.add(kw.term.toLowerCase());
+        results.push(convertHistoryKeyword(kw));
+        if (results.length >= count) return results;
+      }
 
-    // Compléter avec du local si besoin
-    const excludeList = Array.from(seen);
-    while (results.length < count) {
-      const word = getRandomWord(excludeList);
-      const converted = convertLocalWord(word, language);
-      if (seen.has(converted.term.toLowerCase())) break; // safety
-      seen.add(converted.term.toLowerCase());
-      excludeList.push(converted.term.toLowerCase());
-      results.push(converted);
-    }
+      // Compléter avec du local si besoin
+      const excludeList = Array.from(seen);
+      while (results.length < count) {
+        const word = getRandomWord(excludeList);
+        const converted = convertLocalWord(word, language);
+        if (seen.has(converted.term.toLowerCase())) break; // safety
+        seen.add(converted.term.toLowerCase());
+        excludeList.push(converted.term.toLowerCase());
+        results.push(converted);
+      }
 
-    return results;
-  }, [language]);
+      return results;
+    },
+    [language],
+  );
 
   // Catégories de l'utilisateur (memoized)
   const userCategories = useMemo(() => computeUserCategories(), [currentWord]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -591,7 +682,7 @@ export const LoadingWordProvider: React.FC<{ children: ReactNode }> = ({ childre
 export const useLoadingWord = () => {
   const context = useContext(LoadingWordContext);
   if (!context) {
-    throw new Error('useLoadingWord must be used within a LoadingWordProvider');
+    throw new Error("useLoadingWord must be used within a LoadingWordProvider");
   }
   return context;
 };

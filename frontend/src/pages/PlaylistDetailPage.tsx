@@ -8,15 +8,21 @@
  * - Stats : graphiques et distribution
  */
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import ReactMarkdown from 'react-markdown';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
 
-import { parseAskQuestions } from '../components/ClickableQuestions';
-import { useTranslation } from '../hooks/useTranslation';
-import { sanitizeTitle } from '../utils/sanitize';
-import { Sidebar } from '../components/layout/Sidebar';
-import DoodleBackground from '../components/DoodleBackground';
+import { parseAskQuestions } from "../components/ClickableQuestions";
+import { useTranslation } from "../hooks/useTranslation";
+import { sanitizeTitle } from "../utils/sanitize";
+import { Sidebar } from "../components/layout/Sidebar";
+import DoodleBackground from "../components/DoodleBackground";
 import {
   playlistApi,
   type PlaylistFullResponse,
@@ -24,22 +30,49 @@ import {
   type PlaylistDetailsResponse,
   type CorpusChatMessage,
   type CorpusChatResponse,
-} from '../services/api';
+} from "../services/api";
 import {
-  ListVideo, AlertCircle, Clock, ArrowLeft,
-  ChevronRight, ChevronLeft, CheckCircle, XCircle,
-  RefreshCw, Sparkles, BarChart3, PieChart, TrendingUp,
-  FileText, Video, Tag, Layers, MessageSquare,
-  Target, Send, Trash2, Bot, User, BookOpen,
-  ExternalLink, Hash, Pencil, MoreVertical, X, Check,
-} from 'lucide-react';
-import { DeepSightSpinnerMicro, DeepSightSpinner } from '../components/ui/DeepSightSpinner';
+  ListVideo,
+  AlertCircle,
+  Clock,
+  ArrowLeft,
+  ChevronRight,
+  ChevronLeft,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+  Sparkles,
+  BarChart3,
+  PieChart,
+  TrendingUp,
+  FileText,
+  Video,
+  Tag,
+  Layers,
+  MessageSquare,
+  Target,
+  Send,
+  Trash2,
+  Bot,
+  User,
+  BookOpen,
+  ExternalLink,
+  Hash,
+  Pencil,
+  MoreVertical,
+  X,
+  Check,
+} from "lucide-react";
+import {
+  DeepSightSpinnerMicro,
+  DeepSightSpinner,
+} from "../components/ui/DeepSightSpinner";
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
 // ═══════════════════════════════════════════════════════════════════
 
-type TabId = 'videos' | 'synthesis' | 'chat' | 'stats';
+type TabId = "videos" | "synthesis" | "chat" | "stats";
 
 interface PlaylistStats {
   totalVideos: number;
@@ -57,7 +90,7 @@ interface PlaylistStats {
 // ═══════════════════════════════════════════════════════════════════
 
 function formatDuration(seconds: number): string {
-  if (!seconds) return '0:00';
+  if (!seconds) return "0:00";
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
@@ -72,10 +105,18 @@ function formatNumber(num: number): string {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  education: '#10B981', technology: '#3B82F6', business: '#8B5CF6',
-  science: '#06B6D4', entertainment: '#F59E0B', news: '#EF4444',
-  gaming: '#EC4899', music: '#6366F1', sports: '#14B8A6',
-  health: '#22C55E', lifestyle: '#F97316', other: '#6B7280',
+  education: "#10B981",
+  technology: "#3B82F6",
+  business: "#8B5CF6",
+  science: "#06B6D4",
+  entertainment: "#F59E0B",
+  news: "#EF4444",
+  gaming: "#EC4899",
+  music: "#6366F1",
+  sports: "#14B8A6",
+  health: "#22C55E",
+  lifestyle: "#F97316",
+  other: "#6B7280",
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -88,9 +129,11 @@ const StatCard: React.FC<{
   value: string | number;
   sublabel?: string;
   color?: string;
-}> = ({ icon, label, value, sublabel, color = 'text-accent-primary' }) => (
+}> = ({ icon, label, value, sublabel, color = "text-accent-primary" }) => (
   <div className="card p-4 flex items-center gap-4">
-    <div className={`w-12 h-12 rounded-xl bg-bg-tertiary flex items-center justify-center ${color}`}>
+    <div
+      className={`w-12 h-12 rounded-xl bg-bg-tertiary flex items-center justify-center ${color}`}
+    >
       {icon}
     </div>
     <div>
@@ -115,17 +158,24 @@ const CategoryChart: React.FC<{
     <div className="card p-6">
       <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
         <PieChart className="w-5 h-5 text-violet-400" />
-        {language === 'fr' ? 'Répartition par catégorie' : 'Category Distribution'}
+        {language === "fr"
+          ? "Répartition par catégorie"
+          : "Category Distribution"}
       </h3>
       <div className="space-y-3">
         {sortedCategories.map(([category, count]) => {
           const percent = Math.round((count / total) * 100);
-          const color = CATEGORY_COLORS[category.toLowerCase()] || CATEGORY_COLORS.other;
+          const color =
+            CATEGORY_COLORS[category.toLowerCase()] || CATEGORY_COLORS.other;
           return (
             <div key={category}>
               <div className="flex justify-between text-sm mb-1">
-                <span className="text-text-secondary capitalize">{category}</span>
-                <span className="text-text-muted">{count} ({percent}%)</span>
+                <span className="text-text-secondary capitalize">
+                  {category}
+                </span>
+                <span className="text-text-muted">
+                  {count} ({percent}%)
+                </span>
               </div>
               <div className="h-2 bg-bg-tertiary rounded-full overflow-hidden">
                 <div
@@ -145,23 +195,28 @@ const DurationChart: React.FC<{
   distribution: Array<{ range: string; count: number }>;
   language: string;
 }> = ({ distribution, language }) => {
-  const maxCount = Math.max(...distribution.map(d => d.count), 1);
+  const maxCount = Math.max(...distribution.map((d) => d.count), 1);
   if (distribution.length === 0) return null;
 
   return (
     <div className="card p-6">
       <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
         <BarChart3 className="w-5 h-5 text-blue-400" />
-        {language === 'fr' ? 'Distribution par durée' : 'Duration Distribution'}
+        {language === "fr" ? "Distribution par durée" : "Duration Distribution"}
       </h3>
       <div className="flex items-end gap-2 h-32">
         {distribution.map((item, index) => (
           <div key={index} className="flex-1 flex flex-col items-center">
             <div
               className="w-full bg-gradient-to-t from-blue-600 to-blue-400 rounded-t transition-all duration-500"
-              style={{ height: `${(item.count / maxCount) * 100}%`, minHeight: item.count > 0 ? '8px' : '0' }}
+              style={{
+                height: `${(item.count / maxCount) * 100}%`,
+                minHeight: item.count > 0 ? "8px" : "0",
+              }}
             />
-            <span className="text-xs text-text-muted mt-2 text-center">{item.range}</span>
+            <span className="text-xs text-text-muted mt-2 text-center">
+              {item.range}
+            </span>
             <span className="text-xs text-text-secondary">{item.count}</span>
           </div>
         ))}
@@ -183,8 +238,8 @@ const VideoListItem: React.FC<{
   <div
     className={`p-4 transition-all cursor-pointer border-b border-border-subtle last:border-b-0 ${
       isActive
-        ? 'bg-accent-primary/10 border-l-4 border-l-accent-primary'
-        : 'hover:bg-bg-secondary/50'
+        ? "bg-accent-primary/10 border-l-4 border-l-accent-primary"
+        : "hover:bg-bg-secondary/50"
     }`}
     onClick={onClick}
   >
@@ -199,7 +254,11 @@ const VideoListItem: React.FC<{
       {/* Thumbnail */}
       <div className="relative w-24 h-14 flex-shrink-0 rounded overflow-hidden bg-bg-tertiary">
         {video.thumbnail_url ? (
-          <img src={video.thumbnail_url} alt="" className="w-full h-full object-cover" />
+          <img
+            src={video.thumbnail_url}
+            alt=""
+            className="w-full h-full object-cover"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Video className="w-6 h-6 text-text-muted" />
@@ -214,37 +273,50 @@ const VideoListItem: React.FC<{
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <h4 className="font-medium text-text-primary truncate">{sanitizeTitle(video.video_title)}</h4>
-        <p className="text-sm text-text-secondary truncate">{sanitizeTitle(video.video_channel)}</p>
+        <h4 className="font-medium text-text-primary truncate">
+          {sanitizeTitle(video.video_title)}
+        </h4>
+        <p className="text-sm text-text-secondary truncate">
+          {sanitizeTitle(video.video_channel)}
+        </p>
         <div className="flex items-center gap-2 mt-1">
           {isAnalyzed ? (
             <span className="inline-flex items-center gap-1 text-xs text-green-400">
               <CheckCircle className="w-3 h-3" />
-              {language === 'fr' ? 'Analysé' : 'Analyzed'}
+              {language === "fr" ? "Analysé" : "Analyzed"}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-xs text-amber-400">
               <DeepSightSpinnerMicro />
-              {language === 'fr' ? 'En attente' : 'Pending'}
+              {language === "fr" ? "En attente" : "Pending"}
             </span>
           )}
           {video.category && (
-            <span className="text-xs text-text-muted capitalize">• {video.category}</span>
+            <span className="text-xs text-text-muted capitalize">
+              • {video.category}
+            </span>
           )}
           {video.reliability_score != null && (
-            <span className={`text-xs ${
-              video.reliability_score >= 70 ? 'text-green-400' :
-              video.reliability_score >= 50 ? 'text-amber-400' : 'text-red-400'
-            }`}>
+            <span
+              className={`text-xs ${
+                video.reliability_score >= 70
+                  ? "text-green-400"
+                  : video.reliability_score >= 50
+                    ? "text-amber-400"
+                    : "text-red-400"
+              }`}
+            >
               • {Math.round(video.reliability_score * 100)}% fiable
             </span>
           )}
         </div>
       </div>
 
-      <ChevronRight className={`w-5 h-5 flex-shrink-0 transition-transform ${
-        isActive ? 'text-accent-primary rotate-90' : 'text-text-muted'
-      }`} />
+      <ChevronRight
+        className={`w-5 h-5 flex-shrink-0 transition-transform ${
+          isActive ? "text-accent-primary rotate-90" : "text-text-muted"
+        }`}
+      />
     </div>
   </div>
 );
@@ -263,12 +335,20 @@ const VideoDetailPanel: React.FC<{
       {/* Header */}
       <div className="p-4 border-b border-border-subtle flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={onClose} className="p-1 rounded hover:bg-bg-tertiary transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1 rounded hover:bg-bg-tertiary transition-colors"
+          >
             <ChevronLeft className="w-5 h-5 text-text-secondary" />
           </button>
           <div>
-            <h3 className="font-semibold text-text-primary text-lg">{sanitizeTitle(video.video_title)}</h3>
-            <p className="text-sm text-text-secondary">{sanitizeTitle(video.video_channel)} • {formatDuration(video.video_duration || 0)}</p>
+            <h3 className="font-semibold text-text-primary text-lg">
+              {sanitizeTitle(video.video_title)}
+            </h3>
+            <p className="text-sm text-text-secondary">
+              {sanitizeTitle(video.video_channel)} •{" "}
+              {formatDuration(video.video_duration || 0)}
+            </p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -283,9 +363,12 @@ const VideoDetailPanel: React.FC<{
               YouTube
             </a>
           )}
-          <button onClick={onOpenInDashboard} className="btn btn-primary text-sm">
+          <button
+            onClick={onOpenInDashboard}
+            className="btn btn-primary text-sm"
+          >
             <BookOpen className="w-4 h-4" />
-            {language === 'fr' ? 'Vue complète' : 'Full view'}
+            {language === "fr" ? "Vue complète" : "Full view"}
           </button>
         </div>
       </div>
@@ -308,19 +391,30 @@ const VideoDetailPanel: React.FC<{
           </span>
         )}
         {video.reliability_score != null && (
-          <span className={`px-2 py-1 rounded-full text-xs ${
-            video.reliability_score >= 0.7 ? 'bg-green-500/20 text-green-400' :
-            video.reliability_score >= 0.5 ? 'bg-amber-500/20 text-amber-400' :
-            'bg-red-500/20 text-red-400'
-          }`}>
+          <span
+            className={`px-2 py-1 rounded-full text-xs ${
+              video.reliability_score >= 0.7
+                ? "bg-green-500/20 text-green-400"
+                : video.reliability_score >= 0.5
+                  ? "bg-amber-500/20 text-amber-400"
+                  : "bg-red-500/20 text-red-400"
+            }`}
+          >
             Fiabilité: {Math.round(video.reliability_score * 100)}%
           </span>
         )}
-        {video.tags && video.tags.split(',').filter(Boolean).map((tag, i) => (
-          <span key={i} className="px-2 py-1 bg-bg-tertiary text-text-secondary rounded-full text-xs">
-            #{tag.trim()}
-          </span>
-        ))}
+        {video.tags &&
+          video.tags
+            .split(",")
+            .filter(Boolean)
+            .map((tag, i) => (
+              <span
+                key={i}
+                className="px-2 py-1 bg-bg-tertiary text-text-secondary rounded-full text-xs"
+              >
+                #{tag.trim()}
+              </span>
+            ))}
       </div>
 
       {/* Summary Content */}
@@ -332,7 +426,11 @@ const VideoDetailPanel: React.FC<{
         ) : (
           <div className="text-center py-8 text-text-muted">
             <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p>{language === 'fr' ? 'Analyse non disponible' : 'Analysis not available'}</p>
+            <p>
+              {language === "fr"
+                ? "Analyse non disponible"
+                : "Analysis not available"}
+            </p>
           </div>
         )}
       </div>
@@ -348,7 +446,7 @@ const CorpusChat: React.FC<{
   language: string;
 }> = ({ playlistId, playlistTitle, language }) => {
   const [messages, setMessages] = useState<CorpusChatMessage[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isFetchingHistory, setIsFetchingHistory] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -372,7 +470,7 @@ const CorpusChat: React.FC<{
 
   // Auto-scroll to bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const handleSend = async () => {
@@ -381,42 +479,55 @@ const CorpusChat: React.FC<{
 
     const userMsg: CorpusChatMessage = {
       id: Date.now(),
-      role: 'user',
+      role: "user",
       content: trimmed,
       created_at: new Date().toISOString(),
     };
-    setMessages(prev => [...prev, userMsg]);
-    setInput('');
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
     setIsLoading(true);
     setError(null);
 
     try {
       const response = await playlistApi.chatWithCorpus(playlistId, trimmed, {
         lang: language,
-        mode: 'standard',
+        mode: "standard",
       });
 
       const assistantMsg: CorpusChatMessage = {
         id: Date.now() + 1,
-        role: 'assistant',
+        role: "assistant",
         content: response.response,
         created_at: new Date().toISOString(),
         sources: response.sources,
       };
-      setMessages(prev => [...prev, assistantMsg]);
+      setMessages((prev) => [...prev, assistantMsg]);
     } catch (err: any) {
-      const msg = err?.message || '';
+      const msg = err?.message || "";
       let errorText: string;
-      if (msg.includes('timeout') || msg.includes('Timeout') || msg === 'Request timeout') {
-        errorText = language === 'fr'
-          ? '⏳ Le serveur met trop de temps à répondre. Réessayez avec une question plus courte.'
-          : '⏳ Server is taking too long. Try a shorter question.';
-      } else if (msg.includes('Failed to fetch') || msg.includes('Network error')) {
-        errorText = language === 'fr'
-          ? '🔌 Erreur réseau — le serveur n\'a pas répondu. Réessayez dans quelques secondes.'
-          : '🔌 Network error — server did not respond. Try again in a few seconds.';
+      if (
+        msg.includes("timeout") ||
+        msg.includes("Timeout") ||
+        msg === "Request timeout"
+      ) {
+        errorText =
+          language === "fr"
+            ? "⏳ Le serveur met trop de temps à répondre. Réessayez avec une question plus courte."
+            : "⏳ Server is taking too long. Try a shorter question.";
+      } else if (
+        msg.includes("Failed to fetch") ||
+        msg.includes("Network error")
+      ) {
+        errorText =
+          language === "fr"
+            ? "🔌 Erreur réseau — le serveur n'a pas répondu. Réessayez dans quelques secondes."
+            : "🔌 Network error — server did not respond. Try again in a few seconds.";
       } else {
-        errorText = msg || (language === 'fr' ? 'Erreur lors de la réponse' : 'Error getting response');
+        errorText =
+          msg ||
+          (language === "fr"
+            ? "Erreur lors de la réponse"
+            : "Error getting response");
       }
       setError(errorText);
     } finally {
@@ -435,23 +546,26 @@ const CorpusChat: React.FC<{
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
   };
 
-  const suggestedQuestions = language === 'fr' ? [
-    'Quels sont les thèmes principaux abordés ?',
-    'Quels points de vue divergent entre les vidéos ?',
-    'Résume les conclusions les plus importantes.',
-    'Quelles vidéos se contredisent ?',
-  ] : [
-    'What are the main themes covered?',
-    'Which videos have divergent viewpoints?',
-    'Summarize the most important conclusions.',
-    'Which videos contradict each other?',
-  ];
+  const suggestedQuestions =
+    language === "fr"
+      ? [
+          "Quels sont les thèmes principaux abordés ?",
+          "Quels points de vue divergent entre les vidéos ?",
+          "Résume les conclusions les plus importantes.",
+          "Quelles vidéos se contredisent ?",
+        ]
+      : [
+          "What are the main themes covered?",
+          "Which videos have divergent viewpoints?",
+          "Summarize the most important conclusions.",
+          "Which videos contradict each other?",
+        ];
 
   if (isFetchingHistory) {
     return (
@@ -459,24 +573,33 @@ const CorpusChat: React.FC<{
         <div className="flex justify-center mb-2">
           <DeepSightSpinner size="md" />
         </div>
-        <p className="text-text-muted">{language === 'fr' ? 'Chargement du chat...' : 'Loading chat...'}</p>
+        <p className="text-text-muted">
+          {language === "fr" ? "Chargement du chat..." : "Loading chat..."}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="card flex flex-col" style={{ height: 'calc(100vh - 400px)', minHeight: '500px' }}>
+    <div
+      className="card flex flex-col"
+      style={{ height: "calc(100vh - 400px)", minHeight: "500px" }}
+    >
       {/* Header */}
       <div className="p-4 border-b border-border-subtle flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Bot className="w-5 h-5 text-accent-primary" />
           <span className="font-semibold text-text-primary">
-            {language === 'fr' ? 'Chat IA Corpus' : 'Corpus AI Chat'}
+            {language === "fr" ? "Chat IA Corpus" : "Corpus AI Chat"}
           </span>
           <span className="text-xs text-text-muted">— {playlistTitle}</span>
         </div>
         {messages.length > 0 && (
-          <button onClick={handleClear} className="p-2 rounded hover:bg-bg-tertiary transition-colors text-text-muted hover:text-red-400" title={language === 'fr' ? 'Effacer l\'historique' : 'Clear history'}>
+          <button
+            onClick={handleClear}
+            className="p-2 rounded hover:bg-bg-tertiary transition-colors text-text-muted hover:text-red-400"
+            title={language === "fr" ? "Effacer l'historique" : "Clear history"}
+          >
             <Trash2 className="w-4 h-4" />
           </button>
         )}
@@ -488,12 +611,14 @@ const CorpusChat: React.FC<{
           <div className="text-center py-8">
             <MessageSquare className="w-12 h-12 mx-auto mb-4 text-text-muted opacity-50" />
             <h3 className="font-semibold text-text-primary mb-2">
-              {language === 'fr' ? 'Posez une question sur le corpus' : 'Ask a question about the corpus'}
+              {language === "fr"
+                ? "Posez une question sur le corpus"
+                : "Ask a question about the corpus"}
             </h3>
             <p className="text-sm text-text-secondary mb-6 max-w-md mx-auto">
-              {language === 'fr'
-                ? 'L\'IA a accès à toutes les synthèses et transcriptions du corpus pour vous répondre.'
-                : 'The AI has access to all corpus summaries and transcriptions to answer you.'}
+              {language === "fr"
+                ? "L'IA a accès à toutes les synthèses et transcriptions du corpus pour vous répondre."
+                : "The AI has access to all corpus summaries and transcriptions to answer you."}
             </p>
             <div className="flex flex-wrap justify-center gap-2">
               {suggestedQuestions.map((q, i) => (
@@ -504,20 +629,41 @@ const CorpusChat: React.FC<{
                       setInput(q);
                       // Envoi direct : setInput + handleSend via un micro-delay
                       setTimeout(() => {
-                        const userMsg: CorpusChatMessage = { id: Date.now(), role: 'user', content: q, created_at: new Date().toISOString() };
-                        setMessages(prev => [...prev, userMsg]);
-                        setInput('');
+                        const userMsg: CorpusChatMessage = {
+                          id: Date.now(),
+                          role: "user",
+                          content: q,
+                          created_at: new Date().toISOString(),
+                        };
+                        setMessages((prev) => [...prev, userMsg]);
+                        setInput("");
                         setIsLoading(true);
                         setError(null);
-                        playlistApi.chatWithCorpus(playlistId, q, { lang: language, mode: 'standard' }).then(response => {
-                          const assistantMsg: CorpusChatMessage = { id: Date.now() + 1, role: 'assistant', content: response.response, created_at: new Date().toISOString(), sources: response.sources };
-                          setMessages(prev => [...prev, assistantMsg]);
-                        }).catch((err: any) => {
-                          setError(err?.message || (language === 'fr' ? 'Erreur' : 'Error'));
-                        }).finally(() => {
-                          setIsLoading(false);
-                          inputRef.current?.focus();
-                        });
+                        playlistApi
+                          .chatWithCorpus(playlistId, q, {
+                            lang: language,
+                            mode: "standard",
+                          })
+                          .then((response) => {
+                            const assistantMsg: CorpusChatMessage = {
+                              id: Date.now() + 1,
+                              role: "assistant",
+                              content: response.response,
+                              created_at: new Date().toISOString(),
+                              sources: response.sources,
+                            };
+                            setMessages((prev) => [...prev, assistantMsg]);
+                          })
+                          .catch((err: any) => {
+                            setError(
+                              err?.message ||
+                                (language === "fr" ? "Erreur" : "Error"),
+                            );
+                          })
+                          .finally(() => {
+                            setIsLoading(false);
+                            inputRef.current?.focus();
+                          });
                       }, 0);
                     }
                   }}
@@ -531,24 +677,33 @@ const CorpusChat: React.FC<{
           </div>
         ) : (
           messages.map((msg) => {
-            const contentStr = typeof msg.content === 'string' ? msg.content : String(msg.content || '');
-            const { beforeQuestions, questions } = msg.role === 'assistant'
-              ? parseAskQuestions(contentStr)
-              : { beforeQuestions: contentStr, questions: [] as string[] };
+            const contentStr =
+              typeof msg.content === "string"
+                ? msg.content
+                : String(msg.content || "");
+            const { beforeQuestions, questions } =
+              msg.role === "assistant"
+                ? parseAskQuestions(contentStr)
+                : { beforeQuestions: contentStr, questions: [] as string[] };
 
             return (
-              <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                {msg.role === 'assistant' && (
+              <div
+                key={msg.id}
+                className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}
+              >
+                {msg.role === "assistant" && (
                   <div className="w-8 h-8 rounded-full bg-accent-primary/20 flex items-center justify-center flex-shrink-0">
                     <Bot className="w-4 h-4 text-accent-primary" />
                   </div>
                 )}
-                <div className={`max-w-[80%] rounded-xl p-4 ${
-                  msg.role === 'user'
-                    ? 'bg-accent-primary text-white'
-                    : 'bg-bg-secondary text-text-secondary'
-                }`}>
-                  {msg.role === 'assistant' ? (
+                <div
+                  className={`max-w-[80%] rounded-xl p-4 ${
+                    msg.role === "user"
+                      ? "bg-accent-primary text-white"
+                      : "bg-bg-secondary text-text-secondary"
+                  }`}
+                >
+                  {msg.role === "assistant" ? (
                     <>
                       <div className="prose prose-invert prose-sm max-w-none">
                         <ReactMarkdown>{beforeQuestions}</ReactMarkdown>
@@ -562,26 +717,58 @@ const CorpusChat: React.FC<{
                               key={qi}
                               onClick={() => {
                                 if (isLoading) return;
-                                const cleanQ = q.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, term, display) => display || term);
-                                const userMsg: CorpusChatMessage = { id: Date.now(), role: 'user', content: cleanQ, created_at: new Date().toISOString() };
-                                setMessages(prev => [...prev, userMsg]);
-                                setInput('');
+                                const cleanQ = q.replace(
+                                  /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
+                                  (_, term, display) => display || term,
+                                );
+                                const userMsg: CorpusChatMessage = {
+                                  id: Date.now(),
+                                  role: "user",
+                                  content: cleanQ,
+                                  created_at: new Date().toISOString(),
+                                };
+                                setMessages((prev) => [...prev, userMsg]);
+                                setInput("");
                                 setIsLoading(true);
                                 setError(null);
-                                playlistApi.chatWithCorpus(playlistId, cleanQ, { lang: language, mode: 'standard' }).then(response => {
-                                  const assistantMsg: CorpusChatMessage = { id: Date.now() + 1, role: 'assistant', content: response.response, created_at: new Date().toISOString(), sources: response.sources };
-                                  setMessages(prev => [...prev, assistantMsg]);
-                                }).catch((err: any) => {
-                                  setError(err?.message || (language === 'fr' ? 'Erreur' : 'Error'));
-                                }).finally(() => {
-                                  setIsLoading(false);
-                                  inputRef.current?.focus();
-                                });
+                                playlistApi
+                                  .chatWithCorpus(playlistId, cleanQ, {
+                                    lang: language,
+                                    mode: "standard",
+                                  })
+                                  .then((response) => {
+                                    const assistantMsg: CorpusChatMessage = {
+                                      id: Date.now() + 1,
+                                      role: "assistant",
+                                      content: response.response,
+                                      created_at: new Date().toISOString(),
+                                      sources: response.sources,
+                                    };
+                                    setMessages((prev) => [
+                                      ...prev,
+                                      assistantMsg,
+                                    ]);
+                                  })
+                                  .catch((err: any) => {
+                                    setError(
+                                      err?.message ||
+                                        (language === "fr"
+                                          ? "Erreur"
+                                          : "Error"),
+                                    );
+                                  })
+                                  .finally(() => {
+                                    setIsLoading(false);
+                                    inputRef.current?.focus();
+                                  });
                               }}
                               disabled={isLoading}
                               className="px-3 py-1.5 bg-bg-tertiary hover:bg-bg-secondary text-text-secondary text-xs rounded-lg transition-colors disabled:opacity-50"
                             >
-                              {q.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, _term, display) => display || _term)}
+                              {q.replace(
+                                /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
+                                (_, _term, display) => display || _term,
+                              )}
                             </button>
                           ))}
                         </div>
@@ -595,19 +782,23 @@ const CorpusChat: React.FC<{
                   {msg.sources && msg.sources.length > 0 && (
                     <div className="mt-3 pt-3 border-t border-white/10">
                       <p className="text-xs font-medium mb-1 opacity-70">
-                        {language === 'fr' ? 'Sources :' : 'Sources:'}
+                        {language === "fr" ? "Sources :" : "Sources:"}
                       </p>
                       <div className="flex flex-wrap gap-1">
                         {msg.sources.map((src, i) => (
-                          <span key={i} className="text-xs px-2 py-0.5 bg-white/10 rounded-full">
-                            {sanitizeTitle(src.video_title)} ({Math.round(src.relevance_score * 100)}%)
+                          <span
+                            key={i}
+                            className="text-xs px-2 py-0.5 bg-white/10 rounded-full"
+                          >
+                            {sanitizeTitle(src.video_title)} (
+                            {Math.round(src.relevance_score * 100)}%)
                           </span>
                         ))}
                       </div>
                     </div>
                   )}
                 </div>
-                {msg.role === 'user' && (
+                {msg.role === "user" && (
                   <div className="w-8 h-8 rounded-full bg-bg-tertiary flex items-center justify-center flex-shrink-0">
                     <User className="w-4 h-4 text-text-muted" />
                   </div>
@@ -625,7 +816,11 @@ const CorpusChat: React.FC<{
             <div className="bg-bg-secondary rounded-xl p-4">
               <div className="flex items-center gap-2 text-text-muted">
                 <DeepSightSpinnerMicro />
-                <span className="text-sm">{language === 'fr' ? 'Analyse du corpus...' : 'Analyzing corpus...'}</span>
+                <span className="text-sm">
+                  {language === "fr"
+                    ? "Analyse du corpus..."
+                    : "Analyzing corpus..."}
+                </span>
               </div>
             </div>
           </div>
@@ -650,10 +845,14 @@ const CorpusChat: React.FC<{
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={language === 'fr' ? 'Posez une question sur le corpus...' : 'Ask a question about the corpus...'}
+            placeholder={
+              language === "fr"
+                ? "Posez une question sur le corpus..."
+                : "Ask a question about the corpus..."
+            }
             className="flex-1 resize-none bg-bg-secondary text-text-primary placeholder:text-text-muted rounded-xl px-4 py-3 border border-border-subtle focus:border-accent-primary focus:ring-1 focus:ring-accent-primary/30 outline-none transition-colors"
             rows={1}
-            style={{ maxHeight: '120px' }}
+            style={{ maxHeight: "120px" }}
           />
           <button
             onClick={handleSend}
@@ -679,9 +878,11 @@ export const PlaylistDetailPage: React.FC = () => {
   const [searchParams] = useSearchParams();
 
   // Lire le query param ?tab=chat pour pré-sélectionner l'onglet
-  const initialTab = (['videos', 'synthesis', 'chat', 'stats'].includes(searchParams.get('tab') || '')
-    ? searchParams.get('tab') as TabId
-    : 'videos');
+  const initialTab = ["videos", "synthesis", "chat", "stats"].includes(
+    searchParams.get("tab") || "",
+  )
+    ? (searchParams.get("tab") as TabId)
+    : "videos";
 
   // UI State
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -699,7 +900,7 @@ export const PlaylistDetailPage: React.FC = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
-  const [renameValue, setRenameValue] = useState('');
+  const [renameValue, setRenameValue] = useState("");
   const [isSavingRename, setIsSavingRename] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
 
@@ -710,18 +911,24 @@ export const PlaylistDetailPage: React.FC = () => {
   const videos = playlist?.videos || [];
 
   const stats = useMemo<PlaylistStats>(() => {
-    const analyzedVideos = videos.filter(v => !!v.summary_content);
+    const analyzedVideos = videos.filter((v) => !!v.summary_content);
 
     const categories: Record<string, number> = {};
-    analyzedVideos.forEach(v => {
-      const cat = v.category || 'other';
+    analyzedVideos.forEach((v) => {
+      const cat = v.category || "other";
       categories[cat] = (categories[cat] || 0) + 1;
     });
 
     const tagCounts: Record<string, number> = {};
-    analyzedVideos.forEach(v => {
-      const tags = v.tags?.split(',').map(t => t.trim()).filter(Boolean) || [];
-      tags.forEach(tag => { tagCounts[tag] = (tagCounts[tag] || 0) + 1; });
+    analyzedVideos.forEach((v) => {
+      const tags =
+        v.tags
+          ?.split(",")
+          .map((t) => t.trim())
+          .filter(Boolean) || [];
+      tags.forEach((tag) => {
+        tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+      });
     });
     const topTags = Object.entries(tagCounts)
       .sort((a, b) => b[1] - a[1])
@@ -729,29 +936,41 @@ export const PlaylistDetailPage: React.FC = () => {
       .map(([tag, count]) => ({ tag, count }));
 
     const durationRanges = [
-      { range: '0-5m', min: 0, max: 300 },
-      { range: '5-15m', min: 300, max: 900 },
-      { range: '15-30m', min: 900, max: 1800 },
-      { range: '30-60m', min: 1800, max: 3600 },
-      { range: '60m+', min: 3600, max: Infinity },
+      { range: "0-5m", min: 0, max: 300 },
+      { range: "5-15m", min: 300, max: 900 },
+      { range: "15-30m", min: 900, max: 1800 },
+      { range: "30-60m", min: 1800, max: 3600 },
+      { range: "60m+", min: 3600, max: Infinity },
     ];
-    const durationDistribution = durationRanges.map(r => ({
+    const durationDistribution = durationRanges.map((r) => ({
       range: r.range,
-      count: analyzedVideos.filter(v => (v.video_duration || 0) >= r.min && (v.video_duration || 0) < r.max).length,
+      count: analyzedVideos.filter(
+        (v) =>
+          (v.video_duration || 0) >= r.min && (v.video_duration || 0) < r.max,
+      ).length,
     }));
 
     const reliabilityScores = analyzedVideos
-      .filter(v => v.reliability_score != null)
-      .map(v => v.reliability_score!);
-    const averageReliability = reliabilityScores.length > 0
-      ? Math.round(reliabilityScores.reduce((a, b) => a + b, 0) / reliabilityScores.length * 100)
-      : 0;
+      .filter((v) => v.reliability_score != null)
+      .map((v) => v.reliability_score!);
+    const averageReliability =
+      reliabilityScores.length > 0
+        ? Math.round(
+            (reliabilityScores.reduce((a, b) => a + b, 0) /
+              reliabilityScores.length) *
+              100,
+          )
+        : 0;
 
     return {
       totalVideos: videos.length,
       analyzedCount: analyzedVideos.length,
-      totalDuration: playlist?.total_duration || analyzedVideos.reduce((sum, v) => sum + (v.video_duration || 0), 0),
-      totalWords: playlist?.total_words || analyzedVideos.reduce((sum, v) => sum + (v.word_count || 0), 0),
+      totalDuration:
+        playlist?.total_duration ||
+        analyzedVideos.reduce((sum, v) => sum + (v.video_duration || 0), 0),
+      totalWords:
+        playlist?.total_words ||
+        analyzedVideos.reduce((sum, v) => sum + (v.word_count || 0), 0),
       averageReliability,
       categories,
       topTags,
@@ -760,8 +979,8 @@ export const PlaylistDetailPage: React.FC = () => {
   }, [videos, playlist]);
 
   const selectedVideo = useMemo(
-    () => videos.find(v => v.id === selectedVideoId) || null,
-    [videos, selectedVideoId]
+    () => videos.find((v) => v.id === selectedVideoId) || null,
+    [videos, selectedVideoId],
   );
 
   // ═══════════════════════════════════════════════════════════════════
@@ -786,11 +1005,11 @@ export const PlaylistDetailPage: React.FC = () => {
         // Details endpoint optionnel
       }
     } catch (err: any) {
-      console.error('Error loading playlist:', err);
+      console.error("Error loading playlist:", err);
       setError(
-        language === 'fr'
-          ? 'Erreur lors du chargement du corpus. Vérifiez que l\'analyse est terminée.'
-          : 'Error loading corpus. Check that the analysis is complete.'
+        language === "fr"
+          ? "Erreur lors du chargement du corpus. Vérifiez que l'analyse est terminée."
+          : "Error loading corpus. Check that the analysis is complete.",
       );
     } finally {
       setIsLoading(false);
@@ -810,16 +1029,16 @@ export const PlaylistDetailPage: React.FC = () => {
     setIsRegenerating(true);
     try {
       const result = await playlistApi.generateCorpusSummary(id, {
-        mode: 'standard',
+        mode: "standard",
         lang: language,
       });
       // Mettre à jour la méta-analyse dans le state
       if (playlist) {
         setPlaylist({ ...playlist, meta_analysis: result.meta_analysis });
       }
-      setActiveTab('synthesis');
+      setActiveTab("synthesis");
     } catch (err: any) {
-      console.error('Error generating synthesis:', err);
+      console.error("Error generating synthesis:", err);
     } finally {
       setIsRegenerating(false);
     }
@@ -839,13 +1058,13 @@ export const PlaylistDetailPage: React.FC = () => {
     setIsDeleting(true);
     try {
       await playlistApi.delete(id);
-      navigate('/playlists', { replace: true });
+      navigate("/playlists", { replace: true });
     } catch (err: any) {
-      console.error('Error deleting playlist:', err);
+      console.error("Error deleting playlist:", err);
       setError(
-        language === 'fr'
-          ? 'Erreur lors de la suppression du corpus.'
-          : 'Error deleting corpus.'
+        language === "fr"
+          ? "Erreur lors de la suppression du corpus."
+          : "Error deleting corpus.",
       );
     } finally {
       setIsDeleting(false);
@@ -855,7 +1074,7 @@ export const PlaylistDetailPage: React.FC = () => {
 
   // ── RENAME PLAYLIST ─────────────────────────────────────────────
   const startRenaming = () => {
-    setRenameValue(playlist?.playlist_title || '');
+    setRenameValue(playlist?.playlist_title || "");
     setIsRenaming(true);
     setShowActionsMenu(false);
   };
@@ -868,15 +1087,17 @@ export const PlaylistDetailPage: React.FC = () => {
     }
     setIsSavingRename(true);
     try {
-      const updated = await playlistApi.update(id, { name: renameValue.trim() });
+      const updated = await playlistApi.update(id, {
+        name: renameValue.trim(),
+      });
       setPlaylist(updated);
       setIsRenaming(false);
     } catch (err: any) {
-      console.error('Error renaming playlist:', err);
+      console.error("Error renaming playlist:", err);
       setError(
-        language === 'fr'
-          ? 'Erreur lors du renommage du corpus.'
-          : 'Error renaming corpus.'
+        language === "fr"
+          ? "Erreur lors du renommage du corpus."
+          : "Error renaming corpus.",
       );
     } finally {
       setIsSavingRename(false);
@@ -884,10 +1105,10 @@ export const PlaylistDetailPage: React.FC = () => {
   };
 
   const handleRenameKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleSaveRename();
-    } else if (e.key === 'Escape') {
+    } else if (e.key === "Escape") {
       setIsRenaming(false);
     }
   };
@@ -896,27 +1117,32 @@ export const PlaylistDetailPage: React.FC = () => {
   // TAB CONFIG
   // ═══════════════════════════════════════════════════════════════════
 
-  const tabs: Array<{ id: TabId; label: string; icon: React.ReactNode; badge?: string }> = [
+  const tabs: Array<{
+    id: TabId;
+    label: string;
+    icon: React.ReactNode;
+    badge?: string;
+  }> = [
     {
-      id: 'videos',
-      label: language === 'fr' ? 'Vidéos' : 'Videos',
+      id: "videos",
+      label: language === "fr" ? "Vidéos" : "Videos",
       icon: <ListVideo className="w-4 h-4" />,
       badge: `${stats.analyzedCount}/${stats.totalVideos}`,
     },
     {
-      id: 'synthesis',
-      label: language === 'fr' ? 'Méta-analyse' : 'Meta-analysis',
+      id: "synthesis",
+      label: language === "fr" ? "Méta-analyse" : "Meta-analysis",
       icon: <Sparkles className="w-4 h-4" />,
-      badge: playlist?.meta_analysis ? '✓' : undefined,
+      badge: playlist?.meta_analysis ? "✓" : undefined,
     },
     {
-      id: 'chat',
-      label: language === 'fr' ? 'Chat IA' : 'AI Chat',
+      id: "chat",
+      label: language === "fr" ? "Chat IA" : "AI Chat",
       icon: <MessageSquare className="w-4 h-4" />,
     },
     {
-      id: 'stats',
-      label: language === 'fr' ? 'Statistiques' : 'Statistics',
+      id: "stats",
+      label: language === "fr" ? "Statistiques" : "Statistics",
       icon: <BarChart3 className="w-4 h-4" />,
     },
   ];
@@ -928,14 +1154,19 @@ export const PlaylistDetailPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex min-h-screen bg-bg-primary">
-        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
         <main className={`flex-1 flex items-center justify-center`}>
           <div className="text-center">
             <div className="flex justify-center mb-4">
               <DeepSightSpinner size="lg" />
             </div>
             <p className="text-text-secondary">
-              {language === 'fr' ? 'Chargement du corpus...' : 'Loading corpus...'}
+              {language === "fr"
+                ? "Chargement du corpus..."
+                : "Loading corpus..."}
             </p>
           </div>
         </main>
@@ -946,17 +1177,23 @@ export const PlaylistDetailPage: React.FC = () => {
   if (error || !playlist) {
     return (
       <div className="flex min-h-screen bg-bg-primary">
-        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
         <main className={`flex-1 flex items-center justify-center`}>
           <div className="text-center max-w-md">
             <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
             <p className="text-text-primary font-semibold mb-2">
-              {language === 'fr' ? 'Corpus introuvable' : 'Corpus not found'}
+              {language === "fr" ? "Corpus introuvable" : "Corpus not found"}
             </p>
             <p className="text-text-secondary mb-4">{error}</p>
-            <button onClick={() => navigate('/playlists')} className="btn btn-primary">
+            <button
+              onClick={() => navigate("/playlists")}
+              className="btn btn-primary"
+            >
               <ArrowLeft className="w-4 h-4" />
-              {language === 'fr' ? 'Retour aux corpus' : 'Back to corpus list'}
+              {language === "fr" ? "Retour aux corpus" : "Back to corpus list"}
             </button>
           </div>
         </main>
@@ -967,18 +1204,20 @@ export const PlaylistDetailPage: React.FC = () => {
   return (
     <div className="flex min-h-screen bg-bg-primary">
       <DoodleBackground variant="video" />
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
 
       <main className={`flex-1 overflow-x-hidden`}>
         <div className="container max-w-6xl mx-auto px-4 py-8 pb-24 lg:pb-8">
-
           {/* BACK BUTTON */}
           <button
-            onClick={() => navigate('/playlists')}
+            onClick={() => navigate("/playlists")}
             className="flex items-center gap-2 text-text-secondary hover:text-text-primary mb-6 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            {language === 'fr' ? 'Retour aux corpus' : 'Back to corpus list'}
+            {language === "fr" ? "Retour aux corpus" : "Back to corpus list"}
           </button>
 
           {/* HEADER */}
@@ -986,7 +1225,11 @@ export const PlaylistDetailPage: React.FC = () => {
             <div className="flex items-start gap-6">
               <div className="w-40 h-24 rounded-lg overflow-hidden bg-bg-tertiary flex-shrink-0">
                 {videos[0]?.thumbnail_url ? (
-                  <img src={videos[0].thumbnail_url} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={videos[0].thumbnail_url}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <ListVideo className="w-10 h-10 text-text-muted" />
@@ -1011,7 +1254,11 @@ export const PlaylistDetailPage: React.FC = () => {
                       disabled={isSavingRename || !renameValue.trim()}
                       className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors"
                     >
-                      {isSavingRename ? <DeepSightSpinnerMicro onLight /> : <Check className="w-4 h-4" />}
+                      {isSavingRename ? (
+                        <DeepSightSpinnerMicro onLight />
+                      ) : (
+                        <Check className="w-4 h-4" />
+                      )}
                     </button>
                     <button
                       onClick={() => setIsRenaming(false)}
@@ -1028,7 +1275,7 @@ export const PlaylistDetailPage: React.FC = () => {
                     <button
                       onClick={startRenaming}
                       className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-bg-tertiary text-text-muted transition-all"
-                      title={language === 'fr' ? 'Renommer' : 'Rename'}
+                      title={language === "fr" ? "Renommer" : "Rename"}
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
@@ -1037,7 +1284,8 @@ export const PlaylistDetailPage: React.FC = () => {
                 <div className="flex items-center gap-4 text-sm text-text-muted flex-wrap">
                   <span className="flex items-center gap-1">
                     <Video className="w-4 h-4" />
-                    {stats.analyzedCount}/{stats.totalVideos} {language === 'fr' ? 'vidéos' : 'videos'}
+                    {stats.analyzedCount}/{stats.totalVideos}{" "}
+                    {language === "fr" ? "vidéos" : "videos"}
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
@@ -1045,14 +1293,19 @@ export const PlaylistDetailPage: React.FC = () => {
                   </span>
                   <span className="flex items-center gap-1">
                     <FileText className="w-4 h-4" />
-                    {formatNumber(stats.totalWords)} {language === 'fr' ? 'mots' : 'words'}
+                    {formatNumber(stats.totalWords)}{" "}
+                    {language === "fr" ? "mots" : "words"}
                   </span>
                   {playlist.status && (
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${
-                      playlist.status === 'completed' ? 'bg-green-500/20 text-green-400' :
-                      playlist.status === 'processing' ? 'bg-amber-500/20 text-amber-400' :
-                      'bg-bg-tertiary text-text-muted'
-                    }`}>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs ${
+                        playlist.status === "completed"
+                          ? "bg-green-500/20 text-green-400"
+                          : playlist.status === "processing"
+                            ? "bg-amber-500/20 text-amber-400"
+                            : "bg-bg-tertiary text-text-muted"
+                      }`}
+                    >
                       {playlist.status}
                     </span>
                   )}
@@ -1070,9 +1323,18 @@ export const PlaylistDetailPage: React.FC = () => {
                   ) : (
                     <Sparkles className="w-4 h-4" />
                   )}
-                  {language === 'fr' ? (playlist.meta_analysis ? 'Regénérer' : 'Générer synthèse') : (playlist.meta_analysis ? 'Regenerate' : 'Generate synthesis')}
+                  {language === "fr"
+                    ? playlist.meta_analysis
+                      ? "Regénérer"
+                      : "Générer synthèse"
+                    : playlist.meta_analysis
+                      ? "Regenerate"
+                      : "Generate synthesis"}
                 </button>
-                <button onClick={loadPlaylistData} className="btn btn-secondary">
+                <button
+                  onClick={loadPlaylistData}
+                  className="btn btn-secondary"
+                >
                   <RefreshCw className="w-4 h-4" />
                 </button>
 
@@ -1086,21 +1348,29 @@ export const PlaylistDetailPage: React.FC = () => {
                   </button>
                   {showActionsMenu && (
                     <>
-                      <div className="fixed inset-0 z-10" onClick={() => setShowActionsMenu(false)} />
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setShowActionsMenu(false)}
+                      />
                       <div className="absolute right-0 top-full mt-1 w-48 bg-bg-secondary border border-border-subtle rounded-xl shadow-xl z-20 overflow-hidden">
                         <button
                           onClick={startRenaming}
                           className="w-full flex items-center gap-3 px-4 py-3 text-sm text-text-secondary hover:bg-bg-tertiary transition-colors"
                         >
                           <Pencil className="w-4 h-4" />
-                          {language === 'fr' ? 'Renommer' : 'Rename'}
+                          {language === "fr" ? "Renommer" : "Rename"}
                         </button>
                         <button
-                          onClick={() => { setShowDeleteConfirm(true); setShowActionsMenu(false); }}
+                          onClick={() => {
+                            setShowDeleteConfirm(true);
+                            setShowActionsMenu(false);
+                          }}
                           className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
-                          {language === 'fr' ? 'Supprimer le corpus' : 'Delete corpus'}
+                          {language === "fr"
+                            ? "Supprimer le corpus"
+                            : "Delete corpus"}
                         </button>
                       </div>
                     </>
@@ -1114,28 +1384,39 @@ export const PlaylistDetailPage: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <StatCard
               icon={<Video className="w-6 h-6" />}
-              label={language === 'fr' ? 'Vidéos analysées' : 'Analyzed videos'}
+              label={language === "fr" ? "Vidéos analysées" : "Analyzed videos"}
               value={`${stats.analyzedCount}/${stats.totalVideos}`}
               color="text-violet-400"
             />
             <StatCard
               icon={<Clock className="w-6 h-6" />}
-              label={language === 'fr' ? 'Durée totale' : 'Total duration'}
+              label={language === "fr" ? "Durée totale" : "Total duration"}
               value={formatDuration(stats.totalDuration)}
               color="text-blue-400"
             />
             <StatCard
               icon={<FileText className="w-6 h-6" />}
-              label={language === 'fr' ? 'Mots analysés' : 'Words analyzed'}
+              label={language === "fr" ? "Mots analysés" : "Words analyzed"}
               value={formatNumber(stats.totalWords)}
               color="text-green-400"
             />
             <StatCard
               icon={<Target className="w-6 h-6" />}
-              label={language === 'fr' ? 'Fiabilité moyenne' : 'Avg reliability'}
-              value={stats.averageReliability > 0 ? `${stats.averageReliability}%` : 'N/A'}
-              color={stats.averageReliability >= 70 ? 'text-green-400' :
-                     stats.averageReliability >= 50 ? 'text-amber-400' : 'text-red-400'}
+              label={
+                language === "fr" ? "Fiabilité moyenne" : "Avg reliability"
+              }
+              value={
+                stats.averageReliability > 0
+                  ? `${stats.averageReliability}%`
+                  : "N/A"
+              }
+              color={
+                stats.averageReliability >= 70
+                  ? "text-green-400"
+                  : stats.averageReliability >= 50
+                    ? "text-amber-400"
+                    : "text-red-400"
+              }
             />
           </div>
 
@@ -1144,19 +1425,24 @@ export const PlaylistDetailPage: React.FC = () => {
             {tabs.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => { setActiveTab(tab.id); setSelectedVideoId(null); }}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  setSelectedVideoId(null);
+                }}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'bg-accent-primary text-white'
-                    : 'text-text-secondary hover:bg-bg-secondary'
+                    ? "bg-accent-primary text-white"
+                    : "text-text-secondary hover:bg-bg-secondary"
                 }`}
               >
                 {tab.icon}
                 {tab.label}
                 {tab.badge && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    activeTab === tab.id ? 'bg-white/20' : 'bg-bg-tertiary'
-                  }`}>
+                  <span
+                    className={`text-xs px-1.5 py-0.5 rounded-full ${
+                      activeTab === tab.id ? "bg-white/20" : "bg-bg-tertiary"
+                    }`}
+                  >
                     {tab.badge}
                   </span>
                 )}
@@ -1165,7 +1451,7 @@ export const PlaylistDetailPage: React.FC = () => {
           </div>
 
           {/* ═══ TAB: VIDEOS ═══ */}
-          {activeTab === 'videos' && (
+          {activeTab === "videos" && (
             <div className="space-y-4">
               {/* Video Detail Panel (if selected) */}
               {selectedVideo && (
@@ -1173,7 +1459,9 @@ export const PlaylistDetailPage: React.FC = () => {
                   video={selectedVideo}
                   playlistId={id!}
                   onClose={() => setSelectedVideoId(null)}
-                  onOpenInDashboard={() => navigate(`/dashboard?id=${selectedVideo.id}`)}
+                  onOpenInDashboard={() =>
+                    navigate(`/dashboard?id=${selectedVideo.id}`)
+                  }
                   language={language}
                 />
               )}
@@ -1183,7 +1471,11 @@ export const PlaylistDetailPage: React.FC = () => {
                 {videos.length === 0 ? (
                   <div className="p-8 text-center text-text-muted">
                     <ListVideo className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>{language === 'fr' ? 'Aucune vidéo dans ce corpus' : 'No videos in this corpus'}</p>
+                    <p>
+                      {language === "fr"
+                        ? "Aucune vidéo dans ce corpus"
+                        : "No videos in this corpus"}
+                    </p>
                   </div>
                 ) : (
                   <div className="divide-y divide-border-subtle">
@@ -1205,13 +1497,15 @@ export const PlaylistDetailPage: React.FC = () => {
           )}
 
           {/* ═══ TAB: META-ANALYSIS ═══ */}
-          {activeTab === 'synthesis' && (
+          {activeTab === "synthesis" && (
             <div className="space-y-6">
               {playlist.meta_analysis ? (
                 <div className="card p-6">
                   <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
                     <Layers className="w-5 h-5 text-violet-400" />
-                    {language === 'fr' ? 'Méta-analyse du corpus' : 'Corpus Meta-Analysis'}
+                    {language === "fr"
+                      ? "Méta-analyse du corpus"
+                      : "Corpus Meta-Analysis"}
                   </h3>
                   <div className="prose prose-invert max-w-none text-text-secondary leading-relaxed">
                     <ReactMarkdown>{playlist.meta_analysis}</ReactMarkdown>
@@ -1221,12 +1515,14 @@ export const PlaylistDetailPage: React.FC = () => {
                 <div className="card p-8 text-center">
                   <Sparkles className="w-12 h-12 mx-auto mb-4 text-text-muted" />
                   <h3 className="font-semibold text-text-primary mb-2">
-                    {language === 'fr' ? 'Pas encore de méta-analyse' : 'No meta-analysis yet'}
+                    {language === "fr"
+                      ? "Pas encore de méta-analyse"
+                      : "No meta-analysis yet"}
                   </h3>
                   <p className="text-text-secondary mb-4 max-w-md mx-auto">
-                    {language === 'fr'
-                      ? 'La méta-analyse croise toutes les synthèses pour dégager les thèmes, convergences et divergences du corpus.'
-                      : 'Meta-analysis cross-references all summaries to identify themes, convergences and divergences.'}
+                    {language === "fr"
+                      ? "La méta-analyse croise toutes les synthèses pour dégager les thèmes, convergences et divergences du corpus."
+                      : "Meta-analysis cross-references all summaries to identify themes, convergences and divergences."}
                   </p>
                   <button
                     onClick={handleRegenerateSynthesis}
@@ -1238,7 +1534,9 @@ export const PlaylistDetailPage: React.FC = () => {
                     ) : (
                       <Sparkles className="w-4 h-4" />
                     )}
-                    {language === 'fr' ? 'Générer la méta-analyse' : 'Generate meta-analysis'}
+                    {language === "fr"
+                      ? "Générer la méta-analyse"
+                      : "Generate meta-analysis"}
                   </button>
                 </div>
               )}
@@ -1248,31 +1546,42 @@ export const PlaylistDetailPage: React.FC = () => {
                 <div className="card p-6">
                   <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
                     <BookOpen className="w-5 h-5 text-blue-400" />
-                    {language === 'fr' ? `Synthèses individuelles (${stats.analyzedCount})` : `Individual summaries (${stats.analyzedCount})`}
+                    {language === "fr"
+                      ? `Synthèses individuelles (${stats.analyzedCount})`
+                      : `Individual summaries (${stats.analyzedCount})`}
                   </h3>
                   <div className="grid gap-3">
-                    {videos.filter(v => !!v.summary_content).map((video, i) => (
-                      <div
-                        key={video.id}
-                        className="p-4 bg-bg-secondary/50 rounded-lg cursor-pointer hover:bg-bg-secondary transition-colors"
-                        onClick={() => { setActiveTab('videos'); setSelectedVideoId(video.id); }}
-                      >
-                        <div className="flex items-start gap-3">
-                          <span className="text-sm font-mono text-text-muted w-6">{i + 1}</span>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-medium text-text-primary truncate text-sm">{sanitizeTitle(video.video_title)}</h4>
-                            <p className="text-xs text-text-muted mt-1 line-clamp-2">
-                              {video.summary_content?.substring(0, 200)}...
-                            </p>
-                          </div>
-                          {video.category && (
-                            <span className="text-xs px-2 py-0.5 bg-violet-500/20 text-violet-400 rounded-full capitalize flex-shrink-0">
-                              {video.category}
+                    {videos
+                      .filter((v) => !!v.summary_content)
+                      .map((video, i) => (
+                        <div
+                          key={video.id}
+                          className="p-4 bg-bg-secondary/50 rounded-lg cursor-pointer hover:bg-bg-secondary transition-colors"
+                          onClick={() => {
+                            setActiveTab("videos");
+                            setSelectedVideoId(video.id);
+                          }}
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="text-sm font-mono text-text-muted w-6">
+                              {i + 1}
                             </span>
-                          )}
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-text-primary truncate text-sm">
+                                {sanitizeTitle(video.video_title)}
+                              </h4>
+                              <p className="text-xs text-text-muted mt-1 line-clamp-2">
+                                {video.summary_content?.substring(0, 200)}...
+                              </p>
+                            </div>
+                            {video.category && (
+                              <span className="text-xs px-2 py-0.5 bg-violet-500/20 text-violet-400 rounded-full capitalize flex-shrink-0">
+                                {video.category}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
                   </div>
                 </div>
               )}
@@ -1280,7 +1589,7 @@ export const PlaylistDetailPage: React.FC = () => {
           )}
 
           {/* ═══ TAB: CHAT IA ═══ */}
-          {activeTab === 'chat' && (
+          {activeTab === "chat" && (
             <CorpusChat
               playlistId={id!}
               playlistTitle={playlist.playlist_title}
@@ -1289,39 +1598,62 @@ export const PlaylistDetailPage: React.FC = () => {
           )}
 
           {/* ═══ TAB: STATS ═══ */}
-          {activeTab === 'stats' && (
+          {activeTab === "stats" && (
             <div className="grid md:grid-cols-2 gap-6">
-              <CategoryChart categories={stats.categories} language={language} />
-              <DurationChart distribution={stats.durationDistribution} language={language} />
+              <CategoryChart
+                categories={stats.categories}
+                language={language}
+              />
+              <DurationChart
+                distribution={stats.durationDistribution}
+                language={language}
+              />
 
               {/* Channels distribution */}
-              {details?.channels && Object.keys(details.channels).length > 0 && (
-                <div className="card p-6">
-                  <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
-                    <Hash className="w-5 h-5 text-cyan-400" />
-                    {language === 'fr' ? 'Chaînes YouTube / TikTok' : 'YouTube / TikTok Channels'}
-                  </h3>
-                  <div className="space-y-2">
-                    {Object.entries(details.channels).sort((a, b) => b[1] - a[1]).map(([channel, count]) => (
-                      <div key={channel} className="flex justify-between items-center py-1">
-                        <span className="text-sm text-text-secondary truncate">{channel}</span>
-                        <span className="text-sm text-text-muted">{count} {language === 'fr' ? 'vidéos' : 'videos'}</span>
-                      </div>
-                    ))}
+              {details?.channels &&
+                Object.keys(details.channels).length > 0 && (
+                  <div className="card p-6">
+                    <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
+                      <Hash className="w-5 h-5 text-cyan-400" />
+                      {language === "fr"
+                        ? "Chaînes YouTube / TikTok"
+                        : "YouTube / TikTok Channels"}
+                    </h3>
+                    <div className="space-y-2">
+                      {Object.entries(details.channels)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([channel, count]) => (
+                          <div
+                            key={channel}
+                            className="flex justify-between items-center py-1"
+                          >
+                            <span className="text-sm text-text-secondary truncate">
+                              {channel}
+                            </span>
+                            <span className="text-sm text-text-muted">
+                              {count} {language === "fr" ? "vidéos" : "videos"}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               {/* Top Tags */}
               {stats.topTags.length > 0 && (
                 <div className="card p-6">
                   <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
                     <Tag className="w-5 h-5 text-violet-400" />
-                    {language === 'fr' ? 'Tags les plus fréquents' : 'Most frequent tags'}
+                    {language === "fr"
+                      ? "Tags les plus fréquents"
+                      : "Most frequent tags"}
                   </h3>
                   <div className="flex flex-wrap gap-2">
                     {stats.topTags.map(({ tag, count }) => (
-                      <span key={tag} className="inline-flex items-center gap-1 px-3 py-1 bg-bg-tertiary rounded-full text-sm">
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-bg-tertiary rounded-full text-sm"
+                      >
                         <span className="text-text-secondary">{tag}</span>
                         <span className="text-text-muted">({count})</span>
                       </span>
@@ -1334,52 +1666,85 @@ export const PlaylistDetailPage: React.FC = () => {
               <div className="card p-6 md:col-span-2">
                 <h3 className="font-semibold text-text-primary mb-4 flex items-center gap-2">
                   <Target className="w-5 h-5 text-green-400" />
-                  {language === 'fr' ? 'Score de fiabilité' : 'Reliability Score'}
+                  {language === "fr"
+                    ? "Score de fiabilité"
+                    : "Reliability Score"}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-center">
                   <div className="p-4 bg-green-500/10 rounded-lg">
                     <p className="text-2xl font-bold text-green-400">
-                      {videos.filter(v => (v.reliability_score || 0) >= 0.7).length}
+                      {
+                        videos.filter((v) => (v.reliability_score || 0) >= 0.7)
+                          .length
+                      }
                     </p>
-                    <p className="text-sm text-text-muted">{language === 'fr' ? 'Fiable (≥70%)' : 'Reliable (≥70%)'}</p>
+                    <p className="text-sm text-text-muted">
+                      {language === "fr" ? "Fiable (≥70%)" : "Reliable (≥70%)"}
+                    </p>
                   </div>
                   <div className="p-4 bg-amber-500/10 rounded-lg">
                     <p className="text-2xl font-bold text-amber-400">
-                      {videos.filter(v => (v.reliability_score || 0) >= 0.5 && (v.reliability_score || 0) < 0.7).length}
+                      {
+                        videos.filter(
+                          (v) =>
+                            (v.reliability_score || 0) >= 0.5 &&
+                            (v.reliability_score || 0) < 0.7,
+                        ).length
+                      }
                     </p>
-                    <p className="text-sm text-text-muted">{language === 'fr' ? 'Modéré (50-69%)' : 'Moderate (50-69%)'}</p>
+                    <p className="text-sm text-text-muted">
+                      {language === "fr"
+                        ? "Modéré (50-69%)"
+                        : "Moderate (50-69%)"}
+                    </p>
                   </div>
                   <div className="p-4 bg-red-500/10 rounded-lg">
                     <p className="text-2xl font-bold text-red-400">
-                      {videos.filter(v => v.reliability_score != null && v.reliability_score < 0.5).length}
+                      {
+                        videos.filter(
+                          (v) =>
+                            v.reliability_score != null &&
+                            v.reliability_score < 0.5,
+                        ).length
+                      }
                     </p>
-                    <p className="text-sm text-text-muted">{language === 'fr' ? 'À vérifier (<50%)' : 'To verify (<50%)'}</p>
+                    <p className="text-sm text-text-muted">
+                      {language === "fr"
+                        ? "À vérifier (<50%)"
+                        : "To verify (<50%)"}
+                    </p>
                   </div>
                 </div>
               </div>
             </div>
           )}
-
         </div>
 
         {/* ═══ MODALE SUPPRESSION ═══ */}
         {showDeleteConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => !isDeleting && setShowDeleteConfirm(false)} />
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => !isDeleting && setShowDeleteConfirm(false)}
+            />
             <div className="relative bg-bg-secondary border border-border-subtle rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
                   <Trash2 className="w-5 h-5 text-red-400" />
                 </div>
                 <h3 className="text-lg font-semibold text-text-primary">
-                  {language === 'fr' ? 'Supprimer ce corpus ?' : 'Delete this corpus?'}
+                  {language === "fr"
+                    ? "Supprimer ce corpus ?"
+                    : "Delete this corpus?"}
                 </h3>
               </div>
               <p className="text-text-secondary text-sm mb-2">
-                <strong className="text-text-primary">{playlist.playlist_title}</strong>
+                <strong className="text-text-primary">
+                  {playlist.playlist_title}
+                </strong>
               </p>
               <p className="text-text-muted text-sm mb-6">
-                {language === 'fr'
+                {language === "fr"
                   ? `${stats.totalVideos} vidéos, ${stats.analyzedCount} analysées. Cette action est irréversible — les synthèses et le chat seront perdus.`
                   : `${stats.totalVideos} videos, ${stats.analyzedCount} analyzed. This action is irreversible — summaries and chat will be lost.`}
               </p>
@@ -1389,7 +1754,7 @@ export const PlaylistDetailPage: React.FC = () => {
                   disabled={isDeleting}
                   className="btn btn-secondary"
                 >
-                  {language === 'fr' ? 'Annuler' : 'Cancel'}
+                  {language === "fr" ? "Annuler" : "Cancel"}
                 </button>
                 <button
                   onClick={handleDeletePlaylist}
@@ -1401,7 +1766,7 @@ export const PlaylistDetailPage: React.FC = () => {
                   ) : (
                     <Trash2 className="w-4 h-4" />
                   )}
-                  {language === 'fr' ? 'Supprimer' : 'Delete'}
+                  {language === "fr" ? "Supprimer" : "Delete"}
                 </button>
               </div>
             </div>

@@ -11,8 +11,8 @@
  *   />
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface AudioSummaryPlayerProps {
   audioUrl: string;
@@ -26,7 +26,7 @@ const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5, 2];
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
-  return `${m}:${s.toString().padStart(2, '0')}`;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
@@ -65,16 +65,16 @@ export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
       setIsLoading(false);
     };
 
-    audio.addEventListener('loadedmetadata', onLoadedMetadata);
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    audio.addEventListener('ended', onEnded);
-    audio.addEventListener('canplay', onCanPlay);
+    audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("canplay", onCanPlay);
 
     return () => {
-      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-      audio.removeEventListener('timeupdate', onTimeUpdate);
-      audio.removeEventListener('ended', onEnded);
-      audio.removeEventListener('canplay', onCanPlay);
+      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("canplay", onCanPlay);
     };
   }, [audioUrl]);
 
@@ -103,21 +103,24 @@ export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
   }, [speed]);
 
   // ── Seek ────────────────────────────────────────────────────────────
-  const handleSeek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const audio = audioRef.current;
-    if (!audio || !duration) return;
+  const handleSeek = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const audio = audioRef.current;
+      if (!audio || !duration) return;
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const ratio = x / rect.width;
-    audio.currentTime = ratio * duration;
-  }, [duration]);
+      const rect = e.currentTarget.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const ratio = x / rect.width;
+      audio.currentTime = ratio * duration;
+    },
+    [duration],
+  );
 
   // ── Download ────────────────────────────────────────────────────────
   const handleDownload = useCallback(() => {
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = audioUrl;
-    a.download = `deepsight-audio-summary${title ? '-' + title.slice(0, 30).replace(/[^a-zA-Z0-9]/g, '_') : ''}.mp3`;
+    a.download = `deepsight-audio-summary${title ? "-" + title.slice(0, 30).replace(/[^a-zA-Z0-9]/g, "_") : ""}.mp3`;
     a.click();
   }, [audioUrl, title]);
 
@@ -173,10 +176,26 @@ export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
                 className="text-white/50 hover:text-white transition-colors"
                 title="-15s"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M1 4v6h6" />
                   <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-                  <text x="9" y="16" fontSize="8" fill="currentColor" stroke="none" textAnchor="middle">15</text>
+                  <text
+                    x="9"
+                    y="16"
+                    fontSize="8"
+                    fill="currentColor"
+                    stroke="none"
+                    textAnchor="middle"
+                  >
+                    15
+                  </text>
                 </svg>
               </button>
 
@@ -208,10 +227,26 @@ export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
                 className="text-white/50 hover:text-white transition-colors"
                 title="+15s"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M23 4v6h-6" />
                   <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                  <text x="9" y="16" fontSize="8" fill="currentColor" stroke="none" textAnchor="middle">15</text>
+                  <text
+                    x="9"
+                    y="16"
+                    fontSize="8"
+                    fill="currentColor"
+                    stroke="none"
+                    textAnchor="middle"
+                  >
+                    15
+                  </text>
                 </svg>
               </button>
             </div>
@@ -232,7 +267,14 @@ export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
                 className="text-white/40 hover:text-white transition-colors"
                 title="Télécharger"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                   <polyline points="7,10 12,15 17,10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
@@ -248,7 +290,14 @@ export const AudioSummaryPlayer: React.FC<AudioSummaryPlayerProps> = ({
                   }}
                   className="text-white/40 hover:text-white transition-colors"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
                     <line x1="18" y1="6" x2="6" y2="18" />
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>

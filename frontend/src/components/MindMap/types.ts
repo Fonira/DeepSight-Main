@@ -5,7 +5,7 @@
 
 export interface Concept {
   name: string;
-  type: 'central' | 'primary' | 'secondary' | 'detail';
+  type: "central" | "primary" | "secondary" | "detail";
   description: string;
   related_to?: string[];
 }
@@ -23,33 +23,36 @@ export interface MindMapData {
 export interface ConceptNodeData {
   label: string;
   description: string;
-  type: 'central' | 'primary' | 'secondary' | 'detail';
+  type: "central" | "primary" | "secondary" | "detail";
   relatedTo?: string[];
   [key: string]: unknown;
 }
 
-export type NodeType = 'central' | 'primary' | 'secondary' | 'detail';
+export type NodeType = "central" | "primary" | "secondary" | "detail";
 
-export const NODE_COLORS: Record<NodeType, { bg: string; border: string; text: string }> = {
-  central: { 
-    bg: 'bg-gradient-to-br from-purple-500 to-purple-700', 
-    border: 'border-purple-400',
-    text: 'text-white'
+export const NODE_COLORS: Record<
+  NodeType,
+  { bg: string; border: string; text: string }
+> = {
+  central: {
+    bg: "bg-gradient-to-br from-purple-500 to-purple-700",
+    border: "border-purple-400",
+    text: "text-white",
   },
-  primary: { 
-    bg: 'bg-gradient-to-br from-blue-500 to-blue-600', 
-    border: 'border-blue-400',
-    text: 'text-white'
+  primary: {
+    bg: "bg-gradient-to-br from-blue-500 to-blue-600",
+    border: "border-blue-400",
+    text: "text-white",
   },
-  secondary: { 
-    bg: 'bg-gradient-to-br from-emerald-500 to-emerald-600', 
-    border: 'border-emerald-400',
-    text: 'text-white'
+  secondary: {
+    bg: "bg-gradient-to-br from-emerald-500 to-emerald-600",
+    border: "border-emerald-400",
+    text: "text-white",
   },
-  detail: { 
-    bg: 'bg-gradient-to-br from-amber-400 to-amber-500', 
-    border: 'border-amber-300',
-    text: 'text-gray-900'
+  detail: {
+    bg: "bg-gradient-to-br from-amber-400 to-amber-500",
+    border: "border-amber-300",
+    text: "text-gray-900",
   },
 };
 

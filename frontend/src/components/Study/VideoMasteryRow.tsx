@@ -2,11 +2,11 @@
  * DEEP SIGHT — VideoMasteryRow
  * Ligne de vidéo dans la liste des vidéos avec maîtrise.
  */
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Play, RotateCcw } from 'lucide-react';
-import type { VideoMastery } from '../../types/gamification';
-import { MasteryRing } from './MasteryRing';
+import React from "react";
+import { motion } from "framer-motion";
+import { Play, RotateCcw } from "lucide-react";
+import type { VideoMastery } from "../../types/gamification";
+import { MasteryRing } from "./MasteryRing";
 
 interface VideoMasteryRowProps {
   video: VideoMastery;
@@ -20,12 +20,12 @@ export const VideoMasteryRow: React.FC<VideoMasteryRowProps> = ({
   const dueCards = video.due_cards ?? 0;
   const hasDue = dueCards > 0;
   const title = video.title ?? `Vidéo #${video.summary_id}`;
-  const channel = video.channel ?? '';
+  const channel = video.channel ?? "";
 
   const formatDate = (dateStr: string | null | undefined): string => {
-    if (!dateStr) return 'Jamais';
+    if (!dateStr) return "Jamais";
     const d = new Date(dateStr);
-    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
   };
 
   return (
@@ -44,7 +44,9 @@ export const VideoMasteryRow: React.FC<VideoMasteryRowProps> = ({
         <p className="text-sm font-medium text-white truncate">{title}</p>
         <div className="flex items-center gap-2 mt-0.5">
           {channel && (
-            <span className="text-[11px] text-white/40 truncate">{channel}</span>
+            <span className="text-[11px] text-white/40 truncate">
+              {channel}
+            </span>
           )}
           {channel && <span className="text-[10px] text-white/25">·</span>}
           <span className="text-[11px] text-white/30">
@@ -59,7 +61,11 @@ export const VideoMasteryRow: React.FC<VideoMasteryRowProps> = ({
 
       {/* Mastery ring */}
       <div className="flex-shrink-0">
-        <MasteryRing percent={Math.round(video.mastery_percent ?? 0)} size={40} strokeWidth={4} />
+        <MasteryRing
+          percent={Math.round(video.mastery_percent ?? 0)}
+          size={40}
+          strokeWidth={4}
+        />
       </div>
 
       {/* Due badge */}
@@ -75,8 +81,8 @@ export const VideoMasteryRow: React.FC<VideoMasteryRowProps> = ({
         onClick={() => onStart(video.summary_id)}
         className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
           hasDue
-            ? 'bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30'
-            : 'border border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70'
+            ? "bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
+            : "border border-white/10 bg-white/5 text-white/50 hover:bg-white/10 hover:text-white/70"
         }`}
         aria-label={hasDue ? `Réviser ${title}` : `Revoir ${title}`}
       >

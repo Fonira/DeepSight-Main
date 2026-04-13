@@ -12,7 +12,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon?: React.ReactNode;
   iconRight?: React.ReactNode;
   helperText?: string;
-  inputSize?: 'sm' | 'md' | 'lg';
+  inputSize?: "sm" | "md" | "lg";
   /** Enable animated floating label instead of static */
   floating?: boolean;
 }
@@ -26,7 +26,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       icon,
       iconRight,
       helperText,
-      inputSize = 'md',
+      inputSize = "md",
       floating = false,
       className = "",
       id: providedId,
@@ -37,7 +37,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
       onBlur,
       ...props
     },
-    ref
+    ref,
   ) => {
     const generatedId = useId();
     const inputId = providedId || generatedId;
@@ -46,20 +46,21 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     const hasError = !!error;
     const hasSuccess = !!success;
     const [isFocused, setIsFocused] = useState(false);
-    const hasValue = value !== undefined ? String(value).length > 0 : !!defaultValue;
+    const hasValue =
+      value !== undefined ? String(value).length > 0 : !!defaultValue;
     const isFloating = floating && (isFocused || hasValue);
 
     const sizeClasses: Record<string, string> = {
-      sm: 'py-1.5 px-3 text-sm',
-      md: 'py-2.5 px-3.5 text-sm',
-      lg: 'py-3 px-4 text-base',
+      sm: "py-1.5 px-3 text-sm",
+      md: "py-2.5 px-3.5 text-sm",
+      lg: "py-3 px-4 text-base",
     };
 
     const borderColor = hasError
-      ? 'border-error focus:border-error focus:ring-error/20'
+      ? "border-error focus:border-error focus:ring-error/20"
       : hasSuccess
-        ? 'border-accent-success focus:border-accent-success focus:ring-accent-success/20'
-        : 'border-border-default focus:border-accent-primary focus:ring-accent-primary-muted';
+        ? "border-accent-success focus:border-accent-success focus:ring-accent-success/20"
+        : "border-border-default focus:border-accent-primary focus:ring-accent-primary-muted";
 
     const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
       setIsFocused(true);
@@ -81,7 +82,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           >
             {label}
             {props.required && (
-              <span className="text-error ml-0.5" aria-hidden="true">*</span>
+              <span className="text-error ml-0.5" aria-hidden="true">
+                *
+              </span>
             )}
           </label>
         )}
@@ -91,8 +94,8 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           {icon && (
             <div
               className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 transition-colors duration-200
-                ${isFocused ? 'text-accent-primary' : 'text-text-muted'}
-                ${hasError ? 'text-error' : ''}
+                ${isFocused ? "text-accent-primary" : "text-text-muted"}
+                ${hasError ? "text-error" : ""}
               `}
               aria-hidden="true"
             >
@@ -106,23 +109,29 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               htmlFor={inputId}
               className={`
                 absolute z-10 transition-all duration-200 ease-out pointer-events-none
-                ${icon ? 'left-10' : 'left-3.5'}
-                ${isFloating
-                  ? '-top-2.5 text-[0.6875rem] font-medium px-1 bg-bg-primary'
-                  : 'top-1/2 -translate-y-1/2 text-sm'
+                ${icon ? "left-10" : "left-3.5"}
+                ${
+                  isFloating
+                    ? "-top-2.5 text-[0.6875rem] font-medium px-1 bg-bg-primary"
+                    : "top-1/2 -translate-y-1/2 text-sm"
                 }
-                ${isFocused
-                  ? 'text-accent-primary'
-                  : hasError
-                    ? 'text-error'
-                    : isFloating
-                      ? 'text-text-secondary'
-                      : 'text-text-muted'
+                ${
+                  isFocused
+                    ? "text-accent-primary"
+                    : hasError
+                      ? "text-error"
+                      : isFloating
+                        ? "text-text-secondary"
+                        : "text-text-muted"
                 }
               `}
             >
               {label}
-              {props.required && <span className="text-error ml-0.5" aria-hidden="true">*</span>}
+              {props.required && (
+                <span className="text-error ml-0.5" aria-hidden="true">
+                  *
+                </span>
+              )}
             </label>
           )}
 
@@ -131,13 +140,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             value={value}
             defaultValue={defaultValue}
-            placeholder={floating ? (isFocused ? placeholder : '') : placeholder}
+            placeholder={
+              floating ? (isFocused ? placeholder : "") : placeholder
+            }
             aria-invalid={hasError}
             aria-describedby={
-              [
-                hasError ? errorId : null,
-                helperText ? helperId : null,
-              ].filter(Boolean).join(' ') || undefined
+              [hasError ? errorId : null, helperText ? helperId : null]
+                .filter(Boolean)
+                .join(" ") || undefined
             }
             onFocus={handleFocus}
             onBlur={handleBlur}
@@ -176,7 +186,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
               absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] rounded-full
               bg-gradient-to-r from-accent-primary to-accent-violet
               transition-all duration-300 ease-out
-              ${isFocused ? 'w-full opacity-100' : 'w-0 opacity-0'}
+              ${isFocused ? "w-full opacity-100" : "w-0 opacity-0"}
             `}
             aria-hidden="true"
           />
@@ -211,7 +221,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
 Input.displayName = "Input";

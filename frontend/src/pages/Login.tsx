@@ -3,23 +3,35 @@
  * Minimalist split-screen auth with gradient mesh background
  */
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useAuth } from '../hooks/useAuth';
-import { useTranslation } from '../hooks/useTranslation';
-import { SEO } from '../components/SEO';
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../hooks/useAuth";
+import { useTranslation } from "../hooks/useTranslation";
+import { SEO } from "../components/SEO";
 
-import { Mail, Lock, AlertCircle, Eye, EyeOff, ArrowLeft } from 'lucide-react';
-import { DeepSightSpinnerMicro } from '../components/ui/DeepSightSpinner';
+import { Mail, Lock, AlertCircle, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { DeepSightSpinnerMicro } from "../components/ui/DeepSightSpinner";
 
 // === Google Icon ===
 const GoogleIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24">
-    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+    <path
+      fill="#4285F4"
+      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+    />
+    <path
+      fill="#34A853"
+      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+    />
+    <path
+      fill="#FBBC05"
+      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+    />
+    <path
+      fill="#EA4335"
+      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+    />
   </svg>
 );
 
@@ -34,7 +46,9 @@ const Logo: React.FC = () => {
           className="w-full h-full object-cover"
         />
       </div>
-      <span className="font-semibold text-base tracking-tight text-text-primary">Deep Sight</span>
+      <span className="font-semibold text-base tracking-tight text-text-primary">
+        Deep Sight
+      </span>
     </div>
   );
 };
@@ -43,17 +57,23 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { login, loginWithGoogle, register, verifyEmail, isAuthenticated, isLoading: authLoading } = useAuth();
+  const {
+    login,
+    loginWithGoogle,
+    register,
+    verifyEmail,
+    isAuthenticated,
+    isLoading: authLoading,
+  } = useAuth();
   const { t, language } = useTranslation();
-
 
   const [isRegister, setIsRegister] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
-  const [verificationEmail, setVerificationEmail] = useState('');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [verificationEmail, setVerificationEmail] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,22 +81,33 @@ export const Login: React.FC = () => {
 
   // Support ?tab=register from landing page CTA
   useEffect(() => {
-    if (searchParams.get('tab') === 'register') {
+    if (searchParams.get("tab") === "register") {
       setIsRegister(true);
     }
   }, [searchParams]);
 
   // OAuth error from URL
   useEffect(() => {
-    const oauthError = searchParams.get('error');
+    const oauthError = searchParams.get("error");
     if (oauthError) {
       const errorMessages: Record<string, string> = {
-        database_error: language === 'fr' ? 'Service temporairement indisponible.' : 'Service temporarily unavailable.',
-        access_denied: language === 'fr' ? 'Accès refusé.' : 'Access denied.',
-        token_exchange_failed: language === 'fr' ? 'Échec de l\'authentification Google.' : 'Google authentication failed.',
-        userinfo_failed: language === 'fr' ? 'Impossible de récupérer vos informations.' : 'Could not retrieve your info.',
-        auth_failed: language === 'fr' ? 'Échec de la connexion.' : 'Login failed.',
-        no_code: language === 'fr' ? 'Paramètres manquants.' : 'Missing parameters.',
+        database_error:
+          language === "fr"
+            ? "Service temporairement indisponible."
+            : "Service temporarily unavailable.",
+        access_denied: language === "fr" ? "Accès refusé." : "Access denied.",
+        token_exchange_failed:
+          language === "fr"
+            ? "Échec de l'authentification Google."
+            : "Google authentication failed.",
+        userinfo_failed:
+          language === "fr"
+            ? "Impossible de récupérer vos informations."
+            : "Could not retrieve your info.",
+        auth_failed:
+          language === "fr" ? "Échec de la connexion." : "Login failed.",
+        no_code:
+          language === "fr" ? "Paramètres manquants." : "Missing parameters.",
       };
       setError(errorMessages[oauthError] || `Error: ${oauthError}`);
       navigate(location.pathname, { replace: true });
@@ -85,7 +116,9 @@ export const Login: React.FC = () => {
 
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      const from = (location.state as { from?: { pathname?: string } } | null)?.from?.pathname || '/dashboard';
+      const from =
+        (location.state as { from?: { pathname?: string } } | null)?.from
+          ?.pathname || "/dashboard";
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate, location]);
@@ -96,25 +129,39 @@ export const Login: React.FC = () => {
     setSuccess(null);
 
     if (!email || !password) {
-      setError(language === 'fr' ? 'Veuillez remplir tous les champs' : 'Please fill all fields');
+      setError(
+        language === "fr"
+          ? "Veuillez remplir tous les champs"
+          : "Please fill all fields",
+      );
       return;
     }
     if (isRegister && password !== confirmPassword) {
-      setError(language === 'fr' ? 'Les mots de passe ne correspondent pas' : 'Passwords do not match');
+      setError(
+        language === "fr"
+          ? "Les mots de passe ne correspondent pas"
+          : "Passwords do not match",
+      );
       return;
     }
     if (isRegister && password.length < 6) {
-      setError(language === 'fr' ? 'Minimum 6 caractères' : 'Minimum 6 characters');
+      setError(
+        language === "fr" ? "Minimum 6 caractères" : "Minimum 6 characters",
+      );
       return;
     }
 
     setLoading(true);
     try {
       if (isRegister) {
-        await register(email.split('@')[0], email, password);
+        await register(email.split("@")[0], email, password);
         setVerificationEmail(email);
         setShowVerification(true);
-        setSuccess(language === 'fr' ? 'Code envoyé ! Vérifiez votre email.' : 'Code sent! Check your email.');
+        setSuccess(
+          language === "fr"
+            ? "Code envoyé ! Vérifiez votre email."
+            : "Code sent! Check your email.",
+        );
       } else {
         await login(email, password);
       }
@@ -130,18 +177,28 @@ export const Login: React.FC = () => {
     setError(null);
     setSuccess(null);
     if (!verificationCode || verificationCode.length !== 6) {
-      setError(language === 'fr' ? 'Code à 6 chiffres requis' : '6-digit code required');
+      setError(
+        language === "fr"
+          ? "Code à 6 chiffres requis"
+          : "6-digit code required",
+      );
       return;
     }
     setLoading(true);
     try {
       await verifyEmail(verificationEmail, verificationCode);
-      setSuccess(language === 'fr' ? 'Email vérifié ! Connectez-vous.' : 'Email verified! Sign in now.');
+      setSuccess(
+        language === "fr"
+          ? "Email vérifié ! Connectez-vous."
+          : "Email verified! Sign in now.",
+      );
       setShowVerification(false);
       setIsRegister(false);
-      setVerificationCode('');
+      setVerificationCode("");
     } catch (err: any) {
-      setError(err?.message || (language === 'fr' ? 'Code invalide' : 'Invalid code'));
+      setError(
+        err?.message || (language === "fr" ? "Code invalide" : "Invalid code"),
+      );
     } finally {
       setLoading(false);
     }
@@ -202,8 +259,10 @@ export const Login: React.FC = () => {
             className="space-y-5"
           >
             <h1 className="text-display-sm font-bold tracking-tight">
-              {t.landing.hero.title}{' '}
-              <span className="text-gradient">{t.landing.hero.titleHighlight}</span>
+              {t.landing.hero.title}{" "}
+              <span className="text-gradient">
+                {t.landing.hero.titleHighlight}
+              </span>
             </h1>
             <p className="text-text-secondary text-body-lg leading-relaxed max-w-md">
               {t.auth.subtitle}
@@ -211,7 +270,12 @@ export const Login: React.FC = () => {
 
             {/* Feature pills */}
             <div className="flex flex-wrap gap-2 pt-2">
-              {[t.auth.featureAnalysis, t.auth.featureFactCheck, t.auth.featureStudyTools, t.auth.featureChat].map((feat) => (
+              {[
+                t.auth.featureAnalysis,
+                t.auth.featureFactCheck,
+                t.auth.featureStudyTools,
+                t.auth.featureChat,
+              ].map((feat) => (
                 <span
                   key={feat}
                   className="px-3 py-1 rounded-full text-xs font-medium bg-bg-tertiary/60 text-text-secondary border border-border-subtle backdrop-blur-sm"
@@ -230,28 +294,55 @@ export const Login: React.FC = () => {
             className="space-y-4"
           >
             <p className="text-text-muted text-xs uppercase tracking-widest font-medium">
-              {language === 'fr' ? 'Plateformes compatibles' : 'Compatible platforms'}
+              {language === "fr"
+                ? "Plateformes compatibles"
+                : "Compatible platforms"}
             </p>
             <div className="flex items-center gap-5">
               <div className="group flex items-center gap-2.5 opacity-80 hover:opacity-100 transition-all duration-300 hover:scale-105">
-                <img src="/platforms/youtube-logo-white.png" alt="YouTube" className="h-7 drop-shadow-lg" />
+                <img
+                  src="/platforms/youtube-logo-white.png"
+                  alt="YouTube"
+                  className="h-7 drop-shadow-lg"
+                />
               </div>
               <div className="w-px h-8 bg-white/10" />
               <div className="group flex items-center gap-2.5 opacity-80 hover:opacity-100 transition-all duration-300 hover:scale-105">
-                <img src="/platforms/tiktok-logo-white.png" alt="TikTok" className="h-7 drop-shadow-lg" />
+                <img
+                  src="/platforms/tiktok-logo-white.png"
+                  alt="TikTok"
+                  className="h-7 drop-shadow-lg"
+                />
               </div>
               <div className="w-px h-8 bg-white/10" />
-              <a href="https://tournesol.app" target="_blank" rel="noreferrer" className="group flex items-center gap-2.5 opacity-80 hover:opacity-100 transition-all duration-300 hover:scale-105">
-                <img src="/platforms/tournesol-logo.png" alt="Tournesol" className="h-7 drop-shadow-lg" />
+              <a
+                href="https://tournesol.app"
+                target="_blank"
+                rel="noreferrer"
+                className="group flex items-center gap-2.5 opacity-80 hover:opacity-100 transition-all duration-300 hover:scale-105"
+              >
+                <img
+                  src="/platforms/tournesol-logo.png"
+                  alt="Tournesol"
+                  className="h-7 drop-shadow-lg"
+                />
               </a>
             </div>
             <div className="flex items-center gap-2 mt-3">
               <span className="text-text-muted text-[10px] uppercase tracking-wider">
-                {language === 'fr' ? 'Propulsé par' : 'Powered by'}
+                {language === "fr" ? "Propulsé par" : "Powered by"}
               </span>
-              <img src="/platforms/mistral-logo-white.svg" alt="Mistral AI" className="h-5 opacity-70" />
+              <img
+                src="/platforms/mistral-logo-white.svg"
+                alt="Mistral AI"
+                className="h-5 opacity-70"
+              />
               <span className="text-text-muted text-[10px]">&</span>
-              <img src="/platforms/tournesol-logo.png" alt="Tournesol" className="h-5 opacity-70" />
+              <img
+                src="/platforms/tournesol-logo.png"
+                alt="Tournesol"
+                className="h-5 opacity-70"
+              />
             </div>
           </motion.div>
 
@@ -283,13 +374,29 @@ export const Login: React.FC = () => {
 
           {/* Platform logos under DeepSight logo */}
           <div className="flex items-center justify-center gap-4 mb-5">
-            <img src="/platforms/youtube-icon-red.svg" alt="YouTube" className="h-7 opacity-80 hover:opacity-100 transition-opacity" />
+            <img
+              src="/platforms/youtube-icon-red.svg"
+              alt="YouTube"
+              className="h-7 opacity-80 hover:opacity-100 transition-opacity"
+            />
             <div className="w-px h-5 bg-border-subtle" />
-            <img src="/platforms/tiktok-note-white.png" alt="TikTok" className="h-7 opacity-80 hover:opacity-100 transition-opacity" />
+            <img
+              src="/platforms/tiktok-note-white.png"
+              alt="TikTok"
+              className="h-7 opacity-80 hover:opacity-100 transition-opacity"
+            />
             <div className="w-px h-5 bg-border-subtle" />
-            <img src="/platforms/tournesol-logo.png" alt="Tournesol" className="h-6 opacity-70 hover:opacity-100 transition-opacity" />
+            <img
+              src="/platforms/tournesol-logo.png"
+              alt="Tournesol"
+              className="h-6 opacity-70 hover:opacity-100 transition-opacity"
+            />
             <div className="w-px h-5 bg-border-subtle" />
-            <img src="/platforms/mistral-logo-white.svg" alt="Mistral AI" className="h-5 opacity-60 hover:opacity-90 transition-opacity" />
+            <img
+              src="/platforms/mistral-logo-white.svg"
+              alt="Mistral AI"
+              className="h-5 opacity-60 hover:opacity-90 transition-opacity"
+            />
           </div>
 
           {/* Title */}
@@ -299,8 +406,12 @@ export const Login: React.FC = () => {
             </h2>
             <p className="text-text-tertiary text-sm">
               {isRegister
-                ? (language === 'fr' ? 'Créez votre compte' : 'Create your account')
-                : (language === 'fr' ? 'Connectez-vous' : 'Sign in to continue')}
+                ? language === "fr"
+                  ? "Créez votre compte"
+                  : "Create your account"
+                : language === "fr"
+                  ? "Connectez-vous"
+                  : "Sign in to continue"}
             </p>
           </div>
 
@@ -323,7 +434,7 @@ export const Login: React.FC = () => {
                 </div>
                 <div className="relative flex justify-center">
                   <span className="bg-bg-primary px-3 text-xs text-text-muted">
-                    {language === 'fr' ? 'ou' : 'or'}
+                    {language === "fr" ? "ou" : "or"}
                   </span>
                 </div>
               </div>
@@ -335,7 +446,7 @@ export const Login: React.FC = () => {
             {error && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
+                animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 className="mb-4"
               >
@@ -348,7 +459,7 @@ export const Login: React.FC = () => {
             {success && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
+                animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
                 className="mb-4"
               >
@@ -374,10 +485,14 @@ export const Login: React.FC = () => {
                     <Mail className="w-5 h-5 text-accent-primary" />
                   </div>
                   <h3 className="font-semibold text-sm mb-1">
-                    {language === 'fr' ? 'Vérifiez votre email' : 'Check your email'}
+                    {language === "fr"
+                      ? "Vérifiez votre email"
+                      : "Check your email"}
                   </h3>
                   <p className="text-text-tertiary text-xs">
-                    {language === 'fr' ? `Code envoyé à ${verificationEmail}` : `Code sent to ${verificationEmail}`}
+                    {language === "fr"
+                      ? `Code envoyé à ${verificationEmail}`
+                      : `Code sent to ${verificationEmail}`}
                   </p>
                 </div>
 
@@ -385,7 +500,11 @@ export const Login: React.FC = () => {
                   <input
                     type="text"
                     value={verificationCode}
-                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    onChange={(e) =>
+                      setVerificationCode(
+                        e.target.value.replace(/\D/g, "").slice(0, 6),
+                      )
+                    }
                     placeholder="000000"
                     className="input text-center text-lg tracking-[0.3em] font-mono"
                     disabled={loading}
@@ -397,12 +516,21 @@ export const Login: React.FC = () => {
                     disabled={loading || verificationCode.length !== 6}
                     className="w-full btn btn-primary py-2.5"
                   >
-                    {loading ? <DeepSightSpinnerMicro onLight /> : t.common.confirm}
+                    {loading ? (
+                      <DeepSightSpinnerMicro onLight />
+                    ) : (
+                      t.common.confirm
+                    )}
                   </button>
                 </form>
 
                 <button
-                  onClick={() => { setShowVerification(false); setVerificationCode(''); setError(null); setSuccess(null); }}
+                  onClick={() => {
+                    setShowVerification(false);
+                    setVerificationCode("");
+                    setError(null);
+                    setSuccess(null);
+                  }}
                   className="w-full flex items-center justify-center gap-1.5 text-xs text-text-tertiary hover:text-text-primary transition-colors"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" />
@@ -419,7 +547,9 @@ export const Login: React.FC = () => {
                 <form onSubmit={handleSubmit} className="space-y-3.5">
                   {/* Email */}
                   <div>
-                    <label className="block text-xs font-medium text-text-secondary mb-1.5">{t.auth.email}</label>
+                    <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                      {t.auth.email}
+                    </label>
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                       <input
@@ -435,11 +565,13 @@ export const Login: React.FC = () => {
 
                   {/* Password */}
                   <div>
-                    <label className="block text-xs font-medium text-text-secondary mb-1.5">{t.auth.password}</label>
+                    <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                      {t.auth.password}
+                    </label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                       <input
-                        type={showPassword ? 'text' : 'password'}
+                        type={showPassword ? "text" : "password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
@@ -452,7 +584,11 @@ export const Login: React.FC = () => {
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
                         tabIndex={-1}
                       >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -462,11 +598,11 @@ export const Login: React.FC = () => {
                     {isRegister && (
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
+                        animate={{ opacity: 1, height: "auto" }}
                         exit={{ opacity: 0, height: 0 }}
                       >
                         <label className="block text-xs font-medium text-text-secondary mb-1.5">
-                          {language === 'fr' ? 'Confirmer' : 'Confirm password'}
+                          {language === "fr" ? "Confirmer" : "Confirm password"}
                         </label>
                         <div className="relative">
                           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
@@ -504,9 +640,12 @@ export const Login: React.FC = () => {
                 <p className="text-center text-xs text-text-tertiary mt-5">
                   {isRegister ? (
                     <>
-                      {t.auth.hasAccount}{' '}
+                      {t.auth.hasAccount}{" "}
                       <button
-                        onClick={() => { setIsRegister(false); setError(null); }}
+                        onClick={() => {
+                          setIsRegister(false);
+                          setError(null);
+                        }}
                         className="text-accent-primary hover:text-accent-primary-hover font-medium transition-colors"
                       >
                         {t.auth.signIn}
@@ -514,9 +653,12 @@ export const Login: React.FC = () => {
                     </>
                   ) : (
                     <>
-                      {t.auth.noAccount}{' '}
+                      {t.auth.noAccount}{" "}
                       <button
-                        onClick={() => { setIsRegister(true); setError(null); }}
+                        onClick={() => {
+                          setIsRegister(true);
+                          setError(null);
+                        }}
                         className="text-accent-primary hover:text-accent-primary-hover font-medium transition-colors"
                       >
                         {t.auth.createAccount}

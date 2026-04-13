@@ -3,7 +3,7 @@
  * Main panel for displaying and searching academic sources related to an analysis.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback } from "react";
 import {
   GraduationCap,
   Search,
@@ -14,25 +14,25 @@ import {
   Lock,
   ChevronUp,
   ChevronDown,
-} from 'lucide-react';
-import { DeepSightSpinner } from '../ui';
-import { academicApi, AcademicPaper } from '../../services/api';
-import { hasFeature, normalizePlanId } from '../../config/planPrivileges';
-import { PaperCard } from './PaperCard';
-import { BibliographyModal } from './BibliographyModal';
+} from "lucide-react";
+import { DeepSightSpinner } from "../ui";
+import { academicApi, AcademicPaper } from "../../services/api";
+import { hasFeature, normalizePlanId } from "../../config/planPrivileges";
+import { PaperCard } from "./PaperCard";
+import { BibliographyModal } from "./BibliographyModal";
 
 interface AcademicSourcesPanelProps {
   summaryId: string;
   userPlan?: string;
   onUpgrade?: () => void;
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
 }
 
 export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
   summaryId,
-  userPlan = 'free',
+  userPlan = "free",
   onUpgrade,
-  language = 'en',
+  language = "en",
 }) => {
   const [papers, setPapers] = useState<AcademicPaper[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,11 +47,11 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
   const [showExportModal, setShowExportModal] = useState(false);
 
   const plan = normalizePlanId(userPlan);
-  const canSearch = hasFeature(plan, 'academicSearch');
-  const canExport = hasFeature(plan, 'bibliographyExport');
+  const canSearch = hasFeature(plan, "academicSearch");
+  const canExport = hasFeature(plan, "bibliographyExport");
   // Note: paperLimit is available via getLimit(plan, 'academicPapersPerAnalysis') if needed
 
-  const t = (fr: string, en: string) => language === 'fr' ? fr : en;
+  const t = (fr: string, en: string) => (language === "fr" ? fr : en);
 
   const handleSearch = useCallback(async () => {
     if (!canSearch) {
@@ -70,8 +70,10 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
       setTierLimit(response.tier_limit || null);
       setSearched(true);
     } catch (err: any) {
-      console.error('Academic search error:', err);
-      setError(err.message || t('Erreur lors de la recherche', 'Search failed'));
+      console.error("Academic search error:", err);
+      setError(
+        err.message || t("Erreur lors de la recherche", "Search failed"),
+      );
     } finally {
       setLoading(false);
     }
@@ -120,7 +122,7 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
         <div className="flex items-center gap-2">
           <GraduationCap className="w-5 h-5 text-accent-primary" />
           <h3 className="font-semibold text-text-primary">
-            {t('Sources Académiques', 'Academic Sources')}
+            {t("Sources Académiques", "Academic Sources")}
           </h3>
           {searched && papers.length > 0 && (
             <span className="text-xs text-text-tertiary bg-bg-tertiary px-2 py-0.5 rounded-full">
@@ -147,20 +149,20 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
             <div className="text-center py-6">
               <p className="text-text-secondary text-sm mb-4 max-w-md mx-auto">
                 {t(
-                  'Trouvez des articles scientifiques liés à cette analyse via Semantic Scholar, OpenAlex et arXiv.',
-                  'Find scientific papers related to this analysis from Semantic Scholar, OpenAlex, and arXiv.'
+                  "Trouvez des articles scientifiques liés à cette analyse via Semantic Scholar, OpenAlex et arXiv.",
+                  "Find scientific papers related to this analysis from Semantic Scholar, OpenAlex, and arXiv.",
                 )}
               </p>
-              <button
-                onClick={handleSearch}
-                className="btn btn-primary"
-              >
+              <button onClick={handleSearch} className="btn btn-primary">
                 <Search className="w-4 h-4" />
-                {t('Rechercher des sources', 'Find Sources')}
+                {t("Rechercher des sources", "Find Sources")}
               </button>
-              {plan === 'free' && (
+              {plan === "free" && (
                 <p className="text-xs text-text-tertiary mt-2">
-                  {t('3 résultats max en plan gratuit', 'Max 3 results on free plan')}
+                  {t(
+                    "3 résultats max en plan gratuit",
+                    "Max 3 results on free plan",
+                  )}
                 </p>
               )}
             </div>
@@ -169,7 +171,11 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
           {/* Loading state */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-8">
-              <DeepSightSpinner size="md" label={t('Recherche en cours...', 'Searching...')} showLabel />
+              <DeepSightSpinner
+                size="md"
+                label={t("Recherche en cours...", "Searching...")}
+                showLabel
+              />
             </div>
           )}
 
@@ -180,12 +186,9 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
                 <AlertCircle className="w-6 h-6 text-error" />
               </div>
               <p className="text-text-secondary text-sm mb-4">{error}</p>
-              <button
-                onClick={handleSearch}
-                className="btn btn-secondary"
-              >
+              <button onClick={handleSearch} className="btn btn-secondary">
                 <RefreshCw className="w-4 h-4" />
-                {t('Réessayer', 'Retry')}
+                {t("Réessayer", "Retry")}
               </button>
             </div>
           )}
@@ -201,8 +204,8 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
                   </div>
                   <p className="text-text-secondary text-sm">
                     {t(
-                      'Aucune source académique trouvée pour ce contenu.',
-                      'No academic sources found for this content.'
+                      "Aucune source académique trouvée pour ce contenu.",
+                      "No academic sources found for this content.",
                     )}
                   </p>
                 </div>
@@ -214,20 +217,30 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
                       onClick={handleSelectAll}
                       className="flex items-center gap-2 text-sm text-accent-primary hover:underline"
                     >
-                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
-                        selectedPapers.size === papers.length
-                          ? 'bg-accent-primary border-accent-primary'
-                          : 'border-border-default'
-                      }`}>
+                      <div
+                        className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                          selectedPapers.size === papers.length
+                            ? "bg-accent-primary border-accent-primary"
+                            : "border-border-default"
+                        }`}
+                      >
                         {selectedPapers.size === papers.length && (
-                          <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          <svg
+                            className="w-2.5 h-2.5 text-white"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                              clipRule="evenodd"
+                            />
                           </svg>
                         )}
                       </div>
                       {selectedPapers.size === papers.length
-                        ? t('Tout désélectionner', 'Deselect all')
-                        : t('Tout sélectionner', 'Select all')}
+                        ? t("Tout désélectionner", "Deselect all")
+                        : t("Tout sélectionner", "Select all")}
                     </button>
 
                     <button
@@ -240,7 +253,7 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
                       ) : (
                         <Lock className="w-4 h-4" />
                       )}
-                      {t('Exporter', 'Export')} ({selectedPapers.size})
+                      {t("Exporter", "Export")} ({selectedPapers.size})
                     </button>
                   </div>
 
@@ -265,13 +278,13 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
                           <p className="text-sm font-medium text-text-primary">
                             {t(
                               `${totalFound - (tierLimit || 0)} résultats supplémentaires disponibles`,
-                              `${totalFound - (tierLimit || 0)} more results available`
+                              `${totalFound - (tierLimit || 0)} more results available`,
                             )}
                           </p>
                           <p className="text-xs text-text-secondary mt-1">
                             {t(
-                              'Passez à un forfait supérieur pour voir plus de sources.',
-                              'Upgrade to see more sources.'
+                              "Passez à un forfait supérieur pour voir plus de sources.",
+                              "Upgrade to see more sources.",
                             )}
                           </p>
                         </div>
@@ -279,7 +292,7 @@ export const AcademicSourcesPanel: React.FC<AcademicSourcesPanelProps> = ({
                           onClick={onUpgrade}
                           className="btn btn-primary btn-sm"
                         >
-                          {t('Mettre à niveau', 'Upgrade')}
+                          {t("Mettre à niveau", "Upgrade")}
                         </button>
                       </div>
                     </div>

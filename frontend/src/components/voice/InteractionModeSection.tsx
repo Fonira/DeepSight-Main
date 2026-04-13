@@ -3,10 +3,10 @@
  * Segmented control PTT/VAD + slider eagerness (VAD) + toggle interruptions.
  */
 
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Toggle } from '../ui/Toggle';
-import type { VoicePreferences } from '../../services/api';
+import React from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Toggle } from "../ui/Toggle";
+import type { VoicePreferences } from "../../services/api";
 
 interface InteractionModeSectionProps {
   preferences: VoicePreferences;
@@ -17,14 +17,16 @@ interface InteractionModeSectionProps {
 
 const modes = [
   {
-    id: 'ptt' as const,
-    label: 'Appuyer pour parler',
-    description: 'Maintenez le bouton pour parler. Plus de contrôle, moins de faux positifs.',
+    id: "ptt" as const,
+    label: "Appuyer pour parler",
+    description:
+      "Maintenez le bouton pour parler. Plus de contrôle, moins de faux positifs.",
   },
   {
-    id: 'vad' as const,
-    label: 'Détection vocale',
-    description: 'Micro toujours ouvert. Le système détecte automatiquement quand vous parlez.',
+    id: "vad" as const,
+    label: "Détection vocale",
+    description:
+      "Micro toujours ouvert. Le système détecte automatiquement quand vous parlez.",
   },
 ];
 
@@ -45,13 +47,11 @@ export const InteractionModeSection: React.FC<InteractionModeSectionProps> = ({
             disabled={saving}
             className={`text-left p-4 rounded-xl transition-all duration-200 ${
               preferences.input_mode === mode.id
-                ? 'bg-indigo-500/20 border-2 border-indigo-400 text-indigo-300'
-                : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:border-white/20'
+                ? "bg-indigo-500/20 border-2 border-indigo-400 text-indigo-300"
+                : "bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:border-white/20"
             }`}
           >
-            <span className="font-semibold text-sm block">
-              {mode.label}
-            </span>
+            <span className="font-semibold text-sm block">{mode.label}</span>
             <span className="text-xs text-white/40 mt-1 block">
               {mode.description}
             </span>
@@ -61,10 +61,10 @@ export const InteractionModeSection: React.FC<InteractionModeSectionProps> = ({
 
       {/* Turn eagerness slider — VAD only */}
       <AnimatePresence initial={false}>
-        {preferences.input_mode === 'vad' && (
+        {preferences.input_mode === "vad" && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
+            animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="overflow-hidden"

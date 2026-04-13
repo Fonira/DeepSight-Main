@@ -4,16 +4,28 @@
  * Tooltip au hover avec shortDefinition. Collapsed = icône seule.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useLoadingWord } from '../contexts/LoadingWordContext';
-import { useLanguage } from '../contexts/LanguageContext';
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { useLoadingWord } from "../contexts/LoadingWordContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const CAT_ICONS: Record<string, string> = {
-  cognitive_bias: '🧠', science: '🔬', philosophy: '🎭', culture: '🌍',
-  misc: '✨', history: '📜', technology: '⚡', person: '👤',
-  company: '🏢', concept: '💡', event: '📅', place: '📍',
-  psychology: '🧩', economics: '💰', art: '🎨', nature: '🌿',
+  cognitive_bias: "🧠",
+  science: "🔬",
+  philosophy: "🎭",
+  culture: "🌍",
+  misc: "✨",
+  history: "📜",
+  technology: "⚡",
+  person: "👤",
+  company: "🏢",
+  concept: "💡",
+  event: "📅",
+  place: "📍",
+  psychology: "🧩",
+  economics: "💰",
+  art: "🎨",
+  nature: "🌿",
 };
 
 const ROTATION_INTERVAL = 120_000;
@@ -22,7 +34,9 @@ interface SidebarInsightProps {
   collapsed?: boolean;
 }
 
-export const SidebarInsight: React.FC<SidebarInsightProps> = ({ collapsed = false }) => {
+export const SidebarInsight: React.FC<SidebarInsightProps> = ({
+  collapsed = false,
+}) => {
   const navigate = useNavigate();
   const { currentWord, nextWord } = useLoadingWord();
   const { language } = useLanguage();
@@ -42,17 +56,19 @@ export const SidebarInsight: React.FC<SidebarInsightProps> = ({ collapsed = fals
   }, [nextWord]);
 
   const handleClick = useCallback(() => {
-    if (localWord?.source === 'history' && localWord?.summaryId) {
+    if (localWord?.source === "history" && localWord?.summaryId) {
       navigate(`/dashboard?id=${localWord.summaryId}`);
     } else if (localWord?.wikiUrl) {
-      window.open(localWord.wikiUrl, '_blank', 'noopener,noreferrer');
+      window.open(localWord.wikiUrl, "_blank", "noopener,noreferrer");
     }
   }, [localWord, navigate]);
 
   if (!localWord) return null;
 
-  const catIcon = CAT_ICONS[localWord.category] || '📚';
-  const isClickable = (localWord.source === 'history' && localWord.summaryId) || localWord.wikiUrl;
+  const catIcon = CAT_ICONS[localWord.category] || "📚";
+  const isClickable =
+    (localWord.source === "history" && localWord.summaryId) ||
+    localWord.wikiUrl;
 
   if (collapsed) {
     return (
@@ -64,7 +80,12 @@ export const SidebarInsight: React.FC<SidebarInsightProps> = ({ collapsed = fals
           onMouseLeave={() => setShowTooltip(false)}
         >
           {localWord.imageUrl ? (
-            <img src={localWord.imageUrl} alt="" className="w-5 h-5 rounded-full object-cover" loading="lazy" />
+            <img
+              src={localWord.imageUrl}
+              alt=""
+              className="w-5 h-5 rounded-full object-cover"
+              loading="lazy"
+            />
           ) : (
             <span className="text-sm">{catIcon}</span>
           )}
@@ -79,9 +100,9 @@ export const SidebarInsight: React.FC<SidebarInsightProps> = ({ collapsed = fals
             <p className="text-[11px] text-text-secondary leading-relaxed">
               {localWord.shortDefinition}
             </p>
-            {localWord.source === 'history' && (
+            {localWord.source === "history" && (
               <p className="text-[9px] text-accent-primary/50 mt-1.5">
-                📜 {language === 'fr' ? 'Vos analyses' : 'Your analyses'}
+                📜 {language === "fr" ? "Vos analyses" : "Your analyses"}
               </p>
             )}
           </div>
@@ -97,14 +118,19 @@ export const SidebarInsight: React.FC<SidebarInsightProps> = ({ collapsed = fals
         disabled={!isClickable}
         className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border-l-[3px] border-accent-primary/30 transition-all duration-200 ${
           isClickable
-            ? 'hover:bg-white/5 hover:border-accent-primary/60 cursor-pointer'
-            : ''
+            ? "hover:bg-white/5 hover:border-accent-primary/60 cursor-pointer"
+            : ""
         }`}
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
       >
         {localWord.imageUrl ? (
-          <img src={localWord.imageUrl} alt="" className="w-5 h-5 rounded-full object-cover flex-shrink-0" loading="lazy" />
+          <img
+            src={localWord.imageUrl}
+            alt=""
+            className="w-5 h-5 rounded-full object-cover flex-shrink-0"
+            loading="lazy"
+          />
         ) : (
           <span className="text-xs flex-shrink-0">{catIcon}</span>
         )}
@@ -122,9 +148,9 @@ export const SidebarInsight: React.FC<SidebarInsightProps> = ({ collapsed = fals
           <p className="text-[11px] text-text-secondary leading-relaxed">
             {localWord.shortDefinition}
           </p>
-          {localWord.source === 'history' && (
+          {localWord.source === "history" && (
             <p className="text-[9px] text-accent-primary/50 mt-1.5">
-              📜 {language === 'fr' ? 'Vos analyses' : 'Your analyses'}
+              📜 {language === "fr" ? "Vos analyses" : "Your analyses"}
             </p>
           )}
         </div>

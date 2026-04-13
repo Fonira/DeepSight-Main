@@ -1,7 +1,7 @@
 /**
  * DEEP SIGHT v7.1 — Theme Context
  * 🌗 Gestion du thème clair/sombre avec transitions fluides
- * 
+ *
  * Features:
  * - Détection automatique des préférences système
  * - Persistance localStorage
@@ -9,10 +9,17 @@
  * - Support "system" mode
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from "react";
 
-type Theme = 'light' | 'dark' | 'system';
-type ResolvedTheme = 'light' | 'dark';
+type Theme = "light" | "dark" | "system";
+type ResolvedTheme = "light" | "dark";
 
 interface ThemeContextType {
   theme: Theme;
@@ -24,18 +31,20 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'deepsight-theme';
-const TRANSITION_CLASS = 'theme-transitioning';
+const STORAGE_KEY = "deepsight-theme";
+const TRANSITION_CLASS = "theme-transitioning";
 
 /**
  * Détecte la préférence système
  */
 const getSystemTheme = (): ResolvedTheme => {
   try {
-    if (typeof window === 'undefined') return 'dark';
-    return window.matchMedia?.('(prefers-color-scheme: dark)')?.matches ? 'dark' : 'light';
+    if (typeof window === "undefined") return "dark";
+    return window.matchMedia?.("(prefers-color-scheme: dark)")?.matches
+      ? "dark"
+      : "light";
   } catch {
-    return 'dark';
+    return "dark";
   }
 };
 
@@ -43,27 +52,33 @@ const getSystemTheme = (): ResolvedTheme => {
  * Résout le thème effectif
  */
 const resolveTheme = (theme: Theme): ResolvedTheme => {
-  if (theme === 'system') {
+  if (theme === "system") {
     return getSystemTheme();
   }
   return theme;
 };
 
-export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const ThemeProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   // Initialisation depuis localStorage ou préférence système
   const [theme, setThemeState] = useState<Theme>(() => {
     try {
-      if (typeof window === 'undefined') return 'dark';
+      if (typeof window === "undefined") return "dark";
       const saved = localStorage.getItem(STORAGE_KEY) as Theme | null;
-      if (saved && ['light', 'dark', 'system'].includes(saved)) {
+      if (saved && ["light", "dark", "system"].includes(saved)) {
         return saved;
       }
-    } catch { /* Safari private mode */ }
+    } catch {
+      /* Safari private mode */
+    }
     // Par défaut: dark mode (design académique)
-    return 'dark';
+    return "dark";
   });
 
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => resolveTheme(theme));
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
+    resolveTheme(theme),
+  );
 
   // Mise à jour du thème résolu quand le thème ou les préférences système changent
   useEffect(() => {
@@ -74,15 +89,17 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     updateResolvedTheme();
 
     // Écouter les changements de préférence système
-    if (theme === 'system') {
+    if (theme === "system") {
       try {
-        const mediaQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
+        const mediaQuery = window.matchMedia?.("(prefers-color-scheme: dark)");
         if (mediaQuery) {
           const handler = () => updateResolvedTheme();
-          mediaQuery.addEventListener('change', handler);
-          return () => mediaQuery.removeEventListener('change', handler);
+          mediaQuery.addEventListener("change", handler);
+          return () => mediaQuery.removeEventListener("change", handler);
         }
-      } catch { /* matchMedia unavailable */ }
+      } catch {
+        /* matchMedia unavailable */
+      }
     }
   }, [theme]);
 
@@ -90,40 +107,44 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
-    
+
     // Ajouter classe de transition pour animer le changement
     html.classList.add(TRANSITION_CLASS);
     body.classList.add(TRANSITION_CLASS);
-    
+
     // Appliquer le thème
-    if (resolvedTheme === 'light') {
-      body.classList.add('light');
-      body.classList.remove('dark');
-      html.setAttribute('data-theme', 'light');
+    if (resolvedTheme === "light") {
+      body.classList.add("light");
+      body.classList.remove("dark");
+      html.setAttribute("data-theme", "light");
     } else {
-      body.classList.remove('light');
-      body.classList.add('dark');
-      html.setAttribute('data-theme', 'dark');
+      body.classList.remove("light");
+      body.classList.add("dark");
+      html.setAttribute("data-theme", "dark");
     }
-    
+
     // Mettre à jour meta theme-color pour la barre de statut mobile
     const metaThemeColor = document.querySelector('meta[name="theme-color"]');
     if (metaThemeColor) {
       metaThemeColor.setAttribute(
-        'content',
-        resolvedTheme === 'light' ? '#FAFAF9' : '#0A0A0B'
+        "content",
+        resolvedTheme === "light" ? "#FAFAF9" : "#0A0A0B",
       );
     }
-    
+
     // Persister le choix
-    try { localStorage.setItem(STORAGE_KEY, theme); } catch { /* Safari private */ }
-    
+    try {
+      localStorage.setItem(STORAGE_KEY, theme);
+    } catch {
+      /* Safari private */
+    }
+
     // Retirer la classe de transition après l'animation
     const timer = setTimeout(() => {
       html.classList.remove(TRANSITION_CLASS);
       body.classList.remove(TRANSITION_CLASS);
     }, 300);
-    
+
     return () => clearTimeout(timer);
   }, [resolvedTheme, theme]);
 
@@ -132,18 +153,20 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setThemeState(prev => {
+    setThemeState((prev) => {
       // Cycle: dark → light → dark (pas de system pour simplifier)
       // Ou si vous voulez inclure system: dark → light → system → dark
-      if (prev === 'dark') return 'light';
-      return 'dark';
+      if (prev === "dark") return "light";
+      return "dark";
     });
   }, []);
 
-  const isDark = resolvedTheme === 'dark';
+  const isDark = resolvedTheme === "dark";
 
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, isDark, toggleTheme, setTheme }}>
+    <ThemeContext.Provider
+      value={{ theme, resolvedTheme, isDark, toggleTheme, setTheme }}
+    >
       {children}
     </ThemeContext.Provider>
   );
@@ -152,7 +175,7 @@ export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
+    throw new Error("useTheme must be used within ThemeProvider");
   }
   return context;
 };

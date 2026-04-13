@@ -9,12 +9,29 @@
  * - Pro: 12.99€ - Créateurs & Pros (POPULAIRE)
  */
 
-import React from 'react';
-import { X, Zap, GraduationCap, Star, Crown, Users, Sparkles, ArrowRight, Check, Clock, AlertTriangle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from '../hooks/useTranslation';
-import { useAuth } from '../hooks/useAuth';
-import { normalizePlanId, PLANS_INFO, PLAN_LIMITS, CONVERSION_TRIGGERS } from '../config/planPrivileges';
+import React from "react";
+import {
+  X,
+  Zap,
+  GraduationCap,
+  Star,
+  Crown,
+  Users,
+  Sparkles,
+  ArrowRight,
+  Check,
+  Clock,
+  AlertTriangle,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "../hooks/useTranslation";
+import { useAuth } from "../hooks/useAuth";
+import {
+  normalizePlanId,
+  PLANS_INFO,
+  PLAN_LIMITS,
+  CONVERSION_TRIGGERS,
+} from "../config/planPrivileges";
 
 interface UpgradePromptModalProps {
   /** Whether the modal is open */
@@ -22,7 +39,14 @@ interface UpgradePromptModalProps {
   /** Close handler */
   onClose: () => void;
   /** Type of limit reached */
-  limitType?: 'credits' | 'chat' | 'analysis' | 'playlist' | 'export' | 'video_duration' | 'history';
+  limitType?:
+    | "credits"
+    | "chat"
+    | "analysis"
+    | "playlist"
+    | "export"
+    | "video_duration"
+    | "history";
   /** Current usage count */
   currentUsage?: number;
   /** Maximum allowed */
@@ -34,7 +58,7 @@ interface UpgradePromptModalProps {
 export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
   isOpen,
   onClose,
-  limitType = 'credits',
+  limitType = "credits",
   currentUsage = 0,
   maxAllowed = 0,
   showTrialOption = true,
@@ -47,51 +71,87 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
 
   if (!isOpen) return null;
 
-  const t = (fr: string, en: string) => language === 'fr' ? fr : en;
+  const t = (fr: string, en: string) => (language === "fr" ? fr : en);
 
   // Get appropriate messaging based on limit type
   const getLimitInfo = () => {
-    const info: Record<string, { title: { fr: string; en: string }; message: { fr: string; en: string }; icon: React.ReactNode }> = {
+    const info: Record<
+      string,
+      {
+        title: { fr: string; en: string };
+        message: { fr: string; en: string };
+        icon: React.ReactNode;
+      }
+    > = {
       credits: {
-        title: { fr: 'Crédits épuisés', en: 'Credits depleted' },
-        message: { fr: "Vous avez utilisé tous vos crédits ce mois-ci", en: "You've used all your credits this month" },
+        title: { fr: "Crédits épuisés", en: "Credits depleted" },
+        message: {
+          fr: "Vous avez utilisé tous vos crédits ce mois-ci",
+          en: "You've used all your credits this month",
+        },
         icon: <Zap className="w-8 h-8 text-red-400" />,
       },
       chat: {
-        title: { fr: 'Limite de chat atteinte', en: 'Chat limit reached' },
-        message: { fr: "Vous avez atteint la limite de questions pour cette vidéo", en: "You've reached the question limit for this video" },
+        title: { fr: "Limite de chat atteinte", en: "Chat limit reached" },
+        message: {
+          fr: "Vous avez atteint la limite de questions pour cette vidéo",
+          en: "You've reached the question limit for this video",
+        },
         icon: <AlertTriangle className="w-8 h-8 text-amber-400" />,
       },
       analysis: {
-        title: { fr: 'Limite d\'analyses atteinte', en: 'Analysis limit reached' },
+        title: {
+          fr: "Limite d'analyses atteinte",
+          en: "Analysis limit reached",
+        },
         message: {
-          fr: plan === 'free'
-            ? `Vous avez utilisé vos ${CONVERSION_TRIGGERS.freeAnalysisLimit} analyses gratuites ce mois`
-            : "Vous avez atteint votre limite d'analyses",
-          en: plan === 'free'
-            ? `You've used your ${CONVERSION_TRIGGERS.freeAnalysisLimit} free analyses this month`
-            : "You've reached your analysis limit",
+          fr:
+            plan === "free"
+              ? `Vous avez utilisé vos ${CONVERSION_TRIGGERS.freeAnalysisLimit} analyses gratuites ce mois`
+              : "Vous avez atteint votre limite d'analyses",
+          en:
+            plan === "free"
+              ? `You've used your ${CONVERSION_TRIGGERS.freeAnalysisLimit} free analyses this month`
+              : "You've reached your analysis limit",
         },
         icon: <Clock className="w-8 h-8 text-orange-400" />,
       },
       playlist: {
-        title: { fr: 'Playlists réservées aux Pro', en: 'Playlists are Pro only' },
-        message: { fr: "L'analyse de playlists est une fonctionnalité Pro", en: "Playlist analysis is a Pro feature" },
+        title: {
+          fr: "Playlists réservées aux Pro",
+          en: "Playlists are Pro only",
+        },
+        message: {
+          fr: "L'analyse de playlists est une fonctionnalité Pro",
+          en: "Playlist analysis is a Pro feature",
+        },
         icon: <Crown className="w-8 h-8 text-violet-400" />,
       },
       export: {
-        title: { fr: 'Export réservé aux abonnés', en: 'Export for subscribers' },
-        message: { fr: "L'export est réservé aux abonnés", en: "Export is reserved for subscribers" },
+        title: {
+          fr: "Export réservé aux abonnés",
+          en: "Export for subscribers",
+        },
+        message: {
+          fr: "L'export est réservé aux abonnés",
+          en: "Export is reserved for subscribers",
+        },
         icon: <Sparkles className="w-8 h-8 text-blue-400" />,
       },
       video_duration: {
-        title: { fr: 'Vidéo trop longue', en: 'Video too long' },
-        message: { fr: "Cette vidéo dépasse la durée maximale de votre plan", en: "This video exceeds your plan's maximum duration" },
+        title: { fr: "Vidéo trop longue", en: "Video too long" },
+        message: {
+          fr: "Cette vidéo dépasse la durée maximale de votre plan",
+          en: "This video exceeds your plan's maximum duration",
+        },
         icon: <Clock className="w-8 h-8 text-amber-400" />,
       },
       history: {
-        title: { fr: 'Historique limité', en: 'Limited history' },
-        message: { fr: "Votre historique est limité à 3 jours avec le plan gratuit", en: "Your history is limited to 3 days on the free plan" },
+        title: { fr: "Historique limité", en: "Limited history" },
+        message: {
+          fr: "Votre historique est limité à 3 jours avec le plan gratuit",
+          en: "Your history is limited to 3 days on the free plan",
+        },
         icon: <Clock className="w-8 h-8 text-amber-400" />,
       },
     };
@@ -100,86 +160,141 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
 
   // Icon mapping — aligné sur PlanId (planPrivileges.ts)
   const iconMap: Record<string, React.ElementType> = {
-    'free': Zap,
-    'etudiant': Star,
-    'starter': GraduationCap,
-    'pro': Crown,
+    free: Zap,
+    etudiant: Star,
+    starter: GraduationCap,
+    pro: Crown,
   };
 
   // Gradient mapping
   const gradientMap: Record<string, string> = {
-    'free': 'from-gray-500 to-gray-600',
-    'etudiant': 'from-emerald-500 to-green-600',
-    'starter': 'from-blue-500 to-blue-600',
-    'pro': 'from-violet-500 to-purple-600',
+    free: "from-gray-500 to-gray-600",
+    etudiant: "from-emerald-500 to-green-600",
+    starter: "from-blue-500 to-blue-600",
+    pro: "from-violet-500 to-purple-600",
   };
 
-  const lang = language === 'fr' ? 'fr' : 'en';
-  const formatPrice = (cents: number) => `${(cents / 100).toFixed(2).replace('.', ',')}€`;
+  const lang = language === "fr" ? "fr" : "en";
+  const formatPrice = (cents: number) =>
+    `${(cents / 100).toFixed(2).replace(".", ",")}€`;
 
   // Recommended plan based on current plan and limit type
   const getRecommendedPlan = () => {
     // Playlist limit? Recommend Pro directly
-    if (limitType === 'playlist') {
+    if (limitType === "playlist") {
       const info = PLANS_INFO.pro;
       const limits = PLAN_LIMITS.pro;
       return {
-        id: 'pro',
-        name: lang === 'fr' ? info.name : info.nameEn,
+        id: "pro",
+        name: lang === "fr" ? info.name : info.nameEn,
         price: formatPrice(info.priceMonthly),
         icon: iconMap.pro,
         color: gradientMap.pro,
-        highlight: lang === 'fr' ? `${limits.monthlyAnalyses} analyses/mois` : `${limits.monthlyAnalyses} analyses/mo`,
-        features: lang === 'fr'
-          ? [`${limits.monthlyAnalyses} analyses/mois`, `Playlists (${limits.maxPlaylistVideos} vidéos)`, 'Chat illimité', 'Support prioritaire']
-          : [`${limits.monthlyAnalyses} analyses/mo`, `Playlists (${limits.maxPlaylistVideos} videos)`, 'Unlimited chat', 'Priority support'],
+        highlight:
+          lang === "fr"
+            ? `${limits.monthlyAnalyses} analyses/mois`
+            : `${limits.monthlyAnalyses} analyses/mo`,
+        features:
+          lang === "fr"
+            ? [
+                `${limits.monthlyAnalyses} analyses/mois`,
+                `Playlists (${limits.maxPlaylistVideos} vidéos)`,
+                "Chat illimité",
+                "Support prioritaire",
+              ]
+            : [
+                `${limits.monthlyAnalyses} analyses/mo`,
+                `Playlists (${limits.maxPlaylistVideos} videos)`,
+                "Unlimited chat",
+                "Priority support",
+              ],
       };
     }
 
     // Default progression: free → etudiant → starter → pro
-    if (plan === 'free') {
+    if (plan === "free") {
       const info = PLANS_INFO.etudiant;
       const limits = PLAN_LIMITS.etudiant;
       return {
-        id: 'etudiant',
-        name: lang === 'fr' ? info.name : info.nameEn,
+        id: "etudiant",
+        name: lang === "fr" ? info.name : info.nameEn,
         price: formatPrice(info.priceMonthly),
         icon: iconMap.etudiant,
         color: gradientMap.etudiant,
-        highlight: lang === 'fr' ? 'Découvrez les essentiels' : 'Discover essentials',
-        features: lang === 'fr'
-          ? [`${limits.monthlyAnalyses} analyses/mois`, 'Flashcards & cartes mentales', 'Export Markdown', 'Historique permanent']
-          : [`${limits.monthlyAnalyses} analyses/mo`, 'Flashcards & mind maps', 'Markdown export', 'Permanent history'],
+        highlight:
+          lang === "fr" ? "Découvrez les essentiels" : "Discover essentials",
+        features:
+          lang === "fr"
+            ? [
+                `${limits.monthlyAnalyses} analyses/mois`,
+                "Flashcards & cartes mentales",
+                "Export Markdown",
+                "Historique permanent",
+              ]
+            : [
+                `${limits.monthlyAnalyses} analyses/mo`,
+                "Flashcards & mind maps",
+                "Markdown export",
+                "Permanent history",
+              ],
       };
     }
-    if (plan === 'etudiant') {
+    if (plan === "etudiant") {
       const info = PLANS_INFO.starter;
       const limits = PLAN_LIMITS.starter;
       return {
-        id: 'starter',
-        name: lang === 'fr' ? info.name : info.nameEn,
+        id: "starter",
+        name: lang === "fr" ? info.name : info.nameEn,
         price: formatPrice(info.priceMonthly),
         icon: iconMap.starter,
         color: gradientMap.starter,
-        highlight: lang === 'fr' ? `Recherche web (${limits.webSearchMonthly}/mois)` : `Web search (${limits.webSearchMonthly}/mo)`,
-        features: lang === 'fr'
-          ? [`${limits.monthlyAnalyses} analyses/mois`, `Recherche web (${limits.webSearchMonthly}/mois)`, 'Flashcards & cartes mentales', 'Vidéos jusqu\'à 2h']
-          : [`${limits.monthlyAnalyses} analyses/mo`, `Web search (${limits.webSearchMonthly}/mo)`, 'Flashcards & mind maps', 'Videos up to 2h'],
+        highlight:
+          lang === "fr"
+            ? `Recherche web (${limits.webSearchMonthly}/mois)`
+            : `Web search (${limits.webSearchMonthly}/mo)`,
+        features:
+          lang === "fr"
+            ? [
+                `${limits.monthlyAnalyses} analyses/mois`,
+                `Recherche web (${limits.webSearchMonthly}/mois)`,
+                "Flashcards & cartes mentales",
+                "Vidéos jusqu'à 2h",
+              ]
+            : [
+                `${limits.monthlyAnalyses} analyses/mo`,
+                `Web search (${limits.webSearchMonthly}/mo)`,
+                "Flashcards & mind maps",
+                "Videos up to 2h",
+              ],
       };
     }
     // starter → pro
     const info = PLANS_INFO.pro;
     const limits = PLAN_LIMITS.pro;
     return {
-      id: 'pro',
-      name: lang === 'fr' ? info.name : info.nameEn,
+      id: "pro",
+      name: lang === "fr" ? info.name : info.nameEn,
       price: formatPrice(info.priceMonthly),
       icon: iconMap.pro,
       color: gradientMap.pro,
-      highlight: lang === 'fr' ? `Playlists (${limits.maxPlaylistVideos} vidéos)` : `Playlists (${limits.maxPlaylistVideos} videos)`,
-      features: lang === 'fr'
-        ? [`${limits.monthlyAnalyses} analyses/mois`, `Playlists (${limits.maxPlaylistVideos} vidéos)`, 'Chat illimité', 'Export PDF']
-        : [`${limits.monthlyAnalyses} analyses/mo`, `Playlists (${limits.maxPlaylistVideos} videos)`, 'Unlimited chat', 'PDF export'],
+      highlight:
+        lang === "fr"
+          ? `Playlists (${limits.maxPlaylistVideos} vidéos)`
+          : `Playlists (${limits.maxPlaylistVideos} videos)`,
+      features:
+        lang === "fr"
+          ? [
+              `${limits.monthlyAnalyses} analyses/mois`,
+              `Playlists (${limits.maxPlaylistVideos} vidéos)`,
+              "Chat illimité",
+              "Export PDF",
+            ]
+          : [
+              `${limits.monthlyAnalyses} analyses/mo`,
+              `Playlists (${limits.maxPlaylistVideos} videos)`,
+              "Unlimited chat",
+              "PDF export",
+            ],
     };
   };
 
@@ -189,7 +304,7 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
 
   const handleUpgrade = () => {
     onClose();
-    navigate('/upgrade');
+    navigate("/upgrade");
   };
 
   const handleSelectPlan = (planId: string) => {
@@ -199,11 +314,12 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
 
   const handleStartTrial = () => {
     onClose();
-    navigate('/upgrade?trial=true');
+    navigate("/upgrade?trial=true");
   };
 
   // Check if user is eligible for trial
-  const canTrial = CONVERSION_TRIGGERS.trialEnabled && plan === 'free' && showTrialOption;
+  const canTrial =
+    CONVERSION_TRIGGERS.trialEnabled && plan === "free" && showTrialOption;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -225,19 +341,16 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
             {limitInfo.icon}
           </div>
           <h2 className="text-xl font-bold text-text-primary mb-2">
-            {limitInfo.title[language === 'fr' ? 'fr' : 'en']}
+            {limitInfo.title[language === "fr" ? "fr" : "en"]}
           </h2>
           <p className="text-text-secondary text-sm">
-            {limitInfo.message[language === 'fr' ? 'fr' : 'en']}
+            {limitInfo.message[language === "fr" ? "fr" : "en"]}
           </p>
 
           {currentUsage > 0 && maxAllowed > 0 && (
             <div className="mt-3 flex items-center justify-center gap-2">
               <div className="h-2 w-32 bg-bg-tertiary rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-red-500"
-                  style={{ width: '100%' }}
-                />
+                <div className="h-full bg-red-500" style={{ width: "100%" }} />
               </div>
               <span className="text-xs text-text-tertiary">
                 {currentUsage}/{maxAllowed}
@@ -255,17 +368,20 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
               </div>
               <div className="flex-1">
                 <p className="text-sm font-medium text-text-primary">
-                  {t('Essai gratuit Pro', 'Free Pro trial')}
+                  {t("Essai gratuit Pro", "Free Pro trial")}
                 </p>
                 <p className="text-xs text-text-secondary">
-                  {t(`${CONVERSION_TRIGGERS.trialDays} jours sans engagement`, `${CONVERSION_TRIGGERS.trialDays} days no commitment`)}
+                  {t(
+                    `${CONVERSION_TRIGGERS.trialDays} jours sans engagement`,
+                    `${CONVERSION_TRIGGERS.trialDays} days no commitment`,
+                  )}
                 </p>
               </div>
               <button
                 onClick={handleStartTrial}
                 className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-medium hover:opacity-90 transition-opacity"
               >
-                {t('Essayer', 'Try it')}
+                {t("Essayer", "Try it")}
               </button>
             </div>
           </div>
@@ -274,7 +390,7 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
         {/* Recommended plan */}
         <div className="px-6 pb-4">
           <p className="text-xs text-text-tertiary uppercase tracking-wide mb-3">
-            {t('Recommandé pour vous', 'Recommended for you')}
+            {t("Recommandé pour vous", "Recommended for you")}
           </p>
 
           <div
@@ -282,18 +398,22 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
             onClick={() => handleSelectPlan(recommended.id)}
           >
             {/* Background glow */}
-            <div className={`absolute inset-0 bg-gradient-to-br ${recommended.color} opacity-10`} />
+            <div
+              className={`absolute inset-0 bg-gradient-to-br ${recommended.color} opacity-10`}
+            />
 
             <div className="relative">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${recommended.color} flex items-center justify-center shadow-lg`}>
+                  <div
+                    className={`w-10 h-10 rounded-xl bg-gradient-to-br ${recommended.color} flex items-center justify-center shadow-lg`}
+                  >
                     <RecommendedIcon className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <h3 className="font-bold text-white">{recommended.name}</h3>
                     <p className="text-xs text-white/70">
-                      {recommended.price}/{t('mois', 'mo')}
+                      {recommended.price}/{t("mois", "mo")}
                     </p>
                   </div>
                 </div>
@@ -309,7 +429,10 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
 
               <div className="grid grid-cols-2 gap-2">
                 {recommended.features.map((feature, idx) => (
-                  <div key={idx} className="flex items-center gap-1.5 text-xs text-white/90">
+                  <div
+                    key={idx}
+                    className="flex items-center gap-1.5 text-xs text-white/90"
+                  >
                     <Check className="w-3 h-3 text-green-400 flex-shrink-0" />
                     <span>{feature}</span>
                   </div>
@@ -326,14 +449,14 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
             className="w-full py-3 rounded-xl bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
           >
             <Sparkles className="w-5 h-5" />
-            {t('Voir tous les plans', 'View all plans')}
+            {t("Voir tous les plans", "View all plans")}
           </button>
 
           <button
             onClick={onClose}
             className="w-full py-2.5 rounded-xl text-text-secondary text-sm hover:text-text-primary hover:bg-bg-tertiary transition-colors"
           >
-            {t('Peut-être plus tard', 'Maybe later')}
+            {t("Peut-être plus tard", "Maybe later")}
           </button>
         </div>
 
@@ -341,8 +464,8 @@ export const UpgradePromptModal: React.FC<UpgradePromptModalProps> = ({
         <div className="px-6 pb-4 text-center">
           <p className="text-xs text-text-tertiary">
             {t(
-              'Annulez à tout moment. Paiement sécurisé par Stripe.',
-              'Cancel anytime. Secure payment via Stripe.'
+              "Annulez à tout moment. Paiement sécurisé par Stripe.",
+              "Cancel anytime. Secure payment via Stripe.",
             )}
           </p>
         </div>

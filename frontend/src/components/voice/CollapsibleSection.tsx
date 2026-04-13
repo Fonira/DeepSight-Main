@@ -3,9 +3,9 @@
  * Utilisé par VoiceSettings pour les 6 sections de configuration.
  */
 
-import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown } from 'lucide-react';
+import React from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown } from "lucide-react";
 
 interface CollapsibleSectionProps {
   icon: React.ElementType;
@@ -28,8 +28,8 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
     <section
       className={`rounded-2xl overflow-hidden ${
         gradient
-          ? 'bg-gradient-to-br from-indigo-500/10 to-violet-500/10 border border-indigo-500/20'
-          : 'bg-white/5 border border-white/10'
+          ? "bg-gradient-to-br from-indigo-500/10 to-violet-500/10 border border-indigo-500/20"
+          : "bg-white/5 border border-white/10"
       }`}
     >
       <button
@@ -53,7 +53,7 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
         {isOpen && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
+            animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25 }}
             className="overflow-hidden"

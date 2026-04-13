@@ -2,7 +2,7 @@
  * 🔍 FACT-CHECK LITE — Vérification heuristique des affirmations
  * ═══════════════════════════════════════════════════════════════════════════════
  * Composant disponible pour TOUS les plans (Free, Starter, Pro, Expert)
- * 
+ *
  * Analyse basée sur :
  * - Détection de patterns (statistiques, sources vagues, opinions)
  * - Score de confiance heuristique
@@ -10,12 +10,22 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useEffect } from 'react';
-import { 
-  Shield, AlertTriangle, Info, Search,
-  ChevronDown, ChevronUp, ExternalLink, Sparkles,
-  AlertCircle, HelpCircle, TrendingUp, Eye, Lock
-} from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import {
+  Shield,
+  AlertTriangle,
+  Info,
+  Search,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Sparkles,
+  AlertCircle,
+  HelpCircle,
+  TrendingUp,
+  Eye,
+  Lock,
+} from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -25,7 +35,7 @@ interface ClaimAnalysis {
   claim: string;
   claim_type: string;
   confidence: number;
-  risk_level: 'low' | 'medium' | 'high';
+  risk_level: "low" | "medium" | "high";
   verification_hint: string | null;
   suggested_search?: string | null;
 }
@@ -64,24 +74,78 @@ interface FactCheckLiteProps {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const CONFIDENCE_CONFIG = {
-  high: { min: 75, color: 'text-green-500', bgColor: 'bg-green-500', label: 'Bonne fiabilité' },
-  medium: { min: 50, color: 'text-amber-500', bgColor: 'bg-amber-500', label: 'Fiabilité moyenne' },
-  low: { min: 0, color: 'text-red-500', bgColor: 'bg-red-500', label: 'Prudence recommandée' }
+  high: {
+    min: 75,
+    color: "text-green-500",
+    bgColor: "bg-green-500",
+    label: "Bonne fiabilité",
+  },
+  medium: {
+    min: 50,
+    color: "text-amber-500",
+    bgColor: "bg-amber-500",
+    label: "Fiabilité moyenne",
+  },
+  low: {
+    min: 0,
+    color: "text-red-500",
+    bgColor: "bg-red-500",
+    label: "Prudence recommandée",
+  },
 };
 
-const CLAIM_TYPE_LABELS: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  statistics: { label: 'Statistique', icon: <TrendingUp className="w-3 h-3" />, color: 'text-blue-400' },
-  temporal: { label: 'Date/Période', icon: <Info className="w-3 h-3" />, color: 'text-cyan-400' },
-  opinion_markers: { label: 'Opinion', icon: <HelpCircle className="w-3 h-3" />, color: 'text-purple-400' },
-  predictions: { label: 'Prédiction', icon: <Eye className="w-3 h-3" />, color: 'text-indigo-400' },
-  vague_sources: { label: 'Source vague', icon: <AlertCircle className="w-3 h-3" />, color: 'text-orange-400' },
-  extraordinary: { label: 'Extraordinaire', icon: <AlertTriangle className="w-3 h-3" />, color: 'text-red-400' }
+const CLAIM_TYPE_LABELS: Record<
+  string,
+  { label: string; icon: React.ReactNode; color: string }
+> = {
+  statistics: {
+    label: "Statistique",
+    icon: <TrendingUp className="w-3 h-3" />,
+    color: "text-blue-400",
+  },
+  temporal: {
+    label: "Date/Période",
+    icon: <Info className="w-3 h-3" />,
+    color: "text-cyan-400",
+  },
+  opinion_markers: {
+    label: "Opinion",
+    icon: <HelpCircle className="w-3 h-3" />,
+    color: "text-purple-400",
+  },
+  predictions: {
+    label: "Prédiction",
+    icon: <Eye className="w-3 h-3" />,
+    color: "text-indigo-400",
+  },
+  vague_sources: {
+    label: "Source vague",
+    icon: <AlertCircle className="w-3 h-3" />,
+    color: "text-orange-400",
+  },
+  extraordinary: {
+    label: "Extraordinaire",
+    icon: <AlertTriangle className="w-3 h-3" />,
+    color: "text-red-400",
+  },
 };
 
 const RISK_COLORS = {
-  high: { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400' },
-  medium: { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400' },
-  low: { bg: 'bg-green-500/10', border: 'border-green-500/30', text: 'text-green-400' }
+  high: {
+    bg: "bg-red-500/10",
+    border: "border-red-500/30",
+    text: "text-red-400",
+  },
+  medium: {
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/30",
+    text: "text-amber-400",
+  },
+  low: {
+    bg: "bg-green-500/10",
+    border: "border-green-500/30",
+    text: "text-green-400",
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -93,9 +157,11 @@ export const FactCheckLite: React.FC<FactCheckLiteProps> = ({
   reliabilityData: initialData,
   onUpgrade,
   compact = false,
-  className = ''
+  className = "",
 }) => {
-  const [data, setData] = useState<ReliabilityResult | null>(initialData || null);
+  const [data, setData] = useState<ReliabilityResult | null>(
+    initialData || null,
+  );
   const [loading, setLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -110,24 +176,28 @@ export const FactCheckLite: React.FC<FactCheckLiteProps> = ({
     const fetchReliability = async () => {
       try {
         setLoading(true);
-        const token = localStorage.getItem('access_token');
-        const API_URL = import.meta.env.VITE_API_URL || 'https://api.deepsightsynthesis.com';
-        
-        const response = await fetch(`${API_URL}/api/videos/reliability/${summaryId}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        const token = localStorage.getItem("access_token");
+        const API_URL =
+          import.meta.env.VITE_API_URL || "https://api.deepsightsynthesis.com";
+
+        const response = await fetch(
+          `${API_URL}/api/videos/reliability/${summaryId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          },
+        );
 
         if (!response.ok) {
-          throw new Error('Erreur de chargement');
+          throw new Error("Erreur de chargement");
         }
 
         const result = await response.json();
         setData(result);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Erreur');
+        setError(err instanceof Error ? err.message : "Erreur");
       } finally {
         setLoading(false);
       }
@@ -141,7 +211,9 @@ export const FactCheckLite: React.FC<FactCheckLiteProps> = ({
   // Loading
   if (loading) {
     return (
-      <div className={`animate-pulse bg-bg-tertiary rounded-xl ${compact ? 'h-16' : 'h-48'} ${className}`} />
+      <div
+        className={`animate-pulse bg-bg-tertiary rounded-xl ${compact ? "h-16" : "h-48"} ${className}`}
+      />
     );
   }
 
@@ -154,7 +226,9 @@ export const FactCheckLite: React.FC<FactCheckLiteProps> = ({
 
   if (!factCheck) {
     return (
-      <div className={`animate-pulse bg-bg-tertiary rounded-xl ${compact ? 'h-16' : 'h-48'} ${className}`} />
+      <div
+        className={`animate-pulse bg-bg-tertiary rounded-xl ${compact ? "h-16" : "h-48"} ${className}`}
+      />
     );
   }
 
@@ -164,11 +238,11 @@ export const FactCheckLite: React.FC<FactCheckLiteProps> = ({
   // Mode compact (juste le score)
   if (compact) {
     return (
-      <div 
+      <div
         className={`
           flex items-center gap-2 px-3 py-2 rounded-lg
-          ${RISK_COLORS[confidenceLevel === 'high' ? 'low' : confidenceLevel === 'low' ? 'high' : 'medium'].bg}
-          ${RISK_COLORS[confidenceLevel === 'high' ? 'low' : confidenceLevel === 'low' ? 'high' : 'medium'].border}
+          ${RISK_COLORS[confidenceLevel === "high" ? "low" : confidenceLevel === "low" ? "high" : "medium"].bg}
+          ${RISK_COLORS[confidenceLevel === "high" ? "low" : confidenceLevel === "low" ? "high" : "medium"].border}
           border ${className}
         `}
         title={factCheck.risk_summary}
@@ -188,7 +262,9 @@ export const FactCheckLite: React.FC<FactCheckLiteProps> = ({
 
   // Mode complet
   return (
-    <div className={`bg-bg-secondary border border-border-default rounded-xl overflow-hidden ${className}`}>
+    <div
+      className={`bg-bg-secondary border border-border-default rounded-xl overflow-hidden ${className}`}
+    >
       {/* Header avec score global */}
       <div className="p-4 border-b border-border-subtle">
         <div className="flex items-center justify-between">
@@ -213,14 +289,18 @@ export const FactCheckLite: React.FC<FactCheckLiteProps> = ({
           <div className="relative w-14 h-14">
             <svg className="w-14 h-14 -rotate-90" viewBox="0 0 36 36">
               <circle
-                cx="18" cy="18" r="16"
+                cx="18"
+                cy="18"
+                r="16"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
                 className="text-bg-tertiary"
               />
               <circle
-                cx="18" cy="18" r="16"
+                cx="18"
+                cy="18"
+                r="16"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
@@ -244,30 +324,34 @@ export const FactCheckLite: React.FC<FactCheckLiteProps> = ({
       </div>
 
       {/* Affirmations à risque */}
-      {(factCheck.high_risk_claims.length > 0 || factCheck.medium_risk_claims.length > 0) && (
+      {(factCheck.high_risk_claims.length > 0 ||
+        factCheck.medium_risk_claims.length > 0) && (
         <div className="p-4 space-y-3">
           {/* High risk claims */}
           {factCheck.high_risk_claims.length > 0 && (
             <div>
               <button
-                onClick={() => setExpandedSection(expandedSection === 'high' ? null : 'high')}
+                onClick={() =>
+                  setExpandedSection(expandedSection === "high" ? null : "high")
+                }
                 className="w-full flex items-center justify-between p-3 rounded-lg 
                          bg-red-500/5 border border-red-500/20 hover:bg-red-500/10 transition-colors"
               >
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-red-400" />
                   <span className="text-sm font-medium text-red-400">
-                    {factCheck.high_risk_claims.length} affirmation(s) à vérifier
+                    {factCheck.high_risk_claims.length} affirmation(s) à
+                    vérifier
                   </span>
                 </div>
-                {expandedSection === 'high' ? (
+                {expandedSection === "high" ? (
                   <ChevronUp className="w-4 h-4 text-red-400" />
                 ) : (
                   <ChevronDown className="w-4 h-4 text-red-400" />
                 )}
               </button>
 
-              {expandedSection === 'high' && (
+              {expandedSection === "high" && (
                 <div className="mt-2 space-y-2">
                   {factCheck.high_risk_claims.map((claim, i) => (
                     <ClaimCard key={i} claim={claim} />
@@ -281,7 +365,11 @@ export const FactCheckLite: React.FC<FactCheckLiteProps> = ({
           {factCheck.medium_risk_claims.length > 0 && (
             <div>
               <button
-                onClick={() => setExpandedSection(expandedSection === 'medium' ? null : 'medium')}
+                onClick={() =>
+                  setExpandedSection(
+                    expandedSection === "medium" ? null : "medium",
+                  )
+                }
                 className="w-full flex items-center justify-between p-3 rounded-lg 
                          bg-amber-500/5 border border-amber-500/20 hover:bg-amber-500/10 transition-colors"
               >
@@ -291,14 +379,14 @@ export const FactCheckLite: React.FC<FactCheckLiteProps> = ({
                     {factCheck.medium_risk_claims.length} point(s) à surveiller
                   </span>
                 </div>
-                {expandedSection === 'medium' ? (
+                {expandedSection === "medium" ? (
                   <ChevronUp className="w-4 h-4 text-amber-400" />
                 ) : (
                   <ChevronDown className="w-4 h-4 text-amber-400" />
                 )}
               </button>
 
-              {expandedSection === 'medium' && (
+              {expandedSection === "medium" && (
                 <div className="mt-2 space-y-2">
                   {factCheck.medium_risk_claims.slice(0, 5).map((claim, i) => (
                     <ClaimCard key={i} claim={claim} />
@@ -320,7 +408,10 @@ export const FactCheckLite: React.FC<FactCheckLiteProps> = ({
             </p>
             <ul className="space-y-1.5">
               {factCheck.verification_suggestions.map((suggestion, i) => (
-                <li key={i} className="text-xs text-text-tertiary flex items-start gap-2">
+                <li
+                  key={i}
+                  className="text-xs text-text-tertiary flex items-start gap-2"
+                >
                   <span className="text-accent-primary">→</span>
                   <span>{suggestion}</span>
                 </li>
@@ -360,7 +451,8 @@ export const FactCheckLite: React.FC<FactCheckLiteProps> = ({
       {/* Disclaimer */}
       <div className="px-4 pb-3">
         <p className="text-[10px] text-text-muted text-center">
-          Analyse heuristique • Scores indicatifs • Vérification humaine recommandée
+          Analyse heuristique • Scores indicatifs • Vérification humaine
+          recommandée
         </p>
       </div>
     </div>
@@ -375,12 +467,14 @@ const ClaimCard: React.FC<{ claim: ClaimAnalysis }> = ({ claim }) => {
   const typeConfig = CLAIM_TYPE_LABELS[claim.claim_type] || {
     label: claim.claim_type,
     icon: <Info className="w-3 h-3" />,
-    color: 'text-text-tertiary'
+    color: "text-text-tertiary",
   };
   const riskColors = RISK_COLORS[claim.risk_level];
 
   return (
-    <div className={`p-3 rounded-lg border ${riskColors.bg} ${riskColors.border}`}>
+    <div
+      className={`p-3 rounded-lg border ${riskColors.bg} ${riskColors.border}`}
+    >
       {/* Type de claim */}
       <div className="flex items-center gap-2 mb-2">
         <span className={`flex items-center gap-1 text-xs ${typeConfig.color}`}>
@@ -427,10 +521,10 @@ const ClaimCard: React.FC<{ claim: ClaimAnalysis }> = ({ claim }) => {
 // 🛠️ UTILITAIRES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function getConfidenceLevel(confidence: number): 'high' | 'medium' | 'low' {
-  if (confidence >= 75) return 'high';
-  if (confidence >= 50) return 'medium';
-  return 'low';
+function getConfidenceLevel(confidence: number): "high" | "medium" | "low" {
+  if (confidence >= 75) return "high";
+  if (confidence >= 50) return "medium";
+  return "low";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

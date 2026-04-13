@@ -1,22 +1,29 @@
 /**
  * DEEP SIGHT — Citation Export Component
  * Génération de citations académiques pour vidéos YouTube
- * 
+ *
  * FORMATS SUPPORTÉS:
  * - APA 7th Edition
- * - MLA 9th Edition  
+ * - MLA 9th Edition
  * - Chicago 17th Edition
  * - BibTeX (pour LaTeX)
  * - Harvard
  * - IEEE
  */
 
-import React, { useState, useMemo } from 'react';
-import { 
-  X, Copy, Check, GraduationCap, BookOpen, 
-  FileCode, Quote, ChevronDown, Download,
-  ExternalLink
-} from 'lucide-react';
+import React, { useState, useMemo } from "react";
+import {
+  X,
+  Copy,
+  Check,
+  GraduationCap,
+  BookOpen,
+  FileCode,
+  Quote,
+  ChevronDown,
+  Download,
+  ExternalLink,
+} from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -29,17 +36,23 @@ interface VideoInfo {
   publishedDate?: string; // ISO date string
   duration?: number; // seconds
   url?: string;
-  platform?: 'youtube' | 'tiktok';
+  platform?: "youtube" | "tiktok";
 }
 
 interface CitationExportProps {
   isOpen: boolean;
   onClose: () => void;
   video: VideoInfo;
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
 }
 
-type CitationFormat = 'iso690' | 'french' | 'apa' | 'mla' | 'chicago' | 'bibtex';
+type CitationFormat =
+  | "iso690"
+  | "french"
+  | "apa"
+  | "mla"
+  | "chicago"
+  | "bibtex";
 
 interface FormatConfig {
   id: CitationFormat;
@@ -54,47 +67,51 @@ interface FormatConfig {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const CITATION_FORMATS: FormatConfig[] = [
-  { 
-    id: 'iso690', 
-    name: 'ISO 690', 
-    description: 'Norme internationale (Europe)',
+  {
+    id: "iso690",
+    name: "ISO 690",
+    description: "Norme internationale (Europe)",
     icon: <GraduationCap className="w-4 h-4" />,
-    color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+    color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
   },
-  { 
-    id: 'french', 
-    name: 'Français', 
-    description: 'Style universitaire français',
+  {
+    id: "french",
+    name: "Français",
+    description: "Style universitaire français",
     icon: <BookOpen className="w-4 h-4" />,
-    color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400'
+    color:
+      "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400",
   },
-  { 
-    id: 'apa', 
-    name: 'APA 7', 
-    description: 'American Psychological Association',
+  {
+    id: "apa",
+    name: "APA 7",
+    description: "American Psychological Association",
     icon: <GraduationCap className="w-4 h-4" />,
-    color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+    color:
+      "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
   },
-  { 
-    id: 'chicago', 
-    name: 'Chicago', 
-    description: 'Chicago Manual of Style',
+  {
+    id: "chicago",
+    name: "Chicago",
+    description: "Chicago Manual of Style",
     icon: <Quote className="w-4 h-4" />,
-    color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+    color:
+      "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
   },
-  { 
-    id: 'mla', 
-    name: 'MLA 9', 
-    description: 'Modern Language Association',
+  {
+    id: "mla",
+    name: "MLA 9",
+    description: "Modern Language Association",
     icon: <BookOpen className="w-4 h-4" />,
-    color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+    color:
+      "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
   },
-  { 
-    id: 'bibtex', 
-    name: 'BibTeX', 
-    description: 'Pour LaTeX et bibliographies',
+  {
+    id: "bibtex",
+    name: "BibTeX",
+    description: "Pour LaTeX et bibliographies",
     icon: <FileCode className="w-4 h-4" />,
-    color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400'
+    color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400",
   },
 ];
 
@@ -102,11 +119,14 @@ const CITATION_FORMATS: FormatConfig[] = [
 // 🔧 GÉNÉRATEURS DE CITATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const formatDate = (isoDate?: string, locale: string = 'fr'): { 
-  year: string; 
-  month: string; 
+const formatDate = (
+  isoDate?: string,
+  locale: string = "fr",
+): {
+  year: string;
+  month: string;
   monthNum: string;
-  day: string; 
+  day: string;
   full: string;
   fullFr: string;
   iso: string;
@@ -115,83 +135,101 @@ const formatDate = (isoDate?: string, locale: string = 'fr'): {
 
   return {
     year: date.getFullYear().toString(),
-    month: date.toLocaleDateString('en-US', { month: 'long' }),
-    monthNum: (date.getMonth() + 1).toString().padStart(2, '0'),
+    month: date.toLocaleDateString("en-US", { month: "long" }),
+    monthNum: (date.getMonth() + 1).toString().padStart(2, "0"),
     day: date.getDate().toString(),
-    full: date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-    fullFr: date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' }),
-    iso: date.toISOString().split('T')[0]
+    full: date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }),
+    fullFr: date.toLocaleDateString("fr-FR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }),
+    iso: date.toISOString().split("T")[0],
   };
 };
 
-const getAccessDate = (locale: string = 'fr'): string => {
+const getAccessDate = (locale: string = "fr"): string => {
   const date = new Date();
-  if (locale === 'fr') {
-    return date.toLocaleDateString('fr-FR', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+  if (locale === "fr") {
+    return date.toLocaleDateString("fr-FR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   }
-  return date.toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 };
 
 const sanitizeForBibtex = (str: string): string => {
   return str
-    .replace(/[{}]/g, '')
-    .replace(/&/g, '\\&')
-    .replace(/%/g, '\\%')
-    .replace(/_/g, '\\_')
-    .replace(/\$/g, '\\$')
-    .replace(/#/g, '\\#');
+    .replace(/[{}]/g, "")
+    .replace(/&/g, "\\&")
+    .replace(/%/g, "\\%")
+    .replace(/_/g, "\\_")
+    .replace(/\$/g, "\\$")
+    .replace(/#/g, "\\#");
 };
 
-const generateBibtexKey = (channel: string, year: string, title: string): string => {
+const generateBibtexKey = (
+  channel: string,
+  year: string,
+  title: string,
+): string => {
   const authorPart = channel
     .split(/\s+/)[0]
     .toLowerCase()
-    .replace(/[^a-z]/g, '');
+    .replace(/[^a-z]/g, "");
   const titleWord = title
     .split(/\s+/)[0]
     .toLowerCase()
-    .replace(/[^a-z]/g, '');
+    .replace(/[^a-z]/g, "");
   return `${authorPart}${year}${titleWord}`;
 };
 
-const generateCitation = (video: VideoInfo, format: CitationFormat, lang: string = 'fr'): string => {
+const generateCitation = (
+  video: VideoInfo,
+  format: CitationFormat,
+  lang: string = "fr",
+): string => {
   const { title, channel, videoId } = video;
-  const isTikTok = video.platform === 'tiktok';
-  const platformName = isTikTok ? 'TikTok' : 'YouTube';
-  const videoType = isTikTok ? 'TikTok video' : 'Video';
-  const videoTypeFr = isTikTok ? 'Vidéo TikTok' : 'Vidéo YouTube';
-  const url = video.url || (isTikTok
-    ? `https://www.tiktok.com/video/${videoId}`
-    : `https://www.youtube.com/watch?v=${videoId}`);
+  const isTikTok = video.platform === "tiktok";
+  const platformName = isTikTok ? "TikTok" : "YouTube";
+  const videoType = isTikTok ? "TikTok video" : "Video";
+  const videoTypeFr = isTikTok ? "Vidéo TikTok" : "Vidéo YouTube";
+  const url =
+    video.url ||
+    (isTikTok
+      ? `https://www.tiktok.com/video/${videoId}`
+      : `https://www.youtube.com/watch?v=${videoId}`);
   const date = formatDate(video.publishedDate, lang);
-  const accessDateFr = getAccessDate('fr');
-  const accessDateEn = getAccessDate('en');
+  const accessDateFr = getAccessDate("fr");
+  const accessDateEn = getAccessDate("en");
 
   switch (format) {
-    case 'iso690':
+    case "iso690":
       return `${channel.toUpperCase()}. ${title} [en ligne]. ${platformName}, ${date.fullFr}. Disponible sur : ${url} [consulté le ${accessDateFr}]`;
 
-    case 'french':
+    case "french":
       return `${channel}, « ${title} », ${platformName}, ${date.fullFr}, ${url}, consulté le ${accessDateFr}.`;
 
-    case 'apa':
+    case "apa":
       return `${channel}. (${date.year}, ${date.month} ${date.day}). ${title} [${videoType}]. ${platformName}. ${url}`;
 
-    case 'mla':
+    case "mla":
       return `${channel}. "${title}." ${platformName}, ${date.day} ${date.month} ${date.year}, ${url}. Accessed ${accessDateEn}.`;
 
-    case 'chicago':
+    case "chicago":
       return `${channel}, "${title}," ${platformName} video, ${date.month} ${date.day}, ${date.year}, ${url}.`;
 
-    case 'bibtex':
+    case "bibtex":
       const bibtexKey = generateBibtexKey(channel, date.year, title);
       return `@online{${bibtexKey},
   author    = {${sanitizeForBibtex(channel)}},
@@ -204,7 +242,7 @@ const generateCitation = (video: VideoInfo, format: CitationFormat, lang: string
 }`;
 
     default:
-      return '';
+      return "";
   }
 };
 
@@ -216,9 +254,10 @@ export const CitationExport: React.FC<CitationExportProps> = ({
   isOpen,
   onClose,
   video,
-  language = 'fr'
+  language = "fr",
 }) => {
-  const [selectedFormat, setSelectedFormat] = useState<CitationFormat>('iso690');
+  const [selectedFormat, setSelectedFormat] =
+    useState<CitationFormat>("iso690");
   const [copiedFormat, setCopiedFormat] = useState<CitationFormat | null>(null);
   const [showAllFormats, setShowAllFormats] = useState(false);
 
@@ -229,9 +268,9 @@ export const CitationExport: React.FC<CitationExportProps> = ({
 
   // Générer toutes les citations
   const allCitations = useMemo(() => {
-    return CITATION_FORMATS.map(format => ({
+    return CITATION_FORMATS.map((format) => ({
       ...format,
-      citation: generateCitation(video, format.id, language)
+      citation: generateCitation(video, format.id, language),
     }));
   }, [video, language]);
 
@@ -242,16 +281,16 @@ export const CitationExport: React.FC<CitationExportProps> = ({
       setCopiedFormat(format);
       setTimeout(() => setCopiedFormat(null), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      console.error("Failed to copy:", err);
     }
   };
 
   // Télécharger en fichier .bib
   const handleDownloadBibtex = () => {
-    const bibtexCitation = generateCitation(video, 'bibtex', language);
-    const blob = new Blob([bibtexCitation], { type: 'text/plain' });
+    const bibtexCitation = generateCitation(video, "bibtex", language);
+    const blob = new Blob([bibtexCitation], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `${video.videoId}_citation.bib`;
     a.click();
@@ -262,54 +301,54 @@ export const CitationExport: React.FC<CitationExportProps> = ({
 
   const texts = {
     fr: {
-      title: 'Citer cette vidéo',
-      subtitle: 'Générez une citation académique conforme',
-      selectFormat: 'Format de citation',
-      copyToClipboard: 'Copier',
-      copied: 'Copié !',
-      downloadBib: 'Télécharger .bib',
-      showAll: 'Afficher tous les formats',
-      hideAll: 'Réduire',
-      tip: 'Astuce : ISO 690 et le style Français sont les normes recommandées en France et en Europe.',
-      videoInfo: 'Informations de la vidéo',
-      channel: 'Chaîne',
-      accessDate: 'Date d\'accès',
-      generatedBy: 'Citation générée par Deep Sight',
-      popularInFrance: 'Recommandé en France',
+      title: "Citer cette vidéo",
+      subtitle: "Générez une citation académique conforme",
+      selectFormat: "Format de citation",
+      copyToClipboard: "Copier",
+      copied: "Copié !",
+      downloadBib: "Télécharger .bib",
+      showAll: "Afficher tous les formats",
+      hideAll: "Réduire",
+      tip: "Astuce : ISO 690 et le style Français sont les normes recommandées en France et en Europe.",
+      videoInfo: "Informations de la vidéo",
+      channel: "Chaîne",
+      accessDate: "Date d'accès",
+      generatedBy: "Citation générée par Deep Sight",
+      popularInFrance: "Recommandé en France",
     },
     en: {
-      title: 'Cite this video',
-      subtitle: 'Generate an academic citation',
-      selectFormat: 'Citation format',
-      copyToClipboard: 'Copy',
-      copied: 'Copied!',
-      downloadBib: 'Download .bib',
-      showAll: 'Show all formats',
-      hideAll: 'Collapse',
-      tip: 'Tip: APA and MLA are the most common formats in academia.',
-      videoInfo: 'Video information',
-      channel: 'Channel',
-      accessDate: 'Access date',
-      generatedBy: 'Citation generated by Deep Sight',
-      popularInFrance: 'Popular in France',
-    }
+      title: "Cite this video",
+      subtitle: "Generate an academic citation",
+      selectFormat: "Citation format",
+      copyToClipboard: "Copy",
+      copied: "Copied!",
+      downloadBib: "Download .bib",
+      showAll: "Show all formats",
+      hideAll: "Collapse",
+      tip: "Tip: APA and MLA are the most common formats in academia.",
+      videoInfo: "Video information",
+      channel: "Channel",
+      accessDate: "Access date",
+      generatedBy: "Citation generated by Deep Sight",
+      popularInFrance: "Popular in France",
+    },
   };
 
   const t = texts[language];
-  const currentFormat = CITATION_FORMATS.find(f => f.id === selectedFormat)!;
+  const currentFormat = CITATION_FORMATS.find((f) => f.id === selectedFormat)!;
 
   // Formats recommandés en France/Europe (à afficher en premier avec badge)
-  const europeanFormats = ['iso690', 'french'];
+  const europeanFormats = ["iso690", "french"];
   // L'ordre est déjà correct dans CITATION_FORMATS (ISO 690 et Français en premier)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Overlay */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      
+
       {/* Modal */}
       <div className="relative w-full max-w-2xl bg-bg-primary border border-border-default rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
         {/* Header */}
@@ -324,14 +363,14 @@ export const CitationExport: React.FC<CitationExportProps> = ({
                 <p className="text-blue-100 text-sm">{t.subtitle}</p>
               </div>
             </div>
-            <button 
+            <button
               onClick={onClose}
               className="p-2 rounded-lg hover:bg-white/20 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
-          
+
           {/* Video info mini */}
           <div className="mt-4 p-3 bg-white/10 backdrop-blur rounded-lg">
             <p className="text-sm font-medium line-clamp-1">{video.title}</p>
@@ -355,20 +394,29 @@ export const CitationExport: React.FC<CitationExportProps> = ({
                   onClick={() => setSelectedFormat(format.id)}
                   className={`relative p-3 rounded-xl border-2 transition-all text-center ${
                     selectedFormat === format.id
-                      ? 'border-accent-primary bg-accent-primary-muted'
-                      : 'border-border-subtle hover:border-border-default bg-bg-secondary'
+                      ? "border-accent-primary bg-accent-primary-muted"
+                      : "border-border-subtle hover:border-border-default bg-bg-secondary"
                   }`}
                 >
                   {/* Badge "Recommandé en France/Europe" pour ISO 690 et Français */}
-                  {europeanFormats.includes(format.id) && language === 'fr' && (
-                    <span className="absolute -top-2 -right-2 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center" title={t.popularInFrance}>
-                      <span className="text-[8px] text-white font-bold">EU</span>
+                  {europeanFormats.includes(format.id) && language === "fr" && (
+                    <span
+                      className="absolute -top-2 -right-2 w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center"
+                      title={t.popularInFrance}
+                    >
+                      <span className="text-[8px] text-white font-bold">
+                        EU
+                      </span>
                     </span>
                   )}
-                  <div className={`w-8 h-8 mx-auto rounded-lg ${format.color} flex items-center justify-center mb-1`}>
+                  <div
+                    className={`w-8 h-8 mx-auto rounded-lg ${format.color} flex items-center justify-center mb-1`}
+                  >
                     {format.icon}
                   </div>
-                  <span className="text-xs font-medium text-text-primary block">{format.name}</span>
+                  <span className="text-xs font-medium text-text-primary block">
+                    {format.name}
+                  </span>
                 </button>
               ))}
             </div>
@@ -377,26 +425,30 @@ export const CitationExport: React.FC<CitationExportProps> = ({
           {/* Citation preview */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
-              <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${currentFormat.color}`}>
+              <span
+                className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${currentFormat.color}`}
+              >
                 {currentFormat.icon}
                 {currentFormat.name}
-                <span className="text-xs opacity-70">— {currentFormat.description}</span>
+                <span className="text-xs opacity-70">
+                  — {currentFormat.description}
+                </span>
               </span>
             </div>
-            
+
             <div className="relative">
               <div className="p-4 bg-bg-secondary border border-border-subtle rounded-xl font-mono text-sm text-text-primary leading-relaxed whitespace-pre-wrap break-all">
                 {citation}
               </div>
-              
+
               {/* Copy button overlay */}
               <div className="absolute top-2 right-2 flex gap-2">
                 <button
                   onClick={() => handleCopy(selectedFormat, citation)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
                     copiedFormat === selectedFormat
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-bg-primary text-text-secondary hover:text-text-primary border border-border-subtle hover:border-accent-primary'
+                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                      : "bg-bg-primary text-text-secondary hover:text-text-primary border border-border-subtle hover:border-accent-primary"
                   }`}
                 >
                   {copiedFormat === selectedFormat ? (
@@ -416,7 +468,7 @@ export const CitationExport: React.FC<CitationExportProps> = ({
           </div>
 
           {/* BibTeX download button */}
-          {selectedFormat === 'bibtex' && (
+          {selectedFormat === "bibtex" && (
             <button
               onClick={handleDownloadBibtex}
               className="w-full mb-4 btn btn-secondary justify-center"
@@ -439,7 +491,9 @@ export const CitationExport: React.FC<CitationExportProps> = ({
             onClick={() => setShowAllFormats(!showAllFormats)}
             className="mt-4 w-full flex items-center justify-center gap-2 text-sm text-text-tertiary hover:text-text-primary transition-colors"
           >
-            <ChevronDown className={`w-4 h-4 transition-transform ${showAllFormats ? 'rotate-180' : ''}`} />
+            <ChevronDown
+              className={`w-4 h-4 transition-transform ${showAllFormats ? "rotate-180" : ""}`}
+            />
             {showAllFormats ? t.hideAll : t.showAll}
           </button>
 
@@ -447,12 +501,14 @@ export const CitationExport: React.FC<CitationExportProps> = ({
           {showAllFormats && (
             <div className="mt-4 space-y-3 animate-fade-in">
               {allCitations.map((format) => (
-                <div 
+                <div
                   key={format.id}
                   className="p-4 bg-bg-secondary border border-border-subtle rounded-xl"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className={`inline-flex items-center gap-2 px-2 py-1 rounded-lg text-xs font-medium ${format.color}`}>
+                    <span
+                      className={`inline-flex items-center gap-2 px-2 py-1 rounded-lg text-xs font-medium ${format.color}`}
+                    >
                       {format.icon}
                       {format.name}
                     </span>
@@ -460,8 +516,8 @@ export const CitationExport: React.FC<CitationExportProps> = ({
                       onClick={() => handleCopy(format.id, format.citation)}
                       className={`px-2 py-1 rounded text-xs flex items-center gap-1 transition-all ${
                         copiedFormat === format.id
-                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                          : 'text-text-tertiary hover:text-text-primary hover:bg-bg-hover'
+                          ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          : "text-text-tertiary hover:text-text-primary hover:bg-bg-hover"
                       }`}
                     >
                       {copiedFormat === format.id ? (
@@ -486,15 +542,17 @@ export const CitationExport: React.FC<CitationExportProps> = ({
             {t.generatedBy} • {t.accessDate}: {getAccessDate()}
           </p>
           <a
-            href={video.platform === 'tiktok'
-              ? `https://www.tiktok.com/video/${video.videoId}`
-              : `https://www.youtube.com/watch?v=${video.videoId}`}
+            href={
+              video.platform === "tiktok"
+                ? `https://www.tiktok.com/video/${video.videoId}`
+                : `https://www.youtube.com/watch?v=${video.videoId}`
+            }
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-accent-primary hover:underline flex items-center gap-1"
           >
             <ExternalLink className="w-3 h-3" />
-            {video.platform === 'tiktok' ? 'TikTok' : 'YouTube'}
+            {video.platform === "tiktok" ? "TikTok" : "YouTube"}
           </a>
         </div>
       </div>

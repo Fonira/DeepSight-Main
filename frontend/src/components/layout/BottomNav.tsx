@@ -6,17 +6,11 @@
  * Débat IA accessible à tous les plans.
  */
 
-import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  Home,
-  Swords,
-  Clock,
-  User,
-  GraduationCap,
-} from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
-import { normalizePlanId } from '../../config/planPrivileges';
+import React from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Home, Swords, Clock, User, GraduationCap } from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
+import { normalizePlanId } from "../../config/planPrivileges";
 
 interface NavItem {
   path: string;
@@ -27,11 +21,20 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/dashboard', icon: <Home className="w-5 h-5" />, label: 'Accueil' },
-  { path: '/history', icon: <Clock className="w-5 h-5" />, label: 'Historique' },
-  { path: '/study', icon: <GraduationCap className="w-5 h-5" />, label: 'Révision', requiresPro: true },
-  { path: '/debate', icon: <Swords className="w-5 h-5" />, label: 'Débat IA' },
-  { path: '/settings', icon: <User className="w-5 h-5" />, label: 'Profil' },
+  { path: "/dashboard", icon: <Home className="w-5 h-5" />, label: "Accueil" },
+  {
+    path: "/history",
+    icon: <Clock className="w-5 h-5" />,
+    label: "Historique",
+  },
+  {
+    path: "/study",
+    icon: <GraduationCap className="w-5 h-5" />,
+    label: "Révision",
+    requiresPro: true,
+  },
+  { path: "/debate", icon: <Swords className="w-5 h-5" />, label: "Débat IA" },
+  { path: "/settings", icon: <User className="w-5 h-5" />, label: "Profil" },
 ];
 
 export const BottomNav: React.FC = () => {
@@ -40,16 +43,16 @@ export const BottomNav: React.FC = () => {
   const { user } = useAuth();
 
   const normalizedPlan = normalizePlanId(user?.plan);
-  const isPaidUser = normalizedPlan !== 'free';
+  const isPaidUser = normalizedPlan !== "free";
 
   // Ne pas afficher sur les pages publiques
-  const publicPaths = ['/', '/login', '/auth/callback', '/legal'];
+  const publicPaths = ["/", "/login", "/auth/callback", "/legal"];
   if (publicPaths.includes(location.pathname)) {
     return null;
   }
 
   // Filtrer les onglets selon le plan
-  const visibleItems = navItems.filter(item => {
+  const visibleItems = navItems.filter((item) => {
     if (item.requiresPro && !isPaidUser) return false;
     return true;
   });
@@ -58,7 +61,7 @@ export const BottomNav: React.FC = () => {
     <nav
       className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-bg-elevated border-t border-border-subtle pb-safe"
       style={{
-        paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))'
+        paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
       }}
       role="navigation"
       aria-label="Navigation principale"
@@ -77,13 +80,14 @@ export const BottomNav: React.FC = () => {
                 transition-all duration-200
                 focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-elevated
                 active:scale-95
-                ${isActive
-                  ? 'text-accent-primary'
-                  : 'text-text-tertiary hover:text-text-secondary'
+                ${
+                  isActive
+                    ? "text-accent-primary"
+                    : "text-text-tertiary hover:text-text-secondary"
                 }
               `}
               aria-label={item.label}
-              aria-current={isActive ? 'page' : undefined}
+              aria-current={isActive ? "page" : undefined}
             >
               {/* Indicateur actif */}
               {isActive && (
@@ -94,10 +98,12 @@ export const BottomNav: React.FC = () => {
               )}
 
               {/* Icône */}
-              <div className={`
+              <div
+                className={`
                 relative p-1 rounded-lg
-                ${isActive ? 'bg-accent-primary-muted' : ''}
-              `}>
+                ${isActive ? "bg-accent-primary-muted" : ""}
+              `}
+              >
                 {item.icon}
 
                 {/* Badge */}
@@ -106,16 +112,18 @@ export const BottomNav: React.FC = () => {
                     className="absolute -top-1 -right-1 w-4 h-4 bg-error text-white text-xs font-bold rounded-full flex items-center justify-center"
                     aria-label={`${item.badge} notifications`}
                   >
-                    {item.badge > 9 ? '9+' : item.badge}
+                    {item.badge > 9 ? "9+" : item.badge}
                   </span>
                 )}
               </div>
 
               {/* Label */}
-              <span className={`
+              <span
+                className={`
                 text-[11px] mt-0.5 font-medium
-                ${isActive ? 'text-accent-primary' : ''}
-              `}>
+                ${isActive ? "text-accent-primary" : ""}
+              `}
+              >
                 {item.label}
               </span>
             </button>

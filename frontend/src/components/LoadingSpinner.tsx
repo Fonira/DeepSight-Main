@@ -5,8 +5,8 @@
  * 🆕 v4.0: Intégration du widget "Le Saviez-Vous"
  */
 
-import React, { useRef, useEffect, useState } from 'react';
-import { LoadingWordCompact } from './LoadingWord';
+import React, { useRef, useEffect, useState } from "react";
+import { LoadingWordCompact } from "./LoadingWord";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎬 VIDEO LOADING SPINNER — Composant principal
@@ -14,7 +14,7 @@ import { LoadingWordCompact } from './LoadingWord';
 
 interface LoadingSpinnerProps {
   /** Taille du spinner */
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'hero' | number;
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "hero" | number;
   /** Message à afficher sous le spinner */
   message?: string;
   /** Afficher en plein écran avec overlay */
@@ -28,7 +28,7 @@ interface LoadingSpinnerProps {
   /** Message pour les lecteurs d'écran */
   label?: string;
   /** Rétrocompatibilité */
-  variant?: 'nautical' | 'gold' | 'video';
+  variant?: "nautical" | "gold" | "video";
   /** 🆕 Afficher le widget "Le Saviez-Vous" */
   showWord?: boolean;
 }
@@ -43,18 +43,18 @@ const sizeMap = {
 };
 
 export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
-  size = 'md',
+  size = "md",
   message,
   fullScreen = false,
   progress,
   showProgress = false,
-  className = '',
-  label = 'Chargement en cours...',
+  className = "",
+  label = "Chargement en cours...",
   showWord = false,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoError, setVideoError] = useState(false);
-  const pixelSize = typeof size === 'number' ? size : sizeMap[size];
+  const pixelSize = typeof size === "number" ? size : sizeMap[size];
 
   useEffect(() => {
     const video = videoRef.current;
@@ -68,40 +68,38 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
       }
     };
 
-    video.addEventListener('canplay', playVideo);
-    video.addEventListener('error', () => setVideoError(true));
-    
+    video.addEventListener("canplay", playVideo);
+    video.addEventListener("error", () => setVideoError(true));
+
     if (video.readyState >= 3) playVideo();
 
     return () => {
-      video.removeEventListener('canplay', playVideo);
+      video.removeEventListener("canplay", playVideo);
     };
   }, []);
 
-  const hasProgress = showProgress || typeof progress === 'number';
+  const hasProgress = showProgress || typeof progress === "number";
 
   const spinner = (
-    <div 
+    <div
       className={`flex flex-col items-center justify-center gap-4 ${className}`}
       role="status"
       aria-live="polite"
       aria-busy="true"
     >
       {/* Conteneur vidéo/logo */}
-      <div 
-        className="relative"
-        style={{ width: pixelSize, height: pixelSize }}
-      >
+      <div className="relative" style={{ width: pixelSize, height: pixelSize }}>
         {/* Glow effect */}
-        <div 
+        <div
           className="absolute inset-0 rounded-full opacity-50"
           style={{
-            background: 'radial-gradient(circle, rgba(74, 144, 217, 0.3) 0%, rgba(212, 165, 116, 0.2) 50%, transparent 70%)',
-            filter: 'blur(20px)',
-            transform: 'scale(1.4)',
+            background:
+              "radial-gradient(circle, rgba(74, 144, 217, 0.3) 0%, rgba(212, 165, 116, 0.2) 50%, transparent 70%)",
+            filter: "blur(20px)",
+            transform: "scale(1.4)",
           }}
         />
-        
+
         {/* Vidéo ou fallback SVG */}
         {!videoError ? (
           <video
@@ -114,7 +112,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
             playsInline
             preload="auto"
             style={{
-              filter: 'drop-shadow(0 0 15px rgba(74, 144, 217, 0.3))'
+              filter: "drop-shadow(0 0 15px rgba(74, 144, 217, 0.3))",
             }}
           />
         ) : (
@@ -126,15 +124,15 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
       {hasProgress && (
         <div className="w-full max-w-xs">
           <div className="h-1.5 bg-border-subtle/30 rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full rounded-full transition-all duration-300 ease-out"
-              style={{ 
+              style={{
                 width: `${progress ?? 0}%`,
-                background: 'linear-gradient(90deg, #4A7BA7, #C4935A, #6B4380)'
+                background: "linear-gradient(90deg, #4A7BA7, #C4935A, #6B4380)",
               }}
             />
           </div>
-          {typeof progress === 'number' && (
+          {typeof progress === "number" && (
             <p className="text-center text-text-tertiary text-xs mt-1">
               {Math.round(progress)}%
             </p>
@@ -176,7 +174,12 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const FallbackSpinner: React.FC<{ size: number }> = ({ size }) => (
-  <svg viewBox="0 0 200 200" width={size} height={size} className="relative z-10">
+  <svg
+    viewBox="0 0 200 200"
+    width={size}
+    height={size}
+    className="relative z-10"
+  >
     <defs>
       <linearGradient id="spinnerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
         <stop offset="0%" stopColor="#5B8DB8" />
@@ -184,15 +187,23 @@ const FallbackSpinner: React.FC<{ size: number }> = ({ size }) => (
         <stop offset="100%" stopColor="#6B4380" />
       </linearGradient>
     </defs>
-    <g style={{ transformOrigin: '100px 100px', animation: 'spin 2s linear infinite' }}>
+    <g
+      style={{
+        transformOrigin: "100px 100px",
+        animation: "spin 2s linear infinite",
+      }}
+    >
       <path
         d="M 100 30 C 145 30, 175 55, 180 100 C 175 145, 145 170, 100 170 C 55 170, 25 145, 20 100 C 25 55, 55 30, 100 30 Z"
-        fill="none" stroke="url(#spinnerGradient)" strokeWidth="8" strokeLinecap="round"
+        fill="none"
+        stroke="url(#spinnerGradient)"
+        strokeWidth="8"
+        strokeLinecap="round"
       />
     </g>
-    <circle cx="100" cy="100" r="35" fill="#1a1a2e"/>
-    <polygon points="90,80 90,120 115,100" fill="white" opacity="0.9"/>
-    <circle cx="125" cy="75" r="8" fill="white" opacity="0.9"/>
+    <circle cx="100" cy="100" r="35" fill="#1a1a2e" />
+    <polygon points="90,80 90,120 115,100" fill="white" opacity="0.9" />
+    <circle cx="125" cy="75" r="8" fill="white" opacity="0.9" />
     <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
   </svg>
 );
@@ -212,7 +223,12 @@ export const LoadingOverlay: React.FC<{
       {children}
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-bg-primary/80 dark:bg-[#0a0a1a]/85 backdrop-blur-sm rounded-lg z-10">
-          <LoadingSpinner size="lg" message={message} progress={progress} showProgress={typeof progress === 'number'} />
+          <LoadingSpinner
+            size="lg"
+            message={message}
+            progress={progress}
+            showProgress={typeof progress === "number"}
+          />
         </div>
       )}
     </div>
@@ -227,14 +243,14 @@ export const PageLoading: React.FC<{
   message?: string;
   progress?: number;
   showWord?: boolean;
-}> = ({ message = 'Chargement...', progress, showWord = true }) => {
+}> = ({ message = "Chargement...", progress, showWord = true }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-bg-primary dark:bg-[#0a0a1a]">
       <LoadingSpinner
         size="hero"
         message={message}
         progress={progress}
-        showProgress={typeof progress === 'number'}
+        showProgress={typeof progress === "number"}
         showWord={showWord}
       />
     </div>
@@ -264,13 +280,13 @@ export const VideoAnalysisLoading: React.FC<{
             className="h-full rounded-full transition-all duration-500 ease-out"
             style={{
               width: `${progress}%`,
-              background: 'linear-gradient(90deg, #4A7BA7, #C4935A, #6B4380)'
+              background: "linear-gradient(90deg, #4A7BA7, #C4935A, #6B4380)",
             }}
           />
         </div>
         <div className="flex justify-between mt-2 text-xs text-text-tertiary">
           <span>{Math.round(progress)}%</span>
-          <span>{progress < 100 ? 'En cours...' : 'Terminé !'}</span>
+          <span>{progress < 100 ? "En cours..." : "Terminé !"}</span>
         </div>
       </div>
 
@@ -295,16 +311,16 @@ interface SkeletonLoaderProps {
   label?: string;
 }
 
-export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({ 
-  lines = 3, 
-  className = '',
+export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
+  lines = 3,
+  className = "",
   showLogo = true,
-  label = 'Chargement du contenu...',
+  label = "Chargement du contenu...",
 }) => {
   return (
-    <div 
-      className={`space-y-4 ${className}`} 
-      role="status" 
+    <div
+      className={`space-y-4 ${className}`}
+      role="status"
       aria-busy="true"
       aria-label={label}
     >
@@ -318,10 +334,10 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
         </div>
       )}
       {Array.from({ length: lines }).map((_, i) => (
-        <div 
+        <div
           key={i}
           className="h-4 bg-border-subtle/20 rounded animate-pulse"
-          style={{ width: `${100 - (i * 12)}%`, animationDelay: `${i * 0.1}s` }}
+          style={{ width: `${100 - i * 12}%`, animationDelay: `${i * 0.1}s` }}
         />
       ))}
       <span className="sr-only">{label}</span>

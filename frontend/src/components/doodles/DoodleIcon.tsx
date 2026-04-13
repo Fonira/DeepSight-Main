@@ -1,6 +1,6 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { DOODLE_MAP } from './doodlePaths';
+import React from "react";
+import { motion } from "framer-motion";
+import { DOODLE_MAP } from "./doodlePaths";
 
 interface DoodleIconProps {
   name: string;
@@ -13,7 +13,7 @@ interface DoodleIconProps {
 
 /**
  * DoodleIcon: Render a single SVG doodle by name
- * 
+ *
  * @param name - Key from DOODLE_MAP (e.g., 'play', 'book', 'sparkles')
  * @param size - SVG size in pixels (default: 24)
  * @param color - Stroke color (default: 'currentColor')
@@ -26,12 +26,12 @@ const DoodleIcon = React.forwardRef<SVGSVGElement, DoodleIconProps>(
     {
       name,
       size = 24,
-      color = 'currentColor',
+      color = "currentColor",
       animated = false,
-      className = '',
+      className = "",
       strokeWidth = 1.5,
     },
-    ref
+    ref,
   ) => {
     const path = DOODLE_MAP[name];
 
@@ -40,12 +40,12 @@ const DoodleIcon = React.forwardRef<SVGSVGElement, DoodleIconProps>(
       return null;
     }
 
-    const Component = animated ? motion.svg : 'svg';
+    const Component = animated ? motion.svg : "svg";
     const animationProps = animated
       ? {
           initial: { opacity: 0, scale: 0.9 },
           animate: { opacity: 1, scale: 1 },
-          transition: { duration: 0.3, ease: 'easeOut' },
+          transition: { duration: 0.3, ease: "easeOut" },
         }
       : {};
 
@@ -66,9 +66,9 @@ const DoodleIcon = React.forwardRef<SVGSVGElement, DoodleIconProps>(
         <path d={path} />
       </Component>
     );
-  }
+  },
 );
 
-DoodleIcon.displayName = 'DoodleIcon';
+DoodleIcon.displayName = "DoodleIcon";
 
 export default DoodleIcon;

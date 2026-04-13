@@ -1,7 +1,7 @@
 /**
  * DEEP SIGHT v5.0 — History Page
  * Historique complet avec chat intégré pour vidéos ET playlists
- * 
+ *
  * FONCTIONNALITÉS:
  * - 📹 Onglet Vidéos simples avec chat
  * - 📚 Onglet Playlists/Corpus avec chat corpus
@@ -16,24 +16,48 @@ import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import {
-  Search, Trash2, Play, MessageCircle,
-  ChevronRight, Clock, Video, Layers, Swords,
-  Grid, List, RefreshCw, BarChart2,
-  AlertCircle, X, ArrowLeft, BookOpen,
-  Maximize2, ExternalLink, Share2, Mic,
+  Search,
+  Trash2,
+  Play,
+  MessageCircle,
+  ChevronRight,
+  Clock,
+  Video,
+  Layers,
+  Swords,
+  Grid,
+  List,
+  RefreshCw,
+  BarChart2,
+  AlertCircle,
+  X,
+  ArrowLeft,
+  BookOpen,
+  Maximize2,
+  ExternalLink,
+  Share2,
+  Mic,
   // 🆕 Toolbar icons
-  Copy, Check, GraduationCap, Brain, Tags,
-  Download, FileText, FileDown, ChevronDown, Headphones
+  Copy,
+  Check,
+  GraduationCap,
+  Brain,
+  Tags,
+  Download,
+  FileText,
+  FileDown,
+  ChevronDown,
+  Headphones,
 } from "lucide-react";
 import { DeepSightSpinner, DeepSightSpinnerMicro } from "../components/ui";
-import { useTranslation } from '../hooks/useTranslation';
+import { useTranslation } from "../hooks/useTranslation";
 import { useAuth } from "../hooks/useAuth";
 import { Sidebar } from "../components/layout/Sidebar";
 import { TournesolMini } from "../components/TournesolWidget";
 import { createTimecodeMarkdownComponents } from "../components/TimecodeRenderer";
 import { FloatingChatWindow } from "../components/FloatingChatWindow";
-import DoodleBackground from '../components/DoodleBackground';
-import { SEO } from '../components/SEO';
+import DoodleBackground from "../components/DoodleBackground";
+import { SEO } from "../components/SEO";
 import { ThumbnailImage } from "../components/ThumbnailImage";
 import { IntellectualProfileBanner } from "../components/IntellectualProfileBanner";
 import { EnrichedMarkdown } from "../components/EnrichedMarkdown";
@@ -44,8 +68,18 @@ import { YouTubePlayer, YouTubePlayerRef } from "../components/YouTubePlayer";
 import { CitationExport } from "../components/CitationExport";
 import { StudyToolsModal } from "../components/StudyToolsModal";
 import { KeywordsModal } from "../components/KeywordsModal";
-import { videoApi, shareApi, reliabilityApi, chatApi, debateApi } from "../services/api";
-import type { Summary, ReliabilityResult, EnrichedConcept } from "../services/api";
+import {
+  videoApi,
+  shareApi,
+  reliabilityApi,
+  chatApi,
+  debateApi,
+} from "../services/api";
+import type {
+  Summary,
+  ReliabilityResult,
+  EnrichedConcept,
+} from "../services/api";
 import type { DebateAnalysis } from "../types/debate";
 import { DebateHistoryCard } from "../components/debate";
 import { normalizePlanId, PLAN_LIMITS } from "../config/planPrivileges";
@@ -57,8 +91,9 @@ import { sanitizeTitle } from "../utils/sanitize";
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🌐 API CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
-const BASE_API_URL = import.meta.env.VITE_API_URL || "https://api.deepsightsynthesis.com";
-const API_URL = BASE_API_URL.replace(/\/api\/?$/, '') + '/api';
+const BASE_API_URL =
+  import.meta.env.VITE_API_URL || "https://api.deepsightsynthesis.com";
+const API_URL = BASE_API_URL.replace(/\/api\/?$/, "") + "/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -68,14 +103,17 @@ const API_URL = BASE_API_URL.replace(/\/api\/?$/, '') + '/api';
  * Détecte la plateforme d'une vidéo.
  * Priorité : champ platform > heuristiques URL/ID
  */
-function resolvePlatform(video: { platform?: string; video_id?: string }): 'youtube' | 'tiktok' | 'text' {
-  if (video.platform === 'text') return 'text';
-  if (video.platform === 'tiktok') return 'tiktok';
-  const vid = video.video_id || '';
-  if (!vid) return 'youtube';
-  if (vid.startsWith('txt_')) return 'text';
+function resolvePlatform(video: {
+  platform?: string;
+  video_id?: string;
+}): "youtube" | "tiktok" | "text" {
+  if (video.platform === "text") return "text";
+  if (video.platform === "tiktok") return "tiktok";
+  const vid = video.video_id || "";
+  if (!vid) return "youtube";
+  if (vid.startsWith("txt_")) return "text";
   const isYouTubeId = /^[A-Za-z0-9_-]{11}$/.test(vid);
-  return isYouTubeId ? 'youtube' : 'tiktok';
+  return isYouTubeId ? "youtube" : "tiktok";
 }
 
 interface VideoSummary {
@@ -95,7 +133,7 @@ interface VideoSummary {
   created_at: string;
   summary_content?: string;
   transcript_context?: string;
-  platform?: 'youtube' | 'tiktok' | 'text';
+  platform?: "youtube" | "tiktok" | "text";
 }
 
 interface PlaylistSummary {
@@ -161,19 +199,40 @@ interface ChatMessage {
   web_search_used?: boolean;
 }
 
-type ChatTarget = { type: 'video'; id: number; title: string; videoId: string } | { type: 'playlist'; id: string; title: string } | null;
+type ChatTarget =
+  | { type: "video"; id: number; title: string; videoId: string }
+  | { type: "playlist"; id: string; title: string }
+  | null;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎨 HELPERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const categoryEmoji: Record<string, string> = {
-  interview_podcast: "🎙️", interview: "🎙️", podcast: "🎙️",
-  vulgarisation: "🔬", science: "🔬", tutoriel: "🎓", tutorial: "🎓",
-  cours: "📚", conference: "🎤", documentaire: "🎬", documentary: "🎬",
-  debat: "⚖️", debate: "⚖️", journalisme: "📰", news: "📰",
-  gaming: "🎮", finance: "💰", review: "⭐", lifestyle: "🏠",
-  tech: "💻", health: "🏥", general: "📺", education: "📚", culture: "🎨",
+  interview_podcast: "🎙️",
+  interview: "🎙️",
+  podcast: "🎙️",
+  vulgarisation: "🔬",
+  science: "🔬",
+  tutoriel: "🎓",
+  tutorial: "🎓",
+  cours: "📚",
+  conference: "🎤",
+  documentaire: "🎬",
+  documentary: "🎬",
+  debat: "⚖️",
+  debate: "⚖️",
+  journalisme: "📰",
+  news: "📰",
+  gaming: "🎮",
+  finance: "💰",
+  review: "⭐",
+  lifestyle: "🏠",
+  tech: "💻",
+  health: "🏥",
+  general: "📺",
+  education: "📚",
+  culture: "🎨",
 };
 
 const formatDuration = (seconds: number): string => {
@@ -190,7 +249,7 @@ const formatRelativeDate = (dateString: string, lang: string): string => {
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (lang === 'fr') {
+  if (lang === "fr") {
     if (diffDays === 0) return "Aujourd'hui";
     if (diffDays === 1) return "Hier";
     if (diffDays < 7) return `Il y a ${diffDays} jours`;
@@ -226,8 +285,10 @@ const useHistoryApi = () => {
   }) => {
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.set("page", params.page.toString());
-    if (params.per_page) queryParams.set("per_page", params.per_page.toString());
-    if (params.category && params.category !== "all") queryParams.set("category", params.category);
+    if (params.per_page)
+      queryParams.set("per_page", params.per_page.toString());
+    if (params.category && params.category !== "all")
+      queryParams.set("category", params.category);
     if (params.search) queryParams.set("search", params.search);
 
     const response = await fetch(`${API_URL}/history/videos?${queryParams}`, {
@@ -244,17 +305,23 @@ const useHistoryApi = () => {
   }) => {
     const queryParams = new URLSearchParams();
     if (params.page) queryParams.set("page", params.page.toString());
-    if (params.per_page) queryParams.set("per_page", params.per_page.toString());
+    if (params.per_page)
+      queryParams.set("per_page", params.per_page.toString());
     if (params.search) queryParams.set("search", params.search);
 
-    const response = await fetch(`${API_URL}/history/playlists?${queryParams}`, {
-      headers: getAuthHeaders(),
-    });
+    const response = await fetch(
+      `${API_URL}/history/playlists?${queryParams}`,
+      {
+        headers: getAuthHeaders(),
+      },
+    );
     if (!response.ok) throw new Error("Failed to fetch playlists");
     return response.json();
   };
 
-  const fetchPlaylistDetail = async (playlistId: string): Promise<PlaylistDetail> => {
+  const fetchPlaylistDetail = async (
+    playlistId: string,
+  ): Promise<PlaylistDetail> => {
     const response = await fetch(`${API_URL}/history/playlists/${playlistId}`, {
       headers: getAuthHeaders(),
     });
@@ -287,7 +354,9 @@ const useHistoryApi = () => {
   };
 
   // 🗑️ Supprimer tout l'historique
-  const clearAllHistory = async (type: 'all' | 'videos' | 'playlists' = 'all') => {
+  const clearAllHistory = async (
+    type: "all" | "videos" | "playlists" = "all",
+  ) => {
     const response = await fetch(`${API_URL}/history/clear?type=${type}`, {
       method: "DELETE",
       headers: getAuthHeaders(),
@@ -297,7 +366,11 @@ const useHistoryApi = () => {
   };
 
   // Chat API pour vidéos
-  const chatWithVideo = async (summaryId: number, message: string, webSearch: boolean = false) => {
+  const chatWithVideo = async (
+    summaryId: number,
+    message: string,
+    webSearch: boolean = false,
+  ) => {
     const response = await fetch(`${API_URL}/chat/${summaryId}`, {
       method: "POST",
       headers: getAuthHeaders(),
@@ -308,7 +381,9 @@ const useHistoryApi = () => {
   };
 
   // 🆕 Récupérer l'historique du chat vidéo
-  const getChatHistoryVideo = async (summaryId: number): Promise<ChatMessage[]> => {
+  const getChatHistoryVideo = async (
+    summaryId: number,
+  ): Promise<ChatMessage[]> => {
     try {
       const response = await fetch(`${API_URL}/chat/${summaryId}/history`, {
         headers: getAuthHeaders(),
@@ -333,7 +408,11 @@ const useHistoryApi = () => {
   };
 
   // Chat API pour playlists
-  const chatWithPlaylist = async (playlistId: string, message: string, webSearch: boolean = false) => {
+  const chatWithPlaylist = async (
+    playlistId: string,
+    message: string,
+    webSearch: boolean = false,
+  ) => {
     const response = await fetch(`${API_URL}/playlists/${playlistId}/chat`, {
       method: "POST",
       headers: getAuthHeaders(),
@@ -344,11 +423,16 @@ const useHistoryApi = () => {
   };
 
   // 🆕 Récupérer l'historique du chat playlist/corpus
-  const getChatHistoryPlaylist = async (playlistId: string): Promise<ChatMessage[]> => {
+  const getChatHistoryPlaylist = async (
+    playlistId: string,
+  ): Promise<ChatMessage[]> => {
     try {
-      const response = await fetch(`${API_URL}/playlists/${playlistId}/chat/history`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await fetch(
+        `${API_URL}/playlists/${playlistId}/chat/history`,
+        {
+          headers: getAuthHeaders(),
+        },
+      );
       if (!response.ok) {
         return [];
       }
@@ -369,19 +453,33 @@ const useHistoryApi = () => {
   };
 
   // Récupérer le détail d'une vidéo dans une playlist (avec résumé complet)
-  const fetchPlaylistVideoDetail = async (playlistId: string, videoId: string): Promise<PlaylistVideoDetail> => {
-    const response = await fetch(`${API_URL}/history/playlists/${playlistId}/videos/${videoId}`, {
-      headers: getAuthHeaders(),
-    });
+  const fetchPlaylistVideoDetail = async (
+    playlistId: string,
+    videoId: string,
+  ): Promise<PlaylistVideoDetail> => {
+    const response = await fetch(
+      `${API_URL}/history/playlists/${playlistId}/videos/${videoId}`,
+      {
+        headers: getAuthHeaders(),
+      },
+    );
     if (!response.ok) throw new Error("Failed to fetch video detail");
     return response.json();
   };
 
-  return { 
-    fetchVideos, fetchPlaylists, fetchPlaylistDetail, fetchPlaylistVideoDetail,
-    fetchStats, deleteVideo, deletePlaylist, clearAllHistory,
-    chatWithVideo, chatWithPlaylist,
-    getChatHistoryVideo, getChatHistoryPlaylist  // 🆕 Historique du chat
+  return {
+    fetchVideos,
+    fetchPlaylists,
+    fetchPlaylistDetail,
+    fetchPlaylistVideoDetail,
+    fetchStats,
+    deleteVideo,
+    deletePlaylist,
+    clearAllHistory,
+    chatWithVideo,
+    chatWithPlaylist,
+    getChatHistoryVideo,
+    getChatHistoryPlaylist, // 🆕 Historique du chat
   };
 };
 
@@ -411,8 +509,10 @@ export const History: React.FC = () => {
   const [debatesTotal, setDebatesTotal] = useState(0);
   const [debatesPage, setDebatesPage] = useState(1);
   const [stats, setStats] = useState<HistoryStats | null>(null);
-  const [selectedPlaylist, setSelectedPlaylist] = useState<PlaylistDetail | null>(null);
-  const [selectedPlaylistVideo, setSelectedPlaylistVideo] = useState<PlaylistVideoDetail | null>(null);
+  const [selectedPlaylist, setSelectedPlaylist] =
+    useState<PlaylistDetail | null>(null);
+  const [selectedPlaylistVideo, setSelectedPlaylistVideo] =
+    useState<PlaylistVideoDetail | null>(null);
   const [loadingVideo, setLoadingVideo] = useState(false);
 
   // Pagination & filtres
@@ -430,60 +530,85 @@ export const History: React.FC = () => {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatWebSearch, setChatWebSearch] = useState(false);
-  const [wsQuota, setWsQuota] = useState<{ used: number; limit: number; remaining: number } | undefined>(undefined);
+  const [wsQuota, setWsQuota] = useState<
+    { used: number; limit: number; remaining: number } | undefined
+  >(undefined);
   const [, setChatExpanded] = useState(true); // Étendu par défaut
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // 🆕 Vue détaillée d'une vidéo inline (au lieu de naviguer vers /dashboard)
-  const [selectedVideoDetail, setSelectedVideoDetail] = useState<Summary | null>(null);
+  const [selectedVideoDetail, setSelectedVideoDetail] =
+    useState<Summary | null>(null);
   const [loadingVideoDetail, setLoadingVideoDetail] = useState(false);
-  const [videoDetailReliability, setVideoDetailReliability] = useState<ReliabilityResult | null>(null);
-  const [videoDetailPlayerVisible, setVideoDetailPlayerVisible] = useState(false);
+  const [videoDetailReliability, setVideoDetailReliability] =
+    useState<ReliabilityResult | null>(null);
+  const [videoDetailPlayerVisible, setVideoDetailPlayerVisible] =
+    useState(false);
   const [videoDetailPlayerStart, setVideoDetailPlayerStart] = useState(0);
   const videoDetailPlayerRef = useRef<YouTubePlayerRef>(null);
-  const upgradeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const upgradeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
   // Toolbar states pour vue détail vidéo
   const [detailCopied, setDetailCopied] = useState(false);
   const [detailShowExportMenu, setDetailShowExportMenu] = useState(false);
   const [detailExporting, setDetailExporting] = useState(false);
   const detailExportBtnRef = useRef<HTMLButtonElement>(null);
   const detailExportMenuRef = useRef<HTMLDivElement>(null);
-  const [detailExportMenuPos, setDetailExportMenuPos] = useState({ top: 0, left: 0 });
+  const [detailExportMenuPos, setDetailExportMenuPos] = useState({
+    top: 0,
+    left: 0,
+  });
   // Quick Chat Upgrade states
-  const [upgradeMode, setUpgradeMode] = useState<string>('standard');
+  const [upgradeMode, setUpgradeMode] = useState<string>("standard");
   const [upgradeDeepResearch, setUpgradeDeepResearch] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [upgradeTaskId, setUpgradeTaskId] = useState<string | null>(null);
   const [detailShowCitationModal, setDetailShowCitationModal] = useState(false);
-  const [detailShowStudyToolsModal, setDetailShowStudyToolsModal] = useState(false);
+  const [detailShowStudyToolsModal, setDetailShowStudyToolsModal] =
+    useState(false);
   const [detailShowKeywordsModal, setDetailShowKeywordsModal] = useState(false);
   const [detailConcepts, setDetailConcepts] = useState<EnrichedConcept[]>([]);
   const [detailConceptsLoading, setDetailConceptsLoading] = useState(false);
-  const [detailConceptsProvider, setDetailConceptsProvider] = useState<string>('none');
-  const [detailConceptsCategories, setDetailConceptsCategories] = useState<Record<string, { label: string; icon: string; count: number }>>({});
+  const [detailConceptsProvider, setDetailConceptsProvider] =
+    useState<string>("none");
+  const [detailConceptsCategories, setDetailConceptsCategories] = useState<
+    Record<string, { label: string; icon: string; count: number }>
+  >({});
 
   // 🎙️ Voice Chat
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
-  const voiceChat = useVoiceChat({ summaryId: selectedVideoDetail?.id ?? 0, language: language as 'fr' | 'en' });
+  const voiceChat = useVoiceChat({
+    summaryId: selectedVideoDetail?.id ?? 0,
+    language: language as "fr" | "en",
+  });
   const ADMIN_EMAIL_VOICE = "maximeleparc3@gmail.com";
-  const isAdminVoice = user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL_VOICE.toLowerCase();
-  const voiceEnabled = isAdminVoice || PLAN_LIMITS[normalizePlanId(user?.plan)].voiceChatEnabled;
+  const isAdminVoice =
+    user?.is_admin ||
+    user?.email?.toLowerCase() === ADMIN_EMAIL_VOICE.toLowerCase();
+  const voiceEnabled =
+    isAdminVoice || PLAN_LIMITS[normalizePlanId(user?.plan)].voiceChatEnabled;
 
   // 🗑️ Clear History Modal
   const [showClearModal, setShowClearModal] = useState(false);
-  const [clearType, setClearType] = useState<'all' | 'videos' | 'playlists'>('all');
+  const [clearType, setClearType] = useState<"all" | "videos" | "playlists">(
+    "all",
+  );
   const [clearLoading, setClearLoading] = useState(false);
 
-  const isProUser = normalizePlanId(user?.plan) === 'pro';
+  const isProUser = normalizePlanId(user?.plan) === "pro";
 
   // 📦 Portal Export Menu — position helper
-  const calcExportMenuPos = useCallback((btnRef: React.RefObject<HTMLButtonElement | null>) => {
-    if (btnRef.current) {
-      const rect = btnRef.current.getBoundingClientRect();
-      return { top: rect.bottom + 4, left: Math.max(8, rect.right - 176) };
-    }
-    return { top: 0, left: 0 };
-  }, []);
+  const calcExportMenuPos = useCallback(
+    (btnRef: React.RefObject<HTMLButtonElement | null>) => {
+      if (btnRef.current) {
+        const rect = btnRef.current.getBoundingClientRect();
+        return { top: rect.bottom + 4, left: Math.max(8, rect.right - 176) };
+      }
+      return { top: 0, left: 0 };
+    },
+    [],
+  );
 
   // 📦 Click-outside + scroll/resize handler for detail export menu
   useEffect(() => {
@@ -491,18 +616,22 @@ export const History: React.FC = () => {
 
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
-      if (detailExportBtnRef.current?.contains(target) || detailExportMenuRef.current?.contains(target)) return;
+      if (
+        detailExportBtnRef.current?.contains(target) ||
+        detailExportMenuRef.current?.contains(target)
+      )
+        return;
       setDetailShowExportMenu(false);
     };
     const handleDismiss = () => setDetailShowExportMenu(false);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('scroll', handleDismiss, true);
-    window.addEventListener('resize', handleDismiss);
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", handleDismiss, true);
+    window.addEventListener("resize", handleDismiss);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('scroll', handleDismiss, true);
-      window.removeEventListener('resize', handleDismiss);
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleDismiss, true);
+      window.removeEventListener("resize", handleDismiss);
     };
   }, [detailShowExportMenu]);
 
@@ -513,7 +642,10 @@ export const History: React.FC = () => {
       videoId: videoId,
       onTimecodeClick: (seconds) => {
         if (videoId) {
-          window.open(`https://www.youtube.com/watch?v=${videoId}&t=${Math.floor(seconds)}s`, "_blank");
+          window.open(
+            `https://www.youtube.com/watch?v=${videoId}&t=${Math.floor(seconds)}s`,
+            "_blank",
+          );
         }
       },
     });
@@ -530,28 +662,34 @@ export const History: React.FC = () => {
 
   // URL params
   useEffect(() => {
-    const playlistParam = searchParams.get('playlist');
+    const playlistParam = searchParams.get("playlist");
     if (playlistParam) {
       loadPlaylistDetail(playlistParam);
     }
-    const debateParam = searchParams.get('debate');
+    const debateParam = searchParams.get("debate");
     if (debateParam) {
-      setActiveTab('debates');
+      setActiveTab("debates");
     }
     // Open a specific video analysis by summary ID (from RecentAnalyses click)
-    const openParam = searchParams.get('open');
+    const openParam = searchParams.get("open");
     if (openParam) {
       const summaryId = parseInt(openParam, 10);
       if (!isNaN(summaryId)) {
-        setActiveTab('videos');
+        setActiveTab("videos");
         setLoadingVideoDetail(true);
-        videoApi.getSummary(summaryId)
+        videoApi
+          .getSummary(summaryId)
           .then((summary) => {
             setSelectedVideoDetail(summary);
-            reliabilityApi.getReliability(summaryId).then(setVideoDetailReliability).catch(() => {});
+            reliabilityApi
+              .getReliability(summaryId)
+              .then(setVideoDetailReliability)
+              .catch(() => {});
           })
           .catch(() => {
-            setError(language === 'fr' ? "Analyse introuvable" : "Analysis not found");
+            setError(
+              language === "fr" ? "Analyse introuvable" : "Analysis not found",
+            );
           })
           .finally(() => setLoadingVideoDetail(false));
       }
@@ -592,15 +730,26 @@ export const History: React.FC = () => {
       }
     } catch (err) {
       console.error("History load error:", err);
-      setError(language === 'fr' ? "Erreur réseau — Impossible de charger l'historique" : "Network error — Unable to load history");
+      setError(
+        language === "fr"
+          ? "Erreur réseau — Impossible de charger l'historique"
+          : "Network error — Unable to load history",
+      );
     } finally {
       setLoading(false);
     }
-  }, [videosPage, debatesPage, selectedCategory, searchQuery, language]);
+  }, [
+    videosPage,
+    debatesPage,
+    selectedCategory,
+    searchQuery,
+    language,
+    user?.id,
+  ]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (user?.id) loadData();
+  }, [loadData, user?.id]);
 
   // Charger détails playlist
   const loadPlaylistDetail = async (playlistId: string) => {
@@ -614,14 +763,24 @@ export const History: React.FC = () => {
   };
 
   // Charger détails d'une vidéo de playlist
-  const loadPlaylistVideoDetail = async (playlistId: string, videoId: string) => {
+  const loadPlaylistVideoDetail = async (
+    playlistId: string,
+    videoId: string,
+  ) => {
     setLoadingVideo(true);
     try {
-      const videoDetail = await api.fetchPlaylistVideoDetail(playlistId, videoId);
+      const videoDetail = await api.fetchPlaylistVideoDetail(
+        playlistId,
+        videoId,
+      );
       setSelectedPlaylistVideo(videoDetail);
     } catch (err) {
       console.error("Video detail error:", err);
-      setError(language === 'fr' ? "Erreur lors du chargement de la vidéo" : "Error loading video");
+      setError(
+        language === "fr"
+          ? "Erreur lors du chargement de la vidéo"
+          : "Error loading video",
+      );
     } finally {
       setLoadingVideo(false);
     }
@@ -636,10 +795,17 @@ export const History: React.FC = () => {
       const summary = await videoApi.getSummary(video.id);
       setSelectedVideoDetail(summary);
       // Charger reliability en arrière-plan
-      reliabilityApi.getReliability(video.id).then(setVideoDetailReliability).catch(() => {});
+      reliabilityApi
+        .getReliability(video.id)
+        .then(setVideoDetailReliability)
+        .catch(() => {});
     } catch (err) {
-      console.error('Error loading video detail:', err);
-      setError(language === 'fr' ? "Erreur lors du chargement de l'analyse" : "Error loading analysis");
+      console.error("Error loading video detail:", err);
+      setError(
+        language === "fr"
+          ? "Erreur lors du chargement de l'analyse"
+          : "Error loading analysis",
+      );
     } finally {
       setLoadingVideoDetail(false);
     }
@@ -660,22 +826,26 @@ export const History: React.FC = () => {
       const response = await videoApi.upgradeQuickChat(
         selectedVideoDetail.id,
         upgradeMode,
-        upgradeDeepResearch
+        upgradeDeepResearch,
       );
       setUpgradeTaskId(response.task_id);
       // Poll for completion
       const pollInterval = setInterval(async () => {
         try {
           const status = await videoApi.getTaskStatus(response.task_id);
-          if (status.status === 'completed' || status.status === 'done') {
+          if (status.status === "completed" || status.status === "done") {
             clearInterval(pollInterval);
             upgradeIntervalRef.current = null;
             // Reload the summary
             const updated = await videoApi.getSummary(selectedVideoDetail.id);
-            setSelectedVideoDetail({...selectedVideoDetail, ...updated, summary_content: updated.summary_content});
+            setSelectedVideoDetail({
+              ...selectedVideoDetail,
+              ...updated,
+              summary_content: updated.summary_content,
+            });
             setUpgradeLoading(false);
             setUpgradeTaskId(null);
-          } else if (status.status === 'error' || status.status === 'failed') {
+          } else if (status.status === "error" || status.status === "failed") {
             clearInterval(pollInterval);
             upgradeIntervalRef.current = null;
             setUpgradeLoading(false);
@@ -687,19 +857,22 @@ export const History: React.FC = () => {
       }, 5000);
       upgradeIntervalRef.current = pollInterval;
     } catch (err: any) {
-      setError(err?.message || 'Upgrade failed');
+      setError(err?.message || "Upgrade failed");
       setUpgradeLoading(false);
     }
   };
 
-  const handleDetailTimecodeClick = useCallback((seconds: number) => {
-    if (videoDetailPlayerVisible && videoDetailPlayerRef.current) {
-      videoDetailPlayerRef.current.seekTo(seconds);
-    } else {
-      setVideoDetailPlayerStart(seconds);
-      setVideoDetailPlayerVisible(true);
-    }
-  }, [videoDetailPlayerVisible]);
+  const handleDetailTimecodeClick = useCallback(
+    (seconds: number) => {
+      if (videoDetailPlayerVisible && videoDetailPlayerRef.current) {
+        videoDetailPlayerRef.current.seekTo(seconds);
+      } else {
+        setVideoDetailPlayerStart(seconds);
+        setVideoDetailPlayerVisible(true);
+      }
+    },
+    [videoDetailPlayerVisible],
+  );
 
   const handleDetailCopy = async () => {
     if (!selectedVideoDetail?.summary_content) return;
@@ -708,41 +881,54 @@ export const History: React.FC = () => {
     setTimeout(() => setDetailCopied(false), 2000);
   };
 
-  const handleDetailExport = async (format: 'pdf' | 'md' | 'txt') => {
+  const handleDetailExport = async (format: "pdf" | "md" | "txt") => {
     if (!selectedVideoDetail?.id) return;
     setDetailExporting(true);
     setDetailShowExportMenu(false);
     try {
       const blob = await videoApi.exportSummary(selectedVideoDetail.id, format);
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `${selectedVideoDetail.video_title || 'analyse'}.${format === 'md' ? 'md' : format}`;
+      a.download = `${selectedVideoDetail.video_title || "analyse"}.${format === "md" ? "md" : format}`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export error:', err);
+      console.error("Export error:", err);
     } finally {
       setDetailExporting(false);
     }
   };
 
-  const handleDetailAudioExport = async (audioMode: 'full' | 'condensed') => {
+  const handleDetailAudioExport = async (audioMode: "full" | "condensed") => {
     if (!selectedVideoDetail?.id) return;
     setDetailExporting(true);
     setDetailShowExportMenu(false);
     try {
-      const result = await videoApi.exportAudio(selectedVideoDetail.id, undefined, undefined, audioMode);
+      const result = await videoApi.exportAudio(
+        selectedVideoDetail.id,
+        undefined,
+        undefined,
+        audioMode,
+      );
       const audioUrl = `${BASE_API_URL}${result.audio_url}`;
       // Open audio in new tab for playback/download
-      window.open(audioUrl, '_blank');
+      window.open(audioUrl, "_blank");
     } catch (err: any) {
-      console.error('Audio export error:', err);
-      const msg = err?.message || '';
-      if (msg.includes('feature_locked') || err?.status === 403) {
-        alert(language === 'fr' ? "L'export audio nécessite un plan Pro ou supérieur." : "Audio export requires Pro plan or higher.");
+      console.error("Audio export error:", err);
+      const msg = err?.message || "";
+      if (msg.includes("feature_locked") || err?.status === 403) {
+        alert(
+          language === "fr"
+            ? "L'export audio nécessite un plan Pro ou supérieur."
+            : "Audio export requires Pro plan or higher.",
+        );
       } else {
-        alert(language === 'fr' ? "Erreur lors de l'export audio. Réessayez." : "Audio export failed. Try again.");
+        alert(
+          language === "fr"
+            ? "Erreur lors de l'export audio. Réessayez."
+            : "Audio export failed. Try again.",
+        );
       }
     } finally {
       setDetailExporting(false);
@@ -753,18 +939,27 @@ export const History: React.FC = () => {
     setDetailShowKeywordsModal(true);
     if (selectedVideoDetail?.id) {
       setDetailConceptsLoading(true);
-      videoApi.getEnrichedConcepts(selectedVideoDetail.id).then(data => {
-        setDetailConcepts(data.concepts || []);
-        setDetailConceptsProvider(data.provider || 'none');
-        setDetailConceptsCategories(data.categories || {});
-      }).catch(() => {
-        setDetailConcepts([]);
-      }).finally(() => setDetailConceptsLoading(false));
+      videoApi
+        .getEnrichedConcepts(selectedVideoDetail.id)
+        .then((data) => {
+          setDetailConcepts(data.concepts || []);
+          setDetailConceptsProvider(data.provider || "none");
+          setDetailConceptsCategories(data.categories || {});
+        })
+        .catch(() => {
+          setDetailConcepts([]);
+        })
+        .finally(() => setDetailConceptsLoading(false));
     }
   };
 
   const handleOpenVideoChat = async (video: VideoSummary) => {
-    setChatTarget({ type: 'video', id: video.id, title: video.video_title, videoId: video.video_id });
+    setChatTarget({
+      type: "video",
+      id: video.id,
+      title: video.video_title,
+      videoId: video.video_id,
+    });
     setChatExpanded(true);
     // 🆕 Charger l'historique existant au lieu d'effacer
     setChatLoading(true);
@@ -772,15 +967,22 @@ export const History: React.FC = () => {
       const history = await api.getChatHistoryVideo(video.id);
       setChatMessages(history);
     } catch (err) {
-      console.error('Error loading chat history:', err);
+      console.error("Error loading chat history:", err);
       setChatMessages([]);
     } finally {
       setChatLoading(false);
     }
   };
 
-  const handleOpenPlaylistVideoChat = async (video: PlaylistVideo | PlaylistVideoDetail) => {
-    setChatTarget({ type: 'video', id: video.id, title: video.video_title, videoId: video.video_id });
+  const handleOpenPlaylistVideoChat = async (
+    video: PlaylistVideo | PlaylistVideoDetail,
+  ) => {
+    setChatTarget({
+      type: "video",
+      id: video.id,
+      title: video.video_title,
+      videoId: video.video_id,
+    });
     setChatExpanded(true);
     // 🆕 Charger l'historique existant au lieu d'effacer
     setChatLoading(true);
@@ -788,7 +990,7 @@ export const History: React.FC = () => {
       const history = await api.getChatHistoryVideo(video.id);
       setChatMessages(history);
     } catch (err) {
-      console.error('Error loading chat history:', err);
+      console.error("Error loading chat history:", err);
       setChatMessages([]);
     } finally {
       setChatLoading(false);
@@ -816,10 +1018,17 @@ export const History: React.FC = () => {
   };
 
   const handleDeleteVideo = async (video: VideoSummary) => {
-    if (!confirm(language === 'fr' ? 'Supprimer cette analyse ?' : 'Delete this analysis?')) return;
+    if (
+      !confirm(
+        language === "fr"
+          ? "Supprimer cette analyse ?"
+          : "Delete this analysis?",
+      )
+    )
+      return;
     try {
       await api.deleteVideo(video.id);
-      setVideos(prev => prev.filter(v => v.id !== video.id));
+      setVideos((prev) => prev.filter((v) => v.id !== video.id));
     } catch (err) {
       console.error("Delete error:", err);
     }
@@ -838,7 +1047,7 @@ export const History: React.FC = () => {
         // Brief visual feedback handled by the button
       }
     } catch (err: any) {
-      if (err?.name === 'AbortError') return;
+      if (err?.name === "AbortError") return;
       try {
         const { share_url } = await shareApi.createShareLink(video.video_id);
         await navigator.clipboard.writeText(share_url);
@@ -849,10 +1058,19 @@ export const History: React.FC = () => {
   };
 
   const handleDeletePlaylist = async (playlist: PlaylistSummary) => {
-    if (!confirm(language === 'fr' ? 'Supprimer cette playlist ?' : 'Delete this playlist?')) return;
+    if (
+      !confirm(
+        language === "fr"
+          ? "Supprimer cette playlist ?"
+          : "Delete this playlist?",
+      )
+    )
+      return;
     try {
       await api.deletePlaylist(playlist.playlist_id);
-      setPlaylists(prev => prev.filter(p => p.playlist_id !== playlist.playlist_id));
+      setPlaylists((prev) =>
+        prev.filter((p) => p.playlist_id !== playlist.playlist_id),
+      );
       if (selectedPlaylist?.playlist_id === playlist.playlist_id) {
         setSelectedPlaylist(null);
         setSelectedPlaylistVideo(null);
@@ -867,34 +1085,41 @@ export const History: React.FC = () => {
     setClearLoading(true);
     try {
       await api.clearAllHistory(clearType);
-      
+
       // Reset les données selon le type
-      if (clearType === 'all' || clearType === 'videos') {
+      if (clearType === "all" || clearType === "videos") {
         setVideos([]);
         setVideosTotal(0);
       }
-      if (clearType === 'all' || clearType === 'playlists') {
+      if (clearType === "all" || clearType === "playlists") {
         setPlaylists([]);
         setPlaylistsTotal(0);
         setSelectedPlaylist(null);
         setSelectedPlaylistVideo(null);
       }
-      
+
       // Recharger les stats
       const newStats = await api.fetchStats();
       setStats(newStats);
-      
+
       setShowClearModal(false);
     } catch (err) {
       console.error("Clear history error:", err);
-      setError(language === 'fr' ? "Erreur lors de la suppression" : "Error clearing history");
+      setError(
+        language === "fr"
+          ? "Erreur lors de la suppression"
+          : "Error clearing history",
+      );
     } finally {
       setClearLoading(false);
     }
   };
 
   // Chat handler - accepte un message en paramètre ou utilise chatInput
-  const handleSendChat = async (messageParam?: string, options?: { useWebSearch?: boolean }) => {
+  const handleSendChat = async (
+    messageParam?: string,
+    options?: { useWebSearch?: boolean },
+  ) => {
     const message = messageParam || chatInput;
     if (!message.trim() || !chatTarget || chatLoading) return;
 
@@ -905,16 +1130,24 @@ export const History: React.FC = () => {
       role: "user",
       content: message,
     };
-    setChatMessages(prev => [...prev, userMessage]);
+    setChatMessages((prev) => [...prev, userMessage]);
     setChatInput("");
     setChatLoading(true);
 
     try {
       let response;
-      if (chatTarget.type === 'video') {
-        response = await api.chatWithVideo(chatTarget.id, message, forceWebSearch || chatWebSearch);
+      if (chatTarget.type === "video") {
+        response = await api.chatWithVideo(
+          chatTarget.id,
+          message,
+          forceWebSearch || chatWebSearch,
+        );
       } else {
-        response = await api.chatWithPlaylist(chatTarget.id, message, forceWebSearch || chatWebSearch);
+        response = await api.chatWithPlaylist(
+          chatTarget.id,
+          message,
+          forceWebSearch || chatWebSearch,
+        );
       }
 
       const assistantMessage: ChatMessage = {
@@ -924,16 +1157,25 @@ export const History: React.FC = () => {
         sources: response.sources,
         web_search_used: response.web_search_used,
       };
-      setChatMessages(prev => [...prev, assistantMessage]);
+      setChatMessages((prev) => [...prev, assistantMessage]);
 
       // Mettre à jour web search quota si disponible
       if (response.quota_info) {
         const qi = response.quota_info as Record<string, unknown>;
-        if (typeof qi.web_search_used === 'number' && typeof qi.web_search_limit === 'number') {
+        if (
+          typeof qi.web_search_used === "number" &&
+          typeof qi.web_search_limit === "number"
+        ) {
           setWsQuota({
             used: qi.web_search_used as number,
             limit: qi.web_search_limit as number,
-            remaining: (qi.web_search_remaining as number) ?? Math.max(0, (qi.web_search_limit as number) - (qi.web_search_used as number)),
+            remaining:
+              (qi.web_search_remaining as number) ??
+              Math.max(
+                0,
+                (qi.web_search_limit as number) -
+                  (qi.web_search_used as number),
+              ),
           });
         }
       }
@@ -941,9 +1183,9 @@ export const History: React.FC = () => {
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `❌ ${err.message || 'Erreur de chat'}`,
+        content: `❌ ${err.message || "Erreur de chat"}`,
       };
-      setChatMessages(prev => [...prev, errorMessage]);
+      setChatMessages((prev) => [...prev, errorMessage]);
     } finally {
       setChatLoading(false);
     }
@@ -959,30 +1201,40 @@ export const History: React.FC = () => {
       <SEO title="Historique" path="/history" />
       <DoodleBackground variant="video" />
       {/* Hamburger mobile */}
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
+      />
 
-      <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
+      <main
+        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? "ml-[60px]" : "ml-[240px]"}`}
+      >
         <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-8 pt-14 lg:pt-8">
           <div className="max-w-6xl mx-auto">
-            
             {/* Header */}
             <header className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h1 className="font-semibold text-xl sm:text-2xl mb-2 text-text-primary">
-                    {language === 'fr' ? 'Historique' : 'History'}
+                    {language === "fr" ? "Historique" : "History"}
                   </h1>
                   <p className="text-text-secondary text-sm">
-                    {language === 'fr' 
-                      ? 'Retrouvez toutes vos analyses passées.'
-                      : 'Find all your past analyses.'}
+                    {language === "fr"
+                      ? "Retrouvez toutes vos analyses passées."
+                      : "Find all your past analyses."}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowClearModal(true)}
                     className="btn btn-ghost text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    title={language === 'fr' ? 'Supprimer l\'historique' : 'Clear history'}
+                    title={
+                      language === "fr"
+                        ? "Supprimer l'historique"
+                        : "Clear history"
+                    }
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -991,7 +1243,9 @@ export const History: React.FC = () => {
                     className="btn btn-ghost"
                     disabled={loading}
                   >
-                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    <RefreshCw
+                      className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+                    />
                   </button>
                 </div>
               </div>
@@ -1005,8 +1259,12 @@ export const History: React.FC = () => {
                         <Video className="w-5 h-5 text-accent-primary" />
                       </div>
                       <div>
-                        <p className="text-lg sm:text-2xl font-semibold text-text-primary">{stats.total_videos}</p>
-                        <p className="text-xs text-text-tertiary">{language === 'fr' ? 'Vidéos' : 'Videos'}</p>
+                        <p className="text-lg sm:text-2xl font-semibold text-text-primary">
+                          {stats.total_videos}
+                        </p>
+                        <p className="text-xs text-text-tertiary">
+                          {language === "fr" ? "Vidéos" : "Videos"}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1016,8 +1274,12 @@ export const History: React.FC = () => {
                         <Swords className="w-5 h-5 text-indigo-600" />
                       </div>
                       <div>
-                        <p className="text-lg sm:text-2xl font-semibold text-text-primary">{debatesTotal}</p>
-                        <p className="text-xs text-text-tertiary">{language === 'fr' ? 'Débats' : 'Debates'}</p>
+                        <p className="text-lg sm:text-2xl font-semibold text-text-primary">
+                          {debatesTotal}
+                        </p>
+                        <p className="text-xs text-text-tertiary">
+                          {language === "fr" ? "Débats" : "Debates"}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1030,7 +1292,9 @@ export const History: React.FC = () => {
                         <p className="text-lg sm:text-2xl font-semibold text-text-primary">
                           {(stats.total_words / 1000).toFixed(0)}k
                         </p>
-                        <p className="text-xs text-text-tertiary">{language === 'fr' ? 'Mots' : 'Words'}</p>
+                        <p className="text-xs text-text-tertiary">
+                          {language === "fr" ? "Mots" : "Words"}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1041,9 +1305,11 @@ export const History: React.FC = () => {
                       </div>
                       <div>
                         <p className="text-lg sm:text-2xl font-semibold text-text-primary">
-                          {stats.total_duration_formatted || '0h'}
+                          {stats.total_duration_formatted || "0h"}
                         </p>
-                        <p className="text-xs text-text-tertiary">{language === 'fr' ? 'Durée' : 'Duration'}</p>
+                        <p className="text-xs text-text-tertiary">
+                          {language === "fr" ? "Durée" : "Duration"}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -1056,26 +1322,33 @@ export const History: React.FC = () => {
               {/* Tabs - Séparation claire Vidéos / Playlists */}
               <div className="flex items-center gap-2 border-b border-border-subtle">
                 <button
-                  onClick={() => { setActiveTab("videos"); setSelectedPlaylist(null); }}
+                  onClick={() => {
+                    setActiveTab("videos");
+                    setSelectedPlaylist(null);
+                  }}
                   className={`pb-3 px-4 text-sm font-medium border-b-2 transition-all flex items-center gap-2 ${
                     activeTab === "videos"
                       ? "border-blue-500 text-blue-600 dark:text-blue-400"
                       : "border-transparent text-text-tertiary hover:text-text-primary"
                   }`}
                 >
-                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                    activeTab === "videos" 
-                      ? "bg-blue-500 text-white" 
-                      : "bg-blue-100 dark:bg-blue-900/30 text-blue-600"
-                  }`}>
+                  <div
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                      activeTab === "videos"
+                        ? "bg-blue-500 text-white"
+                        : "bg-blue-100 dark:bg-blue-900/30 text-blue-600"
+                    }`}
+                  >
                     <Video className="w-3.5 h-3.5" />
                   </div>
-                  <span>{language === 'fr' ? 'Vidéos' : 'Videos'}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    activeTab === "videos"
-                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
-                      : "bg-bg-tertiary text-text-muted"
-                  }`}>
+                  <span>{language === "fr" ? "Vidéos" : "Videos"}</span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      activeTab === "videos"
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+                        : "bg-bg-tertiary text-text-muted"
+                    }`}
+                  >
                     {stats?.total_videos || 0}
                   </span>
                 </button>
@@ -1088,19 +1361,23 @@ export const History: React.FC = () => {
                       : "border-transparent text-text-tertiary hover:text-text-primary"
                   }`}
                 >
-                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
-                    activeTab === "debates"
-                      ? "bg-indigo-500 text-white"
-                      : "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600"
-                  }`}>
+                  <div
+                    className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                      activeTab === "debates"
+                        ? "bg-indigo-500 text-white"
+                        : "bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600"
+                    }`}
+                  >
                     <Swords className="w-3.5 h-3.5" />
                   </div>
-                  <span>{language === 'fr' ? 'Débat IA' : 'AI Debate'}</span>
-                  <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                    activeTab === "debates"
-                      ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
-                      : "bg-bg-tertiary text-text-muted"
-                  }`}>
+                  <span>{language === "fr" ? "Débat IA" : "AI Debate"}</span>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      activeTab === "debates"
+                        ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300"
+                        : "bg-bg-tertiary text-text-muted"
+                    }`}
+                  >
                     {debatesTotal}
                   </span>
                 </button>
@@ -1115,7 +1392,9 @@ export const History: React.FC = () => {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={language === 'fr' ? 'Rechercher...' : 'Search...'}
+                  placeholder={
+                    language === "fr" ? "Rechercher..." : "Search..."
+                  }
                   className="input pl-10 w-full"
                 />
               </div>
@@ -1125,8 +1404,12 @@ export const History: React.FC = () => {
                   onChange={(e) => setSelectedCategory(e.target.value)}
                   className="input w-full sm:w-48"
                 >
-                  <option value="all">{language === 'fr' ? 'Toutes catégories' : 'All categories'}</option>
-                  <option value="interview_podcast">🎙️ Interview/Podcast</option>
+                  <option value="all">
+                    {language === "fr" ? "Toutes catégories" : "All categories"}
+                  </option>
+                  <option value="interview_podcast">
+                    🎙️ Interview/Podcast
+                  </option>
                   <option value="science">🔬 Science</option>
                   <option value="tech">💻 Tech</option>
                   <option value="education">📚 Education</option>
@@ -1161,9 +1444,12 @@ export const History: React.FC = () => {
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 transition-colors text-sm font-medium"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    {language === 'fr' ? 'Réessayer' : 'Retry'}
+                    {language === "fr" ? "Réessayer" : "Retry"}
                   </button>
-                  <button onClick={() => setError(null)} className="flex-shrink-0">
+                  <button
+                    onClick={() => setError(null)}
+                    className="flex-shrink-0"
+                  >
                     <X className="w-4 h-4 text-text-tertiary hover:text-text-primary" />
                   </button>
                 </div>
@@ -1185,7 +1471,9 @@ export const History: React.FC = () => {
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span className="text-sm font-medium">
-                    {language === 'fr' ? 'Retour à l\'historique' : 'Back to history'}
+                    {language === "fr"
+                      ? "Retour à l'historique"
+                      : "Back to history"}
                   </span>
                 </button>
 
@@ -1228,7 +1516,9 @@ export const History: React.FC = () => {
                               </div>
                             </div>
                             <div className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/70 text-white text-xs font-medium">
-                              {formatDuration(selectedVideoDetail.video_duration || 0)}
+                              {formatDuration(
+                                selectedVideoDetail.video_duration || 0,
+                              )}
                             </div>
                           </div>
                         )}
@@ -1255,24 +1545,33 @@ export const History: React.FC = () => {
                         <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3">
                           <span className="badge">
                             <Clock className="w-3.5 h-3.5" />
-                            {formatDuration(selectedVideoDetail.video_duration || 0)}
+                            {formatDuration(
+                              selectedVideoDetail.video_duration || 0,
+                            )}
                           </span>
                           {selectedVideoDetail.category && (
                             <span className="badge badge-primary">
-                              {categoryEmoji[selectedVideoDetail.category] || '📺'} {selectedVideoDetail.category}
+                              {categoryEmoji[selectedVideoDetail.category] ||
+                                "📺"}{" "}
+                              {selectedVideoDetail.category}
                             </span>
                           )}
-                          <span className="badge">{selectedVideoDetail.mode || 'standard'}</span>
+                          <span className="badge">
+                            {selectedVideoDetail.mode || "standard"}
+                          </span>
                         </div>
                         <div className="pt-3 border-t border-border-subtle">
-                          <TournesolMini videoId={selectedVideoDetail.video_id} />
+                          <TournesolMini
+                            videoId={selectedVideoDetail.video_id}
+                          />
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Summary Content */}
-                  {selectedVideoDetail.mode === 'quick_chat' && !selectedVideoDetail.summary_content ? (
+                  {selectedVideoDetail.mode === "quick_chat" &&
+                  !selectedVideoDetail.summary_content ? (
                     /* Quick Chat Upgrade Panel */
                     <div className="card p-6">
                       <div className="flex items-center gap-3 mb-5">
@@ -1281,10 +1580,14 @@ export const History: React.FC = () => {
                         </div>
                         <div>
                           <h3 className="font-semibold text-text-primary">
-                            {language === 'fr' ? 'Quick Chat — Pas encore d\'analyse' : 'Quick Chat — No analysis yet'}
+                            {language === "fr"
+                              ? "Quick Chat — Pas encore d'analyse"
+                              : "Quick Chat — No analysis yet"}
                           </h3>
                           <p className="text-sm text-text-tertiary">
-                            {language === 'fr' ? 'Vous pouvez generer une analyse complete pour cette video' : 'You can generate a full analysis for this video'}
+                            {language === "fr"
+                              ? "Vous pouvez generer une analyse complete pour cette video"
+                              : "You can generate a full analysis for this video"}
                           </p>
                         </div>
                       </div>
@@ -1292,15 +1595,17 @@ export const History: React.FC = () => {
                       {/* Mode selector */}
                       <div className="mb-4">
                         <label className="text-sm font-medium text-text-secondary mb-2 block">
-                          {language === 'fr' ? 'Mode d\'analyse' : 'Analysis mode'}
+                          {language === "fr"
+                            ? "Mode d'analyse"
+                            : "Analysis mode"}
                         </label>
                         <div className="flex gap-2">
-                          {['accessible', 'standard', 'expert'].map((m) => (
+                          {["accessible", "standard", "expert"].map((m) => (
                             <button
                               key={m}
                               type="button"
                               onClick={() => setUpgradeMode(m)}
-                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${upgradeMode === m ? 'bg-accent-primary text-white shadow-md' : 'bg-bg-secondary text-text-secondary hover:bg-bg-tertiary'}`}
+                              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${upgradeMode === m ? "bg-accent-primary text-white shadow-md" : "bg-bg-secondary text-text-secondary hover:bg-bg-tertiary"}`}
                             >
                               {m.charAt(0).toUpperCase() + m.slice(1)}
                             </button>
@@ -1312,18 +1617,26 @@ export const History: React.FC = () => {
                       <div className="mb-5 flex items-center justify-between p-3 rounded-lg bg-bg-secondary">
                         <div>
                           <p className="text-sm font-medium text-text-primary">
-                            {language === 'fr' ? 'Recherche approfondie' : 'Deep Research'}
+                            {language === "fr"
+                              ? "Recherche approfondie"
+                              : "Deep Research"}
                           </p>
                           <p className="text-xs text-text-tertiary">
-                            {language === 'fr' ? 'Sources externes + fact-checking avance' : 'External sources + advanced fact-checking'}
+                            {language === "fr"
+                              ? "Sources externes + fact-checking avance"
+                              : "External sources + advanced fact-checking"}
                           </p>
                         </div>
                         <button
                           type="button"
-                          onClick={() => setUpgradeDeepResearch(!upgradeDeepResearch)}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${upgradeDeepResearch ? 'bg-accent-primary' : 'bg-bg-tertiary'}`}
+                          onClick={() =>
+                            setUpgradeDeepResearch(!upgradeDeepResearch)
+                          }
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${upgradeDeepResearch ? "bg-accent-primary" : "bg-bg-tertiary"}`}
                         >
-                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${upgradeDeepResearch ? 'translate-x-6' : 'translate-x-1'}`} />
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${upgradeDeepResearch ? "translate-x-6" : "translate-x-1"}`}
+                          />
                         </button>
                       </div>
 
@@ -1337,73 +1650,97 @@ export const History: React.FC = () => {
                         {upgradeLoading ? (
                           <>
                             <DeepSightSpinnerMicro />
-                            {language === 'fr' ? 'Analyse en cours...' : 'Analyzing...'}
+                            {language === "fr"
+                              ? "Analyse en cours..."
+                              : "Analyzing..."}
                           </>
                         ) : (
                           <>
                             <Play className="w-4 h-4 fill-current" />
-                            {language === 'fr' ? 'Generer l\'analyse complete (1 credit)' : 'Generate full analysis (1 credit)'}
+                            {language === "fr"
+                              ? "Generer l'analyse complete (1 credit)"
+                              : "Generate full analysis (1 credit)"}
                           </>
                         )}
                       </button>
                     </div>
                   ) : (
-                  <div className="card">
-                    {/* Action Bar v2 — Unified */}
-                    <div className="p-4 sm:p-5 border-b border-border-subtle">
-                      <div className="flex items-center gap-2 mb-4">
-                        <BookOpen className="w-5 h-5 text-accent-primary" />
-                        <h3 className="font-semibold text-text-primary">
-                          {language === 'fr' ? 'Analyse' : 'Analysis'}
-                        </h3>
+                    <div className="card">
+                      {/* Action Bar v2 — Unified */}
+                      <div className="p-4 sm:p-5 border-b border-border-subtle">
+                        <div className="flex items-center gap-2 mb-4">
+                          <BookOpen className="w-5 h-5 text-accent-primary" />
+                          <h3 className="font-semibold text-text-primary">
+                            {language === "fr" ? "Analyse" : "Analysis"}
+                          </h3>
+                        </div>
+                        {selectedVideoDetail && (
+                          <AnalysisActionBar
+                            summary={{
+                              id: selectedVideoDetail.id,
+                              video_id: selectedVideoDetail.video_id,
+                              video_title: selectedVideoDetail.video_title,
+                              summary_content:
+                                selectedVideoDetail.summary_content,
+                            }}
+                            language={language as "fr" | "en"}
+                            onOpenVoice={
+                              voiceEnabled
+                                ? () => setIsVoiceModalOpen(true)
+                                : undefined
+                            }
+                            onOpenStudyTools={() =>
+                              setDetailShowStudyToolsModal(true)
+                            }
+                            onOpenCitation={() =>
+                              setDetailShowCitationModal(true)
+                            }
+                            showStudyTools={true}
+                            showCitation={true}
+                            sticky={false}
+                          />
+                        )}
                       </div>
-                      {selectedVideoDetail && (
-                        <AnalysisActionBar
-                          summary={{
-                            id: selectedVideoDetail.id,
-                            video_id: selectedVideoDetail.video_id,
-                            video_title: selectedVideoDetail.video_title,
-                            summary_content: selectedVideoDetail.summary_content,
-                          }}
-                          language={language as 'fr' | 'en'}
-                          onOpenVoice={voiceEnabled ? () => setIsVoiceModalOpen(true) : undefined}
-                          onOpenStudyTools={() => setDetailShowStudyToolsModal(true)}
-                          onOpenCitation={() => setDetailShowCitationModal(true)}
-                          showStudyTools={true}
-                          showCitation={true}
-                          sticky={false}
-                        />
-                      )}
+                      <div className="p-4 sm:p-5 prose max-w-none">
+                        <EnrichedMarkdown
+                          language={language}
+                          onTimecodeClick={handleDetailTimecodeClick}
+                          className="text-text-primary"
+                        >
+                          {selectedVideoDetail.summary_content || ""}
+                        </EnrichedMarkdown>
+                        <div className="mt-6">
+                          <ConceptsGlossary
+                            summaryId={selectedVideoDetail.id}
+                            language={language}
+                          />
+                        </div>
+                        <div className="mt-6 not-prose">
+                          <AcademicSourcesPanel
+                            summaryId={selectedVideoDetail.id.toString()}
+                            userPlan={user?.plan || "free"}
+                            onUpgrade={() => navigate("/pricing")}
+                            language={language as "fr" | "en"}
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="p-4 sm:p-5 prose max-w-none">
-                      <EnrichedMarkdown
-                        language={language}
-                        onTimecodeClick={handleDetailTimecodeClick}
-                        className="text-text-primary"
-                      >
-                        {selectedVideoDetail.summary_content || ''}
-                      </EnrichedMarkdown>
-                      <div className="mt-6">
-                        <ConceptsGlossary summaryId={selectedVideoDetail.id} language={language} />
-                      </div>
-                      <div className="mt-6 not-prose">
-                        <AcademicSourcesPanel
-                          summaryId={selectedVideoDetail.id.toString()}
-                          userPlan={user?.plan || 'free'}
-                          onUpgrade={() => navigate('/pricing')}
-                          language={language as 'fr' | 'en'}
-                        />
-                      </div>
-                    </div>
-                  </div>
                   )}
                 </div>
 
                 {/* Chat FAB pour la vue detail */}
                 {!chatTarget && (
                   <button
-                    onClick={() => handleOpenVideoChat({ id: selectedVideoDetail.id, video_id: selectedVideoDetail.video_id, video_title: selectedVideoDetail.video_title } as VideoSummary)}
-                    aria-label={language === 'fr' ? 'Ouvrir le chat IA' : 'Open AI chat'}
+                    onClick={() =>
+                      handleOpenVideoChat({
+                        id: selectedVideoDetail.id,
+                        video_id: selectedVideoDetail.video_id,
+                        video_title: selectedVideoDetail.video_title,
+                      } as VideoSummary)
+                    }
+                    aria-label={
+                      language === "fr" ? "Ouvrir le chat IA" : "Open AI chat"
+                    }
                     className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-[9999] h-[52px] px-5 rounded-[26px] border-none cursor-pointer flex items-center gap-2 text-white font-bold text-sm bg-gradient-to-br from-[#00BCD4] to-[#00ACC1] shadow-lg hover:scale-105 transition-transform"
                   >
                     <MessageCircle size={20} />
@@ -1418,29 +1755,39 @@ export const History: React.FC = () => {
                       isOpen={detailShowCitationModal}
                       onClose={() => setDetailShowCitationModal(false)}
                       video={{
-                        title: selectedVideoDetail.video_title || 'Vidéo sans titre',
-                        channel: selectedVideoDetail.video_channel || 'Chaîne inconnue',
+                        title:
+                          selectedVideoDetail.video_title || "Vidéo sans titre",
+                        channel:
+                          selectedVideoDetail.video_channel ||
+                          "Chaîne inconnue",
                         videoId: selectedVideoDetail.video_id,
                         publishedDate: selectedVideoDetail.created_at,
                         duration: selectedVideoDetail.video_duration,
                       }}
-                      language={language as 'fr' | 'en'}
+                      language={language as "fr" | "en"}
                     />
                     <StudyToolsModal
                       isOpen={detailShowStudyToolsModal}
                       onClose={() => setDetailShowStudyToolsModal(false)}
                       summaryId={selectedVideoDetail.id}
-                      videoTitle={selectedVideoDetail.video_title || 'Vidéo'}
-                      language={language as 'fr' | 'en'}
+                      videoTitle={selectedVideoDetail.video_title || "Vidéo"}
+                      language={language as "fr" | "en"}
                     />
                     <KeywordsModal
                       isOpen={detailShowKeywordsModal}
                       onClose={() => setDetailShowKeywordsModal(false)}
-                      videoTitle={selectedVideoDetail.video_title || 'Vidéo'}
-                      tags={selectedVideoDetail.tags ? selectedVideoDetail.tags.split(',').map((t: string) => t.trim()).filter(Boolean) : []}
+                      videoTitle={selectedVideoDetail.video_title || "Vidéo"}
+                      tags={
+                        selectedVideoDetail.tags
+                          ? selectedVideoDetail.tags
+                              .split(",")
+                              .map((t: string) => t.trim())
+                              .filter(Boolean)
+                          : []
+                      }
                       concepts={detailConcepts}
                       loading={detailConceptsLoading}
-                      language={language as 'fr' | 'en'}
+                      language={language as "fr" | "en"}
                       provider={detailConceptsProvider}
                       categories={detailConceptsCategories}
                     />
@@ -1450,8 +1797,8 @@ export const History: React.FC = () => {
                         setIsVoiceModalOpen(false);
                         voiceChat.stop();
                       }}
-                      videoTitle={selectedVideoDetail.video_title || 'Vidéo'}
-                      channelName={selectedVideoDetail.video_channel || ''}
+                      videoTitle={selectedVideoDetail.video_title || "Vidéo"}
+                      channelName={selectedVideoDetail.video_channel || ""}
                       voiceStatus={voiceChat.status}
                       isSpeaking={voiceChat.isSpeaking}
                       messages={voiceChat.messages}
@@ -1481,54 +1828,69 @@ export const History: React.FC = () => {
                   </div>
                   <div className="flex-1">
                     <h2 className="font-semibold text-lg text-text-primary flex items-center gap-2">
-                      {language === 'fr' ? 'Vidéos individuelles' : 'Individual Videos'}
+                      {language === "fr"
+                        ? "Vidéos individuelles"
+                        : "Individual Videos"}
                       <span className="text-sm font-normal text-blue-600 dark:text-blue-400">
-                        ({videos.length} {language === 'fr' ? 'analyses' : 'analyses'})
+                        ({videos.length}{" "}
+                        {language === "fr" ? "analyses" : "analyses"})
                       </span>
                     </h2>
                     <p className="text-xs text-text-tertiary">
-                      {language === 'fr'
-                        ? 'Analyses de vidéos YouTube & TikTok • Synthèses avec timestamps'
-                        : 'YouTube & TikTok video analyses • Summaries with timestamps'}
+                      {language === "fr"
+                        ? "Analyses de vidéos YouTube & TikTok • Synthèses avec timestamps"
+                        : "YouTube & TikTok video analyses • Summaries with timestamps"}
                     </p>
                   </div>
                 </div>
 
                 {videos.length === 0 ? (
-                <div className="card p-12 text-center border-dashed border-2 border-blue-200 dark:border-blue-800/50 bg-blue-50/30 dark:bg-blue-900/10">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20">
-                    <Video className="w-8 h-8 text-white" />
+                  <div className="card p-12 text-center border-dashed border-2 border-blue-200 dark:border-blue-800/50 bg-blue-50/30 dark:bg-blue-900/10">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20">
+                      <Video className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-text-primary mb-2">
+                      {language === "fr"
+                        ? "Aucune vidéo analysée"
+                        : "No videos analyzed"}
+                    </h3>
+                    <p className="text-text-secondary text-sm mb-4">
+                      {language === "fr"
+                        ? "Analysez votre première vidéo YouTube ou TikTok !"
+                        : "Analyze your first YouTube or TikTok video!"}
+                    </p>
+                    <button
+                      onClick={() => navigate("/dashboard")}
+                      className="btn bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:opacity-90"
+                    >
+                      <Video className="w-4 h-4 mr-2" />
+                      {language === "fr"
+                        ? "Analyser une vidéo"
+                        : "Analyze a video"}
+                    </button>
                   </div>
-                  <h3 className="text-lg font-semibold text-text-primary mb-2">
-                    {language === 'fr' ? 'Aucune vidéo analysée' : 'No videos analyzed'}
-                  </h3>
-                  <p className="text-text-secondary text-sm mb-4">
-                    {language === 'fr' ? 'Analysez votre première vidéo YouTube ou TikTok !' : 'Analyze your first YouTube or TikTok video!'}
-                  </p>
-                  <button onClick={() => navigate('/dashboard')} className="btn bg-gradient-to-r from-blue-500 to-cyan-500 text-white hover:opacity-90">
-                    <Video className="w-4 h-4 mr-2" />
-                    {language === 'fr' ? 'Analyser une vidéo' : 'Analyze a video'}
-                  </button>
-                </div>
-              ) : (
-                <div className={viewMode === "grid"
-                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-                  : "space-y-3"
-                }>
-                  {videos.map((video) => (
-                    <VideoCard
-                      key={video.id}
-                      video={video}
-                      viewMode={viewMode}
-                      language={language}
-                      onView={() => handleViewVideo(video)}
-                      onChat={() => handleOpenVideoChat(video)}
-                      onDelete={() => handleDeleteVideo(video)}
-                      onShare={() => handleShareVideo(video)}
-                    />
-                  ))}
-                </div>
-              )}
+                ) : (
+                  <div
+                    className={
+                      viewMode === "grid"
+                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                        : "space-y-3"
+                    }
+                  >
+                    {videos.map((video) => (
+                      <VideoCard
+                        key={video.id}
+                        video={video}
+                        viewMode={viewMode}
+                        language={language}
+                        onView={() => handleViewVideo(video)}
+                        onChat={() => handleOpenVideoChat(video)}
+                        onDelete={() => handleDeleteVideo(video)}
+                        onShare={() => handleShareVideo(video)}
+                      />
+                    ))}
+                  </div>
+                )}
               </section>
             ) : selectedPlaylist ? (
               <PlaylistDetailView
@@ -1536,9 +1898,21 @@ export const History: React.FC = () => {
                 selectedVideo={selectedPlaylistVideo}
                 loadingVideo={loadingVideo}
                 language={language}
-                onBack={() => { setSelectedPlaylist(null); setSelectedPlaylistVideo(null); }}
+                onBack={() => {
+                  setSelectedPlaylist(null);
+                  setSelectedPlaylistVideo(null);
+                }}
                 onBackToVideos={handleBackToPlaylistVideos}
-                onChat={() => handleOpenPlaylistChat({ ...selectedPlaylist, playlist_url: '', completed_at: '', thumbnail_url: '', has_meta_analysis: false, created_at: new Date().toISOString() })}
+                onChat={() =>
+                  handleOpenPlaylistChat({
+                    ...selectedPlaylist,
+                    playlist_url: "",
+                    completed_at: "",
+                    thumbnail_url: "",
+                    has_meta_analysis: false,
+                    created_at: new Date().toISOString(),
+                  })
+                }
                 onViewVideo={handleViewPlaylistVideo}
                 onChatVideo={handleOpenPlaylistVideoChat}
               />
@@ -1551,85 +1925,127 @@ export const History: React.FC = () => {
                   </div>
                   <div className="flex-1">
                     <h2 className="font-semibold text-lg text-text-primary flex items-center gap-2">
-                      {language === 'fr' ? 'Débats IA' : 'AI Debates'}
+                      {language === "fr" ? "Débats IA" : "AI Debates"}
                       <span className="text-sm font-normal text-indigo-600 dark:text-indigo-400">
-                        ({debatesTotal} {language === 'fr' ? 'débats' : 'debates'})
+                        ({debatesTotal}{" "}
+                        {language === "fr" ? "débats" : "debates"})
                       </span>
                     </h2>
                     <p className="text-xs text-text-tertiary">
-                      {language === 'fr'
-                        ? 'Confrontation de perspectives entre vidéos • Fact-check automatique'
-                        : 'Confrontation of perspectives between videos • Automatic fact-check'}
+                      {language === "fr"
+                        ? "Confrontation de perspectives entre vidéos • Fact-check automatique"
+                        : "Confrontation of perspectives between videos • Automatic fact-check"}
                     </p>
                   </div>
                 </div>
 
                 {debates.length === 0 ? (
-                <div className="card p-12 text-center border-dashed border-2 border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/30 dark:bg-indigo-900/10">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/20">
-                    <Swords className="w-8 h-8 text-white" />
+                  <div className="card p-12 text-center border-dashed border-2 border-indigo-200 dark:border-indigo-800/50 bg-indigo-50/30 dark:bg-indigo-900/10">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/20">
+                      <Swords className="w-8 h-8 text-white" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-text-primary mb-2">
+                      {language === "fr" ? "Aucun débat IA" : "No AI debates"}
+                    </h3>
+                    <p className="text-text-secondary text-sm mb-4">
+                      {language === "fr"
+                        ? "Confrontez deux vidéos pour voir les convergences et divergences !"
+                        : "Confront two videos to see convergences and divergences!"}
+                    </p>
+                    <button
+                      onClick={() => navigate("/debate")}
+                      className="btn bg-gradient-to-r from-indigo-500 to-violet-500 text-white hover:opacity-90"
+                    >
+                      <Swords className="w-4 h-4 mr-2" />
+                      {language === "fr"
+                        ? "Lancer un Débat IA"
+                        : "Start an AI Debate"}
+                    </button>
                   </div>
-                  <h3 className="text-lg font-semibold text-text-primary mb-2">
-                    {language === 'fr' ? 'Aucun débat IA' : 'No AI debates'}
-                  </h3>
-                  <p className="text-text-secondary text-sm mb-4">
-                    {language === 'fr' ? 'Confrontez deux vidéos pour voir les convergences et divergences !' : 'Confront two videos to see convergences and divergences!'}
-                  </p>
-                  <button onClick={() => navigate('/debate')} className="btn bg-gradient-to-r from-indigo-500 to-violet-500 text-white hover:opacity-90">
-                    <Swords className="w-4 h-4 mr-2" />
-                    {language === 'fr' ? 'Lancer un Débat IA' : 'Start an AI Debate'}
-                  </button>
-                </div>
-              ) : (
-                <div className={viewMode === "grid"
-                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-                  : "space-y-3"
-                }>
-                  {debates.map((debate) => (
-                    <DebateHistoryCard
-                      key={debate.id}
-                      debate={debate}
-                      language={language}
-                      onView={() => navigate(`/debate?id=${debate.id}`)}
-                      onDelete={async () => {
-                        if (!confirm(language === 'fr' ? 'Supprimer ce débat ?' : 'Delete this debate?')) return;
-                        try {
-                          await debateApi.delete(debate.id);
-                          setDebates(prev => prev.filter(d => d.id !== debate.id));
-                          setDebatesTotal(prev => prev - 1);
-                        } catch (err) {
-                          console.error("Delete debate error:", err);
-                        }
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
+                ) : (
+                  <div
+                    className={
+                      viewMode === "grid"
+                        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+                        : "space-y-3"
+                    }
+                  >
+                    {debates.map((debate) => (
+                      <DebateHistoryCard
+                        key={debate.id}
+                        debate={debate}
+                        language={language}
+                        onView={() => navigate(`/debate?id=${debate.id}`)}
+                        onDelete={async () => {
+                          if (
+                            !confirm(
+                              language === "fr"
+                                ? "Supprimer ce débat ?"
+                                : "Delete this debate?",
+                            )
+                          )
+                            return;
+                          try {
+                            await debateApi.delete(debate.id);
+                            setDebates((prev) =>
+                              prev.filter((d) => d.id !== debate.id),
+                            );
+                            setDebatesTotal((prev) => prev - 1);
+                          } catch (err) {
+                            console.error("Delete debate error:", err);
+                          }
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
               </section>
             )}
 
             {/* Pagination */}
-            {!selectedPlaylist && ((activeTab === "videos" && videosTotal > perPage) || (activeTab === "debates" && debatesTotal > perPage)) && (
-              <div className="flex items-center justify-center gap-4 mt-8">
-                <button
-                  onClick={() => activeTab === "videos" ? setVideosPage(p => Math.max(1, p - 1)) : setDebatesPage(p => Math.max(1, p - 1))}
-                  disabled={(activeTab === "videos" ? videosPage : debatesPage) === 1}
-                  className="btn btn-secondary disabled:opacity-50"
-                >
-                  {language === 'fr' ? 'Précédent' : 'Previous'}
-                </button>
-                <span className="text-text-tertiary text-sm">
-                  Page {activeTab === "videos" ? videosPage : debatesPage} / {Math.ceil((activeTab === "videos" ? videosTotal : debatesTotal) / perPage)}
-                </span>
-                <button
-                  onClick={() => activeTab === "videos" ? setVideosPage(p => p + 1) : setDebatesPage(p => p + 1)}
-                  disabled={(activeTab === "videos" ? videosPage : debatesPage) >= Math.ceil((activeTab === "videos" ? videosTotal : debatesTotal) / perPage)}
-                  className="btn btn-secondary disabled:opacity-50"
-                >
-                  {language === 'fr' ? 'Suivant' : 'Next'}
-                </button>
-              </div>
-            )}
+            {!selectedPlaylist &&
+              ((activeTab === "videos" && videosTotal > perPage) ||
+                (activeTab === "debates" && debatesTotal > perPage)) && (
+                <div className="flex items-center justify-center gap-4 mt-8">
+                  <button
+                    onClick={() =>
+                      activeTab === "videos"
+                        ? setVideosPage((p) => Math.max(1, p - 1))
+                        : setDebatesPage((p) => Math.max(1, p - 1))
+                    }
+                    disabled={
+                      (activeTab === "videos" ? videosPage : debatesPage) === 1
+                    }
+                    className="btn btn-secondary disabled:opacity-50"
+                  >
+                    {language === "fr" ? "Précédent" : "Previous"}
+                  </button>
+                  <span className="text-text-tertiary text-sm">
+                    Page {activeTab === "videos" ? videosPage : debatesPage} /{" "}
+                    {Math.ceil(
+                      (activeTab === "videos" ? videosTotal : debatesTotal) /
+                        perPage,
+                    )}
+                  </span>
+                  <button
+                    onClick={() =>
+                      activeTab === "videos"
+                        ? setVideosPage((p) => p + 1)
+                        : setDebatesPage((p) => p + 1)
+                    }
+                    disabled={
+                      (activeTab === "videos" ? videosPage : debatesPage) >=
+                      Math.ceil(
+                        (activeTab === "videos" ? videosTotal : debatesTotal) /
+                          perPage,
+                      )
+                    }
+                    className="btn btn-secondary disabled:opacity-50"
+                  >
+                    {language === "fr" ? "Suivant" : "Next"}
+                  </button>
+                </div>
+              )}
           </div>
         </div>
       </main>
@@ -1639,7 +2055,7 @@ export const History: React.FC = () => {
         <FloatingChatWindow
           isOpen={!!chatTarget}
           onClose={() => setChatTarget(null)}
-          title={chatTarget.type === 'playlist' ? 'Chat Corpus' : 'Chat IA'}
+          title={chatTarget.type === "playlist" ? "Chat Corpus" : "Chat IA"}
           subtitle={chatTarget.title}
           type={chatTarget.type}
           messages={chatMessages}
@@ -1647,12 +2063,16 @@ export const History: React.FC = () => {
           webSearchEnabled={chatWebSearch}
           onToggleWebSearch={setChatWebSearch}
           onSendMessage={handleSendChat}
-          markdownComponents={chatTarget?.type === 'video' ? getTimecodeComponents(chatTarget.videoId) : undefined}
-          language={language as 'fr' | 'en'}
+          markdownComponents={
+            chatTarget?.type === "video"
+              ? getTimecodeComponents(chatTarget.videoId)
+              : undefined
+          }
+          language={language as "fr" | "en"}
           storageKey={`history-chat-${chatTarget.type}`}
-          userPlan={user?.plan || 'free'}
+          userPlan={user?.plan || "free"}
           webSearchQuota={wsQuota}
-          onUpgrade={() => navigate('/pricing')}
+          onUpgrade={() => navigate("/pricing")}
         />
       )}
 
@@ -1660,11 +2080,11 @@ export const History: React.FC = () => {
       {showClearModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
-          <div 
+          <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => !clearLoading && setShowClearModal(false)}
           />
-          
+
           {/* Modal */}
           <div className="relative bg-bg-primary rounded-2xl shadow-2xl border border-border-subtle max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-200">
             {/* Header */}
@@ -1674,34 +2094,40 @@ export const History: React.FC = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-lg text-text-primary">
-                  {language === 'fr' ? 'Supprimer l\'historique' : 'Clear History'}
+                  {language === "fr"
+                    ? "Supprimer l'historique"
+                    : "Clear History"}
                 </h3>
                 <p className="text-sm text-text-tertiary">
-                  {language === 'fr' ? 'Cette action est irréversible' : 'This action cannot be undone'}
+                  {language === "fr"
+                    ? "Cette action est irréversible"
+                    : "This action cannot be undone"}
                 </p>
               </div>
             </div>
 
             {/* Options */}
             <div className="space-y-3 mb-6">
-              <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                clearType === 'all' 
-                  ? 'border-red-500 bg-red-50 dark:bg-red-900/20' 
-                  : 'border-border-subtle hover:border-red-300 dark:hover:border-red-800'
-              }`}>
+              <label
+                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                  clearType === "all"
+                    ? "border-red-500 bg-red-50 dark:bg-red-900/20"
+                    : "border-border-subtle hover:border-red-300 dark:hover:border-red-800"
+                }`}
+              >
                 <input
                   type="radio"
                   name="clearType"
-                  checked={clearType === 'all'}
-                  onChange={() => setClearType('all')}
+                  checked={clearType === "all"}
+                  onChange={() => setClearType("all")}
                   className="w-4 h-4 text-red-500"
                 />
                 <div className="flex-1">
                   <p className="font-medium text-text-primary">
-                    {language === 'fr' ? 'Tout supprimer' : 'Delete everything'}
+                    {language === "fr" ? "Tout supprimer" : "Delete everything"}
                   </p>
                   <p className="text-xs text-text-tertiary">
-                    {language === 'fr' 
+                    {language === "fr"
                       ? `${stats?.total_videos || 0} vidéos + ${stats?.total_playlists || 0} playlists`
                       : `${stats?.total_videos || 0} videos + ${stats?.total_playlists || 0} playlists`}
                   </p>
@@ -1709,47 +2135,54 @@ export const History: React.FC = () => {
                 <AlertCircle className="w-5 h-5 text-red-500" />
               </label>
 
-              <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                clearType === 'videos' 
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                  : 'border-border-subtle hover:border-blue-300 dark:hover:border-blue-800'
-              }`}>
+              <label
+                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                  clearType === "videos"
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                    : "border-border-subtle hover:border-blue-300 dark:hover:border-blue-800"
+                }`}
+              >
                 <input
                   type="radio"
                   name="clearType"
-                  checked={clearType === 'videos'}
-                  onChange={() => setClearType('videos')}
+                  checked={clearType === "videos"}
+                  onChange={() => setClearType("videos")}
                   className="w-4 h-4 text-blue-500"
                 />
                 <div className="flex-1">
                   <p className="font-medium text-text-primary">
-                    {language === 'fr' ? 'Vidéos uniquement' : 'Videos only'}
+                    {language === "fr" ? "Vidéos uniquement" : "Videos only"}
                   </p>
                   <p className="text-xs text-text-tertiary">
-                    {stats?.total_videos || 0} {language === 'fr' ? 'vidéos' : 'videos'}
+                    {stats?.total_videos || 0}{" "}
+                    {language === "fr" ? "vidéos" : "videos"}
                   </p>
                 </div>
                 <Video className="w-5 h-5 text-blue-500" />
               </label>
 
-              <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                clearType === 'playlists'
-                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                  : 'border-border-subtle hover:border-indigo-300 dark:hover:border-indigo-800'
-              }`}>
+              <label
+                className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                  clearType === "playlists"
+                    ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20"
+                    : "border-border-subtle hover:border-indigo-300 dark:hover:border-indigo-800"
+                }`}
+              >
                 <input
                   type="radio"
                   name="clearType"
-                  checked={clearType === 'playlists'}
-                  onChange={() => setClearType('playlists')}
+                  checked={clearType === "playlists"}
+                  onChange={() => setClearType("playlists")}
                   className="w-4 h-4 text-indigo-500"
                 />
                 <div className="flex-1">
                   <p className="font-medium text-text-primary">
-                    {language === 'fr' ? 'Débats IA uniquement' : 'AI Debates only'}
+                    {language === "fr"
+                      ? "Débats IA uniquement"
+                      : "AI Debates only"}
                   </p>
                   <p className="text-xs text-text-tertiary">
-                    {debatesTotal} {language === 'fr' ? 'débats' : 'debates'}
+                    {debatesTotal} {language === "fr" ? "débats" : "debates"}
                   </p>
                 </div>
                 <Swords className="w-5 h-5 text-indigo-500" />
@@ -1763,7 +2196,7 @@ export const History: React.FC = () => {
                 disabled={clearLoading}
                 className="flex-1 btn btn-secondary"
               >
-                {language === 'fr' ? 'Annuler' : 'Cancel'}
+                {language === "fr" ? "Annuler" : "Cancel"}
               </button>
               <button
                 onClick={handleClearHistory}
@@ -1775,7 +2208,7 @@ export const History: React.FC = () => {
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4 mr-2" />
-                    {language === 'fr' ? 'Supprimer' : 'Delete'}
+                    {language === "fr" ? "Supprimer" : "Delete"}
                   </>
                 )}
               </button>
@@ -1806,7 +2239,7 @@ const VideoCard: React.FC<{
     return (
       <div className="card p-3 hover:border-accent-primary/30 transition-all group">
         <div className="flex items-center gap-4">
-          <div 
+          <div
             className="w-32 h-20 flex-shrink-0 rounded-lg overflow-hidden bg-bg-tertiary relative cursor-pointer"
             onClick={onView}
           >
@@ -1819,14 +2252,22 @@ const VideoCard: React.FC<{
             />
             {/* Platform badge */}
             <span className="absolute top-1 left-1 z-10">
-              {resolvePlatform(video) === 'tiktok' ? (
-                <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-4 h-4 drop-shadow-md" />
-              ) : resolvePlatform(video) === 'text' ? (
+              {resolvePlatform(video) === "tiktok" ? (
+                <img
+                  src="/platforms/tiktok-note-color.svg"
+                  alt="TikTok"
+                  className="w-4 h-4 drop-shadow-md"
+                />
+              ) : resolvePlatform(video) === "text" ? (
                 <span className="flex items-center justify-center w-4 h-4 rounded bg-gray-500/60 backdrop-blur-sm">
                   <FileText className="w-3 h-3 text-white" />
                 </span>
               ) : (
-                <img src="/platforms/youtube-icon-red.svg" alt="YouTube" className="w-4 h-4 drop-shadow-md" />
+                <img
+                  src="/platforms/youtube-icon-red.svg"
+                  alt="YouTube"
+                  className="w-4 h-4 drop-shadow-md"
+                />
               )}
             </span>
             <div className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/70 text-white text-xs">
@@ -1840,30 +2281,45 @@ const VideoCard: React.FC<{
             <h3 className="font-medium text-text-primary line-clamp-1 group-hover:text-accent-primary transition-colors">
               {sanitizeTitle(video.video_title)}
             </h3>
-            <p className="text-sm text-text-tertiary">{sanitizeTitle(video.video_channel)}</p>
+            <p className="text-sm text-text-tertiary">
+              {sanitizeTitle(video.video_channel)}
+            </p>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-text-muted">{emoji} {video.category}</span>
-              <span className="text-xs text-text-muted">• {formatRelativeDate(video.created_at, language)}</span>
+              <span className="text-xs text-text-muted">
+                {emoji} {video.category}
+              </span>
+              <span className="text-xs text-text-muted">
+                • {formatRelativeDate(video.created_at, language)}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <TournesolMini videoId={video.video_id} />
             <button
-              onClick={(e) => { e.stopPropagation(); onChat(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChat();
+              }}
               className="p-2 rounded-lg text-text-tertiary hover:text-accent-primary hover:bg-accent-primary-muted transition-colors"
-              title={language === 'fr' ? 'Ouvrir le chat' : 'Open chat'}
+              title={language === "fr" ? "Ouvrir le chat" : "Open chat"}
             >
               <MessageCircle className="w-4 h-4" />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); onShare(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onShare();
+              }}
               className="p-2 rounded-lg text-text-tertiary hover:text-accent-primary hover:bg-accent-primary-muted transition-colors"
-              title={language === 'fr' ? 'Partager' : 'Share'}
+              title={language === "fr" ? "Partager" : "Share"}
             >
               <Share2 className="w-4 h-4" />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
               className="p-2 rounded-lg text-text-tertiary hover:text-error hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
             >
               <Trash2 className="w-4 h-4" />
@@ -1876,7 +2332,10 @@ const VideoCard: React.FC<{
 
   return (
     <div className="card overflow-hidden hover:border-accent-primary/30 transition-all group">
-      <div className="relative aspect-video bg-bg-tertiary cursor-pointer" onClick={onView}>
+      <div
+        className="relative aspect-video bg-bg-tertiary cursor-pointer"
+        onClick={onView}
+      >
         <ThumbnailImage
           thumbnailUrl={video.thumbnail_url}
           videoId={video.video_id}
@@ -1886,14 +2345,22 @@ const VideoCard: React.FC<{
         />
         {/* Platform badge */}
         <span className="absolute top-2 left-2 z-10">
-          {resolvePlatform(video) === 'tiktok' ? (
-            <img src="/platforms/tiktok-note-color.svg" alt="TikTok" className="w-5 h-5 drop-shadow-md" />
-          ) : resolvePlatform(video) === 'text' ? (
+          {resolvePlatform(video) === "tiktok" ? (
+            <img
+              src="/platforms/tiktok-note-color.svg"
+              alt="TikTok"
+              className="w-5 h-5 drop-shadow-md"
+            />
+          ) : resolvePlatform(video) === "text" ? (
             <span className="flex items-center justify-center w-5 h-5 rounded bg-gray-500/60 backdrop-blur-sm">
               <FileText className="w-3.5 h-3.5 text-white" />
             </span>
           ) : (
-            <img src="/platforms/youtube-icon-red.svg" alt="YouTube" className="w-5 h-5 drop-shadow-md" />
+            <img
+              src="/platforms/youtube-icon-red.svg"
+              alt="YouTube"
+              className="w-5 h-5 drop-shadow-md"
+            />
           )}
         </span>
         <div className="absolute bottom-2 right-2 px-1.5 py-0.5 rounded bg-black/70 text-white text-xs font-medium">
@@ -1906,7 +2373,7 @@ const VideoCard: React.FC<{
         </div>
       </div>
       <div className="p-4">
-        <h3 
+        <h3
           className="font-medium text-text-primary line-clamp-2 text-sm mb-1 group-hover:text-accent-primary transition-colors cursor-pointer"
           onClick={onView}
         >
@@ -1915,29 +2382,42 @@ const VideoCard: React.FC<{
         <p className="text-xs text-text-tertiary mb-2">{video.video_channel}</p>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="badge text-xs">{emoji} {video.category}</span>
+            <span className="badge text-xs">
+              {emoji} {video.category}
+            </span>
           </div>
           <TournesolMini videoId={video.video_id} />
         </div>
         <div className="flex items-center justify-between mt-2 pt-2 border-t border-border-subtle">
-          <span className="text-xs text-text-muted">{formatRelativeDate(video.created_at, language)}</span>
+          <span className="text-xs text-text-muted">
+            {formatRelativeDate(video.created_at, language)}
+          </span>
           <div className="flex items-center gap-1">
             <button
-              onClick={(e) => { e.stopPropagation(); onChat(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChat();
+              }}
               className="p-1.5 rounded text-text-tertiary hover:text-accent-primary hover:bg-accent-primary-muted transition-colors"
-              title={language === 'fr' ? 'Ouvrir le chat' : 'Open chat'}
+              title={language === "fr" ? "Ouvrir le chat" : "Open chat"}
             >
               <MessageCircle className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); onShare(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onShare();
+              }}
               className="p-1.5 rounded text-text-tertiary hover:text-accent-primary hover:bg-accent-primary-muted transition-colors"
-              title={language === 'fr' ? 'Partager' : 'Share'}
+              title={language === "fr" ? "Partager" : "Share"}
             >
               <Share2 className="w-3.5 h-3.5" />
             </button>
             <button
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
               className="p-1.5 rounded text-text-tertiary hover:text-error hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -1956,10 +2436,11 @@ const PlaylistCard: React.FC<{
   onChat: () => void;
   onDelete: () => void;
 }> = ({ playlist, language, onView, onChat, onDelete }) => {
-  const progressPercent = playlist.num_videos > 0
-    ? Math.round((playlist.num_processed / playlist.num_videos) * 100)
-    : 0;
-  const isComplete = playlist.status === 'completed';
+  const progressPercent =
+    playlist.num_videos > 0
+      ? Math.round((playlist.num_processed / playlist.num_videos) * 100)
+      : 0;
+  const isComplete = playlist.status === "completed";
   const hasMetaAnalysis = playlist.has_meta_analysis;
 
   return (
@@ -1993,7 +2474,7 @@ const PlaylistCard: React.FC<{
           {hasMetaAnalysis && (
             <span className="px-2 py-1 rounded-lg bg-purple-500/80 backdrop-blur-sm text-white text-xs font-medium flex items-center gap-1">
               <Brain className="w-3 h-3" />
-              {language === 'fr' ? 'Méta' : 'Meta'}
+              {language === "fr" ? "Méta" : "Meta"}
             </span>
           )}
         </div>
@@ -2001,16 +2482,22 @@ const PlaylistCard: React.FC<{
         {/* Actions en haut à droite */}
         <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
-            onClick={(e) => { e.stopPropagation(); onChat(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onChat();
+            }}
             className="p-1.5 rounded-lg bg-black/50 backdrop-blur-sm text-white hover:bg-purple-500 transition-colors"
-            title={language === 'fr' ? 'Chat Corpus IA' : 'AI Corpus Chat'}
+            title={language === "fr" ? "Chat Corpus IA" : "AI Corpus Chat"}
           >
             <MessageCircle className="w-4 h-4" />
           </button>
           <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
             className="p-1.5 rounded-lg bg-black/50 backdrop-blur-sm text-white hover:bg-red-500 transition-colors"
-            title={language === 'fr' ? 'Supprimer' : 'Delete'}
+            title={language === "fr" ? "Supprimer" : "Delete"}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -2030,18 +2517,21 @@ const PlaylistCard: React.FC<{
         <div className="mb-3">
           <div className="flex items-center justify-between text-xs mb-1">
             <span className="text-text-tertiary">
-              {language === 'fr' ? 'Progression' : 'Progress'}
+              {language === "fr" ? "Progression" : "Progress"}
             </span>
-            <span className={`font-medium ${isComplete ? 'text-green-600 dark:text-green-400' : 'text-purple-600 dark:text-purple-400'}`}>
-              {playlist.num_processed}/{playlist.num_videos} ({progressPercent}%)
+            <span
+              className={`font-medium ${isComplete ? "text-green-600 dark:text-green-400" : "text-purple-600 dark:text-purple-400"}`}
+            >
+              {playlist.num_processed}/{playlist.num_videos} ({progressPercent}
+              %)
             </span>
           </div>
           <div className="h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
                 isComplete
-                  ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                  : 'bg-gradient-to-r from-purple-500 to-pink-500'
+                  ? "bg-gradient-to-r from-green-500 to-emerald-500"
+                  : "bg-gradient-to-r from-purple-500 to-pink-500"
               }`}
               style={{ width: `${progressPercent}%` }}
             />
@@ -2072,29 +2562,35 @@ const PlaylistCard: React.FC<{
             </div>
             <p className="text-xs font-medium text-text-primary mt-0.5">
               {playlist.num_processed > 0
-                ? Math.round(playlist.total_words / playlist.num_processed).toLocaleString()
-                : 0
-              }
+                ? Math.round(
+                    playlist.total_words / playlist.num_processed,
+                  ).toLocaleString()
+                : 0}
             </p>
           </div>
         </div>
 
         {/* Footer avec status et date */}
         <div className="flex items-center justify-between pt-2 border-t border-border-subtle">
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-            isComplete
-              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-              : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
-          }`}>
+          <span
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+              isComplete
+                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400"
+            }`}
+          >
             {isComplete ? (
               <Check className="w-3 h-3" />
             ) : (
               <DeepSightSpinnerMicro />
             )}
             {isComplete
-              ? (language === 'fr' ? 'Terminé' : 'Complete')
-              : (language === 'fr' ? 'En cours' : 'Processing')
-            }
+              ? language === "fr"
+                ? "Terminé"
+                : "Complete"
+              : language === "fr"
+                ? "En cours"
+                : "Processing"}
           </span>
           <span className="text-xs text-text-muted">
             {formatRelativeDate(playlist.created_at, language)}
@@ -2115,10 +2611,20 @@ const PlaylistDetailView: React.FC<{
   onChat: () => void;
   onViewVideo: (video: PlaylistVideo) => void;
   onChatVideo: (video: PlaylistVideo | PlaylistVideoDetail) => void;
-}> = ({ playlist, selectedVideo, loadingVideo, language, onBack, onBackToVideos, onChat, onViewVideo, onChatVideo }) => {
+}> = ({
+  playlist,
+  selectedVideo,
+  loadingVideo,
+  language,
+  onBack,
+  onBackToVideos,
+  onChat,
+  onViewVideo,
+  onChatVideo,
+}) => {
   const videos = playlist.videos || [];
   const [expandedVideoId, setExpandedVideoId] = useState<string | null>(null);
-  const [metaExpanded, setMetaExpanded] = useState(false);  // 🆕 État pour expand méta-analyse
+  const [metaExpanded, setMetaExpanded] = useState(false); // 🆕 État pour expand méta-analyse
 
   // 🆕 États pour la toolbar vidéo (Copy, Cite, Study, Keywords, Listen, Export)
   const [copied, setCopied] = useState(false);
@@ -2137,7 +2643,10 @@ const PlaylistDetailView: React.FC<{
   const [metaExporting, setMetaExporting] = useState(false);
   const metaExportBtnRef = useRef<HTMLButtonElement>(null);
   const metaExportMenuRef = useRef<HTMLDivElement>(null);
-  const [metaExportMenuPos, setMetaExportMenuPos] = useState({ top: 0, left: 0 });
+  const [metaExportMenuPos, setMetaExportMenuPos] = useState({
+    top: 0,
+    left: 0,
+  });
   const [metaShowCitationModal, setMetaShowCitationModal] = useState(false);
   const [metaShowStudyToolsModal, setMetaShowStudyToolsModal] = useState(false);
   const [metaShowKeywordsModal, setMetaShowKeywordsModal] = useState(false);
@@ -2146,7 +2655,10 @@ const PlaylistDetailView: React.FC<{
   useEffect(() => {
     const anyOpen = showExportMenu || metaShowExportMenu;
     if (!anyOpen) return;
-    const closeAll = () => { setShowExportMenu(false); setMetaShowExportMenu(false); };
+    const closeAll = () => {
+      setShowExportMenu(false);
+      setMetaShowExportMenu(false);
+    };
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as Node;
       const refs = [
@@ -2154,17 +2666,18 @@ const PlaylistDetailView: React.FC<{
         { btn: metaExportBtnRef, menu: metaExportMenuRef },
       ];
       for (const { btn, menu } of refs) {
-        if (btn.current?.contains(target) || menu.current?.contains(target)) return;
+        if (btn.current?.contains(target) || menu.current?.contains(target))
+          return;
       }
       closeAll();
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('scroll', closeAll, true);
-    window.addEventListener('resize', closeAll);
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", closeAll, true);
+    window.addEventListener("resize", closeAll);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('scroll', closeAll, true);
-      window.removeEventListener('resize', closeAll);
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", closeAll, true);
+      window.removeEventListener("resize", closeAll);
     };
   }, [showExportMenu, metaShowExportMenu]);
 
@@ -2185,31 +2698,33 @@ const PlaylistDetailView: React.FC<{
   };
 
   // 🆕 Handler: Export méta-analyse
-  const handleMetaExport = async (format: 'md' | 'txt') => {
+  const handleMetaExport = async (format: "md" | "txt") => {
     if (!playlist.meta_analysis) return;
     setMetaExporting(true);
     setMetaShowExportMenu(false);
 
     try {
       const content = playlist.meta_analysis;
-      const blob = new Blob([content], { type: format === 'md' ? 'text/markdown' : 'text/plain' });
+      const blob = new Blob([content], {
+        type: format === "md" ? "text/markdown" : "text/plain",
+      });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `meta-analyse-${playlist.playlist_title.replace(/[^a-z0-9]/gi, '_').substring(0, 30)}.${format}`;
+      a.download = `meta-analyse-${playlist.playlist_title.replace(/[^a-z0-9]/gi, "_").substring(0, 30)}.${format}`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export error:', err);
+      console.error("Export error:", err);
     } finally {
       setMetaExporting(false);
     }
   };
 
   // 🆕 Handler: Export
-  const handleExport = async (format: 'pdf' | 'md' | 'txt') => {
+  const handleExport = async (format: "pdf" | "md" | "txt") => {
     if (!selectedVideo?.id) return;
     setExporting(true);
     setShowExportMenu(false);
@@ -2217,14 +2732,14 @@ const PlaylistDetailView: React.FC<{
     try {
       const blob = await videoApi.exportSummary(selectedVideo.id, format);
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      const ext = format === 'md' ? 'md' : format;
-      a.download = `${selectedVideo.video_title || 'analyse'}.${ext}`;
+      const ext = format === "md" ? "md" : format;
+      a.download = `${selectedVideo.video_title || "analyse"}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export error:', err);
+      console.error("Export error:", err);
     } finally {
       setExporting(false);
     }
@@ -2237,19 +2752,22 @@ const PlaylistDetailView: React.FC<{
       videoId: videoId,
       onTimecodeClick: (seconds) => {
         if (videoId) {
-          window.open(`https://www.youtube.com/watch?v=${videoId}&t=${Math.floor(seconds)}s`, "_blank");
+          window.open(
+            `https://www.youtube.com/watch?v=${videoId}&t=${Math.floor(seconds)}s`,
+            "_blank",
+          );
         }
       },
     });
   }, []);
-  
+
   // Si une vidéo est sélectionnée (mode détail complet), afficher son résumé
   if (loadingVideo) {
     return (
       <div className="flex items-center justify-center py-20">
         <DeepSightSpinner size="md" />
         <span className="ml-3 text-text-secondary">
-          {language === 'fr' ? 'Chargement du résumé...' : 'Loading summary...'}
+          {language === "fr" ? "Chargement du résumé..." : "Loading summary..."}
         </span>
       </div>
     );
@@ -2260,23 +2778,34 @@ const PlaylistDetailView: React.FC<{
       <div className="space-y-6">
         {/* Navigation breadcrumb */}
         <div className="flex items-center gap-2 text-sm text-text-tertiary">
-          <button onClick={onBack} className="hover:text-text-primary transition-colors">
-            {language === 'fr' ? 'Playlists' : 'Playlists'}
+          <button
+            onClick={onBack}
+            className="hover:text-text-primary transition-colors"
+          >
+            {language === "fr" ? "Playlists" : "Playlists"}
           </button>
           <ChevronRight className="w-4 h-4" />
-          <button onClick={onBackToVideos} className="hover:text-text-primary transition-colors">
+          <button
+            onClick={onBackToVideos}
+            className="hover:text-text-primary transition-colors"
+          >
             {playlist.playlist_title}
           </button>
           <ChevronRight className="w-4 h-4" />
-          <span className="text-text-primary truncate max-w-[200px]">{selectedVideo.video_title}</span>
+          <span className="text-text-primary truncate max-w-[200px]">
+            {selectedVideo.video_title}
+          </span>
         </div>
 
         {/* Video Header */}
         <div className="card p-6">
           <div className="flex items-start justify-between mb-4">
-            <button onClick={onBackToVideos} className="flex items-center gap-2 text-text-tertiary hover:text-text-primary">
+            <button
+              onClick={onBackToVideos}
+              className="flex items-center gap-2 text-text-tertiary hover:text-text-primary"
+            >
               <ChevronRight className="w-4 h-4 rotate-180" />
-              {language === 'fr' ? 'Retour à la playlist' : 'Back to playlist'}
+              {language === "fr" ? "Retour à la playlist" : "Back to playlist"}
             </button>
             <a
               href={`https://www.youtube.com/watch?v=${selectedVideo.video_id}`}
@@ -2285,7 +2814,7 @@ const PlaylistDetailView: React.FC<{
               className="btn btn-secondary"
             >
               <Play className="w-4 h-4" />
-              {language === 'fr' ? 'Voir sur YouTube' : 'Watch on YouTube'}
+              {language === "fr" ? "Voir sur YouTube" : "Watch on YouTube"}
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>
@@ -2293,7 +2822,7 @@ const PlaylistDetailView: React.FC<{
           <div className="flex gap-6">
             {/* Thumbnail + YouTube link */}
             <div className="flex-shrink-0">
-              <a 
+              <a
                 href={`https://www.youtube.com/watch?v=${selectedVideo.video_id}`}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -2324,22 +2853,24 @@ const PlaylistDetailView: React.FC<{
               <h1 className="text-xl font-semibold font-semibold text-text-primary mb-2">
                 {selectedVideo.video_title}
               </h1>
-              <p className="text-text-secondary mb-3">{selectedVideo.video_channel}</p>
+              <p className="text-text-secondary mb-3">
+                {selectedVideo.video_channel}
+              </p>
               <div className="flex flex-wrap gap-2">
                 {selectedVideo.category && (
                   <span className="badge">
-                    {categoryEmoji[selectedVideo.category] || '📺'} {selectedVideo.category}
+                    {categoryEmoji[selectedVideo.category] || "📺"}{" "}
+                    {selectedVideo.category}
                   </span>
                 )}
                 {selectedVideo.word_count > 0 && (
                   <span className="badge">
-                    📝 {(selectedVideo.word_count / 1000).toFixed(1)}k {language === 'fr' ? 'mots' : 'words'}
+                    📝 {(selectedVideo.word_count / 1000).toFixed(1)}k{" "}
+                    {language === "fr" ? "mots" : "words"}
                   </span>
                 )}
                 {selectedVideo.mode && (
-                  <span className="badge">
-                    🎯 {selectedVideo.mode}
-                  </span>
+                  <span className="badge">🎯 {selectedVideo.mode}</span>
                 )}
               </div>
             </div>
@@ -2351,83 +2882,119 @@ const PlaylistDetailView: React.FC<{
           {/* 🆕 Toolbar avec toutes les fonctionnalités */}
           <div className="panel-header border-b border-border-subtle p-4">
             <h3 className="font-semibold text-text-primary flex items-center gap-2">
-              📄 {language === 'fr' ? 'Analyse' : 'Analysis'}
+              📄 {language === "fr" ? "Analyse" : "Analysis"}
             </h3>
             <div className="flex items-center gap-2 flex-wrap">
               {/* Copy */}
-              <button
-                onClick={handleCopy}
-                className="btn btn-ghost text-xs"
-              >
-                {copied ? <Check className="w-4 h-4 text-accent-success" /> : <Copy className="w-4 h-4" />}
-                {copied ? (language === 'fr' ? 'Copié' : 'Copied') : (language === 'fr' ? 'Copier' : 'Copy')}
+              <button onClick={handleCopy} className="btn btn-ghost text-xs">
+                {copied ? (
+                  <Check className="w-4 h-4 text-accent-success" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+                {copied
+                  ? language === "fr"
+                    ? "Copié"
+                    : "Copied"
+                  : language === "fr"
+                    ? "Copier"
+                    : "Copy"}
               </button>
 
               {/* 🎓 Citation académique */}
               <button
                 onClick={() => setShowCitationModal(true)}
                 className="btn btn-ghost text-xs"
-                title={language === 'fr' ? 'Générer une citation académique' : 'Generate academic citation'}
+                title={
+                  language === "fr"
+                    ? "Générer une citation académique"
+                    : "Generate academic citation"
+                }
               >
                 <GraduationCap className="w-4 h-4" />
-                {language === 'fr' ? 'Citer' : 'Cite'}
+                {language === "fr" ? "Citer" : "Cite"}
               </button>
 
               {/* 📚 Outils d'étude (fiches + mindmap) */}
               <button
                 onClick={() => setShowStudyToolsModal(true)}
                 className="btn btn-ghost text-xs"
-                title={language === 'fr' ? 'Fiches de révision et arbre pédagogique' : 'Study cards and concept map'}
+                title={
+                  language === "fr"
+                    ? "Fiches de révision et arbre pédagogique"
+                    : "Study cards and concept map"
+                }
               >
                 <Brain className="w-4 h-4" />
-                {language === 'fr' ? 'Réviser' : 'Study'}
+                {language === "fr" ? "Réviser" : "Study"}
               </button>
 
               {/* 🏷️ Mots-clés */}
               <button
                 onClick={() => setShowKeywordsModal(true)}
                 className="btn btn-ghost text-xs"
-                title={language === 'fr' ? 'Voir les mots-clés extraits' : 'View extracted keywords'}
+                title={
+                  language === "fr"
+                    ? "Voir les mots-clés extraits"
+                    : "View extracted keywords"
+                }
               >
                 <Tags className="w-4 h-4" />
-                {language === 'fr' ? 'Mots-clés' : 'Keywords'}
+                {language === "fr" ? "Mots-clés" : "Keywords"}
               </button>
 
               {/* Export */}
               <div>
                 <button
                   ref={exportBtnRef}
-                  onClick={() => { const pos = calcExportMenuPos(exportBtnRef); setExportMenuPos(pos); setShowExportMenu(!showExportMenu); }}
+                  onClick={() => {
+                    const pos = calcExportMenuPos(exportBtnRef);
+                    setExportMenuPos(pos);
+                    setShowExportMenu(!showExportMenu);
+                  }}
                   className="btn btn-ghost text-xs"
                   disabled={exporting}
                 >
-                  {exporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
+                  {exporting ? (
+                    <DeepSightSpinnerMicro />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
                   Export
                   <ChevronDown className="w-3 h-3" />
                 </button>
-                {showExportMenu && createPortal(
-                  <div ref={exportMenuRef} className="fixed w-44 bg-bg-elevated border border-border-default rounded-lg shadow-xl py-1 animate-fadeIn" style={{ top: exportMenuPos.top, left: exportMenuPos.left, zIndex: 9999 }}>
-                    <button
-                      onClick={() => handleExport('pdf')}
-                      className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                {showExportMenu &&
+                  createPortal(
+                    <div
+                      ref={exportMenuRef}
+                      className="fixed w-44 bg-bg-elevated border border-border-default rounded-lg shadow-xl py-1 animate-fadeIn"
+                      style={{
+                        top: exportMenuPos.top,
+                        left: exportMenuPos.left,
+                        zIndex: 9999,
+                      }}
                     >
-                      <FileText className="w-4 h-4" /> PDF
-                    </button>
-                    <button
-                      onClick={() => handleExport('md')}
-                      className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
-                    >
-                      <FileDown className="w-4 h-4" /> Markdown
-                    </button>
-                    <button
-                      onClick={() => handleExport('txt')}
-                      className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
-                    >
-                      <FileText className="w-4 h-4" /> Texte
-                    </button>
-                  </div>,
-                  document.body
-                )}
+                      <button
+                        onClick={() => handleExport("pdf")}
+                        className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" /> PDF
+                      </button>
+                      <button
+                        onClick={() => handleExport("md")}
+                        className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                      >
+                        <FileDown className="w-4 h-4" /> Markdown
+                      </button>
+                      <button
+                        onClick={() => handleExport("txt")}
+                        className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" /> Texte
+                      </button>
+                    </div>,
+                    document.body,
+                  )}
               </div>
 
               {/* Chat toggle */}
@@ -2445,13 +3012,17 @@ const PlaylistDetailView: React.FC<{
           <div className="p-6">
             {selectedVideo.summary_content ? (
               <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown components={getTimecodeComponents(selectedVideo.video_id)}>
+                <ReactMarkdown
+                  components={getTimecodeComponents(selectedVideo.video_id)}
+                >
                   {selectedVideo.summary_content}
                 </ReactMarkdown>
               </div>
             ) : (
               <p className="text-text-tertiary italic">
-                {language === 'fr' ? 'Aucun résumé disponible.' : 'No summary available.'}
+                {language === "fr"
+                  ? "Aucun résumé disponible."
+                  : "No summary available."}
               </p>
             )}
           </div>
@@ -2468,7 +3039,7 @@ const PlaylistDetailView: React.FC<{
             videoId: selectedVideo.video_id,
             duration: selectedVideo.video_duration,
           }}
-          language={language as 'fr' | 'en'}
+          language={language as "fr" | "en"}
         />
 
         {/* Study Tools Modal */}
@@ -2477,7 +3048,7 @@ const PlaylistDetailView: React.FC<{
           onClose={() => setShowStudyToolsModal(false)}
           summaryId={selectedVideo.id}
           videoTitle={selectedVideo.video_title}
-          language={language as 'fr' | 'en'}
+          language={language as "fr" | "en"}
         />
 
         {/* Keywords Modal - Note: concepts to be loaded from API */}
@@ -2488,15 +3059,17 @@ const PlaylistDetailView: React.FC<{
           tags={[]}
           concepts={[]}
           loading={false}
-          language={language as 'fr' | 'en'}
+          language={language as "fr" | "en"}
         />
 
         {/* Navigation entre vidéos */}
         {(() => {
-          const currentIndex = videos.findIndex(v => v.video_id === selectedVideo.video_id);
+          const currentIndex = videos.findIndex(
+            (v) => v.video_id === selectedVideo.video_id,
+          );
           const hasPrev = currentIndex > 0;
           const hasNext = currentIndex < videos.length - 1 && currentIndex >= 0;
-          
+
           return (
             <div className="flex items-center justify-between">
               {hasPrev ? (
@@ -2505,23 +3078,29 @@ const PlaylistDetailView: React.FC<{
                   className="btn btn-secondary"
                 >
                   <ChevronRight className="w-4 h-4 rotate-180" />
-                  {language === 'fr' ? 'Vidéo précédente' : 'Previous video'}
+                  {language === "fr" ? "Vidéo précédente" : "Previous video"}
                 </button>
-              ) : <div />}
-              
+              ) : (
+                <div />
+              )}
+
               <span className="text-sm text-text-tertiary">
-                {currentIndex >= 0 ? `${currentIndex + 1} / ${videos.length}` : ''}
+                {currentIndex >= 0
+                  ? `${currentIndex + 1} / ${videos.length}`
+                  : ""}
               </span>
-              
+
               {hasNext ? (
                 <button
                   onClick={() => onViewVideo(videos[currentIndex + 1])}
                   className="btn btn-secondary"
                 >
-                  {language === 'fr' ? 'Vidéo suivante' : 'Next video'}
+                  {language === "fr" ? "Vidéo suivante" : "Next video"}
                   <ChevronRight className="w-4 h-4" />
                 </button>
-              ) : <div />}
+              ) : (
+                <div />
+              )}
             </div>
           );
         })()}
@@ -2537,28 +3116,35 @@ const PlaylistDetailView: React.FC<{
       {/* Header compact */}
       <div className="card p-6">
         <div className="flex items-start justify-between mb-4">
-          <button onClick={onBack} className="flex items-center gap-2 text-text-tertiary hover:text-text-primary transition-colors">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-text-tertiary hover:text-text-primary transition-colors"
+          >
             <ChevronRight className="w-4 h-4 rotate-180" />
-            {language === 'fr' ? 'Retour' : 'Back'}
+            {language === "fr" ? "Retour" : "Back"}
           </button>
           <button onClick={onChat} className="btn btn-primary">
             <MessageCircle className="w-4 h-4" />
-            {language === 'fr' ? 'Chat Corpus' : 'Corpus Chat'}
+            {language === "fr" ? "Chat Corpus" : "Corpus Chat"}
           </button>
         </div>
-        
+
         <div className="flex items-center gap-4">
           <div className="w-16 h-16 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
             <Layers className="w-8 h-8 text-purple-600" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold font-semibold text-text-primary">{playlist.playlist_title}</h1>
+            <h1 className="text-xl font-semibold font-semibold text-text-primary">
+              {playlist.playlist_title}
+            </h1>
             <p className="text-text-secondary">
-              {playlist.num_processed}/{playlist.num_videos} {language === 'fr' ? 'vidéos analysées' : 'videos analyzed'}
-              {' • '}
+              {playlist.num_processed}/{playlist.num_videos}{" "}
+              {language === "fr" ? "vidéos analysées" : "videos analyzed"}
+              {" • "}
               {formatDuration(playlist.total_duration)}
-              {' • '}
-              {(playlist.total_words / 1000).toFixed(0)}k {language === 'fr' ? 'mots' : 'words'}
+              {" • "}
+              {(playlist.total_words / 1000).toFixed(0)}k{" "}
+              {language === "fr" ? "mots" : "words"}
             </p>
           </div>
         </div>
@@ -2572,52 +3158,58 @@ const PlaylistDetailView: React.FC<{
         <div className="p-4 border-b border-border-subtle flex items-center justify-between">
           <h2 className="font-semibold text-text-primary flex items-center gap-2">
             <Video className="w-5 h-5 text-accent-primary" />
-            {language === 'fr' ? 'Vidéos de la playlist' : 'Playlist videos'}
+            {language === "fr" ? "Vidéos de la playlist" : "Playlist videos"}
             <span className="ml-2 text-sm font-normal text-text-tertiary">
-              ({videos.length} {language === 'fr' ? 'vidéos' : 'videos'})
+              ({videos.length} {language === "fr" ? "vidéos" : "videos"})
             </span>
           </h2>
           <p className="text-xs text-text-muted">
-            {language === 'fr' ? 'Cliquez pour voir le résumé' : 'Click to view summary'}
+            {language === "fr"
+              ? "Cliquez pour voir le résumé"
+              : "Click to view summary"}
           </p>
         </div>
-        
+
         {videos.length === 0 ? (
           <div className="p-8 text-center">
             <Video className="w-12 h-12 text-text-muted mx-auto mb-3" />
             <p className="text-text-secondary">
-              {language === 'fr' 
-                ? 'Aucune vidéo analysée dans cette playlist.' 
-                : 'No videos analyzed in this playlist.'}
+              {language === "fr"
+                ? "Aucune vidéo analysée dans cette playlist."
+                : "No videos analyzed in this playlist."}
             </p>
             <p className="text-sm text-text-tertiary mt-1">
-              {language === 'fr' 
-                ? 'Les vidéos apparaîtront ici une fois analysées.' 
-                : 'Videos will appear here once analyzed.'}
+              {language === "fr"
+                ? "Les vidéos apparaîtront ici une fois analysées."
+                : "Videos will appear here once analyzed."}
             </p>
           </div>
         ) : (
           <div className="divide-y divide-border-subtle">
             {videos.map((video, index) => {
               const isExpanded = expandedVideoId === video.video_id;
-              
+
               return (
                 <div key={video.id} className="group">
                   {/* En-tête de la vidéo (toujours visible) */}
-                  <div 
+                  <div
                     className={`p-4 cursor-pointer transition-all duration-200 flex items-center gap-4 ${
-                      isExpanded 
-                        ? 'bg-accent-primary-muted/50 border-l-4 border-accent-primary' 
-                        : 'hover:bg-bg-hover'
+                      isExpanded
+                        ? "bg-accent-primary-muted/50 border-l-4 border-accent-primary"
+                        : "hover:bg-bg-hover"
                     }`}
-                    onClick={() => setExpandedVideoId(isExpanded ? null : video.video_id)}
+                    onClick={() =>
+                      setExpandedVideoId(isExpanded ? null : video.video_id)
+                    }
                   >
-                    <span className={`text-sm w-8 text-center font-semibold transition-colors ${
-                      isExpanded ? 'text-accent-primary' : 'text-text-muted'
-                    }`}>
+                    <span
+                      className={`text-sm w-8 text-center font-semibold transition-colors ${
+                        isExpanded ? "text-accent-primary" : "text-text-muted"
+                      }`}
+                    >
                       {index + 1}
                     </span>
-                    
+
                     <div className="relative w-28 h-16 flex-shrink-0">
                       <ThumbnailImage
                         thumbnailUrl={video.thumbnail_url}
@@ -2625,7 +3217,7 @@ const PlaylistDetailView: React.FC<{
                         title={video.video_title}
                         category={video.category}
                         className={`w-full h-full object-cover rounded transition-all ${
-                          isExpanded ? 'ring-2 ring-accent-primary' : ''
+                          isExpanded ? "ring-2 ring-accent-primary" : ""
                         }`}
                       />
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded">
@@ -2637,38 +3229,49 @@ const PlaylistDetailView: React.FC<{
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex-1 min-w-0">
-                      <h4 className={`font-medium line-clamp-1 transition-colors ${
-                        isExpanded ? 'text-accent-primary' : 'text-text-primary group-hover:text-accent-primary'
-                      }`}>
+                      <h4
+                        className={`font-medium line-clamp-1 transition-colors ${
+                          isExpanded
+                            ? "text-accent-primary"
+                            : "text-text-primary group-hover:text-accent-primary"
+                        }`}
+                      >
                         {video.video_title}
                       </h4>
-                      <p className="text-sm text-text-tertiary">{video.video_channel}</p>
+                      <p className="text-sm text-text-tertiary">
+                        {video.video_channel}
+                      </p>
                       <div className="flex items-center gap-2 mt-0.5">
                         {video.category && (
                           <span className="text-xs text-text-muted">
-                            {categoryEmoji[video.category] || '📺'} {video.category}
+                            {categoryEmoji[video.category] || "📺"}{" "}
+                            {video.category}
                           </span>
                         )}
                         {video.word_count > 0 && (
                           <span className="text-xs text-text-muted">
-                            • {(video.word_count / 1000).toFixed(1)}k {language === 'fr' ? 'mots' : 'words'}
+                            • {(video.word_count / 1000).toFixed(1)}k{" "}
+                            {language === "fr" ? "mots" : "words"}
                           </span>
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       {/* Bouton Chat vidéo */}
                       <button
-                        onClick={(e) => { e.stopPropagation(); onChatVideo(video); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onChatVideo(video);
+                        }}
                         className="p-2 rounded-lg text-text-tertiary hover:text-accent-primary hover:bg-accent-primary-muted transition-colors"
-                        title={language === 'fr' ? 'Chat vidéo' : 'Video chat'}
+                        title={language === "fr" ? "Chat vidéo" : "Video chat"}
                       >
                         <MessageCircle className="w-4 h-4" />
                       </button>
-                      
+
                       {/* Bouton Ouvrir YouTube */}
                       <a
                         href={`https://www.youtube.com/watch?v=${video.video_id}`}
@@ -2676,18 +3279,26 @@ const PlaylistDetailView: React.FC<{
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
                         className="p-2 rounded-lg text-text-tertiary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        title={language === 'fr' ? 'Voir sur YouTube' : 'Watch on YouTube'}
+                        title={
+                          language === "fr"
+                            ? "Voir sur YouTube"
+                            : "Watch on YouTube"
+                        }
                       >
                         <ExternalLink className="w-4 h-4" />
                       </a>
-                      
+
                       {/* Indicateur d'expansion */}
-                      <ChevronRight className={`w-5 h-5 text-text-muted transition-transform duration-200 ${
-                        isExpanded ? 'rotate-90 text-accent-primary' : 'group-hover:text-accent-primary'
-                      }`} />
+                      <ChevronRight
+                        className={`w-5 h-5 text-text-muted transition-transform duration-200 ${
+                          isExpanded
+                            ? "rotate-90 text-accent-primary"
+                            : "group-hover:text-accent-primary"
+                        }`}
+                      />
                     </div>
                   </div>
-                  
+
                   {/* Contenu expandable - Résumé de la vidéo */}
                   {isExpanded && (
                     <div className="px-4 pb-4 pt-2 bg-bg-secondary/50 border-l-4 border-accent-primary animate-fade-in">
@@ -2699,24 +3310,28 @@ const PlaylistDetailView: React.FC<{
                             className="btn btn-secondary btn-sm"
                           >
                             <Maximize2 className="w-3.5 h-3.5" />
-                            {language === 'fr' ? 'Vue détaillée' : 'Detailed view'}
+                            {language === "fr"
+                              ? "Vue détaillée"
+                              : "Detailed view"}
                           </button>
                           <button
                             onClick={() => onChatVideo(video)}
                             className="btn btn-ghost btn-sm"
                           >
                             <MessageCircle className="w-3.5 h-3.5" />
-                            {language === 'fr' ? 'Poser une question' : 'Ask a question'}
+                            {language === "fr"
+                              ? "Poser une question"
+                              : "Ask a question"}
                           </button>
                         </div>
-                        
+
                         {/* Aperçu du résumé */}
                         <div className="prose prose-sm dark:prose-invert max-w-none">
                           <h5 className="text-sm font-medium text-text-primary mb-2 flex items-center gap-2">
-                            📄 {language === 'fr' ? 'Résumé' : 'Summary'}
+                            📄 {language === "fr" ? "Résumé" : "Summary"}
                           </h5>
                           <p className="text-text-secondary text-sm italic">
-                            {language === 'fr' 
+                            {language === "fr"
                               ? 'Cliquez sur "Vue détaillée" pour voir le résumé complet avec timecodes cliquables.'
                               : 'Click "Detailed view" to see the full summary with clickable timestamps.'}
                           </p>
@@ -2738,7 +3353,7 @@ const PlaylistDetailView: React.FC<{
       {playlist.meta_analysis && (
         <div className="card overflow-hidden">
           {/* Header de la méta-analyse avec design accentué - CLIQUABLE */}
-          <div 
+          <div
             className="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 cursor-pointer hover:from-purple-500 hover:to-indigo-500 transition-colors"
             onClick={() => setMetaExpanded(!metaExpanded)}
           >
@@ -2747,36 +3362,42 @@ const PlaylistDetailView: React.FC<{
                 <div className="w-10 h-10 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
                   <BarChart2 className="w-5 h-5 text-white" />
                 </div>
-                {language === 'fr' ? 'Méta-analyse' : 'Meta-analysis'}
+                {language === "fr" ? "Méta-analyse" : "Meta-analysis"}
               </h2>
               <div className="flex items-center gap-3">
                 <span className="px-3 py-1 bg-white/20 backdrop-blur rounded-full text-white text-xs font-medium">
-                  {language === 'fr' ? 'Synthèse globale' : 'Global synthesis'}
+                  {language === "fr" ? "Synthèse globale" : "Global synthesis"}
                 </span>
                 {/* Bouton expand/collapse */}
                 <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
-                  <ChevronRight className={`w-5 h-5 text-white transition-transform duration-300 ${metaExpanded ? 'rotate-90' : 'rotate-0'}`} />
+                  <ChevronRight
+                    className={`w-5 h-5 text-white transition-transform duration-300 ${metaExpanded ? "rotate-90" : "rotate-0"}`}
+                  />
                 </div>
               </div>
             </div>
             <p className="text-purple-100 text-sm mt-2 ml-[52px]">
-              {language === 'fr' 
+              {language === "fr"
                 ? `Analyse croisée des ${playlist.num_processed} vidéos du corpus`
                 : `Cross-analysis of ${playlist.num_processed} videos in the corpus`}
-              {' • '}
+              {" • "}
               <span className="text-white/80">
-                {metaExpanded 
-                  ? (language === 'fr' ? 'Cliquez pour réduire' : 'Click to collapse')
-                  : (language === 'fr' ? 'Cliquez pour développer' : 'Click to expand')}
+                {metaExpanded
+                  ? language === "fr"
+                    ? "Cliquez pour réduire"
+                    : "Click to collapse"
+                  : language === "fr"
+                    ? "Cliquez pour développer"
+                    : "Click to expand"}
               </span>
             </p>
           </div>
-          
+
           {/* 🆕 Toolbar Méta-analyse COMPLET - affiché quand expanded */}
           {metaExpanded && (
             <div className="p-4 border-b border-border-subtle flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-semibold text-text-primary flex items-center gap-2">
-                📄 {language === 'fr' ? 'Analyse' : 'Analysis'}
+                📄 {language === "fr" ? "Analyse" : "Analysis"}
               </h3>
               <div className="flex flex-wrap items-center gap-2">
                 {/* Copy */}
@@ -2784,75 +3405,111 @@ const PlaylistDetailView: React.FC<{
                   onClick={handleMetaCopy}
                   className="btn btn-ghost text-xs"
                 >
-                  {metaCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-                  {metaCopied ? (language === 'fr' ? 'Copié' : 'Copied') : (language === 'fr' ? 'Copier' : 'Copy')}
+                  {metaCopied ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                  {metaCopied
+                    ? language === "fr"
+                      ? "Copié"
+                      : "Copied"
+                    : language === "fr"
+                      ? "Copier"
+                      : "Copy"}
                 </button>
 
                 {/* 🎓 Citation académique */}
                 <button
                   onClick={() => setMetaShowCitationModal(true)}
                   className="btn btn-ghost text-xs"
-                  title={language === 'fr' ? 'Générer une citation académique' : 'Generate academic citation'}
+                  title={
+                    language === "fr"
+                      ? "Générer une citation académique"
+                      : "Generate academic citation"
+                  }
                 >
                   <GraduationCap className="w-4 h-4" />
-                  {language === 'fr' ? 'Citer' : 'Cite'}
+                  {language === "fr" ? "Citer" : "Cite"}
                 </button>
 
                 {/* 📚 Outils d'étude */}
                 <button
                   onClick={() => setMetaShowStudyToolsModal(true)}
                   className="btn btn-ghost text-xs"
-                  title={language === 'fr' ? 'Fiches de révision et arbre pédagogique' : 'Study cards and concept map'}
+                  title={
+                    language === "fr"
+                      ? "Fiches de révision et arbre pédagogique"
+                      : "Study cards and concept map"
+                  }
                 >
                   <Brain className="w-4 h-4" />
-                  {language === 'fr' ? 'Réviser' : 'Study'}
+                  {language === "fr" ? "Réviser" : "Study"}
                 </button>
 
                 {/* 🏷️ Mots-clés */}
                 <button
                   onClick={() => setMetaShowKeywordsModal(true)}
                   className="btn btn-ghost text-xs"
-                  title={language === 'fr' ? 'Voir les mots-clés extraits' : 'View extracted keywords'}
+                  title={
+                    language === "fr"
+                      ? "Voir les mots-clés extraits"
+                      : "View extracted keywords"
+                  }
                 >
                   <Tags className="w-4 h-4" />
-                  {language === 'fr' ? 'Mots-clés' : 'Keywords'}
+                  {language === "fr" ? "Mots-clés" : "Keywords"}
                 </button>
 
                 {/* Export */}
                 <div>
                   <button
                     ref={metaExportBtnRef}
-                    onClick={() => { const pos = calcExportMenuPos(metaExportBtnRef); setMetaExportMenuPos(pos); setMetaShowExportMenu(!metaShowExportMenu); }}
+                    onClick={() => {
+                      const pos = calcExportMenuPos(metaExportBtnRef);
+                      setMetaExportMenuPos(pos);
+                      setMetaShowExportMenu(!metaShowExportMenu);
+                    }}
                     className="btn btn-ghost text-xs"
                   >
-                    {metaExporting ? <DeepSightSpinnerMicro /> : <Download className="w-4 h-4" />}
+                    {metaExporting ? (
+                      <DeepSightSpinnerMicro />
+                    ) : (
+                      <Download className="w-4 h-4" />
+                    )}
                     Export
                     <ChevronDown className="w-3 h-3" />
                   </button>
-                  {metaShowExportMenu && createPortal(
-                    <div ref={metaExportMenuRef} className="fixed w-44 bg-bg-elevated border border-border-default rounded-lg shadow-xl py-1 animate-fadeIn" style={{ top: metaExportMenuPos.top, left: metaExportMenuPos.left, zIndex: 9999 }}>
-                      <button
-                        onClick={() => handleMetaExport('md')}
-                        className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                  {metaShowExportMenu &&
+                    createPortal(
+                      <div
+                        ref={metaExportMenuRef}
+                        className="fixed w-44 bg-bg-elevated border border-border-default rounded-lg shadow-xl py-1 animate-fadeIn"
+                        style={{
+                          top: metaExportMenuPos.top,
+                          left: metaExportMenuPos.left,
+                          zIndex: 9999,
+                        }}
                       >
-                        <FileDown className="w-4 h-4" /> Markdown
-                      </button>
-                      <button
-                        onClick={() => handleMetaExport('txt')}
-                        className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
-                      >
-                        <FileText className="w-4 h-4" /> Texte
-                      </button>
-                    </div>,
-                    document.body
-                  )}
+                        <button
+                          onClick={() => handleMetaExport("md")}
+                          className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                        >
+                          <FileDown className="w-4 h-4" /> Markdown
+                        </button>
+                        <button
+                          onClick={() => handleMetaExport("txt")}
+                          className="w-full px-3 py-2 text-left text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary flex items-center gap-2"
+                        >
+                          <FileText className="w-4 h-4" /> Texte
+                        </button>
+                      </div>,
+                      document.body,
+                    )}
                 </div>
 
                 {/* Chat Corpus */}
-                <button
-                  onClick={onChat}
-                  className="btn btn-secondary text-xs"
-                >
+                <button onClick={onChat} className="btn btn-secondary text-xs">
                   <MessageCircle className="w-4 h-4" />
                   Chat
                 </button>
@@ -2863,7 +3520,9 @@ const PlaylistDetailView: React.FC<{
           {/* Contenu de la méta-analyse - EXPANDABLE */}
           <div
             className={`transition-all duration-500 ease-in-out overflow-hidden ${
-              metaExpanded ? 'max-h-[5000px] opacity-100' : 'max-h-40 opacity-90'
+              metaExpanded
+                ? "max-h-[5000px] opacity-100"
+                : "max-h-40 opacity-90"
             }`}
           >
             <div className="p-6">
@@ -2872,43 +3531,49 @@ const PlaylistDetailView: React.FC<{
               </div>
             </div>
           </div>
-          
+
           {/* Gradient overlay quand collapsed pour montrer qu'il y a plus */}
           {!metaExpanded && (
-            <div 
+            <div
               className="absolute bottom-16 left-0 right-0 h-20 bg-gradient-to-t from-bg-primary to-transparent pointer-events-none"
-              style={{ position: 'relative', marginTop: '-80px', marginBottom: '0' }}
+              style={{
+                position: "relative",
+                marginTop: "-80px",
+                marginBottom: "0",
+              }}
             />
           )}
-          
+
           {/* Bouton Expand au milieu quand collapsed */}
           {!metaExpanded && (
             <div className="px-6 py-3 bg-bg-secondary/50 border-t border-border-subtle flex justify-center">
-              <button 
+              <button
                 onClick={() => setMetaExpanded(true)}
                 className="flex items-center gap-2 text-purple-400 hover:text-purple-300 transition-colors text-sm font-medium"
               >
                 <ChevronRight className="w-4 h-4 rotate-90" />
-                {language === 'fr' ? 'Voir la méta-analyse complète' : 'View full meta-analysis'}
+                {language === "fr"
+                  ? "Voir la méta-analyse complète"
+                  : "View full meta-analysis"}
               </button>
             </div>
           )}
-          
+
           {/* Footer avec CTA */}
           <div className="px-6 py-4 bg-bg-secondary border-t border-border-subtle flex items-center justify-between">
             <p className="text-xs text-text-muted">
-              {language === 'fr' 
-                ? 'Posez des questions sur l\'ensemble du corpus'
-                : 'Ask questions about the entire corpus'}
+              {language === "fr"
+                ? "Posez des questions sur l'ensemble du corpus"
+                : "Ask questions about the entire corpus"}
             </p>
             <button onClick={onChat} className="btn btn-primary btn-sm">
               <MessageCircle className="w-4 h-4" />
-              {language === 'fr' ? 'Chat Corpus' : 'Corpus Chat'}
+              {language === "fr" ? "Chat Corpus" : "Corpus Chat"}
             </button>
           </div>
         </div>
       )}
-      
+
       {/* Message si pas de méta-analyse */}
       {!playlist.meta_analysis && (
         <div className="card p-6 text-center border-dashed">
@@ -2916,12 +3581,14 @@ const PlaylistDetailView: React.FC<{
             <BarChart2 className="w-6 h-6 text-purple-600" />
           </div>
           <h3 className="font-medium text-text-primary mb-1">
-            {language === 'fr' ? 'Méta-analyse non disponible' : 'Meta-analysis not available'}
+            {language === "fr"
+              ? "Méta-analyse non disponible"
+              : "Meta-analysis not available"}
           </h3>
           <p className="text-sm text-text-tertiary">
-            {language === 'fr'
-              ? 'La méta-analyse sera générée une fois toutes les vidéos analysées.'
-              : 'Meta-analysis will be generated once all videos are analyzed.'}
+            {language === "fr"
+              ? "La méta-analyse sera générée une fois toutes les vidéos analysées."
+              : "Meta-analysis will be generated once all videos are analyzed."}
           </p>
         </div>
       )}
@@ -2933,11 +3600,11 @@ const PlaylistDetailView: React.FC<{
         onClose={() => setMetaShowCitationModal(false)}
         video={{
           title: `Méta-analyse: ${playlist.playlist_title}`,
-          channel: 'Deep Sight - Corpus Analysis',
+          channel: "Deep Sight - Corpus Analysis",
           videoId: playlist.playlist_id,
           duration: playlist.total_duration,
         }}
-        language={language as 'fr' | 'en'}
+        language={language as "fr" | "en"}
       />
 
       {/* Study Tools Modal pour méta-analyse - utilise le premier video ID */}
@@ -2947,7 +3614,7 @@ const PlaylistDetailView: React.FC<{
           onClose={() => setMetaShowStudyToolsModal(false)}
           summaryId={videos[0].id}
           videoTitle={`Méta-analyse: ${playlist.playlist_title}`}
-          language={language as 'fr' | 'en'}
+          language={language as "fr" | "en"}
         />
       )}
 
@@ -2959,11 +3626,10 @@ const PlaylistDetailView: React.FC<{
         tags={[]}
         concepts={[]}
         loading={false}
-        language={language as 'fr' | 'en'}
+        language={language as "fr" | "en"}
       />
     </div>
   );
 };
 
 export default History;
-

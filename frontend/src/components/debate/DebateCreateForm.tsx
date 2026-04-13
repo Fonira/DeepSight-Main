@@ -2,22 +2,32 @@
  * DebateCreateForm — Formulaire de création de débat (mode auto / manual)
  */
 
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Wand2, Link2, Swords, ArrowRight } from 'lucide-react';
-import { DeepSightSpinnerMicro } from '../ui/DeepSightSpinner';
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Wand2, Link2, Swords, ArrowRight } from "lucide-react";
+import { DeepSightSpinnerMicro } from "../ui/DeepSightSpinner";
 
 interface DebateCreateFormProps {
-  onSubmit: (data: { mode: 'auto' | 'manual'; urlA: string; urlB?: string }) => void;
+  onSubmit: (data: {
+    mode: "auto" | "manual";
+    urlA: string;
+    urlB?: string;
+  }) => void;
   loading?: boolean;
 }
 
-export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({ onSubmit, loading = false }) => {
-  const [mode, setMode] = useState<'auto' | 'manual'>('auto');
-  const [urlA, setUrlA] = useState('');
-  const [urlB, setUrlB] = useState('');
+export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({
+  onSubmit,
+  loading = false,
+}) => {
+  const [mode, setMode] = useState<"auto" | "manual">("auto");
+  const [urlA, setUrlA] = useState("");
+  const [urlB, setUrlB] = useState("");
 
-  const canSubmit = mode === 'auto' ? urlA.trim().length > 0 : urlA.trim().length > 0 && urlB.trim().length > 0;
+  const canSubmit =
+    mode === "auto"
+      ? urlA.trim().length > 0
+      : urlA.trim().length > 0 && urlB.trim().length > 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,7 +35,7 @@ export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({ onSubmit, lo
     onSubmit({
       mode,
       urlA: urlA.trim(),
-      urlB: mode === 'manual' ? urlB.trim() : undefined,
+      urlB: mode === "manual" ? urlB.trim() : undefined,
     });
   };
 
@@ -37,8 +47,12 @@ export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({ onSubmit, lo
           <Swords className="w-5 h-5 text-indigo-400" />
         </div>
         <div>
-          <h2 className="text-base font-semibold text-white">Nouveau débat IA</h2>
-          <p className="text-xs text-white/40">Confrontez deux points de vue sur un même sujet</p>
+          <h2 className="text-base font-semibold text-white">
+            Nouveau débat IA
+          </h2>
+          <p className="text-xs text-white/40">
+            Confrontez deux points de vue sur un même sujet
+          </p>
         </div>
       </div>
 
@@ -46,11 +60,11 @@ export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({ onSubmit, lo
       <div className="flex gap-2 mb-5">
         <button
           type="button"
-          onClick={() => setMode('auto')}
+          onClick={() => setMode("auto")}
           className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-            mode === 'auto'
-              ? 'bg-indigo-500/15 border-indigo-500/30 text-indigo-400'
-              : 'bg-white/[0.03] border-white/10 text-white/50 hover:text-white/70 hover:bg-white/5'
+            mode === "auto"
+              ? "bg-indigo-500/15 border-indigo-500/30 text-indigo-400"
+              : "bg-white/[0.03] border-white/10 text-white/50 hover:text-white/70 hover:bg-white/5"
           }`}
         >
           <Wand2 className="w-4 h-4" />
@@ -58,11 +72,11 @@ export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({ onSubmit, lo
         </button>
         <button
           type="button"
-          onClick={() => setMode('manual')}
+          onClick={() => setMode("manual")}
           className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-sm font-medium transition-all ${
-            mode === 'manual'
-              ? 'bg-violet-500/15 border-violet-500/30 text-violet-400'
-              : 'bg-white/[0.03] border-white/10 text-white/50 hover:text-white/70 hover:bg-white/5'
+            mode === "manual"
+              ? "bg-violet-500/15 border-violet-500/30 text-violet-400"
+              : "bg-white/[0.03] border-white/10 text-white/50 hover:text-white/70 hover:bg-white/5"
           }`}
         >
           <Link2 className="w-4 h-4" />
@@ -80,9 +94,9 @@ export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({ onSubmit, lo
           transition={{ duration: 0.15 }}
           className="text-xs text-white/40 mb-4"
         >
-          {mode === 'auto'
-            ? 'Collez une URL YouTube — DeepSight trouvera automatiquement une vidéo qui défend le point de vue opposé.'
-            : 'Fournissez deux URL YouTube qui présentent des points de vue différents sur un même sujet.'}
+          {mode === "auto"
+            ? "Collez une URL YouTube — DeepSight trouvera automatiquement une vidéo qui défend le point de vue opposé."
+            : "Fournissez deux URL YouTube qui présentent des points de vue différents sur un même sujet."}
         </motion.p>
       </AnimatePresence>
 
@@ -91,7 +105,9 @@ export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({ onSubmit, lo
         {/* URL A */}
         <div>
           <label className="text-xs font-medium text-white/50 mb-1 block">
-            {mode === 'auto' ? 'URL de la vidéo' : 'Vidéo A — Premier point de vue'}
+            {mode === "auto"
+              ? "URL de la vidéo"
+              : "Vidéo A — Premier point de vue"}
           </label>
           <input
             type="url"
@@ -105,10 +121,10 @@ export const DebateCreateForm: React.FC<DebateCreateFormProps> = ({ onSubmit, lo
 
         {/* URL B (manual mode) */}
         <AnimatePresence>
-          {mode === 'manual' && (
+          {mode === "manual" && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
+              animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.2 }}
               className="overflow-hidden"

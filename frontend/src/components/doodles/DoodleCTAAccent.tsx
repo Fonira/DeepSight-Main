@@ -1,17 +1,17 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import DoodleIcon from './DoodleIcon';
+import React from "react";
+import { motion } from "framer-motion";
+import DoodleIcon from "./DoodleIcon";
 
 interface DoodleCTAAccentProps {
   doodle: string;
-  position?: 'left' | 'right';
+  position?: "left" | "right";
   size?: number;
   className?: string;
 }
 
 /**
  * DoodleCTAAccent: Small decorative doodle positioned on CTA buttons/cards
- * 
+ *
  * Features:
  * - Absolute positioning (parent must have position: relative)
  * - Pulsing scale animation (0.9 → 1.1)
@@ -20,14 +20,12 @@ interface DoodleCTAAccentProps {
  */
 const DoodleCTAAccent: React.FC<DoodleCTAAccentProps> = ({
   doodle,
-  position = 'right',
+  position = "right",
   size = 20,
-  className = '',
+  className = "",
 }) => {
   const positionClasses =
-    position === 'right'
-      ? '-top-2 -right-3'
-      : '-top-2 -left-3';
+    position === "right" ? "-top-2 -right-3" : "-top-2 -left-3";
 
   return (
     <motion.div
@@ -38,7 +36,7 @@ const DoodleCTAAccent: React.FC<DoodleCTAAccentProps> = ({
       transition={{
         duration: 2,
         repeat: Infinity,
-        ease: 'easeInOut',
+        ease: "easeInOut",
       }}
     >
       <DoodleIcon

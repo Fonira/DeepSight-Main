@@ -9,21 +9,21 @@
  * - Lien vers la politique de confidentialité
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface CookiePreferences {
-  essential: boolean;     // Toujours true, non modifiable
-  analytics: boolean;     // PostHog, etc.
-  marketing: boolean;     // Tracking publicitaire (futur)
-  consentDate: string;    // ISO date du consentement
-  version: number;        // Version du bandeau (pour re-demander si changement)
+  essential: boolean; // Toujours true, non modifiable
+  analytics: boolean; // PostHog, etc.
+  marketing: boolean; // Tracking publicitaire (futur)
+  consentDate: string; // ISO date du consentement
+  version: number; // Version du bandeau (pour re-demander si changement)
 }
 
-const CONSENT_STORAGE_KEY = 'deepsight_cookie_consent';
+const CONSENT_STORAGE_KEY = "deepsight_cookie_consent";
 const CONSENT_VERSION = 1;
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -46,7 +46,9 @@ function getStoredConsent(): CookiePreferences | null {
 function storeConsent(prefs: CookiePreferences): void {
   try {
     localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(prefs));
-  } catch { /* Safari private mode */ }
+  } catch {
+    /* Safari private mode */
+  }
 }
 
 /** Vérifie si l'utilisateur a donné son consentement analytics */
@@ -80,20 +82,27 @@ export const CookieBanner: React.FC = () => {
     }
   }, []);
 
-  const saveAndClose = useCallback((prefs: Omit<CookiePreferences, 'consentDate' | 'version' | 'essential'>) => {
-    const fullPrefs: CookiePreferences = {
-      essential: true,
-      analytics: prefs.analytics,
-      marketing: prefs.marketing,
-      consentDate: new Date().toISOString(),
-      version: CONSENT_VERSION,
-    };
-    storeConsent(fullPrefs);
-    setVisible(false);
+  const saveAndClose = useCallback(
+    (
+      prefs: Omit<CookiePreferences, "consentDate" | "version" | "essential">,
+    ) => {
+      const fullPrefs: CookiePreferences = {
+        essential: true,
+        analytics: prefs.analytics,
+        marketing: prefs.marketing,
+        consentDate: new Date().toISOString(),
+        version: CONSENT_VERSION,
+      };
+      storeConsent(fullPrefs);
+      setVisible(false);
 
-    // Dispatch un événement custom pour que les services analytics puissent réagir
-    window.dispatchEvent(new CustomEvent('cookie-consent-updated', { detail: fullPrefs }));
-  }, []);
+      // Dispatch un événement custom pour que les services analytics puissent réagir
+      window.dispatchEvent(
+        new CustomEvent("cookie-consent-updated", { detail: fullPrefs }),
+      );
+    },
+    [],
+  );
 
   const handleAcceptAll = useCallback(() => {
     saveAndClose({ analytics: true, marketing: true });
@@ -122,14 +131,21 @@ export const CookieBanner: React.FC = () => {
       >
         {/* Header */}
         <div className="flex items-start gap-3 mb-4">
-          <span className="text-2xl flex-shrink-0" role="img" aria-label="cookie">🍪</span>
+          <span
+            className="text-2xl flex-shrink-0"
+            role="img"
+            aria-label="cookie"
+          >
+            🍪
+          </span>
           <div>
             <h3 className="text-white font-semibold text-base leading-tight">
               Nous respectons votre vie privée
             </h3>
             <p className="text-white/50 text-sm mt-1 leading-relaxed">
-              DeepSight utilise des cookies essentiels au fonctionnement du site.
-              Avec votre accord, nous utilisons aussi des cookies d'analyse pour améliorer votre expérience.{' '}
+              DeepSight utilise des cookies essentiels au fonctionnement du
+              site. Avec votre accord, nous utilisons aussi des cookies
+              d'analyse pour améliorer votre expérience.{" "}
               <a
                 href="/legal?tab=cookies"
                 className="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors"
@@ -152,8 +168,12 @@ export const CookieBanner: React.FC = () => {
                 className="w-4 h-4 rounded accent-blue-500"
               />
               <div>
-                <span className="text-white/80 text-sm font-medium">Essentiels</span>
-                <span className="text-white/40 text-xs ml-2">— toujours actifs</span>
+                <span className="text-white/80 text-sm font-medium">
+                  Essentiels
+                </span>
+                <span className="text-white/40 text-xs ml-2">
+                  — toujours actifs
+                </span>
               </div>
             </label>
 
@@ -166,8 +186,12 @@ export const CookieBanner: React.FC = () => {
                 className="w-4 h-4 rounded accent-blue-500 cursor-pointer"
               />
               <div>
-                <span className="text-white/80 text-sm font-medium">Analyse d'usage</span>
-                <span className="text-white/40 text-xs ml-2">— comprendre comment vous utilisez DeepSight</span>
+                <span className="text-white/80 text-sm font-medium">
+                  Analyse d'usage
+                </span>
+                <span className="text-white/40 text-xs ml-2">
+                  — comprendre comment vous utilisez DeepSight
+                </span>
               </div>
             </label>
 
@@ -180,8 +204,12 @@ export const CookieBanner: React.FC = () => {
                 className="w-4 h-4 rounded accent-blue-500 cursor-pointer"
               />
               <div>
-                <span className="text-white/80 text-sm font-medium">Marketing</span>
-                <span className="text-white/40 text-xs ml-2">— publicités pertinentes (désactivé pour le moment)</span>
+                <span className="text-white/80 text-sm font-medium">
+                  Marketing
+                </span>
+                <span className="text-white/40 text-xs ml-2">
+                  — publicités pertinentes (désactivé pour le moment)
+                </span>
               </div>
             </label>
           </div>

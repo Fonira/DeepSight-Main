@@ -12,15 +12,16 @@
  *   analytics.identify(userId, { plan: 'pro', email });
  */
 
-import posthog from 'posthog-js';
-import { hasAnalyticsConsent } from '../components/CookieBanner';
+import posthog from "posthog-js";
+import { hasAnalyticsConsent } from "../components/CookieBanner";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 CONFIG
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY || '';
-const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com';
+const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY || "";
+const POSTHOG_HOST =
+  import.meta.env.VITE_POSTHOG_HOST || "https://eu.i.posthog.com";
 
 let isInitialized = false;
 
@@ -34,7 +35,7 @@ function initPostHog(): void {
   posthog.init(POSTHOG_KEY, {
     api_host: POSTHOG_HOST,
     // RGPD : pas de persistence avant consentement
-    persistence: 'localStorage',
+    persistence: "localStorage",
     // Désactiver l'autocapture pour économiser les events
     autocapture: false,
     // Capturer les pageviews manuellement pour SPA
@@ -76,7 +77,7 @@ export const analytics = {
     }
 
     // Écouter les changements de consentement en temps réel
-    window.addEventListener('cookie-consent-updated', ((event: CustomEvent) => {
+    window.addEventListener("cookie-consent-updated", ((event: CustomEvent) => {
       const prefs = event.detail;
       if (prefs?.analytics) {
         initPostHog();
@@ -90,7 +91,10 @@ export const analytics = {
   /**
    * Identifier un utilisateur (post-login)
    */
-  identify(userId: string | number, properties?: Record<string, unknown>): void {
+  identify(
+    userId: string | number,
+    properties?: Record<string, unknown>,
+  ): void {
     if (!isInitialized || !hasAnalyticsConsent()) return;
     posthog.identify(String(userId), properties);
   },
@@ -116,7 +120,7 @@ export const analytics = {
    */
   pageview(path?: string): void {
     if (!isInitialized || !hasAnalyticsConsent()) return;
-    posthog.capture('$pageview', {
+    posthog.capture("$pageview", {
       $current_url: path || window.location.href,
     });
   },
@@ -144,35 +148,36 @@ export const analytics = {
 
 export const AnalyticsEvents = {
   // Auth
-  SIGNUP: 'user_signup',
-  LOGIN: 'user_login',
-  LOGOUT: 'user_logout',
+  SIGNUP: "user_signup",
+  LOGIN: "user_login",
+  LOGOUT: "user_logout",
 
   // Core feature
-  VIDEO_ANALYZED: 'video_analyzed',
-  VIDEO_ANALYSIS_STARTED: 'video_analysis_started',
-  VIDEO_ANALYSIS_FAILED: 'video_analysis_failed',
+  VIDEO_ANALYZED: "video_analyzed",
+  VIDEO_ANALYSIS_STARTED: "video_analysis_started",
+  VIDEO_ANALYSIS_FAILED: "video_analysis_failed",
 
   // Chat
-  CHAT_MESSAGE_SENT: 'chat_message_sent',
-  CHAT_SESSION_STARTED: 'chat_session_started',
+  CHAT_MESSAGE_SENT: "chat_message_sent",
+  CHAT_SESSION_STARTED: "chat_session_started",
 
   // Export
-  EXPORT_CREATED: 'export_created',
+  EXPORT_CREATED: "export_created",
 
   // Billing
-  UPGRADE_STARTED: 'upgrade_started',
-  UPGRADE_COMPLETED: 'upgrade_completed',
-  PLAN_CHANGED: 'plan_changed',
+  UPGRADE_STARTED: "upgrade_started",
+  UPGRADE_COMPLETED: "upgrade_completed",
+  PLAN_CHANGED: "plan_changed",
 
   // Engagement
-  STUDY_TOOL_USED: 'study_tool_used',
-  FACTCHECK_VIEWED: 'factcheck_viewed',
-  PLAYLIST_ANALYZED: 'playlist_analyzed',
+  STUDY_TOOL_USED: "study_tool_used",
+  FACTCHECK_VIEWED: "factcheck_viewed",
+  PLAYLIST_ANALYZED: "playlist_analyzed",
 
   // Errors
-  ERROR_OCCURRED: 'error_occurred',
-  API_ERROR: 'api_error',
+  ERROR_OCCURRED: "error_occurred",
+  API_ERROR: "api_error",
 } as const;
 
-export type AnalyticsEvent = (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];
+export type AnalyticsEvent =
+  (typeof AnalyticsEvents)[keyof typeof AnalyticsEvents];

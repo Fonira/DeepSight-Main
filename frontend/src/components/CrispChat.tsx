@@ -3,7 +3,7 @@
  * Renders nothing visually; the widget is injected into the DOM by the Crisp script.
  */
 
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 declare global {
   interface Window {
@@ -12,7 +12,9 @@ declare global {
   }
 }
 
-const CRISP_WEBSITE_ID = import.meta.env.VITE_CRISP_WEBSITE_ID as string | undefined;
+const CRISP_WEBSITE_ID = import.meta.env.VITE_CRISP_WEBSITE_ID as
+  | string
+  | undefined;
 
 export const CrispChat: React.FC = () => {
   useEffect(() => {
@@ -23,8 +25,8 @@ export const CrispChat: React.FC = () => {
     window.$crisp = [];
     window.CRISP_WEBSITE_ID = CRISP_WEBSITE_ID;
 
-    const script = document.createElement('script');
-    script.src = 'https://client.crisp.chat/l.js';
+    const script = document.createElement("script");
+    script.src = "https://client.crisp.chat/l.js";
     script.async = true;
     document.head.appendChild(script);
 

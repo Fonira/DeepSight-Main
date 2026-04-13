@@ -3,13 +3,13 @@
  * Existing imports of TTSToggle will now use the full TTSToolbar
  */
 
-import React from 'react';
-import { TTSToolbar } from './TTSToolbar';
+import React from "react";
+import { TTSToolbar } from "./TTSToolbar";
 
 interface TTSToggleProps {
   className?: string;
 }
 
-export const TTSToggle: React.FC<TTSToggleProps> = ({ className = '' }) => {
+export const TTSToggle: React.FC<TTSToggleProps> = ({ className = "" }) => {
   return <TTSToolbar className={className} />;
 };

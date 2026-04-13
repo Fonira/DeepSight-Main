@@ -9,21 +9,21 @@
  *   VoiceAnalytics.trackStarted({ plan: 'pro', platform: 'web', summaryId: 42, language: 'fr' });
  */
 
-import { analytics } from '../../services/analytics';
+import { analytics } from "../../services/analytics";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Event names (type-safe constants)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const VoiceAnalyticsEvents = {
-  STARTED: 'voice_chat_started',
-  ENDED: 'voice_chat_ended',
-  QUOTA_WARNING: 'voice_chat_quota_warning',
-  QUOTA_REACHED: 'voice_chat_quota_reached',
-  ADDON_PURCHASED: 'voice_chat_addon_purchased',
-  UPGRADE_CLICKED: 'voice_chat_upgrade_clicked',
-  ERROR: 'voice_chat_error',
-  SPEED_CHANGED: 'voice_chat_speed_changed',
+  STARTED: "voice_chat_started",
+  ENDED: "voice_chat_ended",
+  QUOTA_WARNING: "voice_chat_quota_warning",
+  QUOTA_REACHED: "voice_chat_quota_reached",
+  ADDON_PURCHASED: "voice_chat_addon_purchased",
+  UPGRADE_CLICKED: "voice_chat_upgrade_clicked",
+  ERROR: "voice_chat_error",
+  SPEED_CHANGED: "voice_chat_speed_changed",
 } as const;
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -32,7 +32,12 @@ export const VoiceAnalyticsEvents = {
 
 export const VoiceAnalytics = {
   /** Debut de session voice */
-  trackStarted(data: { plan: string; platform: string; summaryId: number; language: string }) {
+  trackStarted(data: {
+    plan: string;
+    platform: string;
+    summaryId: number;
+    language: string;
+  }) {
     analytics.capture(VoiceAnalyticsEvents.STARTED, {
       plan: data.plan,
       platform: data.platform,
@@ -42,7 +47,12 @@ export const VoiceAnalytics = {
   },
 
   /** Fin de session voice */
-  trackEnded(data: { durationSeconds: number; plan: string; platform: string; summaryId: number }) {
+  trackEnded(data: {
+    durationSeconds: number;
+    plan: string;
+    platform: string;
+    summaryId: number;
+  }) {
     analytics.capture(VoiceAnalyticsEvents.ENDED, {
       duration_seconds: data.durationSeconds,
       plan: data.plan,
@@ -52,7 +62,11 @@ export const VoiceAnalytics = {
   },
 
   /** Alerte quota (80%, 90%, etc.) */
-  trackQuotaWarning(data: { percentUsed: number; plan: string; remainingSeconds: number }) {
+  trackQuotaWarning(data: {
+    percentUsed: number;
+    plan: string;
+    remainingSeconds: number;
+  }) {
     analytics.capture(VoiceAnalyticsEvents.QUOTA_WARNING, {
       percent_used: data.percentUsed,
       plan: data.plan,
@@ -69,7 +83,11 @@ export const VoiceAnalytics = {
   },
 
   /** Add-on minutes achete */
-  trackAddonPurchased(data: { packMinutes: number; priceCents: number; plan: string }) {
+  trackAddonPurchased(data: {
+    packMinutes: number;
+    priceCents: number;
+    plan: string;
+  }) {
     analytics.capture(VoiceAnalyticsEvents.ADDON_PURCHASED, {
       pack_minutes: data.packMinutes,
       price_cents: data.priceCents,
@@ -78,7 +96,11 @@ export const VoiceAnalytics = {
   },
 
   /** CTA upgrade clique depuis voice chat */
-  trackUpgradeClicked(data: { currentPlan: string; targetPlan?: string; trigger: string }) {
+  trackUpgradeClicked(data: {
+    currentPlan: string;
+    targetPlan?: string;
+    trigger: string;
+  }) {
     analytics.capture(VoiceAnalyticsEvents.UPGRADE_CLICKED, {
       current_plan: data.currentPlan,
       target_plan: data.targetPlan ?? null,
@@ -96,7 +118,11 @@ export const VoiceAnalytics = {
   },
 
   /** Changement de preset de vitesse du chat vocal */
-  trackSpeedChanged(data: { presetId: string; playbackRate: number; concise: boolean }) {
+  trackSpeedChanged(data: {
+    presetId: string;
+    playbackRate: number;
+    concise: boolean;
+  }) {
     analytics.capture(VoiceAnalyticsEvents.SPEED_CHANGED, {
       preset_id: data.presetId,
       playback_rate: data.playbackRate,

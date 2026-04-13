@@ -2,20 +2,13 @@
  * ShareButton — Button that opens a share modal with link, social buttons, and toggle.
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Share2,
-  Copy,
-  Check,
-  X,
-  Mail,
-  Eye,
-} from 'lucide-react';
-import { DeepSightSpinner } from '../ui/DeepSightSpinner';
-import { useToast } from '../Toast';
-import { shareApi } from '../../services/api';
+import React, { useState, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { Share2, Copy, Check, X, Mail, Eye } from "lucide-react";
+import { DeepSightSpinner } from "../ui/DeepSightSpinner";
+import { useToast } from "../Toast";
+import { shareApi } from "../../services/api";
 
 interface ShareButtonProps {
   videoId: string;
@@ -41,11 +34,14 @@ const WhatsAppIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-export const ShareButton: React.FC<ShareButtonProps> = ({ videoId, videoTitle }) => {
+export const ShareButton: React.FC<ShareButtonProps> = ({
+  videoId,
+  videoTitle,
+}) => {
   const { showToast, ToastComponent } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [shareUrl, setShareUrl] = useState('');
+  const [shareUrl, setShareUrl] = useState("");
   const [viewCount, setViewCount] = useState(0);
   const [isActive, setIsActive] = useState(true);
   const [copied, setCopied] = useState(false);
@@ -62,7 +58,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ videoId, videoTitle })
       setViewCount((result as { view_count?: number }).view_count || 0);
       setIsActive(true);
     } catch (err) {
-      showToast('Erreur lors de la création du lien de partage', 'error');
+      showToast("Erreur lors de la création du lien de partage", "error");
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +70,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ videoId, videoTitle })
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      showToast('Impossible de copier le lien', 'error');
+      showToast("Impossible de copier le lien", "error");
     }
   }, [shareUrl, showToast]);
 
@@ -84,10 +80,10 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ videoId, videoTitle })
       try {
         await shareApi.deleteShare(videoId);
         setIsActive(false);
-        setShareUrl('');
-        showToast('Partage désactivé', 'success');
+        setShareUrl("");
+        showToast("Partage désactivé", "success");
       } catch {
-        showToast('Erreur lors de la désactivation', 'error');
+        showToast("Erreur lors de la désactivation", "error");
       }
     } else {
       // Re-activate by creating new share
@@ -96,9 +92,9 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ videoId, videoTitle })
         const result = await shareApi.createShareLink(videoId);
         setShareUrl(result.share_url);
         setIsActive(true);
-        showToast('Partage réactivé', 'success');
+        showToast("Partage réactivé", "success");
       } catch {
-        showToast('Erreur lors de la réactivation', 'error');
+        showToast("Erreur lors de la réactivation", "error");
       } finally {
         setIsLoading(false);
       }
@@ -110,28 +106,28 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ videoId, videoTitle })
 
   const socialLinks = [
     {
-      name: 'Email',
+      name: "Email",
       icon: <Mail className="w-5 h-5" />,
       href: `mailto:?subject=${encodeURIComponent(`Analyse DeepSight : ${videoTitle}`)}&body=${encodeURIComponent(`Découvre cette analyse de la vidéo "${videoTitle}" :\n\n${shareUrl}\n\nGénéré par DeepSight — deepsightsynthesis.com`)}`,
-      bg: 'bg-gray-600 hover:bg-gray-700',
+      bg: "bg-gray-600 hover:bg-gray-700",
     },
     {
-      name: 'X',
+      name: "X",
       icon: <TwitterIcon className="w-5 h-5" />,
       href: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`Découvrez cette analyse de "${videoTitle}"`)}&url=${encodedUrl}`,
-      bg: 'bg-black hover:bg-gray-800',
+      bg: "bg-black hover:bg-gray-800",
     },
     {
-      name: 'LinkedIn',
+      name: "LinkedIn",
       icon: <LinkedInIcon className="w-5 h-5" />,
       href: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`,
-      bg: 'bg-[#0A66C2] hover:bg-[#084d94]',
+      bg: "bg-[#0A66C2] hover:bg-[#084d94]",
     },
     {
-      name: 'WhatsApp',
+      name: "WhatsApp",
       icon: <WhatsAppIcon className="w-5 h-5" />,
       href: `https://wa.me/?text=${encodeURIComponent(`Regarde cette analyse DeepSight : ${videoTitle} ${shareUrl}`)}`,
-      bg: 'bg-[#25D366] hover:bg-[#1fb855]',
+      bg: "bg-[#25D366] hover:bg-[#1fb855]",
     },
   ];
 
@@ -139,10 +135,10 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ videoId, videoTitle })
   useEffect(() => {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
+      if (e.key === "Escape") setIsOpen(false);
     };
-    document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
   }, [isOpen]);
 
   return (
@@ -176,7 +172,9 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ videoId, videoTitle })
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
                 transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
                 className="fixed inset-0 z-[201] flex items-center justify-center p-4"
-                onClick={(e) => e.target === e.currentTarget && setIsOpen(false)}
+                onClick={(e) =>
+                  e.target === e.currentTarget && setIsOpen(false)
+                }
               >
                 <div className="bg-bg-elevated rounded-xl border border-border-default shadow-2xl w-full max-w-md overflow-hidden">
                   {/* Header */}
@@ -216,9 +214,10 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ videoId, videoTitle })
                             onClick={handleCopy}
                             className={`
                               flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors
-                              ${copied
-                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                : 'bg-accent-primary text-white hover:bg-accent-primary-hover'
+                              ${
+                                copied
+                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                  : "bg-accent-primary text-white hover:bg-accent-primary-hover"
                               }
                             `}
                           >
@@ -240,14 +239,16 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ videoId, videoTitle })
                         {viewCount > 0 && (
                           <div className="flex items-center gap-1.5 text-xs text-text-muted">
                             <Eye className="w-3.5 h-3.5" />
-                            {viewCount} {viewCount === 1 ? 'vue' : 'vues'}
+                            {viewCount} {viewCount === 1 ? "vue" : "vues"}
                           </div>
                         )}
 
                         {/* Separator */}
                         <div className="flex items-center gap-3">
                           <div className="flex-1 h-px bg-border-subtle" />
-                          <span className="text-xs text-text-muted">ou partager via</span>
+                          <span className="text-xs text-text-muted">
+                            ou partager via
+                          </span>
                           <div className="flex-1 h-px bg-border-subtle" />
                         </div>
 
@@ -279,19 +280,21 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ videoId, videoTitle })
 
                     {/* Toggle active */}
                     <div className="flex items-center justify-between pt-2 border-t border-border-subtle">
-                      <span className="text-sm text-text-secondary">Lien actif</span>
+                      <span className="text-sm text-text-secondary">
+                        Lien actif
+                      </span>
                       <button
                         onClick={handleToggleActive}
                         className={`
                           relative w-10 h-5 rounded-full transition-colors duration-200
-                          ${isActive ? 'bg-accent-primary' : 'bg-border-default'}
+                          ${isActive ? "bg-accent-primary" : "bg-border-default"}
                         `}
                         disabled={isLoading}
                       >
                         <span
                           className={`
                             absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200
-                            ${isActive ? 'translate-x-5' : 'translate-x-0.5'}
+                            ${isActive ? "translate-x-5" : "translate-x-0.5"}
                           `}
                         />
                       </button>
@@ -299,7 +302,8 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ videoId, videoTitle })
 
                     {/* Info text */}
                     <p className="text-xs text-text-muted">
-                      Toute personne disposant de ce lien pourra consulter l'analyse.
+                      Toute personne disposant de ce lien pourra consulter
+                      l'analyse.
                     </p>
                   </div>
                 </div>
@@ -307,7 +311,7 @@ export const ShareButton: React.FC<ShareButtonProps> = ({ videoId, videoTitle })
             </>
           )}
         </AnimatePresence>,
-        document.body
+        document.body,
       )}
 
       {ToastComponent}

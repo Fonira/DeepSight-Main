@@ -3,21 +3,24 @@
  * Utilise debateApi.sendChat / getChatHistory
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Send, MessageCircle } from 'lucide-react';
-import { debateApi } from '../../services/api';
-import type { DebateChatMessage } from '../../services/api';
-import { DeepSightSpinnerMicro } from '../ui/DeepSightSpinner';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Send, MessageCircle } from "lucide-react";
+import { debateApi } from "../../services/api";
+import type { DebateChatMessage } from "../../services/api";
+import { DeepSightSpinnerMicro } from "../ui/DeepSightSpinner";
 
 interface DebateChatProps {
   debateId: number;
   debateTopic?: string;
 }
 
-export const DebateChat: React.FC<DebateChatProps> = ({ debateId, debateTopic }) => {
+export const DebateChat: React.FC<DebateChatProps> = ({
+  debateId,
+  debateTopic,
+}) => {
   const [messages, setMessages] = useState<DebateChatMessage[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +41,9 @@ export const DebateChat: React.FC<DebateChatProps> = ({ debateId, debateTopic })
       }
     };
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [debateId]);
 
   // ─── Auto-scroll to bottom ───
@@ -57,7 +62,7 @@ export const DebateChat: React.FC<DebateChatProps> = ({ debateId, debateTopic })
     const trimmed = input.trim();
     if (!trimmed || sending) return;
 
-    setInput('');
+    setInput("");
     setError(null);
     setSending(true);
 
@@ -65,17 +70,20 @@ export const DebateChat: React.FC<DebateChatProps> = ({ debateId, debateTopic })
     const optimisticMsg: DebateChatMessage = {
       id: Date.now(),
       debate_id: debateId,
-      role: 'user',
+      role: "user",
       content: trimmed,
       created_at: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, optimisticMsg]);
 
     try {
-      const response = await debateApi.sendChat({ debate_id: debateId, message: trimmed });
+      const response = await debateApi.sendChat({
+        debate_id: debateId,
+        message: trimmed,
+      });
       setMessages((prev) => [...prev, response]);
     } catch {
-      setError('Erreur lors de l\'envoi. Cliquez pour réessayer.');
+      setError("Erreur lors de l'envoi. Cliquez pour réessayer.");
     } finally {
       setSending(false);
       inputRef.current?.focus();
@@ -84,7 +92,7 @@ export const DebateChat: React.FC<DebateChatProps> = ({ debateId, debateTopic })
 
   const handleRetry = () => {
     // Remove the last user message and re-send it
-    const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     if (lastUserMsg) {
       setMessages((prev) => prev.filter((m) => m.id !== lastUserMsg.id));
       setInput(lastUserMsg.content);
@@ -93,7 +101,7 @@ export const DebateChat: React.FC<DebateChatProps> = ({ debateId, debateTopic })
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -131,7 +139,9 @@ export const DebateChat: React.FC<DebateChatProps> = ({ debateId, debateTopic })
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <MessageCircle className="w-8 h-8 text-white/10 mb-2" />
-            <p className="text-sm text-white/30">Posez une question sur ce débat...</p>
+            <p className="text-sm text-white/30">
+              Posez une question sur ce débat...
+            </p>
           </div>
         ) : (
           <AnimatePresence initial={false}>
@@ -141,13 +151,13 @@ export const DebateChat: React.FC<DebateChatProps> = ({ debateId, debateTopic })
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2 }}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
                   className={`max-w-[80%] rounded-lg px-3.5 py-2.5 text-sm leading-relaxed border ${
-                    msg.role === 'user'
-                      ? 'bg-indigo-500/20 border-indigo-500/30 text-white/90'
-                      : 'bg-white/5 border-white/10 text-white/80'
+                    msg.role === "user"
+                      ? "bg-indigo-500/20 border-indigo-500/30 text-white/90"
+                      : "bg-white/5 border-white/10 text-white/80"
                   }`}
                 >
                   {msg.content}

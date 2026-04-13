@@ -3,7 +3,7 @@
  * Coverage: Plan hierarchy, feature availability, limits, platform gating
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from "vitest";
 
 // Import the real planPrivileges if available, or define mock
 interface PlanConfig {
@@ -43,8 +43,8 @@ interface PlanConfig {
 
 const planPrivileges: Record<string, PlanConfig> = {
   free: {
-    id: 'free',
-    name: 'Découverte',
+    id: "free",
+    name: "Découverte",
     price: 0,
     analyses_per_month: 3,
     credits_per_month: 150,
@@ -77,8 +77,8 @@ const planPrivileges: Record<string, PlanConfig> = {
     },
   },
   etudiant: {
-    id: 'etudiant',
-    name: 'Étudiant',
+    id: "etudiant",
+    name: "Étudiant",
     price: 2.99,
     analyses_per_month: 20,
     credits_per_month: 2000,
@@ -111,8 +111,8 @@ const planPrivileges: Record<string, PlanConfig> = {
     },
   },
   starter: {
-    id: 'starter',
-    name: 'Starter',
+    id: "starter",
+    name: "Starter",
     price: 5.99,
     analyses_per_month: 50,
     credits_per_month: 3000,
@@ -145,8 +145,8 @@ const planPrivileges: Record<string, PlanConfig> = {
     },
   },
   pro: {
-    id: 'pro',
-    name: 'Pro',
+    id: "pro",
+    name: "Pro",
     price: 12.99,
     analyses_per_month: 200,
     credits_per_month: 15000,
@@ -184,37 +184,37 @@ const planPrivileges: Record<string, PlanConfig> = {
 // 📋 PLAN EXISTENCE & BASICS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe('Plan Privileges - Plan Existence', () => {
-  it('should have free plan', () => {
+describe("Plan Privileges - Plan Existence", () => {
+  it("should have free plan", () => {
     expect(planPrivileges.free).toBeDefined();
-    expect(planPrivileges.free.id).toBe('free');
+    expect(planPrivileges.free.id).toBe("free");
     expect(planPrivileges.free.price).toBe(0);
   });
 
-  it('should have etudiant plan', () => {
+  it("should have etudiant plan", () => {
     expect(planPrivileges.etudiant).toBeDefined();
     expect(planPrivileges.etudiant.price).toBe(2.99);
   });
 
-  it('should have starter plan', () => {
+  it("should have starter plan", () => {
     expect(planPrivileges.starter).toBeDefined();
     expect(planPrivileges.starter.price).toBe(5.99);
   });
 
-  it('should have pro plan', () => {
+  it("should have pro plan", () => {
     expect(planPrivileges.pro).toBeDefined();
     expect(planPrivileges.pro.price).toBe(12.99);
   });
 
-  it('should have all required plan properties', () => {
-    Object.values(planPrivileges).forEach(plan => {
-      expect(plan).toHaveProperty('id');
-      expect(plan).toHaveProperty('name');
-      expect(plan).toHaveProperty('price');
-      expect(plan).toHaveProperty('analyses_per_month');
-      expect(plan).toHaveProperty('credits_per_month');
-      expect(plan).toHaveProperty('features');
-      expect(plan).toHaveProperty('limits');
+  it("should have all required plan properties", () => {
+    Object.values(planPrivileges).forEach((plan) => {
+      expect(plan).toHaveProperty("id");
+      expect(plan).toHaveProperty("name");
+      expect(plan).toHaveProperty("price");
+      expect(plan).toHaveProperty("analyses_per_month");
+      expect(plan).toHaveProperty("credits_per_month");
+      expect(plan).toHaveProperty("features");
+      expect(plan).toHaveProperty("limits");
     });
   });
 });
@@ -223,8 +223,8 @@ describe('Plan Privileges - Plan Existence', () => {
 // 💰 PRICING HIERARCHY
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe('Plan Privileges - Pricing Hierarchy', () => {
-  it('should have correct pricing order: free < etudiant < starter < pro', () => {
+describe("Plan Privileges - Pricing Hierarchy", () => {
+  it("should have correct pricing order: free < etudiant < starter < pro", () => {
     const prices = [
       planPrivileges.free.price,
       planPrivileges.etudiant.price,
@@ -237,11 +237,11 @@ describe('Plan Privileges - Pricing Hierarchy', () => {
     }
   });
 
-  it('should have free price at 0', () => {
+  it("should have free price at 0", () => {
     expect(planPrivileges.free.price).toBe(0);
   });
 
-  it('should have reasonable price gaps', () => {
+  it("should have reasonable price gaps", () => {
     expect(planPrivileges.etudiant.price).toBeLessThan(10);
     expect(planPrivileges.starter.price).toBeLessThan(10);
     expect(planPrivileges.pro.price).toBeGreaterThanOrEqual(10);
@@ -252,8 +252,8 @@ describe('Plan Privileges - Pricing Hierarchy', () => {
 // 📊 MONTHLY QUOTA PROGRESSION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe('Plan Privileges - Monthly Quotas', () => {
-  it('should have increasing analyses_per_month', () => {
+describe("Plan Privileges - Monthly Quotas", () => {
+  it("should have increasing analyses_per_month", () => {
     const analyses = [
       planPrivileges.free.analyses_per_month,
       planPrivileges.etudiant.analyses_per_month,
@@ -266,7 +266,7 @@ describe('Plan Privileges - Monthly Quotas', () => {
     }
   });
 
-  it('should have increasing credits_per_month', () => {
+  it("should have increasing credits_per_month", () => {
     const credits = [
       planPrivileges.free.credits_per_month,
       planPrivileges.etudiant.credits_per_month,
@@ -279,13 +279,13 @@ describe('Plan Privileges - Monthly Quotas', () => {
     }
   });
 
-  it('should have reasonable quota values', () => {
+  it("should have reasonable quota values", () => {
     expect(planPrivileges.free.analyses_per_month).toBeLessThanOrEqual(5);
     expect(planPrivileges.etudiant.analyses_per_month).toBeGreaterThan(10);
     expect(planPrivileges.pro.analyses_per_month).toBeGreaterThanOrEqual(100);
   });
 
-  it('should have free plan with 150 credits', () => {
+  it("should have free plan with 150 credits", () => {
     expect(planPrivileges.free.credits_per_month).toBe(150);
   });
 });
@@ -294,47 +294,47 @@ describe('Plan Privileges - Monthly Quotas', () => {
 // 🔓 FEATURE AVAILABILITY
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe('Plan Privileges - Feature Availability', () => {
-  it('should have chat in all plans', () => {
-    Object.values(planPrivileges).forEach(plan => {
+describe("Plan Privileges - Feature Availability", () => {
+  it("should have chat in all plans", () => {
+    Object.values(planPrivileges).forEach((plan) => {
       expect(plan.features.chat).toBe(true);
     });
   });
 
-  it('should have markdown export in all plans', () => {
-    Object.values(planPrivileges).forEach(plan => {
+  it("should have markdown export in all plans", () => {
+    Object.values(planPrivileges).forEach((plan) => {
       expect(plan.features.export_markdown).toBe(true);
     });
   });
 
-  it('should not have flashcards in free plan', () => {
+  it("should not have flashcards in free plan", () => {
     expect(planPrivileges.free.features.flashcards).toBe(false);
   });
 
-  it('should have flashcards from etudiant onwards', () => {
+  it("should have flashcards from etudiant onwards", () => {
     expect(planPrivileges.etudiant.features.flashcards).toBe(true);
     expect(planPrivileges.starter.features.flashcards).toBe(true);
     expect(planPrivileges.pro.features.flashcards).toBe(true);
   });
 
-  it('should not have playlists before pro plan', () => {
+  it("should not have playlists before pro plan", () => {
     expect(planPrivileges.free.features.playlists).toBe(false);
     expect(planPrivileges.etudiant.features.playlists).toBe(false);
     expect(planPrivileges.starter.features.playlists).toBe(false);
   });
 
-  it('should have playlists in pro plan', () => {
+  it("should have playlists in pro plan", () => {
     expect(planPrivileges.pro.features.playlists).toBe(true);
   });
 
-  it('should not have PDF/DOCX export before pro', () => {
+  it("should not have PDF/DOCX export before pro", () => {
     expect(planPrivileges.free.features.export_pdf).toBe(false);
     expect(planPrivileges.free.features.export_docx).toBe(false);
     expect(planPrivileges.etudiant.features.export_pdf).toBe(false);
     expect(planPrivileges.starter.features.export_pdf).toBe(false);
   });
 
-  it('should have full feature set in pro plan', () => {
+  it("should have full feature set in pro plan", () => {
     const proFeatures = planPrivileges.pro.features;
 
     expect(proFeatures.chat).toBe(true);
@@ -349,12 +349,16 @@ describe('Plan Privileges - Feature Availability', () => {
     expect(proFeatures.api_access).toBe(true);
   });
 
-  it('should have symmetric feature progression', () => {
-    const plans = ['free', 'etudiant', 'starter', 'pro'] as const;
-    const featureKeys = Object.keys(planPrivileges.free.features) as Array<keyof typeof planPrivileges.free.features>;
+  it("should have symmetric feature progression", () => {
+    const plans = ["free", "etudiant", "starter", "pro"] as const;
+    const featureKeys = Object.keys(planPrivileges.free.features) as Array<
+      keyof typeof planPrivileges.free.features
+    >;
 
-    featureKeys.forEach(feature => {
-      const featureValues = plans.map(p => planPrivileges[p].features[feature]);
+    featureKeys.forEach((feature) => {
+      const featureValues = plans.map(
+        (p) => planPrivileges[p].features[feature],
+      );
 
       // Once a feature is enabled, it should remain enabled in higher plans
       for (let i = 1; i < featureValues.length; i++) {
@@ -370,17 +374,17 @@ describe('Plan Privileges - Feature Availability', () => {
 // 🔧 LIMITS & QUOTAS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe('Plan Privileges - Limits Configuration', () => {
-  it('should have all required limit properties', () => {
-    Object.values(planPrivileges).forEach(plan => {
-      expect(plan.limits).toHaveProperty('max_video_duration');
-      expect(plan.limits).toHaveProperty('max_concurrent_analyses');
-      expect(plan.limits).toHaveProperty('analysis_timeout_minutes');
-      expect(plan.limits).toHaveProperty('message_history_retention_days');
+describe("Plan Privileges - Limits Configuration", () => {
+  it("should have all required limit properties", () => {
+    Object.values(planPrivileges).forEach((plan) => {
+      expect(plan.limits).toHaveProperty("max_video_duration");
+      expect(plan.limits).toHaveProperty("max_concurrent_analyses");
+      expect(plan.limits).toHaveProperty("analysis_timeout_minutes");
+      expect(plan.limits).toHaveProperty("message_history_retention_days");
     });
   });
 
-  it('should have increasing video duration limits', () => {
+  it("should have increasing video duration limits", () => {
     const durations = [
       planPrivileges.free.limits.max_video_duration,
       planPrivileges.etudiant.limits.max_video_duration,
@@ -393,7 +397,7 @@ describe('Plan Privileges - Limits Configuration', () => {
     }
   });
 
-  it('should have increasing concurrent analyses', () => {
+  it("should have increasing concurrent analyses", () => {
     const concurrent = [
       planPrivileges.free.limits.max_concurrent_analyses,
       planPrivileges.etudiant.limits.max_concurrent_analyses,
@@ -406,19 +410,19 @@ describe('Plan Privileges - Limits Configuration', () => {
     }
   });
 
-  it('should have reasonable timeout values', () => {
-    Object.values(planPrivileges).forEach(plan => {
+  it("should have reasonable timeout values", () => {
+    Object.values(planPrivileges).forEach((plan) => {
       expect(plan.limits.analysis_timeout_minutes).toBeGreaterThan(0);
       expect(plan.limits.analysis_timeout_minutes).toBeLessThanOrEqual(60);
     });
   });
 
-  it('should free plan have 15min video max', () => {
+  it("should free plan have 15min video max", () => {
     // 900 seconds = 15 minutes
     expect(planPrivileges.free.limits.max_video_duration).toBe(900);
   });
 
-  it('should pro plan have unlimited video duration', () => {
+  it("should pro plan have unlimited video duration", () => {
     expect(planPrivileges.pro.limits.max_video_duration).toBeGreaterThan(86400); // > 24h
   });
 });
@@ -427,16 +431,16 @@ describe('Plan Privileges - Limits Configuration', () => {
 // 🌐 PLATFORM RESTRICTIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe('Plan Privileges - Platform Restrictions', () => {
-  it('should have platform restrictions defined', () => {
-    Object.values(planPrivileges).forEach(plan => {
+describe("Plan Privileges - Platform Restrictions", () => {
+  it("should have platform restrictions defined", () => {
+    Object.values(planPrivileges).forEach((plan) => {
       if (plan.platform_restrictions) {
         expect(plan.platform_restrictions).toBeDefined();
       }
     });
   });
 
-  it('should free plan be limited to web and extension', () => {
+  it("should free plan be limited to web and extension", () => {
     const free = planPrivileges.free;
 
     expect(free.platform_restrictions?.web).toBe(true);
@@ -444,15 +448,15 @@ describe('Plan Privileges - Platform Restrictions', () => {
     expect(free.platform_restrictions?.extension).toBe(true);
   });
 
-  it('should all plans include web platform', () => {
-    Object.values(planPrivileges).forEach(plan => {
+  it("should all plans include web platform", () => {
+    Object.values(planPrivileges).forEach((plan) => {
       if (plan.platform_restrictions?.web === false) {
         throw new Error(`Plan ${plan.id} should include web`);
       }
     });
   });
 
-  it('should pro plan include all platforms', () => {
+  it("should pro plan include all platforms", () => {
     const pro = planPrivileges.pro;
 
     expect(pro.platform_restrictions?.web).toBe(true);
@@ -471,7 +475,7 @@ describe('Plan Privileges - Platform Restrictions', () => {
 function isFeatureAvailable(
   planId: string,
   feature: keyof typeof planPrivileges.free.features,
-  platform?: 'web' | 'mobile' | 'extension'
+  platform?: "web" | "mobile" | "extension",
 ): boolean {
   const plan = planPrivileges[planId as keyof typeof planPrivileges];
 
@@ -494,7 +498,10 @@ function isFeatureAvailable(
 /**
  * Check if user can perform action based on monthly quota
  */
-function canPerformAnalysis(planId: string, analysesPerformedThisMonth: number): boolean {
+function canPerformAnalysis(
+  planId: string,
+  analysesPerformedThisMonth: number,
+): boolean {
   const plan = planPrivileges[planId as keyof typeof planPrivileges];
 
   if (!plan) return false;
@@ -502,30 +509,30 @@ function canPerformAnalysis(planId: string, analysesPerformedThisMonth: number):
   return analysesPerformedThisMonth < plan.analyses_per_month;
 }
 
-describe('Plan Privileges - Utility Functions', () => {
-  it('should determine feature availability correctly', () => {
-    expect(isFeatureAvailable('free', 'chat')).toBe(true);
-    expect(isFeatureAvailable('free', 'flashcards')).toBe(false);
-    expect(isFeatureAvailable('pro', 'flashcards')).toBe(true);
+describe("Plan Privileges - Utility Functions", () => {
+  it("should determine feature availability correctly", () => {
+    expect(isFeatureAvailable("free", "chat")).toBe(true);
+    expect(isFeatureAvailable("free", "flashcards")).toBe(false);
+    expect(isFeatureAvailable("pro", "flashcards")).toBe(true);
   });
 
-  it('should consider platform restrictions', () => {
-    expect(isFeatureAvailable('free', 'chat', 'web')).toBe(true);
-    expect(isFeatureAvailable('free', 'chat', 'mobile')).toBe(false);
-    expect(isFeatureAvailable('pro', 'chat', 'mobile')).toBe(true);
+  it("should consider platform restrictions", () => {
+    expect(isFeatureAvailable("free", "chat", "web")).toBe(true);
+    expect(isFeatureAvailable("free", "chat", "mobile")).toBe(false);
+    expect(isFeatureAvailable("pro", "chat", "mobile")).toBe(true);
   });
 
-  it('should determine if analysis quota available', () => {
-    expect(canPerformAnalysis('free', 0)).toBe(true);
-    expect(canPerformAnalysis('free', 2)).toBe(true);
-    expect(canPerformAnalysis('free', 3)).toBe(false);
-    expect(canPerformAnalysis('pro', 199)).toBe(true);
-    expect(canPerformAnalysis('pro', 200)).toBe(false);
+  it("should determine if analysis quota available", () => {
+    expect(canPerformAnalysis("free", 0)).toBe(true);
+    expect(canPerformAnalysis("free", 2)).toBe(true);
+    expect(canPerformAnalysis("free", 3)).toBe(false);
+    expect(canPerformAnalysis("pro", 199)).toBe(true);
+    expect(canPerformAnalysis("pro", 200)).toBe(false);
   });
 
-  it('should handle invalid plan IDs gracefully', () => {
-    expect(isFeatureAvailable('invalid', 'chat')).toBe(false);
-    expect(canPerformAnalysis('invalid', 0)).toBe(false);
+  it("should handle invalid plan IDs gracefully", () => {
+    expect(isFeatureAvailable("invalid", "chat")).toBe(false);
+    expect(canPerformAnalysis("invalid", 0)).toBe(false);
   });
 });
 
@@ -533,10 +540,10 @@ describe('Plan Privileges - Utility Functions', () => {
 // 📈 CONSISTENCY CHECKS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-describe('Plan Privileges - Consistency', () => {
-  it('should have consistent feature counts across plans', () => {
+describe("Plan Privileges - Consistency", () => {
+  it("should have consistent feature counts across plans", () => {
     const featureCounts = Object.values(planPrivileges).map(
-      plan => Object.values(plan.features).filter(v => v === true).length
+      (plan) => Object.values(plan.features).filter((v) => v === true).length,
     );
 
     // Each plan should have at least as many features as the previous one
@@ -545,26 +552,26 @@ describe('Plan Privileges - Consistency', () => {
     }
   });
 
-  it('should have consistent names', () => {
-    Object.values(planPrivileges).forEach(plan => {
+  it("should have consistent names", () => {
+    Object.values(planPrivileges).forEach((plan) => {
       expect(plan.name).toBeTruthy();
-      expect(typeof plan.name).toBe('string');
+      expect(typeof plan.name).toBe("string");
       expect(plan.name.length).toBeGreaterThan(0);
     });
   });
 
-  it('should all features be boolean', () => {
-    Object.values(planPrivileges).forEach(plan => {
-      Object.values(plan.features).forEach(value => {
-        expect(typeof value).toBe('boolean');
+  it("should all features be boolean", () => {
+    Object.values(planPrivileges).forEach((plan) => {
+      Object.values(plan.features).forEach((value) => {
+        expect(typeof value).toBe("boolean");
       });
     });
   });
 
-  it('should all limits be positive numbers', () => {
-    Object.values(planPrivileges).forEach(plan => {
-      Object.values(plan.limits).forEach(value => {
-        expect(typeof value).toBe('number');
+  it("should all limits be positive numbers", () => {
+    Object.values(planPrivileges).forEach((plan) => {
+      Object.values(plan.limits).forEach((value) => {
+        expect(typeof value).toBe("number");
         expect(value).toBeGreaterThan(0);
       });
     });

@@ -1,13 +1,13 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import DoodleIcon from './DoodleIcon';
+import React from "react";
+import { motion } from "framer-motion";
+import DoodleIcon from "./DoodleIcon";
 
 type EmptyStateType =
-  | 'no-analyses'
-  | 'no-flashcards'
-  | 'no-playlists'
-  | 'no-results'
-  | 'welcome';
+  | "no-analyses"
+  | "no-flashcards"
+  | "no-playlists"
+  | "no-results"
+  | "welcome";
 
 interface DoodleEmptyStateProps {
   type: EmptyStateType;
@@ -17,7 +17,7 @@ interface DoodleEmptyStateProps {
 
 /**
  * DoodleEmptyState: Empty state UI with animated doodles
- * 
+ *
  * Features:
  * - Large main icon (72px) with idle floating animation
  * - 3-4 small accent icons rotating around main icon
@@ -27,7 +27,7 @@ interface DoodleEmptyStateProps {
 const DoodleEmptyState: React.FC<DoodleEmptyStateProps> = ({
   type,
   children,
-  className = '',
+  className = "",
 }) => {
   // Configuration: main icon + small accent icons
   const configMap: Record<
@@ -37,25 +37,25 @@ const DoodleEmptyState: React.FC<DoodleEmptyStateProps> = ({
       accents: string[];
     }
   > = {
-    'no-analyses': {
-      main: 'play',
-      accents: ['sparkles', 'eye', 'barChart'],
+    "no-analyses": {
+      main: "play",
+      accents: ["sparkles", "eye", "barChart"],
     },
-    'no-flashcards': {
-      main: 'book',
-      accents: ['brain', 'pencil', 'star'],
+    "no-flashcards": {
+      main: "book",
+      accents: ["brain", "pencil", "star"],
     },
-    'no-playlists': {
-      main: 'layers',
-      accents: ['play', 'music', 'grid'],
+    "no-playlists": {
+      main: "layers",
+      accents: ["play", "music", "grid"],
     },
-    'no-results': {
-      main: 'search',
-      accents: ['eye', 'target', 'compass'],
+    "no-results": {
+      main: "search",
+      accents: ["eye", "target", "compass"],
     },
     welcome: {
-      main: 'compass',
-      accents: ['sparkles', 'star', 'paperPlane'],
+      main: "compass",
+      accents: ["sparkles", "star", "paperPlane"],
     },
   };
 
@@ -67,7 +67,7 @@ const DoodleEmptyState: React.FC<DoodleEmptyStateProps> = ({
     animate: { y: 0, opacity: 1 },
     float: {
       y: [-6, 0, -6],
-      transition: { duration: 3, repeat: Infinity, ease: 'easeInOut' },
+      transition: { duration: 3, repeat: Infinity, ease: "easeInOut" },
     },
   };
 
@@ -87,7 +87,7 @@ const DoodleEmptyState: React.FC<DoodleEmptyStateProps> = ({
       <motion.div
         className="relative w-32 h-32 flex items-center justify-center mb-8"
         variants={mainVariants}
-        animate={['animate', 'float']}
+        animate={["animate", "float"]}
       >
         {/* Primary icon */}
         <DoodleIcon

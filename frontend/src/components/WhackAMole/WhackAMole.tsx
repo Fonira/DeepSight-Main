@@ -5,17 +5,17 @@
  * Uses canvas-confetti for celebration bursts.
  */
 
-import React, { useEffect, useRef } from 'react';
-import { AnimatePresence } from 'framer-motion';
-import confetti from 'canvas-confetti';
-import { useAuth } from '../../hooks/useAuth';
-import { useWhackAMole } from './useWhackAMole';
-import { clampFactPosition } from './useWhackAMole';
-import { MoleButton } from './MoleButton';
-import { MoleParticles } from './MoleParticles';
-import { FactRevealCard } from './FactRevealCard';
-import { ImageGuessCard } from './ImageGuessCard';
-import { MOLE_SIZE } from './whackAMoleConstants';
+import React, { useEffect, useRef } from "react";
+import { AnimatePresence } from "framer-motion";
+import confetti from "canvas-confetti";
+import { useAuth } from "../../hooks/useAuth";
+import { useWhackAMole } from "./useWhackAMole";
+import { clampFactPosition } from "./useWhackAMole";
+import { MoleButton } from "./MoleButton";
+import { MoleParticles } from "./MoleParticles";
+import { FactRevealCard } from "./FactRevealCard";
+import { ImageGuessCard } from "./ImageGuessCard";
+import { MOLE_SIZE } from "./whackAMoleConstants";
 
 interface WhackAMoleProps {
   sidebarCollapsed: boolean;
@@ -44,7 +44,7 @@ export const WhackAMole: React.FC<WhackAMoleProps> = ({ sidebarCollapsed }) => {
 
   // Fire confetti on catch
   useEffect(() => {
-    if (phase === 'caught' && !prefersReducedMotion) {
+    if (phase === "caught" && !prefersReducedMotion) {
       const x = (position.x + MOLE_SIZE / 2) / window.innerWidth;
       const y = (position.y + MOLE_SIZE / 2) / window.innerHeight;
 
@@ -52,7 +52,7 @@ export const WhackAMole: React.FC<WhackAMoleProps> = ({ sidebarCollapsed }) => {
         particleCount: 20,
         spread: 60,
         origin: { x, y },
-        colors: ['#6366f1', '#8b5cf6', '#06b6d4', '#C8903A'],
+        colors: ["#6366f1", "#8b5cf6", "#06b6d4", "#C8903A"],
         disableForReducedMotion: true,
         zIndex: 35,
       });
@@ -64,7 +64,7 @@ export const WhackAMole: React.FC<WhackAMoleProps> = ({ sidebarCollapsed }) => {
             particleCount: 60,
             spread: 120,
             origin: { x, y },
-            colors: ['#6366f1', '#8b5cf6', '#06b6d4', '#f59e0b', '#10b981'],
+            colors: ["#6366f1", "#8b5cf6", "#06b6d4", "#f59e0b", "#10b981"],
             disableForReducedMotion: true,
             zIndex: 35,
           });
@@ -79,23 +79,30 @@ export const WhackAMole: React.FC<WhackAMoleProps> = ({ sidebarCollapsed }) => {
   if (!enabled || !isAuthenticated) return null;
 
   // Classic mode flags
-  const showMole = phase === 'visible' || phase === 'caught' || phase === 'missed';
-  const showParticles = phase === 'caught';
-  const showClassicFact = phase === 'revealing' && currentFact && mode === 'classic';
+  const showMole =
+    phase === "visible" || phase === "caught" || phase === "missed";
+  const showParticles = phase === "caught";
+  const showClassicFact =
+    phase === "revealing" && currentFact && mode === "classic";
 
   // Reverse mode flags
-  const showGuessCard = (phase === 'guessing' || (phase === 'revealing' && mode === 'reverse')) && currentFact && reverseImageUrl;
+  const showGuessCard =
+    (phase === "guessing" || (phase === "revealing" && mode === "reverse")) &&
+    currentFact &&
+    reverseImageUrl;
 
-  const factPosition = currentFact ? clampFactPosition(position) : { x: 0, y: 0 };
+  const factPosition = currentFact
+    ? clampFactPosition(position)
+    : { x: 0, y: 0 };
 
   return (
     <>
       {/* Classic: Mole button */}
-      {showMole && mode === 'classic' && (
+      {showMole && mode === "classic" && (
         <MoleButton
           position={position}
-          category={currentFact?.category || 'misc'}
-          phase={phase as 'visible' | 'caught' | 'missed'}
+          category={currentFact?.category || "misc"}
+          phase={phase as "visible" | "caught" | "missed"}
           visibleDuration={visibleDuration}
           prefersReducedMotion={prefersReducedMotion}
           onCatch={handleCatch}
@@ -103,7 +110,7 @@ export const WhackAMole: React.FC<WhackAMoleProps> = ({ sidebarCollapsed }) => {
       )}
 
       {/* Classic: Particle burst */}
-      {mode === 'classic' && (
+      {mode === "classic" && (
         <MoleParticles position={position} active={showParticles} />
       )}
 

@@ -3,12 +3,12 @@
  * Shows warning when credits are running low to encourage upgrades
  */
 
-import React, { useState, useEffect } from 'react';
-import { AlertTriangle, X, Zap, ArrowRight } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { useTranslation } from '../hooks/useTranslation';
-import { PLANS_INFO, normalizePlanId } from '../config/planPrivileges';
+import React, { useState, useEffect } from "react";
+import { AlertTriangle, X, Zap, ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth";
+import { useTranslation } from "../hooks/useTranslation";
+import { PLANS_INFO, normalizePlanId } from "../config/planPrivileges";
 
 interface CreditAlertProps {
   /** Credits threshold below which to show warning (default: 50) */
@@ -20,7 +20,7 @@ interface CreditAlertProps {
   /** Callback when alert is dismissed */
   onDismiss?: () => void;
   /** Position of the alert */
-  position?: 'top' | 'bottom' | 'inline';
+  position?: "top" | "bottom" | "inline";
   /** Compact mode for smaller displays */
   compact?: boolean;
 }
@@ -30,20 +30,22 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
   criticalThreshold = 10,
   show = true,
   onDismiss,
-  position = 'top',
+  position = "top",
   compact = false,
 }) => {
   const { user } = useAuth();
   const { language } = useTranslation();
   const navigate = useNavigate();
   const [dismissed, setDismissed] = useState(false);
-  const [lastDismissedCredits, setLastDismissedCredits] = useState<number | null>(null);
+  const [lastDismissedCredits, setLastDismissedCredits] = useState<
+    number | null
+  >(null);
 
   const credits = user?.credits ?? 0;
   const normalizedPlan = normalizePlanId(user?.plan);
 
   // Don't show for pro plan (high credit limits)
-  if (normalizedPlan === 'pro') {
+  if (normalizedPlan === "pro") {
     return null;
   }
 
@@ -59,7 +61,10 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
 
   // Reset dismissed state if credits changed significantly
   useEffect(() => {
-    if (lastDismissedCredits !== null && Math.abs(credits - lastDismissedCredits) > 10) {
+    if (
+      lastDismissedCredits !== null &&
+      Math.abs(credits - lastDismissedCredits) > 10
+    ) {
       setDismissed(false);
     }
   }, [credits, lastDismissedCredits]);
@@ -81,53 +86,54 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
   };
 
   const handleUpgrade = () => {
-    navigate('/upgrade');
+    navigate("/upgrade");
   };
 
   // Alert styles based on level
   const alertStyles = isEmpty
     ? {
-        bg: 'bg-red-500/10',
-        border: 'border-red-500/30',
-        text: 'text-red-400',
-        icon: 'text-red-400',
+        bg: "bg-red-500/10",
+        border: "border-red-500/30",
+        text: "text-red-400",
+        icon: "text-red-400",
       }
     : isCritical
-    ? {
-        bg: 'bg-orange-500/10',
-        border: 'border-orange-500/30',
-        text: 'text-orange-400',
-        icon: 'text-orange-400',
-      }
-    : {
-        bg: 'bg-amber-500/10',
-        border: 'border-amber-500/30',
-        text: 'text-amber-400',
-        icon: 'text-amber-400',
-      };
+      ? {
+          bg: "bg-orange-500/10",
+          border: "border-orange-500/30",
+          text: "text-orange-400",
+          icon: "text-orange-400",
+        }
+      : {
+          bg: "bg-amber-500/10",
+          border: "border-amber-500/30",
+          text: "text-amber-400",
+          icon: "text-amber-400",
+        };
 
   // Messages based on level and language
   const getMessage = () => {
     if (isEmpty) {
-      return language === 'fr'
+      return language === "fr"
         ? "Plus de crédits ! Passez à un plan supérieur pour continuer."
         : "Out of credits! Upgrade to continue.";
     }
     if (isCritical) {
-      return language === 'fr'
+      return language === "fr"
         ? `Il ne vous reste que ${credits} crédits. Rechargez vite !`
         : `Only ${credits} credits left. Recharge soon!`;
     }
-    return language === 'fr'
+    return language === "fr"
       ? `${credits} crédits restants. Pensez à upgrader.`
       : `${credits} credits remaining. Consider upgrading.`;
   };
 
   // Position classes
   const positionClasses = {
-    top: 'fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-lg w-[calc(100%-2rem)]',
-    bottom: 'fixed bottom-4 left-1/2 -translate-x-1/2 z-50 max-w-lg w-[calc(100%-2rem)]',
-    inline: 'w-full',
+    top: "fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-lg w-[calc(100%-2rem)]",
+    bottom:
+      "fixed bottom-4 left-1/2 -translate-x-1/2 z-50 max-w-lg w-[calc(100%-2rem)]",
+    inline: "w-full",
   };
 
   if (compact) {
@@ -135,7 +141,9 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
       <div
         className={`flex items-center gap-2 px-3 py-2 rounded-lg ${alertStyles.bg} border ${alertStyles.border} ${positionClasses[position]}`}
       >
-        <AlertTriangle className={`w-4 h-4 ${alertStyles.icon} flex-shrink-0`} />
+        <AlertTriangle
+          className={`w-4 h-4 ${alertStyles.icon} flex-shrink-0`}
+        />
         <span className={`text-xs ${alertStyles.text} flex-1 truncate`}>
           {getMessage()}
         </span>
@@ -144,7 +152,7 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
           className="flex items-center gap-1 px-2 py-1 rounded bg-accent-primary/20 text-accent-primary text-xs font-medium hover:bg-accent-primary/30 transition-colors"
         >
           <Zap className="w-3 h-3" />
-          {language === 'fr' ? 'Upgrade' : 'Upgrade'}
+          {language === "fr" ? "Upgrade" : "Upgrade"}
         </button>
         {!isEmpty && (
           <button
@@ -170,14 +178,18 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
         <div className="flex-1 min-w-0">
           <h4 className={`font-semibold ${alertStyles.text} mb-1`}>
             {isEmpty
-              ? language === 'fr' ? 'Crédits épuisés' : 'Credits depleted'
+              ? language === "fr"
+                ? "Crédits épuisés"
+                : "Credits depleted"
               : isCritical
-              ? language === 'fr' ? 'Crédits presque épuisés' : 'Credits almost depleted'
-              : language === 'fr' ? 'Crédits bas' : 'Low credits'}
+                ? language === "fr"
+                  ? "Crédits presque épuisés"
+                  : "Credits almost depleted"
+                : language === "fr"
+                  ? "Crédits bas"
+                  : "Low credits"}
           </h4>
-          <p className="text-sm text-text-secondary mb-3">
-            {getMessage()}
-          </p>
+          <p className="text-sm text-text-secondary mb-3">{getMessage()}</p>
 
           <div className="flex items-center gap-3">
             <button
@@ -185,14 +197,14 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-medium text-sm hover:opacity-90 transition-opacity"
             >
               <Zap className="w-4 h-4" />
-              {language === 'fr' ? 'Voir les plans' : 'View plans'}
+              {language === "fr" ? "Voir les plans" : "View plans"}
               <ArrowRight className="w-4 h-4" />
             </button>
 
-            {normalizedPlan === 'free' && (
+            {normalizedPlan === "free" && (
               <span className="text-xs text-text-tertiary">
-                {language === 'fr'
-                  ? `Dès ${(PLANS_INFO.pro.priceMonthly / 100).toFixed(2).replace('.', ',')}€/mois`
+                {language === "fr"
+                  ? `Dès ${(PLANS_INFO.pro.priceMonthly / 100).toFixed(2).replace(".", ",")}€/mois`
                   : `From €${(PLANS_INFO.pro.priceMonthly / 100).toFixed(2)}/mo`}
               </span>
             )}
@@ -203,7 +215,7 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
           <button
             onClick={handleDismiss}
             className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
-            title={language === 'fr' ? 'Fermer' : 'Close'}
+            title={language === "fr" ? "Fermer" : "Close"}
           >
             <X className={`w-4 h-4 ${alertStyles.text}`} />
           </button>
@@ -215,10 +227,10 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
         <div
           className={`h-full transition-all duration-500 ${
             isEmpty
-              ? 'bg-red-500'
+              ? "bg-red-500"
               : isCritical
-              ? 'bg-orange-500'
-              : 'bg-amber-500'
+                ? "bg-orange-500"
+                : "bg-amber-500"
           }`}
           style={{
             width: `${Math.min(100, (credits / warningThreshold) * 100)}%`,
@@ -226,8 +238,12 @@ export const CreditAlert: React.FC<CreditAlertProps> = ({
         />
       </div>
       <div className="flex justify-between mt-1 text-xs text-text-tertiary">
-        <span>{credits} {language === 'fr' ? 'restants' : 'remaining'}</span>
-        <span>{warningThreshold} {language === 'fr' ? 'seuil' : 'threshold'}</span>
+        <span>
+          {credits} {language === "fr" ? "restants" : "remaining"}
+        </span>
+        <span>
+          {warningThreshold} {language === "fr" ? "seuil" : "threshold"}
+        </span>
       </div>
     </div>
   );

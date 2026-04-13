@@ -3,14 +3,26 @@
  * Scroll CSS lent (40s/cycle). Pause au hover. Termes seulement, pas de définitions.
  */
 
-import React, { useMemo } from 'react';
-import { useLoadingWord } from '../contexts/LoadingWordContext';
+import React, { useMemo } from "react";
+import { useLoadingWord } from "../contexts/LoadingWordContext";
 
 const CAT_ICONS: Record<string, string> = {
-  cognitive_bias: '🧠', science: '🔬', philosophy: '🎭', culture: '🌍',
-  misc: '✨', history: '📜', technology: '⚡', person: '👤',
-  company: '🏢', concept: '💡', event: '📅', place: '📍',
-  psychology: '🧩', economics: '💰', art: '🎨', nature: '🌿',
+  cognitive_bias: "🧠",
+  science: "🔬",
+  philosophy: "🎭",
+  culture: "🌍",
+  misc: "✨",
+  history: "📜",
+  technology: "⚡",
+  person: "👤",
+  company: "🏢",
+  concept: "💡",
+  event: "📅",
+  place: "📍",
+  psychology: "🧩",
+  economics: "💰",
+  art: "🎨",
+  nature: "🌿",
 };
 
 export const FooterTicker: React.FC = () => {
@@ -40,16 +52,18 @@ export const FooterTicker: React.FC = () => {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-[10px] text-text-muted/40 hover:text-text-muted/70 transition-colors cursor-pointer mx-3 flex-shrink-0"
               >
-                <span>{CAT_ICONS[term.category] || '📚'}</span>
+                <span>{CAT_ICONS[term.category] || "📚"}</span>
                 <span>{term.term}</span>
               </a>
             ) : (
               <span className="inline-flex items-center gap-1 text-[10px] text-text-muted/40 mx-3 flex-shrink-0">
-                <span>{CAT_ICONS[term.category] || '📚'}</span>
+                <span>{CAT_ICONS[term.category] || "📚"}</span>
                 <span>{term.term}</span>
               </span>
             )}
-            <span className="text-accent-primary/20 text-[8px] mx-1 flex-shrink-0">·</span>
+            <span className="text-accent-primary/20 text-[8px] mx-1 flex-shrink-0">
+              ·
+            </span>
           </React.Fragment>
         ))}
       </div>

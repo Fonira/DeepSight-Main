@@ -14,17 +14,38 @@
  * ==============================================================================
  */
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useMemo,
+} from "react";
 import {
-  X, Send, Globe, Trash2,
-  Minimize2, Maximize2, Bot, ExternalLink,
-  Copy, Check, Shield, BookOpen, Sparkles, User, MessageCircle,
-  Move
-} from 'lucide-react';
-import { DeepSightSpinnerMicro } from './ui';
-import { parseAskQuestions, ClickableQuestionsBlock } from './ClickableQuestions';
-import { EnrichedMarkdown } from './EnrichedMarkdown';
-import { AudioPlayerButton } from './AudioPlayerButton';
+  X,
+  Send,
+  Globe,
+  Trash2,
+  Minimize2,
+  Maximize2,
+  Bot,
+  ExternalLink,
+  Copy,
+  Check,
+  Shield,
+  BookOpen,
+  Sparkles,
+  User,
+  MessageCircle,
+  Move,
+} from "lucide-react";
+import { DeepSightSpinnerMicro } from "./ui";
+import {
+  parseAskQuestions,
+  ClickableQuestionsBlock,
+} from "./ClickableQuestions";
+import { EnrichedMarkdown } from "./EnrichedMarkdown";
+import { AudioPlayerButton } from "./AudioPlayerButton";
 
 // =============================================================================
 // TYPES
@@ -39,7 +60,7 @@ interface ChatSource {
 
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   sources?: ChatSource[];
   web_search_used?: boolean;
@@ -55,8 +76,14 @@ interface ChatQuota {
   daily_limit: number;
 }
 
-interface Position { x: number; y: number; }
-interface Size { width: number; height: number; }
+interface Position {
+  x: number;
+  y: number;
+}
+interface Size {
+  width: number;
+  height: number;
+}
 
 interface ChatPopupProps {
   isOpen: boolean;
@@ -74,7 +101,7 @@ interface ChatPopupProps {
   onClearHistory?: () => void;
   onToggleWebSearch?: (enabled: boolean) => void;
   onTimecodeClick?: (seconds: number) => void;
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
   storageKey?: string;
 }
 
@@ -82,37 +109,38 @@ interface ChatPopupProps {
 // CONSTANTS
 // =============================================================================
 
-const TEAL = '#00BCD4';
-const TEAL_DIM = 'rgba(0, 188, 212, 0.15)';
-const TEAL_BORDER = 'rgba(0, 188, 212, 0.3)';
-const TEAL_GLOW = 'rgba(0, 188, 212, 0.25)';
-const AI_BG = '#1E293B';
-const AI_BORDER = 'rgba(255, 255, 255, 0.08)';
-const PANEL_BG = '#0B1120';
-const HEADER_BG = '#0F172A';
-const INPUT_BG = '#111827';
+const TEAL = "#00BCD4";
+const TEAL_DIM = "rgba(0, 188, 212, 0.15)";
+const TEAL_BORDER = "rgba(0, 188, 212, 0.3)";
+const TEAL_GLOW = "rgba(0, 188, 212, 0.25)";
+const AI_BG = "#1E293B";
+const AI_BORDER = "rgba(255, 255, 255, 0.08)";
+const PANEL_BG = "#0B1120";
+const HEADER_BG = "#0F172A";
+const INPUT_BG = "#111827";
 const MOBILE_BREAKPOINT = 768;
 
 // =============================================================================
 // RELATIVE TIME FORMATTER
 // =============================================================================
 
-function formatRelativeTime(date: Date | undefined, lang: 'fr' | 'en'): string {
-  if (!date) return '';
+function formatRelativeTime(date: Date | undefined, lang: "fr" | "en"): string {
+  if (!date) return "";
   const now = new Date();
   const diffMs = now.getTime() - new Date(date).getTime();
   const diffMin = Math.floor(diffMs / 60000);
   const diffHr = Math.floor(diffMin / 60);
 
-  if (diffMin < 1) return lang === 'fr' ? "a l'instant" : 'just now';
-  if (diffMin < 60) return lang === 'fr' ? `il y a ${diffMin} min` : `${diffMin}m ago`;
+  if (diffMin < 1) return lang === "fr" ? "a l'instant" : "just now";
+  if (diffMin < 60)
+    return lang === "fr" ? `il y a ${diffMin} min` : `${diffMin}m ago`;
   if (diffHr < 24) {
-    const h = new Date(date).getHours().toString().padStart(2, '0');
-    const m = new Date(date).getMinutes().toString().padStart(2, '0');
+    const h = new Date(date).getHours().toString().padStart(2, "0");
+    const m = new Date(date).getMinutes().toString().padStart(2, "0");
     return `${h}:${m}`;
   }
-  const h = new Date(date).getHours().toString().padStart(2, '0');
-  const m = new Date(date).getMinutes().toString().padStart(2, '0');
+  const h = new Date(date).getHours().toString().padStart(2, "0");
+  const m = new Date(date).getMinutes().toString().padStart(2, "0");
   const d = new Date(date).getDate();
   const mo = new Date(date).getMonth() + 1;
   return `${d}/${mo} ${h}:${m}`;
@@ -162,7 +190,7 @@ const SuggestionChips: React.FC<{
   questions: string[];
   onQuestionClick: (q: string) => void;
   disabled?: boolean;
-  language: 'fr' | 'en';
+  language: "fr" | "en";
 }> = ({ questions, onQuestionClick, disabled, language }) => {
   if (questions.length === 0) return null;
   return (
@@ -177,11 +205,11 @@ const SuggestionChips: React.FC<{
             background: TEAL_DIM,
             border: `1px solid ${TEAL_BORDER}`,
             color: TEAL,
-            cursor: disabled ? 'not-allowed' : 'pointer',
+            cursor: disabled ? "not-allowed" : "pointer",
           }}
           onMouseEnter={(e) => {
             if (!disabled) {
-              e.currentTarget.style.background = 'rgba(0, 188, 212, 0.25)';
+              e.currentTarget.style.background = "rgba(0, 188, 212, 0.25)";
               e.currentTarget.style.borderColor = TEAL;
             }
           }}
@@ -203,7 +231,7 @@ const SuggestionChips: React.FC<{
 
 const ChatBubble: React.FC<{
   message: ChatMessage;
-  language: 'fr' | 'en';
+  language: "fr" | "en";
   onCopy: (text: string, id: string) => void;
   copiedId: string | null;
   onQuestionClick?: (question: string) => void;
@@ -212,18 +240,28 @@ const ChatBubble: React.FC<{
   isLastAssistant?: boolean;
   suggestedQuestions?: string[];
 }> = ({
-  message, language, onCopy, copiedId,
-  onQuestionClick, onTimecodeClick, isLoading,
-  isLastAssistant, suggestedQuestions,
+  message,
+  language,
+  onCopy,
+  copiedId,
+  onQuestionClick,
+  onTimecodeClick,
+  isLoading,
+  isLastAssistant,
+  suggestedQuestions,
 }) => {
-  const isUser = message.role === 'user';
-  const t = language === 'fr'
-    ? { copy: 'Copier', copied: 'Copie !', sources: 'Sources' }
-    : { copy: 'Copy', copied: 'Copied!', sources: 'Sources' };
+  const isUser = message.role === "user";
+  const t =
+    language === "fr"
+      ? { copy: "Copier", copied: "Copie !", sources: "Sources" }
+      : { copy: "Copy", copied: "Copied!", sources: "Sources" };
 
   // Parse clickable questions from AI content
   const { beforeQuestions, questions } = useMemo(
-    () => (isUser ? { beforeQuestions: message.content, questions: [] } : parseAskQuestions(message.content)),
+    () =>
+      isUser
+        ? { beforeQuestions: message.content, questions: [] }
+        : parseAskQuestions(message.content),
     [message.content, isUser],
   );
 
@@ -241,36 +279,40 @@ const ChatBubble: React.FC<{
 
   return (
     <div
-      className={`flex items-end gap-2 max-w-full ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
-      style={{ animation: 'chatBubbleIn 0.3s ease-out' }}
+      className={`flex items-end gap-2 max-w-full ${isUser ? "flex-row-reverse" : "flex-row"}`}
+      style={{ animation: "chatBubbleIn 0.3s ease-out" }}
     >
       {/* Avatar */}
       <div
         className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
         style={{
-          background: isUser ? 'rgba(0, 188, 212, 0.2)' : TEAL_DIM,
-          border: `1px solid ${isUser ? 'rgba(0, 188, 212, 0.4)' : TEAL_BORDER}`,
+          background: isUser ? "rgba(0, 188, 212, 0.2)" : TEAL_DIM,
+          border: `1px solid ${isUser ? "rgba(0, 188, 212, 0.4)" : TEAL_BORDER}`,
         }}
       >
-        {isUser
-          ? <User className="w-3.5 h-3.5" style={{ color: TEAL }} />
-          : <Bot className="w-3.5 h-3.5" style={{ color: TEAL }} />
-        }
+        {isUser ? (
+          <User className="w-3.5 h-3.5" style={{ color: TEAL }} />
+        ) : (
+          <Bot className="w-3.5 h-3.5" style={{ color: TEAL }} />
+        )}
       </div>
 
       {/* Bubble + meta */}
-      <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`} style={{ maxWidth: '80%' }}>
+      <div
+        className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}
+        style={{ maxWidth: "80%" }}
+      >
         {/* Main bubble */}
         <div
           className="relative px-3.5 py-2.5 text-sm leading-relaxed"
           style={{
             background: isUser
-              ? 'linear-gradient(135deg, rgba(0, 188, 212, 0.22) 0%, rgba(0, 150, 170, 0.18) 100%)'
+              ? "linear-gradient(135deg, rgba(0, 188, 212, 0.22) 0%, rgba(0, 150, 170, 0.18) 100%)"
               : AI_BG,
-            border: `1px solid ${isUser ? 'rgba(0, 188, 212, 0.35)' : AI_BORDER}`,
-            borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-            color: isUser ? '#e0f7fa' : '#e2e8f0',
-            wordBreak: 'break-word',
+            border: `1px solid ${isUser ? "rgba(0, 188, 212, 0.35)" : AI_BORDER}`,
+            borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+            color: isUser ? "#e0f7fa" : "#e2e8f0",
+            wordBreak: "break-word",
           }}
         >
           {isUser ? (
@@ -283,16 +325,24 @@ const ChatBubble: React.FC<{
                   {message.fact_checked && (
                     <span
                       className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium"
-                      style={{ background: 'rgba(16,185,129,0.2)', color: '#6ee7b7', border: '1px solid rgba(16,185,129,0.3)' }}
+                      style={{
+                        background: "rgba(16,185,129,0.2)",
+                        color: "#6ee7b7",
+                        border: "1px solid rgba(16,185,129,0.3)",
+                      }}
                     >
                       <Shield className="w-2.5 h-2.5" />
-                      {language === 'fr' ? 'Verifie' : 'Verified'}
+                      {language === "fr" ? "Verifie" : "Verified"}
                     </span>
                   )}
                   {message.web_search_used && (
                     <span
                       className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium"
-                      style={{ background: 'rgba(245,158,11,0.2)', color: '#fbbf24', border: '1px solid rgba(245,158,11,0.3)' }}
+                      style={{
+                        background: "rgba(245,158,11,0.2)",
+                        color: "#fbbf24",
+                        border: "1px solid rgba(245,158,11,0.3)",
+                      }}
                     >
                       <Globe className="w-2.5 h-2.5" />
                       Web
@@ -303,7 +353,10 @@ const ChatBubble: React.FC<{
 
               {/* Markdown content */}
               <div className="chat-bubble-markdown">
-                <EnrichedMarkdown language={language} onTimecodeClick={onTimecodeClick}>
+                <EnrichedMarkdown
+                  language={language}
+                  onTimecodeClick={onTimecodeClick}
+                >
                   {beforeQuestions}
                 </EnrichedMarkdown>
               </div>
@@ -315,10 +368,18 @@ const ChatBubble: React.FC<{
 
               {/* Sources */}
               {message.sources && message.sources.length > 0 && (
-                <div className="mt-2 pt-2" style={{ borderTop: `1px solid ${AI_BORDER}` }}>
+                <div
+                  className="mt-2 pt-2"
+                  style={{ borderTop: `1px solid ${AI_BORDER}` }}
+                >
                   <div className="flex items-center gap-1 mb-1">
                     <BookOpen className="w-3 h-3" style={{ color: TEAL }} />
-                    <span className="text-[10px] font-medium" style={{ color: TEAL }}>{t.sources}</span>
+                    <span
+                      className="text-[10px] font-medium"
+                      style={{ color: TEAL }}
+                    >
+                      {t.sources}
+                    </span>
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {message.sources.slice(0, 3).map((src, i) => (
@@ -335,7 +396,9 @@ const ChatBubble: React.FC<{
                         }}
                       >
                         <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
-                        <span className="truncate max-w-[140px]">{src.title || src.domain || 'Source'}</span>
+                        <span className="truncate max-w-[140px]">
+                          {src.title || src.domain || "Source"}
+                        </span>
                       </a>
                     ))}
                   </div>
@@ -347,14 +410,29 @@ const ChatBubble: React.FC<{
                 <button
                   onClick={() => onCopy(message.content, message.id)}
                   className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] transition-colors duration-150"
-                  style={{ color: copiedId === message.id ? '#6ee7b7' : '#6b7280' }}
-                  onMouseEnter={(e) => { if (copiedId !== message.id) e.currentTarget.style.color = TEAL; }}
-                  onMouseLeave={(e) => { if (copiedId !== message.id) e.currentTarget.style.color = '#6b7280'; }}
+                  style={{
+                    color: copiedId === message.id ? "#6ee7b7" : "#6b7280",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (copiedId !== message.id)
+                      e.currentTarget.style.color = TEAL;
+                  }}
+                  onMouseLeave={(e) => {
+                    if (copiedId !== message.id)
+                      e.currentTarget.style.color = "#6b7280";
+                  }}
                 >
-                  {copiedId === message.id
-                    ? <><Check className="w-3 h-3" />{t.copied}</>
-                    : <><Copy className="w-3 h-3" />{t.copy}</>
-                  }
+                  {copiedId === message.id ? (
+                    <>
+                      <Check className="w-3 h-3" />
+                      {t.copied}
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3" />
+                      {t.copy}
+                    </>
+                  )}
                 </button>
               </div>
             </>
@@ -362,10 +440,7 @@ const ChatBubble: React.FC<{
         </div>
 
         {/* Timestamp */}
-        <span
-          className="text-[10px] mt-0.5 px-1"
-          style={{ color: '#64748b' }}
-        >
+        <span className="text-[10px] mt-0.5 px-1" style={{ color: "#64748b" }}>
           {formatRelativeTime(message.timestamp || new Date(), language)}
         </span>
 
@@ -375,7 +450,7 @@ const ChatBubble: React.FC<{
             <div className="flex items-center gap-1 w-full mb-1">
               <Sparkles className="w-3 h-3" style={{ color: TEAL }} />
               <span className="text-[10px] font-medium" style={{ color: TEAL }}>
-                {language === 'fr' ? 'Pour aller plus loin' : 'Go deeper'}
+                {language === "fr" ? "Pour aller plus loin" : "Go deeper"}
               </span>
             </div>
             {allChips.map((q, i) => (
@@ -387,12 +462,13 @@ const ChatBubble: React.FC<{
                 style={{
                   background: TEAL_DIM,
                   border: `1px solid ${TEAL_BORDER}`,
-                  color: '#b2ebf2',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  color: "#b2ebf2",
+                  cursor: isLoading ? "not-allowed" : "pointer",
                 }}
                 onMouseEnter={(e) => {
                   if (!isLoading) {
-                    e.currentTarget.style.background = 'rgba(0, 188, 212, 0.28)';
+                    e.currentTarget.style.background =
+                      "rgba(0, 188, 212, 0.28)";
                     e.currentTarget.style.borderColor = TEAL;
                   }
                 }}
@@ -417,35 +493,44 @@ const ChatBubble: React.FC<{
 
 const useDraggable = (
   initialPosition: Position,
-  onPositionChange: (pos: Position) => void
+  onPositionChange: (pos: Position) => void,
 ) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [position, setPosition] = useState(initialPosition);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button, input, a')) return;
-    setIsDragging(true);
-    setDragOffset({ x: e.clientX - position.x, y: e.clientY - position.y });
-    e.preventDefault();
-  }, [position]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if ((e.target as HTMLElement).closest("button, input, a")) return;
+      setIsDragging(true);
+      setDragOffset({ x: e.clientX - position.x, y: e.clientY - position.y });
+      e.preventDefault();
+    },
+    [position],
+  );
 
   useEffect(() => {
     if (!isDragging) return;
     const handleMouseMove = (e: MouseEvent) => {
-      const newX = Math.max(0, Math.min(window.innerWidth - 100, e.clientX - dragOffset.x));
-      const newY = Math.max(0, Math.min(window.innerHeight - 100, e.clientY - dragOffset.y));
+      const newX = Math.max(
+        0,
+        Math.min(window.innerWidth - 100, e.clientX - dragOffset.x),
+      );
+      const newY = Math.max(
+        0,
+        Math.min(window.innerHeight - 100, e.clientY - dragOffset.y),
+      );
       setPosition({ x: newX, y: newY });
     };
     const handleMouseUp = () => {
       setIsDragging(false);
       onPositionChange(position);
     };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isDragging, dragOffset, onPositionChange, position]);
 
@@ -457,21 +542,26 @@ const useDraggable = (
 // =============================================================================
 
 const useResizable = (
-  initialSize: Size, minSize: Size, maxSize: Size,
-  onSizeChange: (size: Size) => void
+  initialSize: Size,
+  minSize: Size,
+  maxSize: Size,
+  onSizeChange: (size: Size) => void,
 ) => {
   const [size, setSize] = useState(initialSize);
   const [isResizing, setIsResizing] = useState<string | null>(null);
   const startPos = useRef({ x: 0, y: 0 });
   const startSize = useRef({ width: 0, height: 0 });
 
-  const handleResizeStart = useCallback((direction: string, e: React.MouseEvent) => {
-    setIsResizing(direction);
-    startPos.current = { x: e.clientX, y: e.clientY };
-    startSize.current = { ...size };
-    e.preventDefault();
-    e.stopPropagation();
-  }, [size]);
+  const handleResizeStart = useCallback(
+    (direction: string, e: React.MouseEvent) => {
+      setIsResizing(direction);
+      startPos.current = { x: e.clientX, y: e.clientY };
+      startSize.current = { ...size };
+      e.preventDefault();
+      e.stopPropagation();
+    },
+    [size],
+  );
 
   useEffect(() => {
     if (!isResizing) return;
@@ -480,10 +570,10 @@ const useResizable = (
       const deltaY = e.clientY - startPos.current.y;
       let newWidth = startSize.current.width;
       let newHeight = startSize.current.height;
-      if (isResizing.includes('e')) newWidth += deltaX;
-      if (isResizing.includes('w')) newWidth -= deltaX;
-      if (isResizing.includes('s')) newHeight += deltaY;
-      if (isResizing.includes('n')) newHeight -= deltaY;
+      if (isResizing.includes("e")) newWidth += deltaX;
+      if (isResizing.includes("w")) newWidth -= deltaX;
+      if (isResizing.includes("s")) newHeight += deltaY;
+      if (isResizing.includes("n")) newHeight -= deltaY;
       newWidth = Math.max(minSize.width, Math.min(maxSize.width, newWidth));
       newHeight = Math.max(minSize.height, Math.min(maxSize.height, newHeight));
       setSize({ width: newWidth, height: newHeight });
@@ -492,11 +582,11 @@ const useResizable = (
       setIsResizing(null);
       onSizeChange(size);
     };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
     };
   }, [isResizing, minSize, maxSize, onSizeChange, size]);
 
@@ -508,11 +598,15 @@ const useResizable = (
 // =============================================================================
 
 function useIsMobile() {
-  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < MOBILE_BREAKPOINT : false);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined"
+      ? window.innerWidth < MOBILE_BREAKPOINT
+      : false,
+  );
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-    window.addEventListener('resize', handler);
-    return () => window.removeEventListener('resize', handler);
+    window.addEventListener("resize", handler);
+    return () => window.removeEventListener("resize", handler);
   }, []);
   return isMobile;
 }
@@ -521,11 +615,11 @@ function useIsMobile() {
 // CSS INJECTION (animations for typing dots + bubbles + slide-in)
 // =============================================================================
 
-const CHAT_STYLES_ID = 'deepsight-chat-styles';
+const CHAT_STYLES_ID = "deepsight-chat-styles";
 
 function injectChatStyles() {
   if (document.getElementById(CHAT_STYLES_ID)) return;
-  const style = document.createElement('style');
+  const style = document.createElement("style");
   style.id = CHAT_STYLES_ID;
   style.textContent = `
     @keyframes chatTypingPulse {
@@ -607,12 +701,24 @@ function injectChatStyles() {
 // =============================================================================
 
 export const ChatPopup: React.FC<ChatPopupProps> = ({
-  isOpen, onToggle, videoTitle, summaryId, messages, quota,
-  isLoading = false, webSearchEnabled = false, isProUser = false,
-  suggestedQuestions = [], onSendMessage, onClearHistory, onToggleWebSearch,
-  onTimecodeClick, language = 'fr', storageKey = 'chat-popup',
+  isOpen,
+  onToggle,
+  videoTitle,
+  summaryId,
+  messages,
+  quota,
+  isLoading = false,
+  webSearchEnabled = false,
+  isProUser = false,
+  suggestedQuestions = [],
+  onSendMessage,
+  onClearHistory,
+  onToggleWebSearch,
+  onTimecodeClick,
+  language = "fr",
+  storageKey = "chat-popup",
 }) => {
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isMinimized, setIsMinimized] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -623,7 +729,9 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
   const isMobile = useIsMobile();
 
   // Inject CSS animations once
-  useEffect(() => { injectChatStyles(); }, []);
+  useEffect(() => {
+    injectChatStyles();
+  }, []);
 
   // Slide-in entry animation
   useEffect(() => {
@@ -640,24 +748,47 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
     try {
       const stored = localStorage.getItem(`${storageKey}-layout`);
       if (stored) return JSON.parse(stored);
-    } catch { /* invalid stored layout JSON */ }
+    } catch {
+      /* invalid stored layout JSON */
+    }
     return null;
   };
 
-  const defaultPosition = { x: (typeof window !== 'undefined' ? window.innerWidth : 1280) - 460, y: (typeof window !== 'undefined' ? window.innerHeight : 900) - 720 };
+  const defaultPosition = {
+    x: (typeof window !== "undefined" ? window.innerWidth : 1280) - 460,
+    y: (typeof window !== "undefined" ? window.innerHeight : 900) - 720,
+  };
   const defaultSize = { width: 420, height: 680 };
   const storedLayout = getStoredLayout();
 
   const { position, setPosition, isDragging, handleMouseDown } = useDraggable(
     storedLayout?.position || defaultPosition,
-    (pos) => { try { localStorage.setItem(`${storageKey}-layout`, JSON.stringify({ position: pos, size })); } catch { /* Safari private */ } }
+    (pos) => {
+      try {
+        localStorage.setItem(
+          `${storageKey}-layout`,
+          JSON.stringify({ position: pos, size }),
+        );
+      } catch {
+        /* Safari private */
+      }
+    },
   );
 
   const { size, setSize, isResizing, handleResizeStart } = useResizable(
     storedLayout?.size || defaultSize,
     { width: 320, height: 400 },
     { width: 800, height: 900 },
-    (newSize) => { try { localStorage.setItem(`${storageKey}-layout`, JSON.stringify({ position, size: newSize })); } catch { /* Safari private */ } }
+    (newSize) => {
+      try {
+        localStorage.setItem(
+          `${storageKey}-layout`,
+          JSON.stringify({ position, size: newSize }),
+        );
+      } catch {
+        /* Safari private */
+      }
+    },
   );
 
   // Auto-scroll to bottom
@@ -665,21 +796,22 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTo({
         top: messagesContainerRef.current.scrollHeight,
-        behavior: 'smooth',
+        behavior: "smooth",
       });
     }
   }, [messages, isLoading]);
 
   // Focus input when opened
   useEffect(() => {
-    if (isOpen && !isMinimized) setTimeout(() => inputRef.current?.focus(), 200);
+    if (isOpen && !isMinimized)
+      setTimeout(() => inputRef.current?.focus(), 200);
   }, [isOpen, isMinimized]);
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!input.trim() || isLoading || !summaryId) return;
     onSendMessage(input.trim());
-    setInput('');
+    setInput("");
   };
 
   const copyToClipboard = async (text: string, id: string) => {
@@ -696,86 +828,130 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
       setPosition(storedLayout?.position || defaultPosition);
     } else {
       setIsMaximized(true);
-      setSize({ width: window.innerWidth - 40, height: window.innerHeight - 40 });
+      setSize({
+        width: window.innerWidth - 40,
+        height: window.innerHeight - 40,
+      });
       setPosition({ x: 20, y: 20 });
     }
   };
 
-  const t = language === 'fr' ? {
-    title: 'DeepSight AI',
-    placeholder: 'Message...',
-    noVideo: 'Analysez une video pour commencer',
-    askQuestion: 'Posez votre question...',
-    clear: 'Effacer',
-    thinking: 'Reflexion...',
-    quota: 'questions',
-  } : {
-    title: 'DeepSight AI',
-    placeholder: 'Message...',
-    noVideo: 'Analyze a video to start',
-    askQuestion: 'Ask your question...',
-    clear: 'Clear',
-    thinking: 'Thinking...',
-    quota: 'questions',
-  };
+  const t =
+    language === "fr"
+      ? {
+          title: "DeepSight AI",
+          placeholder: "Message...",
+          noVideo: "Analysez une video pour commencer",
+          askQuestion: "Posez votre question...",
+          clear: "Effacer",
+          thinking: "Reflexion...",
+          quota: "questions",
+        }
+      : {
+          title: "DeepSight AI",
+          placeholder: "Message...",
+          noVideo: "Analyze a video to start",
+          askQuestion: "Ask your question...",
+          clear: "Clear",
+          thinking: "Thinking...",
+          quota: "questions",
+        };
 
   if (!isOpen) return null;
 
   // Find last assistant message index
   const lastAssistantIndex = (() => {
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === 'assistant') return i;
+      if (messages[i].role === "assistant") return i;
     }
     return -1;
   })();
 
   // Mobile: fullscreen overlay
-  const windowStyle: React.CSSProperties = isMobile ? {
-    position: 'fixed',
-    inset: 0,
-    zIndex: 9999,
-    animation: 'chatSlideInMobile 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-  } : isMaximized ? {
-    position: 'fixed',
-    top: 'max(20px, env(safe-area-inset-top, 20px))',
-    left: 'max(20px, env(safe-area-inset-left, 20px))',
-    width: 'calc(100vw - max(40px, env(safe-area-inset-left, 20px) + env(safe-area-inset-right, 20px)))',
-    height: 'calc(100vh - max(40px, env(safe-area-inset-top, 20px) + env(safe-area-inset-bottom, 20px)))',
-    zIndex: 9999,
-    animation: hasAnimated ? undefined : 'chatSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-  } : {
-    position: 'fixed',
-    left: `${position.x}px`,
-    top: `${position.y}px`,
-    width: isMinimized ? '280px' : `${size.width}px`,
-    height: isMinimized ? '48px' : `${size.height}px`,
-    zIndex: 9999,
-    animation: hasAnimated ? undefined : 'chatSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)',
-  };
+  const windowStyle: React.CSSProperties = isMobile
+    ? {
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        animation: "chatSlideInMobile 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+      }
+    : isMaximized
+      ? {
+          position: "fixed",
+          top: "max(20px, env(safe-area-inset-top, 20px))",
+          left: "max(20px, env(safe-area-inset-left, 20px))",
+          width:
+            "calc(100vw - max(40px, env(safe-area-inset-left, 20px) + env(safe-area-inset-right, 20px)))",
+          height:
+            "calc(100vh - max(40px, env(safe-area-inset-top, 20px) + env(safe-area-inset-bottom, 20px)))",
+          zIndex: 9999,
+          animation: hasAnimated
+            ? undefined
+            : "chatSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+        }
+      : {
+          position: "fixed",
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+          width: isMinimized ? "280px" : `${size.width}px`,
+          height: isMinimized ? "48px" : `${size.height}px`,
+          zIndex: 9999,
+          animation: hasAnimated
+            ? undefined
+            : "chatSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1)",
+        };
 
   return (
     <div style={windowStyle}>
       <div
         className="w-full h-full overflow-hidden flex flex-col relative"
         style={{
-          borderRadius: isMobile ? 0 : isMinimized ? '12px' : '16px',
+          borderRadius: isMobile ? 0 : isMinimized ? "12px" : "16px",
           background: PANEL_BG,
-          border: isMobile ? 'none' : `1px solid ${isDragging || isResizing ? TEAL : 'rgba(255, 255, 255, 0.08)'}`,
-          boxShadow: isMobile ? 'none' : `0 24px 80px rgba(0, 0, 0, 0.8), 0 0 60px ${TEAL_GLOW}`,
-          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+          border: isMobile
+            ? "none"
+            : `1px solid ${isDragging || isResizing ? TEAL : "rgba(255, 255, 255, 0.08)"}`,
+          boxShadow: isMobile
+            ? "none"
+            : `0 24px 80px rgba(0, 0, 0, 0.8), 0 0 60px ${TEAL_GLOW}`,
+          transition: "border-color 0.2s ease, box-shadow 0.2s ease",
         }}
       >
         {/* RESIZE HANDLES (desktop only, not minimized/maximized) */}
         {!isMobile && !isMinimized && !isMaximized && (
           <>
-            <div onMouseDown={(e) => handleResizeStart('nw', e)} className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize z-50" />
-            <div onMouseDown={(e) => handleResizeStart('ne', e)} className="absolute top-0 right-0 w-4 h-4 cursor-ne-resize z-50" />
-            <div onMouseDown={(e) => handleResizeStart('sw', e)} className="absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize z-50" />
-            <div onMouseDown={(e) => handleResizeStart('se', e)} className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-50" />
-            <div onMouseDown={(e) => handleResizeStart('n', e)} className="absolute top-0 left-4 right-4 h-2 cursor-n-resize z-50" />
-            <div onMouseDown={(e) => handleResizeStart('s', e)} className="absolute bottom-0 left-4 right-4 h-2 cursor-s-resize z-50" />
-            <div onMouseDown={(e) => handleResizeStart('w', e)} className="absolute left-0 top-4 bottom-4 w-2 cursor-w-resize z-50" />
-            <div onMouseDown={(e) => handleResizeStart('e', e)} className="absolute right-0 top-4 bottom-4 w-2 cursor-e-resize z-50" />
+            <div
+              onMouseDown={(e) => handleResizeStart("nw", e)}
+              className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize z-50"
+            />
+            <div
+              onMouseDown={(e) => handleResizeStart("ne", e)}
+              className="absolute top-0 right-0 w-4 h-4 cursor-ne-resize z-50"
+            />
+            <div
+              onMouseDown={(e) => handleResizeStart("sw", e)}
+              className="absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize z-50"
+            />
+            <div
+              onMouseDown={(e) => handleResizeStart("se", e)}
+              className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-50"
+            />
+            <div
+              onMouseDown={(e) => handleResizeStart("n", e)}
+              className="absolute top-0 left-4 right-4 h-2 cursor-n-resize z-50"
+            />
+            <div
+              onMouseDown={(e) => handleResizeStart("s", e)}
+              className="absolute bottom-0 left-4 right-4 h-2 cursor-s-resize z-50"
+            />
+            <div
+              onMouseDown={(e) => handleResizeStart("w", e)}
+              className="absolute left-0 top-4 bottom-4 w-2 cursor-w-resize z-50"
+            />
+            <div
+              onMouseDown={(e) => handleResizeStart("e", e)}
+              className="absolute right-0 top-4 bottom-4 w-2 cursor-e-resize z-50"
+            />
           </>
         )}
 
@@ -787,21 +963,29 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
           style={{
             background: HEADER_BG,
             borderBottom: `1px solid rgba(255, 255, 255, 0.06)`,
-            cursor: isMobile ? 'default' : isDragging ? 'grabbing' : 'grab',
+            cursor: isMobile ? "default" : isDragging ? "grabbing" : "grab",
           }}
         >
           <div className="flex items-center gap-2.5">
             {!isMobile && <Move className="w-3.5 h-3.5 text-gray-600" />}
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ background: TEAL_DIM, border: `1px solid ${TEAL_BORDER}` }}
+              style={{
+                background: TEAL_DIM,
+                border: `1px solid ${TEAL_BORDER}`,
+              }}
             >
               <MessageCircle className="w-4 h-4" style={{ color: TEAL }} />
             </div>
             <div>
-              <h3 className="text-sm font-semibold" style={{ color: '#f1f5f9' }}>{t.title}</h3>
+              <h3
+                className="text-sm font-semibold"
+                style={{ color: "#f1f5f9" }}
+              >
+                {t.title}
+              </h3>
               {!isMinimized && quota && (
-                <p className="text-[10px]" style={{ color: '#64748b' }}>
+                <p className="text-[10px]" style={{ color: "#64748b" }}>
                   {quota.daily_used}/{quota.daily_limit} {t.quota}
                 </p>
               )}
@@ -813,9 +997,15 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
               <button
                 onClick={onClearHistory}
                 className="p-1.5 rounded-lg transition-colors duration-150"
-                style={{ color: '#6b7280' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+                style={{ color: "#6b7280" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "#ef4444";
+                  e.currentTarget.style.background = "rgba(239,68,68,0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "#6b7280";
+                  e.currentTarget.style.background = "transparent";
+                }}
                 title={t.clear}
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -825,19 +1015,35 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
               <button
                 onClick={() => setIsMinimized(!isMinimized)}
                 className="p-1.5 rounded-lg transition-colors duration-150"
-                style={{ color: '#6b7280' }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = '#f1f5f9'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+                style={{ color: "#6b7280" }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "#f1f5f9";
+                  e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "#6b7280";
+                  e.currentTarget.style.background = "transparent";
+                }}
               >
-                {isMinimized ? <Maximize2 className="w-3.5 h-3.5" /> : <Minimize2 className="w-3.5 h-3.5" />}
+                {isMinimized ? (
+                  <Maximize2 className="w-3.5 h-3.5" />
+                ) : (
+                  <Minimize2 className="w-3.5 h-3.5" />
+                )}
               </button>
             )}
             <button
               onClick={onToggle}
               className="p-1.5 rounded-lg transition-colors duration-150"
-              style={{ color: '#6b7280' }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = '#f1f5f9'; e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+              style={{ color: "#6b7280" }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "#f1f5f9";
+                e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "#6b7280";
+                e.currentTarget.style.background = "transparent";
+              }}
             >
               <X className="w-4 h-4" />
             </button>
@@ -852,7 +1058,7 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
               <div
                 className="px-4 py-1.5 text-[11px] truncate"
                 style={{
-                  background: 'rgba(0, 188, 212, 0.06)',
+                  background: "rgba(0, 188, 212, 0.06)",
                   borderBottom: `1px solid rgba(0, 188, 212, 0.1)`,
                   color: TEAL,
                 }}
@@ -873,11 +1079,19 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
                   <div className="text-center p-6">
                     <div
                       className="w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center"
-                      style={{ background: TEAL_DIM, border: `1px solid ${TEAL_BORDER}` }}
+                      style={{
+                        background: TEAL_DIM,
+                        border: `1px solid ${TEAL_BORDER}`,
+                      }}
                     >
-                      <MessageCircle className="w-8 h-8" style={{ color: TEAL, opacity: 0.6 }} />
+                      <MessageCircle
+                        className="w-8 h-8"
+                        style={{ color: TEAL, opacity: 0.6 }}
+                      />
                     </div>
-                    <p className="text-sm" style={{ color: '#64748b' }}>{t.noVideo}</p>
+                    <p className="text-sm" style={{ color: "#64748b" }}>
+                      {t.noVideo}
+                    </p>
                   </div>
                 </div>
               ) : messages.length === 0 ? (
@@ -885,41 +1099,55 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
                 <div className="h-full flex flex-col items-center justify-center py-6">
                   <div
                     className="w-14 h-14 mb-4 rounded-2xl flex items-center justify-center"
-                    style={{ background: TEAL_DIM, border: `1px solid ${TEAL_BORDER}` }}
+                    style={{
+                      background: TEAL_DIM,
+                      border: `1px solid ${TEAL_BORDER}`,
+                    }}
                   >
-                    <Bot className="w-7 h-7" style={{ color: TEAL, opacity: 0.7 }} />
+                    <Bot
+                      className="w-7 h-7"
+                      style={{ color: TEAL, opacity: 0.7 }}
+                    />
                   </div>
-                  <p className="text-sm mb-1" style={{ color: '#e2e8f0' }}>
+                  <p className="text-sm mb-1" style={{ color: "#e2e8f0" }}>
                     {t.askQuestion}
                   </p>
-                  <p className="text-xs mb-6" style={{ color: '#64748b' }}>
-                    {language === 'fr' ? 'Je suis la pour vous aider' : "I'm here to help"}
+                  <p className="text-xs mb-6" style={{ color: "#64748b" }}>
+                    {language === "fr"
+                      ? "Je suis la pour vous aider"
+                      : "I'm here to help"}
                   </p>
                   {suggestedQuestions.length > 0 && (
                     <div className="w-full max-w-[90%] space-y-2">
                       {suggestedQuestions.slice(0, 3).map((q, i) => (
                         <button
                           key={i}
-                          onClick={() => { if (!isLoading && summaryId) onSendMessage(q); }}
+                          onClick={() => {
+                            if (!isLoading && summaryId) onSendMessage(q);
+                          }}
                           disabled={isLoading}
                           className="w-full text-left px-4 py-2.5 rounded-xl text-sm transition-all duration-200 disabled:opacity-50"
                           style={{
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px solid rgba(255, 255, 255, 0.06)',
-                            color: '#cbd5e1',
+                            background: "rgba(255, 255, 255, 0.03)",
+                            border: "1px solid rgba(255, 255, 255, 0.06)",
+                            color: "#cbd5e1",
                           }}
                           onMouseEnter={(e) => {
                             e.currentTarget.style.background = TEAL_DIM;
                             e.currentTarget.style.borderColor = TEAL_BORDER;
-                            e.currentTarget.style.color = '#e0f7fa';
+                            e.currentTarget.style.color = "#e0f7fa";
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                            e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)';
-                            e.currentTarget.style.color = '#cbd5e1';
+                            e.currentTarget.style.background =
+                              "rgba(255, 255, 255, 0.03)";
+                            e.currentTarget.style.borderColor =
+                              "rgba(255, 255, 255, 0.06)";
+                            e.currentTarget.style.color = "#cbd5e1";
                           }}
                         >
-                          <span style={{ color: TEAL, marginRight: '8px' }}>&#8594;</span>
+                          <span style={{ color: TEAL, marginRight: "8px" }}>
+                            &#8594;
+                          </span>
                           {q}
                         </button>
                       ))}
@@ -954,7 +1182,7 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
               className="flex-shrink-0 px-3 py-3"
               style={{
                 background: INPUT_BG,
-                borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                borderTop: "1px solid rgba(255, 255, 255, 0.06)",
               }}
             >
               <form onSubmit={handleSubmit} className="flex items-center gap-2">
@@ -965,11 +1193,15 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
                     onClick={() => onToggleWebSearch(!webSearchEnabled)}
                     className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-[10px] font-medium transition-all duration-200 flex-shrink-0"
                     style={{
-                      background: webSearchEnabled ? 'rgba(0, 188, 212, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-                      border: `1px solid ${webSearchEnabled ? 'rgba(0, 188, 212, 0.4)' : 'rgba(255, 255, 255, 0.06)'}`,
-                      color: webSearchEnabled ? TEAL : '#6b7280',
+                      background: webSearchEnabled
+                        ? "rgba(0, 188, 212, 0.15)"
+                        : "rgba(255, 255, 255, 0.04)",
+                      border: `1px solid ${webSearchEnabled ? "rgba(0, 188, 212, 0.4)" : "rgba(255, 255, 255, 0.06)"}`,
+                      color: webSearchEnabled ? TEAL : "#6b7280",
                     }}
-                    title={webSearchEnabled ? 'Web search ON' : 'Web search OFF'}
+                    title={
+                      webSearchEnabled ? "Web search ON" : "Web search OFF"
+                    }
                   >
                     <Globe className="w-3 h-3" />
                     <span>Web</span>
@@ -983,22 +1215,28 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder={t.placeholder}
-                  disabled={!!(isLoading || !summaryId || (quota && !quota.can_ask))}
+                  disabled={
+                    !!(isLoading || !summaryId || (quota && !quota.can_ask))
+                  }
                   className="flex-1 px-4 py-2.5 text-sm disabled:opacity-50 transition-all duration-200 outline-none"
                   style={{
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                    borderRadius: '24px',
-                    color: '#f1f5f9',
+                    background: "rgba(255, 255, 255, 0.04)",
+                    border: "1px solid rgba(255, 255, 255, 0.08)",
+                    borderRadius: "24px",
+                    color: "#f1f5f9",
                     caretColor: TEAL,
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(0, 188, 212, 0.4)';
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                    e.currentTarget.style.borderColor =
+                      "rgba(0, 188, 212, 0.4)";
+                    e.currentTarget.style.background =
+                      "rgba(255, 255, 255, 0.06)";
                   }}
                   onBlur={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.04)';
+                    e.currentTarget.style.borderColor =
+                      "rgba(255, 255, 255, 0.08)";
+                    e.currentTarget.style.background =
+                      "rgba(255, 255, 255, 0.04)";
                   }}
                 />
 
@@ -1010,13 +1248,18 @@ export const ChatPopup: React.FC<ChatPopupProps> = ({
                   style={{
                     background: input.trim()
                       ? `linear-gradient(135deg, ${TEAL}, #0097A7)`
-                      : 'rgba(255, 255, 255, 0.04)',
-                    border: `1px solid ${input.trim() ? 'rgba(0, 188, 212, 0.5)' : 'rgba(255, 255, 255, 0.06)'}`,
-                    color: input.trim() ? '#fff' : '#4b5563',
-                    boxShadow: input.trim() ? `0 4px 16px ${TEAL_GLOW}` : 'none',
+                      : "rgba(255, 255, 255, 0.04)",
+                    border: `1px solid ${input.trim() ? "rgba(0, 188, 212, 0.5)" : "rgba(255, 255, 255, 0.06)"}`,
+                    color: input.trim() ? "#fff" : "#4b5563",
+                    boxShadow: input.trim()
+                      ? `0 4px 16px ${TEAL_GLOW}`
+                      : "none",
                   }}
                 >
-                  <Send className="w-4 h-4" style={{ transform: 'rotate(-45deg)' }} />
+                  <Send
+                    className="w-4 h-4"
+                    style={{ transform: "rotate(-45deg)" }}
+                  />
                 </button>
               </form>
             </div>

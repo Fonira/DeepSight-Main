@@ -3,10 +3,10 @@
  * Animated menu with keyboard navigation, click-outside, Framer Motion.
  */
 
-import React, { useRef, useState, useEffect, useCallback, useId } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Check } from 'lucide-react';
+import React, { useRef, useState, useEffect, useCallback, useId } from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -25,7 +25,7 @@ interface DropdownProps {
   items: DropdownItem[];
   onSelect: (id: string) => void;
   selectedId?: string;
-  align?: 'left' | 'right';
+  align?: "left" | "right";
   width?: string;
 }
 
@@ -36,8 +36,8 @@ export const Dropdown: React.FC<DropdownProps> = ({
   items,
   onSelect,
   selectedId,
-  align = 'left',
-  width = 'w-56',
+  align = "left",
+  width = "w-56",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [focusIndex, setFocusIndex] = useState(-1);
@@ -56,15 +56,15 @@ export const Dropdown: React.FC<DropdownProps> = ({
         setIsOpen(false);
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [isOpen]);
 
   // Keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (!isOpen) {
-        if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+        if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           setIsOpen(true);
           setFocusIndex(0);
@@ -75,16 +75,18 @@ export const Dropdown: React.FC<DropdownProps> = ({
       const selectableItems = items.filter((i) => !i.divider && !i.disabled);
 
       switch (e.key) {
-        case 'ArrowDown':
+        case "ArrowDown":
           e.preventDefault();
           setFocusIndex((i) => (i + 1) % selectableItems.length);
           break;
-        case 'ArrowUp':
+        case "ArrowUp":
           e.preventDefault();
-          setFocusIndex((i) => (i - 1 + selectableItems.length) % selectableItems.length);
+          setFocusIndex(
+            (i) => (i - 1 + selectableItems.length) % selectableItems.length,
+          );
           break;
-        case 'Enter':
-        case ' ':
+        case "Enter":
+        case " ":
           e.preventDefault();
           if (focusIndex >= 0) {
             const item = selectableItems[focusIndex];
@@ -94,13 +96,13 @@ export const Dropdown: React.FC<DropdownProps> = ({
             }
           }
           break;
-        case 'Escape':
+        case "Escape":
           e.preventDefault();
           setIsOpen(false);
           break;
       }
     },
-    [isOpen, items, focusIndex, onSelect]
+    [isOpen, items, focusIndex, onSelect],
   );
 
   // Position state
@@ -110,7 +112,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
     const rect = triggerRef.current.getBoundingClientRect();
     setPos({
       top: rect.bottom + 4,
-      left: align === 'right' ? rect.right : rect.left,
+      left: align === "right" ? rect.right : rect.left,
     });
   }, [isOpen, align]);
 
@@ -146,7 +148,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
               `}
               style={{
                 top: pos.top,
-                ...(align === 'right'
+                ...(align === "right"
                   ? { right: window.innerWidth - pos.left }
                   : { left: pos.left }),
               }}
@@ -157,7 +159,12 @@ export const Dropdown: React.FC<DropdownProps> = ({
             >
               {items.map((item, idx) => {
                 if (item.divider) {
-                  return <div key={`div-${idx}`} className="h-px bg-border-subtle my-1 mx-2" />;
+                  return (
+                    <div
+                      key={`div-${idx}`}
+                      className="h-px bg-border-subtle my-1 mx-2"
+                    />
+                  );
                 }
 
                 const isSelected = item.id === selectedId;
@@ -176,15 +183,18 @@ export const Dropdown: React.FC<DropdownProps> = ({
                     className={`
                       w-full text-left px-3 py-2 text-sm flex items-center gap-2.5
                       transition-colors duration-100
-                      ${item.disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
-                      ${item.danger ? 'text-error hover:bg-error-muted' : ''}
-                      ${isFocused ? 'bg-bg-hover' : ''}
-                      ${!item.danger && !item.disabled ? 'text-text-secondary hover:text-text-primary hover:bg-bg-hover' : ''}
-                      ${isSelected ? 'text-accent-primary-hover' : ''}
+                      ${item.disabled ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}
+                      ${item.danger ? "text-error hover:bg-error-muted" : ""}
+                      ${isFocused ? "bg-bg-hover" : ""}
+                      ${!item.danger && !item.disabled ? "text-text-secondary hover:text-text-primary hover:bg-bg-hover" : ""}
+                      ${isSelected ? "text-accent-primary-hover" : ""}
                     `}
                   >
                     {item.icon && (
-                      <span className="flex-shrink-0 w-4 h-4" aria-hidden="true">
+                      <span
+                        className="flex-shrink-0 w-4 h-4"
+                        aria-hidden="true"
+                      >
                         {item.icon}
                       </span>
                     )}
@@ -205,7 +215,7 @@ export const Dropdown: React.FC<DropdownProps> = ({
             </motion.div>
           )}
         </AnimatePresence>,
-        document.body
+        document.body,
       )}
     </div>
   );

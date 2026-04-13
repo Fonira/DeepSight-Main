@@ -3,33 +3,44 @@
  * Onglet Synthèse : toolbar (copy/cite/export) + contenu enrichi
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
-  BookOpen, Copy, Check, GraduationCap, Brain, Tags, Mic,
-  Download, ChevronDown, FileText, FileDown, Share2, Headphones
-} from 'lucide-react';
-import { DeepSightSpinnerMicro } from '../ui';
-import { AudioPlayerButton } from '../AudioPlayerButton';
-import { AudioSummaryButton } from '../AudioSummaryButton';
-import { EnrichedMarkdown } from '../EnrichedMarkdown';
-import { DeepResearchSources } from '../SummaryReader';
-import { ConceptsGlossary } from '../ConceptsGlossary';
-import { AcademicSourcesPanel } from '../academic';
-import { AnalysisValueDisplay } from '../AnalysisValueDisplay';
-import { CitationExport } from '../CitationExport';
-import { StudyToolsModal } from '../StudyToolsModal';
-import { KeywordsModal } from '../KeywordsModal';
-import { AnalysisActionBar } from '../analysis/AnalysisActionBar';
-import { videoApi, shareApi } from '../../services/api';
-import { sanitizeTitle } from '../../utils/sanitize';
-import type { Summary, EnrichedConcept } from '../../services/api';
-import type { TimecodeInfo } from '../TimecodeRenderer';
+  BookOpen,
+  Copy,
+  Check,
+  GraduationCap,
+  Brain,
+  Tags,
+  Mic,
+  Download,
+  ChevronDown,
+  FileText,
+  FileDown,
+  Share2,
+  Headphones,
+} from "lucide-react";
+import { DeepSightSpinnerMicro } from "../ui";
+import { AudioPlayerButton } from "../AudioPlayerButton";
+import { AudioSummaryButton } from "../AudioSummaryButton";
+import { EnrichedMarkdown } from "../EnrichedMarkdown";
+import { DeepResearchSources } from "../SummaryReader";
+import { ConceptsGlossary } from "../ConceptsGlossary";
+import { AcademicSourcesPanel } from "../academic";
+import { AnalysisValueDisplay } from "../AnalysisValueDisplay";
+import { CitationExport } from "../CitationExport";
+import { StudyToolsModal } from "../StudyToolsModal";
+import { KeywordsModal } from "../KeywordsModal";
+import { AnalysisActionBar } from "../analysis/AnalysisActionBar";
+import { videoApi, shareApi } from "../../services/api";
+import { sanitizeTitle } from "../../utils/sanitize";
+import type { Summary, EnrichedConcept } from "../../services/api";
+import type { TimecodeInfo } from "../TimecodeRenderer";
 
 interface SynthesisTabProps {
   selectedSummary: Summary;
   user: { plan?: string };
-  language: 'fr' | 'en';
+  language: "fr" | "en";
   concepts: EnrichedConcept[];
   onTimecodeClick: (seconds: number, info?: TimecodeInfo) => void;
   onNavigate: (path: string) => void;
@@ -67,7 +78,9 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
   // Optional toolbar features (used in History context)
   const [showStudyToolsModal, setShowStudyToolsModal] = useState(false);
   const [showKeywordsModal, setShowKeywordsModal] = useState(false);
-  const [keywordsConcepts, setKeywordsConcepts] = useState<EnrichedConcept[]>([]);
+  const [keywordsConcepts, setKeywordsConcepts] = useState<EnrichedConcept[]>(
+    [],
+  );
   const [keywordsLoading, setKeywordsLoading] = useState(false);
   const exportBtnRef = useRef<HTMLButtonElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
@@ -90,29 +103,32 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
     updateMenuPos();
     const handleClickOutside = (e: MouseEvent) => {
       if (
-        exportMenuRef.current && !exportMenuRef.current.contains(e.target as Node) &&
-        exportBtnRef.current && !exportBtnRef.current.contains(e.target as Node)
+        exportMenuRef.current &&
+        !exportMenuRef.current.contains(e.target as Node) &&
+        exportBtnRef.current &&
+        !exportBtnRef.current.contains(e.target as Node)
       ) {
         setShowExportMenu(false);
       }
     };
     const handleScrollOrResize = () => setShowExportMenu(false);
-    document.addEventListener('mousedown', handleClickOutside);
-    window.addEventListener('scroll', handleScrollOrResize, true);
-    window.addEventListener('resize', handleScrollOrResize);
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      window.removeEventListener('scroll', handleScrollOrResize, true);
-      window.removeEventListener('resize', handleScrollOrResize);
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
     };
   }, [showExportMenu, updateMenuPos]);
-
 
   const handleCopy = async () => {
     if (!selectedSummary?.summary_content) return;
     try {
       await navigator.clipboard.writeText(selectedSummary.summary_content);
-    } catch { /* clipboard API unavailable */ }
+    } catch {
+      /* clipboard API unavailable */
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -121,10 +137,14 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
     if (!selectedSummary?.video_id || sharing) return;
     setSharing(true);
     try {
-      const { share_url } = await shareApi.createShareLink(selectedSummary.video_id);
+      const { share_url } = await shareApi.createShareLink(
+        selectedSummary.video_id,
+      );
       if (navigator.share) {
         await navigator.share({
-          title: selectedSummary.video_title ? `DeepSight — ${selectedSummary.video_title}` : 'DeepSight Analysis',
+          title: selectedSummary.video_title
+            ? `DeepSight — ${selectedSummary.video_title}`
+            : "DeepSight Analysis",
           url: share_url,
         });
       } else {
@@ -133,34 +153,38 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
         setTimeout(() => setShareCopied(false), 2500);
       }
     } catch (err: any) {
-      if (err?.name === 'AbortError') return;
+      if (err?.name === "AbortError") return;
       // Fallback clipboard
       try {
-        const { share_url } = await shareApi.createShareLink(selectedSummary.video_id);
+        const { share_url } = await shareApi.createShareLink(
+          selectedSummary.video_id,
+        );
         await navigator.clipboard.writeText(share_url);
         setShareCopied(true);
         setTimeout(() => setShareCopied(false), 2500);
-      } catch { console.error('Share failed'); }
+      } catch {
+        console.error("Share failed");
+      }
     } finally {
       setSharing(false);
     }
   };
 
-  const handleExport = async (format: 'pdf' | 'md' | 'txt') => {
+  const handleExport = async (format: "pdf" | "md" | "txt") => {
     if (!selectedSummary?.id) return;
     setExporting(true);
     setShowExportMenu(false);
     try {
       const blob = await videoApi.exportSummary(selectedSummary.id, format);
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      const ext = format === 'md' ? 'md' : format;
-      a.download = `${selectedSummary.video_title || 'analyse'}.${ext}`;
+      const ext = format === "md" ? "md" : format;
+      a.download = `${selectedSummary.video_title || "analyse"}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export error:', err);
+      console.error("Export error:", err);
     } finally {
       setExporting(false);
     }
@@ -171,7 +195,8 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
     setShowKeywordsModal(true);
     if (selectedSummary?.id && keywordsConcepts.length === 0) {
       setKeywordsLoading(true);
-      videoApi.getEnrichedConcepts(selectedSummary.id)
+      videoApi
+        .getEnrichedConcepts(selectedSummary.id)
         .then((data: any) => setKeywordsConcepts(data.concepts || []))
         .catch(() => setKeywordsConcepts([]))
         .finally(() => setKeywordsLoading(false));
@@ -185,10 +210,13 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
         <div className="flex items-center gap-2 mb-4">
           <BookOpen className="w-5 h-5 text-accent-primary" />
           <h3 className="font-semibold text-text-primary">
-            {language === 'fr' ? 'Synthèse' : 'Summary'}
+            {language === "fr" ? "Synthèse" : "Summary"}
           </h3>
           {selectedSummary?.summary_content && (
-            <AudioPlayerButton text={selectedSummary.summary_content.slice(0, 5000)} size="sm" />
+            <AudioPlayerButton
+              text={selectedSummary.summary_content.slice(0, 5000)}
+              size="sm"
+            />
           )}
         </div>
         <AnalysisActionBar
@@ -200,7 +228,9 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
           }}
           language={language}
           onOpenVoice={showVoice && voiceEnabled ? onOpenVoice : undefined}
-          onOpenStudyTools={showStudyTools ? () => setShowStudyToolsModal(true) : undefined}
+          onOpenStudyTools={
+            showStudyTools ? () => setShowStudyToolsModal(true) : undefined
+          }
           onOpenCitation={() => setShowCitationModal(true)}
           showStudyTools={showStudyTools}
           showCitation={true}
@@ -215,7 +245,7 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
           onTimecodeClick={onTimecodeClick}
           className="text-text-primary"
         >
-          {selectedSummary.summary_content || ''}
+          {selectedSummary.summary_content || ""}
         </EnrichedMarkdown>
 
         {/* Glossaire des concepts */}
@@ -230,29 +260,32 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
         <div className="mt-6 not-prose">
           <AcademicSourcesPanel
             summaryId={selectedSummary.id.toString()}
-            userPlan={user?.plan || 'free'}
-            onUpgrade={() => onNavigate('/pricing')}
+            userPlan={user?.plan || "free"}
+            onUpgrade={() => onNavigate("/pricing")}
             language={language}
           />
         </div>
 
         {/* Sources croisées — Deep Research */}
-        {selectedSummary.deep_research && selectedSummary.enrichment_sources && (
-          <div className="mt-6 not-prose">
-            <DeepResearchSources
-              enrichmentSources={selectedSummary.enrichment_sources}
-              language={language}
-            />
-          </div>
-        )}
+        {selectedSummary.deep_research &&
+          selectedSummary.enrichment_sources && (
+            <div className="mt-6 not-prose">
+              <DeepResearchSources
+                enrichmentSources={selectedSummary.enrichment_sources}
+                language={language}
+              />
+            </div>
+          )}
 
         {/* Temps économisé */}
         <div className="mt-6 not-prose">
           <AnalysisValueDisplay
             videoDuration={selectedSummary.video_duration || 0}
-            keyPointsCount={selectedSummary.summary_content?.split('##').length - 1 || 0}
+            keyPointsCount={
+              selectedSummary.summary_content?.split("##").length - 1 || 0
+            }
             conceptsCount={concepts.length}
-            showUpgradeCTA={user?.plan === 'free' || user?.plan === 'student'}
+            showUpgradeCTA={user?.plan === "free" || user?.plan === "student"}
             compact={false}
           />
         </div>
@@ -263,8 +296,12 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
         isOpen={showCitationModal}
         onClose={() => setShowCitationModal(false)}
         video={{
-          title: sanitizeTitle(selectedSummary.video_title || 'Vidéo sans titre'),
-          channel: sanitizeTitle(selectedSummary.video_channel || 'Chaîne inconnue'),
+          title: sanitizeTitle(
+            selectedSummary.video_title || "Vidéo sans titre",
+          ),
+          channel: sanitizeTitle(
+            selectedSummary.video_channel || "Chaîne inconnue",
+          ),
           videoId: selectedSummary.video_id,
           publishedDate: selectedSummary.created_at,
           duration: selectedSummary.video_duration,
@@ -278,7 +315,7 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
           isOpen={showStudyToolsModal}
           onClose={() => setShowStudyToolsModal(false)}
           summaryId={selectedSummary.id}
-          videoTitle={sanitizeTitle(selectedSummary.video_title || 'Vidéo')}
+          videoTitle={sanitizeTitle(selectedSummary.video_title || "Vidéo")}
           language={language}
         />
       )}
@@ -288,7 +325,7 @@ export const SynthesisTab: React.FC<SynthesisTabProps> = ({
         <KeywordsModal
           isOpen={showKeywordsModal}
           onClose={() => setShowKeywordsModal(false)}
-          videoTitle={sanitizeTitle(selectedSummary.video_title || 'Vidéo')}
+          videoTitle={sanitizeTitle(selectedSummary.video_title || "Vidéo")}
           concepts={keywordsConcepts}
           loading={keywordsLoading}
         />

@@ -12,52 +12,85 @@
  * - Support bilingue FR/EN
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Move, ExternalLink, RefreshCw, ChevronUp, ChevronDown, X, Minus, Maximize2 } from 'lucide-react';
-import { useLoadingWord, LoadingWord as LoadingWordType } from '../contexts/LoadingWordContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Move,
+  ExternalLink,
+  RefreshCw,
+  ChevronUp,
+  ChevronDown,
+  X,
+  Minus,
+  Maximize2,
+} from "lucide-react";
+import {
+  useLoadingWord,
+  LoadingWord as LoadingWordType,
+} from "../contexts/LoadingWordContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useAuth } from "../hooks/useAuth";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🪝 DRAGGABLE HOOK (comme FloatingChatWindow)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-interface Position { x: number; y: number; }
+interface Position {
+  x: number;
+  y: number;
+}
 
 const useDraggable = (initialPos: Position, storageKey: string) => {
   const [position, setPosition] = useState<Position>(() => {
     try {
       const stored = localStorage.getItem(`${storageKey}-pos`);
       return stored ? JSON.parse(stored) : initialPos;
-    } catch { return initialPos; }
+    } catch {
+      return initialPos;
+    }
   });
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button, input, a')) return;
-    setIsDragging(true);
-    dragOffset.current = { x: e.clientX - position.x, y: e.clientY - position.y };
-    e.preventDefault();
-  }, [position]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if ((e.target as HTMLElement).closest("button, input, a")) return;
+      setIsDragging(true);
+      dragOffset.current = {
+        x: e.clientX - position.x,
+        y: e.clientY - position.y,
+      };
+      e.preventDefault();
+    },
+    [position],
+  );
 
   useEffect(() => {
     if (!isDragging) return;
     const handleMove = (e: MouseEvent) => {
-      const x = Math.max(0, Math.min(window.innerWidth - 100, e.clientX - dragOffset.current.x));
-      const y = Math.max(0, Math.min(window.innerHeight - 100, e.clientY - dragOffset.current.y));
+      const x = Math.max(
+        0,
+        Math.min(window.innerWidth - 100, e.clientX - dragOffset.current.x),
+      );
+      const y = Math.max(
+        0,
+        Math.min(window.innerHeight - 100, e.clientY - dragOffset.current.y),
+      );
       setPosition({ x, y });
     };
     const handleUp = () => {
       setIsDragging(false);
-      try { localStorage.setItem(`${storageKey}-pos`, JSON.stringify(position)); } catch { /* Safari private */ }
+      try {
+        localStorage.setItem(`${storageKey}-pos`, JSON.stringify(position));
+      } catch {
+        /* Safari private */
+      }
     };
-    document.addEventListener('mousemove', handleMove);
-    document.addEventListener('mouseup', handleUp);
+    document.addEventListener("mousemove", handleMove);
+    document.addEventListener("mouseup", handleUp);
     return () => {
-      document.removeEventListener('mousemove', handleMove);
-      document.removeEventListener('mouseup', handleUp);
+      document.removeEventListener("mousemove", handleMove);
+      document.removeEventListener("mouseup", handleUp);
     };
   }, [isDragging, position, storageKey]);
 
@@ -80,60 +113,60 @@ interface LoadingWordProps {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const CATEGORY_ICONS: Record<string, string> = {
-  cognitive_bias: '🧠',
-  science: '🔬',
-  philosophy: '🎭',
-  culture: '🌍',
-  misc: '✨',
-  history: '📜',
-  technology: '⚡',
-  person: '👤',
-  company: '🏢',
-  concept: '💡',
-  event: '📅',
-  place: '📍',
-  psychology: '🧩',
-  economics: '💰',
-  art: '🎨',
-  nature: '🌿',
+  cognitive_bias: "🧠",
+  science: "🔬",
+  philosophy: "🎭",
+  culture: "🌍",
+  misc: "✨",
+  history: "📜",
+  technology: "⚡",
+  person: "👤",
+  company: "🏢",
+  concept: "💡",
+  event: "📅",
+  place: "📍",
+  psychology: "🧩",
+  economics: "💰",
+  art: "🎨",
+  nature: "🌿",
 };
 
 const CATEGORY_LABELS_FR: Record<string, string> = {
-  cognitive_bias: 'Biais cognitif',
-  science: 'Science',
-  philosophy: 'Philosophie',
-  culture: 'Culture',
-  misc: 'Divers',
-  history: 'Historique',
-  technology: 'Technologie',
-  person: 'Personne',
-  company: 'Entreprise',
-  concept: 'Concept',
-  event: 'Événement',
-  place: 'Lieu',
-  psychology: 'Psychologie',
-  economics: 'Économie',
-  art: 'Art & Créativité',
-  nature: 'Nature & Vivant',
+  cognitive_bias: "Biais cognitif",
+  science: "Science",
+  philosophy: "Philosophie",
+  culture: "Culture",
+  misc: "Divers",
+  history: "Historique",
+  technology: "Technologie",
+  person: "Personne",
+  company: "Entreprise",
+  concept: "Concept",
+  event: "Événement",
+  place: "Lieu",
+  psychology: "Psychologie",
+  economics: "Économie",
+  art: "Art & Créativité",
+  nature: "Nature & Vivant",
 };
 
 const CATEGORY_LABELS_EN: Record<string, string> = {
-  cognitive_bias: 'Cognitive bias',
-  science: 'Science',
-  philosophy: 'Philosophy',
-  culture: 'Culture',
-  misc: 'Miscellaneous',
-  history: 'History',
-  technology: 'Technology',
-  person: 'Person',
-  company: 'Company',
-  concept: 'Concept',
-  event: 'Event',
-  place: 'Place',
-  psychology: 'Psychology',
-  economics: 'Economics',
-  art: 'Art & Creativity',
-  nature: 'Nature & Life',
+  cognitive_bias: "Cognitive bias",
+  science: "Science",
+  philosophy: "Philosophy",
+  culture: "Culture",
+  misc: "Miscellaneous",
+  history: "History",
+  technology: "Technology",
+  person: "Person",
+  company: "Company",
+  concept: "Concept",
+  event: "Event",
+  place: "Place",
+  psychology: "Psychology",
+  economics: "Economics",
+  art: "Art & Creativity",
+  nature: "Nature & Life",
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -141,7 +174,7 @@ const CATEGORY_LABELS_EN: Record<string, string> = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
-  className = '',
+  className = "",
   compact = false,
   showCategory = true,
 }) => {
@@ -150,7 +183,9 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
   const { language } = useLanguage();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
-  const [displayedWord, setDisplayedWord] = useState<LoadingWordType | null>(null);
+  const [displayedWord, setDisplayedWord] = useState<LoadingWordType | null>(
+    null,
+  );
   const [isHovered, setIsHovered] = useState(false);
 
   // Animation de transition quand le mot change
@@ -170,20 +205,27 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
   }, [currentWord, displayedWord]);
 
   // Textes localisés
-  const didYouKnow = language === 'fr' ? 'Le saviez-vous ?' : 'Did you know?';
-  const learnMore = language === 'fr' ? 'En savoir plus' : 'Learn more';
-  const showLess = language === 'fr' ? 'Réduire' : 'Show less';
-  const fromHistory = language === 'fr' ? 'De vos analyses' : 'From your analyses';
-  const clickToView = language === 'fr' ? 'Cliquez pour voir l\'analyse' : 'Click to view analysis';
-  const categoryLabels = language === 'fr' ? CATEGORY_LABELS_FR : CATEGORY_LABELS_EN;
+  const didYouKnow = language === "fr" ? "Le saviez-vous ?" : "Did you know?";
+  const learnMore = language === "fr" ? "En savoir plus" : "Learn more";
+  const showLess = language === "fr" ? "Réduire" : "Show less";
+  const fromHistory =
+    language === "fr" ? "De vos analyses" : "From your analyses";
+  const clickToView =
+    language === "fr"
+      ? "Cliquez pour voir l'analyse"
+      : "Click to view analysis";
+  const categoryLabels =
+    language === "fr" ? CATEGORY_LABELS_FR : CATEGORY_LABELS_EN;
 
   if (!displayedWord) {
     return null;
   }
 
-  const categoryIcon = CATEGORY_ICONS[displayedWord.category] || '📚';
-  const categoryLabel = categoryLabels[displayedWord.category] || displayedWord.category;
-  const isClickable = displayedWord.source === 'history' && displayedWord.summaryId;
+  const categoryIcon = CATEGORY_ICONS[displayedWord.category] || "📚";
+  const categoryLabel =
+    categoryLabels[displayedWord.category] || displayedWord.category;
+  const isClickable =
+    displayedWord.source === "history" && displayedWord.summaryId;
 
   // Navigation vers l'analyse source
   const handleTermClick = () => {
@@ -200,14 +242,16 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
         border border-accent-primary/20
         backdrop-blur-sm
         transition-all duration-300 ease-in-out
-        ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}
+        ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}
         ${className}
       `}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-accent-primary/10">
         <div className="flex items-center gap-2">
-          <span className="text-lg" role="img" aria-label="lightbulb">💡</span>
+          <span className="text-lg" role="img" aria-label="lightbulb">
+            💡
+          </span>
           <span className="text-sm font-medium text-accent-primary">
             {didYouKnow}
           </span>
@@ -215,15 +259,17 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
 
         <div className="flex items-center gap-2">
           {/* Source badge */}
-          {displayedWord.source === 'history' && (
+          {displayedWord.source === "history" && (
             <span className="text-xs bg-accent-secondary/20 text-accent-secondary px-2 py-0.5 rounded-full">
               📜 {fromHistory}
             </span>
           )}
 
-          {showCategory && displayedWord.source === 'local' && (
+          {showCategory && displayedWord.source === "local" && (
             <span className="flex items-center gap-1 text-xs text-text-secondary">
-              <span role="img" aria-label={categoryLabel}>{categoryIcon}</span>
+              <span role="img" aria-label={categoryLabel}>
+                {categoryIcon}
+              </span>
               {!compact && <span>{categoryLabel}</span>}
             </span>
           )}
@@ -240,18 +286,21 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
           className={`
             text-lg font-semibold text-text-primary mb-2
             transition-all duration-200
-            ${isClickable
-              ? 'cursor-pointer hover:text-accent-primary group'
-              : ''
+            ${
+              isClickable
+                ? "cursor-pointer hover:text-accent-primary group"
+                : ""
             }
           `}
           title={isClickable ? clickToView : undefined}
         >
           <span className="text-accent-secondary">«</span>
-          <span className={`
+          <span
+            className={`
             mx-1
-            ${isClickable ? 'underline decoration-dotted decoration-accent-primary/50 hover:decoration-solid' : ''}
-          `}>
+            ${isClickable ? "underline decoration-dotted decoration-accent-primary/50 hover:decoration-solid" : ""}
+          `}
+          >
             {displayedWord.term}
           </span>
           <span className="text-accent-secondary">»</span>
@@ -259,32 +308,36 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
           {/* Indicateur cliquable */}
           {isClickable && isHovered && (
             <span className="ml-2 text-xs text-accent-primary animate-pulse">
-              → {language === 'fr' ? 'Voir' : 'View'}
+              → {language === "fr" ? "Voir" : "View"}
             </span>
           )}
         </h3>
 
         {/* Video title si de l'historique */}
-        {displayedWord.source === 'history' && displayedWord.videoTitle && (
+        {displayedWord.source === "history" && displayedWord.videoTitle && (
           <p className="text-xs text-text-tertiary mb-2 italic truncate">
             📹 {displayedWord.videoTitle}
           </p>
         )}
 
         {/* Definition */}
-        <p className={`
+        <p
+          className={`
           text-sm text-text-secondary leading-relaxed
           transition-all duration-300 ease-in-out
-          ${isExpanded ? '' : 'line-clamp-2'}
-        `}>
-          {isExpanded ? displayedWord.definition : displayedWord.shortDefinition}
+          ${isExpanded ? "" : "line-clamp-2"}
+        `}
+        >
+          {isExpanded
+            ? displayedWord.definition
+            : displayedWord.shortDefinition}
         </p>
 
         {/* Actions */}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-bg-tertiary/50">
           {/* Expand/Collapse ou Voir l'analyse */}
           <div className="flex items-center gap-3">
-            {displayedWord.source === 'local' && (
+            {displayedWord.source === "local" && (
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
                 className="text-xs text-accent-primary hover:text-accent-hover transition-colors"
@@ -298,7 +351,7 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
                 onClick={handleTermClick}
                 className="text-xs bg-accent-primary/10 text-accent-primary hover:bg-accent-primary/20 px-3 py-1 rounded-full transition-colors"
               >
-                📊 {language === 'fr' ? 'Voir l\'analyse' : 'View analysis'}
+                📊 {language === "fr" ? "Voir l'analyse" : "View analysis"}
               </button>
             )}
           </div>
@@ -313,7 +366,10 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
                 className="text-xs text-text-tertiary hover:text-accent-primary transition-colors"
                 title="Source"
               >
-                🔗 {displayedWord.wikiUrl.includes('wikipedia') ? 'Wiki' : 'Source'}
+                🔗{" "}
+                {displayedWord.wikiUrl.includes("wikipedia")
+                  ? "Wiki"
+                  : "Source"}
               </a>
             )}
 
@@ -321,7 +377,7 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
             <button
               onClick={nextWord}
               className="text-text-tertiary hover:text-accent-primary transition-colors active:scale-90"
-              title={language === 'fr' ? 'Nouveau mot' : 'New word'}
+              title={language === "fr" ? "Nouveau mot" : "New word"}
             >
               🔄
             </button>
@@ -339,7 +395,9 @@ export const LoadingWordWidget: React.FC<LoadingWordProps> = ({
 // 🎯 COMPACT VERSION (pour les spinners et positions fixes)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const LoadingWordCompact: React.FC<{ className?: string }> = ({ className = '' }) => {
+export const LoadingWordCompact: React.FC<{ className?: string }> = ({
+  className = "",
+}) => {
   const navigate = useNavigate();
   const { currentWord, nextWord, isLoading } = useLoadingWord();
   const { language } = useLanguage();
@@ -348,8 +406,8 @@ export const LoadingWordCompact: React.FC<{ className?: string }> = ({ className
     return null;
   }
 
-  const didYouKnow = language === 'fr' ? 'Le saviez-vous ?' : 'Did you know?';
-  const isClickable = currentWord.source === 'history' && currentWord.summaryId;
+  const didYouKnow = language === "fr" ? "Le saviez-vous ?" : "Did you know?";
+  const isClickable = currentWord.source === "history" && currentWord.summaryId;
 
   const handleClick = () => {
     if (isClickable && currentWord.summaryId) {
@@ -358,11 +416,13 @@ export const LoadingWordCompact: React.FC<{ className?: string }> = ({ className
   };
 
   return (
-    <div className={`
+    <div
+      className={`
       bg-bg-secondary/90 backdrop-blur-sm rounded-lg border border-accent-primary/20 p-3
       transition-all duration-300 hover:border-accent-primary/40
       ${className}
-    `}>
+    `}
+    >
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs text-accent-primary flex items-center gap-1">
           💡 {didYouKnow}
@@ -379,11 +439,11 @@ export const LoadingWordCompact: React.FC<{ className?: string }> = ({ className
         onClick={handleClick}
         className={`
           text-sm text-text-primary font-medium
-          ${isClickable ? 'cursor-pointer hover:text-accent-primary transition-colors' : ''}
+          ${isClickable ? "cursor-pointer hover:text-accent-primary transition-colors" : ""}
         `}
       >
         <span className="text-accent-secondary">«</span>
-        <span className={isClickable ? 'underline decoration-dotted' : ''}>
+        <span className={isClickable ? "underline decoration-dotted" : ""}>
           {currentWord.term}
         </span>
         <span className="text-accent-secondary">»</span>
@@ -393,12 +453,10 @@ export const LoadingWordCompact: React.FC<{ className?: string }> = ({ className
         {currentWord.shortDefinition}
       </p>
 
-      {currentWord.source === 'history' && (
+      {currentWord.source === "history" && (
         <p className="text-xs text-accent-secondary mt-2 flex items-center gap-1">
-          📜 {language === 'fr' ? 'De vos analyses' : 'From your analyses'}
-          {isClickable && (
-            <span className="text-accent-primary ml-1">→</span>
-          )}
+          📜 {language === "fr" ? "De vos analyses" : "From your analyses"}
+          {isClickable && <span className="text-accent-primary ml-1">→</span>}
         </p>
       )}
     </div>
@@ -414,13 +472,13 @@ const extractSourceName = (url: string): string => {
     const hostname = new URL(url).hostname;
     // Nettoyer le hostname
     const name = hostname
-      .replace(/^www\./, '')
-      .replace(/\.org$|\.com$|\.fr$|\.net$|\.edu$/, '');
+      .replace(/^www\./, "")
+      .replace(/\.org$|\.com$|\.fr$|\.net$|\.edu$/, "");
 
     // Capitaliser
     return name.charAt(0).toUpperCase() + name.slice(1);
   } catch {
-    return 'Source';
+    return "Source";
   }
 };
 
@@ -430,14 +488,15 @@ const extractSourceName = (url: string): string => {
 
 export const LoadingWordGlobal: React.FC = () => {
   const navigate = useNavigate();
-  const { currentWord, nextWord, isLoading, isWidgetVisible, toggleWidget } = useLoadingWord();
+  const { currentWord, nextWord, isLoading, isWidgetVisible, toggleWidget } =
+    useLoadingWord();
   const { language } = useLanguage();
   const { isAuthenticated } = useAuth();
   const [isMinimized, setIsMinimized] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
   // 🔧 Sur desktop lg+, le DidYouKnowCard prend le relais — ce widget flottant ne s'affiche que sur mobile/tablette
-  const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 1024;
+  const isDesktop = typeof window !== "undefined" && window.innerWidth >= 1024;
   if (isDesktop) return null;
 
   // 🔧 Utiliser le contexte partagé pour la visibilité (accessible depuis la sidebar)
@@ -448,10 +507,15 @@ export const LoadingWordGlobal: React.FC = () => {
 
   // 🆕 Position draggable — guard window access for SSR/Safari safety
   // Sur mobile, remonter au-dessus de la BottomNav (80px)
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 1024;
   const { position, isDragging, handleMouseDown } = useDraggable(
-    { x: (typeof window !== 'undefined' ? window.innerWidth : 1024) - 340, y: (typeof window !== 'undefined' ? window.innerHeight : 768) - (isMobile ? 380 : 300) },
-    'loading-word-widget'
+    {
+      x: (typeof window !== "undefined" ? window.innerWidth : 1024) - 340,
+      y:
+        (typeof window !== "undefined" ? window.innerHeight : 768) -
+        (isMobile ? 380 : 300),
+    },
+    "loading-word-widget",
   );
 
   // 🔒 Ne pas afficher si l'utilisateur n'est pas connecté
@@ -459,7 +523,7 @@ export const LoadingWordGlobal: React.FC = () => {
     return null;
   }
 
-  const didYouKnow = language === 'fr' ? 'Le saviez-vous ?' : 'Did you know?';
+  const didYouKnow = language === "fr" ? "Le saviez-vous ?" : "Did you know?";
 
   // 🔧 FIX: Le bouton flottant doit TOUJOURS être visible, même si currentWord est null
   // (pendant le fetch initial async ou sur timeout réseau)
@@ -471,9 +535,10 @@ export const LoadingWordGlobal: React.FC = () => {
           className="fixed bottom-28 lg:bottom-4 right-4 z-30 p-3.5 rounded-full shadow-xl hover:scale-110 active:scale-95 transition-transform"
           title={didYouKnow}
           style={{
-            background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)',
-            animation: 'widget-glow 2s ease-in-out infinite',
-            boxShadow: '0 0 20px rgba(6, 182, 212, 0.5), 0 0 40px rgba(139, 92, 246, 0.3)',
+            background: "linear-gradient(135deg, #06b6d4, #8b5cf6)",
+            animation: "widget-glow 2s ease-in-out infinite",
+            boxShadow:
+              "0 0 20px rgba(6, 182, 212, 0.5), 0 0 40px rgba(139, 92, 246, 0.3)",
           }}
         >
           <span className="text-lg filter drop-shadow-lg">💡</span>
@@ -514,9 +579,12 @@ export const LoadingWordGlobal: React.FC = () => {
             💡 {didYouKnow}
           </span>
           <button
-            onClick={(e) => { e.stopPropagation(); setIsVisible(false); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsVisible(false);
+            }}
             className="p-1.5 rounded text-text-tertiary hover:text-red-400 hover:bg-red-400/10 transition-colors"
-            title={language === 'fr' ? 'Fermer' : 'Close'}
+            title={language === "fr" ? "Fermer" : "Close"}
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -525,7 +593,7 @@ export const LoadingWordGlobal: React.FC = () => {
         <div className="p-4 flex items-center justify-center">
           <div className="flex items-center gap-2 text-xs text-text-tertiary">
             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            <span>{language === 'fr' ? 'Chargement...' : 'Loading...'}</span>
+            <span>{language === "fr" ? "Chargement..." : "Loading..."}</span>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-accent-primary via-accent-secondary to-accent-primary opacity-50 rounded-b-xl" />
@@ -533,23 +601,24 @@ export const LoadingWordGlobal: React.FC = () => {
     );
   }
 
-  const isClickable = currentWord.source === 'history' && currentWord.summaryId;
-  const hasFullDefinition = currentWord.definition && currentWord.definition.length > 80;
+  const isClickable = currentWord.source === "history" && currentWord.summaryId;
+  const hasFullDefinition =
+    currentWord.definition && currentWord.definition.length > 80;
 
   // Déterminer la source à afficher (Wikipedia en priorité, sinon générer un lien de recherche)
   const getSourceInfo = () => {
     if (currentWord.wikiUrl) {
       return {
         url: currentWord.wikiUrl,
-        name: extractSourceName(currentWord.wikiUrl)
+        name: extractSourceName(currentWord.wikiUrl),
       };
     }
 
-    const wikiLang = language === 'fr' ? 'fr' : 'en';
+    const wikiLang = language === "fr" ? "fr" : "en";
     const searchUrl = `https://${wikiLang}.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(currentWord.term)}`;
     return {
       url: searchUrl,
-      name: 'Wikipedia'
+      name: "Wikipedia",
     };
   };
 
@@ -570,8 +639,8 @@ export const LoadingWordGlobal: React.FC = () => {
         bg-bg-secondary/95 backdrop-blur-md rounded-xl border border-accent-primary/30
         shadow-2xl shadow-accent-primary/10
         transition-all duration-200 ease-out
-        ${isMinimized ? 'w-auto' : isExpanded ? 'w-96 max-h-[60vh]' : 'w-72 sm:w-80'}
-        ${isDragging ? 'cursor-grabbing scale-[1.02] shadow-accent-primary/30' : ''}
+        ${isMinimized ? "w-auto" : isExpanded ? "w-96 max-h-[60vh]" : "w-72 sm:w-80"}
+        ${isDragging ? "cursor-grabbing scale-[1.02] shadow-accent-primary/30" : ""}
         overflow-hidden
       `}
       style={{
@@ -584,7 +653,7 @@ export const LoadingWordGlobal: React.FC = () => {
         className={`
           flex items-center justify-between px-3 py-2 border-b border-accent-primary/10
           bg-bg-secondary/50 cursor-grab select-none
-          ${isDragging ? 'cursor-grabbing bg-accent-primary/10' : ''}
+          ${isDragging ? "cursor-grabbing bg-accent-primary/10" : ""}
         `}
         onMouseDown={handleMouseDown}
       >
@@ -594,32 +663,61 @@ export const LoadingWordGlobal: React.FC = () => {
         </span>
         <div className="flex items-center gap-0.5">
           <button
-            onClick={(e) => { e.stopPropagation(); nextWord(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              nextWord();
+            }}
             className="p-1.5 rounded text-text-tertiary hover:text-accent-primary hover:bg-accent-primary/10 active:scale-90 transition-all"
-            title={language === 'fr' ? 'Suivant' : 'Next'}
+            title={language === "fr" ? "Suivant" : "Next"}
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
           {hasFullDefinition && !isMinimized && (
             <button
-              onClick={(e) => { e.stopPropagation(); setIsExpanded(!isExpanded); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(!isExpanded);
+              }}
               className="p-1.5 rounded text-text-tertiary hover:text-accent-primary hover:bg-accent-primary/10 transition-colors"
-              title={isExpanded ? (language === 'fr' ? 'Réduire' : 'Collapse') : (language === 'fr' ? 'Agrandir' : 'Expand')}
+              title={
+                isExpanded
+                  ? language === "fr"
+                    ? "Réduire"
+                    : "Collapse"
+                  : language === "fr"
+                    ? "Agrandir"
+                    : "Expand"
+              }
             >
-              {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+              {isExpanded ? (
+                <ChevronDown className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronUp className="w-3.5 h-3.5" />
+              )}
             </button>
           )}
           <button
-            onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); setIsExpanded(false); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsMinimized(!isMinimized);
+              setIsExpanded(false);
+            }}
             className="p-1.5 rounded text-text-tertiary hover:text-accent-primary hover:bg-accent-primary/10 transition-colors"
-            title={isMinimized ? 'Expand' : 'Minimize'}
+            title={isMinimized ? "Expand" : "Minimize"}
           >
-            {isMinimized ? <Maximize2 className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
+            {isMinimized ? (
+              <Maximize2 className="w-3.5 h-3.5" />
+            ) : (
+              <Minus className="w-3.5 h-3.5" />
+            )}
           </button>
           <button
-            onClick={(e) => { e.stopPropagation(); setIsVisible(false); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsVisible(false);
+            }}
             className="p-1.5 rounded text-text-tertiary hover:text-red-400 hover:bg-red-400/10 transition-colors"
-            title={language === 'fr' ? 'Fermer' : 'Close'}
+            title={language === "fr" ? "Fermer" : "Close"}
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -628,26 +726,44 @@ export const LoadingWordGlobal: React.FC = () => {
 
       {/* Content (hidden when minimized) */}
       {!isMinimized && (
-        <div className={`p-3 ${isExpanded ? 'overflow-y-auto max-h-[50vh]' : ''}`}>
+        <div
+          className={`p-3 ${isExpanded ? "overflow-y-auto max-h-[50vh]" : ""}`}
+        >
           {/* Term - CLICKABLE to navigate to analysis */}
           <button
             onClick={handleClick}
             disabled={!isClickable}
             className={`
               text-sm font-semibold mb-2 text-left w-full
-              ${isClickable
-                ? 'cursor-pointer text-accent-primary hover:text-accent-hover transition-colors group'
-                : 'text-text-primary cursor-default'}
+              ${
+                isClickable
+                  ? "cursor-pointer text-accent-primary hover:text-accent-hover transition-colors group"
+                  : "text-text-primary cursor-default"
+              }
             `}
-            title={isClickable ? (language === 'fr' ? 'Cliquez pour voir l\'analyse' : 'Click to view analysis') : undefined}
+            title={
+              isClickable
+                ? language === "fr"
+                  ? "Cliquez pour voir l'analyse"
+                  : "Click to view analysis"
+                : undefined
+            }
           >
             <span className="text-accent-secondary">«</span>
-            <span className={isClickable ? 'underline decoration-solid decoration-accent-primary/50 group-hover:decoration-accent-primary' : ''}>
+            <span
+              className={
+                isClickable
+                  ? "underline decoration-solid decoration-accent-primary/50 group-hover:decoration-accent-primary"
+                  : ""
+              }
+            >
               {currentWord.term}
             </span>
             <span className="text-accent-secondary">»</span>
             {isClickable && (
-              <span className="ml-2 text-xs opacity-60 group-hover:opacity-100 transition-opacity">→</span>
+              <span className="ml-2 text-xs opacity-60 group-hover:opacity-100 transition-opacity">
+                →
+              </span>
             )}
           </button>
 
@@ -663,7 +779,7 @@ export const LoadingWordGlobal: React.FC = () => {
                     onClick={() => setIsExpanded(true)}
                     className="text-accent-primary hover:underline mt-1 flex items-center gap-1"
                   >
-                    {language === 'fr' ? 'Lire la suite...' : 'Read more...'}
+                    {language === "fr" ? "Lire la suite..." : "Read more..."}
                   </button>
                 )}
               </>
@@ -677,13 +793,20 @@ export const LoadingWordGlobal: React.FC = () => {
               <button
                 onClick={handleClick}
                 className="w-full text-left text-xs text-accent-secondary hover:text-accent-primary transition-colors group flex items-center gap-1"
-                title={language === 'fr' ? 'Cliquez pour voir l\'analyse' : 'Click to view analysis'}
+                title={
+                  language === "fr"
+                    ? "Cliquez pour voir l'analyse"
+                    : "Click to view analysis"
+                }
               >
                 <span className="text-base">📹</span>
                 <span className="truncate flex-1 underline decoration-dotted decoration-accent-primary/30 group-hover:decoration-solid">
-                  {currentWord.videoTitle || (language === 'fr' ? 'Voir l\'analyse' : 'View analysis')}
+                  {currentWord.videoTitle ||
+                    (language === "fr" ? "Voir l'analyse" : "View analysis")}
                 </span>
-                <span className="text-accent-primary opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                <span className="text-accent-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                  →
+                </span>
               </button>
             )}
 
@@ -697,11 +820,21 @@ export const LoadingWordGlobal: React.FC = () => {
               >
                 <ExternalLink className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="truncate">{sourceName}</span>
-                <span className="text-accent-primary opacity-0 group-hover:opacity-100 transition-opacity ml-auto">↗</span>
+                <span className="text-accent-primary opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
+                  ↗
+                </span>
               </a>
             ) : (
               <span className="text-xs text-text-tertiary flex items-center gap-1">
-                📚 {currentWord.category ? (language === 'fr' ? CATEGORY_LABELS_FR : CATEGORY_LABELS_EN)[currentWord.category] || currentWord.category : (language === 'fr' ? 'Culture' : 'Knowledge')}
+                📚{" "}
+                {currentWord.category
+                  ? (language === "fr"
+                      ? CATEGORY_LABELS_FR
+                      : CATEGORY_LABELS_EN)[currentWord.category] ||
+                    currentWord.category
+                  : language === "fr"
+                    ? "Culture"
+                    : "Knowledge"}
               </span>
             )}
           </div>

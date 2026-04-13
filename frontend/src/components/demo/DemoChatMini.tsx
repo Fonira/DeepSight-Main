@@ -3,12 +3,12 @@
  * 3 messages max, suggestions pre-remplies, CTA inscription apres epuisement.
  */
 
-import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { demoApi } from '../../services/api';
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { demoApi } from "../../services/api";
 
 interface ChatMessage {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 }
 
@@ -20,9 +20,13 @@ interface DemoChatMiniProps {
 
 const MAX_MESSAGES = 3;
 
-export default function DemoChatMini({ demoSessionId, videoTitle, onExhausted }: DemoChatMiniProps) {
+export default function DemoChatMini({
+  demoSessionId,
+  videoTitle,
+  onExhausted,
+}: DemoChatMiniProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [remaining, setRemaining] = useState(MAX_MESSAGES);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -39,9 +43,9 @@ export default function DemoChatMini({ demoSessionId, videoTitle, onExhausted }:
         setSuggestions(result.suggestions || []);
       } catch {
         setSuggestions([
-          'Quel est le point principal ?',
-          'Quels arguments sont avances ?',
-          'Comment appliquer ces idees ?',
+          "Quel est le point principal ?",
+          "Quels arguments sont avances ?",
+          "Comment appliquer ces idees ?",
         ]);
       } finally {
         setSuggestionsLoading(false);
@@ -53,23 +57,26 @@ export default function DemoChatMini({ demoSessionId, videoTitle, onExhausted }:
   // Auto-scroll only when there are messages (avoid scrolling page on initial render)
   useEffect(() => {
     if (messages.length > 0) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || loading || exhausted) return;
 
-    const userMessage: ChatMessage = { role: 'user', content: text.trim() };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
+    const userMessage: ChatMessage = { role: "user", content: text.trim() };
+    setMessages((prev) => [...prev, userMessage]);
+    setInput("");
     setLoading(true);
     setSuggestions([]); // Hide suggestions after first message
 
     try {
       const result = await demoApi.chat(demoSessionId, text.trim());
-      const assistantMessage: ChatMessage = { role: 'assistant', content: result.response };
-      setMessages(prev => [...prev, assistantMessage]);
+      const assistantMessage: ChatMessage = {
+        role: "assistant",
+        content: result.response,
+      };
+      setMessages((prev) => [...prev, assistantMessage]);
       setRemaining(result.messages_remaining);
 
       if (result.messages_remaining <= 0) {
@@ -78,19 +85,25 @@ export default function DemoChatMini({ demoSessionId, videoTitle, onExhausted }:
       }
     } catch (err: unknown) {
       const status = (err as { status?: number }).status;
-      const errorMessage = err instanceof Error ? err.message : '';
-      if (status === 429 || errorMessage.includes('DEMO_CHAT_LIMIT')) {
+      const errorMessage = err instanceof Error ? err.message : "";
+      if (status === 429 || errorMessage.includes("DEMO_CHAT_LIMIT")) {
         setExhausted(true);
         onExhausted();
       } else if (status === 404) {
-        setMessages(prev => [
+        setMessages((prev) => [
           ...prev,
-          { role: 'assistant', content: 'Session expiree. Relancez une analyse pour continuer.' },
+          {
+            role: "assistant",
+            content: "Session expiree. Relancez une analyse pour continuer.",
+          },
         ]);
       } else {
-        setMessages(prev => [
+        setMessages((prev) => [
           ...prev,
-          { role: 'assistant', content: 'Erreur temporaire. Reessayez dans quelques secondes.' },
+          {
+            role: "assistant",
+            content: "Erreur temporaire. Reessayez dans quelques secondes.",
+          },
         ]);
       }
     } finally {
@@ -128,7 +141,8 @@ export default function DemoChatMini({ demoSessionId, videoTitle, onExhausted }:
           </div>
           {!exhausted && (
             <span className="text-white/30 text-[10px]">
-              {remaining} question{remaining > 1 ? 's' : ''} restante{remaining > 1 ? 's' : ''}
+              {remaining} question{remaining > 1 ? "s" : ""} restante
+              {remaining > 1 ? "s" : ""}
             </span>
           )}
         </div>
@@ -145,7 +159,7 @@ export default function DemoChatMini({ demoSessionId, videoTitle, onExhausted }:
               {/* Suggestion chips */}
               {suggestionsLoading ? (
                 <div className="flex gap-2">
-                  {[1, 2, 3].map(i => (
+                  {[1, 2, 3].map((i) => (
                     <div
                       key={i}
                       className="h-8 w-36 rounded-full bg-white/5 animate-pulse"
@@ -181,13 +195,13 @@ export default function DemoChatMini({ demoSessionId, videoTitle, onExhausted }:
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
                   className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                    msg.role === 'user'
-                      ? 'bg-indigo-500/20 border border-indigo-500/30 text-white/90 rounded-br-md'
-                      : 'bg-white/[0.04] border border-white/[0.06] text-white/75 rounded-bl-md'
+                    msg.role === "user"
+                      ? "bg-indigo-500/20 border border-indigo-500/30 text-white/90 rounded-br-md"
+                      : "bg-white/[0.04] border border-white/[0.06] text-white/75 rounded-bl-md"
                   }`}
                 >
                   {msg.content}
@@ -205,9 +219,18 @@ export default function DemoChatMini({ demoSessionId, videoTitle, onExhausted }:
             >
               <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-white/[0.04] border border-white/[0.06]">
                 <div className="flex gap-1.5">
-                  <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <span
+                    className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce"
+                    style={{ animationDelay: "0ms" }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce"
+                    style={{ animationDelay: "150ms" }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 bg-white/30 rounded-full animate-bounce"
+                    style={{ animationDelay: "300ms" }}
+                  />
                 </div>
               </div>
             </motion.div>
@@ -226,11 +249,23 @@ export default function DemoChatMini({ demoSessionId, videoTitle, onExhausted }:
             >
               <div className="text-center px-6">
                 <div className="w-10 h-10 mx-auto mb-3 rounded-full bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  <svg
+                    className="w-5 h-5 text-indigo-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
                   </svg>
                 </div>
-                <p className="text-white/80 text-sm font-medium mb-1">Demo terminee</p>
+                <p className="text-white/80 text-sm font-medium mb-1">
+                  Demo terminee
+                </p>
                 <p className="text-white/40 text-xs mb-4">
                   Creez un compte gratuit pour un chat illimite
                 </p>
@@ -241,8 +276,18 @@ export default function DemoChatMini({ demoSessionId, videoTitle, onExhausted }:
                              transition-all duration-200 shadow-lg shadow-indigo-500/20"
                 >
                   S'inscrire gratuitement
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 7l5 5m0 0l-5 5m5-5H6"
+                    />
                   </svg>
                 </a>
               </div>
@@ -258,7 +303,9 @@ export default function DemoChatMini({ demoSessionId, videoTitle, onExhausted }:
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={exhausted ? 'Demo terminee' : 'Posez votre question...'}
+              placeholder={
+                exhausted ? "Demo terminee" : "Posez votre question..."
+              }
               disabled={loading || exhausted}
               className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-2.5 text-sm text-white/90
                          placeholder-white/20 outline-none focus:border-indigo-500/30 focus:bg-white/[0.05]
@@ -271,8 +318,18 @@ export default function DemoChatMini({ demoSessionId, videoTitle, onExhausted }:
                          flex items-center justify-center transition-all duration-200
                          disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              <svg className="w-4 h-4 text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              <svg
+                className="w-4 h-4 text-indigo-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
               </svg>
             </button>
           </form>

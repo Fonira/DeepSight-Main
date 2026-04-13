@@ -44,7 +44,11 @@ const NotFoundPage = () => {
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.1, ease: [0.34, 1.56, 0.64, 1] }}
+          transition={{
+            duration: 0.6,
+            delay: 0.1,
+            ease: [0.34, 1.56, 0.64, 1],
+          }}
           className="mb-6"
         >
           <span className="text-[120px] sm:text-[160px] font-black leading-none bg-gradient-to-br from-accent-primary via-accent-violet to-accent-cyan bg-clip-text text-transparent select-none">
@@ -69,7 +73,11 @@ const NotFoundPage = () => {
           transition={{ delay: 0.4 }}
           className="text-text-secondary mb-2 text-base sm:text-lg"
         >
-          L'URL <code className="px-2 py-0.5 bg-bg-tertiary rounded text-text-primary text-sm font-mono">{location.pathname}</code> n'existe pas.
+          L'URL{" "}
+          <code className="px-2 py-0.5 bg-bg-tertiary rounded text-text-primary text-sm font-mono">
+            {location.pathname}
+          </code>{" "}
+          n'existe pas.
         </motion.p>
 
         <motion.p

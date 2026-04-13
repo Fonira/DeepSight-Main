@@ -1,8 +1,14 @@
 import React from "react";
 import { useLocation } from "react-router-dom";
 import {
-  Video, BookOpen, History, Gem, Settings, Crown,
-  Waves, Anchor
+  Video,
+  BookOpen,
+  History,
+  Gem,
+  Settings,
+  Crown,
+  Waves,
+  Anchor,
 } from "lucide-react";
 import { ThemeToggle } from "../ThemeToggle";
 import { NotificationBell } from "../NotificationBell";
@@ -22,7 +28,11 @@ const pageIcons: Record<string, React.ReactNode> = {
   "/admin": <Crown className="w-6 h-6" />,
 };
 
-export const Header: React.FC<HeaderProps> = ({ title, subtitle, onAnalysisComplete }) => {
+export const Header: React.FC<HeaderProps> = ({
+  title,
+  subtitle,
+  onAnalysisComplete,
+}) => {
   const location = useLocation();
   const Icon = pageIcons[location.pathname] || <Anchor className="w-6 h-6" />;
 
@@ -30,9 +40,11 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, onAnalysisCompl
     <header
       className="relative border-b py-4 sm:py-6 px-4 sm:px-8 overflow-hidden"
       style={{
-        background: "linear-gradient(135deg, rgba(13, 59, 68, 0.95) 0%, rgba(10, 26, 31, 0.98) 100%)",
+        background:
+          "linear-gradient(135deg, rgba(13, 59, 68, 0.95) 0%, rgba(10, 26, 31, 0.98) 100%)",
         borderColor: "rgba(212, 165, 116, 0.3)",
-        boxShadow: "0 4px 30px rgba(0, 0, 0, 0.5), inset 0 -1px 0 rgba(0, 212, 170, 0.2)"
+        boxShadow:
+          "0 4px 30px rgba(0, 0, 0, 0.5), inset 0 -1px 0 rgba(0, 212, 170, 0.2)",
       }}
     >
       {/* Effet de vagues subtil - hidden on mobile */}
@@ -40,8 +52,9 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, onAnalysisCompl
         <div
           className="absolute bottom-0 left-0 right-0 h-16"
           style={{
-            background: "repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(0, 212, 170, 0.1) 50px, rgba(0, 212, 170, 0.1) 100px)",
-            animation: "wave 8s linear infinite"
+            background:
+              "repeating-linear-gradient(90deg, transparent, transparent 50px, rgba(0, 212, 170, 0.1) 50px, rgba(0, 212, 170, 0.1) 100px)",
+            animation: "wave 8s linear infinite",
           }}
         />
       </div>
@@ -51,7 +64,7 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, onAnalysisCompl
         className="absolute top-0 left-0 h-1 bg-gradient-to-r from-transparent via-cyan-glow to-transparent opacity-50 hidden sm:block"
         style={{
           width: "200px",
-          animation: "sonarSweep 4s ease-in-out infinite"
+          animation: "sonarSweep 4s ease-in-out infinite",
         }}
       />
 
@@ -61,12 +74,16 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, onAnalysisCompl
           <div
             className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center flex-shrink-0"
             style={{
-              background: "linear-gradient(135deg, rgba(0, 212, 170, 0.2), rgba(13, 59, 68, 0.8))",
+              background:
+                "linear-gradient(135deg, rgba(0, 212, 170, 0.2), rgba(13, 59, 68, 0.8))",
               border: "2px solid rgba(0, 212, 170, 0.4)",
-              boxShadow: "0 0 20px rgba(0, 212, 170, 0.3), inset 0 0 10px rgba(0, 212, 170, 0.2)"
+              boxShadow:
+                "0 0 20px rgba(0, 212, 170, 0.3), inset 0 0 10px rgba(0, 212, 170, 0.2)",
             }}
           >
-            <span className="text-cyan-glow [&>svg]:w-5 [&>svg]:h-5 sm:[&>svg]:w-6 sm:[&>svg]:h-6">{Icon}</span>
+            <span className="text-cyan-glow [&>svg]:w-5 [&>svg]:h-5 sm:[&>svg]:w-6 sm:[&>svg]:h-6">
+              {Icon}
+            </span>
           </div>
 
           <div className="min-w-0 flex-1">

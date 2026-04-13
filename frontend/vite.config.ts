@@ -1,7 +1,7 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import { sentryVitePlugin } from '@sentry/vite-plugin';
-import { version } from './package.json';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
+import { version } from "./package.json";
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -14,7 +14,7 @@ export default defineConfig({
       project: process.env.SENTRY_PROJECT,
       authToken: process.env.SENTRY_AUTH_TOKEN,
       sourcemaps: {
-        filesToDeleteAfterUpload: ['./dist/**/*.map'],
+        filesToDeleteAfterUpload: ["./dist/**/*.map"],
       },
       disable: !process.env.SENTRY_AUTH_TOKEN,
     }),
@@ -28,42 +28,42 @@ export default defineConfig({
 
   build: {
     // Source maps for Sentry — uploaded then deleted by the plugin
-    sourcemap: 'hidden',
-    
+    sourcemap: "hidden",
+
     // Taille minimale pour le code splitting
     chunkSizeWarningLimit: 500,
-    
+
     rollupOptions: {
       output: {
         // Code splitting intelligent
         manualChunks: {
           // Vendor chunks (séparés pour meilleur cache)
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-query': ['@tanstack/react-query'],
-          'vendor-ui': ['lucide-react'],
-          'vendor-motion': ['framer-motion'],
-          'vendor-markdown': ['react-markdown', 'remark-gfm'],
-          'vendor-state': ['zustand'],
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-query": ["@tanstack/react-query"],
+          "vendor-ui": ["lucide-react"],
+          "vendor-motion": ["framer-motion"],
+          "vendor-markdown": ["react-markdown", "remark-gfm"],
+          "vendor-state": ["zustand"],
         },
       },
     },
-    
+
     // Utiliser esbuild (par défaut) au lieu de terser
     // esbuild est beaucoup plus rapide et inclus dans Vite
-    minify: 'esbuild',
-    target: 'es2020',
+    minify: "esbuild",
+    target: "es2020",
   },
-  
+
   // Optimisations pour le dev
   optimizeDeps: {
     include: [
-      'react',
-      'react-dom',
-      'react-router-dom',
-      '@tanstack/react-query',
-      'lucide-react',
-      'zustand',
-      'framer-motion',
+      "react",
+      "react-dom",
+      "react-router-dom",
+      "@tanstack/react-query",
+      "lucide-react",
+      "zustand",
+      "framer-motion",
     ],
   },
 });

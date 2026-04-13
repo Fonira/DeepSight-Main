@@ -6,30 +6,43 @@
  * Facturation mensuelle uniquement — pas de toggle annuel.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  Check, X, Sparkles, Zap, Crown,
-  ArrowUp, ArrowDown, AlertCircle, RefreshCw,
-  BookOpen, ChevronDown, ChevronUp, Lock,
-  Infinity as InfinityIcon, GraduationCap, Star,
-  Gift, Clock,
-} from 'lucide-react';
+  Check,
+  X,
+  Sparkles,
+  Zap,
+  Crown,
+  ArrowUp,
+  ArrowDown,
+  AlertCircle,
+  RefreshCw,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+  Lock,
+  Infinity as InfinityIcon,
+  GraduationCap,
+  Star,
+  Gift,
+  Clock,
+} from "lucide-react";
 
-import { useAuth } from '../hooks/useAuth';
-import { useTranslation } from '../hooks/useTranslation';
-import { Sidebar } from '../components/layout/Sidebar';
-import DoodleBackground from '../components/DoodleBackground';
-import { DeepSightSpinnerMicro } from '../components/ui';
-import { billingApi, type ApiBillingPlan } from '../services/api';
-import { SEO } from '../components/SEO';
+import { useAuth } from "../hooks/useAuth";
+import { useTranslation } from "../hooks/useTranslation";
+import { Sidebar } from "../components/layout/Sidebar";
+import DoodleBackground from "../components/DoodleBackground";
+import { DeepSightSpinnerMicro } from "../components/ui";
+import { billingApi, type ApiBillingPlan } from "../services/api";
+import { SEO } from "../components/SEO";
 import {
   PLANS_INFO as FALLBACK_PLANS_INFO,
   PLAN_LIMITS as FALLBACK_PLAN_LIMITS,
   PLAN_HIERARCHY,
   DIFFERENTIATORS,
   type PlanId,
-} from '../config/planPrivileges';
+} from "../config/planPrivileges";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -42,15 +55,15 @@ const PLAN_ICON_MAP: Record<string, React.ElementType> = {
 };
 
 const PLAN_GRADIENT_MAP: Record<string, string> = {
-  free: 'from-gray-500 to-gray-600',
-  plus: 'from-blue-500 to-blue-600',
-  pro: 'from-violet-500 to-purple-600',
+  free: "from-gray-500 to-gray-600",
+  plus: "from-blue-500 to-blue-600",
+  pro: "from-violet-500 to-purple-600",
 };
 
 function formatPriceFr(cents: number): string {
-  if (cents === 0) return '0';
+  if (cents === 0) return "0";
   const euros = cents / 100;
-  return euros.toFixed(2).replace('.', ',');
+  return euros.toFixed(2).replace(".", ",");
 }
 
 function getPlanIcon(planId: string): React.ElementType {
@@ -58,11 +71,13 @@ function getPlanIcon(planId: string): React.ElementType {
 }
 
 function getPlanGradient(planId: string): string {
-  return PLAN_GRADIENT_MAP[planId] || 'from-gray-500 to-gray-600';
+  return PLAN_GRADIENT_MAP[planId] || "from-gray-500 to-gray-600";
 }
 
 /** Convert camelCase PlanLimits to snake_case Record matching API format */
-function limitsToSnakeCase(limits: typeof FALLBACK_PLAN_LIMITS[PlanId]): Record<string, unknown> {
+function limitsToSnakeCase(
+  limits: (typeof FALLBACK_PLAN_LIMITS)[PlanId],
+): Record<string, unknown> {
   return {
     monthly_analyses: limits.monthlyAnalyses,
     max_video_length_min: limits.maxVideoLengthMin,
@@ -97,23 +112,50 @@ function buildFallbackPlans(currentUserPlan: string): ApiBillingPlan[] {
     const currentIdx = PLAN_HIERARCHY.indexOf(currentUserPlan as PlanId);
     const thisIdx = PLAN_HIERARCHY.indexOf(pid);
 
-    const featuresDisplay: { text: string; icon: string; highlight?: boolean }[] = [];
-    featuresDisplay.push({ text: `${limits.monthlyAnalyses === -1 ? '∞' : limits.monthlyAnalyses} analyses/mois`, icon: '📊' });
-    featuresDisplay.push({ text: `Vidéos ${limits.maxVideoLengthMin === -1 ? 'illimitées' : `≤ ${limits.maxVideoLengthMin} min`}`, icon: '⏱️' });
+    const featuresDisplay: {
+      text: string;
+      icon: string;
+      highlight?: boolean;
+    }[] = [];
     featuresDisplay.push({
-      text: limits.chatQuestionsPerVideo === -1 ? 'Chat illimité' : `Chat (${limits.chatQuestionsPerVideo} q/vidéo)`,
-      icon: '💬',
+      text: `${limits.monthlyAnalyses === -1 ? "∞" : limits.monthlyAnalyses} analyses/mois`,
+      icon: "📊",
     });
-    if (limits.flashcardsEnabled) featuresDisplay.push({ text: 'Flashcards & Cartes mentales', icon: '🧠', highlight: pid === 'pro' });
-    if (limits.playlistsEnabled) featuresDisplay.push({ text: `Playlists (${limits.maxPlaylistVideos} vidéos)`, icon: '📚', highlight: true });
+    featuresDisplay.push({
+      text: `Vidéos ${limits.maxVideoLengthMin === -1 ? "illimitées" : `≤ ${limits.maxVideoLengthMin} min`}`,
+      icon: "⏱️",
+    });
+    featuresDisplay.push({
+      text:
+        limits.chatQuestionsPerVideo === -1
+          ? "Chat illimité"
+          : `Chat (${limits.chatQuestionsPerVideo} q/vidéo)`,
+      icon: "💬",
+    });
+    if (limits.flashcardsEnabled)
+      featuresDisplay.push({
+        text: "Flashcards & Cartes mentales",
+        icon: "🧠",
+        highlight: pid === "pro",
+      });
+    if (limits.playlistsEnabled)
+      featuresDisplay.push({
+        text: `Playlists (${limits.maxPlaylistVideos} vidéos)`,
+        icon: "📚",
+        highlight: true,
+      });
     if (limits.webSearchMonthly > 0 || limits.webSearchMonthly === -1) {
       featuresDisplay.push({
-        text: limits.webSearchMonthly === -1 ? 'Recherche web ∞' : `Recherche web (${limits.webSearchMonthly}/mois)`,
-        icon: '🔍',
+        text:
+          limits.webSearchMonthly === -1
+            ? "Recherche web ∞"
+            : `Recherche web (${limits.webSearchMonthly}/mois)`,
+        icon: "🔍",
         highlight: limits.webSearchMonthly >= 100,
       });
     }
-    if (limits.exportPdf) featuresDisplay.push({ text: 'Export PDF', icon: '📄' });
+    if (limits.exportPdf)
+      featuresDisplay.push({ text: "Export PDF", icon: "📄" });
 
     return {
       id: pid,
@@ -124,7 +166,9 @@ function buildFallbackPlans(currentUserPlan: string): ApiBillingPlan[] {
       price_monthly_cents: info.priceMonthly,
       color: info.color,
       icon: info.icon,
-      badge: info.badge ? { text: info.badge.text, color: info.badge.color } : null,
+      badge: info.badge
+        ? { text: info.badge.text, color: info.badge.color }
+        : null,
       popular: info.popular,
       limits: limitsToSnakeCase(limits),
       platform_features: {},
@@ -159,14 +203,13 @@ const SkeletonCard: React.FC = () => (
   </div>
 );
 
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // PLAN CARD
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface PlanCardProps {
   plan: ApiBillingPlan;
-  lang: 'fr' | 'en';
+  lang: "fr" | "en";
   loading: string | null;
   onSelect: (plan: ApiBillingPlan) => void;
   trialEligible: boolean;
@@ -176,7 +219,14 @@ interface PlanCardProps {
 }
 
 const PlanCard: React.FC<PlanCardProps> = ({
-  plan, lang, loading, onSelect, trialEligible, trialLoading, onStartTrial, allPlans,
+  plan,
+  lang,
+  loading,
+  onSelect,
+  trialEligible,
+  trialLoading,
+  onStartTrial,
+  allPlans,
 }) => {
   const Icon = getPlanIcon(plan.id);
   const gradient = getPlanGradient(plan.id);
@@ -184,7 +234,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
   const isUpgrade = plan.is_upgrade;
   const isDowngrade = plan.is_downgrade;
   const isFree = plan.price_monthly_cents === 0;
-  const nameDisplay = lang === 'fr' ? plan.name : plan.name_en;
+  const nameDisplay = lang === "fr" ? plan.name : plan.name_en;
 
   const monthlyPrice = plan.price_monthly_cents;
   const displayPrice = monthlyPrice;
@@ -194,7 +244,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
   const getUnlockPlanName = (unlockPlanId: string) => {
     const p = allPlans.find((pl) => pl.id === unlockPlanId);
     if (!p) return unlockPlanId;
-    return lang === 'fr' ? p.name : p.name_en;
+    return lang === "fr" ? p.name : p.name_en;
   };
 
   return (
@@ -203,9 +253,13 @@ const PlanCard: React.FC<PlanCardProps> = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
       className={`card relative overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] flex flex-col ${
-        isCurrent ? 'ring-2 ring-green-500/50' : ''
-      } ${plan.popular ? 'ring-2 ring-blue-500/50 shadow-xl shadow-blue-500/10' : ''}`}
-      style={plan.popular ? { animation: 'glow-pulse 3s ease-in-out infinite' } : undefined}
+        isCurrent ? "ring-2 ring-green-500/50" : ""
+      } ${plan.popular ? "ring-2 ring-blue-500/50 shadow-xl shadow-blue-500/10" : ""}`}
+      style={
+        plan.popular
+          ? { animation: "glow-pulse 3s ease-in-out infinite" }
+          : undefined
+      }
     >
       {/* Badge */}
       {plan.badge && !isCurrent && (
@@ -222,16 +276,16 @@ const PlanCard: React.FC<PlanCardProps> = ({
         <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 via-blue-400 to-cyan-500" />
       )}
       {/* Bandeau essai gratuit 7 jours — Plus uniquement */}
-      {plan.id === 'plus' && !isCurrent && trialEligible && (
+      {plan.id === "plus" && !isCurrent && trialEligible && (
         <div className="absolute top-0 left-0 right-0 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-[10px] font-bold text-center py-1">
-          {lang === 'fr' ? '🎁 Essai gratuit 7 jours' : '🎁 7-day free trial'}
+          {lang === "fr" ? "🎁 Essai gratuit 7 jours" : "🎁 7-day free trial"}
         </div>
       )}
       {isCurrent && (
         <div className="absolute top-2 left-2 z-10">
           <div className="bg-green-500/20 text-green-400 text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
             <Check className="w-2.5 h-2.5" />
-            {lang === 'fr' ? 'Actuel' : 'Current'}
+            {lang === "fr" ? "Actuel" : "Current"}
           </div>
         </div>
       )}
@@ -244,31 +298,42 @@ const PlanCard: React.FC<PlanCardProps> = ({
           <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
         </div>
 
-        <h3 className="text-lg sm:text-xl font-bold text-text-primary mb-0.5">{nameDisplay}</h3>
+        <h3 className="text-lg sm:text-xl font-bold text-text-primary mb-0.5">
+          {nameDisplay}
+        </h3>
         <p className="text-xs text-text-tertiary mb-2 sm:mb-3">
-          {lang === 'fr' ? plan.description : plan.description_en}
+          {lang === "fr" ? plan.description : plan.description_en}
         </p>
 
         {/* Price */}
         <div className="mb-3 sm:mb-4">
-          <span className="text-2xl sm:text-3xl font-bold text-text-primary">{priceDisplay}</span>
+          <span className="text-2xl sm:text-3xl font-bold text-text-primary">
+            {priceDisplay}
+          </span>
           <span className="text-text-tertiary text-xs sm:text-sm ml-1">
-            €/{lang === 'fr' ? 'mois' : 'mo'}
+            €/{lang === "fr" ? "mois" : "mo"}
           </span>
         </div>
 
         {/* Features Display */}
         <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4 flex-1">
           {plan.features_display.map((feat, idx) => (
-            <div key={idx} className="flex items-center gap-2 text-[11px] sm:text-xs">
+            <div
+              key={idx}
+              className="flex items-center gap-2 text-[11px] sm:text-xs"
+            >
               <div
                 className={`w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 ${
-                  feat.highlight ? 'bg-amber-500/20' : 'bg-green-500/20'
+                  feat.highlight ? "bg-amber-500/20" : "bg-green-500/20"
                 }`}
               >
-                <Check className={`w-2.5 h-2.5 ${feat.highlight ? 'text-amber-400' : 'text-green-400'}`} />
+                <Check
+                  className={`w-2.5 h-2.5 ${feat.highlight ? "text-amber-400" : "text-green-400"}`}
+                />
               </div>
-              <span className={`${feat.highlight ? 'font-medium text-amber-300' : 'text-text-secondary'}`}>
+              <span
+                className={`${feat.highlight ? "font-medium text-amber-300" : "text-text-secondary"}`}
+              >
                 {feat.text}
               </span>
             </div>
@@ -276,14 +341,18 @@ const PlanCard: React.FC<PlanCardProps> = ({
 
           {/* Features Locked */}
           {plan.features_locked.map((feat, idx) => (
-            <div key={`locked-${idx}`} className="flex items-center gap-2 text-[11px] sm:text-xs">
+            <div
+              key={`locked-${idx}`}
+              className="flex items-center gap-2 text-[11px] sm:text-xs"
+            >
               <div className="w-4 h-4 rounded-full bg-gray-500/20 flex items-center justify-center flex-shrink-0">
                 <Lock className="w-2.5 h-2.5 text-gray-500" />
               </div>
               <span className="text-text-muted">
                 {feat.text}
                 <span className="text-text-tertiary ml-1 text-[10px]">
-                  — {lang === 'fr' ? 'Dès' : 'From'} {getUnlockPlanName(feat.unlock_plan)}
+                  — {lang === "fr" ? "Dès" : "From"}{" "}
+                  {getUnlockPlanName(feat.unlock_plan)}
                 </span>
               </span>
             </div>
@@ -292,7 +361,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
 
         {/* CTA */}
         <div className="mt-auto">
-          {trialEligible && plan.id === 'plus' && plan.is_upgrade ? (
+          {trialEligible && plan.id === "plus" && plan.is_upgrade ? (
             <button
               onClick={onStartTrial}
               disabled={trialLoading}
@@ -303,22 +372,24 @@ const PlanCard: React.FC<PlanCardProps> = ({
               ) : (
                 <>
                   <Gift className="w-4 h-4" />
-                  {lang === 'fr' ? '7 jours gratuits' : '7-day free trial'}
+                  {lang === "fr" ? "7 jours gratuits" : "7-day free trial"}
                 </>
               )}
             </button>
           ) : (
             <button
               onClick={() => onSelect(plan)}
-              disabled={isCurrent || loading === plan.id || (isFree && isCurrent)}
+              disabled={
+                isCurrent || loading === plan.id || (isFree && isCurrent)
+              }
               className={`w-full py-2.5 sm:py-3 rounded-xl font-semibold text-xs transition-all flex items-center justify-center gap-2 min-h-[44px] active:scale-95 ${
                 isCurrent
-                  ? 'bg-green-500/20 text-green-400 cursor-default'
+                  ? "bg-green-500/20 text-green-400 cursor-default"
                   : isUpgrade
                     ? `bg-gradient-to-r ${gradient} text-white hover:opacity-90 shadow-lg`
                     : isDowngrade
-                      ? 'bg-transparent text-gray-400 hover:text-gray-300 border border-white/10'
-                      : 'bg-bg-tertiary text-text-muted cursor-not-allowed'
+                      ? "bg-transparent text-gray-400 hover:text-gray-300 border border-white/10"
+                      : "bg-bg-tertiary text-text-muted cursor-not-allowed"
               }`}
             >
               {loading === plan.id ? (
@@ -326,20 +397,24 @@ const PlanCard: React.FC<PlanCardProps> = ({
               ) : isCurrent ? (
                 <>
                   <Check className="w-4 h-4" />
-                  {lang === 'fr' ? 'Plan actuel ✓' : 'Current plan ✓'}
+                  {lang === "fr" ? "Plan actuel ✓" : "Current plan ✓"}
                 </>
               ) : isUpgrade ? (
                 <>
                   <ArrowUp className="w-4 h-4" />
-                  {lang === 'fr' ? `Choisir ${nameDisplay}` : `Choose ${nameDisplay}`}
+                  {lang === "fr"
+                    ? `Choisir ${nameDisplay}`
+                    : `Choose ${nameDisplay}`}
                 </>
               ) : isDowngrade ? (
                 <>
                   <ArrowDown className="w-4 h-4" />
                   Downgrade
                 </>
+              ) : lang === "fr" ? (
+                "Gratuit"
               ) : (
-                lang === 'fr' ? 'Gratuit' : 'Free'
+                "Free"
               )}
             </button>
           )}
@@ -355,7 +430,7 @@ const PlanCard: React.FC<PlanCardProps> = ({
 
 interface ComparisonTableProps {
   plans: ApiBillingPlan[];
-  lang: 'fr' | 'en';
+  lang: "fr" | "en";
   loading: string | null;
   onSelect: (plan: ApiBillingPlan) => void;
 }
@@ -368,121 +443,197 @@ interface ComparisonCategory {
 
 /** Safely read a limit value, supporting both snake_case (API) and camelCase (fallback) */
 function lim(limits: Record<string, unknown>, snakeKey: string): unknown {
-  if (snakeKey in limits && limits[snakeKey] !== undefined) return limits[snakeKey];
+  if (snakeKey in limits && limits[snakeKey] !== undefined)
+    return limits[snakeKey];
   // Convert snake_case → camelCase as fallback
-  const camelKey = snakeKey.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase());
-  if (camelKey in limits && limits[camelKey] !== undefined) return limits[camelKey];
+  const camelKey = snakeKey.replace(/_([a-z])/g, (_, c: string) =>
+    c.toUpperCase(),
+  );
+  if (camelKey in limits && limits[camelKey] !== undefined)
+    return limits[camelKey];
   return undefined;
 }
 
-function buildComparisonData(plans: ApiBillingPlan[], lang: 'fr' | 'en'): ComparisonCategory[] {
+function buildComparisonData(
+  plans: ApiBillingPlan[],
+  lang: "fr" | "en",
+): ComparisonCategory[] {
   const fmt = (v: unknown): string | boolean => {
     if (v === true) return true;
     if (v === false) return false;
-    if (v === -1) return '∞';
-    if (typeof v === 'number') return String(v);
-    if (Array.isArray(v)) return v.join(', ');
-    if (v === undefined || v === null) return '-';
+    if (v === -1) return "∞";
+    if (typeof v === "number") return String(v);
+    if (Array.isArray(v)) return v.join(", ");
+    if (v === undefined || v === null) return "-";
     return String(v);
   };
 
   const fmtMin = (v: unknown): string | boolean => {
-    if (v === -1) return '∞';
-    if (typeof v === 'number') {
+    if (v === -1) return "∞";
+    if (typeof v === "number") {
       if (v >= 60) return `${Math.floor(v / 60)}h`;
       return `${v} min`;
     }
-    return '-';
+    return "-";
   };
 
   const L = (p: ApiBillingPlan, key: string) => lim(p.limits, key);
 
   const categories: ComparisonCategory[] = [
     {
-      name: lang === 'fr' ? '📊 Analyses' : '📊 Analyses',
+      name: lang === "fr" ? "📊 Analyses" : "📊 Analyses",
       rows: [
-        { label: lang === 'fr' ? 'Analyses/mois' : 'Analyses/month', values: plans.map(p => fmt(L(p, 'monthly_analyses'))) },
-        { label: lang === 'fr' ? 'Durée max vidéo' : 'Max video length', values: plans.map(p => fmtMin(L(p, 'max_video_length_min'))) },
-        { label: lang === 'fr' ? 'Analyses simultanées' : 'Concurrent analyses', values: plans.map(p => fmt(L(p, 'concurrent_analyses'))) },
-        { label: lang === 'fr' ? 'File prioritaire' : 'Priority queue', values: plans.map(p => fmt(L(p, 'priority_queue'))) },
-      ],
-    },
-    {
-      name: lang === 'fr' ? '💬 Chat IA' : '💬 AI Chat',
-      rows: [
-        { label: lang === 'fr' ? 'Questions/vidéo' : 'Questions/video', values: plans.map(p => fmt(L(p, 'chat_questions_per_video'))) },
-        { label: lang === 'fr' ? 'Messages/jour' : 'Messages/day', values: plans.map(p => fmt(L(p, 'chat_daily_limit'))) },
-      ],
-    },
-    {
-      name: lang === 'fr' ? '🎓 Outils d\'étude' : '🎓 Study tools',
-      rows: [
-        { label: 'Flashcards', values: plans.map(p => fmt(L(p, 'flashcards_enabled'))) },
-        { label: lang === 'fr' ? 'Cartes mentales' : 'Mind maps', values: plans.map(p => fmt(L(p, 'mindmap_enabled'))) },
-      ],
-    },
-    {
-      name: lang === 'fr' ? '🔍 Recherche web' : '🔍 Web search',
-      rows: [
-        { label: lang === 'fr' ? 'Recherches/mois' : 'Searches/month', values: plans.map(p => fmt(L(p, 'web_search_monthly'))) },
-      ],
-    },
-    {
-      name: lang === 'fr' ? '📚 Playlists' : '📚 Playlists',
-      rows: [
-        { label: lang === 'fr' ? 'Playlists' : 'Playlists', values: plans.map(p => fmt(L(p, 'playlists_enabled'))) },
-        { label: lang === 'fr' ? 'Vidéos/playlist' : 'Videos/playlist', values: plans.map(p => L(p, 'playlists_enabled') ? fmt(L(p, 'max_playlist_videos')) : false) },
-      ],
-    },
-    {
-      name: lang === 'fr' ? '📄 Export' : '📄 Export',
-      rows: [
-        { label: 'Markdown', values: plans.map(p => fmt(L(p, 'export_markdown'))) },
-        { label: 'PDF', values: plans.map(p => fmt(L(p, 'export_pdf'))) },
-      ],
-    },
-    {
-      name: lang === 'fr' ? '🔬 Deep Research' : '🔬 Deep Research',
-      rows: [
-        { label: 'Deep Research', values: plans.map(p => fmt(L(p, 'deep_research_enabled'))) },
-        { label: 'Fact-check', values: plans.map(p => fmt(L(p, 'factcheck_enabled'))) },
-      ],
-    },
-    {
-      name: lang === 'fr' ? '📚 Académique' : '📚 Academic',
-      rows: [
-        { label: lang === 'fr' ? 'Papers/analyse' : 'Papers/analysis', values: plans.map(p => fmt(L(p, 'academic_papers_per_analysis'))) },
-        { label: lang === 'fr' ? 'Export biblio' : 'Biblio export', values: plans.map(p => fmt(L(p, 'bibliography_export'))) },
-        { label: lang === 'fr' ? 'Texte intégral' : 'Full text', values: plans.map(p => fmt(L(p, 'academic_full_text'))) },
-      ],
-    },
-    {
-      name: lang === 'fr' ? '🎙️ Audio & Vocal' : '🎙️ Audio & Voice',
-      rows: [
-        { label: lang === 'fr' ? 'Chat vocal' : 'Voice chat', values: plans.map(p => fmt(L(p, 'voice_chat_enabled'))) },
         {
-          label: lang === 'fr' ? 'Minutes/mois' : 'Minutes/month',
-          values: plans.map(p => L(p, 'voice_chat_enabled') ? fmt(L(p, 'voice_monthly_minutes')) : false),
+          label: lang === "fr" ? "Analyses/mois" : "Analyses/month",
+          values: plans.map((p) => fmt(L(p, "monthly_analyses"))),
         },
-        { label: 'TTS Audio', values: plans.map(p => fmt(L(p, 'tts_enabled'))) },
+        {
+          label: lang === "fr" ? "Durée max vidéo" : "Max video length",
+          values: plans.map((p) => fmtMin(L(p, "max_video_length_min"))),
+        },
+        {
+          label: lang === "fr" ? "Analyses simultanées" : "Concurrent analyses",
+          values: plans.map((p) => fmt(L(p, "concurrent_analyses"))),
+        },
+        {
+          label: lang === "fr" ? "File prioritaire" : "Priority queue",
+          values: plans.map((p) => fmt(L(p, "priority_queue"))),
+        },
       ],
     },
     {
-      name: lang === 'fr' ? '⚔️ Débat IA' : '⚔️ AI Debate',
-      rows: [
-        { label: lang === 'fr' ? 'Débats/mois' : 'Debates/month', values: plans.map(p => fmt(L(p, 'debate_monthly'))) },
-      ],
-    },
-    {
-      name: lang === 'fr' ? '🗂️ Historique' : '🗂️ History',
+      name: lang === "fr" ? "💬 Chat IA" : "💬 AI Chat",
       rows: [
         {
-          label: lang === 'fr' ? 'Rétention' : 'Retention',
-          values: plans.map(p => {
-            const d = L(p, 'history_retention_days');
-            if (d === -1) return '∞';
-            if (typeof d === 'number') return `${d} ${lang === 'fr' ? 'jours' : 'days'}`;
-            return '-';
+          label: lang === "fr" ? "Questions/vidéo" : "Questions/video",
+          values: plans.map((p) => fmt(L(p, "chat_questions_per_video"))),
+        },
+        {
+          label: lang === "fr" ? "Messages/jour" : "Messages/day",
+          values: plans.map((p) => fmt(L(p, "chat_daily_limit"))),
+        },
+      ],
+    },
+    {
+      name: lang === "fr" ? "🎓 Outils d'étude" : "🎓 Study tools",
+      rows: [
+        {
+          label: "Flashcards",
+          values: plans.map((p) => fmt(L(p, "flashcards_enabled"))),
+        },
+        {
+          label: lang === "fr" ? "Cartes mentales" : "Mind maps",
+          values: plans.map((p) => fmt(L(p, "mindmap_enabled"))),
+        },
+      ],
+    },
+    {
+      name: lang === "fr" ? "🔍 Recherche web" : "🔍 Web search",
+      rows: [
+        {
+          label: lang === "fr" ? "Recherches/mois" : "Searches/month",
+          values: plans.map((p) => fmt(L(p, "web_search_monthly"))),
+        },
+      ],
+    },
+    {
+      name: lang === "fr" ? "📚 Playlists" : "📚 Playlists",
+      rows: [
+        {
+          label: lang === "fr" ? "Playlists" : "Playlists",
+          values: plans.map((p) => fmt(L(p, "playlists_enabled"))),
+        },
+        {
+          label: lang === "fr" ? "Vidéos/playlist" : "Videos/playlist",
+          values: plans.map((p) =>
+            L(p, "playlists_enabled")
+              ? fmt(L(p, "max_playlist_videos"))
+              : false,
+          ),
+        },
+      ],
+    },
+    {
+      name: lang === "fr" ? "📄 Export" : "📄 Export",
+      rows: [
+        {
+          label: "Markdown",
+          values: plans.map((p) => fmt(L(p, "export_markdown"))),
+        },
+        { label: "PDF", values: plans.map((p) => fmt(L(p, "export_pdf"))) },
+      ],
+    },
+    {
+      name: lang === "fr" ? "🔬 Deep Research" : "🔬 Deep Research",
+      rows: [
+        {
+          label: "Deep Research",
+          values: plans.map((p) => fmt(L(p, "deep_research_enabled"))),
+        },
+        {
+          label: "Fact-check",
+          values: plans.map((p) => fmt(L(p, "factcheck_enabled"))),
+        },
+      ],
+    },
+    {
+      name: lang === "fr" ? "📚 Académique" : "📚 Academic",
+      rows: [
+        {
+          label: lang === "fr" ? "Papers/analyse" : "Papers/analysis",
+          values: plans.map((p) => fmt(L(p, "academic_papers_per_analysis"))),
+        },
+        {
+          label: lang === "fr" ? "Export biblio" : "Biblio export",
+          values: plans.map((p) => fmt(L(p, "bibliography_export"))),
+        },
+        {
+          label: lang === "fr" ? "Texte intégral" : "Full text",
+          values: plans.map((p) => fmt(L(p, "academic_full_text"))),
+        },
+      ],
+    },
+    {
+      name: lang === "fr" ? "🎙️ Audio & Vocal" : "🎙️ Audio & Voice",
+      rows: [
+        {
+          label: lang === "fr" ? "Chat vocal" : "Voice chat",
+          values: plans.map((p) => fmt(L(p, "voice_chat_enabled"))),
+        },
+        {
+          label: lang === "fr" ? "Minutes/mois" : "Minutes/month",
+          values: plans.map((p) =>
+            L(p, "voice_chat_enabled")
+              ? fmt(L(p, "voice_monthly_minutes"))
+              : false,
+          ),
+        },
+        {
+          label: "TTS Audio",
+          values: plans.map((p) => fmt(L(p, "tts_enabled"))),
+        },
+      ],
+    },
+    {
+      name: lang === "fr" ? "⚔️ Débat IA" : "⚔️ AI Debate",
+      rows: [
+        {
+          label: lang === "fr" ? "Débats/mois" : "Debates/month",
+          values: plans.map((p) => fmt(L(p, "debate_monthly"))),
+        },
+      ],
+    },
+    {
+      name: lang === "fr" ? "🗂️ Historique" : "🗂️ History",
+      rows: [
+        {
+          label: lang === "fr" ? "Rétention" : "Retention",
+          values: plans.map((p) => {
+            const d = L(p, "history_retention_days");
+            if (d === -1) return "∞";
+            if (typeof d === "number")
+              return `${d} ${lang === "fr" ? "jours" : "days"}`;
+            return "-";
           }),
         },
       ],
@@ -492,9 +643,17 @@ function buildComparisonData(plans: ApiBillingPlan[], lang: 'fr' | 'en'): Compar
   return categories;
 }
 
-const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading, onSelect }) => {
+const ComparisonTable: React.FC<ComparisonTableProps> = ({
+  plans,
+  lang,
+  loading,
+  onSelect,
+}) => {
   const [expanded, setExpanded] = useState<string[]>([]);
-  const categories = useMemo(() => buildComparisonData(plans, lang), [plans, lang]);
+  const categories = useMemo(
+    () => buildComparisonData(plans, lang),
+    [plans, lang],
+  );
 
   // Expand all categories by default
   useEffect(() => {
@@ -502,14 +661,17 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
   }, [categories]);
 
   const toggleCategory = (name: string) => {
-    setExpanded((prev) => (prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]));
+    setExpanded((prev) =>
+      prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name],
+    );
   };
 
   const renderCellValue = (value: string | boolean) => {
     if (value === true) return <Check className="w-5 h-5 text-green-400" />;
     if (value === false) return <X className="w-5 h-5 text-gray-500" />;
-    if (value === '∞') return <InfinityIcon className="w-5 h-5 text-violet-400" />;
-    if (value === '0') return <X className="w-5 h-5 text-gray-500" />;
+    if (value === "∞")
+      return <InfinityIcon className="w-5 h-5 text-violet-400" />;
+    if (value === "0") return <X className="w-5 h-5 text-gray-500" />;
     return <span className="text-sm text-text-secondary">{value}</span>;
   };
 
@@ -526,7 +688,7 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
         style={{ gridTemplateColumns: `1.5fr repeat(${plans.length}, 1fr)` }}
       >
         <div className="font-semibold text-text-secondary text-sm">
-          {lang === 'fr' ? 'Fonctionnalités' : 'Features'}
+          {lang === "fr" ? "Fonctionnalités" : "Features"}
         </div>
         {plans.map((plan) => {
           const Icon = getPlanIcon(plan.id);
@@ -534,20 +696,25 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
           return (
             <div
               key={plan.id}
-              className={`text-center ${plan.is_current ? 'bg-green-500/5 -mx-1 px-1 py-2 rounded-lg' : ''} ${plan.popular ? 'bg-blue-500/5 -mx-1 px-1 py-2 rounded-lg' : ''}`}
+              className={`text-center ${plan.is_current ? "bg-green-500/5 -mx-1 px-1 py-2 rounded-lg" : ""} ${plan.popular ? "bg-blue-500/5 -mx-1 px-1 py-2 rounded-lg" : ""}`}
             >
-              <div className={`inline-flex w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} items-center justify-center mb-1 shadow-lg`}>
+              <div
+                className={`inline-flex w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} items-center justify-center mb-1 shadow-lg`}
+              >
                 <Icon className="w-4 h-4 text-white" />
               </div>
-              <div className="font-bold text-text-primary text-xs">{lang === 'fr' ? plan.name : plan.name_en}</div>
+              <div className="font-bold text-text-primary text-xs">
+                {lang === "fr" ? plan.name : plan.name_en}
+              </div>
               <div className="text-[10px] text-text-tertiary">
                 {plan.price_monthly_cents === 0
-                  ? '0€'
-                  : `${formatPriceFr(plan.price_monthly_cents)}€/${lang === 'fr' ? 'mois' : 'mo'}`}
+                  ? "0€"
+                  : `${formatPriceFr(plan.price_monthly_cents)}€/${lang === "fr" ? "mois" : "mo"}`}
               </div>
               {plan.is_current && (
                 <div className="text-[10px] text-green-400 mt-1 flex items-center justify-center gap-1">
-                  <Check className="w-2.5 h-2.5" /> {lang === 'fr' ? 'Actuel' : 'Current'}
+                  <Check className="w-2.5 h-2.5" />{" "}
+                  {lang === "fr" ? "Actuel" : "Current"}
                 </div>
               )}
             </div>
@@ -557,12 +724,17 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
 
       {/* Categories */}
       {categories.map((cat) => (
-        <div key={cat.name} className="border-b border-border-primary last:border-b-0">
+        <div
+          key={cat.name}
+          className="border-b border-border-primary last:border-b-0"
+        >
           <button
             onClick={() => toggleCategory(cat.name)}
             className="w-full p-3 bg-bg-tertiary/50 hover:bg-bg-tertiary transition-colors flex items-center gap-2"
           >
-            <span className="font-semibold text-text-primary text-sm">{cat.name}</span>
+            <span className="font-semibold text-text-primary text-sm">
+              {cat.name}
+            </span>
             {expanded.includes(cat.name) ? (
               <ChevronUp className="w-4 h-4 text-text-tertiary" />
             ) : (
@@ -574,7 +746,7 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
             {expanded.includes(cat.name) && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
+                animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
@@ -584,13 +756,17 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
                     <div
                       key={idx}
                       className="grid gap-2 p-3 hover:bg-bg-tertiary/30 transition-colors"
-                      style={{ gridTemplateColumns: `1.5fr repeat(${plans.length}, 1fr)` }}
+                      style={{
+                        gridTemplateColumns: `1.5fr repeat(${plans.length}, 1fr)`,
+                      }}
                     >
-                      <div className="text-xs text-text-secondary flex items-center">{row.label}</div>
+                      <div className="text-xs text-text-secondary flex items-center">
+                        {row.label}
+                      </div>
                       {row.values.map((val, vi) => (
                         <div
                           key={vi}
-                          className={`flex justify-center items-center ${plans[vi]?.is_current ? 'bg-green-500/5 -mx-1 px-1 rounded' : ''}`}
+                          className={`flex justify-center items-center ${plans[vi]?.is_current ? "bg-green-500/5 -mx-1 px-1 rounded" : ""}`}
                         >
                           {renderCellValue(val)}
                         </div>
@@ -616,27 +792,41 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
             <div key={plan.id} className="flex justify-center">
               <button
                 onClick={() => onSelect(plan)}
-                disabled={plan.is_current || loading === plan.id || (plan.price_monthly_cents === 0 && plan.is_current)}
+                disabled={
+                  plan.is_current ||
+                  loading === plan.id ||
+                  (plan.price_monthly_cents === 0 && plan.is_current)
+                }
                 className={`px-3 py-1.5 rounded-lg font-medium text-[10px] transition-all ${
                   plan.is_current
-                    ? 'bg-green-500/20 text-green-400'
+                    ? "bg-green-500/20 text-green-400"
                     : plan.is_upgrade
                       ? `bg-gradient-to-r ${gradient} text-white hover:opacity-90 shadow-lg`
                       : plan.is_downgrade
-                        ? 'bg-bg-tertiary text-text-muted'
-                        : 'bg-bg-tertiary text-text-muted'
+                        ? "bg-bg-tertiary text-text-muted"
+                        : "bg-bg-tertiary text-text-muted"
                 }`}
               >
                 {loading === plan.id ? (
-                  <DeepSightSpinnerMicro onLight={plan.is_upgrade || plan.is_current} />
+                  <DeepSightSpinnerMicro
+                    onLight={plan.is_upgrade || plan.is_current}
+                  />
                 ) : plan.is_current ? (
-                  lang === 'fr' ? 'Actuel' : 'Current'
+                  lang === "fr" ? (
+                    "Actuel"
+                  ) : (
+                    "Current"
+                  )
                 ) : plan.is_upgrade ? (
-                  lang === 'fr' ? 'Choisir' : 'Select'
+                  lang === "fr" ? (
+                    "Choisir"
+                  ) : (
+                    "Select"
+                  )
                 ) : plan.is_downgrade ? (
-                  'Downgrade'
+                  "Downgrade"
                 ) : (
-                  '-'
+                  "-"
                 )}
               </button>
             </div>
@@ -654,14 +844,21 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ plans, lang, loading,
 interface DowngradeModalProps {
   plan: ApiBillingPlan;
   currentPlan: ApiBillingPlan | undefined;
-  lang: 'fr' | 'en';
+  lang: "fr" | "en";
   onConfirm: () => void;
   onCancel: () => void;
 }
 
-const DowngradeModal: React.FC<DowngradeModalProps> = ({ plan, currentPlan, lang, onConfirm, onCancel }) => {
+const DowngradeModal: React.FC<DowngradeModalProps> = ({
+  plan,
+  currentPlan,
+  lang,
+  onConfirm,
+  onCancel,
+}) => {
   // Show features lost: features in current plan's display that are NOT in the target plan
-  const currentFeatures = currentPlan?.features_display.map((f) => f.text) ?? [];
+  const currentFeatures =
+    currentPlan?.features_display.map((f) => f.text) ?? [];
   const targetFeatures = new Set(plan.features_display.map((f) => f.text));
   const lostFeatures = currentFeatures.filter((f) => !targetFeatures.has(f));
 
@@ -680,10 +877,10 @@ const DowngradeModal: React.FC<DowngradeModalProps> = ({ plan, currentPlan, lang
       >
         <h3 className="text-base sm:text-lg font-bold text-text-primary mb-2 sm:mb-3 flex items-center gap-2">
           <AlertCircle className="w-5 h-5 text-amber-400" />
-          {lang === 'fr' ? 'Confirmer le downgrade' : 'Confirm downgrade'}
+          {lang === "fr" ? "Confirmer le downgrade" : "Confirm downgrade"}
         </h3>
         <p className="text-text-secondary text-xs sm:text-sm mb-3">
-          {lang === 'fr'
+          {lang === "fr"
             ? `Passer au plan ${plan.name} ? Vos avantages actuels restent actifs jusqu'à la fin de la période.`
             : `Switch to ${plan.name_en}? Current benefits stay active until period end.`}
         </p>
@@ -691,11 +888,14 @@ const DowngradeModal: React.FC<DowngradeModalProps> = ({ plan, currentPlan, lang
         {lostFeatures.length > 0 && (
           <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
             <p className="text-xs font-semibold text-red-400 mb-2">
-              {lang === 'fr' ? 'Vous perdrez :' : 'You will lose:'}
+              {lang === "fr" ? "Vous perdrez :" : "You will lose:"}
             </p>
             <ul className="space-y-1">
               {lostFeatures.map((f, idx) => (
-                <li key={idx} className="flex items-center gap-2 text-xs text-red-300">
+                <li
+                  key={idx}
+                  className="flex items-center gap-2 text-xs text-red-300"
+                >
                   <X className="w-3 h-3 flex-shrink-0" /> {f}
                 </li>
               ))}
@@ -704,14 +904,17 @@ const DowngradeModal: React.FC<DowngradeModalProps> = ({ plan, currentPlan, lang
         )}
 
         <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 sm:justify-end">
-          <button onClick={onCancel} className="btn-secondary min-h-[44px] active:scale-95">
-            {lang === 'fr' ? 'Annuler' : 'Cancel'}
+          <button
+            onClick={onCancel}
+            className="btn-secondary min-h-[44px] active:scale-95"
+          >
+            {lang === "fr" ? "Annuler" : "Cancel"}
           </button>
           <button
             onClick={onConfirm}
             className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-medium transition-colors min-h-[44px] active:scale-95"
           >
-            {lang === 'fr' ? 'Confirmer le downgrade' : 'Confirm downgrade'}
+            {lang === "fr" ? "Confirmer le downgrade" : "Confirm downgrade"}
           </button>
         </div>
       </motion.div>
@@ -734,7 +937,7 @@ interface SubscriptionStatus {
 export const UpgradePage: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const { language } = useTranslation();
-  const lang = (language as 'fr' | 'en') || 'fr';
+  const lang = (language as "fr" | "en") || "fr";
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [plans, setPlans] = useState<ApiBillingPlan[]>([]);
@@ -742,9 +945,12 @@ export const UpgradePage: React.FC = () => {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus | null>(null);
-  const [downgradeTarget, setDowngradeTarget] = useState<ApiBillingPlan | null>(null);
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [subscriptionStatus, setSubscriptionStatus] =
+    useState<SubscriptionStatus | null>(null);
+  const [downgradeTarget, setDowngradeTarget] = useState<ApiBillingPlan | null>(
+    null,
+  );
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [trialEligible, setTrialEligible] = useState(false);
   const [trialLoading, setTrialLoading] = useState(false);
 
@@ -759,19 +965,22 @@ export const UpgradePage: React.FC = () => {
 
         // Load plans from API
         const [plansResponse, statusResponse] = await Promise.allSettled([
-          billingApi.getPlans('web'),
+          billingApi.getPlans("web"),
           billingApi.getSubscriptionStatus(),
         ]);
 
-        if (plansResponse.status === 'fulfilled' && plansResponse.value.plans?.length) {
+        if (
+          plansResponse.status === "fulfilled" &&
+          plansResponse.value.plans?.length
+        ) {
           setPlans(plansResponse.value.plans);
         } else {
           // Fallback to planPrivileges.ts
-          const userPlan = user?.plan || 'free';
+          const userPlan = user?.plan || "free";
           setPlans(buildFallbackPlans(userPlan));
         }
 
-        if (statusResponse.status === 'fulfilled') {
+        if (statusResponse.status === "fulfilled") {
           setSubscriptionStatus(statusResponse.value);
         }
 
@@ -783,8 +992,8 @@ export const UpgradePage: React.FC = () => {
           // Trial eligibility check not available
         }
       } catch (err) {
-        console.error('Error loading plans:', err);
-        const userPlan = user?.plan || 'free';
+        console.error("Error loading plans:", err);
+        const userPlan = user?.plan || "free";
         setPlans(buildFallbackPlans(userPlan));
       } finally {
         setPlansLoading(false);
@@ -803,14 +1012,20 @@ export const UpgradePage: React.FC = () => {
         window.location.href = result.checkout_url;
       }
     } catch (err: any) {
-      setError(err?.message || (lang === 'fr' ? 'Erreur lors du démarrage de l\'essai' : 'Error starting trial'));
+      setError(
+        err?.message ||
+          (lang === "fr"
+            ? "Erreur lors du démarrage de l'essai"
+            : "Error starting trial"),
+      );
     } finally {
       setTrialLoading(false);
     }
   };
 
   const handleSelectPlan = (plan: ApiBillingPlan) => {
-    if (plan.is_current || (plan.price_monthly_cents === 0 && plan.is_current)) return;
+    if (plan.is_current || (plan.price_monthly_cents === 0 && plan.is_current))
+      return;
 
     if (plan.is_downgrade) {
       setDowngradeTarget(plan);
@@ -827,7 +1042,11 @@ export const UpgradePage: React.FC = () => {
     setDowngradeTarget(null);
 
     try {
-      if (plan.is_upgrade || (!currentPlan || currentPlan.price_monthly_cents === 0)) {
+      if (
+        plan.is_upgrade ||
+        !currentPlan ||
+        currentPlan.price_monthly_cents === 0
+      ) {
         // Upgrade → Stripe checkout
         const result = await billingApi.createCheckout(plan.id);
         if (result.checkout_url) {
@@ -839,14 +1058,14 @@ export const UpgradePage: React.FC = () => {
         const result = await billingApi.changePlan(plan.id);
         if (result.success) {
           setSuccess(
-            lang === 'fr'
-              ? 'Plan modifié ! Changement effectif au prochain renouvellement.'
-              : 'Plan changed! Takes effect at next renewal.'
+            lang === "fr"
+              ? "Plan modifié ! Changement effectif au prochain renouvellement."
+              : "Plan changed! Takes effect at next renewal.",
           );
           await refreshUser(true);
           // Reload plans to get updated is_current flags
           try {
-            const plansResponse = await billingApi.getPlans('web');
+            const plansResponse = await billingApi.getPlans("web");
             if (plansResponse.plans?.length) setPlans(plansResponse.plans);
           } catch {
             // ignore
@@ -856,7 +1075,10 @@ export const UpgradePage: React.FC = () => {
         }
       }
     } catch (err: any) {
-      setError(err?.message || (lang === 'fr' ? 'Erreur lors du changement' : 'Error changing plan'));
+      setError(
+        err?.message ||
+          (lang === "fr" ? "Erreur lors du changement" : "Error changing plan"),
+      );
     } finally {
       setLoading(null);
     }
@@ -865,25 +1087,25 @@ export const UpgradePage: React.FC = () => {
   const handleCancelSubscription = async () => {
     if (
       !confirm(
-        lang === 'fr'
-          ? 'Êtes-vous sûr de vouloir annuler ? Vous garderez vos avantages jusqu\'à la fin de la période payée.'
-          : 'Are you sure? You\'ll keep benefits until paid period ends.'
+        lang === "fr"
+          ? "Êtes-vous sûr de vouloir annuler ? Vous garderez vos avantages jusqu'à la fin de la période payée."
+          : "Are you sure? You'll keep benefits until paid period ends.",
       )
     )
       return;
 
-    setLoading('cancel');
+    setLoading("cancel");
     try {
       await billingApi.cancelSubscription();
       setSuccess(
-        lang === 'fr'
-          ? 'Abonnement annulé. Accès maintenu jusqu\'à la fin de la période.'
-          : 'Subscription cancelled. Access kept until period end.'
+        lang === "fr"
+          ? "Abonnement annulé. Accès maintenu jusqu'à la fin de la période."
+          : "Subscription cancelled. Access kept until period end.",
       );
       const status = await billingApi.getSubscriptionStatus();
       setSubscriptionStatus(status);
     } catch (err: any) {
-      setError(err?.message || 'Error');
+      setError(err?.message || "Error");
     } finally {
       setLoading(null);
     }
@@ -898,9 +1120,14 @@ export const UpgradePage: React.FC = () => {
         path="/upgrade"
       />
       <DoodleBackground variant="creative" />
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
 
-      <main className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}>
+      <main
+        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? "ml-[60px]" : "ml-[240px]"}`}
+      >
         <div className="min-h-screen p-4 sm:p-6 lg:p-8 pt-16 lg:pt-8 pb-24 lg:pb-8">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
@@ -910,7 +1137,7 @@ export const UpgradePage: React.FC = () => {
                 animate={{ opacity: 1, y: 0 }}
                 className="font-semibold text-2xl sm:text-3xl md:text-4xl text-text-primary mb-2 sm:mb-3 px-2"
               >
-                {lang === 'fr' ? 'Choisissez votre plan' : 'Choose your plan'}
+                {lang === "fr" ? "Choisissez votre plan" : "Choose your plan"}
               </motion.h1>
               <motion.p
                 initial={{ opacity: 0 }}
@@ -918,9 +1145,9 @@ export const UpgradePage: React.FC = () => {
                 transition={{ delay: 0.1 }}
                 className="text-text-secondary text-sm sm:text-base max-w-2xl mx-auto px-4"
               >
-                {lang === 'fr'
-                  ? 'Débloquez des fonctionnalités puissantes pour analyser le contenu vidéo.'
-                  : 'Unlock powerful features to analyze video content.'}
+                {lang === "fr"
+                  ? "Débloquez des fonctionnalités puissantes pour analyser le contenu vidéo."
+                  : "Unlock powerful features to analyze video content."}
               </motion.p>
             </header>
 
@@ -930,7 +1157,7 @@ export const UpgradePage: React.FC = () => {
                 <div className="flex items-center gap-2 sm:gap-3">
                   <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400 flex-shrink-0" />
                   <span className="text-amber-300 text-xs sm:text-sm">
-                    {lang === 'fr'
+                    {lang === "fr"
                       ? `Abonnement annulé. Accès jusqu'au ${new Date(subscriptionStatus.current_period_end!).toLocaleDateString()}`
                       : `Subscription cancelled. Access until ${new Date(subscriptionStatus.current_period_end!).toLocaleDateString()}`}
                   </span>
@@ -944,7 +1171,7 @@ export const UpgradePage: React.FC = () => {
                   className="text-xs sm:text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1 min-h-[44px] px-3 py-2 rounded-lg bg-amber-500/10 active:scale-95 transition-all"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  {lang === 'fr' ? 'Réactiver' : 'Reactivate'}
+                  {lang === "fr" ? "Réactiver" : "Reactivate"}
                 </button>
               </div>
             )}
@@ -987,23 +1214,41 @@ export const UpgradePage: React.FC = () => {
                   <div className="flex-1 text-center md:text-left">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-semibold mb-2">
                       <Sparkles className="w-3 h-3" />
-                      {lang === 'fr' ? 'Essai gratuit 7 jours' : '7-day free trial'}
+                      {lang === "fr"
+                        ? "Essai gratuit 7 jours"
+                        : "7-day free trial"}
                     </div>
                     <h2 className="text-lg sm:text-2xl font-bold text-text-primary mb-2">
-                      {lang === 'fr' ? 'Essayez Plus gratuitement pendant 7 jours' : 'Try Plus free for 7 days'}
+                      {lang === "fr"
+                        ? "Essayez Plus gratuitement pendant 7 jours"
+                        : "Try Plus free for 7 days"}
                     </h2>
                     <p className="text-text-secondary text-xs sm:text-base mb-4 max-w-xl">
-                      {lang === 'fr'
-                        ? 'Accédez à toutes les fonctionnalités Plus — 4,99€/mois après l\'essai. Sans engagement.'
-                        : 'Access all Plus features — €4.99/mo after trial. No commitment.'}
+                      {lang === "fr"
+                        ? "Accédez à toutes les fonctionnalités Plus — 4,99€/mois après l'essai. Sans engagement."
+                        : "Access all Plus features — €4.99/mo after trial. No commitment."}
                     </p>
                     <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 justify-center md:justify-start">
                       {[
-                        { icon: Crown, text: lang === 'fr' ? '25 analyses' : '25 analyses' },
-                        { icon: InfinityIcon, text: lang === 'fr' ? 'Chat illimité' : 'Unlimited chat' },
-                        { icon: Clock, text: lang === 'fr' ? '7 jours gratuits' : '7 days free' },
+                        {
+                          icon: Crown,
+                          text: lang === "fr" ? "25 analyses" : "25 analyses",
+                        },
+                        {
+                          icon: InfinityIcon,
+                          text:
+                            lang === "fr" ? "Chat illimité" : "Unlimited chat",
+                        },
+                        {
+                          icon: Clock,
+                          text:
+                            lang === "fr" ? "7 jours gratuits" : "7 days free",
+                        },
                       ].map((item, idx) => (
-                        <div key={idx} className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-bg-tertiary/50 text-text-secondary text-[10px] sm:text-xs">
+                        <div
+                          key={idx}
+                          className="flex items-center gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-bg-tertiary/50 text-text-secondary text-[10px] sm:text-xs"
+                        >
                           <item.icon className="w-3 h-3 text-blue-400" />
                           {item.text}
                         </div>
@@ -1021,12 +1266,16 @@ export const UpgradePage: React.FC = () => {
                       ) : (
                         <>
                           <Gift className="w-4 h-4 sm:w-5 sm:h-5" />
-                          {lang === 'fr' ? 'Commencer l\'essai' : 'Start free trial'}
+                          {lang === "fr"
+                            ? "Commencer l'essai"
+                            : "Start free trial"}
                         </>
                       )}
                     </button>
                     <p className="text-xs text-text-tertiary mt-2 text-center">
-                      {lang === 'fr' ? 'Annulez à tout moment' : 'Cancel anytime'}
+                      {lang === "fr"
+                        ? "Annulez à tout moment"
+                        : "Cancel anytime"}
                     </p>
                   </div>
                 </div>
@@ -1037,31 +1286,31 @@ export const UpgradePage: React.FC = () => {
             <div className="flex justify-center mb-6 sm:mb-8">
               <div className="inline-flex bg-bg-tertiary rounded-xl p-1">
                 <button
-                  onClick={() => setViewMode('cards')}
+                  onClick={() => setViewMode("cards")}
                   className={`px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[44px] active:scale-95 ${
-                    viewMode === 'cards'
-                      ? 'bg-accent-primary text-white shadow-lg'
-                      : 'text-text-secondary hover:text-text-primary'
+                    viewMode === "cards"
+                      ? "bg-accent-primary text-white shadow-lg"
+                      : "text-text-secondary hover:text-text-primary"
                   }`}
                 >
-                  {lang === 'fr' ? '🃏 Cartes' : '🃏 Cards'}
+                  {lang === "fr" ? "🃏 Cartes" : "🃏 Cards"}
                 </button>
                 <button
-                  onClick={() => setViewMode('table')}
+                  onClick={() => setViewMode("table")}
                   className={`px-3 sm:px-5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all min-h-[44px] active:scale-95 hidden sm:block ${
-                    viewMode === 'table'
-                      ? 'bg-accent-primary text-white shadow-lg'
-                      : 'text-text-secondary hover:text-text-primary'
+                    viewMode === "table"
+                      ? "bg-accent-primary text-white shadow-lg"
+                      : "text-text-secondary hover:text-text-primary"
                   }`}
                 >
-                  {lang === 'fr' ? '📊 Comparaison' : '📊 Comparison'}
+                  {lang === "fr" ? "📊 Comparaison" : "📊 Comparison"}
                 </button>
               </div>
             </div>
 
             {/* Content */}
             <AnimatePresence mode="wait">
-              {viewMode === 'cards' ? (
+              {viewMode === "cards" ? (
                 <motion.div
                   key="cards"
                   initial={{ opacity: 0, x: -20 }}
@@ -1121,18 +1370,22 @@ export const UpgradePage: React.FC = () => {
             </AnimatePresence>
 
             {/* Cancel subscription */}
-            {currentPlan && currentPlan.price_monthly_cents > 0 && !subscriptionStatus?.cancel_at_period_end && (
-              <div className="text-center mb-6 sm:mb-8">
-                <button
-                  onClick={handleCancelSubscription}
-                  disabled={loading === 'cancel'}
-                  className="text-xs sm:text-sm text-text-tertiary hover:text-red-400 transition-colors flex items-center gap-2 mx-auto min-h-[44px] px-4 py-2 active:scale-95"
-                >
-                  {loading === 'cancel' && <DeepSightSpinnerMicro />}
-                  {lang === 'fr' ? 'Annuler mon abonnement' : 'Cancel subscription'}
-                </button>
-              </div>
-            )}
+            {currentPlan &&
+              currentPlan.price_monthly_cents > 0 &&
+              !subscriptionStatus?.cancel_at_period_end && (
+                <div className="text-center mb-6 sm:mb-8">
+                  <button
+                    onClick={handleCancelSubscription}
+                    disabled={loading === "cancel"}
+                    className="text-xs sm:text-sm text-text-tertiary hover:text-red-400 transition-colors flex items-center gap-2 mx-auto min-h-[44px] px-4 py-2 active:scale-95"
+                  >
+                    {loading === "cancel" && <DeepSightSpinnerMicro />}
+                    {lang === "fr"
+                      ? "Annuler mon abonnement"
+                      : "Cancel subscription"}
+                  </button>
+                </div>
+              )}
 
             {/* Pourquoi DeepSight — Differenciateurs concurrentiels */}
             <motion.div
@@ -1143,27 +1396,30 @@ export const UpgradePage: React.FC = () => {
             >
               <h3 className="font-bold text-base sm:text-lg text-text-primary mb-2 flex items-center gap-2">
                 <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-accent-primary" />
-                {lang === 'fr' ? 'Pourquoi DeepSight ?' : 'Why DeepSight?'}
+                {lang === "fr" ? "Pourquoi DeepSight ?" : "Why DeepSight?"}
               </h3>
               <p className="text-xs sm:text-sm text-text-secondary mb-4 sm:mb-5">
-                {lang === 'fr'
-                  ? 'Pas un simple resumeur. Une plateforme d\'analyse, de verification et d\'apprentissage.'
-                  : 'Not a simple summarizer. An analysis, verification and learning platform.'}
+                {lang === "fr"
+                  ? "Pas un simple resumeur. Une plateforme d'analyse, de verification et d'apprentissage."
+                  : "Not a simple summarizer. An analysis, verification and learning platform."}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 {DIFFERENTIATORS.map((d, i) => (
-                  <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 sm:p-4 hover:bg-white/[0.04] transition-colors">
+                  <div
+                    key={i}
+                    className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 sm:p-4 hover:bg-white/[0.04] transition-colors"
+                  >
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xl">{d.icon}</span>
                       <span className="text-[10px] font-semibold uppercase tracking-wider text-accent-primary bg-accent-primary/10 px-2 py-0.5 rounded-full">
-                        {lang === 'fr' ? d.tag.fr : d.tag.en}
+                        {lang === "fr" ? d.tag.fr : d.tag.en}
                       </span>
                     </div>
                     <h4 className="text-sm font-semibold text-text-primary mb-1">
-                      {lang === 'fr' ? d.title.fr : d.title.en}
+                      {lang === "fr" ? d.title.fr : d.title.en}
                     </h4>
                     <p className="text-xs text-text-secondary leading-relaxed">
-                      {lang === 'fr' ? d.description.fr : d.description.en}
+                      {lang === "fr" ? d.description.fr : d.description.en}
                     </p>
                   </div>
                 ))}
@@ -1180,24 +1436,54 @@ export const UpgradePage: React.FC = () => {
             >
               <h3 className="font-bold text-base sm:text-lg text-text-primary mb-4 sm:mb-5 flex items-center gap-2">
                 <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-accent-primary" />
-                {lang === 'fr' ? 'Questions fréquentes' : 'FAQ'}
+                {lang === "fr" ? "Questions fréquentes" : "FAQ"}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-xs sm:text-sm">
                 <div className="space-y-1">
-                  <p className="font-semibold text-text-primary">{lang === 'fr' ? "Comment fonctionne l'essai gratuit ?" : 'How does the free trial work?'}</p>
-                  <p className="text-text-secondary">{lang === 'fr' ? '7 jours Pro gratuits. Annulez à tout moment.' : '7 days Pro free. Cancel anytime.'}</p>
+                  <p className="font-semibold text-text-primary">
+                    {lang === "fr"
+                      ? "Comment fonctionne l'essai gratuit ?"
+                      : "How does the free trial work?"}
+                  </p>
+                  <p className="text-text-secondary">
+                    {lang === "fr"
+                      ? "7 jours Pro gratuits. Annulez à tout moment."
+                      : "7 days Pro free. Cancel anytime."}
+                  </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="font-semibold text-text-primary">{lang === 'fr' ? "Comment fonctionne l'upgrade ?" : 'How does upgrade work?'}</p>
-                  <p className="text-text-secondary">{lang === 'fr' ? 'Vous êtes facturé la différence au prorata. Nouveaux avantages instantanés.' : 'You pay the prorated difference. New benefits are instant.'}</p>
+                  <p className="font-semibold text-text-primary">
+                    {lang === "fr"
+                      ? "Comment fonctionne l'upgrade ?"
+                      : "How does upgrade work?"}
+                  </p>
+                  <p className="text-text-secondary">
+                    {lang === "fr"
+                      ? "Vous êtes facturé la différence au prorata. Nouveaux avantages instantanés."
+                      : "You pay the prorated difference. New benefits are instant."}
+                  </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="font-semibold text-text-primary">{lang === 'fr' ? 'Puis-je annuler ?' : 'Can I cancel?'}</p>
-                  <p className="text-text-secondary">{lang === 'fr' ? "Oui, à tout moment. Accès maintenu jusqu'à fin de période payée." : 'Yes, anytime. Access kept until paid period ends.'}</p>
+                  <p className="font-semibold text-text-primary">
+                    {lang === "fr" ? "Puis-je annuler ?" : "Can I cancel?"}
+                  </p>
+                  <p className="text-text-secondary">
+                    {lang === "fr"
+                      ? "Oui, à tout moment. Accès maintenu jusqu'à fin de période payée."
+                      : "Yes, anytime. Access kept until paid period ends."}
+                  </p>
                 </div>
                 <div className="space-y-1">
-                  <p className="font-semibold text-text-primary">{lang === 'fr' ? 'Moyens de paiement ?' : 'Payment methods?'}</p>
-                  <p className="text-text-secondary">{lang === 'fr' ? 'Toutes cartes bancaires via Stripe. Paiements sécurisés.' : 'All cards via Stripe. Secure payments.'}</p>
+                  <p className="font-semibold text-text-primary">
+                    {lang === "fr"
+                      ? "Moyens de paiement ?"
+                      : "Payment methods?"}
+                  </p>
+                  <p className="text-text-secondary">
+                    {lang === "fr"
+                      ? "Toutes cartes bancaires via Stripe. Paiements sécurisés."
+                      : "All cards via Stripe. Secure payments."}
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -1210,18 +1496,20 @@ export const UpgradePage: React.FC = () => {
               className="card p-4 sm:p-6 mb-6 sm:mb-8 border border-white/10 text-center"
             >
               <h3 className="font-bold text-base sm:text-lg text-text-primary mb-2">
-                {lang === 'fr' ? 'Besoin d\'une offre sur-mesure ?' : 'Need a custom plan?'}
+                {lang === "fr"
+                  ? "Besoin d'une offre sur-mesure ?"
+                  : "Need a custom plan?"}
               </h3>
               <p className="text-text-secondary text-xs sm:text-sm mb-4">
-                {lang === 'fr'
-                  ? 'Équipes, universités, entreprises — contactez-nous pour un plan adapté à vos besoins.'
-                  : 'Teams, universities, enterprises — contact us for a plan tailored to your needs.'}
+                {lang === "fr"
+                  ? "Équipes, universités, entreprises — contactez-nous pour un plan adapté à vos besoins."
+                  : "Teams, universities, enterprises — contact us for a plan tailored to your needs."}
               </p>
               <a
                 href="mailto:contact@deepsightsynthesis.com?subject=Offre%20sur-mesure%20DeepSight"
                 className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-text-primary text-sm font-medium transition-all"
               >
-                {lang === 'fr' ? 'Contactez-nous' : 'Contact us'}
+                {lang === "fr" ? "Contactez-nous" : "Contact us"}
               </a>
             </motion.div>
 
@@ -1235,15 +1523,20 @@ export const UpgradePage: React.FC = () => {
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/10 border border-green-500/20">
                 <Check className="w-4 h-4 text-green-400" />
                 <span className="text-sm text-green-400 font-medium">
-                  {lang === 'fr' ? 'Garantie satisfait ou remboursé 14 jours' : '14-day money-back guarantee'}
+                  {lang === "fr"
+                    ? "Garantie satisfait ou remboursé 14 jours"
+                    : "14-day money-back guarantee"}
                 </span>
               </div>
             </motion.div>
 
             {/* Contact */}
             <div className="text-center text-xs sm:text-sm text-text-tertiary pb-4">
-              {lang === 'fr' ? 'Questions ? ' : 'Questions? '}
-              <a href="mailto:contact@deepsightsynthesis.com" className="text-accent-primary hover:underline">
+              {lang === "fr" ? "Questions ? " : "Questions? "}
+              <a
+                href="mailto:contact@deepsightsynthesis.com"
+                className="text-accent-primary hover:underline"
+              >
                 contact@deepsightsynthesis.com
               </a>
             </div>

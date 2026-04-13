@@ -1,7 +1,7 @@
 /**
  * DEEP SIGHT — ScoreCard Component
  * Affichage du score final avec animations
- * 
+ *
  * FONCTIONNALITÉS:
  * - 🏆 Score animé avec confetti
  * - 📊 Statistiques détaillées
@@ -9,12 +9,20 @@
  * - 📤 Actions de partage/export
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
-  Trophy, Target, Clock, Share2,
-  Download, RotateCcw, CheckCircle, XCircle,
-  Medal, Crown, TrendingUp
-} from 'lucide-react';
+  Trophy,
+  Target,
+  Clock,
+  Share2,
+  Download,
+  RotateCcw,
+  CheckCircle,
+  XCircle,
+  Medal,
+  Crown,
+  TrendingUp,
+} from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -25,12 +33,12 @@ interface ScoreCardProps {
   total: number;
   correct: number;
   incorrect: number;
-  mode: 'flashcard' | 'quiz';
+  mode: "flashcard" | "quiz";
   timeSpent?: number; // en secondes
   onRetry?: () => void;
   onShare?: () => void;
   onExport?: () => void;
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
 }
 
 interface PerformanceLevel {
@@ -54,7 +62,7 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({
   onRetry,
   onShare,
   onExport,
-  language = 'fr',
+  language = "fr",
 }) => {
   const [displayScore, setDisplayScore] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -63,42 +71,61 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({
 
   const t = {
     fr: {
-      completed: mode === 'flashcard' ? 'Révision terminée !' : 'Quiz terminé !',
-      score: 'Score',
-      correct: 'Correct',
-      incorrect: 'À revoir',
-      known: 'Maîtrisé',
-      unknown: 'À revoir',
-      timeSpent: 'Temps',
-      avgTime: 'Moyenne',
-      perCard: 'par carte',
-      perQuestion: 'par question',
-      retry: 'Recommencer',
-      share: 'Partager',
-      export: 'Exporter',
-      excellent: { title: 'Excellent !', message: 'Vous maîtrisez parfaitement ce sujet.' },
-      good: { title: 'Très bien !', message: 'Vous avez une bonne compréhension.' },
-      average: { title: 'Pas mal !', message: 'Continuez vos efforts, vous progressez.' },
-      needsWork: { title: 'À améliorer', message: 'Revoyez le contenu et réessayez.' },
+      completed:
+        mode === "flashcard" ? "Révision terminée !" : "Quiz terminé !",
+      score: "Score",
+      correct: "Correct",
+      incorrect: "À revoir",
+      known: "Maîtrisé",
+      unknown: "À revoir",
+      timeSpent: "Temps",
+      avgTime: "Moyenne",
+      perCard: "par carte",
+      perQuestion: "par question",
+      retry: "Recommencer",
+      share: "Partager",
+      export: "Exporter",
+      excellent: {
+        title: "Excellent !",
+        message: "Vous maîtrisez parfaitement ce sujet.",
+      },
+      good: {
+        title: "Très bien !",
+        message: "Vous avez une bonne compréhension.",
+      },
+      average: {
+        title: "Pas mal !",
+        message: "Continuez vos efforts, vous progressez.",
+      },
+      needsWork: {
+        title: "À améliorer",
+        message: "Revoyez le contenu et réessayez.",
+      },
     },
     en: {
-      completed: mode === 'flashcard' ? 'Review completed!' : 'Quiz completed!',
-      score: 'Score',
-      correct: 'Correct',
-      incorrect: 'Review',
-      known: 'Known',
-      unknown: 'Review',
-      timeSpent: 'Time',
-      avgTime: 'Average',
-      perCard: 'per card',
-      perQuestion: 'per question',
-      retry: 'Try again',
-      share: 'Share',
-      export: 'Export',
-      excellent: { title: 'Excellent!', message: 'You have mastered this topic.' },
-      good: { title: 'Great!', message: 'You have a good understanding.' },
-      average: { title: 'Not bad!', message: 'Keep going, you are improving.' },
-      needsWork: { title: 'Needs work', message: 'Review the content and try again.' },
+      completed: mode === "flashcard" ? "Review completed!" : "Quiz completed!",
+      score: "Score",
+      correct: "Correct",
+      incorrect: "Review",
+      known: "Known",
+      unknown: "Review",
+      timeSpent: "Time",
+      avgTime: "Average",
+      perCard: "per card",
+      perQuestion: "per question",
+      retry: "Try again",
+      share: "Share",
+      export: "Export",
+      excellent: {
+        title: "Excellent!",
+        message: "You have mastered this topic.",
+      },
+      good: { title: "Great!", message: "You have a good understanding." },
+      average: { title: "Not bad!", message: "Keep going, you are improving." },
+      needsWork: {
+        title: "Needs work",
+        message: "Review the content and try again.",
+      },
     },
   }[language];
 
@@ -132,32 +159,32 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({
         icon: <Crown className="w-12 h-12" />,
         title: t.excellent.title,
         message: t.excellent.message,
-        color: 'text-amber-400',
-        bgColor: 'bg-amber-500/20',
+        color: "text-amber-400",
+        bgColor: "bg-amber-500/20",
       };
     } else if (percentage >= 70) {
       return {
         icon: <Trophy className="w-12 h-12" />,
         title: t.good.title,
         message: t.good.message,
-        color: 'text-emerald-400',
-        bgColor: 'bg-emerald-500/20',
+        color: "text-emerald-400",
+        bgColor: "bg-emerald-500/20",
       };
     } else if (percentage >= 50) {
       return {
         icon: <Medal className="w-12 h-12" />,
         title: t.average.title,
         message: t.average.message,
-        color: 'text-blue-400',
-        bgColor: 'bg-blue-500/20',
+        color: "text-blue-400",
+        bgColor: "bg-blue-500/20",
       };
     } else {
       return {
         icon: <Target className="w-12 h-12" />,
         title: t.needsWork.title,
         message: t.needsWork.message,
-        color: 'text-orange-400',
-        bgColor: 'bg-orange-500/20',
+        color: "text-orange-400",
+        bgColor: "bg-orange-500/20",
       };
     }
   };
@@ -186,7 +213,7 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({
               style={{
                 left: `${Math.random() * 100}%`,
                 animationDelay: `${Math.random() * 0.5}s`,
-                backgroundColor: ['#fbbf24', '#34d399', '#60a5fa', '#f472b6'][
+                backgroundColor: ["#fbbf24", "#34d399", "#60a5fa", "#f472b6"][
                   Math.floor(Math.random() * 4)
                 ],
               }}
@@ -197,8 +224,10 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({
 
       <div className="glass-panel rounded-2xl p-8 max-w-lg mx-auto text-center relative z-10">
         {/* Header */}
-        <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full 
-                        ${performance.bgColor} ${performance.color} mb-4 animate-bounce-in`}>
+        <div
+          className={`inline-flex items-center justify-center w-20 h-20 rounded-full 
+                        ${performance.bgColor} ${performance.color} mb-4 animate-bounce-in`}
+        >
           {performance.icon}
         </div>
 
@@ -233,16 +262,24 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({
               className="transition-all duration-500"
             />
             <defs>
-              <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+              <linearGradient
+                id="scoreGradient"
+                x1="0%"
+                y1="0%"
+                x2="100%"
+                y2="0%"
+              >
                 <stop offset="0%" stopColor="#f59e0b" />
                 <stop offset="100%" stopColor="#fbbf24" />
               </linearGradient>
             </defs>
           </svg>
-          
+
           {/* Score text */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-4xl font-bold text-white">{displayScore}%</span>
+            <span className="text-4xl font-bold text-white">
+              {displayScore}%
+            </span>
             <span className="text-sm text-gray-400">{t.score}</span>
           </div>
         </div>
@@ -255,7 +292,7 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({
               <span className="text-xl font-bold">{correct}</span>
             </div>
             <p className="text-xs text-gray-500">
-              {mode === 'flashcard' ? t.known : t.correct}
+              {mode === "flashcard" ? t.known : t.correct}
             </p>
           </div>
 
@@ -265,7 +302,7 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({
               <span className="text-xl font-bold">{incorrect}</span>
             </div>
             <p className="text-xs text-gray-500">
-              {mode === 'flashcard' ? t.unknown : t.incorrect}
+              {mode === "flashcard" ? t.unknown : t.incorrect}
             </p>
           </div>
 
@@ -273,7 +310,9 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({
             <div className="glass-panel rounded-xl p-3">
               <div className="flex items-center justify-center gap-1 text-blue-400 mb-1">
                 <Clock className="w-4 h-4" />
-                <span className="text-xl font-bold">{formatTime(timeSpent)}</span>
+                <span className="text-xl font-bold">
+                  {formatTime(timeSpent)}
+                </span>
               </div>
               <p className="text-xs text-gray-500">{t.timeSpent}</p>
             </div>
@@ -285,7 +324,8 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({
           <div className="flex items-center justify-center gap-2 text-gray-400 text-sm mb-6">
             <TrendingUp className="w-4 h-4" />
             <span>
-              {t.avgTime}: {avgTime}s {mode === 'flashcard' ? t.perCard : t.perQuestion}
+              {t.avgTime}: {avgTime}s{" "}
+              {mode === "flashcard" ? t.perCard : t.perQuestion}
             </span>
           </div>
         )}

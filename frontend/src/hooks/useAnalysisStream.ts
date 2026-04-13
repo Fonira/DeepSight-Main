@@ -12,28 +12,28 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { getAccessToken, API_URL } from '../services/api';
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { getAccessToken, API_URL } from "../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type StreamStatus = 
-  | 'idle' 
-  | 'connecting' 
-  | 'metadata' 
-  | 'transcript' 
-  | 'analyzing' 
-  | 'complete' 
-  | 'error' 
-  | 'paused'
-  | 'cancelled';
+export type StreamStatus =
+  | "idle"
+  | "connecting"
+  | "metadata"
+  | "transcript"
+  | "analyzing"
+  | "complete"
+  | "error"
+  | "paused"
+  | "cancelled";
 
 export interface StreamStep {
   id: string;
   label: string;
-  status: 'pending' | 'active' | 'complete' | 'error';
+  status: "pending" | "active" | "complete" | "error";
   progress?: number;
   startedAt?: Date;
   completedAt?: Date;
@@ -57,9 +57,9 @@ export interface StreamError {
 
 export interface AnalysisStreamOptions {
   /** Mode d'analyse: accessible, standard, expert */
-  mode?: 'accessible' | 'standard' | 'expert';
+  mode?: "accessible" | "standard" | "expert";
   /** Langue de sortie */
-  lang?: 'fr' | 'en';
+  lang?: "fr" | "en";
   /** Modèle AI à utiliser */
   model?: string;
   /** Activer l'enrichissement web */
@@ -69,7 +69,11 @@ export interface AnalysisStreamOptions {
   /** Callback appelé quand le statut change */
   onStatusChange?: (status: StreamStatus) => void;
   /** Callback appelé à la complétion */
-  onComplete?: (data: { summaryId: number; text: string; metadata: VideoMetadata }) => void;
+  onComplete?: (data: {
+    summaryId: number;
+    text: string;
+    metadata: VideoMetadata;
+  }) => void;
   /** Callback appelé en cas d'erreur */
   onError?: (error: StreamError) => void;
   /** Auto-start le streaming */
@@ -103,11 +107,11 @@ export interface AnalysisStreamActions {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const DEFAULT_STEPS: StreamStep[] = [
-  { id: 'connect', label: 'Connexion', status: 'pending' },
-  { id: 'metadata', label: 'Métadonnées', status: 'pending' },
-  { id: 'transcript', label: 'Transcription', status: 'pending' },
-  { id: 'analysis', label: 'Analyse IA', status: 'pending' },
-  { id: 'complete', label: 'Finalisation', status: 'pending' },
+  { id: "connect", label: "Connexion", status: "pending" },
+  { id: "metadata", label: "Métadonnées", status: "pending" },
+  { id: "transcript", label: "Transcription", status: "pending" },
+  { id: "analysis", label: "Analyse IA", status: "pending" },
+  { id: "complete", label: "Finalisation", status: "pending" },
 ];
 
 const STEP_WEIGHTS: Record<string, number> = {
@@ -124,12 +128,12 @@ const STEP_WEIGHTS: Record<string, number> = {
 
 export function useAnalysisStream(
   videoId: string | null,
-  options: AnalysisStreamOptions = {}
+  options: AnalysisStreamOptions = {},
 ): [AnalysisStreamState, AnalysisStreamActions] {
   const {
-    mode = 'standard',
-    lang = 'fr',
-    model = 'mistral-small-2603',
+    mode = "standard",
+    lang = "fr",
+    model = "mistral-small-2603",
     webEnrich = false,
     onToken,
     onStatusChange,
@@ -141,11 +145,11 @@ export function useAnalysisStream(
 
   // State
   const [state, setState] = useState<AnalysisStreamState>({
-    status: 'idle',
+    status: "idle",
     progress: 0,
-    text: '',
+    text: "",
     metadata: null,
-    steps: DEFAULT_STEPS.map(s => ({ ...s })),
+    steps: DEFAULT_STEPS.map((s) => ({ ...s })),
     error: null,
     summaryId: null,
     startedAt: null,
@@ -154,7 +158,7 @@ export function useAnalysisStream(
 
   // Refs
   const eventSourceRef = useRef<EventSource | null>(null);
-  const textBufferRef = useRef<string>('');
+  const textBufferRef = useRef<string>("");
   const retryCountRef = useRef(0);
   const pausedRef = useRef(false);
   const pauseBufferRef = useRef<string[]>([]);
@@ -164,165 +168,203 @@ export function useAnalysisStream(
   // 🔧 HELPERS
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  const updateStep = useCallback((stepId: string, updates: Partial<StreamStep>) => {
-    setState(prev => ({
-      ...prev,
-      steps: prev.steps.map(step => 
-        step.id === stepId ? { ...step, ...updates } : step
-      ),
-    }));
-  }, []);
+  const updateStep = useCallback(
+    (stepId: string, updates: Partial<StreamStep>) => {
+      setState((prev) => ({
+        ...prev,
+        steps: prev.steps.map((step) =>
+          step.id === stepId ? { ...step, ...updates } : step,
+        ),
+      }));
+    },
+    [],
+  );
 
-  const calculateProgress = useCallback((currentStep: string, stepProgress = 100) => {
-    let totalProgress = 0;
-    let foundCurrent = false;
+  const calculateProgress = useCallback(
+    (currentStep: string, stepProgress = 100) => {
+      let totalProgress = 0;
+      let foundCurrent = false;
 
-    for (const step of DEFAULT_STEPS) {
-      if (step.id === currentStep) {
-        foundCurrent = true;
-        totalProgress += (STEP_WEIGHTS[step.id] * stepProgress) / 100;
-        break;
+      for (const step of DEFAULT_STEPS) {
+        if (step.id === currentStep) {
+          foundCurrent = true;
+          totalProgress += (STEP_WEIGHTS[step.id] * stepProgress) / 100;
+          break;
+        }
+        if (!foundCurrent) {
+          totalProgress += STEP_WEIGHTS[step.id];
+        }
       }
-      if (!foundCurrent) {
-        totalProgress += STEP_WEIGHTS[step.id];
-      }
-    }
 
-    return Math.min(100, Math.round(totalProgress));
-  }, []);
+      return Math.min(100, Math.round(totalProgress));
+    },
+    [],
+  );
 
-  const setStatus = useCallback((status: StreamStatus) => {
-    setState(prev => ({ ...prev, status }));
-    onStatusChange?.(status);
-  }, [onStatusChange]);
+  const setStatus = useCallback(
+    (status: StreamStatus) => {
+      setState((prev) => ({ ...prev, status }));
+      onStatusChange?.(status);
+    },
+    [onStatusChange],
+  );
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // 📡 SSE EVENT HANDLERS
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  const handleEvent = useCallback((event: MessageEvent) => {
-    if (pausedRef.current) {
-      pauseBufferRef.current.push(event.data);
-      return;
-    }
-
-    try {
-      const data = JSON.parse(event.data);
-      
-      switch (event.type) {
-        case 'connected':
-          updateStep('connect', { status: 'complete', completedAt: new Date() });
-          updateStep('metadata', { status: 'active', startedAt: new Date() });
-          setStatus('connecting');
-          break;
-
-        case 'metadata':
-          setState(prev => ({
-            ...prev,
-            metadata: data as VideoMetadata,
-            progress: calculateProgress('metadata'),
-          }));
-          updateStep('metadata', { status: 'complete', completedAt: new Date() });
-          updateStep('transcript', { status: 'active', startedAt: new Date() });
-          setStatus('metadata');
-          break;
-
-        case 'transcript':
-          setState(prev => ({
-            ...prev,
-            progress: calculateProgress('transcript', data.progress || 50),
-          }));
-          setStatus('transcript');
-          break;
-
-        case 'transcript_complete':
-          updateStep('transcript', { status: 'complete', completedAt: new Date() });
-          updateStep('analysis', { status: 'active', startedAt: new Date() });
-          break;
-
-        case 'analysis_start':
-          setStatus('analyzing');
-          setState(prev => ({
-            ...prev,
-            progress: calculateProgress('analysis', 0),
-          }));
-          break;
-
-        case 'token':
-          // Append token to buffer
-          textBufferRef.current += data.token;
-          
-          setState(prev => ({
-            ...prev,
-            text: textBufferRef.current,
-            progress: calculateProgress('analysis', data.progress || 50),
-          }));
-          
-          onToken?.(data.token, textBufferRef.current);
-          break;
-
-        case 'analysis_complete':
-          updateStep('analysis', { status: 'complete', completedAt: new Date() });
-          updateStep('complete', { status: 'active', startedAt: new Date() });
-          break;
-
-        case 'complete':
-          updateStep('complete', { status: 'complete', completedAt: new Date() });
-          
-          setState(prev => ({
-            ...prev,
-            status: 'complete',
-            progress: 100,
-            summaryId: data.summary_id,
-          }));
-
-          onComplete?.({
-            summaryId: data.summary_id,
-            text: textBufferRef.current,
-            metadata: state.metadata!,
-          });
-          
-          // Cleanup
-          eventSourceRef.current?.close();
-          if (durationIntervalRef.current) {
-            clearInterval(durationIntervalRef.current);
-          }
-          break;
-
-        case 'error':
-          const error: StreamError = {
-            code: data.code || 'UNKNOWN',
-            message: data.message || 'Une erreur est survenue',
-            retryable: data.retryable ?? true,
-          };
-          
-          setState(prev => ({
-            ...prev,
-            status: 'error',
-            error,
-          }));
-          
-          onError?.(error);
-          
-          // Mark current step as error
-          setState(prev => ({
-            ...prev,
-            steps: prev.steps.map(step => 
-              step.status === 'active' ? { ...step, status: 'error' } : step
-            ),
-          }));
-          
-          eventSourceRef.current?.close();
-          break;
-
-        case 'heartbeat':
-          // Keep-alive, ignore
-          break;
+  const handleEvent = useCallback(
+    (event: MessageEvent) => {
+      if (pausedRef.current) {
+        pauseBufferRef.current.push(event.data);
+        return;
       }
-    } catch (e) {
-      console.error('Error parsing SSE event:', e);
-    }
-  }, [calculateProgress, onComplete, onError, onToken, setStatus, state.metadata, updateStep]);
+
+      try {
+        const data = JSON.parse(event.data);
+
+        switch (event.type) {
+          case "connected":
+            updateStep("connect", {
+              status: "complete",
+              completedAt: new Date(),
+            });
+            updateStep("metadata", { status: "active", startedAt: new Date() });
+            setStatus("connecting");
+            break;
+
+          case "metadata":
+            setState((prev) => ({
+              ...prev,
+              metadata: data as VideoMetadata,
+              progress: calculateProgress("metadata"),
+            }));
+            updateStep("metadata", {
+              status: "complete",
+              completedAt: new Date(),
+            });
+            updateStep("transcript", {
+              status: "active",
+              startedAt: new Date(),
+            });
+            setStatus("metadata");
+            break;
+
+          case "transcript":
+            setState((prev) => ({
+              ...prev,
+              progress: calculateProgress("transcript", data.progress || 50),
+            }));
+            setStatus("transcript");
+            break;
+
+          case "transcript_complete":
+            updateStep("transcript", {
+              status: "complete",
+              completedAt: new Date(),
+            });
+            updateStep("analysis", { status: "active", startedAt: new Date() });
+            break;
+
+          case "analysis_start":
+            setStatus("analyzing");
+            setState((prev) => ({
+              ...prev,
+              progress: calculateProgress("analysis", 0),
+            }));
+            break;
+
+          case "token":
+            // Append token to buffer
+            textBufferRef.current += data.token;
+
+            setState((prev) => ({
+              ...prev,
+              text: textBufferRef.current,
+              progress: calculateProgress("analysis", data.progress || 50),
+            }));
+
+            onToken?.(data.token, textBufferRef.current);
+            break;
+
+          case "analysis_complete":
+            updateStep("analysis", {
+              status: "complete",
+              completedAt: new Date(),
+            });
+            updateStep("complete", { status: "active", startedAt: new Date() });
+            break;
+
+          case "complete":
+            updateStep("complete", {
+              status: "complete",
+              completedAt: new Date(),
+            });
+
+            setState((prev) => ({
+              ...prev,
+              status: "complete",
+              progress: 100,
+              summaryId: data.summary_id,
+            }));
+
+            onComplete?.({
+              summaryId: data.summary_id,
+              text: textBufferRef.current,
+              metadata: state.metadata!,
+            });
+
+            // Cleanup
+            eventSourceRef.current?.close();
+            if (durationIntervalRef.current) {
+              clearInterval(durationIntervalRef.current);
+            }
+            break;
+
+          case "error":
+            const error: StreamError = {
+              code: data.code || "UNKNOWN",
+              message: data.message || "Une erreur est survenue",
+              retryable: data.retryable ?? true,
+            };
+
+            setState((prev) => ({
+              ...prev,
+              status: "error",
+              error,
+            }));
+
+            onError?.(error);
+
+            // Mark current step as error
+            setState((prev) => ({
+              ...prev,
+              steps: prev.steps.map((step) =>
+                step.status === "active" ? { ...step, status: "error" } : step,
+              ),
+            }));
+
+            eventSourceRef.current?.close();
+            break;
+
+          case "heartbeat":
+            // Keep-alive, ignore
+            break;
+        }
+      } catch (e) {
+        console.error("Error parsing SSE event:", e);
+      }
+    },
+    [
+      calculateProgress,
+      onComplete,
+      onError,
+      onToken,
+      setStatus,
+      state.metadata,
+      updateStep,
+    ],
+  );
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // 🎮 ACTIONS
@@ -330,19 +372,19 @@ export function useAnalysisStream(
 
   const start = useCallback(() => {
     if (!videoId) return;
-    
+
     // Reset state
-    textBufferRef.current = '';
+    textBufferRef.current = "";
     retryCountRef.current = 0;
     pausedRef.current = false;
     pauseBufferRef.current = [];
 
     setState({
-      status: 'connecting',
+      status: "connecting",
       progress: 0,
-      text: '',
+      text: "",
       metadata: null,
-      steps: DEFAULT_STEPS.map(s => ({ ...s })),
+      steps: DEFAULT_STEPS.map((s) => ({ ...s })),
       error: null,
       summaryId: null,
       startedAt: new Date(),
@@ -351,9 +393,9 @@ export function useAnalysisStream(
 
     // Start duration timer
     durationIntervalRef.current = setInterval(() => {
-      setState(prev => ({
+      setState((prev) => ({
         ...prev,
-        duration: prev.startedAt 
+        duration: prev.startedAt
           ? Math.floor((Date.now() - prev.startedAt.getTime()) / 1000)
           : 0,
       }));
@@ -366,10 +408,10 @@ export function useAnalysisStream(
       model,
       web_enrich: String(webEnrich),
     });
-    
+
     const token = getAccessToken();
     if (token) {
-      params.set('token', token);
+      params.set("token", token);
     }
 
     const url = `${API_URL}/api/videos/stream/${videoId}?${params}`;
@@ -383,33 +425,43 @@ export function useAnalysisStream(
 
     // Set up event listeners for all event types
     const eventTypes = [
-      'connected', 'metadata', 'transcript', 'transcript_complete',
-      'analysis_start', 'token', 'analysis_complete', 'complete',
-      'error', 'heartbeat'
+      "connected",
+      "metadata",
+      "transcript",
+      "transcript_complete",
+      "analysis_start",
+      "token",
+      "analysis_complete",
+      "complete",
+      "error",
+      "heartbeat",
     ];
 
-    eventTypes.forEach(type => {
+    eventTypes.forEach((type) => {
       eventSource.addEventListener(type, handleEvent);
     });
 
     // Handle connection errors
     eventSource.onerror = (e) => {
-      console.error('SSE connection error:', e);
-      
+      console.error("SSE connection error:", e);
+
       if (retryCountRef.current < maxRetries && !pausedRef.current) {
         retryCountRef.current++;
-        setTimeout(() => {
-          if (eventSourceRef.current === eventSource) {
-            start();
-          }
-        }, 1000 * Math.pow(2, retryCountRef.current));
+        setTimeout(
+          () => {
+            if (eventSourceRef.current === eventSource) {
+              start();
+            }
+          },
+          1000 * Math.pow(2, retryCountRef.current),
+        );
       } else {
-        setState(prev => ({
+        setState((prev) => ({
           ...prev,
-          status: 'error',
+          status: "error",
           error: {
-            code: 'CONNECTION_ERROR',
-            message: 'Connexion perdue. Veuillez réessayer.',
+            code: "CONNECTION_ERROR",
+            message: "Connexion perdue. Veuillez réessayer.",
             retryable: true,
           },
         }));
@@ -417,24 +469,33 @@ export function useAnalysisStream(
       }
     };
 
-    updateStep('connect', { status: 'active', startedAt: new Date() });
-  }, [videoId, mode, lang, model, webEnrich, maxRetries, handleEvent, updateStep]);
+    updateStep("connect", { status: "active", startedAt: new Date() });
+  }, [
+    videoId,
+    mode,
+    lang,
+    model,
+    webEnrich,
+    maxRetries,
+    handleEvent,
+    updateStep,
+  ]);
 
   const pause = useCallback(() => {
     pausedRef.current = true;
-    setStatus('paused');
+    setStatus("paused");
   }, [setStatus]);
 
   const resume = useCallback(() => {
     pausedRef.current = false;
-    
+
     // Process buffered events
     while (pauseBufferRef.current.length > 0) {
       const eventData = pauseBufferRef.current.shift()!;
-      handleEvent({ data: eventData, type: 'message' } as MessageEvent);
+      handleEvent({ data: eventData, type: "message" } as MessageEvent);
     }
-    
-    setStatus('analyzing');
+
+    setStatus("analyzing");
   }, [handleEvent, setStatus]);
 
   const cancel = useCallback(() => {
@@ -442,7 +503,7 @@ export function useAnalysisStream(
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
     }
-    setStatus('cancelled');
+    setStatus("cancelled");
   }, [setStatus]);
 
   const reset = useCallback(() => {
@@ -450,17 +511,17 @@ export function useAnalysisStream(
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current);
     }
-    textBufferRef.current = '';
+    textBufferRef.current = "";
     retryCountRef.current = 0;
     pausedRef.current = false;
     pauseBufferRef.current = [];
 
     setState({
-      status: 'idle',
+      status: "idle",
       progress: 0,
-      text: '',
+      text: "",
       metadata: null,
-      steps: DEFAULT_STEPS.map(s => ({ ...s })),
+      steps: DEFAULT_STEPS.map((s) => ({ ...s })),
       error: null,
       summaryId: null,
       startedAt: null,
@@ -477,7 +538,7 @@ export function useAnalysisStream(
     if (autoStart && videoId) {
       start();
     }
-    
+
     return () => {
       eventSourceRef.current?.close();
       if (durationIntervalRef.current) {
@@ -500,13 +561,16 @@ export function useAnalysisStream(
   // 📤 RETURN
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  const actions: AnalysisStreamActions = useMemo(() => ({
-    start,
-    pause,
-    resume,
-    cancel,
-    reset,
-  }), [start, pause, resume, cancel, reset]);
+  const actions: AnalysisStreamActions = useMemo(
+    () => ({
+      start,
+      pause,
+      resume,
+      cancel,
+      reset,
+    }),
+    [start, pause, resume, cancel, reset],
+  );
 
   return [state, actions];
 }
@@ -520,20 +584,20 @@ export function useAnalysisStream(
  */
 export function useTypingText(
   text: string,
-  options: { cursorChar?: string; blinkSpeed?: number } = {}
+  options: { cursorChar?: string; blinkSpeed?: number } = {},
 ): string {
-  const { cursorChar = '▋', blinkSpeed = 500 } = options;
+  const { cursorChar = "▋", blinkSpeed = 500 } = options;
   const [showCursor, setShowCursor] = useState(true);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setShowCursor(prev => !prev);
+      setShowCursor((prev) => !prev);
     }, blinkSpeed);
 
     return () => clearInterval(interval);
   }, [blinkSpeed]);
 
-  return text + (showCursor ? cursorChar : ' ');
+  return text + (showCursor ? cursorChar : " ");
 }
 
 /**

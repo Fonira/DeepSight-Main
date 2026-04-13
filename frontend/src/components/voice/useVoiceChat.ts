@@ -3,8 +3,8 @@
  * Gère le cycle complet : micro → API session → ElevenLabs SDK → timer → cleanup
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { API_URL, getAccessToken } from '../../services/api';
+import { useState, useCallback, useRef, useEffect } from "react";
+import { API_URL, getAccessToken } from "../../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Types
@@ -12,22 +12,22 @@ import { API_URL, getAccessToken } from '../../services/api';
 
 interface UseVoiceChatOptions {
   summaryId: number;
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
   onError?: (error: string) => void;
 }
 
 type VoiceChatStatus =
-  | 'idle'
-  | 'connecting'
-  | 'listening'
-  | 'thinking'
-  | 'speaking'
-  | 'error'
-  | 'quota_exceeded';
+  | "idle"
+  | "connecting"
+  | "listening"
+  | "thinking"
+  | "speaking"
+  | "error"
+  | "quota_exceeded";
 
 interface VoiceChatMessage {
   text: string;
-  source: 'user' | 'ai';
+  source: "user" | "ai";
 }
 
 interface SessionResponse {
@@ -35,7 +35,7 @@ interface SessionResponse {
   signed_url: string;
   quota_remaining_minutes: number;
   max_session_minutes: number;
-  input_mode: 'ptt' | 'vad';
+  input_mode: "ptt" | "vad";
   playback_rate: number;
 }
 
@@ -59,7 +59,7 @@ interface UseVoiceChatReturn {
   /** PTT: l'utilisateur maintient le bouton */
   isTalking: boolean;
   /** Mode d'input actif */
-  inputMode: 'ptt' | 'vad';
+  inputMode: "ptt" | "vad";
   /** Tool en cours d'exécution par l'agent */
   activeTool: string | null;
   /** Messages de la conversation */
@@ -79,28 +79,37 @@ interface UseVoiceChatReturn {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const ERROR_MESSAGES = {
-  MICROPHONE_DENIED: 'Accès au microphone refusé. Veuillez autoriser le micro dans les paramètres de votre navigateur.',
-  MICROPHONE_NOT_FOUND: 'Aucun microphone détecté. Veuillez brancher un micro et réessayer.',
-  MICROPHONE_GENERIC: 'Impossible d\'accéder au microphone. Vérifiez vos permissions.',
-  NETWORK: 'Erreur réseau. Vérifiez votre connexion internet et réessayez.',
-  API_DOWN: 'Le serveur est temporairement indisponible. Réessayez dans quelques instants.',
-  QUOTA_EXCEEDED: 'Quota de conversation vocale épuisé. Passez à un plan supérieur pour continuer.',
-  SESSION_FAILED: 'Impossible de démarrer la session vocale. Réessayez.',
-  SDK_LOAD_FAILED: 'Impossible de charger le module de conversation vocale.',
-  SESSION_TIMEOUT: 'Session terminée : durée maximale atteinte.',
-  UNKNOWN: 'Une erreur inattendue est survenue. Réessayez.',
+  MICROPHONE_DENIED:
+    "Accès au microphone refusé. Veuillez autoriser le micro dans les paramètres de votre navigateur.",
+  MICROPHONE_NOT_FOUND:
+    "Aucun microphone détecté. Veuillez brancher un micro et réessayer.",
+  MICROPHONE_GENERIC:
+    "Impossible d'accéder au microphone. Vérifiez vos permissions.",
+  NETWORK: "Erreur réseau. Vérifiez votre connexion internet et réessayez.",
+  API_DOWN:
+    "Le serveur est temporairement indisponible. Réessayez dans quelques instants.",
+  QUOTA_EXCEEDED:
+    "Quota de conversation vocale épuisé. Passez à un plan supérieur pour continuer.",
+  SESSION_FAILED: "Impossible de démarrer la session vocale. Réessayez.",
+  SDK_LOAD_FAILED: "Impossible de charger le module de conversation vocale.",
+  SESSION_TIMEOUT: "Session terminée : durée maximale atteinte.",
+  UNKNOWN: "Une erreur inattendue est survenue. Réessayez.",
 } as const;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Hook
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceChatOptions): UseVoiceChatReturn {
-  const [status, setStatus] = useState<VoiceChatStatus>('idle');
+export function useVoiceChat({
+  summaryId,
+  language = "fr",
+  onError,
+}: UseVoiceChatOptions): UseVoiceChatReturn {
+  const [status, setStatus] = useState<VoiceChatStatus>("idle");
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isTalking, setIsTalking] = useState(false);
-  const [inputMode, setInputMode] = useState<'ptt' | 'vad'>('ptt');
+  const [inputMode, setInputMode] = useState<"ptt" | "vad">("ptt");
   const [activeTool, setActiveTool] = useState<string | null>(null);
   const [messages, setMessages] = useState<VoiceChatMessage[]>([]);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -116,7 +125,7 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
   const playbackObserverRef = useRef<MutationObserver | null>(null);
   const playbackPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const playbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputModeRef = useRef<'ptt' | 'vad'>('ptt');
+  const inputModeRef = useRef<"ptt" | "vad">("ptt");
   const isMountedRef = useRef(true);
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -126,10 +135,10 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
   const reportError = useCallback(
     (msg: string) => {
       setError(msg);
-      setStatus('error');
+      setStatus("error");
       onError?.(msg);
     },
-    [onError]
+    [onError],
   );
 
   const stopTimer = useCallback(() => {
@@ -169,9 +178,9 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const conv = conversationRef.current as any;
-      if (conv && typeof conv.setMicMuted === 'function') {
+      if (conv && typeof conv.setMicMuted === "function") {
         conv.setMicMuted(muted);
-      } else if (conv && typeof conv.setVolume === 'function') {
+      } else if (conv && typeof conv.setVolume === "function") {
         conv.setVolume({ inputVolume: muted ? 0 : 1 });
       }
     } catch {
@@ -190,13 +199,13 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
   // ─────────────────────────────────────────────────────────────────────────
 
   const startTalking = useCallback(() => {
-    if (!conversationRef.current || inputModeRef.current !== 'ptt') return;
+    if (!conversationRef.current || inputModeRef.current !== "ptt") return;
     setMicMuted(false);
     // Signal user activity to prevent agent timeout / interrupt agent speech
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const conv = conversationRef.current as any;
-      if (typeof conv.sendUserActivity === 'function') {
+      if (typeof conv.sendUserActivity === "function") {
         conv.sendUserActivity();
       }
     } catch {
@@ -206,7 +215,7 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
   }, [setMicMuted]);
 
   const stopTalking = useCallback(() => {
-    if (!conversationRef.current || inputModeRef.current !== 'ptt') return;
+    if (!conversationRef.current || inputModeRef.current !== "ptt") return;
     setMicMuted(true);
     setIsTalking(false);
   }, [setMicMuted]);
@@ -224,7 +233,9 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
           if (node instanceof HTMLAudioElement) {
             foundAudio = true;
             node.playbackRate = rate;
-            node.addEventListener('play', () => { node.playbackRate = rate; });
+            node.addEventListener("play", () => {
+              node.playbackRate = rate;
+            });
           }
         }
       }
@@ -233,7 +244,7 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
     playbackObserverRef.current = observer;
 
     // Also update any existing audio elements
-    document.querySelectorAll('audio').forEach((el) => {
+    document.querySelectorAll("audio").forEach((el) => {
       foundAudio = true;
       el.playbackRate = rate;
     });
@@ -242,11 +253,13 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
     playbackTimeoutRef.current = setTimeout(() => {
       if (foundAudio) return;
       playbackPollRef.current = setInterval(() => {
-        const audioElements = document.querySelectorAll('audio');
+        const audioElements = document.querySelectorAll("audio");
         if (audioElements.length > 0) {
           audioElements.forEach((el) => {
             el.playbackRate = rate;
-            el.addEventListener('play', () => { el.playbackRate = rate; });
+            el.addEventListener("play", () => {
+              el.playbackRate = rate;
+            });
           });
           if (playbackPollRef.current) {
             clearInterval(playbackPollRef.current);
@@ -280,7 +293,7 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
     releaseMediaStream();
 
     if (isMountedRef.current) {
-      setStatus('idle');
+      setStatus("idle");
       setIsSpeaking(false);
       setIsMuted(false);
       setIsTalking(false);
@@ -288,7 +301,12 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
       setElapsedSeconds(0);
       setPlaybackRate(1.0);
     }
-  }, [stopTimer, releaseMediaStream, cleanupPlaybackObserver, cleanupPlaybackPolling]);
+  }, [
+    stopTimer,
+    releaseMediaStream,
+    cleanupPlaybackObserver,
+    cleanupPlaybackPolling,
+  ]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // start()
@@ -296,14 +314,18 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
 
   const start = useCallback(async () => {
     // Empêcher les démarrages multiples
-    if (status === 'connecting' || status === 'listening' || status === 'speaking') {
+    if (
+      status === "connecting" ||
+      status === "listening" ||
+      status === "speaking"
+    ) {
       return;
     }
 
     setError(null);
     setMessages([]);
     setElapsedSeconds(0);
-    setStatus('connecting');
+    setStatus("connecting");
 
     // 1. Demander l'accès micro
     let stream: MediaStream;
@@ -312,9 +334,15 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
       mediaStreamRef.current = stream;
     } catch (err: unknown) {
       const mediaError = err as DOMException;
-      if (mediaError.name === 'NotAllowedError' || mediaError.name === 'PermissionDeniedError') {
+      if (
+        mediaError.name === "NotAllowedError" ||
+        mediaError.name === "PermissionDeniedError"
+      ) {
         reportError(ERROR_MESSAGES.MICROPHONE_DENIED);
-      } else if (mediaError.name === 'NotFoundError' || mediaError.name === 'DevicesNotFoundError') {
+      } else if (
+        mediaError.name === "NotFoundError" ||
+        mediaError.name === "DevicesNotFoundError"
+      ) {
         reportError(ERROR_MESSAGES.MICROPHONE_NOT_FOUND);
       } else {
         reportError(ERROR_MESSAGES.MICROPHONE_GENERIC);
@@ -327,18 +355,18 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
     try {
       const token = getAccessToken();
       const response = await fetch(`${API_URL}/api/voice/session`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ summary_id: summaryId, language }),
-        credentials: 'include',
+        credentials: "include",
       });
 
       if (response.status === 403 || response.status === 429) {
         releaseMediaStream();
-        setStatus('quota_exceeded');
+        setStatus("quota_exceeded");
         setError(ERROR_MESSAGES.QUOTA_EXCEEDED);
         onError?.(ERROR_MESSAGES.QUOTA_EXCEEDED);
         return;
@@ -352,7 +380,7 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
       setRemainingMinutes(sessionData.quota_remaining_minutes);
       maxSecondsRef.current = sessionData.max_session_minutes * 60;
       // Store input mode from session response
-      const sessionInputMode = sessionData.input_mode || 'ptt';
+      const sessionInputMode = sessionData.input_mode || "ptt";
       inputModeRef.current = sessionInputMode;
       setInputMode(sessionInputMode);
     } catch (err) {
@@ -368,29 +396,36 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
 
     // 3. Charger le SDK ElevenLabs et démarrer la session
     try {
-      const { Conversation } = await import('@elevenlabs/client');
+      const { Conversation } = await import("@elevenlabs/client");
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const conversation = await (Conversation as any).startSession({
         signedUrl: sessionData.signed_url,
         onConnect: () => {
           if (isMountedRef.current) {
-            setStatus('listening');
+            setStatus("listening");
           }
         },
         onDisconnect: () => {
           if (isMountedRef.current) {
             stopTimer();
-            setStatus('idle');
+            setStatus("idle");
             setIsSpeaking(false);
           }
         },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        onMessage: (message: { message: string; source: 'user' | 'ai'; type?: string; tool_name?: string } & Record<string, any>) => {
+        onMessage: (
+          message: {
+            message: string;
+            source: "user" | "ai";
+            type?: string;
+            tool_name?: string;
+          } & Record<string, any>,
+        ) => {
           if (!isMountedRef.current) return;
           // Detect tool calls for VoiceToolIndicator
-          if (message.type === 'tool_call' || message.tool_name) {
-            setActiveTool(message.tool_name || 'unknown');
+          if (message.type === "tool_call" || message.tool_name) {
+            setActiveTool(message.tool_name || "unknown");
           }
           setMessages((prev) => [
             ...prev,
@@ -399,27 +434,30 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
         },
         onError: (err: Error | string) => {
           if (isMountedRef.current) {
-            const msg = typeof err === 'string' ? err : err.message || ERROR_MESSAGES.UNKNOWN;
+            const msg =
+              typeof err === "string"
+                ? err
+                : err.message || ERROR_MESSAGES.UNKNOWN;
             reportError(msg);
           }
         },
         onStatusChange: (statusInfo: { status: string }) => {
           if (!isMountedRef.current) return;
           switch (statusInfo.status) {
-            case 'speaking':
+            case "speaking":
               setActiveTool(null); // Tool call finished, agent responding
               setIsSpeaking(true);
-              setStatus('speaking');
+              setStatus("speaking");
               break;
-            case 'listening':
+            case "listening":
               setActiveTool(null);
               setIsSpeaking(false);
-              setStatus('listening');
+              setStatus("listening");
               break;
-            case 'thinking':
-            case 'processing':
+            case "thinking":
+            case "processing":
               setIsSpeaking(false);
-              setStatus('thinking');
+              setStatus("thinking");
               break;
           }
         },
@@ -428,7 +466,7 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
       conversationRef.current = conversation;
 
       // 4. PTT mode: start with mic muted (user must hold button to talk)
-      if (sessionInputMode === 'ptt') {
+      if (sessionInputMode === "ptt") {
         setMicMuted(true);
       }
 
@@ -457,7 +495,18 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
       releaseMediaStream();
       reportError(ERROR_MESSAGES.SDK_LOAD_FAILED);
     }
-  }, [status, summaryId, language, onError, reportError, releaseMediaStream, stopTimer, stop, setMicMuted, applyPlaybackRate]);
+  }, [
+    status,
+    summaryId,
+    language,
+    onError,
+    reportError,
+    releaseMediaStream,
+    stopTimer,
+    stop,
+    setMicMuted,
+    applyPlaybackRate,
+  ]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // toggleMute()
@@ -494,7 +543,12 @@ export function useVoiceChat({ summaryId, language = 'fr', onError }: UseVoiceCh
         conversationRef.current = null;
       }
     };
-  }, [stopTimer, releaseMediaStream, cleanupPlaybackObserver, cleanupPlaybackPolling]);
+  }, [
+    stopTimer,
+    releaseMediaStream,
+    cleanupPlaybackObserver,
+    cleanupPlaybackPolling,
+  ]);
 
   return {
     start,

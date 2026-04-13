@@ -1,16 +1,16 @@
 /**
  * ♿ SkipLink Component v1.0
- * 
+ *
  * Lien "Skip to content" pour permettre aux utilisateurs de lecteurs d'écran
  * de passer directement au contenu principal.
- * 
+ *
  * Usage:
  * <SkipLink targetId="main-content" />
  * ...
  * <main id="main-content">...</main>
  */
 
-import React from 'react';
+import React from "react";
 
 interface SkipLinkProps {
   /** ID de l'élément cible (ex: "main-content") */
@@ -19,17 +19,17 @@ interface SkipLinkProps {
   label?: string;
 }
 
-export const SkipLink: React.FC<SkipLinkProps> = ({ 
-  targetId, 
-  label = "Aller au contenu principal" 
+export const SkipLink: React.FC<SkipLinkProps> = ({
+  targetId,
+  label = "Aller au contenu principal",
 }) => {
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     const target = document.getElementById(targetId);
     if (target) {
-      target.setAttribute('tabindex', '-1');
+      target.setAttribute("tabindex", "-1");
       target.focus();
-      target.removeAttribute('tabindex');
+      target.removeAttribute("tabindex");
     }
   };
 

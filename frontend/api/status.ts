@@ -7,30 +7,33 @@
  * GET /api/status
  */
 
-export const config = { runtime: 'edge' };
+export const config = { runtime: "edge" };
 
 export default async function handler(request: Request) {
-  if (request.method !== 'GET') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+  if (request.method !== "GET") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { "Content-Type": "application/json" },
     });
   }
 
-  const API_URL = process.env.VITE_API_URL || process.env.API_URL || 'https://api.deepsightsynthesis.com';
-  const secret = process.env.HEALTH_CHECK_SECRET || '';
+  const API_URL =
+    process.env.VITE_API_URL ||
+    process.env.API_URL ||
+    "https://api.deepsightsynthesis.com";
+  const secret = process.env.HEALTH_CHECK_SECRET || "";
 
   if (!secret) {
     return new Response(
-      JSON.stringify({ error: 'HEALTH_CHECK_SECRET not configured' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } },
+      JSON.stringify({ error: "HEALTH_CHECK_SECRET not configured" }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 
   try {
     const backendUrl = `${API_URL}/api/health/deep?secret=${encodeURIComponent(secret)}`;
     const resp = await fetch(backendUrl, {
-      headers: { 'Accept': 'application/json' },
+      headers: { Accept: "application/json" },
       signal: AbortSignal.timeout(15000),
     });
 
@@ -39,15 +42,15 @@ export default async function handler(request: Request) {
     return new Response(JSON.stringify(data), {
       status: resp.status,
       headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store, max-age=0',
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store, max-age=0",
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const message = error instanceof Error ? error.message : "Unknown error";
     return new Response(
-      JSON.stringify({ error: 'Backend unreachable', detail: message }),
-      { status: 502, headers: { 'Content-Type': 'application/json' } },
+      JSON.stringify({ error: "Backend unreachable", detail: message }),
+      { status: 502, headers: { "Content-Type": "application/json" } },
     );
   }
 }

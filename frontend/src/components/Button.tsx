@@ -4,10 +4,9 @@
  */
 
 import React from "react";
-import { motion } from 'framer-motion';
+import { motion } from "framer-motion";
 
-interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "ghost" | "accent" | "danger";
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   loading?: boolean;
@@ -32,7 +31,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       ariaLabel,
       ...props
     },
-    ref
+    ref,
   ) => {
     const baseClasses =
       "inline-flex items-center justify-center gap-2 font-medium rounded-md transition-all duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none relative select-none";
@@ -62,7 +61,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         disabled={disabled || loading}
-        className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${fullWidth ? 'w-full' : ''} ${className}`}
+        className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${fullWidth ? "w-full" : ""} ${className}`}
         aria-label={ariaLabel}
         aria-busy={loading}
         aria-disabled={disabled || loading}
@@ -81,14 +80,22 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           </span>
         ) : (
           <>
-            {icon && <span className="flex-shrink-0" aria-hidden="true">{icon}</span>}
+            {icon && (
+              <span className="flex-shrink-0" aria-hidden="true">
+                {icon}
+              </span>
+            )}
             {children && <span>{children}</span>}
-            {iconRight && <span className="flex-shrink-0" aria-hidden="true">{iconRight}</span>}
+            {iconRight && (
+              <span className="flex-shrink-0" aria-hidden="true">
+                {iconRight}
+              </span>
+            )}
           </>
         )}
       </button>
     );
-  }
+  },
 );
 
 Button.displayName = "Button";
@@ -96,7 +103,7 @@ Button.displayName = "Button";
 /** Premium CTA button with animated gradient glow */
 export const AnalyzeButton: React.FC<ButtonProps> = ({
   children,
-  className = '',
+  className = "",
   loading,
   disabled,
   ariaLabel,
@@ -114,19 +121,23 @@ export const AnalyzeButton: React.FC<ButtonProps> = ({
         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary
         ${className}
       `}
-      style={{ backgroundSize: '200% 100%' }}
-      animate={!loading && !disabled ? {
-        y: [0, -3, 0],
-      } : undefined}
+      style={{ backgroundSize: "200% 100%" }}
+      animate={
+        !loading && !disabled
+          ? {
+              y: [0, -3, 0],
+            }
+          : undefined
+      }
       whileHover={{
         scale: 1.02,
-        backgroundPosition: '100% 0',
+        backgroundPosition: "100% 0",
         y: 0,
       }}
       whileTap={{ scale: 0.98, y: 0 }}
       transition={{
         duration: 0.2,
-        y: { duration: 3, repeat: Infinity, ease: 'easeInOut' },
+        y: { duration: 3, repeat: Infinity, ease: "easeInOut" },
       }}
       aria-label={ariaLabel || "Analyze video"}
       aria-busy={loading}
@@ -141,13 +152,17 @@ export const AnalyzeButton: React.FC<ButtonProps> = ({
       />
 
       {/* Shimmer on hover */}
-      <span className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700" aria-hidden="true">
+      <span
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+        aria-hidden="true"
+      >
         <span
           className="absolute inset-0"
           style={{
-            background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)',
-            animation: 'shimmer 2s infinite',
-            backgroundSize: '200% 100%',
+            background:
+              "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)",
+            animation: "shimmer 2s infinite",
+            backgroundSize: "200% 100%",
           }}
         />
       </span>

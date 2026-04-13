@@ -12,16 +12,25 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
-  X, Send, Bot, User, Globe, Copy, Check,
-  ExternalLink, Search, Lock, ArrowDown
-} from 'lucide-react';
-import { parseAskQuestions } from './ClickableQuestions';
-import { AudioPlayerButton } from './AudioPlayerButton';
-import { TTSToggle } from './TTSToggle';
-import { useTTSContext } from '../contexts/TTSContext';
-import { EnrichedMarkdown, cleanConceptMarkers } from './EnrichedMarkdown';
+  X,
+  Send,
+  Bot,
+  User,
+  Globe,
+  Copy,
+  Check,
+  ExternalLink,
+  Search,
+  Lock,
+  ArrowDown,
+} from "lucide-react";
+import { parseAskQuestions } from "./ClickableQuestions";
+import { AudioPlayerButton } from "./AudioPlayerButton";
+import { TTSToggle } from "./TTSToggle";
+import { useTTSContext } from "../contexts/TTSContext";
+import { EnrichedMarkdown, cleanConceptMarkers } from "./EnrichedMarkdown";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 TYPES
@@ -34,7 +43,7 @@ interface ChatSource {
 
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   sources?: ChatSource[];
   web_search_used?: boolean;
@@ -56,9 +65,12 @@ interface ChatPanelProps {
   isLoading: boolean;
   webSearchEnabled: boolean;
   onToggleWebSearch: (enabled: boolean) => void;
-  onSendMessage: (message: string, options?: { useWebSearch?: boolean }) => void;
+  onSendMessage: (
+    message: string,
+    options?: { useWebSearch?: boolean },
+  ) => void;
   onClearHistory?: () => void;
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
   userPlan?: string;
   webSearchQuota?: WebSearchQuota;
   onUpgrade?: () => void;
@@ -70,7 +82,7 @@ interface ChatPanelProps {
 
 const canUseWebSearch = (plan?: string): boolean => {
   if (!plan) return false;
-  return plan.toLowerCase() === 'pro';
+  return plan.toLowerCase() === "pro";
 };
 
 const getThumbnailUrl = (videoId: string, thumbnailUrl?: string): string => {
@@ -94,12 +106,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   onToggleWebSearch,
   onSendMessage,
   onClearHistory,
-  language = 'fr',
+  language = "fr",
   userPlan,
   webSearchQuota,
   onUpgrade,
 }) => {
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -107,52 +119,57 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const hasWebSearch = canUseWebSearch(userPlan);
-  const isFree = !userPlan || userPlan === 'free';
+  const isFree = !userPlan || userPlan === "free";
   const quotaRemaining = webSearchQuota?.remaining ?? 0;
   const quotaLimit = webSearchQuota?.limit ?? 0;
   const { autoPlayEnabled, playText, stopPlaying } = useTTSContext();
   const prevMsgCountRef = useRef(messages.length);
 
   // ─── Translations ───
-  const t = language === 'fr' ? {
-    placeholder: 'Posez votre question...',
-    analyzing: 'Réflexion en cours...',
-    copy: 'Copier',
-    copied: 'Copié !',
-    emptyTitle: 'Discutez avec l\'IA',
-    emptySubtitle: 'Posez n\'importe quelle question sur le contenu de cette vidéo.',
-    deepen: 'Approfondir (web)',
-    deepenLocked: 'Dès le plan Pro',
-    webEnriched: 'Enrichi par le web',
-    sources: 'Sources :',
-  } : {
-    placeholder: 'Ask your question...',
-    analyzing: 'Thinking...',
-    copy: 'Copy',
-    copied: 'Copied!',
-    emptyTitle: 'Chat with the AI',
-    emptySubtitle: 'Ask any question about this video\'s content.',
-    deepen: 'Deepen (web)',
-    deepenLocked: 'From Pro plan',
-    webEnriched: 'Web enriched',
-    sources: 'Sources:',
-  };
+  const t =
+    language === "fr"
+      ? {
+          placeholder: "Posez votre question...",
+          analyzing: "Réflexion en cours...",
+          copy: "Copier",
+          copied: "Copié !",
+          emptyTitle: "Discutez avec l'IA",
+          emptySubtitle:
+            "Posez n'importe quelle question sur le contenu de cette vidéo.",
+          deepen: "Approfondir (web)",
+          deepenLocked: "Dès le plan Pro",
+          webEnriched: "Enrichi par le web",
+          sources: "Sources :",
+        }
+      : {
+          placeholder: "Ask your question...",
+          analyzing: "Thinking...",
+          copy: "Copy",
+          copied: "Copied!",
+          emptyTitle: "Chat with the AI",
+          emptySubtitle: "Ask any question about this video's content.",
+          deepen: "Deepen (web)",
+          deepenLocked: "From Pro plan",
+          webEnriched: "Web enriched",
+          sources: "Sources:",
+        };
 
-  const suggestedQuestions = language === 'fr'
-    ? [
-        'Quels sont les points clés ?',
-        'Résume en 3 bullet points',
-        'Y a-t-il des biais ?',
-      ]
-    : [
-        'What are the key takeaways?',
-        'Summarize in 3 bullet points',
-        'Are there any biases?',
-      ];
+  const suggestedQuestions =
+    language === "fr"
+      ? [
+          "Quels sont les points clés ?",
+          "Résume en 3 bullet points",
+          "Y a-t-il des biais ?",
+        ]
+      : [
+          "What are the key takeaways?",
+          "Summarize in 3 bullet points",
+          "Are there any biases?",
+        ];
 
   // ─── Auto-scroll ───
   const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
   useEffect(() => {
@@ -167,16 +184,16 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
       const { scrollTop, scrollHeight, clientHeight } = container;
       setShowScrollBtn(scrollHeight - scrollTop - clientHeight > 100);
     };
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
   }, []);
 
   // ─── Auto-play TTS on new assistant message ───
   useEffect(() => {
     if (messages.length > prevMsgCountRef.current && autoPlayEnabled) {
       const last = messages[messages.length - 1];
-      if (last?.role === 'assistant') {
-        const text = typeof last.content === 'string' ? last.content : '';
+      if (last?.role === "assistant") {
+        const text = typeof last.content === "string" ? last.content : "";
         playText(text.slice(0, 5000));
       }
     }
@@ -192,8 +209,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     const el = e.target;
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 120) + "px";
   };
 
   // ─── Submit ───
@@ -202,13 +219,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
     if (input.trim() && !isLoading) {
       stopPlaying();
       onSendMessage(input.trim());
-      setInput('');
-      if (inputRef.current) inputRef.current.style.height = 'auto';
+      setInput("");
+      if (inputRef.current) inputRef.current.style.height = "auto";
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();
     }
@@ -220,14 +237,16 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
       await navigator.clipboard.writeText(cleanConceptMarkers(content));
       setCopiedId(msgId);
       setTimeout(() => setCopiedId(null), 2000);
-    } catch { /* */ }
+    } catch {
+      /* */
+    }
   };
 
   // ─── Deepen with web search ───
   const handleDeepen = (msgIndex: number) => {
     if (!hasWebSearch || isLoading) return;
     for (let i = msgIndex - 1; i >= 0; i--) {
-      if (messages[i].role === 'user') {
+      if (messages[i].role === "user") {
         onSendMessage(messages[i].content, { useWebSearch: true });
         return;
       }
@@ -278,7 +297,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
               {videoTitle}
             </h3>
             <p className="text-[11px] text-white/30 mt-0.5">
-              {language === 'fr' ? 'Chat IA' : 'AI Chat'}
+              {language === "fr" ? "Chat IA" : "AI Chat"}
             </p>
           </div>
 
@@ -298,7 +317,10 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
         <div
           ref={messagesContainerRef}
           className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scroll-smooth"
-          style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.08) transparent' }}
+          style={{
+            scrollbarWidth: "thin",
+            scrollbarColor: "rgba(255,255,255,0.08) transparent",
+          }}
         >
           {messages.length === 0 ? (
             /* ─── Empty State ─── */
@@ -328,21 +350,23 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           ) : (
             /* ─── Message List ─── */
             messages.map((msg, msgIndex) => {
-              const contentStr = typeof msg.content === 'string'
-                ? msg.content
-                : String(msg.content || '');
+              const contentStr =
+                typeof msg.content === "string"
+                  ? msg.content
+                  : String(msg.content || "");
 
-              const { beforeQuestions, questions } = msg.role === 'assistant'
-                ? parseAskQuestions(contentStr)
-                : { beforeQuestions: contentStr, questions: [] };
+              const { beforeQuestions, questions } =
+                msg.role === "assistant"
+                  ? parseAskQuestions(contentStr)
+                  : { beforeQuestions: contentStr, questions: [] };
 
-              const isUser = msg.role === 'user';
+              const isUser = msg.role === "user";
               const isWebEnriched = msg.web_search_used === true;
 
               return (
                 <div
                   key={msg.id}
-                  className={`flex gap-2.5 animate-[fadeSlideIn_0.2s_ease-out] ${isUser ? 'justify-end' : ''}`}
+                  className={`flex gap-2.5 animate-[fadeSlideIn_0.2s_ease-out] ${isUser ? "justify-end" : ""}`}
                 >
                   {/* Assistant avatar */}
                   {!isUser && (
@@ -355,8 +379,8 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                   <div
                     className={`max-w-[82%] rounded-2xl px-4 py-3 relative group ${
                       isUser
-                        ? 'bg-blue-600/90 text-white rounded-br-md'
-                        : 'bg-white/[0.05] text-white/80 rounded-bl-md'
+                        ? "bg-blue-600/90 text-white rounded-br-md"
+                        : "bg-white/[0.05] text-white/80 rounded-bl-md"
                     }`}
                   >
                     {/* Web enriched badge */}
@@ -371,10 +395,13 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
 
                     {/* Content */}
                     {isUser ? (
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{contentStr}</p>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                        {contentStr}
+                      </p>
                     ) : (
                       <>
-                        <div className="prose prose-invert prose-sm max-w-none
+                        <div
+                          className="prose prose-invert prose-sm max-w-none
                           prose-p:text-white/75 prose-p:leading-relaxed prose-p:text-sm
                           prose-headings:text-white/90 prose-headings:font-semibold
                           prose-strong:text-white/90
@@ -383,8 +410,12 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                           prose-a:text-blue-400 prose-a:no-underline hover:prose-a:underline
                           prose-li:text-white/70 prose-li:text-sm
                           prose-ul:my-2 prose-ol:my-2
-                        ">
-                          <EnrichedMarkdown language={language} className="text-sm leading-relaxed">
+                        "
+                        >
+                          <EnrichedMarkdown
+                            language={language}
+                            className="text-sm leading-relaxed"
+                          >
                             {beforeQuestions}
                           </EnrichedMarkdown>
                         </div>
@@ -400,13 +431,22 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                             {questions.map((q, qi) => (
                               <button
                                 key={qi}
-                                onClick={() => !isLoading && onSendMessage(
-                                  q.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, term, display) => display || term)
-                                )}
+                                onClick={() =>
+                                  !isLoading &&
+                                  onSendMessage(
+                                    q.replace(
+                                      /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
+                                      (_, term, display) => display || term,
+                                    ),
+                                  )
+                                }
                                 disabled={isLoading}
                                 className="px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white/70 text-xs rounded-lg transition-all disabled:opacity-40"
                               >
-                                {q.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, _term, display) => display || _term)}
+                                {q.replace(
+                                  /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g,
+                                  (_, _term, display) => display || _term,
+                                )}
                               </button>
                             ))}
                           </div>
@@ -430,7 +470,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                               className="text-[11px] px-2.5 py-1 bg-white/[0.04] hover:bg-white/[0.08] rounded-full transition-colors flex items-center gap-1 text-white/40 hover:text-white/60"
                             >
                               <ExternalLink className="w-2.5 h-2.5" />
-                              {src.title || 'Source'}
+                              {src.title || "Source"}
                             </a>
                           ))}
                         </div>
@@ -444,10 +484,19 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                           onClick={() => copyToClipboard(contentStr, msg.id)}
                           className="text-[11px] text-white/25 hover:text-white/60 flex items-center gap-1 transition-colors"
                         >
-                          {copiedId === msg.id
-                            ? <><Check className="w-3 h-3 text-emerald-400" /><span className="text-emerald-400">{t.copied}</span></>
-                            : <><Copy className="w-3 h-3" />{t.copy}</>
-                          }
+                          {copiedId === msg.id ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-400" />
+                              <span className="text-emerald-400">
+                                {t.copied}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              {t.copy}
+                            </>
+                          )}
                         </button>
 
                         {!isWebEnriched && (
@@ -456,16 +505,22 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                               if (isFree && onUpgrade) onUpgrade();
                               else handleDeepen(msgIndex);
                             }}
-                            disabled={isLoading || (hasWebSearch && quotaRemaining <= 0)}
+                            disabled={
+                              isLoading || (hasWebSearch && quotaRemaining <= 0)
+                            }
                             className={`text-[11px] flex items-center gap-1 transition-colors ${
                               isFree
-                                ? 'text-white/20 cursor-pointer'
+                                ? "text-white/20 cursor-pointer"
                                 : hasWebSearch && quotaRemaining > 0
-                                  ? 'text-cyan-400/50 hover:text-cyan-400 cursor-pointer'
-                                  : 'text-white/15 cursor-not-allowed'
+                                  ? "text-cyan-400/50 hover:text-cyan-400 cursor-pointer"
+                                  : "text-white/15 cursor-not-allowed"
                             } disabled:opacity-30`}
                           >
-                            {isFree ? <Lock className="w-3 h-3" /> : <Search className="w-3 h-3" />}
+                            {isFree ? (
+                              <Lock className="w-3 h-3" />
+                            ) : (
+                              <Search className="w-3 h-3" />
+                            )}
                             <span>{isFree ? t.deepenLocked : t.deepen}</span>
                           </button>
                         )}
@@ -525,27 +580,34 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
           {/* Web search toggle + TTS toggle */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                if (isFree) onUpgrade?.();
-                else if (hasWebSearch && quotaRemaining > 0) onToggleWebSearch(!webSearchEnabled);
-              }}
-              disabled={!isFree && (!hasWebSearch || quotaRemaining <= 0)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] transition-all ${
-                isFree
-                  ? 'text-white/25 hover:text-white/40 cursor-pointer'
-                  : webSearchEnabled && hasWebSearch
-                    ? 'text-cyan-400/80 bg-cyan-500/10 border border-cyan-500/20'
-                    : 'text-white/25 hover:text-white/40'
-              } disabled:opacity-30 disabled:cursor-not-allowed`}
-            >
-              {isFree ? <Lock className="w-3 h-3" /> : <Globe className="w-3 h-3" />}
-              <span>Web</span>
-              {hasWebSearch && !isFree && (
-                <span className="text-[10px] opacity-60">{quotaRemaining}/{quotaLimit}</span>
-              )}
-            </button>
-            <TTSToggle />
+              <button
+                onClick={() => {
+                  if (isFree) onUpgrade?.();
+                  else if (hasWebSearch && quotaRemaining > 0)
+                    onToggleWebSearch(!webSearchEnabled);
+                }}
+                disabled={!isFree && (!hasWebSearch || quotaRemaining <= 0)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] transition-all ${
+                  isFree
+                    ? "text-white/25 hover:text-white/40 cursor-pointer"
+                    : webSearchEnabled && hasWebSearch
+                      ? "text-cyan-400/80 bg-cyan-500/10 border border-cyan-500/20"
+                      : "text-white/25 hover:text-white/40"
+                } disabled:opacity-30 disabled:cursor-not-allowed`}
+              >
+                {isFree ? (
+                  <Lock className="w-3 h-3" />
+                ) : (
+                  <Globe className="w-3 h-3" />
+                )}
+                <span>Web</span>
+                {hasWebSearch && !isFree && (
+                  <span className="text-[10px] opacity-60">
+                    {quotaRemaining}/{quotaLimit}
+                  </span>
+                )}
+              </button>
+              <TTSToggle />
             </div>
 
             {onClearHistory && messages.length > 0 && (
@@ -553,7 +615,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
                 onClick={onClearHistory}
                 className="text-[11px] text-white/20 hover:text-red-400/70 transition-colors"
               >
-                {language === 'fr' ? 'Effacer' : 'Clear'}
+                {language === "fr" ? "Effacer" : "Clear"}
               </button>
             )}
           </div>
@@ -568,7 +630,7 @@ export const ChatPanel: React.FC<ChatPanelProps> = ({
               placeholder={t.placeholder}
               rows={1}
               className="flex-1 resize-none bg-white/[0.04] text-white/90 placeholder:text-white/20 rounded-xl px-4 py-2.5 border border-white/[0.06] focus:border-cyan-500/30 focus:ring-1 focus:ring-cyan-500/20 outline-none transition-all text-sm leading-relaxed"
-              style={{ maxHeight: '120px' }}
+              style={{ maxHeight: "120px" }}
             />
             <button
               type="submit"

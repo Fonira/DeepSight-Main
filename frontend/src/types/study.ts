@@ -75,14 +75,23 @@ export interface FlashcardSessionState {
   completed: boolean;
 }
 
-export type StudyMode = 'flashcards' | 'quiz';
+export type StudyMode = "flashcards" | "quiz";
 
 // ═══════════════════════════════════════════════════
 // FSRS + Gamification Types (ajouté pour la refonte Révision)
 // ═══════════════════════════════════════════════════
 export type {
-  FSRSRating, FSRSState, FSRSCardState, ReviewResult,
-  DueCardsData, StudyStats, HeatMapData, BadgesData, BadgeItem,
-  VideoMastery, VideoMasteryData,
-  SessionEndResult, StudySessionData
-} from './gamification';
+  FSRSRating,
+  FSRSState,
+  FSRSCardState,
+  ReviewResult,
+  DueCardsData,
+  StudyStats,
+  HeatMapData,
+  BadgesData,
+  BadgeItem,
+  VideoMastery,
+  VideoMasteryData,
+  SessionEndResult,
+  StudySessionData,
+} from "./gamification";

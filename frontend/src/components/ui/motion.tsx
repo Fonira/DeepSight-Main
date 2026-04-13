@@ -3,8 +3,13 @@
  * Reusable Framer Motion animation wrappers.
  */
 
-import { motion, AnimatePresence, type Variants, type HTMLMotionProps } from 'framer-motion';
-import React from 'react';
+import {
+  motion,
+  AnimatePresence,
+  type Variants,
+  type HTMLMotionProps,
+} from "framer-motion";
+import React from "react";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ANIMATION PRESETS
@@ -90,14 +95,18 @@ export const staggerItem: Variants = {
 // MOTION COMPONENTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-interface MotionProps extends HTMLMotionProps<'div'> {
+interface MotionProps extends HTMLMotionProps<"div"> {
   children: React.ReactNode;
   className?: string;
   delay?: number;
 }
 
 /** Fade-in-up animation wrapper */
-export const FadeInUp: React.FC<MotionProps> = ({ children, delay = 0, ...props }) => (
+export const FadeInUp: React.FC<MotionProps> = ({
+  children,
+  delay = 0,
+  ...props
+}) => (
   <motion.div
     initial={{ opacity: 0, y: 16 }}
     animate={{ opacity: 1, y: 0 }}
@@ -109,7 +118,11 @@ export const FadeInUp: React.FC<MotionProps> = ({ children, delay = 0, ...props 
 );
 
 /** Fade-in animation wrapper */
-export const FadeIn: React.FC<MotionProps> = ({ children, delay = 0, ...props }) => (
+export const FadeIn: React.FC<MotionProps> = ({
+  children,
+  delay = 0,
+  ...props
+}) => (
   <motion.div
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
@@ -121,7 +134,11 @@ export const FadeIn: React.FC<MotionProps> = ({ children, delay = 0, ...props })
 );
 
 /** Scale-in animation wrapper */
-export const ScaleIn: React.FC<MotionProps> = ({ children, delay = 0, ...props }) => (
+export const ScaleIn: React.FC<MotionProps> = ({
+  children,
+  delay = 0,
+  ...props
+}) => (
   <motion.div
     initial={{ opacity: 0, scale: 0.95 }}
     animate={{ opacity: 1, scale: 1 }}
@@ -133,7 +150,11 @@ export const ScaleIn: React.FC<MotionProps> = ({ children, delay = 0, ...props }
 );
 
 /** Stagger container — use with staggerItem variant on children */
-export const StaggerContainer: React.FC<MotionProps> = ({ children, delay = 0, ...props }) => (
+export const StaggerContainer: React.FC<MotionProps> = ({
+  children,
+  delay = 0,
+  ...props
+}) => (
   <motion.div
     variants={staggerContainer}
     initial="hidden"
@@ -153,7 +174,10 @@ export const StaggerItem: React.FC<MotionProps> = ({ children, ...props }) => (
 );
 
 /** Page transition wrapper */
-export const PageTransition: React.FC<MotionProps> = ({ children, ...props }) => (
+export const PageTransition: React.FC<MotionProps> = ({
+  children,
+  ...props
+}) => (
   <motion.div
     initial={{ opacity: 0, y: 8 }}
     animate={{ opacity: 1, y: 0 }}
@@ -166,7 +190,11 @@ export const PageTransition: React.FC<MotionProps> = ({ children, ...props }) =>
 );
 
 /** Hover card effect — lifts on hover with glow */
-export const HoverCard: React.FC<MotionProps> = ({ children, className, ...props }) => (
+export const HoverCard: React.FC<MotionProps> = ({
+  children,
+  className,
+  ...props
+}) => (
   <motion.div
     className={className}
     whileHover={{ y: -2, transition: { duration: 0.2 } }}
@@ -178,7 +206,10 @@ export const HoverCard: React.FC<MotionProps> = ({ children, className, ...props
 );
 
 /** Animated number display */
-export const AnimatedNumber: React.FC<{ value: number; className?: string }> = ({ value, className }) => (
+export const AnimatedNumber: React.FC<{
+  value: number;
+  className?: string;
+}> = ({ value, className }) => (
   <motion.span
     key={value}
     initial={{ opacity: 0, y: 8 }}

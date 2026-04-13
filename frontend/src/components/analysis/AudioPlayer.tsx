@@ -3,8 +3,8 @@
  * Fixed bottom bar with play/pause, skip, progress, speed, volume, download.
  */
 
-import React, { useRef, useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useRef, useState, useCallback, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
   Pause,
@@ -15,8 +15,8 @@ import {
   VolumeX,
   Download,
   X,
-} from 'lucide-react';
-import { DeepSightSpinnerSmall } from '../ui/DeepSightSpinner';
+} from "lucide-react";
+import { DeepSightSpinnerSmall } from "../ui/DeepSightSpinner";
 
 interface AudioPlayerProps {
   audioUrl: string;
@@ -27,13 +27,17 @@ interface AudioPlayerProps {
 const SPEED_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
 
 function formatTime(seconds: number): string {
-  if (!isFinite(seconds) || seconds < 0) return '0:00';
+  if (!isFinite(seconds) || seconds < 0) return "0:00";
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
-export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, title, onClose }) => {
+export const AudioPlayer: React.FC<AudioPlayerProps> = ({
+  audioUrl,
+  title,
+  onClose,
+}) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
 
@@ -74,22 +78,22 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, title, onClo
     const onWaiting = () => setIsBuffering(true);
     const onPlaying = () => setIsBuffering(false);
 
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    audio.addEventListener('loadedmetadata', onLoadedMetadata);
-    audio.addEventListener('canplay', onCanPlay);
-    audio.addEventListener('ended', onEnded);
-    audio.addEventListener('error', onError);
-    audio.addEventListener('waiting', onWaiting);
-    audio.addEventListener('playing', onPlaying);
+    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("loadedmetadata", onLoadedMetadata);
+    audio.addEventListener("canplay", onCanPlay);
+    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("error", onError);
+    audio.addEventListener("waiting", onWaiting);
+    audio.addEventListener("playing", onPlaying);
 
     return () => {
-      audio.removeEventListener('timeupdate', onTimeUpdate);
-      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-      audio.removeEventListener('canplay', onCanPlay);
-      audio.removeEventListener('ended', onEnded);
-      audio.removeEventListener('error', onError);
-      audio.removeEventListener('waiting', onWaiting);
-      audio.removeEventListener('playing', onPlaying);
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+      audio.removeEventListener("canplay", onCanPlay);
+      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("error", onError);
+      audio.removeEventListener("waiting", onWaiting);
+      audio.removeEventListener("playing", onPlaying);
     };
   }, [isDragging]);
 
@@ -102,16 +106,25 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, title, onClo
       audio.pause();
       setIsPlaying(false);
     } else {
-      audio.play().then(() => setIsPlaying(true)).catch(() => setHasError(true));
+      audio
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch(() => setHasError(true));
     }
   }, [isPlaying]);
 
   // Skip
-  const skip = useCallback((seconds: number) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = Math.max(0, Math.min(audio.currentTime + seconds, duration));
-  }, [duration]);
+  const skip = useCallback(
+    (seconds: number) => {
+      const audio = audioRef.current;
+      if (!audio) return;
+      audio.currentTime = Math.max(
+        0,
+        Math.min(audio.currentTime + seconds, duration),
+      );
+    },
+    [duration],
+  );
 
   // Speed cycle
   const cycleSpeed = useCallback(() => {
@@ -141,54 +154,68 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, title, onClo
   }, [isMuted, volume, prevVolume, handleVolumeChange]);
 
   // Progress bar seek
-  const seekTo = useCallback((clientX: number) => {
-    const bar = progressRef.current;
-    const audio = audioRef.current;
-    if (!bar || !audio || !duration) return;
+  const seekTo = useCallback(
+    (clientX: number) => {
+      const bar = progressRef.current;
+      const audio = audioRef.current;
+      if (!bar || !audio || !duration) return;
 
-    const rect = bar.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const newTime = ratio * duration;
-    audio.currentTime = newTime;
-    setCurrentTime(newTime);
-  }, [duration]);
+      const rect = bar.getBoundingClientRect();
+      const ratio = Math.max(
+        0,
+        Math.min(1, (clientX - rect.left) / rect.width),
+      );
+      const newTime = ratio * duration;
+      audio.currentTime = newTime;
+      setCurrentTime(newTime);
+    },
+    [duration],
+  );
 
-  const handleProgressMouseDown = useCallback((e: React.MouseEvent) => {
-    setIsDragging(true);
-    seekTo(e.clientX);
+  const handleProgressMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      setIsDragging(true);
+      seekTo(e.clientX);
 
-    const handleMouseMove = (ev: MouseEvent) => seekTo(ev.clientX);
-    const handleMouseUp = (ev: MouseEvent) => {
-      setIsDragging(false);
-      seekTo(ev.clientX);
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
+      const handleMouseMove = (ev: MouseEvent) => seekTo(ev.clientX);
+      const handleMouseUp = (ev: MouseEvent) => {
+        setIsDragging(false);
+        seekTo(ev.clientX);
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  }, [seekTo]);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+    },
+    [seekTo],
+  );
 
-  const handleProgressTouchStart = useCallback((e: React.TouchEvent) => {
-    setIsDragging(true);
-    seekTo(e.touches[0].clientX);
+  const handleProgressTouchStart = useCallback(
+    (e: React.TouchEvent) => {
+      setIsDragging(true);
+      seekTo(e.touches[0].clientX);
 
-    const handleTouchMove = (ev: TouchEvent) => {
-      ev.preventDefault();
-      seekTo(ev.touches[0].clientX);
-    };
-    const handleTouchEnd = (ev: TouchEvent) => {
-      setIsDragging(false);
-      if (ev.changedTouches.length > 0) {
-        seekTo(ev.changedTouches[0].clientX);
-      }
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleTouchEnd);
-    };
+      const handleTouchMove = (ev: TouchEvent) => {
+        ev.preventDefault();
+        seekTo(ev.touches[0].clientX);
+      };
+      const handleTouchEnd = (ev: TouchEvent) => {
+        setIsDragging(false);
+        if (ev.changedTouches.length > 0) {
+          seekTo(ev.changedTouches[0].clientX);
+        }
+        document.removeEventListener("touchmove", handleTouchMove);
+        document.removeEventListener("touchend", handleTouchEnd);
+      };
 
-    document.addEventListener('touchmove', handleTouchMove, { passive: false });
-    document.addEventListener('touchend', handleTouchEnd);
-  }, [seekTo]);
+      document.addEventListener("touchmove", handleTouchMove, {
+        passive: false,
+      });
+      document.addEventListener("touchend", handleTouchEnd);
+    },
+    [seekTo],
+  );
 
   // Download
   const handleDownload = useCallback(async () => {
@@ -196,16 +223,16 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, title, onClo
       const response = await fetch(audioUrl);
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `DeepSight - ${title || 'analyse'}.mp3`;
+      a.download = `DeepSight - ${title || "analyse"}.mp3`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
       // Fallback: open in new tab
-      window.open(audioUrl, '_blank');
+      window.open(audioUrl, "_blank");
     }
   }, [audioUrl, title]);
 
@@ -229,7 +256,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioUrl, title, onClo
   }, []);
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const VolumeIcon = isMuted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
+  const VolumeIcon =
+    isMuted || volume === 0 ? VolumeX : volume < 0.5 ? Volume1 : Volume2;
   const currentSpeed = SPEED_OPTIONS[speedIndex];
 
   return (

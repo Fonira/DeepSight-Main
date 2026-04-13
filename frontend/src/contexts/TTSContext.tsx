@@ -3,19 +3,26 @@
  * Persists all settings in localStorage
  */
 
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { useAuthContext } from './AuthContext';
-import { API_URL, getAccessToken } from '../services/api';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
+import { useAuthContext } from "./AuthContext";
+import { API_URL, getAccessToken } from "../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Storage keys
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const KEYS = {
-  autoplay: 'deepsight_tts_autoplay',
-  lang: 'deepsight_tts_lang',
-  gender: 'deepsight_tts_gender',
-  speed: 'deepsight_tts_speed',
+  autoplay: "deepsight_tts_autoplay",
+  lang: "deepsight_tts_lang",
+  gender: "deepsight_tts_gender",
+  speed: "deepsight_tts_speed",
 } as const;
 
 function loadSetting<T>(key: string, fallback: T): T {
@@ -40,8 +47,8 @@ function saveSetting(key: string, value: unknown) {
 // Types
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type TTSLanguage = 'fr' | 'en';
-type TTSGender = 'male' | 'female';
+type TTSLanguage = "fr" | "en";
+type TTSGender = "male" | "female";
 
 interface TTSContextType {
   // Settings
@@ -58,7 +65,7 @@ interface TTSContextType {
   playText: (text: string) => Promise<void>;
   pauseResume: () => void;
   stop: () => void;
-  stopPlaying: () => void;  // alias of stop for backward compat
+  stopPlaying: () => void; // alias of stop for backward compat
   isPlaying: boolean;
   isPaused: boolean;
   isLoading: boolean;
@@ -82,7 +89,7 @@ function simpleHash(str: string): string {
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
+    hash = (hash << 5) - hash + char;
     hash |= 0;
   }
   return hash.toString(36);
@@ -108,16 +115,26 @@ function setCacheEntry(key: string, blobUrl: string) {
 // Provider
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const { user } = useAuthContext();
-  const plan = user?.plan || 'free';
-  const isPremium = plan !== 'free' && plan !== 'decouverte';
+  const plan = user?.plan || "free";
+  const isPremium = plan !== "free" && plan !== "decouverte";
 
   // Settings state
-  const [autoPlayEnabled, setAutoPlayEnabledState] = useState(() => loadSetting(KEYS.autoplay, false));
-  const [language, setLanguageState] = useState<TTSLanguage>(() => loadSetting(KEYS.lang, 'fr'));
-  const [gender, setGenderState] = useState<TTSGender>(() => loadSetting(KEYS.gender, 'female'));
-  const [speed, setSpeedState] = useState<number>(() => loadSetting(KEYS.speed, 1));
+  const [autoPlayEnabled, setAutoPlayEnabledState] = useState(() =>
+    loadSetting(KEYS.autoplay, false),
+  );
+  const [language, setLanguageState] = useState<TTSLanguage>(() =>
+    loadSetting(KEYS.lang, "fr"),
+  );
+  const [gender, setGenderState] = useState<TTSGender>(() =>
+    loadSetting(KEYS.gender, "female"),
+  );
+  const [speed, setSpeedState] = useState<number>(() =>
+    loadSetting(KEYS.speed, 1),
+  );
 
   // Playback state
   const [isPlaying, setIsPlaying] = useState(false);
@@ -159,7 +176,7 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const cleanup = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
-      audioRef.current.removeAttribute('src');
+      audioRef.current.removeAttribute("src");
       audioRef.current = null;
     }
     // Don't revoke cached URLs
@@ -193,119 +210,138 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // Play text
-  const playText = useCallback(async (text: string) => {
-    if (!text?.trim()) return;
+  const playText = useCallback(
+    async (text: string) => {
+      if (!text?.trim()) return;
 
-    // Abort any in-flight request
-    abortRef.current?.abort();
-    // Stop any current playback
-    stop();
-    setIsLoading(true);
+      // Abort any in-flight request
+      abortRef.current?.abort();
+      // Stop any current playback
+      stop();
+      setIsLoading(true);
 
-    const controller = new AbortController();
-    abortRef.current = controller;
+      const controller = new AbortController();
+      abortRef.current = controller;
 
-    try {
-      const key = cacheKey(text, language, gender, speed);
-      let blobUrl = audioCache.get(key);
+      try {
+        const key = cacheKey(text, language, gender, speed);
+        let blobUrl = audioCache.get(key);
 
-      if (!blobUrl) {
-        const token = getAccessToken();
-        if (!token) throw new Error('Authentication required');
+        if (!blobUrl) {
+          const token = getAccessToken();
+          if (!token) throw new Error("Authentication required");
 
-        const response = await fetch(`${API_URL}/api/tts`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            text,
-            language,
-            gender,
-            speed,
-            strip_questions: true,
-          }),
-          signal: controller.signal,
-        });
+          const response = await fetch(`${API_URL}/api/tts`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              text,
+              language,
+              gender,
+              speed,
+              strip_questions: true,
+            }),
+            signal: controller.signal,
+          });
 
-        // Check if aborted during fetch
-        if (controller.signal.aborted) return;
+          // Check if aborted during fetch
+          if (controller.signal.aborted) return;
 
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({}));
-          const detail = data?.detail;
-          if (response.status === 403 && detail?.error === 'feature_locked') {
-            throw new Error(detail.message || 'Upgrade your plan for TTS');
+          if (!response.ok) {
+            const data = await response.json().catch(() => ({}));
+            const detail = data?.detail;
+            if (response.status === 403 && detail?.error === "feature_locked") {
+              throw new Error(detail.message || "Upgrade your plan for TTS");
+            }
+            throw new Error(
+              typeof detail === "string"
+                ? detail
+                : detail?.message || `TTS error (${response.status})`,
+            );
           }
-          throw new Error(
-            typeof detail === 'string' ? detail : detail?.message || `TTS error (${response.status})`
-          );
+
+          const blob = await response.blob();
+          if (blob.size === 0) throw new Error("Empty audio response");
+
+          // Check if aborted during blob read
+          if (controller.signal.aborted) return;
+
+          blobUrl = URL.createObjectURL(blob);
+          setCacheEntry(key, blobUrl);
         }
 
-        const blob = await response.blob();
-        if (blob.size === 0) throw new Error('Empty audio response');
+        blobUrlRef.current = blobUrl;
 
-        // Check if aborted during blob read
-        if (controller.signal.aborted) return;
+        const audio = new Audio(blobUrl);
+        audio.playbackRate = speed;
+        audioRef.current = audio;
 
-        blobUrl = URL.createObjectURL(blob);
-        setCacheEntry(key, blobUrl);
-      }
+        audio.onloadedmetadata = () => {
+          setDuration(audio.duration);
+        };
 
-      blobUrlRef.current = blobUrl;
+        audio.ontimeupdate = () => {
+          setCurrentTime(audio.currentTime);
+        };
 
-      const audio = new Audio(blobUrl);
-      audio.playbackRate = speed;
-      audioRef.current = audio;
+        audio.onended = () => {
+          setIsPlaying(false);
+          setIsPaused(false);
+          setCurrentTime(0);
+        };
 
-      audio.onloadedmetadata = () => {
-        setDuration(audio.duration);
-      };
+        audio.onerror = () => {
+          setIsPlaying(false);
+          setIsLoading(false);
+        };
 
-      audio.ontimeupdate = () => {
-        setCurrentTime(audio.currentTime);
-      };
-
-      audio.onended = () => {
-        setIsPlaying(false);
+        await audio.play();
+        setIsPlaying(true);
         setIsPaused(false);
-        setCurrentTime(0);
-      };
-
-      audio.onerror = () => {
-        setIsPlaying(false);
+      } catch (err) {
+        console.error("[TTS] Error:", err);
+        cleanup();
+      } finally {
         setIsLoading(false);
-      };
-
-      await audio.play();
-      setIsPlaying(true);
-      setIsPaused(false);
-    } catch (err) {
-      console.error('[TTS] Error:', err);
-      cleanup();
-    } finally {
-      setIsLoading(false);
-    }
-  }, [language, gender, speed, stop, cleanup]);
+      }
+    },
+    [language, gender, speed, stop, cleanup],
+  );
 
   // Cleanup on unmount
   useEffect(() => {
-    return () => { cleanup(); };
+    return () => {
+      cleanup();
+    };
   }, [cleanup]);
 
   return (
-    <TTSContext.Provider value={{
-      autoPlayEnabled, setAutoPlayEnabled,
-      language, setLanguage,
-      gender, setGender,
-      speed, setSpeed,
-      playText, pauseResume, stop, stopPlaying: stop,
-      isPlaying, isPaused, isLoading,
-      currentTime, duration,
-      isPremium,
-      currentAudioRef: audioRef,
-    }}>
+    <TTSContext.Provider
+      value={{
+        autoPlayEnabled,
+        setAutoPlayEnabled,
+        language,
+        setLanguage,
+        gender,
+        setGender,
+        speed,
+        setSpeed,
+        playText,
+        pauseResume,
+        stop,
+        stopPlaying: stop,
+        isPlaying,
+        isPaused,
+        isLoading,
+        currentTime,
+        duration,
+        isPremium,
+        currentAudioRef: audioRef,
+      }}
+    >
       {children}
     </TTSContext.Provider>
   );
@@ -314,7 +350,7 @@ export const TTSProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 export const useTTSContext = (): TTSContextType => {
   const ctx = useContext(TTSContext);
   if (!ctx) {
-    throw new Error('useTTSContext must be used within a TTSProvider');
+    throw new Error("useTTSContext must be used within a TTSProvider");
   }
   return ctx;
 };

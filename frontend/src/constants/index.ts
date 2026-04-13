@@ -11,31 +11,126 @@
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const CATEGORIES = [
-  { id: "auto", name_fr: "Auto-détection", name_en: "Auto-detect", emoji: "🎯", description_fr: "Détection automatique", description_en: "Automatic detection" },
-  { id: "interview_podcast", name_fr: "Interview/Podcast", name_en: "Interview/Podcast", emoji: "🎙️", description_fr: "Entretiens et discussions", description_en: "Interviews and discussions" },
-  { id: "tech", name_fr: "Technologie", name_en: "Technology", emoji: "💻", description_fr: "Tech, développement, gadgets", description_en: "Tech, development, gadgets" },
-  { id: "science", name_fr: "Science", name_en: "Science", emoji: "🔬", description_fr: "Recherche scientifique", description_en: "Scientific research" },
-  { id: "education", name_fr: "Éducation", name_en: "Education", emoji: "📚", description_fr: "Tutoriels et formations", description_en: "Tutorials and training" },
-  { id: "finance", name_fr: "Finance", name_en: "Finance", emoji: "💰", description_fr: "Investissement, économie", description_en: "Investment, economy" },
-  { id: "gaming", name_fr: "Gaming", name_en: "Gaming", emoji: "🎮", description_fr: "Jeux vidéo, esport", description_en: "Video games, esport" },
-  { id: "culture", name_fr: "Culture", name_en: "Culture", emoji: "🎨", description_fr: "Art, musique, cinéma", description_en: "Art, music, cinema" },
-  { id: "news", name_fr: "Actualités", name_en: "News", emoji: "📰", description_fr: "Actualités et reportages", description_en: "News and reports" },
-  { id: "health", name_fr: "Santé", name_en: "Health", emoji: "🏥", description_fr: "Médecine, bien-être", description_en: "Medicine, wellness" },
-  { id: "sport", name_fr: "Sport", name_en: "Sport", emoji: "⚽", description_fr: "Football, tennis, etc.", description_en: "Football, tennis, etc." },
-  { id: "crypto", name_fr: "Crypto", name_en: "Crypto", emoji: "₿", description_fr: "Cryptomonnaies, blockchain", description_en: "Cryptocurrencies, blockchain" },
-  { id: "geopolitics", name_fr: "Géopolitique", name_en: "Geopolitics", emoji: "🌍", description_fr: "Relations internationales", description_en: "International relations" },
+  {
+    id: "auto",
+    name_fr: "Auto-détection",
+    name_en: "Auto-detect",
+    emoji: "🎯",
+    description_fr: "Détection automatique",
+    description_en: "Automatic detection",
+  },
+  {
+    id: "interview_podcast",
+    name_fr: "Interview/Podcast",
+    name_en: "Interview/Podcast",
+    emoji: "🎙️",
+    description_fr: "Entretiens et discussions",
+    description_en: "Interviews and discussions",
+  },
+  {
+    id: "tech",
+    name_fr: "Technologie",
+    name_en: "Technology",
+    emoji: "💻",
+    description_fr: "Tech, développement, gadgets",
+    description_en: "Tech, development, gadgets",
+  },
+  {
+    id: "science",
+    name_fr: "Science",
+    name_en: "Science",
+    emoji: "🔬",
+    description_fr: "Recherche scientifique",
+    description_en: "Scientific research",
+  },
+  {
+    id: "education",
+    name_fr: "Éducation",
+    name_en: "Education",
+    emoji: "📚",
+    description_fr: "Tutoriels et formations",
+    description_en: "Tutorials and training",
+  },
+  {
+    id: "finance",
+    name_fr: "Finance",
+    name_en: "Finance",
+    emoji: "💰",
+    description_fr: "Investissement, économie",
+    description_en: "Investment, economy",
+  },
+  {
+    id: "gaming",
+    name_fr: "Gaming",
+    name_en: "Gaming",
+    emoji: "🎮",
+    description_fr: "Jeux vidéo, esport",
+    description_en: "Video games, esport",
+  },
+  {
+    id: "culture",
+    name_fr: "Culture",
+    name_en: "Culture",
+    emoji: "🎨",
+    description_fr: "Art, musique, cinéma",
+    description_en: "Art, music, cinema",
+  },
+  {
+    id: "news",
+    name_fr: "Actualités",
+    name_en: "News",
+    emoji: "📰",
+    description_fr: "Actualités et reportages",
+    description_en: "News and reports",
+  },
+  {
+    id: "health",
+    name_fr: "Santé",
+    name_en: "Health",
+    emoji: "🏥",
+    description_fr: "Médecine, bien-être",
+    description_en: "Medicine, wellness",
+  },
+  {
+    id: "sport",
+    name_fr: "Sport",
+    name_en: "Sport",
+    emoji: "⚽",
+    description_fr: "Football, tennis, etc.",
+    description_en: "Football, tennis, etc.",
+  },
+  {
+    id: "crypto",
+    name_fr: "Crypto",
+    name_en: "Crypto",
+    emoji: "₿",
+    description_fr: "Cryptomonnaies, blockchain",
+    description_en: "Cryptocurrencies, blockchain",
+  },
+  {
+    id: "geopolitics",
+    name_fr: "Géopolitique",
+    name_en: "Geopolitics",
+    emoji: "🌍",
+    description_fr: "Relations internationales",
+    description_en: "International relations",
+  },
 ] as const;
 
-export type CategoryId = typeof CATEGORIES[number]['id'];
+export type CategoryId = (typeof CATEGORIES)[number]["id"];
 
-export const getCategoryInfo = (categoryId: string, lang: 'fr' | 'en' = 'fr') => {
-  const cat = CATEGORIES.find(c => c.id === categoryId);
-  if (!cat) return { id: categoryId, name: categoryId, emoji: "📄", description: "" };
+export const getCategoryInfo = (
+  categoryId: string,
+  lang: "fr" | "en" = "fr",
+) => {
+  const cat = CATEGORIES.find((c) => c.id === categoryId);
+  if (!cat)
+    return { id: categoryId, name: categoryId, emoji: "📄", description: "" };
   return {
     id: cat.id,
-    name: lang === 'fr' ? cat.name_fr : cat.name_en,
+    name: lang === "fr" ? cat.name_fr : cat.name_en,
     emoji: cat.emoji,
-    description: lang === 'fr' ? cat.description_fr : cat.description_en,
+    description: lang === "fr" ? cat.description_fr : cat.description_en,
   };
 };
 
@@ -51,8 +146,10 @@ export const ANALYSIS_MODES = [
     icon: "👤",
     description_fr: "Langage simple, zéro jargon",
     description_en: "Simple language, no jargon",
-    style_fr: "Professeur passionné : langage simple et imagé, explique chaque terme technique, ton pédagogique et engageant, analogies du quotidien",
-    style_en: "Passionate teacher: simple and vivid language, explains every technical term, engaging pedagogical tone, everyday analogies",
+    style_fr:
+      "Professeur passionné : langage simple et imagé, explique chaque terme technique, ton pédagogique et engageant, analogies du quotidien",
+    style_en:
+      "Passionate teacher: simple and vivid language, explains every technical term, engaging pedagogical tone, everyday analogies",
     color: "#4ecdc4",
   },
   {
@@ -62,8 +159,10 @@ export const ANALYSIS_MODES = [
     icon: "⚖️",
     description_fr: "Équilibré, termes expliqués si besoin",
     description_en: "Balanced, terms explained when needed",
-    style_fr: "Analyste équilibré : vocabulaire courant avec termes techniques expliqués si nécessaire, distingue fait et opinion, évalue la crédibilité des sources",
-    style_en: "Balanced analyst: common vocabulary with technical terms explained when needed, distinguishes fact from opinion, evaluates source credibility",
+    style_fr:
+      "Analyste équilibré : vocabulaire courant avec termes techniques expliqués si nécessaire, distingue fait et opinion, évalue la crédibilité des sources",
+    style_en:
+      "Balanced analyst: common vocabulary with technical terms explained when needed, distinguishes fact from opinion, evaluates source credibility",
     color: "#ffd700",
   },
   {
@@ -73,29 +172,46 @@ export const ANALYSIS_MODES = [
     icon: "🔬",
     description_fr: "Jargon pro, analyse critique poussée",
     description_en: "Professional jargon, deep critical analysis",
-    style_fr: "Analyste méthodique : jargon professionnel assumé, identifie sophismes et biais cognitifs, rigueur méthodologique, croise les sources, analyse critique approfondie",
-    style_en: "Methodical analyst: professional jargon, identifies fallacies and cognitive biases, methodological rigor, cross-references sources, in-depth critical analysis",
+    style_fr:
+      "Analyste méthodique : jargon professionnel assumé, identifie sophismes et biais cognitifs, rigueur méthodologique, croise les sources, analyse critique approfondie",
+    style_en:
+      "Methodical analyst: professional jargon, identifies fallacies and cognitive biases, methodological rigor, cross-references sources, in-depth critical analysis",
     color: "#ff00ff",
   },
 ] as const;
 
-export type AnalysisMode = typeof ANALYSIS_MODES[number]['id'];
+export type AnalysisMode = (typeof ANALYSIS_MODES)[number]["id"];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🤖 MODÈLES IA
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const AI_MODELS = [
-  { id: "auto", name: "Auto", description_fr: "Sélection automatique", description_en: "Automatic selection" },
-  { id: "mistral-small-2603", name: "Mistral Small 3.1", description_fr: "Rapide et intelligent (128K contexte)", description_en: "Fast and smart (128K context)" },
-  { id: "mistral-large-2512", name: "Mistral Large 3", description_fr: "Maximum de qualité (262K contexte)", description_en: "Maximum quality (262K context)" },
+  {
+    id: "auto",
+    name: "Auto",
+    description_fr: "Sélection automatique",
+    description_en: "Automatic selection",
+  },
+  {
+    id: "mistral-small-2603",
+    name: "Mistral Small 3.1",
+    description_fr: "Rapide et intelligent (128K contexte)",
+    description_en: "Fast and smart (128K context)",
+  },
+  {
+    id: "mistral-large-2512",
+    name: "Mistral Large 3",
+    description_fr: "Maximum de qualité (262K contexte)",
+    description_en: "Maximum quality (262K context)",
+  },
 ] as const;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔄 SUJETS VOLATILS (changent fréquemment - nécessitent vérification)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type VolatilityLevel = 'low' | 'medium' | 'high' | 'very_high';
+export type VolatilityLevel = "low" | "medium" | "high" | "very_high";
 
 export interface VolatileTopic {
   id: string;
@@ -110,75 +226,255 @@ export interface VolatileTopic {
 export const VOLATILE_TOPICS: Record<string, VolatileTopic> = {
   sport: {
     id: "sport",
-    keywords_fr: ["joueur", "effectif", "transfert", "équipe", "club", "entraîneur", "mercato", "classement", "match", "blessure", "titulaire"],
-    keywords_en: ["player", "roster", "transfer", "team", "club", "coach", "signing", "standings", "match", "injury", "starter"],
+    keywords_fr: [
+      "joueur",
+      "effectif",
+      "transfert",
+      "équipe",
+      "club",
+      "entraîneur",
+      "mercato",
+      "classement",
+      "match",
+      "blessure",
+      "titulaire",
+    ],
+    keywords_en: [
+      "player",
+      "roster",
+      "transfer",
+      "team",
+      "club",
+      "coach",
+      "signing",
+      "standings",
+      "match",
+      "injury",
+      "starter",
+    ],
     categories: ["sport"],
     volatility: "very_high",
-    disclaimer_fr: "⚠️ **Attention** : Les effectifs sportifs changent fréquemment (transferts, blessures). Ces informations peuvent être obsolètes.",
-    disclaimer_en: "⚠️ **Note**: Sports rosters change frequently (transfers, injuries). This information may be outdated.",
+    disclaimer_fr:
+      "⚠️ **Attention** : Les effectifs sportifs changent fréquemment (transferts, blessures). Ces informations peuvent être obsolètes.",
+    disclaimer_en:
+      "⚠️ **Note**: Sports rosters change frequently (transfers, injuries). This information may be outdated.",
   },
   business: {
     id: "business",
-    keywords_fr: ["PDG", "CEO", "directeur", "démission", "nomination", "rachat", "fusion", "valorisation", "levée de fonds", "licenciement"],
-    keywords_en: ["CEO", "director", "resignation", "appointment", "acquisition", "merger", "valuation", "funding", "layoff"],
+    keywords_fr: [
+      "PDG",
+      "CEO",
+      "directeur",
+      "démission",
+      "nomination",
+      "rachat",
+      "fusion",
+      "valorisation",
+      "levée de fonds",
+      "licenciement",
+    ],
+    keywords_en: [
+      "CEO",
+      "director",
+      "resignation",
+      "appointment",
+      "acquisition",
+      "merger",
+      "valuation",
+      "funding",
+      "layoff",
+    ],
     categories: ["business", "finance", "tech"],
     volatility: "high",
-    disclaimer_fr: "⚠️ **Attention** : Les positions de direction et la situation des entreprises évoluent. Vérifiez les informations actuelles.",
-    disclaimer_en: "⚠️ **Note**: Executive positions and company situations evolve. Verify current information.",
+    disclaimer_fr:
+      "⚠️ **Attention** : Les positions de direction et la situation des entreprises évoluent. Vérifiez les informations actuelles.",
+    disclaimer_en:
+      "⚠️ **Note**: Executive positions and company situations evolve. Verify current information.",
   },
   politics: {
     id: "politics",
-    keywords_fr: ["ministre", "député", "gouvernement", "élection", "vote", "loi", "réforme", "premier ministre"],
-    keywords_en: ["minister", "congressman", "government", "election", "vote", "bill", "reform", "prime minister"],
+    keywords_fr: [
+      "ministre",
+      "député",
+      "gouvernement",
+      "élection",
+      "vote",
+      "loi",
+      "réforme",
+      "premier ministre",
+    ],
+    keywords_en: [
+      "minister",
+      "congressman",
+      "government",
+      "election",
+      "vote",
+      "bill",
+      "reform",
+      "prime minister",
+    ],
     categories: ["politics", "news"],
     volatility: "high",
-    disclaimer_fr: "⚠️ **Attention** : La situation politique évolue rapidement. Ces informations peuvent ne plus être actuelles.",
-    disclaimer_en: "⚠️ **Note**: Political situations evolve rapidly. This information may no longer be current.",
+    disclaimer_fr:
+      "⚠️ **Attention** : La situation politique évolue rapidement. Ces informations peuvent ne plus être actuelles.",
+    disclaimer_en:
+      "⚠️ **Note**: Political situations evolve rapidly. This information may no longer be current.",
   },
   crypto_finance: {
     id: "crypto_finance",
-    keywords_fr: ["prix", "cours", "capitalisation", "bitcoin", "ethereum", "crypto", "bourse", "action", "taux", "inflation"],
-    keywords_en: ["price", "rate", "market cap", "bitcoin", "ethereum", "crypto", "stock", "share", "inflation"],
+    keywords_fr: [
+      "prix",
+      "cours",
+      "capitalisation",
+      "bitcoin",
+      "ethereum",
+      "crypto",
+      "bourse",
+      "action",
+      "taux",
+      "inflation",
+    ],
+    keywords_en: [
+      "price",
+      "rate",
+      "market cap",
+      "bitcoin",
+      "ethereum",
+      "crypto",
+      "stock",
+      "share",
+      "inflation",
+    ],
     categories: ["crypto", "finance"],
     volatility: "very_high",
-    disclaimer_fr: "⚠️ **Attention** : Les prix et données financières changent en temps réel. Ces chiffres datent de la vidéo.",
-    disclaimer_en: "⚠️ **Note**: Prices and financial data change in real-time. These figures are from the video.",
+    disclaimer_fr:
+      "⚠️ **Attention** : Les prix et données financières changent en temps réel. Ces chiffres datent de la vidéo.",
+    disclaimer_en:
+      "⚠️ **Note**: Prices and financial data change in real-time. These figures are from the video.",
   },
   tech_products: {
     id: "tech_products",
-    keywords_fr: ["version", "mise à jour", "sortie", "lancement", "nouveau", "iOS", "Android", "iPhone", "GPU", "processeur"],
-    keywords_en: ["version", "update", "release", "launch", "new", "iOS", "Android", "iPhone", "GPU", "processor"],
+    keywords_fr: [
+      "version",
+      "mise à jour",
+      "sortie",
+      "lancement",
+      "nouveau",
+      "iOS",
+      "Android",
+      "iPhone",
+      "GPU",
+      "processeur",
+    ],
+    keywords_en: [
+      "version",
+      "update",
+      "release",
+      "launch",
+      "new",
+      "iOS",
+      "Android",
+      "iPhone",
+      "GPU",
+      "processor",
+    ],
     categories: ["tech"],
     volatility: "high",
-    disclaimer_fr: "⚠️ **Attention** : Les produits tech évoluent rapidement. De nouvelles versions peuvent être disponibles.",
-    disclaimer_en: "⚠️ **Note**: Tech products evolve quickly. Newer versions may be available.",
+    disclaimer_fr:
+      "⚠️ **Attention** : Les produits tech évoluent rapidement. De nouvelles versions peuvent être disponibles.",
+    disclaimer_en:
+      "⚠️ **Note**: Tech products evolve quickly. Newer versions may be available.",
   },
   ai_ml: {
     id: "ai_ml",
-    keywords_fr: ["GPT", "Claude", "Gemini", "LLM", "intelligence artificielle", "IA", "ChatGPT", "Mistral", "benchmark"],
-    keywords_en: ["GPT", "Claude", "Gemini", "LLM", "artificial intelligence", "AI", "ChatGPT", "Mistral", "benchmark"],
+    keywords_fr: [
+      "GPT",
+      "Claude",
+      "Gemini",
+      "LLM",
+      "intelligence artificielle",
+      "IA",
+      "ChatGPT",
+      "Mistral",
+      "benchmark",
+    ],
+    keywords_en: [
+      "GPT",
+      "Claude",
+      "Gemini",
+      "LLM",
+      "artificial intelligence",
+      "AI",
+      "ChatGPT",
+      "Mistral",
+      "benchmark",
+    ],
     categories: ["tech", "science"],
     volatility: "very_high",
-    disclaimer_fr: "⚠️ **Attention** : Le domaine de l'IA évolue extrêmement vite. De nouveaux modèles apparaissent chaque mois.",
-    disclaimer_en: "⚠️ **Note**: The AI field evolves extremely fast. New models appear every month.",
+    disclaimer_fr:
+      "⚠️ **Attention** : Le domaine de l'IA évolue extrêmement vite. De nouveaux modèles apparaissent chaque mois.",
+    disclaimer_en:
+      "⚠️ **Note**: The AI field evolves extremely fast. New models appear every month.",
   },
   geopolitics: {
     id: "geopolitics",
-    keywords_fr: ["guerre", "conflit", "invasion", "cessez-le-feu", "sanctions", "Ukraine", "Russie", "Gaza", "Israël", "OTAN"],
-    keywords_en: ["war", "conflict", "invasion", "ceasefire", "sanctions", "Ukraine", "Russia", "Gaza", "Israel", "NATO"],
+    keywords_fr: [
+      "guerre",
+      "conflit",
+      "invasion",
+      "cessez-le-feu",
+      "sanctions",
+      "Ukraine",
+      "Russie",
+      "Gaza",
+      "Israël",
+      "OTAN",
+    ],
+    keywords_en: [
+      "war",
+      "conflict",
+      "invasion",
+      "ceasefire",
+      "sanctions",
+      "Ukraine",
+      "Russia",
+      "Gaza",
+      "Israel",
+      "NATO",
+    ],
     categories: ["news", "politics"],
     volatility: "very_high",
-    disclaimer_fr: "⚠️ **Attention** : Les situations géopolitiques évoluent très rapidement. Ces informations peuvent être obsolètes en quelques heures.",
-    disclaimer_en: "⚠️ **Note**: Geopolitical situations evolve very rapidly. This information may be outdated within hours.",
+    disclaimer_fr:
+      "⚠️ **Attention** : Les situations géopolitiques évoluent très rapidement. Ces informations peuvent être obsolètes en quelques heures.",
+    disclaimer_en:
+      "⚠️ **Note**: Geopolitical situations evolve very rapidly. This information may be outdated within hours.",
   },
   health_medicine: {
     id: "health_medicine",
-    keywords_fr: ["traitement", "médicament", "vaccin", "diagnostic", "maladie", "OMS", "protocole"],
-    keywords_en: ["treatment", "medication", "vaccine", "diagnosis", "disease", "WHO", "protocol"],
+    keywords_fr: [
+      "traitement",
+      "médicament",
+      "vaccin",
+      "diagnostic",
+      "maladie",
+      "OMS",
+      "protocole",
+    ],
+    keywords_en: [
+      "treatment",
+      "medication",
+      "vaccine",
+      "diagnosis",
+      "disease",
+      "WHO",
+      "protocol",
+    ],
     categories: ["health", "science"],
     volatility: "high",
-    disclaimer_fr: "⚠️ **Attention** : Les recommandations médicales évoluent. Consultez un professionnel de santé.",
-    disclaimer_en: "⚠️ **Note**: Medical recommendations evolve. Consult a healthcare professional.",
+    disclaimer_fr:
+      "⚠️ **Attention** : Les recommandations médicales évoluent. Consultez un professionnel de santé.",
+    disclaimer_en:
+      "⚠️ **Note**: Medical recommendations evolve. Consult a healthcare professional.",
   },
 };
 
@@ -186,22 +482,25 @@ export const VOLATILE_TOPICS: Record<string, VolatileTopic> = {
  * Détecte si un texte contient des sujets volatils
  */
 export const detectVolatileTopics = (
-  text: string, 
-  category: string = '', 
-  lang: 'fr' | 'en' = 'fr'
+  text: string,
+  category: string = "",
+  lang: "fr" | "en" = "fr",
 ): { isVolatile: boolean; topics: string[]; disclaimers: string[] } => {
   const textLower = text.toLowerCase();
   const detectedTopics: string[] = [];
   const disclaimers: string[] = [];
 
   for (const [topicId, topic] of Object.entries(VOLATILE_TOPICS)) {
-    const keywords = lang === 'fr' ? topic.keywords_fr : topic.keywords_en;
+    const keywords = lang === "fr" ? topic.keywords_fr : topic.keywords_en;
     const categoryMatch = topic.categories.includes(category);
-    const keywordMatch = keywords.some(kw => textLower.includes(kw.toLowerCase()));
+    const keywordMatch = keywords.some((kw) =>
+      textLower.includes(kw.toLowerCase()),
+    );
 
     if (categoryMatch || keywordMatch) {
       detectedTopics.push(topicId);
-      const disclaimer = lang === 'fr' ? topic.disclaimer_fr : topic.disclaimer_en;
+      const disclaimer =
+        lang === "fr" ? topic.disclaimer_fr : topic.disclaimer_en;
       if (!disclaimers.includes(disclaimer)) {
         disclaimers.push(disclaimer);
       }
@@ -223,7 +522,16 @@ export const detectVolatileTopics = (
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** @deprecated Use PlanId from config/planPrivileges.ts — 3 plans: free/plus/pro */
-export type PlanType = 'free' | 'plus' | 'pro' | 'expert' | 'etudiant' | 'starter' | 'student' | 'unlimited' | 'team'; // Aliases pour rétrocompat
+export type PlanType =
+  | "free"
+  | "plus"
+  | "pro"
+  | "expert"
+  | "etudiant"
+  | "starter"
+  | "student"
+  | "unlimited"
+  | "team"; // Aliases pour rétrocompat
 
 /** @deprecated Use PLAN_LIMITS + PLANS_INFO from config/planPrivileges.ts */
 export interface PlanConfig {
@@ -439,9 +747,15 @@ export const SUGGESTED_QUESTIONS = {
   },
 };
 
-export const getSuggestedQuestions = (lang: 'fr' | 'en', category: string = 'default'): string[] => {
+export const getSuggestedQuestions = (
+  lang: "fr" | "en",
+  category: string = "default",
+): string[] => {
   const langQuestions = SUGGESTED_QUESTIONS[lang];
-  return langQuestions[category as keyof typeof langQuestions] || langQuestions.default;
+  return (
+    langQuestions[category as keyof typeof langQuestions] ||
+    langQuestions.default
+  );
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -449,14 +763,19 @@ export const getSuggestedQuestions = (lang: 'fr' | 'en', category: string = 'def
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const EXPORT_FORMATS = [
-  { id: 'txt', name: 'Texte', icon: '📄', mime: 'text/plain' },
-  { id: 'md', name: 'Markdown', icon: '📝', mime: 'text/markdown' },
-  { id: 'docx', name: 'Word', icon: '📘', mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' },
-  { id: 'pdf', name: 'PDF', icon: '📕', mime: 'application/pdf' },
-  { id: 'json', name: 'JSON', icon: '🔧', mime: 'application/json' },
+  { id: "txt", name: "Texte", icon: "📄", mime: "text/plain" },
+  { id: "md", name: "Markdown", icon: "📝", mime: "text/markdown" },
+  {
+    id: "docx",
+    name: "Word",
+    icon: "📘",
+    mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  },
+  { id: "pdf", name: "PDF", icon: "📕", mime: "application/pdf" },
+  { id: "json", name: "JSON", icon: "🔧", mime: "application/json" },
 ] as const;
 
-export type ExportFormat = typeof EXPORT_FORMATS[number]['id'];
+export type ExportFormat = (typeof EXPORT_FORMATS)[number]["id"];
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🌊 CUTOFF DATE (pour détection vidéos récentes)
@@ -465,15 +784,19 @@ export type ExportFormat = typeof EXPORT_FORMATS[number]['id'];
 export const MISTRAL_KNOWLEDGE_CUTOFF = "2024-07-01"; // 1er juillet 2024
 export const RECENT_VIDEO_MONTHS = 6;
 
-export const isVideoRecent = (uploadDate: string): { isRecent: boolean; isAfterCutoff: boolean; daysOld: number } => {
+export const isVideoRecent = (
+  uploadDate: string,
+): { isRecent: boolean; isAfterCutoff: boolean; daysOld: number } => {
   if (!uploadDate) return { isRecent: false, isAfterCutoff: false, daysOld: 0 };
-  
+
   try {
     const date = new Date(uploadDate);
     const now = new Date();
-    const daysOld = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    const daysOld = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
+    );
     const cutoffDate = new Date(MISTRAL_KNOWLEDGE_CUTOFF);
-    
+
     return {
       isRecent: daysOld < RECENT_VIDEO_MONTHS * 30,
       isAfterCutoff: date > cutoffDate,

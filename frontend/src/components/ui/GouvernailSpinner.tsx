@@ -1,16 +1,16 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React from "react";
+import { motion } from "framer-motion";
 
 interface GouvernailSpinnerProps {
   size?: number;
   color?: string;
-  variant?: 'spin' | 'pulse' | 'progress';
+  variant?: "spin" | "pulse" | "progress";
   className?: string;
 }
 
 /**
  * GouvernailSpinner: Hand-drawn steering wheel spinner
- * 
+ *
  * Features:
  * - SVG viewBox="0 0 48 48"
  * - 8 radial branches with hand-drawn aesthetic (feTurbulence filter)
@@ -18,15 +18,13 @@ interface GouvernailSpinnerProps {
  * - 3 animation variants: spin (360° rotation), pulse (scale), progress (strokeDashoffset)
  * - Subtle sketchy effect via SVG displacement filter
  */
-const GouvernailSpinner = React.forwardRef<SVGSVGElement, GouvernailSpinnerProps>(
+const GouvernailSpinner = React.forwardRef<
+  SVGSVGElement,
+  GouvernailSpinnerProps
+>(
   (
-    {
-      size = 48,
-      color = 'currentColor',
-      variant = 'spin',
-      className = '',
-    },
-    ref
+    { size = 48, color = "currentColor", variant = "spin", className = "" },
+    ref,
   ) => {
     // Animation variants
     const animationConfig = {
@@ -41,22 +39,22 @@ const GouvernailSpinner = React.forwardRef<SVGSVGElement, GouvernailSpinnerProps
         scaleGroup: {
           initial: { scale: 1 },
           animate: { scale: [1, 1.05, 1] },
-          transition: { duration: 1.5, repeat: Infinity, ease: 'easeInOut' },
+          transition: { duration: 1.5, repeat: Infinity, ease: "easeInOut" },
         },
       },
       progress: {
         strokeGroup: {
           initial: { strokeDashoffset: 100 },
           animate: { strokeDashoffset: [100, 0, 100] },
-          transition: { duration: 2, repeat: Infinity, ease: 'easeInOut' },
+          transition: { duration: 2, repeat: Infinity, ease: "easeInOut" },
         },
       },
     };
 
     const selectedAnimation =
-      variant === 'spin'
+      variant === "spin"
         ? animationConfig.spin.rotateGroup
-        : variant === 'pulse'
+        : variant === "pulse"
           ? animationConfig.pulse.scaleGroup
           : animationConfig.progress.strokeGroup;
 
@@ -103,27 +101,51 @@ const GouvernailSpinner = React.forwardRef<SVGSVGElement, GouvernailSpinnerProps
         {/* Branch 1: top (0°) */}
         <line x1="24" y1="4" x2="24" y2="11" filter="url(#sketchy)" />
         {/* Branch 2: top-right (45°) */}
-        <line x1="37.25" y1="10.75" x2="33.2" y2="14.8" filter="url(#sketchy)" />
+        <line
+          x1="37.25"
+          y1="10.75"
+          x2="33.2"
+          y2="14.8"
+          filter="url(#sketchy)"
+        />
         {/* Branch 3: right (90°) */}
         <line x1="44" y1="24" x2="37" y2="24" filter="url(#sketchy)" />
         {/* Branch 4: bottom-right (135°) */}
-        <line x1="37.25" y1="37.25" x2="33.2" y2="33.2" filter="url(#sketchy)" />
+        <line
+          x1="37.25"
+          y1="37.25"
+          x2="33.2"
+          y2="33.2"
+          filter="url(#sketchy)"
+        />
         {/* Branch 5: bottom (180°) */}
         <line x1="24" y1="44" x2="24" y2="37" filter="url(#sketchy)" />
         {/* Branch 6: bottom-left (225°) */}
-        <line x1="10.75" y1="37.25" x2="14.8" y2="33.2" filter="url(#sketchy)" />
+        <line
+          x1="10.75"
+          y1="37.25"
+          x2="14.8"
+          y2="33.2"
+          filter="url(#sketchy)"
+        />
         {/* Branch 7: left (270°) */}
         <line x1="4" y1="24" x2="11" y2="24" filter="url(#sketchy)" />
         {/* Branch 8: top-left (315°) */}
-        <line x1="10.75" y1="10.75" x2="14.8" y2="14.8" filter="url(#sketchy)" />
+        <line
+          x1="10.75"
+          y1="10.75"
+          x2="14.8"
+          y2="14.8"
+          filter="url(#sketchy)"
+        />
 
         {/* Center dot */}
         <circle cx="24" cy="24" r="3" filter="url(#sketchy)" />
       </motion.svg>
     );
-  }
+  },
 );
 
-GouvernailSpinner.displayName = 'GouvernailSpinner';
+GouvernailSpinner.displayName = "GouvernailSpinner";
 
 export default GouvernailSpinner;

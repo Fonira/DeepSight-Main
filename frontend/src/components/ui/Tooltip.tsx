@@ -3,14 +3,14 @@
  * Animated tooltip with arrow, multiple positions, Framer Motion.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface TooltipProps {
   content: React.ReactNode;
   children: React.ReactNode;
-  side?: 'top' | 'bottom' | 'left' | 'right';
+  side?: "top" | "bottom" | "left" | "right";
   delay?: number;
   className?: string;
   disabled?: boolean;
@@ -19,9 +19,9 @@ interface TooltipProps {
 export const Tooltip: React.FC<TooltipProps> = ({
   content,
   children,
-  side = 'top',
+  side = "top",
   delay = 300,
-  className = '',
+  className = "",
   disabled = false,
 }) => {
   const [visible, setVisible] = useState(false);
@@ -45,16 +45,16 @@ export const Tooltip: React.FC<TooltipProps> = ({
     const gap = 8;
 
     switch (side) {
-      case 'top':
+      case "top":
         setPos({ x: rect.left + rect.width / 2, y: rect.top - gap });
         break;
-      case 'bottom':
+      case "bottom":
         setPos({ x: rect.left + rect.width / 2, y: rect.bottom + gap });
         break;
-      case 'left':
+      case "left":
         setPos({ x: rect.left - gap, y: rect.top + rect.height / 2 });
         break;
-      case 'right':
+      case "right":
         setPos({ x: rect.right + gap, y: rect.top + rect.height / 2 });
         break;
     }
@@ -63,10 +63,16 @@ export const Tooltip: React.FC<TooltipProps> = ({
   useEffect(() => () => clearTimeout(timeoutRef.current), []);
 
   const motionOrigin = {
-    top: { initial: { opacity: 0, y: 4 }, anchor: 'translateX(-50%) translateY(-100%)' },
-    bottom: { initial: { opacity: 0, y: -4 }, anchor: 'translateX(-50%)' },
-    left: { initial: { opacity: 0, x: 4 }, anchor: 'translateX(-100%) translateY(-50%)' },
-    right: { initial: { opacity: 0, x: -4 }, anchor: 'translateY(-50%)' },
+    top: {
+      initial: { opacity: 0, y: 4 },
+      anchor: "translateX(-50%) translateY(-100%)",
+    },
+    bottom: { initial: { opacity: 0, y: -4 }, anchor: "translateX(-50%)" },
+    left: {
+      initial: { opacity: 0, x: 4 },
+      anchor: "translateX(-100%) translateY(-50%)",
+    },
+    right: { initial: { opacity: 0, x: -4 }, anchor: "translateY(-50%)" },
   };
 
   return (
@@ -109,7 +115,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
             </motion.div>
           )}
         </AnimatePresence>,
-        document.body
+        document.body,
       )}
     </>
   );

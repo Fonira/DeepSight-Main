@@ -3,16 +3,31 @@
  * Standalone public page with project vision, partners, open-source credits.
  */
 
-import { useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useEffect } from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
-  ArrowLeft, ExternalLink, Heart, Code2, Globe, Shield,
-  Cpu, Database, CreditCard, Mail, Music, MapPin, User,
-  Sparkles, BookOpen, Search, MessageSquare, Sun,
-} from 'lucide-react';
-import Layout from '../components/Layout';
-import { SEO } from '../components/SEO';
+  ArrowLeft,
+  ExternalLink,
+  Heart,
+  Code2,
+  Globe,
+  Shield,
+  Cpu,
+  Database,
+  CreditCard,
+  Mail,
+  Music,
+  MapPin,
+  User,
+  Sparkles,
+  BookOpen,
+  Search,
+  MessageSquare,
+  Sun,
+} from "lucide-react";
+import Layout from "../components/Layout";
+import { SEO } from "../components/SEO";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ANIMATION VARIANTS
@@ -41,17 +56,57 @@ interface Partner {
 }
 
 const TECH_PARTNERS: Partner[] = [
-  { name: 'Mistral AI', role: "Moteur d'analyse", url: 'https://mistral.ai', icon: Cpu },
-  { name: 'Perplexity AI', role: 'Fact-checking', url: 'https://perplexity.ai', icon: Search },
-  { name: 'Brave Search', role: 'Recherche complementaire', url: 'https://search.brave.com', icon: Globe },
-  { name: 'Tournesol', role: 'Recommandations communautaires', url: 'https://tournesol.app', icon: Sun },
+  {
+    name: "Mistral AI",
+    role: "Moteur d'analyse",
+    url: "https://mistral.ai",
+    icon: Cpu,
+  },
+  {
+    name: "Perplexity AI",
+    role: "Fact-checking",
+    url: "https://perplexity.ai",
+    icon: Search,
+  },
+  {
+    name: "Brave Search",
+    role: "Recherche complementaire",
+    url: "https://search.brave.com",
+    icon: Globe,
+  },
+  {
+    name: "Tournesol",
+    role: "Recommandations communautaires",
+    url: "https://tournesol.app",
+    icon: Sun,
+  },
 ];
 
 const INFRA_PARTNERS: Partner[] = [
-  { name: 'Vercel', role: 'Frontend hosting', url: 'https://vercel.com', icon: Globe },
-  { name: 'Railway', role: 'Backend hosting', url: 'https://railway.app', icon: Database },
-  { name: 'Cloudflare', role: 'CDN & storage', url: 'https://cloudflare.com', icon: Shield },
-  { name: 'Stripe', role: 'Paiements', url: 'https://stripe.com', icon: CreditCard },
+  {
+    name: "Vercel",
+    role: "Frontend hosting",
+    url: "https://vercel.com",
+    icon: Globe,
+  },
+  {
+    name: "Railway",
+    role: "Backend hosting",
+    url: "https://railway.app",
+    icon: Database,
+  },
+  {
+    name: "Cloudflare",
+    role: "CDN & storage",
+    url: "https://cloudflare.com",
+    icon: Shield,
+  },
+  {
+    name: "Stripe",
+    role: "Paiements",
+    url: "https://stripe.com",
+    icon: CreditCard,
+  },
 ];
 
 interface LibRow {
@@ -60,19 +115,19 @@ interface LibRow {
 }
 
 const OPEN_SOURCE_LIBS: LibRow[] = [
-  { name: 'React', license: 'MIT' },
-  { name: 'Vite', license: 'MIT' },
-  { name: 'React Router', license: 'MIT' },
-  { name: 'FastAPI', license: 'MIT' },
-  { name: 'Expo', license: 'MIT' },
-  { name: 'Tailwind CSS', license: 'MIT' },
-  { name: 'Framer Motion', license: 'MIT' },
-  { name: 'TanStack Query', license: 'MIT' },
-  { name: 'Zustand', license: 'MIT' },
-  { name: 'PostgreSQL', license: 'PostgreSQL License' },
-  { name: 'Lucide Icons', license: 'ISC' },
-  { name: 'Recharts', license: 'MIT' },
-  { name: 'React Markdown', license: 'MIT' },
+  { name: "React", license: "MIT" },
+  { name: "Vite", license: "MIT" },
+  { name: "React Router", license: "MIT" },
+  { name: "FastAPI", license: "MIT" },
+  { name: "Expo", license: "MIT" },
+  { name: "Tailwind CSS", license: "MIT" },
+  { name: "Framer Motion", license: "MIT" },
+  { name: "TanStack Query", license: "MIT" },
+  { name: "Zustand", license: "MIT" },
+  { name: "PostgreSQL", license: "PostgreSQL License" },
+  { name: "Lucide Icons", license: "ISC" },
+  { name: "Recharts", license: "MIT" },
+  { name: "React Markdown", license: "MIT" },
 ];
 
 interface Thanks {
@@ -82,11 +137,36 @@ interface Thanks {
 }
 
 const ACKNOWLEDGEMENTS: Thanks[] = [
-  { name: 'Communaute Tournesol', description: 'Pour leur plateforme de recommandations collaboratives et ethiques', icon: Sun },
-  { name: 'Mistral AI', description: "Pour leur IA performante et souveraine, moteur de toutes nos analyses", icon: Cpu },
-  { name: 'Communaute open-source', description: 'Pour les outils extraordinaires sur lesquels DeepSight est construit', icon: Code2 },
-  { name: 'Beta-testeurs DeepSight', description: 'Pour leurs retours precieux qui faconnent le produit chaque jour', icon: Heart },
-  { name: 'Claude / Anthropic', description: "Pour l'assistance au developpement et l'acceleration du projet", icon: Sparkles },
+  {
+    name: "Communaute Tournesol",
+    description:
+      "Pour leur plateforme de recommandations collaboratives et ethiques",
+    icon: Sun,
+  },
+  {
+    name: "Mistral AI",
+    description:
+      "Pour leur IA performante et souveraine, moteur de toutes nos analyses",
+    icon: Cpu,
+  },
+  {
+    name: "Communaute open-source",
+    description:
+      "Pour les outils extraordinaires sur lesquels DeepSight est construit",
+    icon: Code2,
+  },
+  {
+    name: "Beta-testeurs DeepSight",
+    description:
+      "Pour leurs retours precieux qui faconnent le produit chaque jour",
+    icon: Heart,
+  },
+  {
+    name: "Claude / Anthropic",
+    description:
+      "Pour l'assistance au developpement et l'acceleration du projet",
+    icon: Sparkles,
+  },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -112,7 +192,9 @@ const PartnerCard: React.FC<Partner> = ({ name, role, url, icon: Icon }) => (
   </motion.a>
 );
 
-const SectionTitle: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+const SectionTitle: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => (
   <motion.h2
     variants={fadeUp}
     className="text-2xl font-bold text-text-primary mb-6"
@@ -159,13 +241,14 @@ const AboutPage = () => {
             A propos de DeepSight
           </span>
           <h1 className="text-4xl sm:text-5xl font-extrabold text-text-primary tracking-tight">
-            Analyser, comprendre,<br />
+            Analyser, comprendre,
+            <br />
             <span className="text-gradient">apprendre autrement</span>
           </h1>
           <p className="text-text-secondary max-w-2xl mx-auto text-lg">
-            DeepSight est un SaaS d'analyse IA de videos YouTube & TikTok. Syntheses
-            intelligentes, fact-checking, outils d'etude, chat contextuel — propulse par
-            Mistral AI.
+            DeepSight est un SaaS d'analyse IA de videos YouTube & TikTok.
+            Syntheses intelligentes, fact-checking, outils d'etude, chat
+            contextuel — propulse par Mistral AI.
           </p>
         </motion.header>
 
@@ -177,15 +260,16 @@ const AboutPage = () => {
             className="p-6 rounded-xl bg-bg-secondary border border-border-subtle space-y-4 text-text-secondary leading-relaxed"
           >
             <p>
-              DeepSight est ne d'un constat simple : nous consommons des heures de contenu video
-              chaque jour, mais nous n'en retenons qu'une infime partie. Notre mission est de
-              transformer cette consommation passive en apprentissage actif.
+              DeepSight est ne d'un constat simple : nous consommons des heures
+              de contenu video chaque jour, mais nous n'en retenons qu'une
+              infime partie. Notre mission est de transformer cette consommation
+              passive en apprentissage actif.
             </p>
             <p>
-              Grace a l'intelligence artificielle 100% francaise et europeenne, DeepSight
-              extrait, structure et enrichit le contenu des videos pour vous permettre
-              d'analyser, reviser et approfondir vos connaissances — sur web, mobile et
-              extension Chrome.
+              Grace a l'intelligence artificielle 100% francaise et europeenne,
+              DeepSight extrait, structure et enrichit le contenu des videos
+              pour vous permettre d'analyser, reviser et approfondir vos
+              connaissances — sur web, mobile et extension Chrome.
             </p>
           </motion.div>
         </motion.section>
@@ -193,7 +277,10 @@ const AboutPage = () => {
         {/* ── Partenaires Technologiques ── */}
         <motion.section variants={stagger}>
           <SectionTitle>Partenaires Technologiques</SectionTitle>
-          <motion.div variants={stagger} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <motion.div
+            variants={stagger}
+            className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+          >
             {TECH_PARTNERS.map((p) => (
               <PartnerCard key={p.name} {...p} />
             ))}
@@ -203,7 +290,10 @@ const AboutPage = () => {
         {/* ── Infrastructure ── */}
         <motion.section variants={stagger}>
           <SectionTitle>Infrastructure</SectionTitle>
-          <motion.div variants={stagger} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <motion.div
+            variants={stagger}
+            className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+          >
             {INFRA_PARTNERS.map((p) => (
               <PartnerCard key={p.name} {...p} />
             ))}
@@ -220,18 +310,26 @@ const AboutPage = () => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-bg-secondary">
-                  <th className="text-left px-4 py-3 text-text-muted font-semibold text-xs uppercase tracking-wider">Bibliotheque</th>
-                  <th className="text-left px-4 py-3 text-text-muted font-semibold text-xs uppercase tracking-wider">Licence</th>
+                  <th className="text-left px-4 py-3 text-text-muted font-semibold text-xs uppercase tracking-wider">
+                    Bibliotheque
+                  </th>
+                  <th className="text-left px-4 py-3 text-text-muted font-semibold text-xs uppercase tracking-wider">
+                    Licence
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {OPEN_SOURCE_LIBS.map((lib, i) => (
                   <tr
                     key={lib.name}
-                    className={`border-t border-border-subtle ${i % 2 === 0 ? 'bg-bg-primary' : 'bg-bg-secondary/50'}`}
+                    className={`border-t border-border-subtle ${i % 2 === 0 ? "bg-bg-primary" : "bg-bg-secondary/50"}`}
                   >
-                    <td className="px-4 py-2.5 text-text-primary font-medium">{lib.name}</td>
-                    <td className="px-4 py-2.5 text-text-muted">{lib.license}</td>
+                    <td className="px-4 py-2.5 text-text-primary font-medium">
+                      {lib.name}
+                    </td>
+                    <td className="px-4 py-2.5 text-text-muted">
+                      {lib.license}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -253,8 +351,12 @@ const AboutPage = () => {
                   <a.icon className="w-4.5 h-4.5" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-text-primary">{a.name}</p>
-                  <p className="text-xs text-text-muted mt-0.5">{a.description}</p>
+                  <p className="text-sm font-semibold text-text-primary">
+                    {a.name}
+                  </p>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    {a.description}
+                  </p>
                 </div>
               </motion.div>
             ))}
@@ -274,8 +376,12 @@ const AboutPage = () => {
               </div>
               <div className="space-y-3">
                 <div>
-                  <h3 className="text-xl font-bold text-text-primary">Maxime Le Parc</h3>
-                  <p className="text-sm text-accent-primary font-medium">Fondateur & Developpeur</p>
+                  <h3 className="text-xl font-bold text-text-primary">
+                    Maxime Le Parc
+                  </h3>
+                  <p className="text-sm text-accent-primary font-medium">
+                    Fondateur & Developpeur
+                  </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-text-secondary">
                   <span className="flex items-center gap-1.5">
@@ -305,7 +411,9 @@ const AboutPage = () => {
           className="pt-8 border-t border-border-subtle text-center space-y-2 text-xs text-text-muted"
         >
           <p>RCS 994 558 898 R.C.S. Lyon</p>
-          <p>&copy; {new Date().getFullYear()} DeepSight — Tous droits reserves</p>
+          <p>
+            &copy; {new Date().getFullYear()} DeepSight — Tous droits reserves
+          </p>
           <p>Propulse par Mistral AI &middot; Fait avec &hearts; a Lyon</p>
         </motion.footer>
       </motion.div>

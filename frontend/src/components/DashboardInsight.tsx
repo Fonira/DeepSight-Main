@@ -4,18 +4,30 @@
  * Rotation toutes les 90s avec morph Framer Motion.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { RefreshCw, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
-import { useLoadingWord } from '../contexts/LoadingWordContext';
-import { useLanguage } from '../contexts/LanguageContext';
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { RefreshCw, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { useLoadingWord } from "../contexts/LoadingWordContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 const CAT_ICONS: Record<string, string> = {
-  cognitive_bias: '🧠', science: '🔬', philosophy: '🎭', culture: '🌍',
-  misc: '✨', history: '📜', technology: '⚡', person: '👤',
-  company: '🏢', concept: '💡', event: '📅', place: '📍',
-  psychology: '🧩', economics: '💰', art: '🎨', nature: '🌿',
+  cognitive_bias: "🧠",
+  science: "🔬",
+  philosophy: "🎭",
+  culture: "🌍",
+  misc: "✨",
+  history: "📜",
+  technology: "⚡",
+  person: "👤",
+  company: "🏢",
+  concept: "💡",
+  event: "📅",
+  place: "📍",
+  psychology: "🧩",
+  economics: "💰",
+  art: "🎨",
+  nature: "🌿",
 };
 
 const ROTATION_INTERVAL = 90_000;
@@ -36,15 +48,15 @@ export const DashboardInsight: React.FC = () => {
   }, [nextWord]);
 
   const handleTermClick = useCallback(() => {
-    if (currentWord?.source === 'history' && currentWord?.summaryId) {
+    if (currentWord?.source === "history" && currentWord?.summaryId) {
       navigate(`/dashboard?id=${currentWord.summaryId}`);
     }
   }, [currentWord, navigate]);
 
   if (!currentWord) return null;
 
-  const catIcon = CAT_ICONS[currentWord.category] || '📚';
-  const isClickable = currentWord.source === 'history' && currentWord.summaryId;
+  const catIcon = CAT_ICONS[currentWord.category] || "📚";
+  const isClickable = currentWord.source === "history" && currentWord.summaryId;
   const hasLongDef = currentWord.definition !== currentWord.shortDefinition;
 
   return (
@@ -55,9 +67,12 @@ export const DashboardInsight: React.FC = () => {
       <div className="flex items-center justify-center gap-3 px-4">
         {/* Refresh (left, subtle) */}
         <button
-          onClick={() => { nextWord(); setExpanded(false); }}
+          onClick={() => {
+            nextWord();
+            setExpanded(false);
+          }}
           className="p-1.5 rounded-lg text-text-muted hover:text-accent-primary hover:bg-white/5 transition-all flex-shrink-0 opacity-0 group-hover:opacity-100"
-          title={language === 'fr' ? 'Suivant' : 'Next'}
+          title={language === "fr" ? "Suivant" : "Next"}
         >
           <RefreshCw className="w-3.5 h-3.5" />
         </button>
@@ -79,7 +94,7 @@ export const DashboardInsight: React.FC = () => {
                   src={currentWord.imageUrl}
                   alt={currentWord.term}
                   className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                  style={{ border: '2px solid #C8903A' }}
+                  style={{ border: "2px solid #C8903A" }}
                   loading="lazy"
                 />
               ) : (
@@ -90,7 +105,9 @@ export const DashboardInsight: React.FC = () => {
                   onClick={handleTermClick}
                   disabled={!isClickable}
                   className={`font-display text-base sm:text-lg font-semibold text-text-primary ${
-                    isClickable ? 'hover:text-accent-primary cursor-pointer transition-colors' : ''
+                    isClickable
+                      ? "hover:text-accent-primary cursor-pointer transition-colors"
+                      : ""
                   }`}
                 >
                   {currentWord.term}
@@ -105,7 +122,7 @@ export const DashboardInsight: React.FC = () => {
               {expanded && hasLongDef && (
                 <motion.p
                   initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
+                  animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.25 }}
                   className="text-xs sm:text-sm text-text-tertiary mt-2 leading-relaxed overflow-hidden"
@@ -122,10 +139,18 @@ export const DashboardInsight: React.FC = () => {
                   onClick={() => setExpanded(!expanded)}
                   className="flex items-center gap-1 text-[11px] text-text-muted hover:text-accent-primary transition-colors"
                 >
-                  {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  {expanded ? (
+                    <ChevronUp className="w-3 h-3" />
+                  ) : (
+                    <ChevronDown className="w-3 h-3" />
+                  )}
                   {expanded
-                    ? (language === 'fr' ? 'Moins' : 'Less')
-                    : (language === 'fr' ? 'En savoir plus' : 'Learn more')}
+                    ? language === "fr"
+                      ? "Moins"
+                      : "Less"
+                    : language === "fr"
+                      ? "En savoir plus"
+                      : "Learn more"}
                 </button>
               )}
               {currentWord.wikiUrl && (
@@ -139,9 +164,9 @@ export const DashboardInsight: React.FC = () => {
                   Source
                 </a>
               )}
-              {currentWord.source === 'history' && (
+              {currentWord.source === "history" && (
                 <span className="text-[10px] text-accent-primary/40">
-                  📜 {language === 'fr' ? 'Vos analyses' : 'Your analyses'}
+                  📜 {language === "fr" ? "Vos analyses" : "Your analyses"}
                 </span>
               )}
             </div>
@@ -150,9 +175,12 @@ export const DashboardInsight: React.FC = () => {
 
         {/* Refresh (right, subtle) */}
         <button
-          onClick={() => { nextWord(); setExpanded(false); }}
+          onClick={() => {
+            nextWord();
+            setExpanded(false);
+          }}
           className="p-1.5 rounded-lg text-text-muted hover:text-accent-primary hover:bg-white/5 transition-all flex-shrink-0"
-          title={language === 'fr' ? 'Suivant' : 'Next'}
+          title={language === "fr" ? "Suivant" : "Next"}
         >
           <RefreshCw className="w-3.5 h-3.5" />
         </button>

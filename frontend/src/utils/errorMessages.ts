@@ -5,54 +5,57 @@
 
 const ERROR_MAP: Record<string, string> = {
   // Database / Infra
-  'database temporarily unavailable': 'Base de données temporairement indisponible. Réessayez dans quelques instants.',
-  'internal server error': 'Erreur interne du serveur',
-  'service unavailable': 'Service temporairement indisponible',
+  "database temporarily unavailable":
+    "Base de données temporairement indisponible. Réessayez dans quelques instants.",
+  "internal server error": "Erreur interne du serveur",
+  "service unavailable": "Service temporairement indisponible",
 
   // Rate limiting
-  'rate limit exceeded': 'Trop de requêtes, veuillez patienter',
-  'too many requests': 'Trop de requêtes, veuillez patienter',
+  "rate limit exceeded": "Trop de requêtes, veuillez patienter",
+  "too many requests": "Trop de requêtes, veuillez patienter",
 
   // Auth
-  'unauthorized': 'Session expirée, veuillez vous reconnecter',
-  'not authenticated': 'Session expirée, veuillez vous reconnecter',
-  'invalid credentials': 'Identifiants invalides',
-  'invalid email or password': 'Email ou mot de passe incorrect',
-  'email already registered': 'Cet email est déjà utilisé',
-  'email not verified': 'Veuillez vérifier votre email avant de vous connecter',
-  'invalid verification code': 'Code de vérification invalide',
-  'verification code expired': 'Code de vérification expiré',
+  unauthorized: "Session expirée, veuillez vous reconnecter",
+  "not authenticated": "Session expirée, veuillez vous reconnecter",
+  "invalid credentials": "Identifiants invalides",
+  "invalid email or password": "Email ou mot de passe incorrect",
+  "email already registered": "Cet email est déjà utilisé",
+  "email not verified": "Veuillez vérifier votre email avant de vous connecter",
+  "invalid verification code": "Code de vérification invalide",
+  "verification code expired": "Code de vérification expiré",
 
   // Not found
-  'not found': 'Ressource introuvable',
+  "not found": "Ressource introuvable",
 
   // Network
-  'network error': 'Erreur de connexion réseau',
-  'failed to fetch': 'Erreur de connexion réseau',
-  'request timeout': 'Délai de connexion dépassé',
-  'load failed': 'Erreur de connexion réseau',
+  "network error": "Erreur de connexion réseau",
+  "failed to fetch": "Erreur de connexion réseau",
+  "request timeout": "Délai de connexion dépassé",
+  "load failed": "Erreur de connexion réseau",
 
   // Credits / Plans
-  'insufficient credits': 'Crédits insuffisants',
-  'not enough credits': 'Crédits insuffisants',
-  'credits exhausted': 'Crédits épuisés',
+  "insufficient credits": "Crédits insuffisants",
+  "not enough credits": "Crédits insuffisants",
+  "credits exhausted": "Crédits épuisés",
 
   // Video analysis
-  'video too long': 'Vidéo trop longue pour votre plan',
-  'video not found': 'Vidéo introuvable',
-  'analysis failed': "L'analyse a échoué, veuillez réessayer",
-  'failed to generate summary': "Service IA temporairement surchargé. Réessayez dans quelques instants.",
-  'ai service temporarily unavailable': "Service IA temporairement surchargé. Réessayez dans quelques instants.",
-  'transcript not available': 'Transcription indisponible pour cette vidéo',
-  'no transcript found': 'Aucune transcription trouvée pour cette vidéo',
-  'transcript extraction failed': "Impossible d'extraire la transcription",
+  "video too long": "Vidéo trop longue pour votre plan",
+  "video not found": "Vidéo introuvable",
+  "analysis failed": "L'analyse a échoué, veuillez réessayer",
+  "failed to generate summary":
+    "Service IA temporairement surchargé. Réessayez dans quelques instants.",
+  "ai service temporarily unavailable":
+    "Service IA temporairement surchargé. Réessayez dans quelques instants.",
+  "transcript not available": "Transcription indisponible pour cette vidéo",
+  "no transcript found": "Aucune transcription trouvée pour cette vidéo",
+  "transcript extraction failed": "Impossible d'extraire la transcription",
 
   // Export
-  'export failed': "L'export a échoué, veuillez réessayer",
+  "export failed": "L'export a échoué, veuillez réessayer",
 
   // Generic
-  'forbidden': 'Accès refusé',
-  'bad request': 'Requête invalide',
+  forbidden: "Accès refusé",
+  "bad request": "Requête invalide",
 };
 
 /**
@@ -78,13 +81,13 @@ export function translateApiError(message: string): string {
 
   // HTTP status prefix pattern: "HTTP 500", "HTTP 503" etc.
   if (/^http \d{3}$/.test(normalized)) {
-    const code = parseInt(normalized.split(' ')[1], 10);
-    if (code >= 500) return 'Erreur serveur, veuillez réessayer';
-    if (code === 429) return 'Trop de requêtes, veuillez patienter';
-    if (code === 404) return 'Ressource introuvable';
-    if (code === 403) return 'Accès refusé';
-    if (code === 401) return 'Session expirée, veuillez vous reconnecter';
-    if (code === 400) return 'Requête invalide';
+    const code = parseInt(normalized.split(" ")[1], 10);
+    if (code >= 500) return "Erreur serveur, veuillez réessayer";
+    if (code === 429) return "Trop de requêtes, veuillez patienter";
+    if (code === 404) return "Ressource introuvable";
+    if (code === 403) return "Accès refusé";
+    if (code === 401) return "Session expirée, veuillez vous reconnecter";
+    if (code === 400) return "Requête invalide";
   }
 
   return message;

@@ -1,26 +1,30 @@
-const CACHE_NAME = 'deepsight-v2';
+const CACHE_NAME = "deepsight-v2";
 const STATIC_ASSETS = [
-  '/',
-  '/manifest.json',
-  '/favicon.ico',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png',
+  "/",
+  "/manifest.json",
+  "/favicon.ico",
+  "/icons/icon-192x192.png",
+  "/icons/icon-512x512.png",
 ];
 
 // Install — cache static shell + purge old caches immediately
-self.addEventListener('install', (event) => {
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)),
   );
   self.skipWaiting();
 });
 
 // Activate — clean ALL old caches to prevent stale chunks
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)),
+        ),
+      ),
   );
   self.clients.claim();
 });
@@ -30,19 +34,17 @@ self.addEventListener('activate', (event) => {
 // - JS/CSS (hashed by Vite): network-first to prevent stale chunk crashes
 // - Images/fonts: cache-first (safe, content-addressed)
 // - API: passthrough (no caching)
-self.addEventListener('fetch', (event) => {
+self.addEventListener("fetch", (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
   // Skip non-GET and API calls
-  if (request.method !== 'GET') return;
-  if (url.pathname.startsWith('/api/')) return;
+  if (request.method !== "GET") return;
+  if (url.pathname.startsWith("/api/")) return;
 
   // Navigation requests — network first, fallback to cached shell
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request).catch(() => caches.match('/'))
-    );
+  if (request.mode === "navigate") {
+    event.respondWith(fetch(request).catch(() => caches.match("/")));
     return;
   }
 
@@ -58,7 +60,9 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(request).then((cached) => cached || Response.error()))
+        .catch(() =>
+          caches.match(request).then((cached) => cached || Response.error()),
+        ),
     );
     return;
   }
@@ -75,15 +79,15 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         });
-      })
+      }),
     );
     return;
   }
 });
 
 // Handle skip waiting message from client
-self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') {
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
 });

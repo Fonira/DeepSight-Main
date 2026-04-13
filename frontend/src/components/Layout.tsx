@@ -4,7 +4,6 @@ import { Sidebar } from "./layout/Sidebar";
 import { AbyssalCreatures } from "./AbyssalCreatures";
 
 export const Layout: React.FC = () => {
-
   return (
     <div className="flex h-screen relative overflow-hidden">
       <AbyssalCreatures />

@@ -1,10 +1,10 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import DoodleIcon from './DoodleIcon';
-import { DOODLE_CATEGORIES } from './doodlePaths';
+import React from "react";
+import { motion } from "framer-motion";
+import DoodleIcon from "./DoodleIcon";
+import { DOODLE_CATEGORIES } from "./doodlePaths";
 
-type DoodleDividerVariant = 'default' | 'video' | 'academic' | 'analysis';
-type Density = 'sparse' | 'normal' | 'dense';
+type DoodleDividerVariant = "default" | "video" | "academic" | "analysis";
+type Density = "sparse" | "normal" | "dense";
 
 interface DoodleDividerProps {
   variant?: DoodleDividerVariant;
@@ -14,7 +14,7 @@ interface DoodleDividerProps {
 
 /**
  * DoodleDivider: Decorative divider with animated doodles
- * 
+ *
  * Features:
  * - Flex row with fine lines on sides + icons in center
  * - Variant-based category selection
@@ -24,16 +24,19 @@ interface DoodleDividerProps {
  * - 32px height (h-8)
  */
 const DoodleDivider: React.FC<DoodleDividerProps> = ({
-  variant = 'default',
-  density = 'normal',
-  className = '',
+  variant = "default",
+  density = "normal",
+  className = "",
 }) => {
   // Map variant to icon category
-  const categoryMap: Record<DoodleDividerVariant, keyof typeof DOODLE_CATEGORIES> = {
-    default: 'shapes',
-    video: 'video',
-    academic: 'study',
-    analysis: 'analytics',
+  const categoryMap: Record<
+    DoodleDividerVariant,
+    keyof typeof DOODLE_CATEGORIES
+  > = {
+    default: "shapes",
+    video: "video",
+    academic: "study",
+    analysis: "analytics",
   };
 
   const category = DOODLE_CATEGORIES[categoryMap[variant]];
@@ -52,9 +55,10 @@ const DoodleDivider: React.FC<DoodleDividerProps> = ({
     for (let i = 0; i < iconCount; i++) {
       const randomPath = category[Math.floor(Math.random() * category.length)];
       // Find the name in DOODLE_MAP that corresponds to this path
-      const doodleNames = Object.entries(DOODLE_CATEGORIES)
-        .flatMap(([, paths]) => paths);
-      
+      const doodleNames = Object.entries(DOODLE_CATEGORIES).flatMap(
+        ([, paths]) => paths,
+      );
+
       // For simplicity, pick by index from category
       const pathIndex = category.indexOf(randomPath);
       if (pathIndex !== -1) {
@@ -107,7 +111,7 @@ const DoodleDivider: React.FC<DoodleDividerProps> = ({
               }}
             >
               <DoodleIcon
-                name={iconName.split('-')[0] || 'dot'}
+                name={iconName.split("-")[0] || "dot"}
                 size={18}
                 color="var(--accent-primary)"
                 className="opacity-30 hover:opacity-50 transition-opacity"

@@ -8,8 +8,8 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { ExternalLink, Clock, ThumbsUp, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from "react";
+import { ExternalLink, Clock, ThumbsUp, RefreshCw } from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES — Tournesol API response
@@ -65,47 +65,47 @@ interface TournesolApiResponse {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // Proxy via notre backend pour contourner CORS (api.tournesol.app ne renvoie pas Access-Control-Allow-Origin)
-const TOURNESOL_API = `${import.meta.env.VITE_API_URL || 'https://api.deepsightsynthesis.com'}/api/tournesol/recommendations/raw`;
-const TOURNESOL_SITE = 'https://tournesol.app';
+const TOURNESOL_API = `${import.meta.env.VITE_API_URL || "https://api.deepsightsynthesis.com"}/api/tournesol/recommendations/raw`;
+const TOURNESOL_SITE = "https://tournesol.app";
 
 const LANGUAGES = [
-  { value: '' as const, label: { fr: 'Toutes', en: 'All' } },
-  { value: 'fr' as const, label: { fr: 'Français', en: 'French' } },
-  { value: 'en' as const, label: { fr: 'Anglais', en: 'English' } },
+  { value: "" as const, label: { fr: "Toutes", en: "All" } },
+  { value: "fr" as const, label: { fr: "Français", en: "French" } },
+  { value: "en" as const, label: { fr: "Anglais", en: "English" } },
 ];
 
 const MESSAGES = {
   fr: {
-    title: 'Recommandations Tournesol',
-    subtitle: 'Vidéos de qualité recommandées par la communauté Tournesol',
-    poweredBy: 'Propulsé par',
-    score: 'Score',
-    contributors: 'contributeurs',
-    comparisons: 'comparaisons',
-    noData: 'Aucune recommandation disponible.',
-    error: 'Impossible de charger les recommandations',
-    retry: 'Réessayer',
-    analyzeThis: 'Analyser avec DeepSight',
-    reliability: 'Fiabilité',
-    pedagogy: 'Pédagogie',
-    importance: 'Importance',
-    engaging: 'Engagement',
+    title: "Recommandations Tournesol",
+    subtitle: "Vidéos de qualité recommandées par la communauté Tournesol",
+    poweredBy: "Propulsé par",
+    score: "Score",
+    contributors: "contributeurs",
+    comparisons: "comparaisons",
+    noData: "Aucune recommandation disponible.",
+    error: "Impossible de charger les recommandations",
+    retry: "Réessayer",
+    analyzeThis: "Analyser avec DeepSight",
+    reliability: "Fiabilité",
+    pedagogy: "Pédagogie",
+    importance: "Importance",
+    engaging: "Engagement",
   },
   en: {
-    title: 'Tournesol Recommendations',
-    subtitle: 'Quality videos recommended by the Tournesol community',
-    poweredBy: 'Powered by',
-    score: 'Score',
-    contributors: 'contributors',
-    comparisons: 'comparisons',
-    noData: 'No recommendations available.',
-    error: 'Failed to load recommendations',
-    retry: 'Retry',
-    analyzeThis: 'Analyze with DeepSight',
-    reliability: 'Reliability',
-    pedagogy: 'Pedagogy',
-    importance: 'Importance',
-    engaging: 'Engaging',
+    title: "Tournesol Recommendations",
+    subtitle: "Quality videos recommended by the Tournesol community",
+    poweredBy: "Powered by",
+    score: "Score",
+    contributors: "contributors",
+    comparisons: "comparisons",
+    noData: "No recommendations available.",
+    error: "Failed to load recommendations",
+    retry: "Retry",
+    analyzeThis: "Analyze with DeepSight",
+    reliability: "Reliability",
+    pedagogy: "Pedagogy",
+    importance: "Importance",
+    engaging: "Engaging",
   },
 };
 
@@ -114,10 +114,10 @@ const MESSAGES = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const formatDuration = (seconds: number | undefined | null): string => {
-  if (!seconds) return '';
+  if (!seconds) return "";
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
-  if (h > 0) return `${h}h${m.toString().padStart(2, '0')}`;
+  if (h > 0) return `${h}h${m.toString().padStart(2, "0")}`;
   return `${m}min`;
 };
 
@@ -126,15 +126,15 @@ const formatScore = (score: number): string => {
 };
 
 const getScoreColor = (score: number): string => {
-  if (score >= 60) return 'text-emerald-400';
-  if (score >= 40) return 'text-yellow-400';
-  return 'text-orange-400';
+  if (score >= 60) return "text-emerald-400";
+  if (score >= 40) return "text-yellow-400";
+  return "text-orange-400";
 };
 
 const getScoreBg = (score: number): string => {
-  if (score >= 60) return 'bg-emerald-500/20';
-  if (score >= 40) return 'bg-yellow-500/20';
-  return 'bg-orange-500/20';
+  if (score >= 60) return "bg-emerald-500/20";
+  if (score >= 40) return "bg-yellow-500/20";
+  return "bg-orange-500/20";
 };
 
 const getCriteriaScore = (
@@ -146,7 +146,7 @@ const getCriteriaScore = (
 };
 
 const formatPublicationDate = (dateStr: string | undefined): string => {
-  if (!dateStr) return '';
+  if (!dateStr) return "";
   const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -164,14 +164,13 @@ const formatPublicationDate = (dateStr: string | undefined): string => {
 
 interface TournesolTrendingSectionProps {
   onVideoSelect?: (videoId: string) => void;
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
 }
 
-export const TournesolTrendingSection: React.FC<TournesolTrendingSectionProps> = ({
-  onVideoSelect,
-  language = 'fr',
-}) => {
-  const [langFilter, setLangFilter] = useState<'' | 'fr' | 'en'>('');
+export const TournesolTrendingSection: React.FC<
+  TournesolTrendingSectionProps
+> = ({ onVideoSelect, language = "fr" }) => {
+  const [langFilter, setLangFilter] = useState<"" | "fr" | "en">("");
   const [results, setResults] = useState<TournesolResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -192,10 +191,10 @@ export const TournesolTrendingSection: React.FC<TournesolTrendingSectionProps> =
       const params = new URLSearchParams({
         limit: String(PAGE_SIZE),
         offset: String(randomOffset),
-        unsafe: 'false',
+        unsafe: "false",
       });
       if (langFilter) {
-        params.set('metadata[language]', langFilter);
+        params.set("metadata[language]", langFilter);
       }
 
       const response = await fetch(`${TOURNESOL_API}?${params}`);
@@ -208,7 +207,7 @@ export const TournesolTrendingSection: React.FC<TournesolTrendingSectionProps> =
       const shuffled = (data.results || []).sort(() => Math.random() - 0.5);
       setResults(shuffled);
     } catch (err) {
-      console.error('[TournesolTrending] Fetch error:', err);
+      console.error("[TournesolTrending] Fetch error:", err);
       setError(t.error);
     } finally {
       setLoading(false);
@@ -225,13 +224,17 @@ export const TournesolTrendingSection: React.FC<TournesolTrendingSectionProps> =
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-yellow-500/10">
-            <img src="/platforms/tournesol-icon.svg" alt="Tournesol" className="w-5 h-5" />
+            <img
+              src="/platforms/tournesol-icon.svg"
+              alt="Tournesol"
+              className="w-5 h-5"
+            />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-white flex items-center gap-2">
               {t.title}
               <span className="text-[10px] font-normal text-white/30">
-                {t.poweredBy}{' '}
+                {t.poweredBy}{" "}
                 <a
                   href={TOURNESOL_SITE}
                   target="_blank"
@@ -253,9 +256,11 @@ export const TournesolTrendingSection: React.FC<TournesolTrendingSectionProps> =
             onClick={fetchRecommendations}
             disabled={loading}
             className="p-2 rounded-lg text-white/30 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all disabled:opacity-30"
-            title={language === 'fr' ? 'Nouvelles suggestions' : 'New suggestions'}
+            title={
+              language === "fr" ? "Nouvelles suggestions" : "New suggestions"
+            }
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
           </button>
 
           {/* Language filter */}
@@ -266,8 +271,8 @@ export const TournesolTrendingSection: React.FC<TournesolTrendingSectionProps> =
                 onClick={() => setLangFilter(l.value)}
                 className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                   langFilter === l.value
-                    ? 'bg-yellow-500/20 text-yellow-300'
-                    : 'text-white/40 hover:text-white/60'
+                    ? "bg-yellow-500/20 text-yellow-300"
+                    : "text-white/40 hover:text-white/60"
                 }`}
               >
                 {l.label[language]}
@@ -332,8 +337,8 @@ export const TournesolTrendingSection: React.FC<TournesolTrendingSectionProps> =
 
 interface TournesolCardProps {
   item: TournesolResult;
-  language: 'fr' | 'en';
-  labels: typeof MESSAGES['fr'];
+  language: "fr" | "en";
+  labels: (typeof MESSAGES)["fr"];
   onClick: () => void;
 }
 
@@ -350,11 +355,11 @@ const TournesolCard: React.FC<TournesolCardProps> = ({
 
   const reliability = getCriteriaScore(
     collective_rating.criteria_scores,
-    'reliability',
+    "reliability",
   );
   const pedagogy = getCriteriaScore(
     collective_rating.criteria_scores,
-    'pedagogy',
+    "pedagogy",
   );
 
   return (
@@ -408,14 +413,14 @@ const TournesolCard: React.FC<TournesolCardProps> = ({
           </span>
           {reliability !== null && (
             <span
-              className={`${reliability >= 50 ? 'text-emerald-400/60' : 'text-white/30'}`}
+              className={`${reliability >= 50 ? "text-emerald-400/60" : "text-white/30"}`}
             >
               {labels.reliability}: {reliability}
             </span>
           )}
           {pedagogy !== null && (
             <span
-              className={`${pedagogy >= 50 ? 'text-blue-400/60' : 'text-white/30'}`}
+              className={`${pedagogy >= 50 ? "text-blue-400/60" : "text-white/30"}`}
             >
               {labels.pedagogy}: {pedagogy}
             </span>

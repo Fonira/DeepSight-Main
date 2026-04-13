@@ -1,7 +1,7 @@
 /**
  * DEEP SIGHT — QuizQuestion Component
  * Questions à choix multiples interactives
- * 
+ *
  * FONCTIONNALITÉS:
  * - 🎯 QCM avec feedback visuel
  * - 💡 Explication après réponse
@@ -9,12 +9,18 @@
  * - 📊 Suivi du score
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from "react";
 import {
-  CheckCircle, XCircle, ChevronRight, Lightbulb,
-  Trophy, RotateCcw, HelpCircle, Brain
-} from 'lucide-react';
-import { DeepSightSpinner } from '../ui/DeepSightSpinner';
+  CheckCircle,
+  XCircle,
+  ChevronRight,
+  Lightbulb,
+  Trophy,
+  RotateCcw,
+  HelpCircle,
+  Brain,
+} from "lucide-react";
+import { DeepSightSpinner } from "../ui/DeepSightSpinner";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📦 TYPES
@@ -32,7 +38,7 @@ interface QuizQuestionProps {
   onComplete?: (score: number, total: number, answers: QuizAnswer[]) => void;
   onProgress?: (current: number, total: number, score: number) => void;
   isLoading?: boolean;
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
 }
 
 interface QuizAnswer {
@@ -58,7 +64,7 @@ export const QuizQuestion: React.FC<QuizQuestionProps> = ({
   onComplete,
   onProgress,
   isLoading = false,
-  language = 'fr',
+  language = "fr",
 }) => {
   const [state, setState] = useState<QuizState>({
     currentIndex: 0,
@@ -73,42 +79,42 @@ export const QuizQuestion: React.FC<QuizQuestionProps> = ({
 
   const t = {
     fr: {
-      question: 'Question',
-      validate: 'Valider',
-      nextQuestion: 'Question suivante',
-      seeResults: 'Voir les résultats',
-      explanation: 'Explication',
-      completed: 'Quiz terminé !',
-      score: 'Votre score',
-      correctAnswers: 'bonnes réponses',
-      excellent: '🎉 Excellent travail !',
-      good: '👍 Bien joué !',
-      keepGoing: '💪 Continuez vos efforts !',
-      reviewContent: '📚 Revoyez le contenu',
-      retry: 'Recommencer',
-      reviewAnswers: 'Revoir les réponses',
-      loading: 'Génération du quiz...',
-      empty: 'Aucune question disponible',
-      selectAnswer: 'Sélectionnez une réponse',
+      question: "Question",
+      validate: "Valider",
+      nextQuestion: "Question suivante",
+      seeResults: "Voir les résultats",
+      explanation: "Explication",
+      completed: "Quiz terminé !",
+      score: "Votre score",
+      correctAnswers: "bonnes réponses",
+      excellent: "🎉 Excellent travail !",
+      good: "👍 Bien joué !",
+      keepGoing: "💪 Continuez vos efforts !",
+      reviewContent: "📚 Revoyez le contenu",
+      retry: "Recommencer",
+      reviewAnswers: "Revoir les réponses",
+      loading: "Génération du quiz...",
+      empty: "Aucune question disponible",
+      selectAnswer: "Sélectionnez une réponse",
     },
     en: {
-      question: 'Question',
-      validate: 'Validate',
-      nextQuestion: 'Next question',
-      seeResults: 'See results',
-      explanation: 'Explanation',
-      completed: 'Quiz completed!',
-      score: 'Your score',
-      correctAnswers: 'correct answers',
-      excellent: '🎉 Excellent work!',
-      good: '👍 Well done!',
-      keepGoing: '💪 Keep going!',
-      reviewContent: '📚 Review the content',
-      retry: 'Try again',
-      reviewAnswers: 'Review answers',
-      loading: 'Generating quiz...',
-      empty: 'No questions available',
-      selectAnswer: 'Select an answer',
+      question: "Question",
+      validate: "Validate",
+      nextQuestion: "Next question",
+      seeResults: "See results",
+      explanation: "Explanation",
+      completed: "Quiz completed!",
+      score: "Your score",
+      correctAnswers: "correct answers",
+      excellent: "🎉 Excellent work!",
+      good: "👍 Well done!",
+      keepGoing: "💪 Keep going!",
+      reviewContent: "📚 Review the content",
+      retry: "Try again",
+      reviewAnswers: "Review answers",
+      loading: "Generating quiz...",
+      empty: "No questions available",
+      selectAnswer: "Select an answer",
     },
   }[language];
 
@@ -120,10 +126,13 @@ export const QuizQuestion: React.FC<QuizQuestionProps> = ({
     onProgress?.(state.currentIndex + 1, questions.length, score);
   }, [state.currentIndex, questions.length, score, onProgress]);
 
-  const handleSelectAnswer = useCallback((index: number) => {
-    if (state.showResult) return;
-    setState((prev) => ({ ...prev, selectedAnswer: index }));
-  }, [state.showResult]);
+  const handleSelectAnswer = useCallback(
+    (index: number) => {
+      if (state.showResult) return;
+      setState((prev) => ({ ...prev, selectedAnswer: index }));
+    },
+    [state.showResult],
+  );
 
   const handleValidate = useCallback(() => {
     if (state.selectedAnswer === null) return;
@@ -202,27 +211,33 @@ export const QuizQuestion: React.FC<QuizQuestionProps> = ({
   if (state.isComplete) {
     const percentage = Math.round((score / questions.length) * 100);
     const message =
-      percentage >= 80 ? t.excellent :
-      percentage >= 60 ? t.good :
-      percentage >= 40 ? t.keepGoing : t.reviewContent;
+      percentage >= 80
+        ? t.excellent
+        : percentage >= 60
+          ? t.good
+          : percentage >= 40
+            ? t.keepGoing
+            : t.reviewContent;
 
     return (
       <div className="py-8">
         <div className="glass-panel rounded-2xl p-8 max-w-2xl mx-auto text-center">
-          <Trophy className={`w-20 h-20 mx-auto mb-4 ${
-            percentage >= 60 ? 'text-amber-400' : 'text-blue-400'
-          }`} />
-          
+          <Trophy
+            className={`w-20 h-20 mx-auto mb-4 ${
+              percentage >= 60 ? "text-amber-400" : "text-blue-400"
+            }`}
+          />
+
           <h3 className="text-2xl font-bold text-white mb-2">{t.completed}</h3>
-          
+
           <div className="text-4xl sm:text-5xl font-bold text-amber-400 my-6">
             {score}/{questions.length}
           </div>
-          
+
           <p className="text-xl text-gray-300 mb-2">
             {percentage}% {t.correctAnswers}
           </p>
-          
+
           <p className="text-lg text-gray-400 mb-8">{message}</p>
 
           <button
@@ -237,13 +252,15 @@ export const QuizQuestion: React.FC<QuizQuestionProps> = ({
 
         {/* Review answers */}
         <div className="mt-8 max-w-2xl mx-auto">
-          <h4 className="text-lg font-semibold text-white mb-4">{t.reviewAnswers}</h4>
+          <h4 className="text-lg font-semibold text-white mb-4">
+            {t.reviewAnswers}
+          </h4>
           <div className="space-y-3">
             {state.answers.map((answer, idx) => (
               <div
                 key={idx}
                 className={`glass-panel rounded-xl p-4 border-l-4 ${
-                  answer.isCorrect ? 'border-emerald-500' : 'border-red-500'
+                  answer.isCorrect ? "border-emerald-500" : "border-red-500"
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -287,7 +304,9 @@ export const QuizQuestion: React.FC<QuizQuestionProps> = ({
       </div>
 
       {/* Question */}
-      <div className={`glass-panel rounded-xl p-6 mb-6 ${shake ? 'animate-shake' : ''} ${pulse ? 'animate-pulse' : ''}`}>
+      <div
+        className={`glass-panel rounded-xl p-6 mb-6 ${shake ? "animate-shake" : ""} ${pulse ? "animate-pulse" : ""}`}
+      >
         <div className="flex items-start gap-3">
           <Brain className="w-6 h-6 text-amber-400 flex-shrink-0 mt-1" />
           <p className="text-lg text-white font-medium leading-relaxed">
@@ -300,21 +319,24 @@ export const QuizQuestion: React.FC<QuizQuestionProps> = ({
       <div className="space-y-3 mb-6">
         {currentQuestion.options.map((option, index) => {
           const isSelected = state.selectedAnswer === index;
-          const isCorrect = state.showResult && index === currentQuestion.correct;
-          const isWrong = state.showResult && isSelected && index !== currentQuestion.correct;
+          const isCorrect =
+            state.showResult && index === currentQuestion.correct;
+          const isWrong =
+            state.showResult && isSelected && index !== currentQuestion.correct;
 
-          let bgClass = 'bg-gray-800/50 border-gray-600 hover:border-amber-500/50';
-          let textClass = 'text-gray-300';
+          let bgClass =
+            "bg-gray-800/50 border-gray-600 hover:border-amber-500/50";
+          let textClass = "text-gray-300";
 
           if (isCorrect) {
-            bgClass = 'bg-emerald-500/20 border-emerald-500';
-            textClass = 'text-emerald-300';
+            bgClass = "bg-emerald-500/20 border-emerald-500";
+            textClass = "text-emerald-300";
           } else if (isWrong) {
-            bgClass = 'bg-red-500/20 border-red-500';
-            textClass = 'text-red-300';
+            bgClass = "bg-red-500/20 border-red-500";
+            textClass = "text-red-300";
           } else if (isSelected && !state.showResult) {
-            bgClass = 'bg-amber-500/20 border-amber-500';
-            textClass = 'text-amber-300';
+            bgClass = "bg-amber-500/20 border-amber-500";
+            textClass = "text-amber-300";
           }
 
           return (
@@ -324,15 +346,20 @@ export const QuizQuestion: React.FC<QuizQuestionProps> = ({
               disabled={state.showResult}
               className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 
                         transition-all duration-200 text-left
-                        ${bgClass} ${state.showResult ? 'cursor-default' : 'cursor-pointer'}`}
+                        ${bgClass} ${state.showResult ? "cursor-default" : "cursor-pointer"}`}
             >
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center 
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center 
                             font-semibold text-sm ${
-                              isCorrect ? 'bg-emerald-500 text-white' :
-                              isWrong ? 'bg-red-500 text-white' :
-                              isSelected ? 'bg-amber-500 text-white' :
-                              'bg-gray-700 text-gray-400'
-                            }`}>
+                              isCorrect
+                                ? "bg-emerald-500 text-white"
+                                : isWrong
+                                  ? "bg-red-500 text-white"
+                                  : isSelected
+                                    ? "bg-amber-500 text-white"
+                                    : "bg-gray-700 text-gray-400"
+                            }`}
+              >
                 {String.fromCharCode(65 + index)}
               </div>
               <span className={`flex-1 ${textClass}`}>{option}</span>
@@ -353,8 +380,12 @@ export const QuizQuestion: React.FC<QuizQuestionProps> = ({
           <div className="flex items-start gap-3">
             <Lightbulb className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-amber-400 mb-1">{t.explanation}</p>
-              <p className="text-sm text-gray-300">{currentQuestion.explanation}</p>
+              <p className="text-sm font-medium text-amber-400 mb-1">
+                {t.explanation}
+              </p>
+              <p className="text-sm text-gray-300">
+                {currentQuestion.explanation}
+              </p>
             </div>
           </div>
         </div>
@@ -378,7 +409,9 @@ export const QuizQuestion: React.FC<QuizQuestionProps> = ({
             className="flex items-center gap-2 px-8 py-3 bg-amber-500 hover:bg-amber-400 
                      text-gray-900 font-semibold rounded-xl transition-colors"
           >
-            {state.currentIndex + 1 >= questions.length ? t.seeResults : t.nextQuestion}
+            {state.currentIndex + 1 >= questions.length
+              ? t.seeResults
+              : t.nextQuestion}
             <ChevronRight className="w-5 h-5" />
           </button>
         )}

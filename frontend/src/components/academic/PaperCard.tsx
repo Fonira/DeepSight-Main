@@ -4,9 +4,17 @@
  * expandable abstract, and action buttons.
  */
 
-import React, { useState } from 'react';
-import { FileText, ExternalLink, Copy, Check, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
-import type { AcademicPaper } from '../../services/api';
+import React, { useState } from "react";
+import {
+  FileText,
+  ExternalLink,
+  Copy,
+  Check,
+  BookOpen,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+import type { AcademicPaper } from "../../services/api";
 
 interface PaperCardProps {
   paper: AcademicPaper;
@@ -16,15 +24,15 @@ interface PaperCardProps {
 }
 
 const SOURCE_COLORS: Record<string, { bg: string; text: string }> = {
-  semantic_scholar: { bg: 'bg-blue-600', text: 'text-white' },
-  openalex: { bg: 'bg-red-600', text: 'text-white' },
-  arxiv: { bg: 'bg-rose-700', text: 'text-white' },
+  semantic_scholar: { bg: "bg-blue-600", text: "text-white" },
+  openalex: { bg: "bg-red-600", text: "text-white" },
+  arxiv: { bg: "bg-rose-700", text: "text-white" },
 };
 
 const SOURCE_NAMES: Record<string, string> = {
-  semantic_scholar: 'Semantic Scholar',
-  openalex: 'OpenAlex',
-  arxiv: 'arXiv',
+  semantic_scholar: "Semantic Scholar",
+  openalex: "OpenAlex",
+  arxiv: "arXiv",
 };
 
 export const PaperCard: React.FC<PaperCardProps> = ({
@@ -37,7 +45,7 @@ export const PaperCard: React.FC<PaperCardProps> = ({
   const [copied, setCopied] = useState(false);
 
   const formatAuthors = (authors: Array<{ name: string }>) => {
-    if (!authors?.length) return 'Unknown author';
+    if (!authors?.length) return "Unknown author";
     if (authors.length === 1) return authors[0].name;
     if (authors.length === 2) return `${authors[0].name} & ${authors[1].name}`;
     return `${authors[0].name} et al.`;
@@ -51,8 +59,9 @@ export const PaperCard: React.FC<PaperCardProps> = ({
   const handleCopyCitation = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const authors = formatAuthors(paper.authors);
-    const year = paper.year || 'n.d.';
-    const citation = `${authors} (${year}). ${paper.title}. ${paper.venue || ''}`.trim();
+    const year = paper.year || "n.d.";
+    const citation =
+      `${authors} (${year}). ${paper.title}. ${paper.venue || ""}`.trim();
 
     await navigator.clipboard.writeText(citation);
     setCopied(true);
@@ -62,30 +71,35 @@ export const PaperCard: React.FC<PaperCardProps> = ({
   const handleOpenUrl = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (paper.url) {
-      window.open(paper.url, '_blank', 'noopener,noreferrer');
+      window.open(paper.url, "_blank", "noopener,noreferrer");
     }
   };
 
   const handleOpenPdf = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (paper.pdf_url) {
-      window.open(paper.pdf_url, '_blank', 'noopener,noreferrer');
+      window.open(paper.pdf_url, "_blank", "noopener,noreferrer");
     }
   };
 
-  const sourceStyle = SOURCE_COLORS[paper.source] || { bg: 'bg-gray-600', text: 'text-white' };
+  const sourceStyle = SOURCE_COLORS[paper.source] || {
+    bg: "bg-gray-600",
+    text: "text-white",
+  };
   const sourceName = SOURCE_NAMES[paper.source] || paper.source;
 
   return (
     <div
       className={`card p-4 transition-all cursor-pointer hover:shadow-md ${
-        isSelected ? 'ring-2 ring-accent-primary' : ''
+        isSelected ? "ring-2 ring-accent-primary" : ""
       }`}
       onClick={() => onSelect?.(paper)}
     >
       {/* Header: Source badge and citations */}
       <div className="flex items-center justify-between mb-2">
-        <span className={`px-2 py-0.5 rounded text-xs font-medium ${sourceStyle.bg} ${sourceStyle.text}`}>
+        <span
+          className={`px-2 py-0.5 rounded text-xs font-medium ${sourceStyle.bg} ${sourceStyle.text}`}
+        >
           {sourceName}
         </span>
         <div className="flex items-center gap-1 text-text-secondary text-xs">
@@ -96,14 +110,14 @@ export const PaperCard: React.FC<PaperCardProps> = ({
 
       {/* Title */}
       <h4
-        className={`font-semibold text-text-primary leading-tight mb-1 ${compact ? 'line-clamp-2' : 'line-clamp-3'}`}
+        className={`font-semibold text-text-primary leading-tight mb-1 ${compact ? "line-clamp-2" : "line-clamp-3"}`}
       >
         {paper.title}
       </h4>
 
       {/* Authors and year */}
       <p className="text-text-secondary text-sm truncate mb-1">
-        {formatAuthors(paper.authors)} {paper.year ? `(${paper.year})` : ''}
+        {formatAuthors(paper.authors)} {paper.year ? `(${paper.year})` : ""}
       </p>
 
       {/* Venue */}
@@ -116,7 +130,9 @@ export const PaperCard: React.FC<PaperCardProps> = ({
       {/* Abstract (expandable) */}
       {paper.abstract && !compact && (
         <div className="mt-2">
-          <p className={`text-text-secondary text-sm leading-relaxed ${showAbstract ? '' : 'line-clamp-2'}`}>
+          <p
+            className={`text-text-secondary text-sm leading-relaxed ${showAbstract ? "" : "line-clamp-2"}`}
+          >
             {paper.abstract}
           </p>
           <button
@@ -127,9 +143,13 @@ export const PaperCard: React.FC<PaperCardProps> = ({
             className="text-accent-primary text-xs font-medium mt-1 flex items-center gap-1 hover:underline"
           >
             {showAbstract ? (
-              <>Show less <ChevronUp className="w-3 h-3" /></>
+              <>
+                Show less <ChevronUp className="w-3 h-3" />
+              </>
             ) : (
-              <>Show more <ChevronDown className="w-3 h-3" /></>
+              <>
+                Show more <ChevronDown className="w-3 h-3" />
+              </>
             )}
           </button>
         </div>
@@ -188,8 +208,8 @@ export const PaperCard: React.FC<PaperCardProps> = ({
               }}
               className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                 isSelected
-                  ? 'bg-accent-primary border-accent-primary text-white'
-                  : 'border-border-default hover:border-accent-primary'
+                  ? "bg-accent-primary border-accent-primary text-white"
+                  : "border-border-default hover:border-accent-primary"
               }`}
             >
               {isSelected && <Check className="w-3 h-3" />}

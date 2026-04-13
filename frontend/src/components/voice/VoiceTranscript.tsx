@@ -3,10 +3,10 @@
  * Auto-scrolls to bottom on new messages, with live cursor animation.
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from "react";
 
 interface VoiceTranscriptProps {
-  messages: Array<{ text: string; source: 'user' | 'ai'; timestamp?: number }>;
+  messages: Array<{ text: string; source: "user" | "ai"; timestamp?: number }>;
   isLive?: boolean;
 }
 
@@ -15,7 +15,7 @@ export const VoiceTranscript: React.FC<VoiceTranscriptProps> = React.memo(
     const bottomRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
     if (messages.length === 0) {
@@ -29,27 +29,26 @@ export const VoiceTranscript: React.FC<VoiceTranscriptProps> = React.memo(
     }
 
     const lastMessage = messages[messages.length - 1];
-    const showCursor = isLive && lastMessage?.source === 'ai';
+    const showCursor = isLive && lastMessage?.source === "ai";
 
     return (
       <div className="flex flex-col gap-3 p-4 max-h-[360px] overflow-y-auto">
         {messages.map((msg, index) => {
-          const isUser = msg.source === 'user';
-          const isLastAi =
-            showCursor && index === messages.length - 1;
+          const isUser = msg.source === "user";
+          const isLastAi = showCursor && index === messages.length - 1;
 
           return (
             <div
               key={index}
-              className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${isUser ? "justify-end" : "justify-start"}`}
             >
               <div
                 className={`
                   max-w-[80%] px-4 py-2.5 text-sm
                   ${
                     isUser
-                      ? 'bg-indigo-500/20 text-indigo-200 rounded-2xl rounded-br-sm'
-                      : 'bg-white/5 text-white/80 rounded-2xl rounded-bl-sm'
+                      ? "bg-indigo-500/20 text-indigo-200 rounded-2xl rounded-br-sm"
+                      : "bg-white/5 text-white/80 rounded-2xl rounded-bl-sm"
                   }
                 `}
               >
@@ -64,9 +63,9 @@ export const VoiceTranscript: React.FC<VoiceTranscriptProps> = React.memo(
         <div ref={bottomRef} />
       </div>
     );
-  }
+  },
 );
 
-VoiceTranscript.displayName = 'VoiceTranscript';
+VoiceTranscript.displayName = "VoiceTranscript";
 
 export default VoiceTranscript;

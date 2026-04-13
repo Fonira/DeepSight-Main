@@ -9,15 +9,15 @@
  *   />
  */
 
-import React, { useState, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { AudioSummaryPlayer } from './AudioSummaryPlayer';
-import api from '../services/api';
+import React, { useState, useCallback } from "react";
+import { motion } from "framer-motion";
+import { AudioSummaryPlayer } from "./AudioSummaryPlayer";
+import api from "../services/api";
 
 interface AudioSummaryButtonProps {
   summaryId: number;
   videoTitle?: string;
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
   className?: string;
   compact?: boolean;
 }
@@ -25,8 +25,8 @@ interface AudioSummaryButtonProps {
 export const AudioSummaryButton: React.FC<AudioSummaryButtonProps> = ({
   summaryId,
   videoTitle,
-  language = 'fr',
-  className = '',
+  language = "fr",
+  className = "",
   compact = false,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -55,7 +55,8 @@ export const AudioSummaryButton: React.FC<AudioSummaryButtonProps> = ({
       });
       setShowPlayer(true);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Erreur lors de la génération';
+      const message =
+        err instanceof Error ? err.message : "Erreur lors de la génération";
       setError(message);
       setTimeout(() => setError(null), 5000);
     } finally {
@@ -89,14 +90,30 @@ export const AudioSummaryButton: React.FC<AudioSummaryButtonProps> = ({
           </>
         ) : audioData ? (
           <>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-indigo-400">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="text-indigo-400"
+            >
               <polygon points="5,3 19,12 5,21" fill="currentColor" />
             </svg>
             {!compact && <span className="text-sm">Réécouter</span>}
           </>
         ) : (
           <>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-indigo-400">
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              className="text-indigo-400"
+            >
               <path d="M9 18V5l12-2v13" />
               <circle cx="6" cy="18" r="3" />
               <circle cx="18" cy="16" r="3" />
@@ -107,9 +124,7 @@ export const AudioSummaryButton: React.FC<AudioSummaryButtonProps> = ({
       </motion.button>
 
       {/* Error */}
-      {error && (
-        <div className="text-xs text-red-400 mt-1">{error}</div>
-      )}
+      {error && <div className="text-xs text-red-400 mt-1">{error}</div>}
 
       {/* Floating Player */}
       {showPlayer && audioData && (

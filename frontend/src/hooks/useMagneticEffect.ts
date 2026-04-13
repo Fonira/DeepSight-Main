@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect } from "react";
 
 export const useMagneticEffect = (strength: number = 0.3) => {
   const ref = useRef<HTMLButtonElement>(null);
@@ -23,15 +23,15 @@ export const useMagneticEffect = (strength: number = 0.3) => {
     };
 
     const handleMouseLeave = () => {
-      button.style.transform = 'translate(0, 0) scale(1)';
+      button.style.transform = "translate(0, 0) scale(1)";
     };
 
-    button.addEventListener('mousemove', handleMouseMove);
-    button.addEventListener('mouseleave', handleMouseLeave);
+    button.addEventListener("mousemove", handleMouseMove);
+    button.addEventListener("mouseleave", handleMouseLeave);
 
     return () => {
-      button.removeEventListener('mousemove', handleMouseMove);
-      button.removeEventListener('mouseleave', handleMouseLeave);
+      button.removeEventListener("mousemove", handleMouseMove);
+      button.removeEventListener("mouseleave", handleMouseLeave);
     };
   }, [strength]);
 

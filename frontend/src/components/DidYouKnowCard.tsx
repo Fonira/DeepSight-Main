@@ -4,22 +4,40 @@
  * Closeable, auto-rotates concepts from user analysis history.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, RefreshCw, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
-import { useLoadingWord } from '../contexts/LoadingWordContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { useAuth } from '../hooks/useAuth';
-import type { LoadingWord } from '../contexts/LoadingWordContext';
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  X,
+  RefreshCw,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+import { useLoadingWord } from "../contexts/LoadingWordContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { useAuth } from "../hooks/useAuth";
+import type { LoadingWord } from "../contexts/LoadingWordContext";
 
 // ─── Category icons ─────────────────────────────────────────────────────────
 
 const CAT_ICONS: Record<string, string> = {
-  cognitive_bias: '🧠', science: '🔬', philosophy: '🎭', culture: '🌍',
-  misc: '✨', history: '📜', technology: '⚡', person: '👤',
-  company: '🏢', concept: '💡', event: '📅', place: '📍',
-  psychology: '🧩', economics: '💰', art: '🎨', nature: '🌿',
+  cognitive_bias: "🧠",
+  science: "🔬",
+  philosophy: "🎭",
+  culture: "🌍",
+  misc: "✨",
+  history: "📜",
+  technology: "⚡",
+  person: "👤",
+  company: "🏢",
+  concept: "💡",
+  event: "📅",
+  place: "📍",
+  psychology: "🧩",
+  economics: "💰",
+  art: "🎨",
+  nature: "🌿",
 };
 
 // ─── Spinner sizes ──────────────────────────────────────────────────────────
@@ -37,8 +55,10 @@ export const DidYouKnowCard: React.FC = () => {
 
   const [visible, setVisible] = useState(() => {
     try {
-      return localStorage.getItem('ds-dyk-card-hidden') !== 'true';
-    } catch { return true; }
+      return localStorage.getItem("ds-dyk-card-hidden") !== "true";
+    } catch {
+      return true;
+    }
   });
   const [expanded, setExpanded] = useState(false);
   const [displayedWord, setDisplayedWord] = useState<LoadingWord | null>(null);
@@ -55,11 +75,15 @@ export const DidYouKnowCard: React.FC = () => {
 
   const handleClose = useCallback(() => {
     setVisible(false);
-    try { localStorage.setItem('ds-dyk-card-hidden', 'true'); } catch { /* */ }
+    try {
+      localStorage.setItem("ds-dyk-card-hidden", "true");
+    } catch {
+      /* */
+    }
   }, []);
 
   const handleTermClick = useCallback(() => {
-    if (displayedWord?.source === 'history' && displayedWord?.summaryId) {
+    if (displayedWord?.source === "history" && displayedWord?.summaryId) {
       navigate(`/dashboard?id=${displayedWord.summaryId}`);
     }
   }, [displayedWord, navigate]);
@@ -67,8 +91,9 @@ export const DidYouKnowCard: React.FC = () => {
   // Don't render for unauthenticated users or if hidden
   if (!isAuthenticated || !visible || !displayedWord) return null;
 
-  const catIcon = CAT_ICONS[displayedWord.category] || '📚';
-  const isClickable = displayedWord.source === 'history' && displayedWord.summaryId;
+  const catIcon = CAT_ICONS[displayedWord.category] || "📚";
+  const isClickable =
+    displayedWord.source === "history" && displayedWord.summaryId;
 
   return (
     <AnimatePresence>
@@ -86,7 +111,6 @@ export const DidYouKnowCard: React.FC = () => {
 
           {/* Content */}
           <div className="relative p-3 space-y-2">
-
             {/* Header row: spinner + title + actions */}
             <div className="flex items-center gap-2">
               {/* DeepSight Cosmic Spinner */}
@@ -101,9 +125,11 @@ export const DidYouKnowCard: React.FC = () => {
                   aria-hidden="true"
                   className="absolute inset-0 w-full h-full object-cover rounded-full"
                   style={{
-                    maskImage: 'radial-gradient(circle, transparent 35%, rgba(0,0,0,0.4) 45%, black 55%)',
-                    WebkitMaskImage: 'radial-gradient(circle, transparent 35%, rgba(0,0,0,0.4) 45%, black 55%)',
-                    mixBlendMode: 'screen',
+                    maskImage:
+                      "radial-gradient(circle, transparent 35%, rgba(0,0,0,0.4) 45%, black 55%)",
+                    WebkitMaskImage:
+                      "radial-gradient(circle, transparent 35%, rgba(0,0,0,0.4) 45%, black 55%)",
+                    mixBlendMode: "screen",
                   }}
                 />
                 {/* Gouvernail wheel (rotating) */}
@@ -114,26 +140,26 @@ export const DidYouKnowCard: React.FC = () => {
                   style={{
                     width: WHEEL_SIZE,
                     height: WHEEL_SIZE,
-                    position: 'relative',
+                    position: "relative",
                     zIndex: 2,
-                    mixBlendMode: 'screen',
+                    mixBlendMode: "screen",
                     opacity: 0.85,
-                    filter: 'brightness(1.2) contrast(1.25) saturate(1.1)',
-                    animation: 'dyk-spin 8s linear infinite',
+                    filter: "brightness(1.2) contrast(1.25) saturate(1.1)",
+                    animation: "dyk-spin 8s linear infinite",
                   }}
                 />
               </div>
 
               {/* Title */}
               <span className="font-display text-[11px] font-semibold text-accent-primary uppercase tracking-wider flex-1">
-                {language === 'fr' ? 'Le saviez-vous ?' : 'Did you know?'}
+                {language === "fr" ? "Le saviez-vous ?" : "Did you know?"}
               </span>
 
               {/* Next */}
               <button
                 onClick={nextWord}
                 className="p-1 rounded-md text-text-tertiary hover:text-accent-primary hover:bg-white/5 transition-all"
-                title={language === 'fr' ? 'Suivant' : 'Next'}
+                title={language === "fr" ? "Suivant" : "Next"}
               >
                 <RefreshCw className="w-3 h-3" />
               </button>
@@ -142,7 +168,7 @@ export const DidYouKnowCard: React.FC = () => {
               <button
                 onClick={handleClose}
                 className="p-1 rounded-md text-text-tertiary hover:text-red-400 hover:bg-white/5 transition-all"
-                title={language === 'fr' ? 'Fermer' : 'Close'}
+                title={language === "fr" ? "Fermer" : "Close"}
               >
                 <X className="w-3 h-3" />
               </button>
@@ -159,12 +185,16 @@ export const DidYouKnowCard: React.FC = () => {
               >
                 {/* Term */}
                 <div className="flex items-start gap-1.5 mb-1">
-                  <span className="text-xs flex-shrink-0 mt-0.5">{catIcon}</span>
+                  <span className="text-xs flex-shrink-0 mt-0.5">
+                    {catIcon}
+                  </span>
                   <button
                     onClick={handleTermClick}
                     disabled={!isClickable}
                     className={`font-display text-sm font-semibold text-text-primary text-left leading-tight ${
-                      isClickable ? 'hover:text-accent-primary cursor-pointer transition-colors' : ''
+                      isClickable
+                        ? "hover:text-accent-primary cursor-pointer transition-colors"
+                        : ""
                     }`}
                   >
                     {displayedWord.term}
@@ -173,20 +203,31 @@ export const DidYouKnowCard: React.FC = () => {
 
                 {/* Definition */}
                 <p className="text-[11px] text-text-secondary leading-relaxed pl-5">
-                  {expanded ? displayedWord.definition : displayedWord.shortDefinition}
+                  {expanded
+                    ? displayedWord.definition
+                    : displayedWord.shortDefinition}
                 </p>
 
                 {/* Footer actions */}
                 <div className="flex items-center gap-3 mt-1.5 pl-5">
-                  {displayedWord.definition !== displayedWord.shortDefinition && (
+                  {displayedWord.definition !==
+                    displayedWord.shortDefinition && (
                     <button
                       onClick={() => setExpanded(!expanded)}
                       className="flex items-center gap-0.5 text-[10px] text-text-tertiary hover:text-accent-primary transition-colors"
                     >
-                      {expanded ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+                      {expanded ? (
+                        <ChevronUp className="w-2.5 h-2.5" />
+                      ) : (
+                        <ChevronDown className="w-2.5 h-2.5" />
+                      )}
                       {expanded
-                        ? (language === 'fr' ? 'Moins' : 'Less')
-                        : (language === 'fr' ? 'Plus' : 'More')}
+                        ? language === "fr"
+                          ? "Moins"
+                          : "Less"
+                        : language === "fr"
+                          ? "Plus"
+                          : "More"}
                     </button>
                   )}
                   {displayedWord.wikiUrl && (
@@ -200,9 +241,9 @@ export const DidYouKnowCard: React.FC = () => {
                       Source
                     </a>
                   )}
-                  {displayedWord.source === 'history' && (
+                  {displayedWord.source === "history" && (
                     <span className="text-[9px] text-accent-primary/50 ml-auto">
-                      📜 {language === 'fr' ? 'Vos analyses' : 'Your analyses'}
+                      📜 {language === "fr" ? "Vos analyses" : "Your analyses"}
                     </span>
                   )}
                 </div>

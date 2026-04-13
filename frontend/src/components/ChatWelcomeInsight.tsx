@@ -4,12 +4,12 @@
  * Filtre source: 'history' uniquement.
  */
 
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Lightbulb, ArrowRight } from 'lucide-react';
-import { useLoadingWord } from '../contexts/LoadingWordContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import type { LoadingWord } from '../contexts/LoadingWordContext';
+import React, { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { Lightbulb, ArrowRight } from "lucide-react";
+import { useLoadingWord } from "../contexts/LoadingWordContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import type { LoadingWord } from "../contexts/LoadingWordContext";
 
 const ROTATION_INTERVAL = 45_000;
 
@@ -17,7 +17,9 @@ interface ChatWelcomeInsightProps {
   onPrefillChat?: (text: string) => void;
 }
 
-export const ChatWelcomeInsight: React.FC<ChatWelcomeInsightProps> = ({ onPrefillChat }) => {
+export const ChatWelcomeInsight: React.FC<ChatWelcomeInsightProps> = ({
+  onPrefillChat,
+}) => {
   const { getWordByFilter, hasHistory } = useLoadingWord();
   const { language } = useLanguage();
   const [word, setWord] = useState<LoadingWord | null>(null);
@@ -26,7 +28,7 @@ export const ChatWelcomeInsight: React.FC<ChatWelcomeInsightProps> = ({ onPrefil
   // Fetch a history-only word
   useEffect(() => {
     if (!hasHistory) return;
-    const w = getWordByFilter({ source: 'history' });
+    const w = getWordByFilter({ source: "history" });
     if (w) setWord(w);
   }, [getWordByFilter, hasHistory]);
 
@@ -40,7 +42,7 @@ export const ChatWelcomeInsight: React.FC<ChatWelcomeInsightProps> = ({ onPrefil
   useEffect(() => {
     if (!hasHistory) return;
     const timer = setInterval(() => {
-      const w = getWordByFilter({ source: 'history' });
+      const w = getWordByFilter({ source: "history" });
       if (w) setWord(w);
     }, ROTATION_INTERVAL);
     return () => clearInterval(timer);
@@ -49,9 +51,10 @@ export const ChatWelcomeInsight: React.FC<ChatWelcomeInsightProps> = ({ onPrefil
   if (!word || !visible || !hasHistory) return null;
 
   const handleDiscuss = () => {
-    const question = language === 'fr'
-      ? `Explique-moi le concept de "${word.term}" et son importance.`
-      : `Explain the concept of "${word.term}" and its importance.`;
+    const question =
+      language === "fr"
+        ? `Explique-moi le concept de "${word.term}" et son importance.`
+        : `Explain the concept of "${word.term}" and its importance.`;
     onPrefillChat?.(question);
   };
 
@@ -67,14 +70,17 @@ export const ChatWelcomeInsight: React.FC<ChatWelcomeInsightProps> = ({ onPrefil
         <div className="flex items-center gap-2 mb-2">
           <Lightbulb className="w-3.5 h-3.5 text-accent-primary/60" />
           <span className="text-[10px] text-text-muted uppercase tracking-wider font-medium">
-            {language === 'fr' ? 'Le saviez-vous ?' : 'Did you know?'}
+            {language === "fr" ? "Le saviez-vous ?" : "Did you know?"}
           </span>
         </div>
 
         {/* Video source */}
         {word.videoTitle && (
           <p className="text-[10px] text-text-muted/60 mb-2 truncate">
-            {language === 'fr' ? 'De votre analyse de' : 'From your analysis of'} "{word.videoTitle}"
+            {language === "fr"
+              ? "De votre analyse de"
+              : "From your analysis of"}{" "}
+            "{word.videoTitle}"
           </p>
         )}
 
@@ -85,7 +91,7 @@ export const ChatWelcomeInsight: React.FC<ChatWelcomeInsightProps> = ({ onPrefil
               src={word.imageUrl}
               alt={word.term}
               className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
-              style={{ border: '1.5px solid rgba(200, 144, 58, 0.3)' }}
+              style={{ border: "1.5px solid rgba(200, 144, 58, 0.3)" }}
               loading="lazy"
             />
           )}
@@ -104,7 +110,7 @@ export const ChatWelcomeInsight: React.FC<ChatWelcomeInsightProps> = ({ onPrefil
             onClick={handleDiscuss}
             className="flex items-center gap-1.5 text-[11px] text-accent-primary/70 hover:text-accent-primary transition-colors font-medium"
           >
-            {language === 'fr' ? 'Discuter de ça' : 'Discuss this'}
+            {language === "fr" ? "Discuter de ça" : "Discuss this"}
             <ArrowRight className="w-3 h-3" />
           </button>
         )}

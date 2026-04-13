@@ -2,18 +2,18 @@
  * Tests unitaires — Zustand Analysis Store
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { useAnalysisStore } from '../analysisStore';
-import type { Summary, VideoMetadata } from '../analysisStore';
+import { describe, it, expect, beforeEach } from "vitest";
+import { useAnalysisStore } from "../analysisStore";
+import type { Summary, VideoMetadata } from "../analysisStore";
 
 // Helper: reset store between tests (don't use replace=true, it removes action functions)
 function resetStore() {
   useAnalysisStore.setState({
-    status: 'idle',
+    status: "idle",
     progress: 0,
-    progressMessage: '',
+    progressMessage: "",
     currentSummary: null,
-    streamingText: '',
+    streamingText: "",
     metadata: null,
     error: null,
     recentSummaries: [],
@@ -22,10 +22,10 @@ function resetStore() {
     chatLoading: false,
     webSearchEnabled: false,
     preferences: {
-      mode: 'standard',
-      lang: 'fr',
-      model: 'mistral-small-2603',
-      category: 'auto',
+      mode: "standard",
+      lang: "fr",
+      model: "mistral-small-2603",
+      category: "auto",
       webEnrich: false,
     },
     chatOpen: false,
@@ -36,19 +36,19 @@ function resetStore() {
 
 const mockSummary: Summary = {
   id: 1,
-  video_id: 'abc123',
-  video_title: 'Test Video',
-  video_channel: 'Test Channel',
-  summary_content: 'This is a test summary',
-  created_at: '2024-01-01T00:00:00Z',
+  video_id: "abc123",
+  video_title: "Test Video",
+  video_channel: "Test Channel",
+  summary_content: "This is a test summary",
+  created_at: "2024-01-01T00:00:00Z",
 };
 
 const mockMetadata: VideoMetadata = {
-  id: 'abc123',
-  title: 'Test Video',
-  channel: 'Test Channel',
+  id: "abc123",
+  title: "Test Video",
+  channel: "Test Channel",
   duration: 600,
-  thumbnail: 'https://img.youtube.com/vi/abc123/0.jpg',
+  thumbnail: "https://img.youtube.com/vi/abc123/0.jpg",
 };
 
 beforeEach(() => {
@@ -59,15 +59,15 @@ beforeEach(() => {
 // INITIAL STATE
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('Initial State', () => {
-  it('should have correct initial state', () => {
+describe("Initial State", () => {
+  it("should have correct initial state", () => {
     const state = useAnalysisStore.getState();
 
-    expect(state.status).toBe('idle');
+    expect(state.status).toBe("idle");
     expect(state.progress).toBe(0);
-    expect(state.progressMessage).toBe('');
+    expect(state.progressMessage).toBe("");
     expect(state.currentSummary).toBeNull();
-    expect(state.streamingText).toBe('');
+    expect(state.streamingText).toBe("");
     expect(state.metadata).toBeNull();
     expect(state.error).toBeNull();
     expect(state.recentSummaries).toEqual([]);
@@ -80,13 +80,13 @@ describe('Initial State', () => {
     expect(state.playerStartTime).toBe(0);
   });
 
-  it('should have default preferences', () => {
+  it("should have default preferences", () => {
     const { preferences } = useAnalysisStore.getState();
 
-    expect(preferences.mode).toBe('standard');
-    expect(preferences.lang).toBe('fr');
-    expect(preferences.model).toBe('mistral-small-2603');
-    expect(preferences.category).toBe('auto');
+    expect(preferences.mode).toBe("standard");
+    expect(preferences.lang).toBe("fr");
+    expect(preferences.model).toBe("mistral-small-2603");
+    expect(preferences.category).toBe("auto");
     expect(preferences.webEnrich).toBe(false);
   });
 });
@@ -95,78 +95,78 @@ describe('Initial State', () => {
 // ANALYSIS ACTIONS
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('Analysis Actions', () => {
-  it('startAnalysis sets status to loading', () => {
-    useAnalysisStore.getState().startAnalysis('video123');
+describe("Analysis Actions", () => {
+  it("startAnalysis sets status to loading", () => {
+    useAnalysisStore.getState().startAnalysis("video123");
 
     const state = useAnalysisStore.getState();
-    expect(state.status).toBe('loading');
+    expect(state.status).toBe("loading");
     expect(state.progress).toBe(0);
     expect(state.error).toBeNull();
     expect(state.metadata).toBeNull();
     expect(state.chatMessages).toEqual([]);
   });
 
-  it('updateProgress updates progress and message', () => {
-    useAnalysisStore.getState().startAnalysis('video123');
-    useAnalysisStore.getState().updateProgress(25, 'Extracting transcript...');
+  it("updateProgress updates progress and message", () => {
+    useAnalysisStore.getState().startAnalysis("video123");
+    useAnalysisStore.getState().updateProgress(25, "Extracting transcript...");
 
     const state = useAnalysisStore.getState();
     expect(state.progress).toBe(25);
-    expect(state.progressMessage).toBe('Extracting transcript...');
+    expect(state.progressMessage).toBe("Extracting transcript...");
   });
 
-  it('updateProgress switches to streaming when progress > 30', () => {
-    useAnalysisStore.getState().startAnalysis('video123');
-    expect(useAnalysisStore.getState().status).toBe('loading');
+  it("updateProgress switches to streaming when progress > 30", () => {
+    useAnalysisStore.getState().startAnalysis("video123");
+    expect(useAnalysisStore.getState().status).toBe("loading");
 
-    useAnalysisStore.getState().updateProgress(35, 'Generating summary...');
-    expect(useAnalysisStore.getState().status).toBe('streaming');
+    useAnalysisStore.getState().updateProgress(35, "Generating summary...");
+    expect(useAnalysisStore.getState().status).toBe("streaming");
   });
 
-  it('appendStreamingText appends text and sets streaming status', () => {
-    useAnalysisStore.getState().startAnalysis('video123');
-    useAnalysisStore.getState().appendStreamingText('Hello ');
-    useAnalysisStore.getState().appendStreamingText('world');
+  it("appendStreamingText appends text and sets streaming status", () => {
+    useAnalysisStore.getState().startAnalysis("video123");
+    useAnalysisStore.getState().appendStreamingText("Hello ");
+    useAnalysisStore.getState().appendStreamingText("world");
 
     const state = useAnalysisStore.getState();
-    expect(state.streamingText).toBe('Hello world');
-    expect(state.status).toBe('streaming');
+    expect(state.streamingText).toBe("Hello world");
+    expect(state.status).toBe("streaming");
   });
 
-  it('setMetadata stores video metadata', () => {
+  it("setMetadata stores video metadata", () => {
     useAnalysisStore.getState().setMetadata(mockMetadata);
 
     expect(useAnalysisStore.getState().metadata).toEqual(mockMetadata);
   });
 
-  it('completeAnalysis sets status to complete and stores summary', () => {
-    useAnalysisStore.getState().startAnalysis('video123');
-    useAnalysisStore.getState().appendStreamingText('some text');
+  it("completeAnalysis sets status to complete and stores summary", () => {
+    useAnalysisStore.getState().startAnalysis("video123");
+    useAnalysisStore.getState().appendStreamingText("some text");
     useAnalysisStore.getState().completeAnalysis(mockSummary);
 
     const state = useAnalysisStore.getState();
-    expect(state.status).toBe('complete');
+    expect(state.status).toBe("complete");
     expect(state.progress).toBe(100);
     expect(state.currentSummary).toEqual(mockSummary);
-    expect(state.streamingText).toBe('');
+    expect(state.streamingText).toBe("");
   });
 
-  it('completeAnalysis adds summary to recentSummaries', () => {
+  it("completeAnalysis adds summary to recentSummaries", () => {
     useAnalysisStore.getState().completeAnalysis(mockSummary);
 
     expect(useAnalysisStore.getState().recentSummaries).toHaveLength(1);
     expect(useAnalysisStore.getState().recentSummaries[0].id).toBe(1);
   });
 
-  it('completeAnalysis does not duplicate in recentSummaries', () => {
+  it("completeAnalysis does not duplicate in recentSummaries", () => {
     useAnalysisStore.getState().completeAnalysis(mockSummary);
     useAnalysisStore.getState().completeAnalysis(mockSummary);
 
     expect(useAnalysisStore.getState().recentSummaries).toHaveLength(1);
   });
 
-  it('completeAnalysis keeps max 20 recent summaries', () => {
+  it("completeAnalysis keeps max 20 recent summaries", () => {
     for (let i = 0; i < 25; i++) {
       useAnalysisStore.getState().completeAnalysis({ ...mockSummary, id: i });
     }
@@ -176,27 +176,27 @@ describe('Analysis Actions', () => {
     expect(useAnalysisStore.getState().recentSummaries[0].id).toBe(24);
   });
 
-  it('failAnalysis sets error state', () => {
-    useAnalysisStore.getState().startAnalysis('video123');
-    useAnalysisStore.getState().failAnalysis('Video not found');
+  it("failAnalysis sets error state", () => {
+    useAnalysisStore.getState().startAnalysis("video123");
+    useAnalysisStore.getState().failAnalysis("Video not found");
 
     const state = useAnalysisStore.getState();
-    expect(state.status).toBe('error');
-    expect(state.error).toBe('Video not found');
+    expect(state.status).toBe("error");
+    expect(state.error).toBe("Video not found");
   });
 
-  it('resetAnalysis restores idle state', () => {
-    useAnalysisStore.getState().startAnalysis('video123');
-    useAnalysisStore.getState().updateProgress(50, 'Working...');
+  it("resetAnalysis restores idle state", () => {
+    useAnalysisStore.getState().startAnalysis("video123");
+    useAnalysisStore.getState().updateProgress(50, "Working...");
     useAnalysisStore.getState().completeAnalysis(mockSummary);
 
     useAnalysisStore.getState().resetAnalysis();
 
     const state = useAnalysisStore.getState();
-    expect(state.status).toBe('idle');
+    expect(state.status).toBe("idle");
     expect(state.progress).toBe(0);
-    expect(state.progressMessage).toBe('');
-    expect(state.streamingText).toBe('');
+    expect(state.progressMessage).toBe("");
+    expect(state.streamingText).toBe("");
     expect(state.error).toBeNull();
     expect(state.metadata).toBeNull();
     expect(state.currentSummary).toBeNull();
@@ -207,9 +207,11 @@ describe('Analysis Actions', () => {
 // SUMMARY ACTIONS
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('Summary Actions', () => {
-  it('setSummary sets current summary and clears chat', () => {
-    useAnalysisStore.getState().addChatMessage({ role: 'user', content: 'Hello' });
+describe("Summary Actions", () => {
+  it("setSummary sets current summary and clears chat", () => {
+    useAnalysisStore
+      .getState()
+      .addChatMessage({ role: "user", content: "Hello" });
     useAnalysisStore.getState().setSummary(mockSummary);
 
     const state = useAnalysisStore.getState();
@@ -217,14 +219,14 @@ describe('Summary Actions', () => {
     expect(state.chatMessages).toEqual([]);
   });
 
-  it('setSummary with null clears summary', () => {
+  it("setSummary with null clears summary", () => {
     useAnalysisStore.getState().setSummary(mockSummary);
     useAnalysisStore.getState().setSummary(null);
 
     expect(useAnalysisStore.getState().currentSummary).toBeNull();
   });
 
-  it('toggleFavorite toggles current summary favorite', () => {
+  it("toggleFavorite toggles current summary favorite", () => {
     useAnalysisStore.getState().completeAnalysis(mockSummary);
 
     expect(useAnalysisStore.getState().currentSummary?.is_favorite).toBeFalsy();
@@ -232,14 +234,14 @@ describe('Summary Actions', () => {
     expect(useAnalysisStore.getState().currentSummary?.is_favorite).toBe(true);
   });
 
-  it('toggleFavorite adds to favoriteSummaries', () => {
+  it("toggleFavorite adds to favoriteSummaries", () => {
     useAnalysisStore.getState().completeAnalysis(mockSummary);
     useAnalysisStore.getState().toggleFavorite(1);
 
     expect(useAnalysisStore.getState().favoriteSummaries).toHaveLength(1);
   });
 
-  it('toggleFavorite twice removes from favorites', () => {
+  it("toggleFavorite twice removes from favorites", () => {
     useAnalysisStore.getState().completeAnalysis(mockSummary);
     useAnalysisStore.getState().toggleFavorite(1);
     useAnalysisStore.getState().toggleFavorite(1);
@@ -247,7 +249,7 @@ describe('Summary Actions', () => {
     expect(useAnalysisStore.getState().favoriteSummaries).toHaveLength(0);
   });
 
-  it('deleteSummary removes from all lists', () => {
+  it("deleteSummary removes from all lists", () => {
     useAnalysisStore.getState().completeAnalysis(mockSummary);
     useAnalysisStore.getState().toggleFavorite(1);
 
@@ -260,7 +262,7 @@ describe('Summary Actions', () => {
     expect(state.chatMessages).toEqual([]);
   });
 
-  it('addToRecent adds without duplicates', () => {
+  it("addToRecent adds without duplicates", () => {
     useAnalysisStore.getState().addToRecent(mockSummary);
     useAnalysisStore.getState().addToRecent(mockSummary);
 
@@ -272,27 +274,33 @@ describe('Summary Actions', () => {
 // CHAT ACTIONS
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('Chat Actions', () => {
-  it('addChatMessage adds message with auto-generated id and timestamp', () => {
-    useAnalysisStore.getState().addChatMessage({ role: 'user', content: 'Hello' });
+describe("Chat Actions", () => {
+  it("addChatMessage adds message with auto-generated id and timestamp", () => {
+    useAnalysisStore
+      .getState()
+      .addChatMessage({ role: "user", content: "Hello" });
 
     const messages = useAnalysisStore.getState().chatMessages;
     expect(messages).toHaveLength(1);
-    expect(messages[0].role).toBe('user');
-    expect(messages[0].content).toBe('Hello');
+    expect(messages[0].role).toBe("user");
+    expect(messages[0].content).toBe("Hello");
     expect(messages[0].id).toBeDefined();
     expect(messages[0].timestamp).toBeInstanceOf(Date);
   });
 
-  it('clearChat removes all messages', () => {
-    useAnalysisStore.getState().addChatMessage({ role: 'user', content: 'Hello' });
-    useAnalysisStore.getState().addChatMessage({ role: 'assistant', content: 'Hi' });
+  it("clearChat removes all messages", () => {
+    useAnalysisStore
+      .getState()
+      .addChatMessage({ role: "user", content: "Hello" });
+    useAnalysisStore
+      .getState()
+      .addChatMessage({ role: "assistant", content: "Hi" });
     useAnalysisStore.getState().clearChat();
 
     expect(useAnalysisStore.getState().chatMessages).toEqual([]);
   });
 
-  it('setChatLoading sets loading state', () => {
+  it("setChatLoading sets loading state", () => {
     useAnalysisStore.getState().setChatLoading(true);
     expect(useAnalysisStore.getState().chatLoading).toBe(true);
 
@@ -300,7 +308,7 @@ describe('Chat Actions', () => {
     expect(useAnalysisStore.getState().chatLoading).toBe(false);
   });
 
-  it('toggleWebSearch toggles state', () => {
+  it("toggleWebSearch toggles state", () => {
     expect(useAnalysisStore.getState().webSearchEnabled).toBe(false);
     useAnalysisStore.getState().toggleWebSearch();
     expect(useAnalysisStore.getState().webSearchEnabled).toBe(true);
@@ -308,7 +316,7 @@ describe('Chat Actions', () => {
     expect(useAnalysisStore.getState().webSearchEnabled).toBe(false);
   });
 
-  it('toggleChat toggles state', () => {
+  it("toggleChat toggles state", () => {
     expect(useAnalysisStore.getState().chatOpen).toBe(false);
     useAnalysisStore.getState().toggleChat();
     expect(useAnalysisStore.getState().chatOpen).toBe(true);
@@ -319,8 +327,8 @@ describe('Chat Actions', () => {
 // PLAYER ACTIONS
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('Player Actions', () => {
-  it('showPlayer sets visible and start time', () => {
+describe("Player Actions", () => {
+  it("showPlayer sets visible and start time", () => {
     useAnalysisStore.getState().showPlayer(120);
 
     const state = useAnalysisStore.getState();
@@ -328,21 +336,21 @@ describe('Player Actions', () => {
     expect(state.playerStartTime).toBe(120);
   });
 
-  it('showPlayer defaults start time to 0', () => {
+  it("showPlayer defaults start time to 0", () => {
     useAnalysisStore.getState().showPlayer();
 
     expect(useAnalysisStore.getState().playerStartTime).toBe(0);
     expect(useAnalysisStore.getState().playerVisible).toBe(true);
   });
 
-  it('hidePlayer hides player', () => {
+  it("hidePlayer hides player", () => {
     useAnalysisStore.getState().showPlayer(60);
     useAnalysisStore.getState().hidePlayer();
 
     expect(useAnalysisStore.getState().playerVisible).toBe(false);
   });
 
-  it('seekTo updates start time', () => {
+  it("seekTo updates start time", () => {
     useAnalysisStore.getState().seekTo(300);
 
     expect(useAnalysisStore.getState().playerStartTime).toBe(300);
@@ -353,23 +361,27 @@ describe('Player Actions', () => {
 // PREFERENCES ACTIONS
 // ═══════════════════════════════════════════════════════════════════════
 
-describe('Preferences Actions', () => {
-  it('setPreferences updates partially', () => {
-    useAnalysisStore.getState().setPreferences({ lang: 'en', mode: 'expert' });
+describe("Preferences Actions", () => {
+  it("setPreferences updates partially", () => {
+    useAnalysisStore.getState().setPreferences({ lang: "en", mode: "expert" });
 
     const prefs = useAnalysisStore.getState().preferences;
-    expect(prefs.lang).toBe('en');
-    expect(prefs.mode).toBe('expert');
-    expect(prefs.model).toBe('mistral-small-2603'); // unchanged
+    expect(prefs.lang).toBe("en");
+    expect(prefs.mode).toBe("expert");
+    expect(prefs.model).toBe("mistral-small-2603"); // unchanged
   });
 
-  it('resetPreferences restores defaults', () => {
-    useAnalysisStore.getState().setPreferences({ lang: 'en', mode: 'expert', model: 'mistral-large-2512' });
+  it("resetPreferences restores defaults", () => {
+    useAnalysisStore.getState().setPreferences({
+      lang: "en",
+      mode: "expert",
+      model: "mistral-large-2512",
+    });
     useAnalysisStore.getState().resetPreferences();
 
     const prefs = useAnalysisStore.getState().preferences;
-    expect(prefs.mode).toBe('standard');
-    expect(prefs.lang).toBe('fr');
-    expect(prefs.model).toBe('mistral-small-2603');
+    expect(prefs.mode).toBe("standard");
+    expect(prefs.lang).toBe("fr");
+    expect(prefs.model).toBe("mistral-small-2603");
   });
 });

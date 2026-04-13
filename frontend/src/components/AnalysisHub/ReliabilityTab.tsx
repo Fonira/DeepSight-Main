@@ -3,19 +3,19 @@
  * Onglet Fiabilité : fraîcheur + fact-check + deep research sources
  */
 
-import React from 'react';
-import { Shield } from 'lucide-react';
-import { FreshnessIndicator } from '../FreshnessIndicator';
-import { FactCheckLite } from '../FactCheckLite';
-import { DeepResearchSources } from '../SummaryReader';
-import { sanitizeTitle } from '../../utils/sanitize';
-import type { Summary, ReliabilityResult } from '../../services/api';
+import React from "react";
+import { Shield } from "lucide-react";
+import { FreshnessIndicator } from "../FreshnessIndicator";
+import { FactCheckLite } from "../FactCheckLite";
+import { DeepResearchSources } from "../SummaryReader";
+import { sanitizeTitle } from "../../utils/sanitize";
+import type { Summary, ReliabilityResult } from "../../services/api";
 
 interface ReliabilityTabProps {
   selectedSummary: Summary;
   reliabilityData: ReliabilityResult | null;
   reliabilityLoading: boolean;
-  language: 'fr' | 'en';
+  language: "fr" | "en";
   onOpenChat: (prefillMessage?: string) => void;
   onNavigate: (path: string) => void;
 }
@@ -46,12 +46,12 @@ export const ReliabilityTab: React.FC<ReliabilityTabProps> = ({
           <Shield className="w-8 h-8 text-violet-400" />
         </div>
         <h3 className="text-lg font-semibold text-text-primary mb-2">
-          {language === 'fr' ? 'Données de fiabilité' : 'Reliability Data'}
+          {language === "fr" ? "Données de fiabilité" : "Reliability Data"}
         </h3>
         <p className="text-text-secondary text-sm text-center max-w-md">
-          {language === 'fr'
-            ? 'Les données de fiabilité ne sont pas encore disponibles pour cette analyse.'
-            : 'Reliability data is not yet available for this analysis.'}
+          {language === "fr"
+            ? "Les données de fiabilité ne sont pas encore disponibles pour cette analyse."
+            : "Reliability data is not yet available for this analysis."}
         </p>
       </div>
     );
@@ -60,16 +60,16 @@ export const ReliabilityTab: React.FC<ReliabilityTabProps> = ({
   return (
     <div className="p-4 sm:p-6 space-y-6">
       {/* Indicateur de fraîcheur */}
-      {reliabilityData?.freshness?.warning_level !== 'none' && (
+      {reliabilityData?.freshness?.warning_level !== "none" && (
         <FreshnessIndicator
           summaryId={selectedSummary.id}
           videoTitle={sanitizeTitle(selectedSummary.video_title)}
           freshnessData={reliabilityData?.freshness}
           onRequestVerification={() => {
             onOpenChat(
-              language === 'fr'
-                ? 'Peux-tu vérifier si les informations de cette vidéo sont toujours à jour ?'
-                : 'Can you verify if the information in this video is still up to date?'
+              language === "fr"
+                ? "Peux-tu vérifier si les informations de cette vidéo sont toujours à jour ?"
+                : "Can you verify if the information in this video is still up to date?",
             );
           }}
         />
@@ -80,7 +80,7 @@ export const ReliabilityTab: React.FC<ReliabilityTabProps> = ({
         <FactCheckLite
           summaryId={selectedSummary.id}
           reliabilityData={reliabilityData}
-          onUpgrade={() => onNavigate('/pricing')}
+          onUpgrade={() => onNavigate("/pricing")}
         />
       )}
 
@@ -93,17 +93,18 @@ export const ReliabilityTab: React.FC<ReliabilityTabProps> = ({
       )}
 
       {/* Empty reliability sections */}
-      {!reliabilityData?.freshness?.warning_level || reliabilityData?.freshness?.warning_level === 'none' ? (
-        !reliabilityData?.fact_check_lite && (
-          <div className="text-center py-8">
-            <p className="text-text-tertiary text-sm">
-              {language === 'fr'
-                ? 'Aucun problème de fiabilité détecté pour cette vidéo.'
-                : 'No reliability issues detected for this video.'}
-            </p>
-          </div>
-        )
-      ) : null}
+      {!reliabilityData?.freshness?.warning_level ||
+      reliabilityData?.freshness?.warning_level === "none"
+        ? !reliabilityData?.fact_check_lite && (
+            <div className="text-center py-8">
+              <p className="text-text-tertiary text-sm">
+                {language === "fr"
+                  ? "Aucun problème de fiabilité détecté pour cette vidéo."
+                  : "No reliability issues detected for this video."}
+              </p>
+            </div>
+          )
+        : null}
     </div>
   );
 };

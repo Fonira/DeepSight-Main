@@ -2,7 +2,7 @@
  * 🔍 SENTRY CONFIGURATION — Error Monitoring for Deep Sight
  * ═══════════════════════════════════════════════════════════════════════════════
  * Configuration Sentry pour le monitoring des erreurs frontend
- * 
+ *
  * Pour activer Sentry:
  * 1. Créer un compte sur https://sentry.io
  * 2. Créer un projet React
@@ -11,11 +11,11 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import * as Sentry from '@sentry/react';
+import * as Sentry from "@sentry/react";
 
 // Configuration
-const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN || '';
-const ENVIRONMENT = import.meta.env.MODE || 'development';
+const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN || "";
+const ENVIRONMENT = import.meta.env.MODE || "development";
 const APP_VERSION = __APP_VERSION__;
 
 // Flag pour savoir si Sentry est activé
@@ -34,7 +34,7 @@ export function initSentry(): void {
       dsn: SENTRY_DSN,
       environment: ENVIRONMENT,
       release: `deepsight-frontend@${APP_VERSION}`,
-      
+
       // Intégrations
       integrations: [
         // Capture automatique des erreurs React
@@ -45,15 +45,15 @@ export function initSentry(): void {
           blockAllMedia: true,
         }),
       ],
-      
+
       // Échantillonnage
-      tracesSampleRate: ENVIRONMENT === 'production' ? 0.1 : 1.0,
+      tracesSampleRate: ENVIRONMENT === "production" ? 0.1 : 1.0,
       replaysSessionSampleRate: 0.1,
       replaysOnErrorSampleRate: 1.0,
-      
+
       // Ne pas envoyer les données personnelles
       sendDefaultPii: false,
-      
+
       // Filtrer certaines erreurs
       beforeSend(event, hint) {
         const error = hint.originalException;
@@ -62,25 +62,27 @@ export function initSentry(): void {
         if (error instanceof Error) {
           const message = error.message.toLowerCase();
           if (
-            message.includes('cancelled') ||
-            message.includes('aborted') ||
-            message.includes('loading chunk') ||
-            message.includes('loading css chunk') ||
-            message.includes('dynamically imported module')
+            message.includes("cancelled") ||
+            message.includes("aborted") ||
+            message.includes("loading chunk") ||
+            message.includes("loading css chunk") ||
+            message.includes("dynamically imported module")
           ) {
             return null;
           }
         }
 
         // Ignorer les erreurs 401/403 (pas des bugs)
-        if (event.exception?.values?.[0]?.value?.includes('401') ||
-            event.exception?.values?.[0]?.value?.includes('403')) {
+        if (
+          event.exception?.values?.[0]?.value?.includes("401") ||
+          event.exception?.values?.[0]?.value?.includes("403")
+        ) {
           return null;
         }
 
         return event;
       },
-      
+
       // Ignorer certaines URLs
       denyUrls: [
         // Extensions Chrome
@@ -91,18 +93,20 @@ export function initSentry(): void {
         /^moz-extension:\/\//i,
       ],
     });
-
   } catch (error) {
-    console.error('❌ Failed to initialize Sentry:', error);
+    console.error("❌ Failed to initialize Sentry:", error);
   }
 }
 
 /**
  * Capture une erreur manuellement
  */
-export function captureError(error: Error, context?: Record<string, unknown>): void {
+export function captureError(
+  error: Error,
+  context?: Record<string, unknown>,
+): void {
   if (!isSentryEnabled) {
-    console.error('Error (Sentry disabled):', error, context);
+    console.error("Error (Sentry disabled):", error, context);
     return;
   }
 
@@ -119,7 +123,10 @@ export function captureError(error: Error, context?: Record<string, unknown>): v
 /**
  * Capture un message (pour le logging)
  */
-export function captureMessage(message: string, level: 'info' | 'warning' | 'error' = 'info'): void {
+export function captureMessage(
+  message: string,
+  level: "info" | "warning" | "error" = "info",
+): void {
   if (!isSentryEnabled) {
     console.log(`[${level}] ${message}`);
     return;
@@ -131,7 +138,9 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
 /**
  * Définit l'utilisateur actuel pour le contexte Sentry
  */
-export function setUser(user: { id: number; email: string; plan?: string } | null): void {
+export function setUser(
+  user: { id: number; email: string; plan?: string } | null,
+): void {
   if (!isSentryEnabled) return;
 
   if (user) {
@@ -139,7 +148,7 @@ export function setUser(user: { id: number; email: string; plan?: string } | nul
       id: String(user.id),
       email: user.email,
       // Custom data
-      plan: user.plan || 'free',
+      plan: user.plan || "free",
     });
   } else {
     Sentry.setUser(null);
@@ -151,8 +160,8 @@ export function setUser(user: { id: number; email: string; plan?: string } | nul
  */
 export function addBreadcrumb(
   message: string,
-  category: string = 'user-action',
-  data?: Record<string, unknown>
+  category: string = "user-action",
+  data?: Record<string, unknown>,
 ): void {
   if (!isSentryEnabled) return;
 
@@ -160,7 +169,7 @@ export function addBreadcrumb(
     message,
     category,
     data,
-    level: 'info',
+    level: "info",
   });
 }
 

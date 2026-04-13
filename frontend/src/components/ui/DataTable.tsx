@@ -3,9 +3,15 @@
  * Sticky header, row hover, animated pagination, empty state.
  */
 
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Inbox } from 'lucide-react';
+import React, { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Inbox,
+} from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -14,7 +20,7 @@ export interface Column<T> {
   header: string;
   render: (row: T, index: number) => React.ReactNode;
   width?: string;
-  align?: 'left' | 'center' | 'right';
+  align?: "left" | "center" | "right";
   sortable?: boolean;
 }
 
@@ -38,18 +44,18 @@ export function DataTable<T>({
   data,
   pageSize = 10,
   emptyIcon,
-  emptyTitle = 'No data',
-  emptyDescription = 'There are no items to display.',
+  emptyTitle = "No data",
+  emptyDescription = "There are no items to display.",
   onRowClick,
   rowKey,
   loading,
-  className = '',
+  className = "",
 }: DataTableProps<T>) {
   const [page, setPage] = useState(0);
   const totalPages = Math.ceil(data.length / pageSize);
   const pageData = useMemo(
     () => data.slice(page * pageSize, (page + 1) * pageSize),
-    [data, page, pageSize]
+    [data, page, pageSize],
   );
 
   // Reset page if data shrinks
@@ -58,23 +64,31 @@ export function DataTable<T>({
   }, [totalPages, page]);
 
   const alignClass = (a?: string) =>
-    a === 'center' ? 'text-center' : a === 'right' ? 'text-right' : 'text-left';
+    a === "center" ? "text-center" : a === "right" ? "text-right" : "text-left";
 
   // Empty state
   if (!loading && data.length === 0) {
     return (
-      <div className={`rounded-lg border border-border-subtle bg-bg-secondary p-12 text-center ${className}`}>
+      <div
+        className={`rounded-lg border border-border-subtle bg-bg-secondary p-12 text-center ${className}`}
+      >
         <div className="w-16 h-16 rounded-2xl bg-bg-tertiary flex items-center justify-center mx-auto mb-4">
           {emptyIcon || <Inbox className="w-8 h-8 text-text-muted" />}
         </div>
-        <h3 className="text-base font-semibold text-text-primary mb-1">{emptyTitle}</h3>
-        <p className="text-sm text-text-tertiary max-w-sm mx-auto">{emptyDescription}</p>
+        <h3 className="text-base font-semibold text-text-primary mb-1">
+          {emptyTitle}
+        </h3>
+        <p className="text-sm text-text-tertiary max-w-sm mx-auto">
+          {emptyDescription}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className={`rounded-lg border border-border-subtle bg-bg-secondary overflow-hidden ${className}`}>
+    <div
+      className={`rounded-lg border border-border-subtle bg-bg-secondary overflow-hidden ${className}`}
+    >
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           {/* Sticky Header */}
@@ -110,7 +124,7 @@ export function DataTable<T>({
                   className={`
                     border-b border-border-subtle last:border-b-0
                     transition-colors duration-100
-                    ${onRowClick ? 'cursor-pointer hover:bg-bg-hover' : ''}
+                    ${onRowClick ? "cursor-pointer hover:bg-bg-hover" : ""}
                   `}
                 >
                   {columns.map((col) => (
@@ -132,7 +146,8 @@ export function DataTable<T>({
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-3 border-t border-border-subtle bg-bg-tertiary/30">
           <span className="text-xs text-text-tertiary tabular-nums">
-            {page * pageSize + 1}–{Math.min((page + 1) * pageSize, data.length)} of {data.length}
+            {page * pageSize + 1}–{Math.min((page + 1) * pageSize, data.length)}{" "}
+            of {data.length}
           </span>
 
           <div className="flex items-center gap-1">
@@ -176,11 +191,9 @@ export function DataTable<T>({
   );
 }
 
-const PaginationButton: React.FC<React.ButtonHTMLAttributes<HTMLButtonElement>> = ({
-  children,
-  className = '',
-  ...props
-}) => (
+const PaginationButton: React.FC<
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+> = ({ children, className = "", ...props }) => (
   <button
     className={`
       w-7 h-7 rounded-md flex items-center justify-center

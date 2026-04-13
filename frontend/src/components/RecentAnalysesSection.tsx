@@ -5,47 +5,53 @@
  * Objectif : accès rapide sans pousser Tournesol hors de vue.
  */
 
-import React, { useState, useEffect } from 'react';
-import { Clock, Play, History } from 'lucide-react';
-import { videoApi } from '../services/api';
-import type { Summary } from '../services/api';
-import { ThumbnailImage } from './ThumbnailImage';
-import { sanitizeTitle } from '../utils/sanitize';
+import React, { useState, useEffect } from "react";
+import { Clock, Play, History } from "lucide-react";
+import { videoApi } from "../services/api";
+import type { Summary } from "../services/api";
+import { ThumbnailImage } from "./ThumbnailImage";
+import { sanitizeTitle } from "../utils/sanitize";
 
 interface RecentAnalysesSectionProps {
-  language: 'fr' | 'en';
+  language: "fr" | "en";
   onVideoSelect: (videoId: string) => void;
   /** Navigate to the analysis detail (e.g. /history?open=summaryId) */
   onOpenAnalysis?: (summaryId: number, videoId: string) => void;
   hidden?: boolean;
 }
 
-function formatRelativeTime(dateStr: string, lang: 'fr' | 'en'): string {
+function formatRelativeTime(dateStr: string, lang: "fr" | "en"): string {
   const diffMs = Date.now() - new Date(dateStr).getTime();
   const diffMin = Math.floor(diffMs / 60000);
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (lang === 'fr') {
-    if (diffMin < 1) return 'à l\'instant';
+  if (lang === "fr") {
+    if (diffMin < 1) return "à l'instant";
     if (diffMin < 60) return `${diffMin}min`;
     if (diffHours < 24) return `${diffHours}h`;
-    if (diffDays === 1) return 'hier';
+    if (diffDays === 1) return "hier";
     if (diffDays < 7) return `${diffDays}j`;
-    return new Date(dateStr).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    return new Date(dateStr).toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "short",
+    });
   }
-  if (diffMin < 1) return 'now';
+  if (diffMin < 1) return "now";
   if (diffMin < 60) return `${diffMin}m`;
   if (diffHours < 24) return `${diffHours}h`;
-  if (diffDays === 1) return 'yesterday';
+  if (diffDays === 1) return "yesterday";
   if (diffDays < 7) return `${diffDays}d`;
-  return new Date(dateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    day: "numeric",
+    month: "short",
+  });
 }
 
 function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
+  return `${m}:${String(s).padStart(2, "0")}`;
 }
 
 export const RecentAnalysesSection: React.FC<RecentAnalysesSectionProps> = ({
@@ -70,7 +76,9 @@ export const RecentAnalysesSection: React.FC<RecentAnalysesSectionProps> = ({
       }
     };
     fetchRecent();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (hidden || loading || recent.length === 0) return null;
@@ -81,7 +89,7 @@ export const RecentAnalysesSection: React.FC<RecentAnalysesSectionProps> = ({
       <div className="flex items-center gap-2 mb-3">
         <History className="w-4 h-4 text-text-tertiary" />
         <span className="text-sm font-medium text-text-secondary">
-          {language === 'fr' ? 'Récents' : 'Recent'}
+          {language === "fr" ? "Récents" : "Recent"}
         </span>
       </div>
 
@@ -90,7 +98,11 @@ export const RecentAnalysesSection: React.FC<RecentAnalysesSectionProps> = ({
         {recent.map((item) => (
           <button
             key={item.id}
-            onClick={() => onOpenAnalysis ? onOpenAnalysis(item.id, item.video_id) : onVideoSelect(item.video_id)}
+            onClick={() =>
+              onOpenAnalysis
+                ? onOpenAnalysis(item.id, item.video_id)
+                : onVideoSelect(item.video_id)
+            }
             className="group flex items-center gap-3 p-2 rounded-xl bg-bg-secondary/50 border border-border-subtle hover:border-accent-primary/30 hover:bg-bg-secondary transition-all duration-200 text-left"
           >
             {/* Mini thumbnail */}
@@ -120,7 +132,9 @@ export const RecentAnalysesSection: React.FC<RecentAnalysesSectionProps> = ({
                 {sanitizeTitle(item.video_title)}
               </h3>
               <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-text-tertiary">
-                <span className="truncate">{sanitizeTitle(item.video_channel)}</span>
+                <span className="truncate">
+                  {sanitizeTitle(item.video_channel)}
+                </span>
                 <span className="flex-shrink-0">·</span>
                 <span className="flex-shrink-0 flex items-center gap-0.5">
                   <Clock className="w-2.5 h-2.5" />

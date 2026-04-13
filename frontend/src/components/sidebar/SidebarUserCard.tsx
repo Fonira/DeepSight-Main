@@ -53,7 +53,9 @@ export const SidebarUserCard: React.FC<SidebarUserCardProps> = ({
 }) => {
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentAvatar, setCurrentAvatar] = useState<string | null>(avatarUrl || null);
+  const [currentAvatar, setCurrentAvatar] = useState<string | null>(
+    avatarUrl || null,
+  );
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   // ═══════════════════════════════════════════════════════════════════════════════
@@ -65,10 +67,10 @@ export const SidebarUserCard: React.FC<SidebarUserCardProps> = ({
     if (avatarUrl !== currentAvatar) {
       setImageError(false);
       setIsLoading(true);
-      
+
       // Animation de transition
       setIsTransitioning(true);
-      
+
       const timeout = setTimeout(() => {
         setCurrentAvatar(avatarUrl || null);
         setIsTransitioning(false);
@@ -82,25 +84,30 @@ export const SidebarUserCard: React.FC<SidebarUserCardProps> = ({
   // 🎨 HELPERS MÉMORISÉS
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  const planConfig = useMemo(() => ({
-    variant: (() => {
-      switch (plan) {
-        case "pro":
-          return "warning" as const;
-        default:
-          return "default" as const;
-      }
-    })(),
-    label: (() => {
-      switch (plan) {
-        case "pro": return "PRO";
-        default: return "FREE";
-      }
-    })(),
-    glowColor: PLAN_GLOW_COLORS[plan] || PLAN_GLOW_COLORS.free,
-    borderColor: PLAN_BORDER_COLORS[plan] || PLAN_BORDER_COLORS.free,
-    hasGlow: ["pro"].includes(plan),
-  }), [plan]);
+  const planConfig = useMemo(
+    () => ({
+      variant: (() => {
+        switch (plan) {
+          case "pro":
+            return "warning" as const;
+          default:
+            return "default" as const;
+        }
+      })(),
+      label: (() => {
+        switch (plan) {
+          case "pro":
+            return "PRO";
+          default:
+            return "FREE";
+        }
+      })(),
+      glowColor: PLAN_GLOW_COLORS[plan] || PLAN_GLOW_COLORS.free,
+      borderColor: PLAN_BORDER_COLORS[plan] || PLAN_BORDER_COLORS.free,
+      hasGlow: ["pro"].includes(plan),
+    }),
+    [plan],
+  );
 
   // Génération des initiales
   const initials = useMemo(() => {
@@ -158,18 +165,21 @@ export const SidebarUserCard: React.FC<SidebarUserCardProps> = ({
   // 🎬 STYLES DYNAMIQUES
   // ═══════════════════════════════════════════════════════════════════════════════
 
-  const avatarContainerStyle = useMemo(() => ({
-    borderColor: planConfig.borderColor,
-    background: shouldShowInitials
-      ? `linear-gradient(135deg, ${gradientColors[0]} 0%, ${gradientColors[1]} 100%)`
-      : "transparent",
-    boxShadow: planConfig.hasGlow
-      ? `0 0 15px ${planConfig.glowColor}, 0 0 30px ${planConfig.glowColor}`
-      : `0 0 10px rgba(212, 165, 116, 0.3)`,
-    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-    opacity: isTransitioning ? 0.6 : 1,
-    transform: isTransitioning ? "scale(0.92)" : "scale(1)",
-  }), [planConfig, shouldShowInitials, gradientColors, isTransitioning]);
+  const avatarContainerStyle = useMemo(
+    () => ({
+      borderColor: planConfig.borderColor,
+      background: shouldShowInitials
+        ? `linear-gradient(135deg, ${gradientColors[0]} 0%, ${gradientColors[1]} 100%)`
+        : "transparent",
+      boxShadow: planConfig.hasGlow
+        ? `0 0 15px ${planConfig.glowColor}, 0 0 30px ${planConfig.glowColor}`
+        : `0 0 10px rgba(212, 165, 116, 0.3)`,
+      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+      opacity: isTransitioning ? 0.6 : 1,
+      transform: isTransitioning ? "scale(0.92)" : "scale(1)",
+    }),
+    [planConfig, shouldShowInitials, gradientColors, isTransitioning],
+  );
 
   // ═══════════════════════════════════════════════════════════════════════════════
   // 🎨 RENDU
@@ -251,7 +261,10 @@ export const SidebarUserCard: React.FC<SidebarUserCardProps> = ({
             >
               {username}
             </p>
-            <Badge variant={planConfig.variant} className="text-[10px] px-2 py-0.5">
+            <Badge
+              variant={planConfig.variant}
+              className="text-[10px] px-2 py-0.5"
+            >
               {planConfig.label}
             </Badge>
           </div>

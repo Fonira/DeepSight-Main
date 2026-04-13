@@ -11,14 +11,14 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   Play as PlayIcon,
   Pause as PauseIcon,
   Volume2 as SpeakerWaveIcon,
   VolumeX as SpeakerXMarkIcon,
-} from 'lucide-react';
-import { DeepSightSpinnerMicro } from './ui/DeepSightSpinner';
+} from "lucide-react";
+import { DeepSightSpinnerMicro } from "./ui/DeepSightSpinner";
 
 interface AudioPlayerProps {
   /** Audio source URL */
@@ -41,16 +41,16 @@ const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
 export const AudioPlayer: React.FC<AudioPlayerProps> = ({
   src,
-  title = 'Audio',
+  title = "Audio",
   compact = false,
   autoPlay = false,
   onEnded,
   onError,
-  className = '',
+  className = "",
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
-  
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(0);
@@ -61,10 +61,10 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
   // Format time as MM:SS
   const formatTime = useCallback((time: number): string => {
-    if (!isFinite(time) || isNaN(time)) return '0:00';
+    if (!isFinite(time) || isNaN(time)) return "0:00";
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   }, []);
 
   // Progress percentage
@@ -82,33 +82,36 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
         await audio.play();
       }
     } catch (err) {
-      console.error('Playback error:', err);
-      setError('Failed to play audio');
-      onError?.('Failed to play audio');
+      console.error("Playback error:", err);
+      setError("Failed to play audio");
+      onError?.("Failed to play audio");
     }
   }, [isPlaying, onError]);
 
   // Seek to position
-  const handleSeek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const audio = audioRef.current;
-    const progressBar = progressRef.current;
-    if (!audio || !progressBar) return;
+  const handleSeek = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      const audio = audioRef.current;
+      const progressBar = progressRef.current;
+      if (!audio || !progressBar) return;
 
-    const rect = progressBar.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const percentage = clickX / rect.width;
-    const newTime = percentage * duration;
+      const rect = progressBar.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const percentage = clickX / rect.width;
+      const newTime = percentage * duration;
 
-    if (isFinite(newTime)) {
-      audio.currentTime = newTime;
-    }
-  }, [duration]);
+      if (isFinite(newTime)) {
+        audio.currentTime = newTime;
+      }
+    },
+    [duration],
+  );
 
   // Toggle mute
   const toggleMute = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    
+
     audio.muted = !isMuted;
     setIsMuted(!isMuted);
   }, [isMuted]);
@@ -121,7 +124,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     const currentIndex = PLAYBACK_SPEEDS.indexOf(playbackSpeed);
     const nextIndex = (currentIndex + 1) % PLAYBACK_SPEEDS.length;
     const newSpeed = PLAYBACK_SPEEDS[nextIndex];
-    
+
     audio.playbackRate = newSpeed;
     setPlaybackSpeed(newSpeed);
   }, [playbackSpeed]);
@@ -135,7 +138,9 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
       setDuration(audio.duration);
       setIsLoading(false);
       if (autoPlay) {
-        audio.play().catch(() => { /* autoplay prevented */ });
+        audio.play().catch(() => {
+          /* autoplay prevented */
+        });
       }
     };
 
@@ -151,7 +156,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     };
 
     const handleError = () => {
-      const errorMsg = 'Failed to load audio';
+      const errorMsg = "Failed to load audio";
       setError(errorMsg);
       setIsLoading(false);
       onError?.(errorMsg);
@@ -160,62 +165,67 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     const handleWaiting = () => setIsLoading(true);
     const handleCanPlay = () => setIsLoading(false);
 
-    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
-    audio.addEventListener('timeupdate', handleTimeUpdate);
-    audio.addEventListener('play', handlePlay);
-    audio.addEventListener('pause', handlePause);
-    audio.addEventListener('ended', handleEnded);
-    audio.addEventListener('error', handleError);
-    audio.addEventListener('waiting', handleWaiting);
-    audio.addEventListener('canplay', handleCanPlay);
+    audio.addEventListener("loadedmetadata", handleLoadedMetadata);
+    audio.addEventListener("timeupdate", handleTimeUpdate);
+    audio.addEventListener("play", handlePlay);
+    audio.addEventListener("pause", handlePause);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
+    audio.addEventListener("waiting", handleWaiting);
+    audio.addEventListener("canplay", handleCanPlay);
 
     return () => {
-      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      audio.removeEventListener('timeupdate', handleTimeUpdate);
-      audio.removeEventListener('play', handlePlay);
-      audio.removeEventListener('pause', handlePause);
-      audio.removeEventListener('ended', handleEnded);
-      audio.removeEventListener('error', handleError);
-      audio.removeEventListener('waiting', handleWaiting);
-      audio.removeEventListener('canplay', handleCanPlay);
+      audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      audio.removeEventListener("timeupdate", handleTimeUpdate);
+      audio.removeEventListener("play", handlePlay);
+      audio.removeEventListener("pause", handlePause);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
+      audio.removeEventListener("waiting", handleWaiting);
+      audio.removeEventListener("canplay", handleCanPlay);
     };
   }, [autoPlay, onEnded, onError]);
 
   // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
         return;
       }
 
       switch (e.code) {
-        case 'Space':
+        case "Space":
           e.preventDefault();
           togglePlay();
           break;
-        case 'ArrowLeft':
+        case "ArrowLeft":
           if (audioRef.current) {
             audioRef.current.currentTime = Math.max(0, currentTime - 10);
           }
           break;
-        case 'ArrowRight':
+        case "ArrowRight":
           if (audioRef.current) {
             audioRef.current.currentTime = Math.min(duration, currentTime + 10);
           }
           break;
-        case 'KeyM':
+        case "KeyM":
           toggleMute();
           break;
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [togglePlay, toggleMute, currentTime, duration]);
 
   if (error) {
     return (
-      <div className={`flex items-center gap-2 text-red-400 text-sm ${className}`}>
+      <div
+        className={`flex items-center gap-2 text-red-400 text-sm ${className}`}
+      >
         <span>⚠️ {error}</span>
       </div>
     );
@@ -226,7 +236,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
     return (
       <div className={`inline-flex items-center gap-2 ${className}`}>
         <audio ref={audioRef} src={src} preload="metadata" />
-        
+
         <button
           onClick={togglePlay}
           disabled={isLoading}
@@ -239,7 +249,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             disabled:opacity-50 disabled:cursor-not-allowed
             focus:outline-none focus:ring-2 focus:ring-gold-primary/50
           `}
-          aria-label={isPlaying ? 'Pause' : 'Play'}
+          aria-label={isPlaying ? "Pause" : "Play"}
           title={title}
         >
           {isLoading ? (
@@ -250,7 +260,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             <PlayIcon className="w-5 h-5 ml-0.5" />
           )}
         </button>
-        
+
         {!isLoading && (
           <span className="text-xs text-gold-muted font-mono">
             {formatTime(currentTime)} / {formatTime(duration)}
@@ -291,7 +301,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             disabled:opacity-50 disabled:cursor-not-allowed
             focus:outline-none focus:ring-2 focus:ring-gold-primary focus:ring-offset-2 focus:ring-offset-deep-bg
           `}
-          aria-label={isPlaying ? 'Pause audio' : 'Play audio'}
+          aria-label={isPlaying ? "Pause audio" : "Play audio"}
         >
           {isLoading ? (
             <DeepSightSpinnerMicro />
@@ -356,7 +366,7 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
             transition-all duration-200
             focus:outline-none focus:ring-2 focus:ring-gold-primary/50
           `}
-          aria-label={isMuted ? 'Unmute' : 'Mute'}
+          aria-label={isMuted ? "Unmute" : "Mute"}
         >
           {isMuted ? (
             <SpeakerXMarkIcon className="w-5 h-5" />

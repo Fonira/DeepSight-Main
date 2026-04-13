@@ -5,8 +5,23 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from "react";
-import { Play, Pause, X, ExternalLink, Volume2, VolumeX, RotateCcw } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
+import {
+  Play,
+  Pause,
+  X,
+  ExternalLink,
+  Volume2,
+  VolumeX,
+  RotateCcw,
+} from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
@@ -41,7 +56,10 @@ declare global {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
-  ({ videoId, initialTime = 0, onClose, onTimeUpdate, className = "" }, ref) => {
+  (
+    { videoId, initialTime = 0, onClose, onTimeUpdate, className = "" },
+    ref,
+  ) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<any>(null);
     const playerDivId = useRef(`yt-player-${videoId}-${Date.now()}`);
@@ -62,7 +80,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
       // Créer un div pour le player
       const playerDiv = document.createElement("div");
       playerDiv.id = playerDivId.current;
-      containerRef.current.innerHTML = '';
+      containerRef.current.innerHTML = "";
       containerRef.current.appendChild(playerDiv);
 
       playerRef.current = new window.YT.Player(playerDivId.current, {
@@ -81,7 +99,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
             setIsReady(true);
             setDuration(event.target.getDuration());
             setIsPlaying(true);
-            
+
             // Start time update interval
             timeUpdateInterval.current = setInterval(() => {
               if (playerRef.current && playerRef.current.getCurrentTime) {
@@ -130,15 +148,18 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
     // 🎮 PLAYER CONTROLS
     // ═══════════════════════════════════════════════════════════════════════════
 
-    const seekTo = useCallback((seconds: number) => {
-      if (playerRef.current && isReady) {
-        playerRef.current.seekTo(seconds, true);
-        setCurrentTime(seconds);
-        if (!isPlaying) {
-          playerRef.current.playVideo();
+    const seekTo = useCallback(
+      (seconds: number) => {
+        if (playerRef.current && isReady) {
+          playerRef.current.seekTo(seconds, true);
+          setCurrentTime(seconds);
+          if (!isPlaying) {
+            playerRef.current.playVideo();
+          }
         }
-      }
-    }, [isReady, isPlaying]);
+      },
+      [isReady, isPlaying],
+    );
 
     const play = useCallback(() => {
       if (playerRef.current && isReady) {
@@ -168,13 +189,17 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
     }, [seekTo]);
 
     // Expose methods via ref
-    useImperativeHandle(ref, () => ({
-      seekTo,
-      play,
-      pause,
-      isPlaying: () => isPlaying,
-      getCurrentTime: () => currentTime,
-    }), [seekTo, play, pause, isPlaying, currentTime]);
+    useImperativeHandle(
+      ref,
+      () => ({
+        seekTo,
+        play,
+        pause,
+        isPlaying: () => isPlaying,
+        getCurrentTime: () => currentTime,
+      }),
+      [seekTo, play, pause, isPlaying, currentTime],
+    );
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 🔧 HELPERS
@@ -184,7 +209,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
       const h = Math.floor(seconds / 3600);
       const m = Math.floor((seconds % 3600) / 60);
       const s = Math.floor(seconds % 60);
-      
+
       if (h > 0) {
         return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
       }
@@ -200,25 +225,25 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
     return (
       <div className={`relative w-full h-full ${className}`}>
         {/* Player Container - Takes full space */}
-        <div 
-          ref={containerRef}
-          className="absolute inset-0 bg-black"
-        />
+        <div ref={containerRef} className="absolute inset-0 bg-black" />
 
         {/* Overlay Controls */}
         <div className="absolute inset-0 pointer-events-none">
           {/* Top bar with close button */}
-          <div 
+          <div
             className="absolute top-0 left-0 right-0 p-3 flex justify-between items-start pointer-events-auto"
             style={{
-              background: 'linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)',
+              background:
+                "linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%)",
             }}
           >
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              <span className="text-xs font-medium text-white/80">En lecture</span>
+              <span className="text-xs font-medium text-white/80">
+                En lecture
+              </span>
             </div>
-            
+
             <div className="flex items-center gap-1">
               <a
                 href={`https://youtube.com/watch?v=${videoId}&t=${Math.floor(currentTime)}`}
@@ -243,14 +268,15 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
           </div>
 
           {/* Bottom bar with controls */}
-          <div 
+          <div
             className="absolute bottom-0 left-0 right-0 p-3 pointer-events-auto"
             style={{
-              background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)',
+              background:
+                "linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)",
             }}
           >
             {/* Progress bar */}
-            <div 
+            <div
               className="h-1 rounded-full overflow-hidden mb-3 cursor-pointer group"
               style={{ background: "rgba(255,255,255,0.2)" }}
               onClick={(e) => {
@@ -259,23 +285,24 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
                 seekTo(percent * duration);
               }}
             >
-              <div 
+              <div
                 className="h-full rounded-full transition-all"
-                style={{ 
+                style={{
                   width: `${progressPercent}%`,
-                  background: "linear-gradient(90deg, #00ffff 0%, #d4a853 100%)",
+                  background:
+                    "linear-gradient(90deg, #00ffff 0%, #d4a853 100%)",
                 }}
               />
             </div>
-            
+
             {/* Controls row */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {/* Play/Pause */}
                 <button
-                  onClick={() => isPlaying ? pause() : play()}
+                  onClick={() => (isPlaying ? pause() : play())}
                   className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-all"
-                  aria-label={isPlaying ? 'Mettre en pause' : 'Lire la vidéo'}
+                  aria-label={isPlaying ? "Mettre en pause" : "Lire la vidéo"}
                 >
                   {isPlaying ? (
                     <Pause className="w-5 h-5" />
@@ -298,9 +325,13 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
                 <button
                   onClick={toggleMute}
                   className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white/70 hover:text-white transition-all"
-                  aria-label={isMuted ? 'Activer le son' : 'Couper le son'}
+                  aria-label={isMuted ? "Activer le son" : "Couper le son"}
                 >
-                  {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                  {isMuted ? (
+                    <VolumeX className="w-4 h-4" />
+                  ) : (
+                    <Volume2 className="w-4 h-4" />
+                  )}
                 </button>
 
                 {/* Time */}
@@ -310,12 +341,12 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
               </div>
 
               {/* Timecode indicator */}
-              <div 
+              <div
                 className="px-3 py-1 rounded-full text-xs font-mono"
                 style={{
-                  background: 'rgba(0, 255, 255, 0.2)',
-                  color: '#00ffff',
-                  border: '1px solid rgba(0, 255, 255, 0.4)',
+                  background: "rgba(0, 255, 255, 0.2)",
+                  color: "#00ffff",
+                  border: "1px solid rgba(0, 255, 255, 0.4)",
                 }}
               >
                 ⏱️ {formatTime(currentTime)}
@@ -325,7 +356,7 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
         </div>
       </div>
     );
-  }
+  },
 );
 
 YouTubePlayer.displayName = "YouTubePlayer";

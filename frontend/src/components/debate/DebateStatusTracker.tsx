@@ -2,11 +2,18 @@
  * DebateStatusTracker — Barre de progression en 5 étapes pour le débat
  */
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Check, Search, BarChart3, Scale, ShieldCheck, XCircle } from 'lucide-react';
-import type { DebateStatus } from '../../types/debate';
-import { DeepSightSpinnerMicro } from '../ui/DeepSightSpinner';
+import React from "react";
+import { motion } from "framer-motion";
+import {
+  Check,
+  Search,
+  BarChart3,
+  Scale,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
+import type { DebateStatus } from "../../types/debate";
+import { DeepSightSpinnerMicro } from "../ui/DeepSightSpinner";
 
 interface DebateStatusTrackerProps {
   status: DebateStatus;
@@ -19,44 +26,48 @@ interface Step {
 }
 
 const STEPS: Step[] = [
-  { key: 'pending', label: 'En attente', icon: BarChart3 },
-  { key: 'searching', label: 'Recherche vidéo opposée', icon: Search },
-  { key: 'analyzing_b', label: 'Analyse vidéo B', icon: BarChart3 },
-  { key: 'comparing', label: 'Analyse comparative', icon: Scale },
-  { key: 'fact_checking', label: 'Fact-checking', icon: ShieldCheck },
+  { key: "pending", label: "En attente", icon: BarChart3 },
+  { key: "searching", label: "Recherche vidéo opposée", icon: Search },
+  { key: "analyzing_b", label: "Analyse vidéo B", icon: BarChart3 },
+  { key: "comparing", label: "Analyse comparative", icon: Scale },
+  { key: "fact_checking", label: "Fact-checking", icon: ShieldCheck },
 ];
 
 const STATUS_ORDER: DebateStatus[] = [
-  'pending',
-  'searching',
-  'analyzing_b',
-  'comparing',
-  'fact_checking',
-  'completed',
+  "pending",
+  "searching",
+  "analyzing_b",
+  "comparing",
+  "fact_checking",
+  "completed",
 ];
 
 function getStepState(
   stepKey: DebateStatus,
-  currentStatus: DebateStatus
-): 'completed' | 'active' | 'pending' | 'failed' {
+  currentStatus: DebateStatus,
+): "completed" | "active" | "pending" | "failed" {
   const stepIdx = STATUS_ORDER.indexOf(stepKey);
   const currentIdx = STATUS_ORDER.indexOf(currentStatus);
 
-  if (currentStatus === 'completed') return 'completed';
-  if (currentStatus === 'failed') {
-    if (stepIdx < currentIdx) return 'completed';
-    if (stepIdx === currentIdx) return 'failed';
-    return 'pending';
+  if (currentStatus === "completed") return "completed";
+  if (currentStatus === "failed") {
+    if (stepIdx < currentIdx) return "completed";
+    if (stepIdx === currentIdx) return "failed";
+    return "pending";
   }
-  if (stepIdx < currentIdx) return 'completed';
-  if (stepIdx === currentIdx) return 'active';
-  return 'pending';
+  if (stepIdx < currentIdx) return "completed";
+  if (stepIdx === currentIdx) return "active";
+  return "pending";
 }
 
-export const DebateStatusTracker: React.FC<DebateStatusTrackerProps> = ({ status }) => {
+export const DebateStatusTracker: React.FC<DebateStatusTrackerProps> = ({
+  status,
+}) => {
   return (
     <div className="rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl p-5">
-      <h3 className="text-sm font-semibold text-white mb-4">Progression du débat</h3>
+      <h3 className="text-sm font-semibold text-white mb-4">
+        Progression du débat
+      </h3>
 
       <div className="flex items-center gap-2">
         {STEPS.map((step, i) => {
@@ -69,26 +80,30 @@ export const DebateStatusTracker: React.FC<DebateStatusTrackerProps> = ({ status
               <div className="flex flex-col items-center gap-1.5 min-w-0 flex-1">
                 <motion.div
                   className={`relative w-9 h-9 rounded-full flex items-center justify-center border transition-colors ${
-                    state === 'completed'
-                      ? 'bg-emerald-500/20 border-emerald-500/40'
-                      : state === 'active'
-                        ? 'bg-indigo-500/20 border-indigo-500/40'
-                        : state === 'failed'
-                          ? 'bg-red-500/20 border-red-500/40'
-                          : 'bg-white/5 border-white/10'
+                    state === "completed"
+                      ? "bg-emerald-500/20 border-emerald-500/40"
+                      : state === "active"
+                        ? "bg-indigo-500/20 border-indigo-500/40"
+                        : state === "failed"
+                          ? "bg-red-500/20 border-red-500/40"
+                          : "bg-white/5 border-white/10"
                   }`}
                 >
-                  {state === 'completed' ? (
+                  {state === "completed" ? (
                     <Check className="w-4 h-4 text-emerald-400" />
-                  ) : state === 'failed' ? (
+                  ) : state === "failed" ? (
                     <XCircle className="w-4 h-4 text-red-400" />
-                  ) : state === 'active' ? (
+                  ) : state === "active" ? (
                     <>
                       {/* Pulse */}
                       <motion.div
                         className="absolute inset-0 rounded-full bg-indigo-500/20"
                         animate={{ scale: [1, 1.5, 1], opacity: [0.4, 0, 0.4] }}
-                        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        }}
                       />
                       <DeepSightSpinnerMicro />
                     </>
@@ -98,13 +113,13 @@ export const DebateStatusTracker: React.FC<DebateStatusTrackerProps> = ({ status
                 </motion.div>
                 <span
                   className={`text-[10px] text-center leading-tight font-medium ${
-                    state === 'completed'
-                      ? 'text-emerald-400/80'
-                      : state === 'active'
-                        ? 'text-indigo-400'
-                        : state === 'failed'
-                          ? 'text-red-400/80'
-                          : 'text-white/30'
+                    state === "completed"
+                      ? "text-emerald-400/80"
+                      : state === "active"
+                        ? "text-indigo-400"
+                        : state === "failed"
+                          ? "text-red-400/80"
+                          : "text-white/30"
                   }`}
                 >
                   {step.label}
@@ -116,9 +131,9 @@ export const DebateStatusTracker: React.FC<DebateStatusTrackerProps> = ({ status
                 <div className="flex-shrink-0 h-px w-6 lg:w-10 mt-[-18px]">
                   <div
                     className={`h-full rounded-full transition-colors ${
-                      getStepState(STEPS[i + 1].key, status) !== 'pending'
-                        ? 'bg-emerald-500/40'
-                        : 'bg-white/10'
+                      getStepState(STEPS[i + 1].key, status) !== "pending"
+                        ? "bg-emerald-500/40"
+                        : "bg-white/10"
                     }`}
                   />
                 </div>

@@ -30,7 +30,7 @@ export type {
   AcademicPaper,
   AcademicSearchResponse,
   BibliographyFormat,
-} from '../services/api';
+} from "../services/api";
 
 export interface ApiError {
   detail: string;

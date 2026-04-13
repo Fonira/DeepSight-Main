@@ -1,8 +1,14 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import fr from '../i18n/fr.json';
-import en from '../i18n/en.json';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import fr from "../i18n/fr.json";
+import en from "../i18n/en.json";
 
-type Language = 'fr' | 'en';
+type Language = "fr" | "en";
 
 interface LanguageContextType {
   language: Language;
@@ -12,37 +18,45 @@ interface LanguageContextType {
 
 const translations = { fr, en };
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+const LanguageContext = createContext<LanguageContextType | undefined>(
+  undefined,
+);
 
-export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const LanguageProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [language, setLanguageState] = useState<Language>(() => {
     try {
-      const saved = localStorage.getItem('language');
-      return (saved as Language) || 'fr';
+      const saved = localStorage.getItem("language");
+      return (saved as Language) || "fr";
     } catch {
-      return 'fr';
+      return "fr";
     }
   });
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    try { localStorage.setItem('language', lang); } catch { /* Safari private */ }
+    try {
+      localStorage.setItem("language", lang);
+    } catch {
+      /* Safari private */
+    }
     document.documentElement.lang = lang;
   };
 
   const t = (key: string): string => {
-    const keys = key.split('.');
+    const keys = key.split(".");
     let value: any = translations[language];
 
     for (const k of keys) {
-      if (value && typeof value === 'object' && k in value) {
+      if (value && typeof value === "object" && k in value) {
         value = value[k];
       } else {
         return key;
       }
     }
 
-    return typeof value === 'string' ? value : key;
+    return typeof value === "string" ? value : key;
   };
 
   useEffect(() => {
@@ -59,7 +73,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
 export const useLanguage = () => {
   const context = useContext(LanguageContext);
   if (!context) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
+    throw new Error("useLanguage must be used within a LanguageProvider");
   }
   return context;
 };

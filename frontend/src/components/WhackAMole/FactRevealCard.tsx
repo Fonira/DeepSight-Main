@@ -3,14 +3,14 @@
  * Shows term, definition, category, wiki link. Dismissible.
  */
 
-import React, { useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
-import { X, ExternalLink, Zap } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useLanguage } from '../../contexts/LanguageContext';
-import type { LoadingWord } from '../../contexts/LoadingWordContext';
-import { CAT_ICONS, FACT_CARD_WIDTH } from './whackAMoleConstants';
-import { easings } from '../ui/motion';
+import React, { useEffect, useRef } from "react";
+import { motion } from "framer-motion";
+import { X, ExternalLink, Zap } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useLanguage } from "../../contexts/LanguageContext";
+import type { LoadingWord } from "../../contexts/LoadingWordContext";
+import { CAT_ICONS, FACT_CARD_WIDTH } from "./whackAMoleConstants";
+import { easings } from "../ui/motion";
 
 interface FactRevealCardProps {
   fact: LoadingWord;
@@ -30,17 +30,17 @@ export const FactRevealCard: React.FC<FactRevealCardProps> = ({
   const navigate = useNavigate();
   const { language } = useLanguage();
   const cardRef = useRef<HTMLDivElement>(null);
-  const emoji = CAT_ICONS[fact.category] || '📚';
-  const isClickable = fact.source === 'history' && fact.summaryId;
+  const emoji = CAT_ICONS[fact.category] || "📚";
+  const isClickable = fact.source === "history" && fact.summaryId;
 
   // Focus trap + Escape dismiss
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onDismiss();
+      if (e.key === "Escape") onDismiss();
     };
-    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
     cardRef.current?.focus();
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onDismiss]);
 
   const handleTermClick = () => {
@@ -60,21 +60,18 @@ export const FactRevealCard: React.FC<FactRevealCardProps> = ({
         top: position.y,
         width: FACT_CARD_WIDTH,
       }}
-      initial={prefersReducedMotion
-        ? { opacity: 0 }
-        : { opacity: 0, scale: 0.8, y: 10 }
+      initial={
+        prefersReducedMotion
+          ? { opacity: 0 }
+          : { opacity: 0, scale: 0.8, y: 10 }
       }
-      animate={prefersReducedMotion
-        ? { opacity: 1 }
-        : { opacity: 1, scale: 1, y: 0 }
+      animate={
+        prefersReducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }
       }
-      exit={prefersReducedMotion
-        ? { opacity: 0 }
-        : { opacity: 0, scale: 0.95 }
-      }
+      exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
       transition={{
         duration: prefersReducedMotion ? 0.2 : 0.35,
-        ease: prefersReducedMotion ? 'easeOut' : easings.spring,
+        ease: prefersReducedMotion ? "easeOut" : easings.spring,
       }}
     >
       <div className="relative rounded-2xl overflow-hidden border border-accent-primary/15 shadow-lg shadow-black/30">
@@ -88,7 +85,7 @@ export const FactRevealCard: React.FC<FactRevealCardProps> = ({
             <div className="flex items-center gap-2">
               <span className="text-lg">{emoji}</span>
               <span className="font-display text-[11px] font-semibold text-accent-primary uppercase tracking-wider">
-                {language === 'fr' ? 'Le saviez-vous ?' : 'Did you know?'}
+                {language === "fr" ? "Le saviez-vous ?" : "Did you know?"}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -101,7 +98,7 @@ export const FactRevealCard: React.FC<FactRevealCardProps> = ({
               <button
                 onClick={onDismiss}
                 className="p-1 rounded-md text-text-tertiary hover:text-red-400 hover:bg-white/5 transition-all"
-                aria-label={language === 'fr' ? 'Fermer' : 'Close'}
+                aria-label={language === "fr" ? "Fermer" : "Close"}
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -113,7 +110,9 @@ export const FactRevealCard: React.FC<FactRevealCardProps> = ({
             onClick={handleTermClick}
             disabled={!isClickable}
             className={`font-display text-base font-semibold text-text-primary text-left leading-tight block ${
-              isClickable ? 'hover:text-accent-primary cursor-pointer transition-colors' : ''
+              isClickable
+                ? "hover:text-accent-primary cursor-pointer transition-colors"
+                : ""
             }`}
           >
             {fact.term}
@@ -137,9 +136,9 @@ export const FactRevealCard: React.FC<FactRevealCardProps> = ({
                 Source
               </a>
             )}
-            {fact.source === 'history' && (
+            {fact.source === "history" && (
               <span className="text-[10px] text-accent-primary/50 ml-auto">
-                📜 {language === 'fr' ? 'Vos analyses' : 'Your analyses'}
+                📜 {language === "fr" ? "Vos analyses" : "Your analyses"}
               </span>
             )}
           </div>

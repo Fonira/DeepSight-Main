@@ -2,8 +2,8 @@
  * DEEP SIGHT — MasteryRing
  * SVG circulaire montrant le % de maîtrise d'une vidéo.
  */
-import React, { useMemo } from 'react';
-import { motion } from 'framer-motion';
+import React, { useMemo } from "react";
+import { motion } from "framer-motion";
 
 interface MasteryRingProps {
   percent: number;
@@ -12,10 +12,10 @@ interface MasteryRingProps {
 }
 
 const getColor = (percent: number): string => {
-  if (percent >= 80) return '#22c55e';
-  if (percent >= 50) return '#eab308';
-  if (percent >= 25) return '#f97316';
-  return '#ef4444';
+  if (percent >= 80) return "#22c55e";
+  if (percent >= 50) return "#eab308";
+  if (percent >= 25) return "#f97316";
+  return "#ef4444";
 };
 
 export const MasteryRing: React.FC<MasteryRingProps> = ({
@@ -62,7 +62,7 @@ export const MasteryRing: React.FC<MasteryRingProps> = ({
           strokeDasharray={circumference}
           initial={{ strokeDashoffset: circumference }}
           animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
           style={{ filter: `drop-shadow(0 0 4px ${color}40)` }}
         />
       </svg>

@@ -8,18 +8,31 @@
  * - Pro trial option available (7 days)
  */
 
-import React, { useState, useEffect } from 'react';
-import { X, Zap, GraduationCap, Star, Crown, Sparkles, ArrowRight, Check, Clock, BookOpen, Brain, TrendingUp } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useTranslation } from '../hooks/useTranslation';
-import { useAuth } from '../hooks/useAuth';
+import React, { useState, useEffect } from "react";
+import {
+  X,
+  Zap,
+  GraduationCap,
+  Star,
+  Crown,
+  Sparkles,
+  ArrowRight,
+  Check,
+  Clock,
+  BookOpen,
+  Brain,
+  TrendingUp,
+} from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "../hooks/useTranslation";
+import { useAuth } from "../hooks/useAuth";
 import {
   normalizePlanId,
   CONVERSION_TRIGGERS,
   TESTIMONIALS,
   PLANS_INFO,
-  calculateTimeSaved
-} from '../config/planPrivileges';
+  calculateTimeSaved,
+} from "../config/planPrivileges";
 
 interface FreeTrialLimitModalProps {
   /** Whether the modal is open */
@@ -52,12 +65,15 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
   const remainingAnalyses = Math.max(0, maxFreeAnalyses - analysisCount);
 
   // Calculate time saved
-  const timeSaved = videoDurationSeconds > 0 ? calculateTimeSaved(videoDurationSeconds) : null;
+  const timeSaved =
+    videoDurationSeconds > 0 ? calculateTimeSaved(videoDurationSeconds) : null;
 
-  const t = (fr: string, en: string) => language === 'fr' ? fr : en;
+  const t = (fr: string, en: string) => (language === "fr" ? fr : en);
 
   // Get testimonials for display
-  const displayTestimonials = TESTIMONIALS.filter(t => t.plan === 'pro').slice(0, 3);
+  const displayTestimonials = TESTIMONIALS.filter(
+    (t) => t.plan === "pro",
+  ).slice(0, 3);
 
   useEffect(() => {
     if (isOpen && displayTestimonials.length > 0) {
@@ -68,21 +84,21 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
     }
   }, [isOpen, displayTestimonials.length]);
 
-  if (!isOpen || plan !== 'free') return null;
+  if (!isOpen || plan !== "free") return null;
 
   const handleUpgrade = () => {
     onClose();
-    navigate('/upgrade');
+    navigate("/upgrade");
   };
 
   const handleSelectPro = () => {
     onClose();
-    navigate('/upgrade');
+    navigate("/upgrade");
   };
 
   const handleStartTrial = () => {
     onClose();
-    navigate('/upgrade?trial=true');
+    navigate("/upgrade?trial=true");
   };
 
   // Get pro plan info
@@ -103,16 +119,24 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
         </button>
 
         {/* Header with gradient */}
-        <div className={`relative p-6 pb-4 text-center bg-gradient-to-br ${isBlocked ? 'from-red-500/10 to-orange-500/10' : 'from-accent-primary/10 to-accent-secondary/10'}`}>
+        <div
+          className={`relative p-6 pb-4 text-center bg-gradient-to-br ${isBlocked ? "from-red-500/10 to-orange-500/10" : "from-accent-primary/10 to-accent-secondary/10"}`}
+        >
           {/* Animated background */}
           <div className="absolute inset-0 overflow-hidden">
-            <div className={`absolute -top-10 -right-10 w-40 h-40 ${isBlocked ? 'bg-red-500/20' : 'bg-accent-primary/20'} rounded-full blur-3xl`} />
-            <div className={`absolute -bottom-10 -left-10 w-40 h-40 ${isBlocked ? 'bg-orange-500/20' : 'bg-accent-secondary/20'} rounded-full blur-3xl`} />
+            <div
+              className={`absolute -top-10 -right-10 w-40 h-40 ${isBlocked ? "bg-red-500/20" : "bg-accent-primary/20"} rounded-full blur-3xl`}
+            />
+            <div
+              className={`absolute -bottom-10 -left-10 w-40 h-40 ${isBlocked ? "bg-orange-500/20" : "bg-accent-secondary/20"} rounded-full blur-3xl`}
+            />
           </div>
 
           <div className="relative">
             {/* Icon */}
-            <div className={`w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br ${isBlocked ? 'from-red-500 to-orange-500' : 'from-accent-primary to-accent-secondary'} flex items-center justify-center shadow-lg`}>
+            <div
+              className={`w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br ${isBlocked ? "from-red-500 to-orange-500" : "from-accent-primary to-accent-secondary"} flex items-center justify-center shadow-lg`}
+            >
               {isBlocked ? (
                 <Zap className="w-10 h-10 text-white" />
               ) : (
@@ -123,10 +147,10 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
             {/* Title */}
             <h2 className="text-2xl font-bold text-text-primary mb-2">
               {isBlocked
-                ? t('Limite atteinte !', 'Limit reached!')
+                ? t("Limite atteinte !", "Limit reached!")
                 : isWarning
-                ? t('Plus qu\'une analyse !', 'One analysis left!')
-                : t('Analyse terminée !', 'Analysis complete!')}
+                  ? t("Plus qu'une analyse !", "One analysis left!")
+                  : t("Analyse terminée !", "Analysis complete!")}
             </h2>
 
             {/* Subtitle with usage */}
@@ -134,11 +158,11 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
               {isBlocked
                 ? t(
                     `Vous avez utilisé vos ${maxFreeAnalyses} analyses gratuites ce mois`,
-                    `You've used all ${maxFreeAnalyses} free analyses this month`
+                    `You've used all ${maxFreeAnalyses} free analyses this month`,
                   )
                 : t(
-                    `${analysisCount}/${maxFreeAnalyses} analyses utilisées - ${remainingAnalyses} restante${remainingAnalyses > 1 ? 's' : ''}`,
-                    `${analysisCount}/${maxFreeAnalyses} analyses used - ${remainingAnalyses} remaining`
+                    `${analysisCount}/${maxFreeAnalyses} analyses utilisées - ${remainingAnalyses} restante${remainingAnalyses > 1 ? "s" : ""}`,
+                    `${analysisCount}/${maxFreeAnalyses} analyses used - ${remainingAnalyses} remaining`,
                   )}
             </p>
 
@@ -147,9 +171,15 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
               <div className="h-2.5 bg-bg-tertiary rounded-full overflow-hidden">
                 <div
                   className={`h-full transition-all duration-500 ${
-                    isBlocked ? 'bg-red-500' : isWarning ? 'bg-orange-500' : 'bg-green-500'
+                    isBlocked
+                      ? "bg-red-500"
+                      : isWarning
+                        ? "bg-orange-500"
+                        : "bg-green-500"
                   }`}
-                  style={{ width: `${Math.min((analysisCount / maxFreeAnalyses) * 100, 100)}%` }}
+                  style={{
+                    width: `${Math.min((analysisCount / maxFreeAnalyses) * 100, 100)}%`,
+                  }}
                 />
               </div>
               <div className="mt-1 flex justify-between text-xs text-text-tertiary">
@@ -168,7 +198,7 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
               <span className="text-green-400 font-medium">
                 {t(
                   `Cette analyse vous a fait économiser ~${timeSaved.minutes} min (${timeSaved.equivalent} de notes)`,
-                  `This analysis saved you ~${timeSaved.minutes} min (${timeSaved.equivalent} of notes)`
+                  `This analysis saved you ~${timeSaved.minutes} min (${timeSaved.equivalent} of notes)`,
                 )}
               </span>
             </div>
@@ -184,12 +214,12 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
               </div>
               <div className="flex-1">
                 <p className="text-sm font-bold text-text-primary">
-                  {t('Essai Pro gratuit', 'Free Pro trial')}
+                  {t("Essai Pro gratuit", "Free Pro trial")}
                 </p>
                 <p className="text-xs text-text-secondary">
                   {t(
                     `${CONVERSION_TRIGGERS.trialDays} jours • 300 analyses • Playlists`,
-                    `${CONVERSION_TRIGGERS.trialDays} days • 300 analyses • Playlists`
+                    `${CONVERSION_TRIGGERS.trialDays} days • 300 analyses • Playlists`,
                   )}
                 </p>
               </div>
@@ -197,7 +227,7 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
                 onClick={handleStartTrial}
                 className="px-4 py-2 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white text-sm font-bold hover:opacity-90 transition-opacity"
               >
-                {t('Essayer', 'Try it')}
+                {t("Essayer", "Try it")}
               </button>
             </div>
           </div>
@@ -206,32 +236,32 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
         {/* Benefits grid - what they're missing */}
         <div className="px-6 py-4">
           <p className="text-xs text-text-tertiary uppercase tracking-wide mb-3 text-center">
-            {t('Ce que vous débloquez', 'What you unlock')}
+            {t("Ce que vous débloquez", "What you unlock")}
           </p>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex items-center gap-2 p-3 rounded-lg bg-bg-tertiary/50">
               <TrendingUp className="w-5 h-5 text-green-400" />
               <span className="text-sm text-text-secondary">
-                {t('40+ analyses/mois', '40+ analyses/mo')}
+                {t("40+ analyses/mois", "40+ analyses/mo")}
               </span>
             </div>
             <div className="flex items-center gap-2 p-3 rounded-lg bg-bg-tertiary/50">
               <BookOpen className="w-5 h-5 text-blue-400" />
               <span className="text-sm text-text-secondary">
-                {t('Flashcards auto', 'Auto flashcards')}
+                {t("Flashcards auto", "Auto flashcards")}
               </span>
             </div>
             <div className="flex items-center gap-2 p-3 rounded-lg bg-bg-tertiary/50">
               <Brain className="w-5 h-5 text-purple-400" />
               <span className="text-sm text-text-secondary">
-                {t('Cartes mentales', 'Mind maps')}
+                {t("Cartes mentales", "Mind maps")}
               </span>
             </div>
             <div className="flex items-center gap-2 p-3 rounded-lg bg-bg-tertiary/50">
               <Star className="w-5 h-5 text-amber-400" />
               <span className="text-sm text-text-secondary">
-                {t('Export PDF/BibTeX', 'PDF/BibTeX export')}
+                {t("Export PDF/BibTeX", "PDF/BibTeX export")}
               </span>
             </div>
           </div>
@@ -242,13 +272,26 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
           <div className="px-6 py-3">
             <div className="p-4 rounded-xl bg-bg-tertiary/30 border border-border-subtle">
               <div className="flex items-start gap-3">
-                <div className="text-2xl">{displayTestimonials[showTestimonial]?.avatar || '🎓'}</div>
+                <div className="text-2xl">
+                  {displayTestimonials[showTestimonial]?.avatar || "🎓"}
+                </div>
                 <div>
                   <p className="text-sm text-text-secondary italic mb-2">
-                    "{displayTestimonials[showTestimonial]?.text[language === 'fr' ? 'fr' : 'en']}"
+                    "
+                    {
+                      displayTestimonials[showTestimonial]?.text[
+                        language === "fr" ? "fr" : "en"
+                      ]
+                    }
+                    "
                   </p>
                   <p className="text-xs text-text-tertiary">
-                    — {displayTestimonials[showTestimonial]?.author}, {displayTestimonials[showTestimonial]?.role[language === 'fr' ? 'fr' : 'en']}
+                    — {displayTestimonials[showTestimonial]?.author},{" "}
+                    {
+                      displayTestimonials[showTestimonial]?.role[
+                        language === "fr" ? "fr" : "en"
+                      ]
+                    }
                   </p>
                 </div>
               </div>
@@ -258,7 +301,9 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
                   <div
                     key={idx}
                     className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                      idx === showTestimonial ? 'bg-accent-primary' : 'bg-bg-tertiary'
+                      idx === showTestimonial
+                        ? "bg-accent-primary"
+                        : "bg-bg-tertiary"
                     }`}
                   />
                 ))}
@@ -282,34 +327,38 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-text-primary">
-                      {proPlan.name[language === 'fr' ? 'fr' : 'en']}
+                      {proPlan.name[language === "fr" ? "fr" : "en"]}
                     </h3>
                     <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 text-xs font-medium">
-                      {proPlan.badge?.[language === 'fr' ? 'fr' : 'en'] || t('Recommandé', 'Recommended')}
+                      {proPlan.badge?.[language === "fr" ? "fr" : "en"] ||
+                        t("Recommandé", "Recommended")}
                     </span>
                   </div>
                   <p className="text-sm text-text-secondary">
-                    {proPlan.killerFeature[language === 'fr' ? 'fr' : 'en']}
+                    {proPlan.killerFeature[language === "fr" ? "fr" : "en"]}
                   </p>
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-2xl font-bold text-emerald-400">
-                  {(proPlan.price / 100).toFixed(2).replace('.', ',')}€
+                  {(proPlan.price / 100).toFixed(2).replace(".", ",")}€
                 </p>
-                <p className="text-xs text-text-tertiary">/{t('mois', 'mo')}</p>
+                <p className="text-xs text-text-tertiary">/{t("mois", "mo")}</p>
               </div>
             </div>
 
             {/* Features list */}
             <div className="relative mt-3 grid grid-cols-2 gap-2">
               {[
-                t('40 analyses/mois', '40 analyses/mo'),
-                t('Flashcards & mind maps', 'Flashcards & mind maps'),
-                t('Export PDF & BibTeX', 'PDF & BibTeX export'),
-                t('TTS audio', 'TTS audio'),
+                t("40 analyses/mois", "40 analyses/mo"),
+                t("Flashcards & mind maps", "Flashcards & mind maps"),
+                t("Export PDF & BibTeX", "PDF & BibTeX export"),
+                t("TTS audio", "TTS audio"),
               ].map((feature, idx) => (
-                <div key={idx} className="flex items-center gap-1.5 text-xs text-text-secondary">
+                <div
+                  key={idx}
+                  className="flex items-center gap-1.5 text-xs text-text-secondary"
+                >
                   <Check className="w-3 h-3 text-emerald-400 flex-shrink-0" />
                   <span>{feature}</span>
                 </div>
@@ -325,7 +374,7 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
             className="w-full py-3 rounded-xl bg-gradient-to-r from-accent-primary to-accent-secondary text-white font-semibold hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
           >
             <Sparkles className="w-5 h-5" />
-            {t('Voir tous les plans', 'View all plans')}
+            {t("Voir tous les plans", "View all plans")}
             <ArrowRight className="w-5 h-5" />
           </button>
 
@@ -334,8 +383,8 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
             className="w-full py-2.5 rounded-xl text-text-secondary text-sm hover:text-text-primary hover:bg-bg-tertiary transition-colors"
           >
             {isBlocked
-              ? t('Attendre le mois prochain', 'Wait until next month')
-              : t('Peut-être plus tard', 'Maybe later')}
+              ? t("Attendre le mois prochain", "Wait until next month")
+              : t("Peut-être plus tard", "Maybe later")}
           </button>
         </div>
 
@@ -343,8 +392,8 @@ export const FreeTrialLimitModal: React.FC<FreeTrialLimitModalProps> = ({
         <div className="px-6 pb-4 text-center border-t border-border-subtle pt-4">
           <p className="text-xs text-text-tertiary">
             {t(
-              'Annulez à tout moment • Paiement sécurisé par Stripe',
-              'Cancel anytime • Secure payment via Stripe'
+              "Annulez à tout moment • Paiement sécurisé par Stripe",
+              "Cancel anytime • Secure payment via Stripe",
             )}
           </p>
         </div>

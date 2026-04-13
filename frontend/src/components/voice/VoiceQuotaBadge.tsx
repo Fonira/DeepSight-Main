@@ -3,7 +3,7 @@
  * Displays minutes used / total with color-coded warning levels.
  */
 
-import React from 'react';
+import React from "react";
 
 interface VoiceQuotaBadgeProps {
   minutesUsed: number;
@@ -15,19 +15,19 @@ interface VoiceQuotaBadgeProps {
 const formatTime = (minutes: number): string => {
   const mins = Math.floor(minutes);
   const secs = Math.round((minutes - mins) * 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
+  return `${mins}:${secs.toString().padStart(2, "0")}`;
 };
 
-const getColorClass = (level: VoiceQuotaBadgeProps['warningLevel']): string => {
+const getColorClass = (level: VoiceQuotaBadgeProps["warningLevel"]): string => {
   switch (level) {
     case 100:
-      return 'text-red-400 animate-pulse';
+      return "text-red-400 animate-pulse";
     case 95:
-      return 'text-orange-400';
+      return "text-orange-400";
     case 80:
-      return 'text-yellow-400';
+      return "text-yellow-400";
     default:
-      return 'text-white/60';
+      return "text-white/60";
   }
 };
 
@@ -47,17 +47,29 @@ export const VoiceQuotaBadge: React.FC<VoiceQuotaBadgeProps> = React.memo(
           xmlns="http://www.w3.org/2000/svg"
           aria-hidden="true"
         >
-          <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5" />
-          <path d="M8 4.5V8L10.5 9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <circle
+            cx="8"
+            cy="8"
+            r="6.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          />
+          <path
+            d="M8 4.5V8L10.5 9.5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         </svg>
         <span className="text-xs font-mono tabular-nums">
           {formatTime(minutesUsed)} / {formatTime(minutesTotal)}
         </span>
       </div>
     );
-  }
+  },
 );
 
-VoiceQuotaBadge.displayName = 'VoiceQuotaBadge';
+VoiceQuotaBadge.displayName = "VoiceQuotaBadge";
 
 export default VoiceQuotaBadge;

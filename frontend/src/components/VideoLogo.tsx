@@ -4,7 +4,7 @@
  * Utilisé sur la landing page et pour les chargements
  */
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from "react";
 
 interface VideoLogoProps {
   /** Taille du conteneur */
@@ -19,7 +19,7 @@ interface VideoLogoProps {
 
 export const VideoLogo: React.FC<VideoLogoProps> = ({
   size = 200,
-  className = '',
+  className = "",
   withGlow = true,
   priority = false,
 }) => {
@@ -45,22 +45,22 @@ export const VideoLogo: React.FC<VideoLogoProps> = ({
       setIsLoaded(true);
     }
 
-    video.addEventListener('canplay', () => {
+    video.addEventListener("canplay", () => {
       playVideo();
       setIsLoaded(true);
     });
 
-    video.addEventListener('error', () => {
+    video.addEventListener("error", () => {
       setHasError(true);
     });
   }, []);
 
-  const sizeStyle = typeof size === 'number' ? `${size}px` : size;
+  const sizeStyle = typeof size === "number" ? `${size}px` : size;
 
   // Fallback vers l'image si la vidéo ne charge pas
   if (hasError) {
     return (
-      <div 
+      <div
         className={`relative ${className}`}
         style={{ width: sizeStyle, height: sizeStyle }}
       >
@@ -68,46 +68,57 @@ export const VideoLogo: React.FC<VideoLogoProps> = ({
           src="/deepsight-logo-cosmic.png"
           alt="Deep Sight"
           className="w-full h-full object-contain"
-          style={withGlow ? {
-            filter: 'drop-shadow(0 0 30px rgba(74, 144, 217, 0.4)) drop-shadow(0 0 20px rgba(212, 165, 116, 0.3))'
-          } : undefined}
+          style={
+            withGlow
+              ? {
+                  filter:
+                    "drop-shadow(0 0 30px rgba(74, 144, 217, 0.4)) drop-shadow(0 0 20px rgba(212, 165, 116, 0.3))",
+                }
+              : undefined
+          }
         />
       </div>
     );
   }
 
   return (
-    <div 
+    <div
       className={`relative ${className}`}
       style={{ width: sizeStyle, height: sizeStyle }}
     >
       {/* Glow effect derrière la vidéo */}
       {withGlow && (
-        <div 
+        <div
           className="absolute inset-0 rounded-full opacity-60"
           style={{
-            background: 'radial-gradient(circle, rgba(74, 144, 217, 0.3) 0%, rgba(212, 165, 116, 0.2) 40%, rgba(123, 75, 160, 0.15) 70%, transparent 85%)',
-            filter: 'blur(30px)',
-            transform: 'scale(1.3)',
+            background:
+              "radial-gradient(circle, rgba(74, 144, 217, 0.3) 0%, rgba(212, 165, 116, 0.2) 40%, rgba(123, 75, 160, 0.15) 70%, transparent 85%)",
+            filter: "blur(30px)",
+            transform: "scale(1.3)",
           }}
         />
       )}
-      
+
       {/* Vidéo du logo */}
       <video
         ref={videoRef}
-        className={`w-full h-full object-contain relative z-10 transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+        className={`w-full h-full object-contain relative z-10 transition-opacity duration-500 ${isLoaded ? "opacity-100" : "opacity-0"}`}
         src="/logo-animation.mp4"
         autoPlay
         loop
         muted
         playsInline
-        preload={priority ? 'auto' : 'metadata'}
-        style={withGlow ? {
-          filter: 'drop-shadow(0 0 20px rgba(74, 144, 217, 0.3)) drop-shadow(0 0 15px rgba(212, 165, 116, 0.2))'
-        } : undefined}
+        preload={priority ? "auto" : "metadata"}
+        style={
+          withGlow
+            ? {
+                filter:
+                  "drop-shadow(0 0 20px rgba(74, 144, 217, 0.3)) drop-shadow(0 0 15px rgba(212, 165, 116, 0.2))",
+              }
+            : undefined
+        }
       />
-      
+
       {/* Placeholder pendant le chargement */}
       {!isLoaded && (
         <div className="absolute inset-0 flex items-center justify-center">

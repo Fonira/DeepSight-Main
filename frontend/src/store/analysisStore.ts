@@ -11,10 +11,10 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
-import { devtools } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import { immer } from "zustand/middleware/immer";
+import { devtools } from "zustand/middleware";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
@@ -50,7 +50,7 @@ export interface Summary {
 
 export interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: Date;
   sources?: { title: string; url: string }[];
@@ -58,21 +58,21 @@ export interface ChatMessage {
 }
 
 export interface AnalysisPreferences {
-  mode: 'accessible' | 'standard' | 'expert';
-  lang: 'fr' | 'en';
+  mode: "accessible" | "standard" | "expert";
+  lang: "fr" | "en";
   model: string;
   category: string;
   webEnrich: boolean;
 }
 
 export type AnalysisStatus =
-  | 'idle'
-  | 'loading'
-  | 'streaming'
-  | 'complete'
-  | 'error';
+  | "idle"
+  | "loading"
+  | "streaming"
+  | "complete"
+  | "error";
 
-export type VoiceStatus = 'idle' | 'connecting' | 'active' | 'error';
+export type VoiceStatus = "idle" | "connecting" | "active" | "error";
 
 export interface VoiceQuota {
   secondsUsed: number;
@@ -83,7 +83,7 @@ export interface VoiceQuota {
 
 export interface VoiceMessage {
   text: string;
-  source: 'user' | 'ai';
+  source: "user" | "ai";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -99,19 +99,19 @@ interface AnalysisState {
   streamingText: string;
   metadata: VideoMetadata | null;
   error: string | null;
-  
+
   // History
   recentSummaries: Summary[];
   favoriteSummaries: Summary[];
-  
+
   // Chat
   chatMessages: ChatMessage[];
   chatLoading: boolean;
   webSearchEnabled: boolean;
-  
+
   // Preferences
   preferences: AnalysisPreferences;
-  
+
   // UI State
   chatOpen: boolean;
   playerVisible: boolean;
@@ -135,25 +135,25 @@ interface AnalysisActions {
   completeAnalysis: (summary: Summary) => void;
   failAnalysis: (error: string) => void;
   resetAnalysis: () => void;
-  
+
   // Summary actions
   setSummary: (summary: Summary | null) => void;
   toggleFavorite: (summaryId: number) => void;
   deleteSummary: (summaryId: number) => void;
   addToRecent: (summary: Summary) => void;
-  
+
   // Chat actions
-  addChatMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
+  addChatMessage: (message: Omit<ChatMessage, "id" | "timestamp">) => void;
   clearChat: () => void;
   setChatLoading: (loading: boolean) => void;
   toggleWebSearch: () => void;
   toggleChat: () => void;
-  
+
   // Player actions
   showPlayer: (startTime?: number) => void;
   hidePlayer: () => void;
   seekTo: (time: number) => void;
-  
+
   // Preferences actions
   setPreferences: (prefs: Partial<AnalysisPreferences>) => void;
   resetPreferences: () => void;
@@ -176,19 +176,19 @@ type AnalysisStore = AnalysisState & AnalysisActions;
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const DEFAULT_PREFERENCES: AnalysisPreferences = {
-  mode: 'standard',
-  lang: 'fr',
-  model: 'mistral-small-2603',
-  category: 'auto',
+  mode: "standard",
+  lang: "fr",
+  model: "mistral-small-2603",
+  category: "auto",
   webEnrich: false,
 };
 
 const INITIAL_STATE: AnalysisState = {
-  status: 'idle',
+  status: "idle",
   progress: 0,
-  progressMessage: '',
+  progressMessage: "",
   currentSummary: null,
-  streamingText: '',
+  streamingText: "",
   metadata: null,
   error: null,
   recentSummaries: [],
@@ -200,7 +200,7 @@ const INITIAL_STATE: AnalysisState = {
   chatOpen: false,
   playerVisible: false,
   playerStartTime: 0,
-  voiceStatus: 'idle',
+  voiceStatus: "idle",
   voiceSessionId: null,
   voiceQuota: null,
   voiceMessages: [],
@@ -218,71 +218,76 @@ export const useAnalysisStore = create<AnalysisStore>()(
         // ═══════════════════════════════════════════════════════════════════════
         // 🎬 ANALYSIS ACTIONS
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         startAnalysis: (_videoId: string) => {
           set((state) => {
-            state.status = 'loading';
+            state.status = "loading";
             state.progress = 0;
-            state.progressMessage = '';
-            state.streamingText = '';
+            state.progressMessage = "";
+            state.streamingText = "";
             state.error = null;
             state.metadata = null;
             state.chatMessages = [];
           });
         },
-        
+
         updateProgress: (progress: number, message: string) => {
           set((state) => {
             state.progress = progress;
             state.progressMessage = message;
-            if (progress > 30 && state.status === 'loading') {
-              state.status = 'streaming';
+            if (progress > 30 && state.status === "loading") {
+              state.status = "streaming";
             }
           });
         },
-        
+
         appendStreamingText: (token: string) => {
           set((state) => {
             state.streamingText += token;
-            state.status = 'streaming';
+            state.status = "streaming";
           });
         },
-        
+
         setMetadata: (metadata: VideoMetadata) => {
           set((state) => {
             state.metadata = metadata;
           });
         },
-        
+
         completeAnalysis: (summary: Summary) => {
           set((state) => {
-            state.status = 'complete';
+            state.status = "complete";
             state.progress = 100;
             state.currentSummary = summary;
-            state.streamingText = '';
-            
+            state.streamingText = "";
+
             // Add to recent if not already present
-            const exists = state.recentSummaries.some((s: Summary) => s.id === summary.id);
+            const exists = state.recentSummaries.some(
+              (s: Summary) => s.id === summary.id,
+            );
             if (!exists) {
-              state.recentSummaries = [summary, ...state.recentSummaries.slice(0, 19)];
+              state.recentSummaries = [
+                summary,
+                ...state.recentSummaries.slice(0, 19),
+              ];
             }
           });
         },
-        
+
         failAnalysis: (error: string) => {
           set((state) => {
-            state.status = 'error';
+            state.status = "error";
             state.error = error;
           });
         },
-        
+
         resetAnalysis: () => {
           set((state) => {
-            state.status = 'idle';
+            state.status = "idle";
             state.progress = 0;
-            state.progressMessage = '';
-            state.streamingText = '';
+            state.progressMessage = "";
+            state.streamingText = "";
             state.error = null;
             state.metadata = null;
             state.currentSummary = null;
@@ -292,54 +297,68 @@ export const useAnalysisStore = create<AnalysisStore>()(
         // ═══════════════════════════════════════════════════════════════════════
         // 📋 SUMMARY ACTIONS
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         setSummary: (summary: Summary | null) => {
           set((state) => {
             state.currentSummary = summary;
             state.chatMessages = []; // Clear chat when switching summaries
           });
         },
-        
+
         toggleFavorite: (summaryId: number) => {
           set((state) => {
             // Toggle in current summary
             if (state.currentSummary?.id === summaryId) {
-              state.currentSummary.is_favorite = !state.currentSummary.is_favorite;
+              state.currentSummary.is_favorite =
+                !state.currentSummary.is_favorite;
             }
-            
+
             // Toggle in recent
-            const recentIdx = state.recentSummaries.findIndex((s: Summary) => s.id === summaryId);
+            const recentIdx = state.recentSummaries.findIndex(
+              (s: Summary) => s.id === summaryId,
+            );
             if (recentIdx !== -1) {
               const summary = state.recentSummaries[recentIdx];
               summary.is_favorite = !summary.is_favorite;
-              
+
               // Update favorites list
               if (summary.is_favorite) {
                 state.favoriteSummaries = [summary, ...state.favoriteSummaries];
               } else {
-                state.favoriteSummaries = state.favoriteSummaries.filter((s: Summary) => s.id !== summaryId);
+                state.favoriteSummaries = state.favoriteSummaries.filter(
+                  (s: Summary) => s.id !== summaryId,
+                );
               }
             }
           });
         },
-        
+
         deleteSummary: (summaryId: number) => {
           set((state) => {
-            state.recentSummaries = state.recentSummaries.filter((s: Summary) => s.id !== summaryId);
-            state.favoriteSummaries = state.favoriteSummaries.filter((s: Summary) => s.id !== summaryId);
-            
+            state.recentSummaries = state.recentSummaries.filter(
+              (s: Summary) => s.id !== summaryId,
+            );
+            state.favoriteSummaries = state.favoriteSummaries.filter(
+              (s: Summary) => s.id !== summaryId,
+            );
+
             if (state.currentSummary?.id === summaryId) {
               state.currentSummary = null;
               state.chatMessages = [];
             }
           });
         },
-        
+
         addToRecent: (summary: Summary) => {
           set((state) => {
-            const exists = state.recentSummaries.some((s: Summary) => s.id === summary.id);
+            const exists = state.recentSummaries.some(
+              (s: Summary) => s.id === summary.id,
+            );
             if (!exists) {
-              state.recentSummaries = [summary, ...state.recentSummaries.slice(0, 49)];
+              state.recentSummaries = [
+                summary,
+                ...state.recentSummaries.slice(0, 49),
+              ];
             }
           });
         },
@@ -347,7 +366,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
         // ═══════════════════════════════════════════════════════════════════════
         // 💬 CHAT ACTIONS
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         addChatMessage: (message) => {
           set((state) => {
             state.chatMessages.push({
@@ -357,25 +376,25 @@ export const useAnalysisStore = create<AnalysisStore>()(
             });
           });
         },
-        
+
         clearChat: () => {
           set((state) => {
             state.chatMessages = [];
           });
         },
-        
+
         setChatLoading: (loading: boolean) => {
           set((state) => {
             state.chatLoading = loading;
           });
         },
-        
+
         toggleWebSearch: () => {
           set((state) => {
             state.webSearchEnabled = !state.webSearchEnabled;
           });
         },
-        
+
         toggleChat: () => {
           set((state) => {
             state.chatOpen = !state.chatOpen;
@@ -385,20 +404,20 @@ export const useAnalysisStore = create<AnalysisStore>()(
         // ═══════════════════════════════════════════════════════════════════════
         // 🎬 PLAYER ACTIONS
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         showPlayer: (startTime = 0) => {
           set((state) => {
             state.playerVisible = true;
             state.playerStartTime = startTime;
           });
         },
-        
+
         hidePlayer: () => {
           set((state) => {
             state.playerVisible = false;
           });
         },
-        
+
         seekTo: (time: number) => {
           set((state) => {
             state.playerStartTime = time;
@@ -408,13 +427,13 @@ export const useAnalysisStore = create<AnalysisStore>()(
         // ═══════════════════════════════════════════════════════════════════════
         // ⚙️ PREFERENCES ACTIONS
         // ═══════════════════════════════════════════════════════════════════════
-        
+
         setPreferences: (prefs: Partial<AnalysisPreferences>) => {
           set((state) => {
             state.preferences = { ...state.preferences, ...prefs };
           });
         },
-        
+
         resetPreferences: () => {
           set((state) => {
             state.preferences = DEFAULT_PREFERENCES;
@@ -469,7 +488,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
 
         resetVoiceState: () => {
           set((state) => {
-            state.voiceStatus = 'idle';
+            state.voiceStatus = "idle";
             state.voiceSessionId = null;
             state.voiceQuota = null;
             state.voiceMessages = [];
@@ -479,7 +498,7 @@ export const useAnalysisStore = create<AnalysisStore>()(
         },
       })),
       {
-        name: 'deepsight-analysis-store',
+        name: "deepsight-analysis-store",
         storage: createJSONStorage(() => localStorage),
         // Only persist preferences and favorites
         partialize: (state) => ({
@@ -487,53 +506,70 @@ export const useAnalysisStore = create<AnalysisStore>()(
           favoriteSummaries: state.favoriteSummaries,
           recentSummaries: state.recentSummaries.slice(0, 20), // Keep only 20 most recent
         }),
-      }
+      },
     ),
-    { name: 'AnalysisStore' }
-  )
+    { name: "AnalysisStore" },
+  ),
 );
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🎯 SELECTORS (Optimized for re-renders)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export const useAnalysisStatus = () => useAnalysisStore((state) => state.status);
-export const useAnalysisProgress = () => useAnalysisStore((state) => ({
-  progress: state.progress,
-  message: state.progressMessage,
-}));
-export const useCurrentSummary = () => useAnalysisStore((state) => state.currentSummary);
-export const useStreamingText = () => useAnalysisStore((state) => state.streamingText);
-export const useChatMessages = () => useAnalysisStore((state) => state.chatMessages);
+export const useAnalysisStatus = () =>
+  useAnalysisStore((state) => state.status);
+export const useAnalysisProgress = () =>
+  useAnalysisStore((state) => ({
+    progress: state.progress,
+    message: state.progressMessage,
+  }));
+export const useCurrentSummary = () =>
+  useAnalysisStore((state) => state.currentSummary);
+export const useStreamingText = () =>
+  useAnalysisStore((state) => state.streamingText);
+export const useChatMessages = () =>
+  useAnalysisStore((state) => state.chatMessages);
 export const useChatOpen = () => useAnalysisStore((state) => state.chatOpen);
-export const usePreferences = () => useAnalysisStore((state) => state.preferences);
-export const usePlayerState = () => useAnalysisStore((state) => ({
-  visible: state.playerVisible,
-  startTime: state.playerStartTime,
-}));
+export const usePreferences = () =>
+  useAnalysisStore((state) => state.preferences);
+export const usePlayerState = () =>
+  useAnalysisStore((state) => ({
+    visible: state.playerVisible,
+    startTime: state.playerStartTime,
+  }));
 
 // Computed selectors
-export const useIsAnalyzing = () => useAnalysisStore((state) => 
-  state.status === 'loading' || state.status === 'streaming'
-);
+export const useIsAnalyzing = () =>
+  useAnalysisStore(
+    (state) => state.status === "loading" || state.status === "streaming",
+  );
 
-export const useCanStartNewAnalysis = () => useAnalysisStore((state) =>
-  state.status === 'idle' || state.status === 'complete' || state.status === 'error'
-);
+export const useCanStartNewAnalysis = () =>
+  useAnalysisStore(
+    (state) =>
+      state.status === "idle" ||
+      state.status === "complete" ||
+      state.status === "error",
+  );
 
-export const useFavoriteCount = () => useAnalysisStore((state) =>
-  state.favoriteSummaries.length
-);
+export const useFavoriteCount = () =>
+  useAnalysisStore((state) => state.favoriteSummaries.length);
 
 // Voice selectors
-export const useVoiceStatus = () => useAnalysisStore((state) => state.voiceStatus);
-export const useVoiceMessages = () => useAnalysisStore((state) => state.voiceMessages);
-export const useVoiceQuota = () => useAnalysisStore((state) => state.voiceQuota);
-export const useVoiceElapsedSeconds = () => useAnalysisStore((state) => state.voiceElapsedSeconds);
+export const useVoiceStatus = () =>
+  useAnalysisStore((state) => state.voiceStatus);
+export const useVoiceMessages = () =>
+  useAnalysisStore((state) => state.voiceMessages);
+export const useVoiceQuota = () =>
+  useAnalysisStore((state) => state.voiceQuota);
+export const useVoiceElapsedSeconds = () =>
+  useAnalysisStore((state) => state.voiceElapsedSeconds);
 export const useIsMuted = () => useAnalysisStore((state) => state.isMuted);
-export const useIsVoiceActive = () => useAnalysisStore((state) =>
-  state.voiceStatus === 'active' || state.voiceStatus === 'connecting'
-);
+export const useIsVoiceActive = () =>
+  useAnalysisStore(
+    (state) =>
+      state.voiceStatus === "active" || state.voiceStatus === "connecting",
+  );
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📤 EXPORTS

@@ -6,36 +6,47 @@
  * Composants gamification + store Zustand
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
-  GraduationCap, Star, Brain, Target, Clock,
-  ChevronRight, BookOpen, Sparkles,
-} from 'lucide-react';
-import { DeepSightSpinnerSmall } from '../components/ui/DeepSightSpinner';
-import { useStudyStore } from '../store/studyStore';
-import { useTranslation } from '../hooks/useTranslation';
-import { useAuth } from '../hooks/useAuth';
-import { normalizePlanId, CONVERSION_TRIGGERS } from '../config/planPrivileges';
-import { Sidebar } from '../components/layout/Sidebar';
-import DoodleBackground from '../components/DoodleBackground';
-import { ErrorBoundary } from '../components/ErrorBoundary';
+  GraduationCap,
+  Star,
+  Brain,
+  Target,
+  Clock,
+  ChevronRight,
+  BookOpen,
+  Sparkles,
+} from "lucide-react";
+import { DeepSightSpinnerSmall } from "../components/ui/DeepSightSpinner";
+import { useStudyStore } from "../store/studyStore";
+import { useTranslation } from "../hooks/useTranslation";
+import { useAuth } from "../hooks/useAuth";
+import { normalizePlanId, CONVERSION_TRIGGERS } from "../config/planPrivileges";
+import { Sidebar } from "../components/layout/Sidebar";
+import DoodleBackground from "../components/DoodleBackground";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 import {
-  XPBar, HeatMap, StreakCounter, DailySessionCard,
-  VideoMasteryRow, BadgeGrid, BadgeCard,
-} from '../components/Study';
+  XPBar,
+  HeatMap,
+  StreakCounter,
+  DailySessionCard,
+  VideoMasteryRow,
+  BadgeGrid,
+  BadgeCard,
+} from "../components/Study";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES & HELPERS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type HubTab = 'overview' | 'videos' | 'badges';
+type HubTab = "overview" | "videos" | "badges";
 
 const TAB_LABELS: Record<HubTab, { fr: string; en: string }> = {
-  overview: { fr: 'Vue d\'ensemble', en: 'Overview' },
-  videos: { fr: 'Mes vidéos', en: 'My videos' },
-  badges: { fr: 'Badges', en: 'Badges' },
+  overview: { fr: "Vue d'ensemble", en: "Overview" },
+  videos: { fr: "Mes vidéos", en: "My videos" },
+  badges: { fr: "Badges", en: "Badges" },
 };
 
 const formatTime = (seconds: number): string => {
@@ -58,13 +69,19 @@ const StudyHubPage: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const {
-    stats, heatMap, badges, videoMastery,
-    loading, activeTab, setActiveTab, fetchAll,
+    stats,
+    heatMap,
+    badges,
+    videoMastery,
+    loading,
+    activeTab,
+    setActiveTab,
+    fetchAll,
   } = useStudyStore();
 
   const plan = normalizePlanId(user?.plan);
-  const canStudy = plan !== 'free';
-  const fr = language === 'fr';
+  const canStudy = plan !== "free";
+  const fr = language === "fr";
 
   // Fetch all gamification data on mount
   useEffect(() => {
@@ -74,13 +91,13 @@ const StudyHubPage: React.FC = () => {
   // Auto-switch to 'videos' tab when overview is empty but videos exist
   useEffect(() => {
     if (
-      activeTab === 'overview' &&
+      activeTab === "overview" &&
       stats &&
       (stats.total_cards_reviewed ?? 0) === 0 &&
       videoMastery?.videos &&
       videoMastery.videos.length > 0
     ) {
-      setActiveTab('videos');
+      setActiveTab("videos");
     }
   }, [stats, videoMastery, activeTab]);
 
@@ -94,7 +111,9 @@ const StudyHubPage: React.FC = () => {
 
   const accuracy = useMemo(() => {
     if (!stats || stats.total_cards_reviewed === 0) return 0;
-    return Math.round((stats.total_cards_mastered / stats.total_cards_reviewed) * 100);
+    return Math.round(
+      (stats.total_cards_mastered / stats.total_cards_reviewed) * 100,
+    );
   }, [stats]);
 
   const recentBadges = useMemo(
@@ -103,12 +122,13 @@ const StudyHubPage: React.FC = () => {
   );
 
   const badgeCount = badges?.earned?.length ?? 0;
-  const badgeTotal = badges?.total_count ?? (badgeCount + (badges?.locked?.length ?? 0));
+  const badgeTotal =
+    badges?.total_count ?? badgeCount + (badges?.locked?.length ?? 0);
 
   // ── Navigation handlers ──
   const handleStartSession = () => {
     // Prioritize videos with due cards, fallback to first video
-    const firstDue = videoMastery?.videos.find(v => (v.due_cards ?? 0) > 0);
+    const firstDue = videoMastery?.videos.find((v) => (v.due_cards ?? 0) > 0);
     const target = firstDue ?? videoMastery?.videos?.[0];
     if (target) {
       navigate(`/study/${target.summary_id}?session=true`);
@@ -125,24 +145,37 @@ const StudyHubPage: React.FC = () => {
   if (!canStudy) {
     return (
       <div className="min-h-screen bg-bg-primary relative">
-        <ErrorBoundary fallback={null}><DoodleBackground variant="academic" /></ErrorBoundary>
-        <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'}`}>
+        <ErrorBoundary fallback={null}>
+          <DoodleBackground variant="academic" />
+        </ErrorBoundary>
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        />
+        <main
+          className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? "lg:ml-[60px]" : "lg:ml-[240px]"}`}
+        >
           <div className="min-h-screen flex items-center justify-center p-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-md text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="max-w-md text-center"
+            >
               <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-violet-500/20 to-cyan-500/20 flex items-center justify-center">
                 <GraduationCap className="w-8 h-8 text-accent-primary" />
               </div>
               <h1 className="text-2xl font-bold text-text-primary mb-3">
-                {fr ? 'Débloquez la révision' : 'Unlock Study Mode'}
+                {fr ? "Débloquez la révision" : "Unlock Study Mode"}
               </h1>
               <p className="text-text-secondary mb-6">
-                {fr ? 'Les flashcards et quiz sont disponibles à partir du plan Starter.' : 'Flashcards and quizzes are available from the Starter plan.'}
+                {fr
+                  ? "Les flashcards et quiz sont disponibles à partir du plan Starter."
+                  : "Flashcards and quizzes are available from the Starter plan."}
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 {CONVERSION_TRIGGERS.trialEnabled && (
                   <button
-                    onClick={() => navigate('/upgrade?trial=true')}
+                    onClick={() => navigate("/upgrade?trial=true")}
                     className="px-6 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-violet-500/25 flex items-center gap-2"
                   >
                     <Sparkles className="w-4 h-4" />
@@ -152,10 +185,10 @@ const StudyHubPage: React.FC = () => {
                   </button>
                 )}
                 <button
-                  onClick={() => navigate('/upgrade')}
+                  onClick={() => navigate("/upgrade")}
                   className="px-6 py-3 rounded-xl border border-border-subtle text-text-secondary font-medium hover:text-text-primary hover:bg-bg-hover transition-all"
                 >
-                  {fr ? 'Voir les plans' : 'View plans'}
+                  {fr ? "Voir les plans" : "View plans"}
                 </button>
               </div>
             </motion.div>
@@ -170,13 +203,19 @@ const StudyHubPage: React.FC = () => {
   // ═════════════════════════════════════════════════════════════════════════════
   return (
     <div className="min-h-screen bg-bg-primary relative">
-      <ErrorBoundary fallback={null}><DoodleBackground variant="academic" /></ErrorBoundary>
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+      <ErrorBoundary fallback={null}>
+        <DoodleBackground variant="academic" />
+      </ErrorBoundary>
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+      />
 
-      <main className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? 'lg:ml-[60px]' : 'lg:ml-[240px]'}`}>
+      <main
+        className={`transition-all duration-200 ease-out relative z-10 ${sidebarCollapsed ? "lg:ml-[60px]" : "lg:ml-[240px]"}`}
+      >
         <div className="min-h-screen p-4 sm:p-6 lg:p-8 pb-8">
           <div className="max-w-5xl mx-auto">
-
             {/* ── Header ── */}
             <motion.header
               initial={{ opacity: 0, y: -10 }}
@@ -190,10 +229,12 @@ const StudyHubPage: React.FC = () => {
                   </div>
                   <div>
                     <h1 className="text-xl sm:text-2xl font-bold text-white">
-                      {fr ? 'Révision' : 'Study'}
+                      {fr ? "Révision" : "Study"}
                     </h1>
                     <p className="text-xs sm:text-sm text-white/40">
-                      {fr ? 'Révisez avec la répétition espacée' : 'Study with spaced repetition'}
+                      {fr
+                        ? "Révisez avec la répétition espacée"
+                        : "Study with spaced repetition"}
                     </p>
                   </div>
                 </div>
@@ -229,18 +270,18 @@ const StudyHubPage: React.FC = () => {
 
             {/* ── Tabs ── */}
             <div className="flex items-center gap-1 mb-6 border-b border-white/[0.06]">
-              {(['overview', 'videos', 'badges'] as HubTab[]).map((tab) => (
+              {(["overview", "videos", "badges"] as HubTab[]).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`relative px-4 py-2.5 text-sm font-medium transition-colors ${
                     activeTab === tab
-                      ? 'text-indigo-400'
-                      : 'text-white/40 hover:text-white/60'
+                      ? "text-indigo-400"
+                      : "text-white/40 hover:text-white/60"
                   }`}
                 >
                   {TAB_LABELS[tab][language]}
-                  {tab === 'badges' && badgeTotal > 0 && (
+                  {tab === "badges" && badgeTotal > 0 && (
                     <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] bg-indigo-500/20 text-indigo-300">
                       {badgeCount}/{badgeTotal}
                     </span>
@@ -267,9 +308,8 @@ const StudyHubPage: React.FC = () => {
             {/* ══════════════════════════════════════════════════════════════ */}
             {(!loading || stats) && (
               <AnimatePresence mode="wait">
-
                 {/* ── Vue d'ensemble ── */}
-                {activeTab === 'overview' && (
+                {activeTab === "overview" && (
                   <motion.div
                     key="overview"
                     initial={{ opacity: 0, y: 8 }}
@@ -293,7 +333,7 @@ const StudyHubPage: React.FC = () => {
                         <div className="flex items-center gap-2 mb-2">
                           <Brain className="w-4 h-4 text-violet-400" />
                           <span className="text-xs text-white/40">
-                            {fr ? 'Cartes maîtrisées' : 'Cards mastered'}
+                            {fr ? "Cartes maîtrisées" : "Cards mastered"}
                           </span>
                         </div>
                         <p className="text-2xl font-bold text-white">
@@ -305,17 +345,19 @@ const StudyHubPage: React.FC = () => {
                         <div className="flex items-center gap-2 mb-2">
                           <Target className="w-4 h-4 text-cyan-400" />
                           <span className="text-xs text-white/40">
-                            {fr ? 'Précision moyenne' : 'Average accuracy'}
+                            {fr ? "Précision moyenne" : "Average accuracy"}
                           </span>
                         </div>
-                        <p className="text-2xl font-bold text-white">{accuracy}%</p>
+                        <p className="text-2xl font-bold text-white">
+                          {accuracy}%
+                        </p>
                       </div>
 
                       <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                         <div className="flex items-center gap-2 mb-2">
                           <Clock className="w-4 h-4 text-amber-400" />
                           <span className="text-xs text-white/40">
-                            {fr ? 'Temps de révision' : 'Study time'}
+                            {fr ? "Temps de révision" : "Study time"}
                           </span>
                         </div>
                         <p className="text-2xl font-bold text-white">
@@ -329,23 +371,27 @@ const StudyHubPage: React.FC = () => {
                       {/* HeatMap */}
                       <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                         <h3 className="text-sm font-medium text-white/50 mb-3">
-                          {fr ? 'Activité' : 'Activity'}
+                          {fr ? "Activité" : "Activity"}
                         </h3>
-                        <HeatMap activities={heatMap?.activities ?? heatMap?.days ?? []} />
+                        <HeatMap
+                          activities={
+                            heatMap?.activities ?? heatMap?.days ?? []
+                          }
+                        />
                       </div>
 
                       {/* Recent Badges */}
                       <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.06]">
                         <div className="flex items-center justify-between mb-3">
                           <h3 className="text-sm font-medium text-white/50">
-                            {fr ? 'Derniers badges' : 'Recent badges'}
+                            {fr ? "Derniers badges" : "Recent badges"}
                           </h3>
                           {badgeCount > 4 && (
                             <button
-                              onClick={() => setActiveTab('badges')}
+                              onClick={() => setActiveTab("badges")}
                               className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
                             >
-                              {fr ? 'Voir tous' : 'View all'}
+                              {fr ? "Voir tous" : "View all"}
                               <ChevronRight className="w-3 h-3" />
                             </button>
                           )}
@@ -361,7 +407,7 @@ const StudyHubPage: React.FC = () => {
                           <div className="flex flex-col items-center justify-center py-8 text-center">
                             <BookOpen className="w-8 h-8 text-white/10 mb-2" />
                             <p className="text-xs text-white/30">
-                              {fr ? 'Aucun badge encore' : 'No badges yet'}
+                              {fr ? "Aucun badge encore" : "No badges yet"}
                             </p>
                           </div>
                         )}
@@ -371,7 +417,7 @@ const StudyHubPage: React.FC = () => {
                 )}
 
                 {/* ── Mes vidéos ── */}
-                {activeTab === 'videos' && (
+                {activeTab === "videos" && (
                   <motion.div
                     key="videos"
                     initial={{ opacity: 0, y: 8 }}
@@ -393,18 +439,18 @@ const StudyHubPage: React.FC = () => {
                       <div className="text-center py-16">
                         <BookOpen className="w-12 h-12 text-white/10 mx-auto mb-4" />
                         <h3 className="text-lg font-medium text-white/60 mb-2">
-                          {fr ? 'Aucune vidéo révisée' : 'No videos studied'}
+                          {fr ? "Aucune vidéo révisée" : "No videos studied"}
                         </h3>
                         <p className="text-sm text-white/30 mb-6">
                           {fr
-                            ? 'Analysez une vidéo puis générez des flashcards pour commencer.'
-                            : 'Analyze a video and generate flashcards to start.'}
+                            ? "Analysez une vidéo puis générez des flashcards pour commencer."
+                            : "Analyze a video and generate flashcards to start."}
                         </p>
                         <button
-                          onClick={() => navigate('/dashboard')}
+                          onClick={() => navigate("/dashboard")}
                           className="px-5 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-medium hover:bg-indigo-600 transition-colors"
                         >
-                          {fr ? 'Analyser une vidéo' : 'Analyze a video'}
+                          {fr ? "Analyser une vidéo" : "Analyze a video"}
                         </button>
                       </div>
                     )}
@@ -412,7 +458,7 @@ const StudyHubPage: React.FC = () => {
                 )}
 
                 {/* ── Badges ── */}
-                {activeTab === 'badges' && (
+                {activeTab === "badges" && (
                   <motion.div
                     key="badges"
                     initial={{ opacity: 0, y: 8 }}
@@ -422,7 +468,8 @@ const StudyHubPage: React.FC = () => {
                   >
                     <div className="flex items-center gap-2 mb-4">
                       <span className="text-sm text-white/50">
-                        {badgeCount}/{badgeTotal} {fr ? 'badges débloqués' : 'badges unlocked'}
+                        {badgeCount}/{badgeTotal}{" "}
+                        {fr ? "badges débloqués" : "badges unlocked"}
                       </span>
                     </div>
                     <BadgeGrid
@@ -431,10 +478,8 @@ const StudyHubPage: React.FC = () => {
                     />
                   </motion.div>
                 )}
-
               </AnimatePresence>
             )}
-
           </div>
         </div>
       </main>

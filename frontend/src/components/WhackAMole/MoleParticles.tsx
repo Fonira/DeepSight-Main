@@ -3,16 +3,25 @@
  * 8 dots exploding radially outward from the mole position.
  */
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { PARTICLE_COUNT, PARTICLE_SIZE, PARTICLE_DISTANCE, PARTICLE_COLORS, MOLE_SIZE } from './whackAMoleConstants';
+import React from "react";
+import { motion } from "framer-motion";
+import {
+  PARTICLE_COUNT,
+  PARTICLE_SIZE,
+  PARTICLE_DISTANCE,
+  PARTICLE_COLORS,
+  MOLE_SIZE,
+} from "./whackAMoleConstants";
 
 interface MoleParticlesProps {
   position: { x: number; y: number };
   active: boolean;
 }
 
-export const MoleParticles: React.FC<MoleParticlesProps> = ({ position, active }) => {
+export const MoleParticles: React.FC<MoleParticlesProps> = ({
+  position,
+  active,
+}) => {
   if (!active) return null;
 
   const centerX = position.x + MOLE_SIZE / 2;

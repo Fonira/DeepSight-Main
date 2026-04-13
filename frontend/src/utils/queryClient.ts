@@ -10,17 +10,17 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import { QueryClient, QueryCache, MutationCache } from '@tanstack/react-query';
-import { captureError } from '../lib/sentry';
+import { QueryClient, QueryCache, MutationCache } from "@tanstack/react-query";
+import { captureError } from "../lib/sentry";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 CONFIGURATION
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const STALE_TIME = 5 * 60 * 1000;        // 5 minutes - données considérées fraîches
-const GC_TIME = 30 * 60 * 1000;          // 30 minutes - durée de conservation en cache
-const RETRY_COUNT = 3;                    // Nombre de tentatives
-const RETRY_DELAY = 1000;                // Délai initial entre tentatives (ms)
+const STALE_TIME = 5 * 60 * 1000; // 5 minutes - données considérées fraîches
+const GC_TIME = 30 * 60 * 1000; // 30 minutes - durée de conservation en cache
+const RETRY_COUNT = 3; // Nombre de tentatives
+const RETRY_DELAY = 1000; // Délai initial entre tentatives (ms)
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🛡️ ERROR HANDLING
@@ -37,14 +37,14 @@ interface ApiError extends Error {
 function shouldRetry(failureCount: number, error: unknown): boolean {
   // Ne pas retry au-delà du max
   if (failureCount >= RETRY_COUNT) return false;
-  
+
   const apiError = error as ApiError;
-  
+
   // Ne pas retry les erreurs 4xx (client errors) sauf 429 (rate limit)
   if (apiError.status && apiError.status >= 400 && apiError.status < 500) {
     return apiError.status === 429; // Retry uniquement rate limit
   }
-  
+
   // Retry les erreurs réseau et serveur (5xx)
   return true;
 }
@@ -61,16 +61,16 @@ function getRetryDelay(attemptIndex: number): number {
  */
 function handleQueryError(error: unknown): void {
   const apiError = error as ApiError;
-  
+
   // Log l'erreur
-  console.error('[QueryClient] Query error:', {
+  console.error("[QueryClient] Query error:", {
     message: apiError.message,
     status: apiError.status,
     code: apiError.code,
   });
-  
+
   if (error instanceof Error) {
-    captureError(error, { type: 'query_error' });
+    captureError(error, { type: "query_error" });
   }
 }
 
@@ -80,14 +80,14 @@ function handleQueryError(error: unknown): void {
 function handleMutationError(error: unknown): void {
   const apiError = error as ApiError;
 
-  console.error('[QueryClient] Mutation error:', {
+  console.error("[QueryClient] Mutation error:", {
     message: apiError.message,
     status: apiError.status,
     code: apiError.code,
   });
 
   if (error instanceof Error) {
-    captureError(error, { type: 'mutation_error' });
+    captureError(error, { type: "mutation_error" });
   }
 }
 
@@ -107,57 +107,57 @@ export const queryClient = new QueryClient({
       // ═══════════════════════════════════════════════════════════════════════
       // 🕐 TIMING
       // ═══════════════════════════════════════════════════════════════════════
-      
+
       /** Durée pendant laquelle les données sont considérées fraîches */
       staleTime: STALE_TIME,
-      
+
       /** Durée de conservation en cache après unmount */
       gcTime: GC_TIME,
-      
+
       // ═══════════════════════════════════════════════════════════════════════
       // 🔁 RETRY
       // ═══════════════════════════════════════════════════════════════════════
-      
+
       /** Fonction personnalisée pour déterminer si on retry */
       retry: shouldRetry,
-      
+
       /** Délai entre les tentatives avec exponential backoff */
       retryDelay: getRetryDelay,
-      
+
       // ═══════════════════════════════════════════════════════════════════════
       // 🔄 REFETCH BEHAVIOR
       // ═══════════════════════════════════════════════════════════════════════
-      
+
       /** Refetch quand la fenêtre reprend le focus */
       refetchOnWindowFocus: true,
-      
+
       /** Refetch quand la connexion réseau revient */
       refetchOnReconnect: true,
-      
+
       /** Ne pas refetch automatiquement au mount si les données sont en cache */
-      refetchOnMount: 'always',
-      
+      refetchOnMount: "always",
+
       // ═══════════════════════════════════════════════════════════════════════
       // 📊 NETWORK MODE
       // ═══════════════════════════════════════════════════════════════════════
-      
+
       /** Mode réseau: online (attendre connexion), always, offlineFirst */
-      networkMode: 'online',
-      
+      networkMode: "online",
+
       // ═══════════════════════════════════════════════════════════════════════
       // 🎯 STRUCTURAL SHARING
       // ═══════════════════════════════════════════════════════════════════════
-      
+
       /** Optimise les re-renders en gardant les références stables */
       structuralSharing: true,
     },
-    
+
     mutations: {
       /** Retry pour les mutations */
       retry: 1,
-      
+
       /** Mode réseau pour les mutations */
-      networkMode: 'online',
+      networkMode: "online",
     },
   },
 });
@@ -172,7 +172,7 @@ export const queryClient = new QueryClient({
 export async function prefetchQuery<T>(
   queryKey: string[],
   queryFn: () => Promise<T>,
-  staleTime = STALE_TIME
+  staleTime = STALE_TIME,
 ): Promise<void> {
   await queryClient.prefetchQuery({
     queryKey,
@@ -188,7 +188,7 @@ export function invalidateQueries(prefix: string): void {
   queryClient.invalidateQueries({
     predicate: (query) => {
       const key = query.queryKey[0];
-      return typeof key === 'string' && key.startsWith(prefix);
+      return typeof key === "string" && key.startsWith(prefix);
     },
   });
 }
@@ -212,7 +212,7 @@ export function getQueryData<T>(queryKey: string[]): T | undefined {
  */
 export function setQueryData<T>(
   queryKey: string[],
-  updater: T | ((old: T | undefined) => T)
+  updater: T | ((old: T | undefined) => T),
 ): void {
   queryClient.setQueryData(queryKey, updater);
 }

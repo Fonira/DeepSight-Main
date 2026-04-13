@@ -14,8 +14,8 @@ export {
   ErrorBoundary,
   useErrorHandler,
   withErrorBoundary,
-} from '../ErrorBoundary';
-export type { } from '../ErrorBoundary';
+} from "../ErrorBoundary";
+export type {} from "../ErrorBoundary";
 
 // State Components
 export {
@@ -23,15 +23,12 @@ export {
   EmptyState,
   ErrorState,
   ApiErrorDisplay,
-} from '../StateComponents';
+} from "../StateComponents";
 
 // Premium Feature Gate
-export {
-  PremiumFeatureGate,
-  useFeatureAccess,
-} from '../PremiumFeatureGate';
+export { PremiumFeatureGate, useFeatureAccess } from "../PremiumFeatureGate";
 
 // Re-export existing stability-related components
-export { UpgradePromptModal } from '../UpgradePromptModal';
-export { FreeTrialLimitModal } from '../FreeTrialLimitModal';
-export { CreditAlert } from '../CreditAlert';
+export { UpgradePromptModal } from "../UpgradePromptModal";
+export { FreeTrialLimitModal } from "../FreeTrialLimitModal";
+export { CreditAlert } from "../CreditAlert";

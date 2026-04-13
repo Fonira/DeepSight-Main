@@ -2,23 +2,23 @@
  * DEEP SIGHT — BadgeGrid
  * Grille de badges groupés par rareté.
  */
-import React, { useMemo } from 'react';
-import type { BadgeItem } from '../../types/gamification';
-import { RARITY_COLORS } from '../../types/gamification';
-import { BadgeCard } from './BadgeCard';
+import React, { useMemo } from "react";
+import type { BadgeItem } from "../../types/gamification";
+import { RARITY_COLORS } from "../../types/gamification";
+import { BadgeCard } from "./BadgeCard";
 
 interface BadgeGridProps {
   earned: BadgeItem[];
   locked: BadgeItem[];
 }
 
-type Rarity = 'legendary' | 'epic' | 'rare' | 'common';
-const RARITY_ORDER: Rarity[] = ['legendary', 'epic', 'rare', 'common'];
+type Rarity = "legendary" | "epic" | "rare" | "common";
+const RARITY_ORDER: Rarity[] = ["legendary", "epic", "rare", "common"];
 const RARITY_LABELS: Record<Rarity, string> = {
-  legendary: 'Légendaire',
-  epic: 'Épique',
-  rare: 'Rare',
-  common: 'Commun',
+  legendary: "Légendaire",
+  epic: "Épique",
+  rare: "Rare",
+  common: "Commun",
 };
 
 export const BadgeGrid: React.FC<BadgeGridProps> = ({ earned, locked }) => {
@@ -38,7 +38,7 @@ export const BadgeGrid: React.FC<BadgeGridProps> = ({ earned, locked }) => {
     };
 
     all.forEach((item) => {
-      const r = (item.badge.rarity ?? 'common') as Rarity;
+      const r = (item.badge.rarity ?? "common") as Rarity;
       if (r in groups) groups[r].push(item);
     });
 
@@ -66,19 +66,23 @@ export const BadgeGrid: React.FC<BadgeGridProps> = ({ earned, locked }) => {
             <div className="flex items-center gap-2 mb-3">
               <div
                 className="w-2 h-2 rounded-full"
-                style={{ backgroundColor: colors?.text ?? '#6366f1' }}
+                style={{ backgroundColor: colors?.text ?? "#6366f1" }}
               />
               <span
                 className="text-xs font-semibold uppercase tracking-wider"
-                style={{ color: colors?.text ?? '#6366f1' }}
+                style={{ color: colors?.text ?? "#6366f1" }}
               >
                 {RARITY_LABELS[rarity]}
               </span>
-              <span className="text-[10px] text-white/30">({items.length})</span>
+              <span className="text-[10px] text-white/30">
+                ({items.length})
+              </span>
             </div>
             <div
               className="grid gap-3"
-              style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}
+              style={{
+                gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+              }}
             >
               {items.map((item) => (
                 <BadgeCard

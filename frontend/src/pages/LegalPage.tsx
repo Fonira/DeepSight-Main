@@ -6,16 +6,28 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
-  Scale, Shield, FileText, Mail, Phone,
-  Building, Server, Lock, Eye, Trash2,
-  AlertCircle, CreditCard, RefreshCw, Users, BookOpen
-} from 'lucide-react';
-import { Sidebar } from '../components/layout/Sidebar';
-import DoodleBackground from '../components/DoodleBackground';
-import { SEO } from '../components/SEO';
+  Scale,
+  Shield,
+  FileText,
+  Mail,
+  Phone,
+  Building,
+  Server,
+  Lock,
+  Eye,
+  Trash2,
+  AlertCircle,
+  CreditCard,
+  RefreshCw,
+  Users,
+  BookOpen,
+} from "lucide-react";
+import { Sidebar } from "../components/layout/Sidebar";
+import DoodleBackground from "../components/DoodleBackground";
+import { SEO } from "../components/SEO";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📋 DONNÉES LÉGALES
@@ -72,7 +84,7 @@ const LEGAL_INFO = {
 // 🎨 COMPOSANTS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type TabType = 'mentions' | 'cgu' | 'privacy' | 'cookies';
+type TabType = "mentions" | "cgu" | "privacy" | "cookies";
 
 interface TabConfig {
   id: TabType;
@@ -81,10 +93,18 @@ interface TabConfig {
 }
 
 const TABS: TabConfig[] = [
-  { id: 'mentions', label: 'Mentions légales', icon: <Scale className="w-4 h-4" /> },
-  { id: 'cgu', label: 'CGU / CGV', icon: <FileText className="w-4 h-4" /> },
-  { id: 'privacy', label: 'Confidentialité', icon: <Shield className="w-4 h-4" /> },
-  { id: 'cookies', label: 'Cookies', icon: <Eye className="w-4 h-4" /> },
+  {
+    id: "mentions",
+    label: "Mentions légales",
+    icon: <Scale className="w-4 h-4" />,
+  },
+  { id: "cgu", label: "CGU / CGV", icon: <FileText className="w-4 h-4" /> },
+  {
+    id: "privacy",
+    label: "Confidentialité",
+    icon: <Shield className="w-4 h-4" />,
+  },
+  { id: "cookies", label: "Cookies", icon: <Eye className="w-4 h-4" /> },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -96,7 +116,8 @@ const MentionsLegales: React.FC = () => (
     <header>
       <h2 className="text-2xl font-bold text-white mb-2">Mentions Légales</h2>
       <p className="text-white/60">
-        Conformément à la loi n°2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique
+        Conformément à la loi n°2004-575 du 21 juin 2004 pour la confiance dans
+        l'économie numérique
       </p>
     </header>
 
@@ -110,15 +131,36 @@ const MentionsLegales: React.FC = () => (
       </div>
       <div className="grid md:grid-cols-2 gap-4 text-white/80">
         <div className="space-y-2">
-          <p><span className="text-white/50">Nom commercial :</span> {LEGAL_INFO.company.tradeName}</p>
-          <p><span className="text-white/50">Exploitant :</span> {LEGAL_INFO.company.name}</p>
-          <p><span className="text-white/50">Statut :</span> {LEGAL_INFO.company.type}</p>
-          <p><span className="text-white/50">SIRET :</span> {LEGAL_INFO.company.siret}</p>
+          <p>
+            <span className="text-white/50">Nom commercial :</span>{" "}
+            {LEGAL_INFO.company.tradeName}
+          </p>
+          <p>
+            <span className="text-white/50">Exploitant :</span>{" "}
+            {LEGAL_INFO.company.name}
+          </p>
+          <p>
+            <span className="text-white/50">Statut :</span>{" "}
+            {LEGAL_INFO.company.type}
+          </p>
+          <p>
+            <span className="text-white/50">SIRET :</span>{" "}
+            {LEGAL_INFO.company.siret}
+          </p>
         </div>
         <div className="space-y-2">
-          <p><span className="text-white/50">Activité :</span> {LEGAL_INFO.company.activity} ({LEGAL_INFO.company.activityCode})</p>
-          <p><span className="text-white/50">Adresse :</span> {LEGAL_INFO.company.address}, {LEGAL_INFO.company.postalCode} {LEGAL_INFO.company.city}</p>
-          <p><span className="text-white/50">TVA :</span> {LEGAL_INFO.vat.status}</p>
+          <p>
+            <span className="text-white/50">Activité :</span>{" "}
+            {LEGAL_INFO.company.activity} ({LEGAL_INFO.company.activityCode})
+          </p>
+          <p>
+            <span className="text-white/50">Adresse :</span>{" "}
+            {LEGAL_INFO.company.address}, {LEGAL_INFO.company.postalCode}{" "}
+            {LEGAL_INFO.company.city}
+          </p>
+          <p>
+            <span className="text-white/50">TVA :</span> {LEGAL_INFO.vat.status}
+          </p>
         </div>
       </div>
     </section>
@@ -132,11 +174,17 @@ const MentionsLegales: React.FC = () => (
         <h3 className="text-lg font-semibold text-white">Contact</h3>
       </div>
       <div className="flex flex-wrap gap-6 text-white/80">
-        <a href={`mailto:${LEGAL_INFO.contact.email}`} className="flex items-center gap-2 hover:text-amber-400 transition-colors">
+        <a
+          href={`mailto:${LEGAL_INFO.contact.email}`}
+          className="flex items-center gap-2 hover:text-amber-400 transition-colors"
+        >
           <Mail className="w-4 h-4" />
           {LEGAL_INFO.contact.email}
         </a>
-        <a href={`tel:${LEGAL_INFO.contact.phone.replace(/\s/g, '')}`} className="flex items-center gap-2 hover:text-amber-400 transition-colors">
+        <a
+          href={`tel:${LEGAL_INFO.contact.phone.replace(/\s/g, "")}`}
+          className="flex items-center gap-2 hover:text-amber-400 transition-colors"
+        >
           <Phone className="w-4 h-4" />
           {LEGAL_INFO.contact.phone}
         </a>
@@ -149,7 +197,9 @@ const MentionsLegales: React.FC = () => (
         <div className="p-2 bg-purple-500/20 rounded-lg">
           <Users className="w-5 h-5 text-purple-400" />
         </div>
-        <h3 className="text-lg font-semibold text-white">Directeur de la publication</h3>
+        <h3 className="text-lg font-semibold text-white">
+          Directeur de la publication
+        </h3>
       </div>
       <p className="text-white/80">{LEGAL_INFO.publication.director}</p>
     </section>
@@ -166,16 +216,30 @@ const MentionsLegales: React.FC = () => (
         <div className="space-y-2 text-white/80">
           <p className="text-white font-medium">Frontend (Site web)</p>
           <p>{LEGAL_INFO.hosting.frontend.name}</p>
-          <p className="text-sm text-white/60">{LEGAL_INFO.hosting.frontend.address}</p>
-          <a href={LEGAL_INFO.hosting.frontend.website} target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:underline text-sm">
+          <p className="text-sm text-white/60">
+            {LEGAL_INFO.hosting.frontend.address}
+          </p>
+          <a
+            href={LEGAL_INFO.hosting.frontend.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-amber-400 hover:underline text-sm"
+          >
             {LEGAL_INFO.hosting.frontend.website}
           </a>
         </div>
         <div className="space-y-2 text-white/80">
           <p className="text-white font-medium">Backend (API & données)</p>
           <p>{LEGAL_INFO.hosting.backend.name}</p>
-          <p className="text-sm text-white/60">{LEGAL_INFO.hosting.backend.address}</p>
-          <a href={LEGAL_INFO.hosting.backend.website} target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:underline text-sm">
+          <p className="text-sm text-white/60">
+            {LEGAL_INFO.hosting.backend.address}
+          </p>
+          <a
+            href={LEGAL_INFO.hosting.backend.website}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-amber-400 hover:underline text-sm"
+          >
             {LEGAL_INFO.hosting.backend.website}
           </a>
         </div>
@@ -183,7 +247,9 @@ const MentionsLegales: React.FC = () => (
       <div className="mt-4 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
         <p className="text-green-200 text-sm">
           <Shield className="w-4 h-4 inline mr-2" />
-          Le backend et les données utilisateur sont hébergés en Allemagne (UE) chez Hetzner. Le frontend est servi depuis le CDN mondial de Vercel. Vos données restent en Europe conformément au RGPD.
+          Le backend et les données utilisateur sont hébergés en Allemagne (UE)
+          chez Hetzner. Le frontend est servi depuis le CDN mondial de Vercel.
+          Vos données restent en Europe conformément au RGPD.
         </p>
       </div>
     </section>
@@ -194,21 +260,26 @@ const MentionsLegales: React.FC = () => (
         <div className="p-2 bg-pink-500/20 rounded-lg">
           <BookOpen className="w-5 h-5 text-pink-400" />
         </div>
-        <h3 className="text-lg font-semibold text-white">Propriété intellectuelle</h3>
+        <h3 className="text-lg font-semibold text-white">
+          Propriété intellectuelle
+        </h3>
       </div>
       <div className="text-white/80 space-y-3">
         <p>
-          L'ensemble du contenu du site {LEGAL_INFO.website.name} (textes, graphismes, logos, icônes, images, 
-          logiciels, base de données) est la propriété exclusive de {LEGAL_INFO.company.name}, 
-          à l'exception des contenus appartenant à d'autres partenaires.
+          L'ensemble du contenu du site {LEGAL_INFO.website.name} (textes,
+          graphismes, logos, icônes, images, logiciels, base de données) est la
+          propriété exclusive de {LEGAL_INFO.company.name}, à l'exception des
+          contenus appartenant à d'autres partenaires.
         </p>
         <p>
-          Toute reproduction, représentation, modification, publication, adaptation de tout ou partie 
-          des éléments du site, quel que soit le moyen ou le procédé utilisé, est interdite sans 
-          autorisation écrite préalable.
+          Toute reproduction, représentation, modification, publication,
+          adaptation de tout ou partie des éléments du site, quel que soit le
+          moyen ou le procédé utilisé, est interdite sans autorisation écrite
+          préalable.
         </p>
         <p>
-          Les analyses générées par le service sont la propriété de l'utilisateur qui les a commandées.
+          Les analyses générées par le service sont la propriété de
+          l'utilisateur qui les a commandées.
         </p>
       </div>
     </section>
@@ -222,80 +293,112 @@ const MentionsLegales: React.FC = () => (
 const CGU: React.FC = () => (
   <div className="space-y-8">
     <header>
-      <h2 className="text-2xl font-bold text-white mb-2">Conditions Générales d'Utilisation et de Vente</h2>
-      <p className="text-white/60">
-        En vigueur au {LEGAL_INFO.lastUpdate}
-      </p>
+      <h2 className="text-2xl font-bold text-white mb-2">
+        Conditions Générales d'Utilisation et de Vente
+      </h2>
+      <p className="text-white/60">En vigueur au {LEGAL_INFO.lastUpdate}</p>
     </header>
 
     {/* Article 1 - Objet */}
     <section className="bg-white/5 rounded-xl p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">Article 1 — Objet</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">
+        Article 1 — Objet
+      </h3>
       <div className="text-white/80 space-y-3">
         <p>
-          Les présentes Conditions Générales d'Utilisation et de Vente (ci-après « CGU/CGV ») ont pour objet 
-          de définir les modalités d'accès et d'utilisation du service <strong>{LEGAL_INFO.website.name}</strong>, 
-          accessible à l'adresse <a href={LEGAL_INFO.website.url} className="text-amber-400 hover:underline">{LEGAL_INFO.website.url}</a>.
+          Les présentes Conditions Générales d'Utilisation et de Vente (ci-après
+          « CGU/CGV ») ont pour objet de définir les modalités d'accès et
+          d'utilisation du service <strong>{LEGAL_INFO.website.name}</strong>,
+          accessible à l'adresse{" "}
+          <a
+            href={LEGAL_INFO.website.url}
+            className="text-amber-400 hover:underline"
+          >
+            {LEGAL_INFO.website.url}
+          </a>
+          .
         </p>
         <p>
-          {LEGAL_INFO.website.name} est un service d'analyse de vidéos YouTube et TikTok utilisant l'intelligence artificielle 
-          pour générer des synthèses, extraire des informations clés et permettre des interactions conversationnelles 
-          avec le contenu analysé.
+          {LEGAL_INFO.website.name} est un service d'analyse de vidéos YouTube
+          et TikTok utilisant l'intelligence artificielle pour générer des
+          synthèses, extraire des informations clés et permettre des
+          interactions conversationnelles avec le contenu analysé.
         </p>
       </div>
     </section>
 
     {/* Article 2 - Acceptation */}
     <section className="bg-white/5 rounded-xl p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">Article 2 — Acceptation des conditions</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">
+        Article 2 — Acceptation des conditions
+      </h3>
       <div className="text-white/80 space-y-3">
         <p>
-          L'utilisation du service implique l'acceptation pleine et entière des présentes CGU/CGV. 
-          L'utilisateur reconnaît avoir pris connaissance des présentes conditions et s'engage à les respecter.
+          L'utilisation du service implique l'acceptation pleine et entière des
+          présentes CGU/CGV. L'utilisateur reconnaît avoir pris connaissance des
+          présentes conditions et s'engage à les respecter.
         </p>
         <p>
-          {LEGAL_INFO.company.name} se réserve le droit de modifier les présentes CGU/CGV à tout moment. 
-          Les utilisateurs seront informés de ces modifications par email ou notification sur le site.
+          {LEGAL_INFO.company.name} se réserve le droit de modifier les
+          présentes CGU/CGV à tout moment. Les utilisateurs seront informés de
+          ces modifications par email ou notification sur le site.
         </p>
       </div>
     </section>
 
     {/* Article 3 - Services */}
     <section className="bg-white/5 rounded-xl p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">Article 3 — Description des services</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">
+        Article 3 — Description des services
+      </h3>
       <div className="text-white/80 space-y-3">
         <p>Le service {LEGAL_INFO.website.name} propose :</p>
         <ul className="list-disc list-inside space-y-2 ml-4">
-          <li>L'analyse automatisée de vidéos YouTube (transcription, synthèse, catégorisation)</li>
-          <li>Un assistant conversationnel (Chat IA) pour interagir avec le contenu analysé</li>
+          <li>
+            L'analyse automatisée de vidéos YouTube (transcription, synthèse,
+            catégorisation)
+          </li>
+          <li>
+            Un assistant conversationnel (Chat IA) pour interagir avec le
+            contenu analysé
+          </li>
           <li>L'analyse de playlists et corpus de vidéos (selon abonnement)</li>
-          <li>L'enrichissement des analyses via recherche web (selon abonnement)</li>
-          <li>L'export des analyses en différents formats (PDF, Markdown, etc.)</li>
+          <li>
+            L'enrichissement des analyses via recherche web (selon abonnement)
+          </li>
+          <li>
+            L'export des analyses en différents formats (PDF, Markdown, etc.)
+          </li>
         </ul>
         <p>
-          Le service utilise uniquement les sous-titres publics des vidéos YouTube. 
-          Aucun téléchargement de contenu audiovisuel n'est effectué.
+          Le service utilise uniquement les sous-titres publics des vidéos
+          YouTube. Aucun téléchargement de contenu audiovisuel n'est effectué.
         </p>
       </div>
     </section>
 
     {/* Article 4 - Inscription */}
     <section className="bg-white/5 rounded-xl p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">Article 4 — Inscription et compte utilisateur</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">
+        Article 4 — Inscription et compte utilisateur
+      </h3>
       <div className="text-white/80 space-y-3">
         <p>
-          L'accès au service nécessite la création d'un compte utilisateur. L'utilisateur peut s'inscrire :
+          L'accès au service nécessite la création d'un compte utilisateur.
+          L'utilisateur peut s'inscrire :
         </p>
         <ul className="list-disc list-inside space-y-2 ml-4">
           <li>Via une adresse email et un mot de passe</li>
           <li>Via son compte Google (OAuth)</li>
         </ul>
         <p>
-          L'utilisateur s'engage à fournir des informations exactes et à maintenir la confidentialité 
-          de ses identifiants de connexion. Il est responsable de toute activité effectuée depuis son compte.
+          L'utilisateur s'engage à fournir des informations exactes et à
+          maintenir la confidentialité de ses identifiants de connexion. Il est
+          responsable de toute activité effectuée depuis son compte.
         </p>
         <p>
-          L'utilisateur doit être âgé d'au moins 16 ans pour utiliser le service.
+          L'utilisateur doit être âgé d'au moins 16 ans pour utiliser le
+          service.
         </p>
       </div>
     </section>
@@ -316,26 +419,31 @@ const CGU: React.FC = () => (
           </div>
           <div className="bg-white/5 p-4 rounded-lg border border-white/10">
             <p className="font-bold text-white">Starter</p>
-            <p className="text-2xl font-bold text-amber-400">4,99€<span className="text-sm">/mois</span></p>
+            <p className="text-2xl font-bold text-amber-400">
+              4,99€<span className="text-sm">/mois</span>
+            </p>
             <p className="text-sm text-white/60">50 analyses/mois</p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg border border-white/10">
             <p className="font-bold text-white">Pro</p>
-            <p className="text-2xl font-bold text-amber-400">9,99€<span className="text-sm">/mois</span></p>
+            <p className="text-2xl font-bold text-amber-400">
+              9,99€<span className="text-sm">/mois</span>
+            </p>
             <p className="text-sm text-white/60">200 analyses/mois</p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg border border-white/10">
             <p className="font-bold text-white">Expert</p>
-            <p className="text-2xl font-bold text-amber-400">14,99€<span className="text-sm">/mois</span></p>
+            <p className="text-2xl font-bold text-amber-400">
+              14,99€<span className="text-sm">/mois</span>
+            </p>
             <p className="text-sm text-white/60">Analyses illimitées</p>
           </div>
         </div>
+        <p>Les prix sont indiqués en euros TTC ({LEGAL_INFO.vat.status}).</p>
         <p>
-          Les prix sont indiqués en euros TTC ({LEGAL_INFO.vat.status}).
-        </p>
-        <p>
-          Le paiement est effectué par carte bancaire via la plateforme sécurisée Stripe. 
-          Les abonnements sont renouvelés automatiquement chaque mois.
+          Le paiement est effectué par carte bancaire via la plateforme
+          sécurisée Stripe. Les abonnements sont renouvelés automatiquement
+          chaque mois.
         </p>
       </div>
     </section>
@@ -348,47 +456,65 @@ const CGU: React.FC = () => (
       </h3>
       <div className="text-white/80 space-y-3">
         <p>
-          Conformément à l'article L221-28 du Code de la consommation, le droit de rétractation 
-          ne s'applique pas aux contrats de fourniture de contenu numérique non fourni sur un 
-          support matériel dont l'exécution a commencé après accord préalable exprès du consommateur.
+          Conformément à l'article L221-28 du Code de la consommation, le droit
+          de rétractation ne s'applique pas aux contrats de fourniture de
+          contenu numérique non fourni sur un support matériel dont l'exécution
+          a commencé après accord préalable exprès du consommateur.
         </p>
         <p>
-          En souscrivant à un abonnement payant et en utilisant immédiatement le service, 
-          l'utilisateur reconnaît renoncer expressément à son droit de rétractation.
+          En souscrivant à un abonnement payant et en utilisant immédiatement le
+          service, l'utilisateur reconnaît renoncer expressément à son droit de
+          rétractation.
         </p>
         <p>
-          <strong>Toutefois</strong>, l'utilisateur peut résilier son abonnement à tout moment depuis 
-          son espace client. La résiliation prend effet à la fin de la période de facturation en cours.
+          <strong>Toutefois</strong>, l'utilisateur peut résilier son abonnement
+          à tout moment depuis son espace client. La résiliation prend effet à
+          la fin de la période de facturation en cours.
         </p>
       </div>
     </section>
 
     {/* Article 7 - Utilisation */}
     <section className="bg-white/5 rounded-xl p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">Article 7 — Règles d'utilisation</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">
+        Article 7 — Règles d'utilisation
+      </h3>
       <div className="text-white/80 space-y-3">
         <p>L'utilisateur s'engage à :</p>
         <ul className="list-disc list-inside space-y-2 ml-4">
-          <li>Utiliser le service de manière loyale et conforme à sa destination</li>
-          <li>Ne pas analyser de contenus illicites, haineux, diffamatoires ou portant atteinte aux droits d'autrui</li>
-          <li>Ne pas tenter de contourner les limitations techniques du service</li>
-          <li>Ne pas utiliser de moyens automatisés pour accéder au service (bots, scrapers)</li>
+          <li>
+            Utiliser le service de manière loyale et conforme à sa destination
+          </li>
+          <li>
+            Ne pas analyser de contenus illicites, haineux, diffamatoires ou
+            portant atteinte aux droits d'autrui
+          </li>
+          <li>
+            Ne pas tenter de contourner les limitations techniques du service
+          </li>
+          <li>
+            Ne pas utiliser de moyens automatisés pour accéder au service (bots,
+            scrapers)
+          </li>
           <li>Ne pas revendre ou redistribuer le service sans autorisation</li>
         </ul>
         <p>
-          Le non-respect de ces règles peut entraîner la suspension ou la résiliation du compte 
-          sans remboursement ni préavis.
+          Le non-respect de ces règles peut entraîner la suspension ou la
+          résiliation du compte sans remboursement ni préavis.
         </p>
       </div>
     </section>
 
     {/* Article 8 - Responsabilité */}
     <section className="bg-white/5 rounded-xl p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">Article 8 — Limitation de responsabilité</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">
+        Article 8 — Limitation de responsabilité
+      </h3>
       <div className="text-white/80 space-y-3">
         <p>
-          {LEGAL_INFO.website.name} est un outil d'assistance basé sur l'intelligence artificielle. 
-          Les analyses générées sont fournies à titre informatif et ne constituent en aucun cas :
+          {LEGAL_INFO.website.name} est un outil d'assistance basé sur
+          l'intelligence artificielle. Les analyses générées sont fournies à
+          titre informatif et ne constituent en aucun cas :
         </p>
         <ul className="list-disc list-inside space-y-2 ml-4">
           <li>Un avis professionnel (juridique, médical, financier, etc.)</li>
@@ -396,50 +522,57 @@ const CGU: React.FC = () => (
           <li>Un substitut au visionnage des vidéos originales</li>
         </ul>
         <p>
-          {LEGAL_INFO.company.name} ne saurait être tenu responsable des décisions prises 
-          sur la base des analyses générées par le service.
+          {LEGAL_INFO.company.name} ne saurait être tenu responsable des
+          décisions prises sur la base des analyses générées par le service.
         </p>
         <p>
-          Le service est fourni "en l'état". {LEGAL_INFO.company.name} ne garantit pas 
-          l'absence d'interruptions ou d'erreurs dans le fonctionnement du service.
+          Le service est fourni "en l'état". {LEGAL_INFO.company.name} ne
+          garantit pas l'absence d'interruptions ou d'erreurs dans le
+          fonctionnement du service.
         </p>
       </div>
     </section>
 
     {/* Article 9 - Résiliation */}
     <section className="bg-white/5 rounded-xl p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">Article 9 — Résiliation</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">
+        Article 9 — Résiliation
+      </h3>
       <div className="text-white/80 space-y-3">
         <p>
-          L'utilisateur peut supprimer son compte à tout moment depuis les paramètres de son profil 
-          ou en contactant le support à l'adresse {LEGAL_INFO.contact.email}.
+          L'utilisateur peut supprimer son compte à tout moment depuis les
+          paramètres de son profil ou en contactant le support à l'adresse{" "}
+          {LEGAL_INFO.contact.email}.
         </p>
         <p>
-          La suppression du compte entraîne la suppression définitive de toutes les données 
-          associées (analyses, historique, préférences) dans un délai de 30 jours.
+          La suppression du compte entraîne la suppression définitive de toutes
+          les données associées (analyses, historique, préférences) dans un
+          délai de 30 jours.
         </p>
         <p>
-          {LEGAL_INFO.company.name} se réserve le droit de suspendre ou résilier un compte 
-          en cas de violation des présentes CGU/CGV.
+          {LEGAL_INFO.company.name} se réserve le droit de suspendre ou résilier
+          un compte en cas de violation des présentes CGU/CGV.
         </p>
       </div>
     </section>
 
     {/* Article 10 - Droit applicable */}
     <section className="bg-white/5 rounded-xl p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">Article 10 — Droit applicable et litiges</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">
+        Article 10 — Droit applicable et litiges
+      </h3>
       <div className="text-white/80 space-y-3">
+        <p>Les présentes CGU/CGV sont régies par le droit français.</p>
         <p>
-          Les présentes CGU/CGV sont régies par le droit français.
+          En cas de litige, les parties s'engagent à rechercher une solution
+          amiable avant toute action judiciaire. À défaut d'accord, le litige
+          sera porté devant les tribunaux compétents du ressort de Lyon
+          (France).
         </p>
         <p>
-          En cas de litige, les parties s'engagent à rechercher une solution amiable avant toute 
-          action judiciaire. À défaut d'accord, le litige sera porté devant les tribunaux compétents 
-          du ressort de Lyon (France).
-        </p>
-        <p>
-          Conformément à l'article L612-1 du Code de la consommation, le consommateur peut recourir 
-          gratuitement à un médiateur de la consommation en vue de la résolution amiable du litige.
+          Conformément à l'article L612-1 du Code de la consommation, le
+          consommateur peut recourir gratuitement à un médiateur de la
+          consommation en vue de la résolution amiable du litige.
         </p>
       </div>
     </section>
@@ -453,9 +586,12 @@ const CGU: React.FC = () => (
 const PrivacyPolicy: React.FC = () => (
   <div className="space-y-8">
     <header>
-      <h2 className="text-2xl font-bold text-white mb-2">Politique de Confidentialité</h2>
+      <h2 className="text-2xl font-bold text-white mb-2">
+        Politique de Confidentialité
+      </h2>
       <p className="text-white/60">
-        Conforme au Règlement Général sur la Protection des Données (RGPD) — En vigueur au {LEGAL_INFO.lastUpdate}
+        Conforme au Règlement Général sur la Protection des Données (RGPD) — En
+        vigueur au {LEGAL_INFO.lastUpdate}
       </p>
     </header>
 
@@ -464,14 +600,20 @@ const PrivacyPolicy: React.FC = () => (
       <h3 className="text-lg font-semibold text-white mb-4">Introduction</h3>
       <div className="text-white/80 space-y-3">
         <p>
-          {LEGAL_INFO.company.name}, exploitant le service {LEGAL_INFO.website.name}, s'engage à protéger 
-          la vie privée des utilisateurs de son service. La présente politique de confidentialité 
-          décrit les données collectées, leur utilisation et les droits dont vous disposez.
+          {LEGAL_INFO.company.name}, exploitant le service{" "}
+          {LEGAL_INFO.website.name}, s'engage à protéger la vie privée des
+          utilisateurs de son service. La présente politique de confidentialité
+          décrit les données collectées, leur utilisation et les droits dont
+          vous disposez.
         </p>
         <p>
-          <strong>Responsable du traitement :</strong><br />
-          {LEGAL_INFO.company.name}<br />
-          {LEGAL_INFO.company.address}, {LEGAL_INFO.company.postalCode} {LEGAL_INFO.company.city}<br />
+          <strong>Responsable du traitement :</strong>
+          <br />
+          {LEGAL_INFO.company.name}
+          <br />
+          {LEGAL_INFO.company.address}, {LEGAL_INFO.company.postalCode}{" "}
+          {LEGAL_INFO.company.city}
+          <br />
           Email : {LEGAL_INFO.dpo.email}
         </p>
       </div>
@@ -522,7 +664,9 @@ const PrivacyPolicy: React.FC = () => (
         <div className="p-2 bg-green-500/20 rounded-lg">
           <FileText className="w-5 h-5 text-green-400" />
         </div>
-        <h3 className="text-lg font-semibold text-white">Finalités et bases légales</h3>
+        <h3 className="text-lg font-semibold text-white">
+          Finalités et bases légales
+        </h3>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-white/80 text-sm">
@@ -570,15 +714,21 @@ const PrivacyPolicy: React.FC = () => (
         <div className="p-2 bg-purple-500/20 rounded-lg">
           <Users className="w-5 h-5 text-purple-400" />
         </div>
-        <h3 className="text-lg font-semibold text-white">Partage des données</h3>
+        <h3 className="text-lg font-semibold text-white">
+          Partage des données
+        </h3>
       </div>
       <div className="text-white/80 space-y-3">
-        <p>Vos données peuvent être partagées avec les prestataires suivants :</p>
+        <p>
+          Vos données peuvent être partagées avec les prestataires suivants :
+        </p>
         <div className="grid md:grid-cols-2 gap-4 mt-4">
           <div className="bg-white/5 p-4 rounded-lg">
             <p className="font-medium text-white">Stripe (Paiement)</p>
             <p className="text-sm text-white/60">Données bancaires — USA</p>
-            <p className="text-xs text-amber-400">Clauses contractuelles types</p>
+            <p className="text-xs text-amber-400">
+              Clauses contractuelles types
+            </p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg">
             <p className="font-medium text-white">Mistral AI (Analyse IA)</p>
@@ -586,14 +736,20 @@ const PrivacyPolicy: React.FC = () => (
             <p className="text-xs text-green-400">Hébergé en UE</p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg">
-            <p className="font-medium text-white">Perplexity (Enrichissement)</p>
+            <p className="font-medium text-white">
+              Perplexity (Enrichissement)
+            </p>
             <p className="text-sm text-white/60">Requêtes de recherche — USA</p>
-            <p className="text-xs text-amber-400">Clauses contractuelles types</p>
+            <p className="text-xs text-amber-400">
+              Clauses contractuelles types
+            </p>
           </div>
           <div className="bg-white/5 p-4 rounded-lg">
             <p className="font-medium text-white">Google (OAuth)</p>
             <p className="text-sm text-white/60">Authentification — USA</p>
-            <p className="text-xs text-amber-400">Clauses contractuelles types</p>
+            <p className="text-xs text-amber-400">
+              Clauses contractuelles types
+            </p>
           </div>
         </div>
         <p className="mt-4">
@@ -658,14 +814,21 @@ const PrivacyPolicy: React.FC = () => (
         </div>
         <div className="mt-6 p-4 bg-amber-500/10 rounded-lg border border-amber-500/20">
           <p className="text-amber-200">
-            <strong>Pour exercer vos droits :</strong> Contactez-nous à{' '}
-            <a href={`mailto:${LEGAL_INFO.dpo.email}`} className="underline">{LEGAL_INFO.dpo.email}</a>
-            {' '}en précisant votre demande. Nous répondrons dans un délai d'un mois.
+            <strong>Pour exercer vos droits :</strong> Contactez-nous à{" "}
+            <a href={`mailto:${LEGAL_INFO.dpo.email}`} className="underline">
+              {LEGAL_INFO.dpo.email}
+            </a>{" "}
+            en précisant votre demande. Nous répondrons dans un délai d'un mois.
           </p>
         </div>
         <p className="mt-4">
-          Vous pouvez également introduire une réclamation auprès de la CNIL :{' '}
-          <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className="text-amber-400 hover:underline">
+          Vous pouvez également introduire une réclamation auprès de la CNIL :{" "}
+          <a
+            href="https://www.cnil.fr"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-amber-400 hover:underline"
+          >
             www.cnil.fr
           </a>
         </p>
@@ -678,10 +841,15 @@ const PrivacyPolicy: React.FC = () => (
         <div className="p-2 bg-red-500/20 rounded-lg">
           <Lock className="w-5 h-5 text-red-400" />
         </div>
-        <h3 className="text-lg font-semibold text-white">Sécurité des données</h3>
+        <h3 className="text-lg font-semibold text-white">
+          Sécurité des données
+        </h3>
       </div>
       <div className="text-white/80 space-y-3">
-        <p>Nous mettons en œuvre les mesures suivantes pour protéger vos données :</p>
+        <p>
+          Nous mettons en œuvre les mesures suivantes pour protéger vos données
+          :
+        </p>
         <ul className="list-disc list-inside space-y-2 ml-4">
           <li>Chiffrement des données en transit (HTTPS/TLS)</li>
           <li>Chiffrement des mots de passe (bcrypt)</li>
@@ -702,32 +870,40 @@ const PrivacyPolicy: React.FC = () => (
 const CookiesPolicy: React.FC = () => (
   <div className="space-y-8">
     <header>
-      <h2 className="text-2xl font-bold text-white mb-2">Politique de Cookies</h2>
-      <p className="text-white/60">
-        En vigueur au {LEGAL_INFO.lastUpdate}
-      </p>
+      <h2 className="text-2xl font-bold text-white mb-2">
+        Politique de Cookies
+      </h2>
+      <p className="text-white/60">En vigueur au {LEGAL_INFO.lastUpdate}</p>
     </header>
 
     {/* Qu'est-ce qu'un cookie */}
     <section className="bg-white/5 rounded-xl p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">Qu'est-ce qu'un cookie ?</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">
+        Qu'est-ce qu'un cookie ?
+      </h3>
       <div className="text-white/80 space-y-3">
         <p>
-          Un cookie est un petit fichier texte déposé sur votre appareil (ordinateur, tablette, smartphone) 
-          lors de votre visite sur un site web. Il permet au site de mémoriser vos actions et préférences 
-          pendant une durée déterminée.
+          Un cookie est un petit fichier texte déposé sur votre appareil
+          (ordinateur, tablette, smartphone) lors de votre visite sur un site
+          web. Il permet au site de mémoriser vos actions et préférences pendant
+          une durée déterminée.
         </p>
       </div>
     </section>
 
     {/* Cookies utilisés */}
     <section className="bg-white/5 rounded-xl p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">Cookies utilisés par {LEGAL_INFO.website.name}</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">
+        Cookies utilisés par {LEGAL_INFO.website.name}
+      </h3>
       <div className="text-white/80 space-y-4">
-        
         <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/20">
-          <p className="font-medium text-green-400 mb-2">✅ Cookies strictement nécessaires (toujours actifs)</p>
-          <p className="text-sm mb-3">Ces cookies sont indispensables au fonctionnement du site.</p>
+          <p className="font-medium text-green-400 mb-2">
+            ✅ Cookies strictement nécessaires (toujours actifs)
+          </p>
+          <p className="text-sm mb-3">
+            Ces cookies sont indispensables au fonctionnement du site.
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -764,18 +940,27 @@ const CookiesPolicy: React.FC = () => (
         </div>
 
         <div className="bg-blue-500/10 p-4 rounded-lg border border-blue-500/20">
-          <p className="font-medium text-blue-400 mb-2">📊 Cookies analytiques (optionnels)</p>
-          <p className="text-sm mb-3">Ces cookies nous aident à comprendre comment les visiteurs utilisent le site.</p>
+          <p className="font-medium text-blue-400 mb-2">
+            📊 Cookies analytiques (optionnels)
+          </p>
+          <p className="text-sm mb-3">
+            Ces cookies nous aident à comprendre comment les visiteurs utilisent
+            le site.
+          </p>
           <p className="text-sm text-white/60">
-            Actuellement, {LEGAL_INFO.website.name} n'utilise pas de cookies analytiques tiers 
-            (Google Analytics, etc.). Si cela change, cette politique sera mise à jour.
+            Actuellement, {LEGAL_INFO.website.name} n'utilise pas de cookies
+            analytiques tiers (Google Analytics, etc.). Si cela change, cette
+            politique sera mise à jour.
           </p>
         </div>
 
         <div className="bg-purple-500/10 p-4 rounded-lg border border-purple-500/20">
-          <p className="font-medium text-purple-400 mb-2">🎯 Cookies publicitaires</p>
+          <p className="font-medium text-purple-400 mb-2">
+            🎯 Cookies publicitaires
+          </p>
           <p className="text-sm text-white/60">
-            {LEGAL_INFO.website.name} n'utilise aucun cookie publicitaire ni de tracking marketing.
+            {LEGAL_INFO.website.name} n'utilise aucun cookie publicitaire ni de
+            tracking marketing.
           </p>
         </div>
       </div>
@@ -783,25 +968,31 @@ const CookiesPolicy: React.FC = () => (
 
     {/* Gestion des cookies */}
     <section className="bg-white/5 rounded-xl p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">Gestion de vos préférences</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">
+        Gestion de vos préférences
+      </h3>
       <div className="text-white/80 space-y-3">
         <p>
-          Vous pouvez à tout moment gérer vos préférences en matière de cookies :
+          Vous pouvez à tout moment gérer vos préférences en matière de cookies
+          :
         </p>
         <ul className="list-disc list-inside space-y-2 ml-4">
           <li>
-            <strong>Via votre navigateur :</strong> Chaque navigateur propose des options pour accepter, 
-            refuser ou supprimer les cookies. Consultez l'aide de votre navigateur.
+            <strong>Via votre navigateur :</strong> Chaque navigateur propose
+            des options pour accepter, refuser ou supprimer les cookies.
+            Consultez l'aide de votre navigateur.
           </li>
           <li>
-            <strong>Via les paramètres du site :</strong> Les préférences de thème et de langue 
-            sont modifiables dans les paramètres de votre compte.
+            <strong>Via les paramètres du site :</strong> Les préférences de
+            thème et de langue sont modifiables dans les paramètres de votre
+            compte.
           </li>
         </ul>
         <div className="mt-4 p-4 bg-amber-500/10 rounded-lg border border-amber-500/20">
           <p className="text-amber-200">
             <AlertCircle className="w-4 h-4 inline mr-2" />
-            <strong>Note :</strong> La suppression des cookies d'authentification vous déconnectera du service.
+            <strong>Note :</strong> La suppression des cookies
+            d'authentification vous déconnectera du service.
           </p>
         </div>
       </div>
@@ -809,11 +1000,13 @@ const CookiesPolicy: React.FC = () => (
 
     {/* LocalStorage */}
     <section className="bg-white/5 rounded-xl p-6 border border-white/10">
-      <h3 className="text-lg font-semibold text-white mb-4">Stockage local (LocalStorage)</h3>
+      <h3 className="text-lg font-semibold text-white mb-4">
+        Stockage local (LocalStorage)
+      </h3>
       <div className="text-white/80 space-y-3">
         <p>
-          En plus des cookies, {LEGAL_INFO.website.name} utilise le stockage local de votre navigateur 
-          (LocalStorage) pour mémoriser :
+          En plus des cookies, {LEGAL_INFO.website.name} utilise le stockage
+          local de votre navigateur (LocalStorage) pour mémoriser :
         </p>
         <ul className="list-disc list-inside space-y-2 ml-4">
           <li>Vos tokens d'authentification</li>
@@ -821,7 +1014,8 @@ const CookiesPolicy: React.FC = () => (
           <li>Vos préférences d'interface</li>
         </ul>
         <p>
-          Ces données sont stockées uniquement sur votre appareil et ne sont pas transmises à des tiers.
+          Ces données sont stockées uniquement sur votre appareil et ne sont pas
+          transmises à des tiers.
         </p>
       </div>
     </section>
@@ -834,27 +1028,27 @@ const CookiesPolicy: React.FC = () => (
 
 const LegalPage: React.FC = () => {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<TabType>('mentions');
+  const [activeTab, setActiveTab] = useState<TabType>("mentions");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Gérer le hash dans l'URL pour naviguer directement à une section
   useEffect(() => {
-    const hash = location.hash.replace('#', '') as TabType;
-    if (hash && ['mentions', 'cgu', 'privacy', 'cookies'].includes(hash)) {
+    const hash = location.hash.replace("#", "") as TabType;
+    if (hash && ["mentions", "cgu", "privacy", "cookies"].includes(hash)) {
       setActiveTab(hash);
     }
   }, [location.hash]);
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'mentions':
+      case "mentions":
         return <MentionsLegales />;
-      case 'cgu':
+      case "cgu":
         return <CGU />;
-      case 'privacy':
+      case "privacy":
         return <PrivacyPolicy />;
-      case 'cookies':
+      case "cookies":
         return <CookiesPolicy />;
       default:
         return <MentionsLegales />;
@@ -870,15 +1064,19 @@ const LegalPage: React.FC = () => {
         keywords="DeepSight, mentions légales, CGU, RGPD, confidentialité, données personnelles"
       />
       <DoodleBackground variant="academic" />
-      <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} mobileOpen={mobileMenuOpen} onMobileClose={() => setMobileMenuOpen(false)} />
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
+      />
 
       <main
         id="main-content"
-        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? 'ml-[60px]' : 'ml-[240px]'}`}
+        className={`transition-all duration-200 ease-out relative z-10 lg:${sidebarCollapsed ? "ml-[60px]" : "ml-[240px]"}`}
       >
         <div className="min-h-screen pt-14 lg:pt-0 p-4 sm:p-6 lg:p-8 pb-8">
           <div className="max-w-4xl mx-auto">
-
             {/* Header */}
             <header className="mb-6">
               <div className="flex items-center justify-between">
@@ -906,8 +1104,8 @@ const LegalPage: React.FC = () => {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg whitespace-nowrap transition-all text-sm ${
                       activeTab === tab.id
-                        ? 'bg-accent-primary/10 text-accent-primary border border-accent-primary/30'
-                        : 'text-text-tertiary hover:text-text-primary hover:bg-bg-secondary'
+                        ? "bg-accent-primary/10 text-accent-primary border border-accent-primary/30"
+                        : "text-text-tertiary hover:text-text-primary hover:bg-bg-secondary"
                     }`}
                   >
                     {tab.icon}
@@ -922,17 +1120,17 @@ const LegalPage: React.FC = () => {
 
             {/* Footer de la page légale */}
             <footer className="mt-16 pt-8 border-t border-border-subtle text-center text-text-muted text-sm">
-              <p>
-                Dernière mise à jour : {LEGAL_INFO.lastUpdate}
-              </p>
+              <p>Dernière mise à jour : {LEGAL_INFO.lastUpdate}</p>
               <p className="mt-2">
-                Pour toute question, contactez-nous à{' '}
-                <a href={`mailto:${LEGAL_INFO.contact.email}`} className="text-accent-primary hover:underline">
+                Pour toute question, contactez-nous à{" "}
+                <a
+                  href={`mailto:${LEGAL_INFO.contact.email}`}
+                  className="text-accent-primary hover:underline"
+                >
                   {LEGAL_INFO.contact.email}
                 </a>
               </p>
             </footer>
-
           </div>
         </div>
       </main>

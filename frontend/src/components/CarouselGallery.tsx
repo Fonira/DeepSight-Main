@@ -6,16 +6,19 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 
 interface CarouselGalleryProps {
   images: string[];
   title?: string;
 }
 
-export const CarouselGallery: React.FC<CarouselGalleryProps> = ({ images, title }) => {
+export const CarouselGallery: React.FC<CarouselGalleryProps> = ({
+  images,
+  title,
+}) => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -41,13 +44,13 @@ export const CarouselGallery: React.FC<CarouselGalleryProps> = ({ images, title 
     if (!lightboxOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeLightbox();
-      if (e.key === 'ArrowRight') goNext();
-      if (e.key === 'ArrowLeft') goPrev();
+      if (e.key === "Escape") closeLightbox();
+      if (e.key === "ArrowRight") goNext();
+      if (e.key === "ArrowLeft") goPrev();
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [lightboxOpen, closeLightbox, goNext, goPrev]);
 
   if (!images || images.length === 0) return null;
@@ -77,7 +80,9 @@ export const CarouselGallery: React.FC<CarouselGalleryProps> = ({ images, title 
           >
             <img
               src={src}
-              alt={title ? `${title} — image ${index + 1}` : `Image ${index + 1}`}
+              alt={
+                title ? `${title} — image ${index + 1}` : `Image ${index + 1}`
+              }
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
               loading="lazy"
             />
@@ -134,7 +139,11 @@ export const CarouselGallery: React.FC<CarouselGalleryProps> = ({ images, title 
                 <motion.img
                   key={currentIndex}
                   src={images[currentIndex]}
-                  alt={title ? `${title} — image ${currentIndex + 1}` : `Image ${currentIndex + 1}`}
+                  alt={
+                    title
+                      ? `${title} — image ${currentIndex + 1}`
+                      : `Image ${currentIndex + 1}`
+                  }
                   className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}

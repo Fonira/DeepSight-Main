@@ -18,9 +18,9 @@ import {
   useMutation,
   useQueryClient,
   QueryKey,
-} from '@tanstack/react-query';
-import { useCallback, useMemo, useRef } from 'react';
-import { getAccessToken, API_URL, ApiError } from '../services/api';
+} from "@tanstack/react-query";
+import { useCallback, useMemo, useRef } from "react";
+import { getAccessToken, API_URL, ApiError } from "../services/api";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
@@ -59,13 +59,23 @@ interface SmartApiOptions<T> {
 
 interface MutationOptions<TData, TVariables> {
   /** Callback de mise à jour optimiste */
-  onMutate?: (variables: TVariables) => Promise<{ previousData?: unknown }> | { previousData?: unknown };
+  onMutate?: (
+    variables: TVariables,
+  ) => Promise<{ previousData?: unknown }> | { previousData?: unknown };
   /** Callback après succès */
   onSuccess?: (data: TData, variables: TVariables) => void;
   /** Callback après erreur (rollback) */
-  onError?: (error: ApiError, variables: TVariables, context?: { previousData?: unknown }) => void;
+  onError?: (
+    error: ApiError,
+    variables: TVariables,
+    context?: { previousData?: unknown },
+  ) => void;
   /** Callback final (succès ou erreur) */
-  onSettled?: (data: TData | undefined, error: ApiError | null, variables: TVariables) => void;
+  onSettled?: (
+    data: TData | undefined,
+    error: ApiError | null,
+    variables: TVariables,
+  ) => void;
   /** Clés de cache à invalider après succès */
   invalidateKeys?: QueryKey[];
 }
@@ -74,10 +84,10 @@ interface MutationOptions<TData, TVariables> {
 // 🔧 CONFIGURATION PAR DÉFAUT
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const DEFAULT_STALE_TIME = 5 * 60 * 1000;      // 5 minutes
-const DEFAULT_CACHE_TIME = 30 * 60 * 1000;    // 30 minutes
+const DEFAULT_STALE_TIME = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_CACHE_TIME = 30 * 60 * 1000; // 30 minutes
 const DEFAULT_RETRY = 3;
-const PERSIST_CACHE_KEY = 'ds_api_cache';
+const PERSIST_CACHE_KEY = "ds_api_cache";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 💾 CACHE PERSISTANT (localStorage)
@@ -123,10 +133,10 @@ class PersistentCache {
 
   set<T>(key: string, data: T, ttl: number = DEFAULT_CACHE_TIME): void {
     const entry: CacheEntry<T> = { data, timestamp: Date.now(), ttl };
-    
+
     // Store in memory
     this.memoryCache.set(key, entry);
-    
+
     // Evict if over size
     if (this.memoryCache.size > this.maxSize) {
       const firstKey = this.memoryCache.keys().next().value;
@@ -135,7 +145,10 @@ class PersistentCache {
 
     // Store in localStorage
     try {
-      localStorage.setItem(`${PERSIST_CACHE_KEY}:${key}`, JSON.stringify(entry));
+      localStorage.setItem(
+        `${PERSIST_CACHE_KEY}:${key}`,
+        JSON.stringify(entry),
+      );
     } catch {
       // localStorage full or unavailable
     }
@@ -151,8 +164,8 @@ class PersistentCache {
   }
 
   deletePattern(pattern: string): void {
-    const regex = new RegExp(pattern.replace('*', '.*'));
-    
+    const regex = new RegExp(pattern.replace("*", ".*"));
+
     // Memory cache
     for (const key of this.memoryCache.keys()) {
       if (regex.test(key)) {
@@ -169,7 +182,7 @@ class PersistentCache {
           keysToDelete.push(key);
         }
       }
-      keysToDelete.forEach(key => localStorage.removeItem(key));
+      keysToDelete.forEach((key) => localStorage.removeItem(key));
     } catch {
       // Ignore
     }
@@ -185,7 +198,7 @@ class PersistentCache {
           keysToDelete.push(key);
         }
       }
-      keysToDelete.forEach(key => localStorage.removeItem(key));
+      keysToDelete.forEach((key) => localStorage.removeItem(key));
     } catch {
       // Ignore
     }
@@ -202,7 +215,7 @@ const inflightRequests = new Map<string, Promise<unknown>>();
 
 async function deduplicatedFetch<T>(
   key: string,
-  fetcher: () => Promise<T>
+  fetcher: () => Promise<T>,
 ): Promise<T> {
   // Check if request is already in-flight
   const existing = inflightRequests.get(key);
@@ -224,28 +237,28 @@ async function deduplicatedFetch<T>(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   headers?: Record<string, string>;
 }
 
 async function smartFetch<T>(
-  endpoint: string, 
+  endpoint: string,
   options: RequestOptions = {},
-  retryCount = DEFAULT_RETRY
+  retryCount = DEFAULT_RETRY,
 ): Promise<T> {
-  const { method = 'GET', body, headers = {} } = options;
-  
-  const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint}`;
+  const { method = "GET", body, headers = {} } = options;
+
+  const url = endpoint.startsWith("http") ? endpoint : `${API_URL}${endpoint}`;
   const token = getAccessToken();
-  
+
   const requestHeaders: HeadersInit = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...headers,
   };
-  
+
   if (token) {
-    requestHeaders['Authorization'] = `Bearer ${token}`;
+    requestHeaders["Authorization"] = `Bearer ${token}`;
   }
 
   const fetchOptions: RequestInit = {
@@ -255,43 +268,46 @@ async function smartFetch<T>(
   };
 
   let lastError: Error | null = null;
-  
+
   for (let attempt = 0; attempt <= retryCount; attempt++) {
     try {
       const response = await fetch(url, fetchOptions);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new ApiError(
           errorData.detail || `HTTP ${response.status}`,
           response.status,
-          errorData
+          errorData,
         );
       }
-      
+
       // Handle empty response
       const text = await response.text();
       if (!text) return {} as T;
-      
+
       return JSON.parse(text) as T;
-      
     } catch (error) {
       lastError = error as Error;
-      
+
       // Don't retry on 4xx errors (client errors)
-      if (error instanceof ApiError && error.status >= 400 && error.status < 500) {
+      if (
+        error instanceof ApiError &&
+        error.status >= 400 &&
+        error.status < 500
+      ) {
         throw error;
       }
-      
+
       // Exponential backoff for retries
       if (attempt < retryCount) {
         const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
-  
-  throw lastError || new Error('Request failed');
+
+  throw lastError || new Error("Request failed");
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -300,7 +316,7 @@ async function smartFetch<T>(
 
 export function useSmartApi<T>(
   endpoint: string | null,
-  options: SmartApiOptions<T> = {}
+  options: SmartApiOptions<T> = {},
 ) {
   const {
     staleTime = DEFAULT_STALE_TIME,
@@ -319,9 +335,9 @@ export function useSmartApi<T>(
     persistCache = false,
   } = options;
 
-  const queryKey = useMemo(() => 
-    endpoint ? ['api', endpoint] : ['api', 'null'],
-    [endpoint]
+  const queryKey = useMemo(
+    () => (endpoint ? ["api", endpoint] : ["api", "null"]),
+    [endpoint],
   );
 
   // Check persistent cache for initial data
@@ -334,13 +350,14 @@ export function useSmartApi<T>(
 
   const queryFn = useCallback(async (): Promise<T> => {
     if (!endpoint) {
-      throw new Error('Endpoint is required');
+      throw new Error("Endpoint is required");
     }
 
-    const fetcher = () => smartFetch<T>(endpoint, { method: 'GET' }, retry as number);
-    
+    const fetcher = () =>
+      smartFetch<T>(endpoint, { method: "GET" }, retry as number);
+
     // Use deduplication if enabled
-    const data = dedupe 
+    const data = dedupe
       ? await deduplicatedFetch(endpoint, fetcher)
       : await fetcher();
 
@@ -357,8 +374,9 @@ export function useSmartApi<T>(
     queryFn,
     staleTime,
     gcTime: cacheTime,
-    retry: typeof retry === 'number' ? retry : retry ? 3 : 0,
-    retryDelay: retryDelay || ((attempt) => Math.min(1000 * 2 ** attempt, 30000)),
+    retry: typeof retry === "number" ? retry : retry ? 3 : 0,
+    retryDelay:
+      retryDelay || ((attempt) => Math.min(1000 * 2 ** attempt, 30000)),
     refetchOnWindowFocus,
     refetchOnReconnect,
     refetchInterval: refetchInterval || false,
@@ -402,11 +420,17 @@ export function useSmartApi<T>(
 
 export function useSmartMutation<TData, TVariables = unknown>(
   endpoint: string,
-  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'POST',
-  options: MutationOptions<TData, TVariables> = {}
+  method: "POST" | "PUT" | "PATCH" | "DELETE" = "POST",
+  options: MutationOptions<TData, TVariables> = {},
 ) {
   const queryClient = useQueryClient();
-  const { onMutate, onSuccess, onError, onSettled, invalidateKeys = [] } = options;
+  const {
+    onMutate,
+    onSuccess,
+    onError,
+    onSettled,
+    invalidateKeys = [],
+  } = options;
 
   const mutation = useMutation({
     mutationFn: async (variables: TVariables) => {
@@ -417,8 +441,8 @@ export function useSmartMutation<TData, TVariables = unknown>(
     },
     onMutate: async (variables) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['api'] });
-      
+      await queryClient.cancelQueries({ queryKey: ["api"] });
+
       if (onMutate) {
         return onMutate(variables);
       }
@@ -426,10 +450,10 @@ export function useSmartMutation<TData, TVariables = unknown>(
     },
     onSuccess: (data, variables) => {
       // Invalidate related queries
-      invalidateKeys.forEach(key => {
+      invalidateKeys.forEach((key) => {
         queryClient.invalidateQueries({ queryKey: key });
       });
-      
+
       onSuccess?.(data, variables);
     },
     onError: (error, variables, context) => {
@@ -460,71 +484,74 @@ export function useSmartMutation<TData, TVariables = unknown>(
 export function useCacheUtils() {
   const queryClient = useQueryClient();
 
-  return useMemo(() => ({
-    /**
-     * Invalide une ou plusieurs clés de cache
-     */
-    invalidate: (keys: QueryKey | QueryKey[]) => {
-      const keyArray = Array.isArray(keys[0]) ? keys : [keys];
-      keyArray.forEach(key => {
-        queryClient.invalidateQueries({ queryKey: key as QueryKey });
-      });
-    },
+  return useMemo(
+    () => ({
+      /**
+       * Invalide une ou plusieurs clés de cache
+       */
+      invalidate: (keys: QueryKey | QueryKey[]) => {
+        const keyArray = Array.isArray(keys[0]) ? keys : [keys];
+        keyArray.forEach((key) => {
+          queryClient.invalidateQueries({ queryKey: key as QueryKey });
+        });
+      },
 
-    /**
-     * Invalide toutes les requêtes API
-     */
-    invalidateAll: () => {
-      queryClient.invalidateQueries({ queryKey: ['api'] });
-    },
+      /**
+       * Invalide toutes les requêtes API
+       */
+      invalidateAll: () => {
+        queryClient.invalidateQueries({ queryKey: ["api"] });
+      },
 
-    /**
-     * Met à jour directement le cache (sans refetch)
-     */
-    setData: <T>(key: QueryKey, updater: T | ((old: T | undefined) => T)) => {
-      queryClient.setQueryData(key, updater);
-    },
+      /**
+       * Met à jour directement le cache (sans refetch)
+       */
+      setData: <T>(key: QueryKey, updater: T | ((old: T | undefined) => T)) => {
+        queryClient.setQueryData(key, updater);
+      },
 
-    /**
-     * Récupère les données du cache sans déclencher de requête
-     */
-    getData: <T>(key: QueryKey): T | undefined => {
-      return queryClient.getQueryData<T>(key);
-    },
+      /**
+       * Récupère les données du cache sans déclencher de requête
+       */
+      getData: <T>(key: QueryKey): T | undefined => {
+        return queryClient.getQueryData<T>(key);
+      },
 
-    /**
-     * Précharge des données dans le cache
-     */
-    prefetch: async <T>(endpoint: string, staleTime = DEFAULT_STALE_TIME) => {
-      await queryClient.prefetchQuery({
-        queryKey: ['api', endpoint],
-        queryFn: () => smartFetch<T>(endpoint),
-        staleTime,
-      });
-    },
+      /**
+       * Précharge des données dans le cache
+       */
+      prefetch: async <T>(endpoint: string, staleTime = DEFAULT_STALE_TIME) => {
+        await queryClient.prefetchQuery({
+          queryKey: ["api", endpoint],
+          queryFn: () => smartFetch<T>(endpoint),
+          staleTime,
+        });
+      },
 
-    /**
-     * Vide tout le cache
-     */
-    clear: () => {
-      queryClient.clear();
-      persistentCache.clear();
-    },
+      /**
+       * Vide tout le cache
+       */
+      clear: () => {
+        queryClient.clear();
+        persistentCache.clear();
+      },
 
-    /**
-     * Invalide le cache par pattern (ex: "history:*")
-     */
-    invalidatePattern: (pattern: string) => {
-      const regex = new RegExp(pattern.replace('*', '.*'));
-      queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key = query.queryKey.join(':');
-          return regex.test(key);
-        },
-      });
-      persistentCache.deletePattern(pattern);
-    },
-  }), [queryClient]);
+      /**
+       * Invalide le cache par pattern (ex: "history:*")
+       */
+      invalidatePattern: (pattern: string) => {
+        const regex = new RegExp(pattern.replace("*", ".*"));
+        queryClient.invalidateQueries({
+          predicate: (query) => {
+            const key = query.queryKey.join(":");
+            return regex.test(key);
+          },
+        });
+        persistentCache.deletePattern(pattern);
+      },
+    }),
+    [queryClient],
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -539,7 +566,7 @@ export function useHistory(page = 1, limit = 20) {
     page: number;
     pages: number;
   }>(`/api/history?page=${page}&limit=${limit}`, {
-    staleTime: 2 * 60 * 1000,  // 2 min (change souvent)
+    staleTime: 2 * 60 * 1000, // 2 min (change souvent)
     refetchOnWindowFocus: true,
     persistCache: true,
   });
@@ -550,9 +577,9 @@ export function useSummary(summaryId: number | null) {
   return useSmartApi<unknown>(
     summaryId ? `/api/videos/summary/${summaryId}` : null,
     {
-      staleTime: 10 * 60 * 1000,  // 10 min (rarement modifié)
+      staleTime: 10 * 60 * 1000, // 10 min (rarement modifié)
       persistCache: true,
-    }
+    },
   );
 }
 
@@ -562,15 +589,15 @@ export function useUserQuota() {
     credits: number;
     dailyUsed: number;
     dailyLimit: number;
-  }>('/api/auth/me', {
-    staleTime: 30 * 1000,  // 30 sec (mise à jour fréquente)
+  }>("/api/auth/me", {
+    staleTime: 30 * 1000, // 30 sec (mise à jour fréquente)
     refetchOnWindowFocus: true,
   });
 }
 
 /** Hook pour récupérer les playlists */
 export function usePlaylists() {
-  return useSmartApi<unknown[]>('/api/playlists', {
+  return useSmartApi<unknown[]>("/api/playlists", {
     staleTime: 5 * 60 * 1000,
     persistCache: true,
   });

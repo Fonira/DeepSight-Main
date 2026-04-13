@@ -3,9 +3,9 @@
  * Full-screen modal with live transcript, status indicators, and controls
  */
 
-import React, { useEffect, useRef, useId, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useEffect, useRef, useId, useCallback } from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
   Mic,
@@ -16,11 +16,11 @@ import {
   ArrowUpCircle,
   RotateCcw,
   Settings2,
-} from 'lucide-react';
-import { DeepSightSpinner } from '../ui/DeepSightSpinner';
-import { VoiceToolIndicator } from './VoiceToolIndicator';
-import { useTranslation } from '../../hooks/useTranslation';
-import { VoicePTTButton } from './VoicePTTButton';
+} from "lucide-react";
+import { DeepSightSpinner } from "../ui/DeepSightSpinner";
+import { VoiceToolIndicator } from "./VoiceToolIndicator";
+import { useTranslation } from "../../hooks/useTranslation";
+import { VoicePTTButton } from "./VoicePTTButton";
 
 interface VoiceModalProps {
   isOpen: boolean;
@@ -28,11 +28,18 @@ interface VoiceModalProps {
   videoTitle: string;
   channelName?: string;
   /** Status de la conversation voice */
-  voiceStatus: 'idle' | 'connecting' | 'listening' | 'thinking' | 'speaking' | 'error' | 'quota_exceeded';
+  voiceStatus:
+    | "idle"
+    | "connecting"
+    | "listening"
+    | "thinking"
+    | "speaking"
+    | "error"
+    | "quota_exceeded";
   /** L'IA est en train de parler */
   isSpeaking: boolean;
   /** Messages de la conversation (transcript live) */
-  messages: Array<{ text: string; source: 'user' | 'ai' }>;
+  messages: Array<{ text: string; source: "user" | "ai" }>;
   /** Timer en secondes */
   elapsedSeconds: number;
   /** Minutes restantes dans le quota */
@@ -43,7 +50,7 @@ interface VoiceModalProps {
   onMuteToggle: () => void;
   isMuted: boolean;
   /** PTT props */
-  inputMode?: 'ptt' | 'vad';
+  inputMode?: "ptt" | "vad";
   isTalking?: boolean;
   onStartTalking?: () => void;
   onStopTalking?: () => void;
@@ -59,7 +66,7 @@ interface VoiceModalProps {
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 /** Pulsing microphone indicator */
@@ -68,12 +75,17 @@ const PulsingMic: React.FC = () => (
     <motion.div
       className="absolute w-20 h-20 rounded-full bg-green-500/20"
       animate={{ scale: [1, 1.4, 1], opacity: [0.4, 0.1, 0.4] }}
-      transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
     />
     <motion.div
       className="absolute w-14 h-14 rounded-full bg-green-500/30"
       animate={{ scale: [1, 1.2, 1], opacity: [0.6, 0.2, 0.6] }}
-      transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut', delay: 0.2 }}
+      transition={{
+        duration: 1.5,
+        repeat: Infinity,
+        ease: "easeInOut",
+        delay: 0.2,
+      }}
     />
     <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center z-10">
       <Mic className="w-5 h-5 text-white" />
@@ -89,7 +101,12 @@ const ThinkingDots: React.FC = () => (
         key={i}
         className="w-2.5 h-2.5 rounded-full bg-indigo-400"
         animate={{ y: [0, -8, 0], opacity: [0.4, 1, 0.4] }}
-        transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
+        transition={{
+          duration: 0.8,
+          repeat: Infinity,
+          delay: i * 0.15,
+          ease: "easeInOut",
+        }}
       />
     ))}
   </div>
@@ -107,7 +124,7 @@ const SoundWave: React.FC = () => (
           duration: 0.6 + Math.random() * 0.4,
           repeat: Infinity,
           delay: i * 0.08,
-          ease: 'easeInOut',
+          ease: "easeInOut",
         }}
       />
     ))}
@@ -128,7 +145,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   onStop,
   onMuteToggle,
   isMuted,
-  inputMode = 'ptt',
+  inputMode = "ptt",
   isTalking = false,
   onStartTalking,
   onStopTalking,
@@ -144,51 +161,62 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
   const { language } = useTranslation();
 
   const tr = useCallback(
-    (fr: string, en: string) => (language === 'fr' ? fr : en),
-    [language]
+    (fr: string, en: string) => (language === "fr" ? fr : en),
+    [language],
   );
 
   // Wrap async callbacks to prevent unhandled promise rejections
   const safeStart = useCallback(() => {
-    try { Promise.resolve(onStart()).catch(() => {}); } catch { /* handled internally */ }
+    try {
+      Promise.resolve(onStart()).catch(() => {});
+    } catch {
+      /* handled internally */
+    }
   }, [onStart]);
 
   const safeStop = useCallback(() => {
-    try { Promise.resolve(onStop()).catch(() => {}); } catch { /* handled internally */ }
+    try {
+      Promise.resolve(onStop()).catch(() => {});
+    } catch {
+      /* handled internally */
+    }
   }, [onStop]);
 
-  const isActive = voiceStatus === 'listening' || voiceStatus === 'thinking' || voiceStatus === 'speaking';
+  const isActive =
+    voiceStatus === "listening" ||
+    voiceStatus === "thinking" ||
+    voiceStatus === "speaking";
   const remainingFormatted = formatTime(remainingMinutes * 60);
 
   // Body scroll lock + focus management
   useEffect(() => {
     if (isOpen) {
       previousActiveElement.current = document.activeElement as HTMLElement;
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
       requestAnimationFrame(() => {
         modalRef.current?.focus();
       });
     } else {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
       if (previousActiveElement.current) {
         previousActiveElement.current.focus();
       }
     }
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
   }, [isOpen]);
 
   // Escape key + focus trap
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         onClose();
         return;
       }
-      if (e.key === 'Tab' && modalRef.current) {
+      if (e.key === "Tab" && modalRef.current) {
         const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
         );
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
@@ -202,8 +230,8 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
       }
     };
     if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
     }
   }, [isOpen, onClose]);
 
@@ -216,7 +244,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
 
   const renderCenterContent = () => {
     switch (voiceStatus) {
-      case 'idle':
+      case "idle":
         return (
           <motion.button
             onClick={safeStart}
@@ -226,31 +254,34 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
           >
             <div className="flex items-center gap-3">
               <Phone className="w-5 h-5" />
-              {tr('Demarrer la conversation', 'Start conversation')}
+              {tr("Demarrer la conversation", "Start conversation")}
             </div>
           </motion.button>
         );
 
-      case 'connecting':
+      case "connecting":
         return (
           <div className="flex flex-col items-center gap-4">
             <DeepSightSpinner size="lg" />
             <p className="text-white/60 text-sm">
-              {tr('Connexion en cours...', 'Connecting...')}
+              {tr("Connexion en cours...", "Connecting...")}
             </p>
           </div>
         );
 
-      case 'listening':
+      case "listening":
         return (
           <div className="flex flex-col items-center gap-4">
-            {inputMode === 'ptt' && !isTalking ? (
+            {inputMode === "ptt" && !isTalking ? (
               <>
                 <div className="w-10 h-10 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center">
                   <Mic className="w-5 h-5 text-green-400" />
                 </div>
                 <p className="text-green-400/70 text-sm">
-                  {tr('Maintenez le bouton pour parler', 'Hold the button to talk')}
+                  {tr(
+                    "Maintenez le bouton pour parler",
+                    "Hold the button to talk",
+                  )}
                 </p>
               </>
             ) : (
@@ -258,66 +289,66 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 <PulsingMic />
                 <p className="text-green-400 text-sm font-medium">
                   {isTalking
-                    ? tr('Parlez maintenant...', 'Speak now...')
-                    : tr("A l'ecoute...", 'Listening...')}
+                    ? tr("Parlez maintenant...", "Speak now...")
+                    : tr("A l'ecoute...", "Listening...")}
                 </p>
               </>
             )}
           </div>
         );
 
-      case 'thinking':
+      case "thinking":
         return (
           <div className="flex flex-col items-center gap-4">
             <ThinkingDots />
             <p className="text-indigo-300 text-sm">
-              {tr('Reflexion...', 'Thinking...')}
+              {tr("Reflexion...", "Thinking...")}
             </p>
           </div>
         );
 
-      case 'speaking':
+      case "speaking":
         return (
           <div className="flex flex-col items-center gap-4">
             <SoundWave />
             <p className="text-violet-300 text-sm font-medium">
-              {tr('DeepSight parle...', 'DeepSight is speaking...')}
+              {tr("DeepSight parle...", "DeepSight is speaking...")}
             </p>
           </div>
         );
 
-      case 'error':
+      case "error":
         return (
           <div className="flex flex-col items-center gap-4 max-w-sm text-center">
             <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
               <AlertCircle className="w-6 h-6 text-red-400" />
             </div>
             <p className="text-red-300 text-sm">
-              {error || tr('Une erreur est survenue', 'An error occurred')}
+              {error || tr("Une erreur est survenue", "An error occurred")}
             </p>
             <button
               onClick={safeStart}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 transition-colors text-sm focus-visible:ring-2 focus-visible:ring-indigo-400"
             >
               <RotateCcw className="w-4 h-4" />
-              {tr('Reessayer', 'Retry')}
+              {tr("Reessayer", "Retry")}
             </button>
           </div>
         );
 
-      case 'quota_exceeded':
+      case "quota_exceeded":
         return (
           <div className="flex flex-col items-center gap-4 max-w-sm text-center">
             <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
               <AlertCircle className="w-6 h-6 text-amber-400" />
             </div>
             <p className="text-amber-300 text-sm font-medium">
-              {tr('Quota de minutes epuise', 'Voice minutes quota exceeded')}
+              {tr("Quota de minutes epuise", "Voice minutes quota exceeded")}
             </p>
             <p className="text-white/40 text-xs">
               {tr(
-                'Passez au plan superieur pour continuer vos conversations vocales.',
-                'Upgrade your plan to continue voice conversations.'
+                "Passez au plan superieur pour continuer vos conversations vocales.",
+                "Upgrade your plan to continue voice conversations.",
               )}
             </p>
             <div className="flex gap-3">
@@ -326,7 +357,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-medium text-sm hover:shadow-lg hover:shadow-indigo-500/25 transition-shadow focus-visible:ring-2 focus-visible:ring-indigo-400"
               >
                 <ArrowUpCircle className="w-4 h-4" />
-                {tr('Passer au plan superieur', 'Upgrade plan')}
+                {tr("Passer au plan superieur", "Upgrade plan")}
               </button>
             </div>
           </div>
@@ -366,11 +397,14 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 40 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
             onClick={(e) => e.stopPropagation()}
           >
             <p id={descId} className="sr-only">
-              {tr('Conversation vocale avec DeepSight', 'Voice conversation with DeepSight')}
+              {tr(
+                "Conversation vocale avec DeepSight",
+                "Voice conversation with DeepSight",
+              )}
             </p>
 
             {/* Header */}
@@ -384,7 +418,9 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                   {videoTitle}
                 </h2>
                 {channelName && (
-                  <p className="text-xs text-white/40 mt-0.5 truncate">{channelName}</p>
+                  <p className="text-xs text-white/40 mt-0.5 truncate">
+                    {channelName}
+                  </p>
                 )}
               </div>
               <div className="flex items-center gap-1 flex-shrink-0">
@@ -396,14 +432,14 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 <a
                   href="/settings"
                   className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/30 hover:text-white/70 hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
-                  title={tr('Paramètres voix', 'Voice settings')}
+                  title={tr("Paramètres voix", "Voice settings")}
                 >
                   <Settings2 className="w-4 h-4" />
                 </a>
                 <button
                   onClick={onClose}
                   className="w-9 h-9 rounded-lg bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-indigo-400"
-                  aria-label={tr('Fermer', 'Close')}
+                  aria-label={tr("Fermer", "Close")}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -412,7 +448,10 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
 
             {/* Center — status zone */}
             <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 min-h-[200px]">
-              <VoiceToolIndicator toolName={activeTool} isActive={!!activeTool} />
+              <VoiceToolIndicator
+                toolName={activeTool}
+                isActive={!!activeTool}
+              />
               {renderCenterContent()}
             </div>
 
@@ -421,20 +460,23 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
               <div
                 ref={transcriptRef}
                 className="mx-4 mb-3 max-h-[200px] overflow-y-auto rounded-xl bg-white/[0.03] border border-white/5 p-4 space-y-3 scroll-smooth"
-                aria-label={tr('Transcription de la conversation', 'Conversation transcript')}
+                aria-label={tr(
+                  "Transcription de la conversation",
+                  "Conversation transcript",
+                )}
                 role="log"
                 aria-live="polite"
               >
                 {messages.map((msg, i) => (
                   <div
                     key={i}
-                    className={`flex ${msg.source === 'user' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${msg.source === "user" ? "justify-end" : "justify-start"}`}
                   >
                     <div
                       className={`max-w-[80%] px-3.5 py-2 rounded-2xl text-sm leading-relaxed ${
-                        msg.source === 'user'
-                          ? 'bg-indigo-500/20 border border-indigo-500/20 text-indigo-100'
-                          : 'bg-white/5 border border-white/10 text-white/80'
+                        msg.source === "user"
+                          ? "bg-indigo-500/20 border border-indigo-500/20 text-indigo-100"
+                          : "bg-white/5 border border-white/10 text-white/80"
                       }`}
                     >
                       {msg.text}
@@ -452,7 +494,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
               >
-                {inputMode === 'ptt' && onStartTalking && onStopTalking ? (
+                {inputMode === "ptt" && onStartTalking && onStopTalking ? (
                   <>
                     {/* Timer (left) */}
                     <div className="flex flex-col items-center min-w-[60px]">
@@ -460,7 +502,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                         {formatTime(elapsedSeconds)}
                       </span>
                       <span className="text-white/30 text-[10px] font-mono tabular-nums">
-                        / {remainingFormatted} {tr('restantes', 'remaining')}
+                        / {remainingFormatted} {tr("restantes", "remaining")}
                       </span>
                     </div>
 
@@ -469,14 +511,17 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                       onStartTalking={onStartTalking}
                       onStopTalking={onStopTalking}
                       isTalking={isTalking}
-                      disabled={voiceStatus === 'thinking'}
+                      disabled={voiceStatus === "thinking"}
                     />
 
                     {/* End call (right) */}
                     <button
                       onClick={safeStop}
                       className="w-11 h-11 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-red-400"
-                      aria-label={tr('Terminer la conversation', 'End conversation')}
+                      aria-label={tr(
+                        "Terminer la conversation",
+                        "End conversation",
+                      )}
                     >
                       <PhoneOff className="w-4.5 h-4.5" />
                     </button>
@@ -489,12 +534,20 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                       onClick={onMuteToggle}
                       className={`w-11 h-11 rounded-full flex items-center justify-center transition-all focus-visible:ring-2 focus-visible:ring-indigo-400 ${
                         isMuted
-                          ? 'bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25'
-                          : 'bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10'
+                          ? "bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25"
+                          : "bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10"
                       }`}
-                      aria-label={isMuted ? tr('Reactiver le micro', 'Unmute microphone') : tr('Couper le micro', 'Mute microphone')}
+                      aria-label={
+                        isMuted
+                          ? tr("Reactiver le micro", "Unmute microphone")
+                          : tr("Couper le micro", "Mute microphone")
+                      }
                     >
-                      {isMuted ? <MicOff className="w-4.5 h-4.5" /> : <Mic className="w-4.5 h-4.5" />}
+                      {isMuted ? (
+                        <MicOff className="w-4.5 h-4.5" />
+                      ) : (
+                        <Mic className="w-4.5 h-4.5" />
+                      )}
                     </button>
 
                     {/* Timer */}
@@ -503,7 +556,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                         {formatTime(elapsedSeconds)}
                       </span>
                       <span className="text-white/30 text-[10px] font-mono tabular-nums">
-                        / {remainingFormatted} {tr('restantes', 'remaining')}
+                        / {remainingFormatted} {tr("restantes", "remaining")}
                       </span>
                     </div>
 
@@ -511,7 +564,10 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
                     <button
                       onClick={safeStop}
                       className="w-11 h-11 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white hover:border-red-500 transition-all flex items-center justify-center focus-visible:ring-2 focus-visible:ring-red-400"
-                      aria-label={tr('Terminer la conversation', 'End conversation')}
+                      aria-label={tr(
+                        "Terminer la conversation",
+                        "End conversation",
+                      )}
                     >
                       <PhoneOff className="w-4.5 h-4.5" />
                     </button>
@@ -523,7 +579,7 @@ export const VoiceModal: React.FC<VoiceModalProps> = ({
         </div>
       )}
     </AnimatePresence>,
-    document.body
+    document.body,
   );
 };
 

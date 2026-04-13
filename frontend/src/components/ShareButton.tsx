@@ -15,7 +15,12 @@ interface ShareButtonProps {
   iconOnly?: boolean;
 }
 
-export function ShareButton({ videoId, videoTitle, className = "", iconOnly = false }: ShareButtonProps) {
+export function ShareButton({
+  videoId,
+  videoTitle,
+  className = "",
+  iconOnly = false,
+}: ShareButtonProps) {
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -28,7 +33,9 @@ export function ShareButton({ videoId, videoTitle, className = "", iconOnly = fa
 
       if (navigator.share) {
         await navigator.share({
-          title: videoTitle ? `DeepSight — ${videoTitle}` : "DeepSight Analysis",
+          title: videoTitle
+            ? `DeepSight — ${videoTitle}`
+            : "DeepSight Analysis",
           url: share_url,
         });
       } else {

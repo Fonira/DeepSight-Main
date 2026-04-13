@@ -13,7 +13,7 @@
 export interface DebateArgument {
   claim: string;
   evidence: string;
-  strength: 'strong' | 'moderate' | 'weak';
+  strength: "strong" | "moderate" | "weak";
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -33,7 +33,7 @@ export interface DivergencePoint {
 
 export interface FactCheckItem {
   claim: string;
-  verdict: 'confirmed' | 'nuanced' | 'disputed' | 'unverifiable';
+  verdict: "confirmed" | "nuanced" | "disputed" | "unverifiable";
   source: string;
   explanation: string;
 }
@@ -43,21 +43,21 @@ export interface FactCheckItem {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export type DebateStatus =
-  | 'pending'
-  | 'searching'
-  | 'analyzing_b'
-  | 'comparing'
-  | 'fact_checking'
-  | 'completed'
-  | 'failed';
+  | "pending"
+  | "searching"
+  | "analyzing_b"
+  | "comparing"
+  | "fact_checking"
+  | "completed"
+  | "failed";
 
-export type DebateMode = 'auto' | 'manual';
+export type DebateMode = "auto" | "manual";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ⚔️ DEBATE ANALYSIS — Analyse complète d'un débat
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export type VideoPlatform = 'youtube' | 'tiktok';
+export type VideoPlatform = "youtube" | "tiktok";
 
 export interface DebateAnalysis {
   id: number;

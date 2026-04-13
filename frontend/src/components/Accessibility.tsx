@@ -1,6 +1,6 @@
 /**
  * ♿ Accessibility Utilities v1.0
- * 
+ *
  * Composants utilitaires pour améliorer l'accessibilité:
  * - VisuallyHidden: Contenu uniquement pour lecteurs d'écran
  * - AccessibleIcon: Icône avec description pour lecteurs d'écran
@@ -8,7 +8,7 @@
  * - FocusTrap: Piège le focus dans un conteneur
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from "react";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 👁️ VISUALLY HIDDEN
@@ -23,9 +23,9 @@ interface VisuallyHiddenProps {
 /**
  * Rend le contenu invisible visuellement mais accessible aux lecteurs d'écran.
  */
-export const VisuallyHidden: React.FC<VisuallyHiddenProps> = ({ 
-  children, 
-  focusable = false 
+export const VisuallyHidden: React.FC<VisuallyHiddenProps> = ({
+  children,
+  focusable = false,
 }) => {
   return (
     <span className={focusable ? "sr-only focus:not-sr-only" : "sr-only"}>
@@ -50,11 +50,11 @@ interface AccessibleIconProps {
 
 /**
  * Wrapper pour les icônes qui ajoute l'accessibilité appropriée.
- * 
+ *
  * @example
  * // Icône informative
  * <AccessibleIcon icon={<AlertCircle />} label="Attention" />
- * 
+ *
  * // Icône décorative (ignorée par les lecteurs d'écran)
  * <AccessibleIcon icon={<Star />} label="" decorative />
  */
@@ -62,7 +62,7 @@ export const AccessibleIcon: React.FC<AccessibleIconProps> = ({
   icon,
   label,
   decorative = false,
-  className = ""
+  className = "",
 }) => {
   if (decorative) {
     return (
@@ -87,7 +87,7 @@ interface LiveRegionProps {
   /** Message à annoncer */
   message: string;
   /** Politeness: 'polite' attend une pause, 'assertive' interrompt */
-  politeness?: 'polite' | 'assertive';
+  politeness?: "polite" | "assertive";
   /** Si true, le message est visible */
   visible?: boolean;
   className?: string;
@@ -96,15 +96,15 @@ interface LiveRegionProps {
 /**
  * Zone d'annonces pour les lecteurs d'écran.
  * Utilise aria-live pour annoncer les changements dynamiques.
- * 
+ *
  * @example
  * <LiveRegion message={statusMessage} politeness="polite" />
  */
 export const LiveRegion: React.FC<LiveRegionProps> = ({
   message,
-  politeness = 'polite',
+  politeness = "polite",
   visible = false,
-  className = ""
+  className = "",
 }) => {
   return (
     <div
@@ -137,7 +137,7 @@ interface FocusTrapProps {
 export const FocusTrap: React.FC<FocusTrapProps> = ({
   children,
   active,
-  onEscapeAttempt
+  onEscapeAttempt,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const startRef = useRef<HTMLDivElement>(null);
@@ -147,25 +147,26 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({
     if (!active) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && onEscapeAttempt) {
+      if (e.key === "Escape" && onEscapeAttempt) {
         onEscapeAttempt();
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [active, onEscapeAttempt]);
 
-  const handleFocus = (position: 'start' | 'end') => {
+  const handleFocus = (position: "start" | "end") => {
     if (!active || !containerRef.current) return;
 
-    const focusableElements = containerRef.current.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
+    const focusableElements =
+      containerRef.current.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
 
     if (focusableElements.length === 0) return;
 
-    if (position === 'start') {
+    if (position === "start") {
       // Focus sur le dernier élément
       focusableElements[focusableElements.length - 1].focus();
     } else {
@@ -184,22 +185,30 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({
       <div
         ref={startRef}
         tabIndex={0}
-        onFocus={() => handleFocus('start')}
+        onFocus={() => handleFocus("start")}
         aria-hidden="true"
-        style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          overflow: "hidden",
+        }}
       />
-      
-      <div ref={containerRef}>
-        {children}
-      </div>
-      
+
+      <div ref={containerRef}>{children}</div>
+
       {/* Sentinelle de fin */}
       <div
         ref={endRef}
         tabIndex={0}
-        onFocus={() => handleFocus('end')}
+        onFocus={() => handleFocus("end")}
         aria-hidden="true"
-        style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden' }}
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          overflow: "hidden",
+        }}
       />
     </>
   );
@@ -211,7 +220,7 @@ export const FocusTrap: React.FC<FocusTrapProps> = ({
 
 interface UseRovingTabIndexOptions {
   /** Orientation de la navigation */
-  orientation?: 'horizontal' | 'vertical' | 'both';
+  orientation?: "horizontal" | "vertical" | "both";
   /** Loop au début/fin */
   loop?: boolean;
 }
@@ -222,44 +231,50 @@ interface UseRovingTabIndexOptions {
  */
 export function useRovingTabIndex(
   items: HTMLElement[],
-  options: UseRovingTabIndexOptions = {}
+  options: UseRovingTabIndexOptions = {},
 ) {
-  const { orientation = 'vertical', loop = true } = options;
+  const { orientation = "vertical", loop = true } = options;
   const [activeIndex, setActiveIndex] = React.useState(0);
 
-  const handleKeyDown = React.useCallback((e: KeyboardEvent) => {
-    let nextIndex = activeIndex;
-    const lastIndex = items.length - 1;
+  const handleKeyDown = React.useCallback(
+    (e: KeyboardEvent) => {
+      let nextIndex = activeIndex;
+      const lastIndex = items.length - 1;
 
-    const isNext = 
-      (orientation === 'horizontal' && e.key === 'ArrowRight') ||
-      (orientation === 'vertical' && e.key === 'ArrowDown') ||
-      (orientation === 'both' && (e.key === 'ArrowRight' || e.key === 'ArrowDown'));
+      const isNext =
+        (orientation === "horizontal" && e.key === "ArrowRight") ||
+        (orientation === "vertical" && e.key === "ArrowDown") ||
+        (orientation === "both" &&
+          (e.key === "ArrowRight" || e.key === "ArrowDown"));
 
-    const isPrev = 
-      (orientation === 'horizontal' && e.key === 'ArrowLeft') ||
-      (orientation === 'vertical' && e.key === 'ArrowUp') ||
-      (orientation === 'both' && (e.key === 'ArrowLeft' || e.key === 'ArrowUp'));
+      const isPrev =
+        (orientation === "horizontal" && e.key === "ArrowLeft") ||
+        (orientation === "vertical" && e.key === "ArrowUp") ||
+        (orientation === "both" &&
+          (e.key === "ArrowLeft" || e.key === "ArrowUp"));
 
-    if (isNext) {
-      e.preventDefault();
-      nextIndex = activeIndex < lastIndex ? activeIndex + 1 : (loop ? 0 : lastIndex);
-    } else if (isPrev) {
-      e.preventDefault();
-      nextIndex = activeIndex > 0 ? activeIndex - 1 : (loop ? lastIndex : 0);
-    } else if (e.key === 'Home') {
-      e.preventDefault();
-      nextIndex = 0;
-    } else if (e.key === 'End') {
-      e.preventDefault();
-      nextIndex = lastIndex;
-    }
+      if (isNext) {
+        e.preventDefault();
+        nextIndex =
+          activeIndex < lastIndex ? activeIndex + 1 : loop ? 0 : lastIndex;
+      } else if (isPrev) {
+        e.preventDefault();
+        nextIndex = activeIndex > 0 ? activeIndex - 1 : loop ? lastIndex : 0;
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        nextIndex = 0;
+      } else if (e.key === "End") {
+        e.preventDefault();
+        nextIndex = lastIndex;
+      }
 
-    if (nextIndex !== activeIndex) {
-      setActiveIndex(nextIndex);
-      items[nextIndex]?.focus();
-    }
-  }, [activeIndex, items, orientation, loop]);
+      if (nextIndex !== activeIndex) {
+        setActiveIndex(nextIndex);
+        items[nextIndex]?.focus();
+      }
+    },
+    [activeIndex, items, orientation, loop],
+  );
 
   return {
     activeIndex,
@@ -302,9 +317,9 @@ export const Heading: React.FC<{
 }> = ({ children, className = "", level: overrideLevel }) => {
   const contextLevel = React.useContext(HeadingLevelContext);
   const level = overrideLevel || contextLevel;
-  
+
   const Tag = `h${level}` as keyof JSX.IntrinsicElements;
-  
+
   return <Tag className={className}>{children}</Tag>;
 };
 

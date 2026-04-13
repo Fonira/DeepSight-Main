@@ -6,7 +6,7 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-import React from 'react';
+import React from "react";
 
 interface EngagementMetricsProps {
   viewCount?: number | null;
@@ -32,9 +32,9 @@ function formatCount(n: number): string {
  * Get color class for engagement rate badge
  */
 function getEngagementRateColor(rate: number): string {
-  if (rate > 5) return 'text-emerald-400';
-  if (rate >= 1) return 'text-yellow-400';
-  return 'text-white/50';
+  if (rate > 5) return "text-emerald-400";
+  if (rate >= 1) return "text-yellow-400";
+  return "text-white/50";
 }
 
 interface BadgeProps {
@@ -44,7 +44,12 @@ interface BadgeProps {
   colorClass?: string;
 }
 
-const Badge: React.FC<BadgeProps> = ({ icon, value, label, colorClass = 'text-white/70' }) => (
+const Badge: React.FC<BadgeProps> = ({
+  icon,
+  value,
+  label,
+  colorClass = "text-white/70",
+}) => (
   <span
     className={`inline-flex items-center gap-1 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1 text-xs ${colorClass} select-none`}
     title={label}
@@ -80,7 +85,7 @@ export const EngagementMetrics: React.FC<EngagementMetricsProps> = ({
       {/* Views — always shown if available */}
       {viewCount != null && viewCount > 0 && (
         <Badge
-          icon={platform === 'tiktok' ? '👁' : '▶'}
+          icon={platform === "tiktok" ? "👁" : "▶"}
           value={formatCount(viewCount)}
           label={`${viewCount.toLocaleString()} vues`}
         />

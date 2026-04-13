@@ -9,9 +9,15 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Home, ChevronDown, ChevronUp } from 'lucide-react';
-import { captureError } from '../lib/sentry';
+import React, { Component, ErrorInfo, ReactNode } from "react";
+import {
+  AlertTriangle,
+  RefreshCw,
+  Home,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+import { captureError } from "../lib/sentry";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📊 TYPES
@@ -32,9 +38,9 @@ interface ErrorBoundaryProps {
   /** Whether to show technical details */
   showDetails?: boolean;
   /** Variant of the error display */
-  variant?: 'full' | 'inline' | 'minimal';
+  variant?: "full" | "inline" | "minimal";
   /** Language for error messages */
-  language?: 'fr' | 'en';
+  language?: "fr" | "en";
 }
 
 interface ErrorBoundaryState {
@@ -55,28 +61,30 @@ interface FallbackProps {
 
 const MESSAGES = {
   fr: {
-    title: 'Oups, une erreur est survenue',
-    titleInline: 'Erreur de chargement',
-    description: 'Cette partie de l\'application a rencontré un problème. Vous pouvez essayer de recharger.',
-    descriptionInline: 'Ce composant n\'a pas pu se charger correctement.',
-    retry: 'Réessayer',
-    home: 'Retour à l\'accueil',
-    refresh: 'Rafraîchir la page',
-    details: 'Détails techniques',
-    hideDetails: 'Masquer les détails',
-    reportSent: 'Notre équipe a été notifiée du problème.',
+    title: "Oups, une erreur est survenue",
+    titleInline: "Erreur de chargement",
+    description:
+      "Cette partie de l'application a rencontré un problème. Vous pouvez essayer de recharger.",
+    descriptionInline: "Ce composant n'a pas pu se charger correctement.",
+    retry: "Réessayer",
+    home: "Retour à l'accueil",
+    refresh: "Rafraîchir la page",
+    details: "Détails techniques",
+    hideDetails: "Masquer les détails",
+    reportSent: "Notre équipe a été notifiée du problème.",
   },
   en: {
-    title: 'Oops, something went wrong',
-    titleInline: 'Loading error',
-    description: 'This part of the application encountered a problem. You can try reloading.',
-    descriptionInline: 'This component failed to load correctly.',
-    retry: 'Retry',
-    home: 'Back to home',
-    refresh: 'Refresh page',
-    details: 'Technical details',
-    hideDetails: 'Hide details',
-    reportSent: 'Our team has been notified of the issue.',
+    title: "Oops, something went wrong",
+    titleInline: "Loading error",
+    description:
+      "This part of the application encountered a problem. You can try reloading.",
+    descriptionInline: "This component failed to load correctly.",
+    retry: "Retry",
+    home: "Back to home",
+    refresh: "Refresh page",
+    details: "Technical details",
+    hideDetails: "Hide details",
+    reportSent: "Our team has been notified of the issue.",
   },
 };
 
@@ -85,8 +93,8 @@ const MESSAGES = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface DefaultFallbackProps extends FallbackProps {
-  variant: 'full' | 'inline' | 'minimal';
-  language: 'fr' | 'en';
+  variant: "full" | "inline" | "minimal";
+  language: "fr" | "en";
   showDetails: boolean;
   componentName?: string;
 }
@@ -104,7 +112,7 @@ const DefaultFallback: React.FC<DefaultFallbackProps> = ({
   const t = MESSAGES[language];
 
   // Minimal variant - just a small error indicator
-  if (variant === 'minimal') {
+  if (variant === "minimal") {
     return (
       <div className="flex items-center gap-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
         <AlertTriangle className="w-4 h-4 text-red-400 flex-shrink-0" />
@@ -120,7 +128,7 @@ const DefaultFallback: React.FC<DefaultFallbackProps> = ({
   }
 
   // Inline variant - for component-level errors
-  if (variant === 'inline') {
+  if (variant === "inline") {
     return (
       <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
         <div className="flex items-start gap-3">
@@ -171,7 +179,7 @@ const DefaultFallback: React.FC<DefaultFallbackProps> = ({
                 {error.message}
                 {errorInfo?.componentStack && (
                   <>
-                    {'\n\n'}Stack:{'\n'}
+                    {"\n\n"}Stack:{"\n"}
                     {errorInfo.componentStack}
                   </>
                 )}
@@ -193,19 +201,13 @@ const DefaultFallback: React.FC<DefaultFallbackProps> = ({
         </div>
 
         {/* Title */}
-        <h2 className="text-xl font-bold text-text-primary mb-2">
-          {t.title}
-        </h2>
+        <h2 className="text-xl font-bold text-text-primary mb-2">{t.title}</h2>
 
         {/* Description */}
-        <p className="text-text-secondary text-sm mb-6">
-          {t.description}
-        </p>
+        <p className="text-text-secondary text-sm mb-6">{t.description}</p>
 
         {/* Sentry notification */}
-        <p className="text-xs text-text-tertiary mb-6">
-          {t.reportSent}
-        </p>
+        <p className="text-xs text-text-tertiary mb-6">{t.reportSent}</p>
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -217,7 +219,7 @@ const DefaultFallback: React.FC<DefaultFallbackProps> = ({
             {t.retry}
           </button>
           <button
-            onClick={() => window.location.href = '/'}
+            onClick={() => (window.location.href = "/")}
             className="flex items-center justify-center gap-2 px-5 py-2.5 bg-bg-secondary text-text-primary font-medium rounded-xl hover:bg-bg-tertiary transition-colors"
           >
             <Home className="w-4 h-4" />
@@ -226,7 +228,7 @@ const DefaultFallback: React.FC<DefaultFallbackProps> = ({
         </div>
 
         {/* Technical details (development only or when showDetails is true) */}
-        {(showDetails || process.env.NODE_ENV === 'development') && error && (
+        {(showDetails || process.env.NODE_ENV === "development") && error && (
           <div className="mt-8">
             <button
               onClick={() => setDetailsOpen(!detailsOpen)}
@@ -267,7 +269,10 @@ const DefaultFallback: React.FC<DefaultFallbackProps> = ({
 // 🛡️ ERROR BOUNDARY CLASS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = {
@@ -294,9 +299,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     });
 
     // Log in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('ErrorBoundary caught an error:', error);
-      console.error('Component stack:', errorInfo.componentStack);
+    if (process.env.NODE_ENV === "development") {
+      console.error("ErrorBoundary caught an error:", error);
+      console.error("Component stack:", errorInfo.componentStack);
     }
   }
 
@@ -314,8 +319,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       children,
       fallback,
       fallbackRender,
-      variant = 'full',
-      language = 'fr',
+      variant = "full",
+      language = "fr",
       showDetails = false,
       componentName,
     } = this.props;
@@ -389,15 +394,13 @@ export function useErrorHandler() {
  */
 export function withErrorBoundary<P extends object>(
   WrappedComponent: React.ComponentType<P>,
-  errorBoundaryProps?: Omit<ErrorBoundaryProps, 'children'>
+  errorBoundaryProps?: Omit<ErrorBoundaryProps, "children">,
 ) {
-  const displayName = WrappedComponent.displayName || WrappedComponent.name || 'Component';
+  const displayName =
+    WrappedComponent.displayName || WrappedComponent.name || "Component";
 
   const ComponentWithErrorBoundary: React.FC<P> = (props) => (
-    <ErrorBoundary
-      componentName={displayName}
-      {...errorBoundaryProps}
-    >
+    <ErrorBoundary componentName={displayName} {...errorBoundaryProps}>
       <WrappedComponent {...props} />
     </ErrorBoundary>
   );

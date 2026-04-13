@@ -3,19 +3,19 @@
  * Utilise les VRAIS providers pour que useLanguage/useAuth fonctionnent
  */
 
-import React, { ReactElement } from 'react';
-import { render, RenderOptions } from '@testing-library/react';
-import { MemoryRouter, MemoryRouterProps } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { HelmetProvider } from 'react-helmet-async';
-import { vi } from 'vitest';
-import { LanguageProvider } from '../contexts/LanguageContext';
+import React, { ReactElement } from "react";
+import { render, RenderOptions } from "@testing-library/react";
+import { MemoryRouter, MemoryRouterProps } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { HelmetProvider } from "react-helmet-async";
+import { vi } from "vitest";
+import { LanguageProvider } from "../contexts/LanguageContext";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 🔧 CUSTOM RENDER OPTIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
+interface CustomRenderOptions extends Omit<RenderOptions, "wrapper"> {
   routerProps?: MemoryRouterProps;
 }
 
@@ -25,10 +25,7 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'wrapper'> {
  */
 export function renderWithProviders(
   ui: ReactElement,
-  {
-    routerProps = {},
-    ...renderOptions
-  }: CustomRenderOptions = {}
+  { routerProps = {}, ...renderOptions }: CustomRenderOptions = {},
 ) {
   // Create a fresh QueryClient for each test
   const queryClient = new QueryClient({
@@ -43,9 +40,7 @@ export function renderWithProviders(
       <HelmetProvider>
         <QueryClientProvider client={queryClient}>
           <MemoryRouter {...routerProps}>
-            <LanguageProvider>
-              {children}
-            </LanguageProvider>
+            <LanguageProvider>{children}</LanguageProvider>
           </MemoryRouter>
         </QueryClientProvider>
       </HelmetProvider>
@@ -62,11 +57,14 @@ export function renderWithProviders(
 // 🪝 HOOK TESTING UTILS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-import { renderHook as rtlRenderHook, RenderHookOptions } from '@testing-library/react';
+import {
+  renderHook as rtlRenderHook,
+  RenderHookOptions,
+} from "@testing-library/react";
 
 export function renderHookWithProviders<TProps, TResult>(
   hook: (props: TProps) => TResult,
-  options?: RenderHookOptions<TProps>
+  options?: RenderHookOptions<TProps>,
 ) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -80,9 +78,7 @@ export function renderHookWithProviders<TProps, TResult>(
       <HelmetProvider>
         <QueryClientProvider client={queryClient}>
           <MemoryRouter>
-            <LanguageProvider>
-              {children}
-            </LanguageProvider>
+            <LanguageProvider>{children}</LanguageProvider>
           </MemoryRouter>
         </QueryClientProvider>
       </HelmetProvider>
@@ -99,11 +95,11 @@ export function renderHookWithProviders<TProps, TResult>(
 // 🧮 FACTORY CREATORS FOR TESTS (re-export from api-mocks)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export { createMockUser } from './mocks/api-mocks';
+export { createMockUser } from "./mocks/api-mocks";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 📤 RE-EXPORTS (Testing Library standards)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export * from '@testing-library/react';
-export { default as userEvent } from '@testing-library/user-event';
+export * from "@testing-library/react";
+export { default as userEvent } from "@testing-library/user-event";

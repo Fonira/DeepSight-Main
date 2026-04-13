@@ -6,7 +6,7 @@
  * Displays a pulsing red circle while the user is holding the button.
  */
 
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useRef } from "react";
 
 interface VoicePTTButtonProps {
   onStartTalking: () => void;
@@ -32,7 +32,7 @@ export const VoicePTTButton: React.FC<VoicePTTButtonProps> = ({
       isHoldingRef.current = true;
       onStartTalking();
     },
-    [disabled, onStartTalking]
+    [disabled, onStartTalking],
   );
 
   const handlePointerUp = useCallback(
@@ -43,7 +43,7 @@ export const VoicePTTButton: React.FC<VoicePTTButtonProps> = ({
       isHoldingRef.current = false;
       onStopTalking();
     },
-    [onStopTalking]
+    [onStopTalking],
   );
 
   // Safety: also handle pointer cancel (e.g., phone call interruption)
@@ -61,11 +61,11 @@ export const VoicePTTButton: React.FC<VoicePTTButtonProps> = ({
         <>
           <span
             className="absolute w-20 h-20 rounded-full bg-red-500/20 animate-ping"
-            style={{ animationDuration: '1.5s' }}
+            style={{ animationDuration: "1.5s" }}
           />
           <span
             className="absolute w-24 h-24 rounded-full bg-red-500/10 animate-ping"
-            style={{ animationDuration: '2s', animationDelay: '0.3s' }}
+            style={{ animationDuration: "2s", animationDelay: "0.3s" }}
           />
         </>
       )}
@@ -80,14 +80,17 @@ export const VoicePTTButton: React.FC<VoicePTTButtonProps> = ({
         className={`
           relative z-10 w-[72px] h-[72px] rounded-full flex items-center justify-center
           select-none touch-none transition-all duration-150 focus:outline-none
-          ${disabled
-            ? 'bg-gray-600 cursor-not-allowed opacity-50'
-            : isTalking
-              ? 'bg-red-500 shadow-lg shadow-red-500/40 scale-110'
-              : 'bg-indigo-500 hover:bg-indigo-400 shadow-lg shadow-indigo-500/30'
+          ${
+            disabled
+              ? "bg-gray-600 cursor-not-allowed opacity-50"
+              : isTalking
+                ? "bg-red-500 shadow-lg shadow-red-500/40 scale-110"
+                : "bg-indigo-500 hover:bg-indigo-400 shadow-lg shadow-indigo-500/30"
           }
         `}
-        aria-label={isTalking ? 'Relâchez pour envoyer' : 'Maintenez pour parler'}
+        aria-label={
+          isTalking ? "Relâchez pour envoyer" : "Maintenez pour parler"
+        }
       >
         {/* Microphone icon */}
         <svg
@@ -98,7 +101,7 @@ export const VoicePTTButton: React.FC<VoicePTTButtonProps> = ({
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={`w-8 h-8 text-white transition-transform ${isTalking ? 'scale-110' : ''}`}
+          className={`w-8 h-8 text-white transition-transform ${isTalking ? "scale-110" : ""}`}
         >
           <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
           <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -108,7 +111,7 @@ export const VoicePTTButton: React.FC<VoicePTTButtonProps> = ({
 
       {/* Label */}
       <span className="absolute -bottom-6 text-xs text-gray-400 whitespace-nowrap select-none">
-        {isTalking ? 'Relâchez pour envoyer' : 'Maintenez pour parler'}
+        {isTalking ? "Relâchez pour envoyer" : "Maintenez pour parler"}
       </span>
     </div>
   );

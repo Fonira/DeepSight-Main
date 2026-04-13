@@ -7,7 +7,11 @@ interface AuthContextType {
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  register: (username: string, email: string, password: string) => Promise<void>;
+  register: (
+    username: string,
+    email: string,
+    password: string,
+  ) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
 }
 
@@ -25,7 +29,5 @@ export const AuthProvider: React.FC<{
   children: React.ReactNode;
   value: AuthContextType;
 }> = ({ children, value }) => {
-  return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

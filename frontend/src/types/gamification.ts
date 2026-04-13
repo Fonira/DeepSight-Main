@@ -60,7 +60,7 @@ export interface StudyStats {
   total_xp: number;
   level: number;
   xp_for_next_level: number;
-  xp_progress?: number;       // computed client-side if absent
+  xp_progress?: number; // computed client-side if absent
   current_streak: number;
   longest_streak: number;
   total_cards_mastered: number;
@@ -81,7 +81,7 @@ export interface HeatMapDay {
 
 export interface HeatMapData {
   success?: boolean;
-  days?: HeatMapDay[];       // backend field name
+  days?: HeatMapDay[]; // backend field name
   activities?: HeatMapDay[]; // frontend alias
 }
 
@@ -95,7 +95,7 @@ export interface BadgeItem {
   category: string;
   earned: boolean;
   earned_at: string | null;
-  progress: number | null;  // 0-1 for threshold badges
+  progress: number | null; // 0-1 for threshold badges
 }
 
 /** Raw API response from /api/gamification/badges */
@@ -147,18 +147,50 @@ export interface SessionEndResult {
 }
 
 // Constantes
-export const RARITY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  [BadgeRarity.Common]: { bg: "rgba(148, 163, 184, 0.15)", border: "rgba(148, 163, 184, 0.3)", text: "#94a3b8" },
-  [BadgeRarity.Rare]: { bg: "rgba(59, 130, 246, 0.15)", border: "rgba(59, 130, 246, 0.3)", text: "#3b82f6" },
-  [BadgeRarity.Epic]: { bg: "rgba(139, 92, 246, 0.15)", border: "rgba(139, 92, 246, 0.3)", text: "#8b5cf6" },
-  [BadgeRarity.Legendary]: { bg: "rgba(245, 158, 11, 0.15)", border: "rgba(245, 158, 11, 0.3)", text: "#f59e0b" },
+export const RARITY_COLORS: Record<
+  string,
+  { bg: string; border: string; text: string }
+> = {
+  [BadgeRarity.Common]: {
+    bg: "rgba(148, 163, 184, 0.15)",
+    border: "rgba(148, 163, 184, 0.3)",
+    text: "#94a3b8",
+  },
+  [BadgeRarity.Rare]: {
+    bg: "rgba(59, 130, 246, 0.15)",
+    border: "rgba(59, 130, 246, 0.3)",
+    text: "#3b82f6",
+  },
+  [BadgeRarity.Epic]: {
+    bg: "rgba(139, 92, 246, 0.15)",
+    border: "rgba(139, 92, 246, 0.3)",
+    text: "#8b5cf6",
+  },
+  [BadgeRarity.Legendary]: {
+    bg: "rgba(245, 158, 11, 0.15)",
+    border: "rgba(245, 158, 11, 0.3)",
+    text: "#f59e0b",
+  },
 };
 
 export const XP_PER_LEVEL = 500;
 
-export const RATING_CONFIG: Record<FSRSRating, { label: string; sub: string; color: string; xp: number }> = {
-  [FSRSRating.Again]: { label: "Oublié", sub: "<1min", color: "#ef4444", xp: 3 },
-  [FSRSRating.Hard]: { label: "Difficile", sub: "~6min", color: "#f97316", xp: 5 },
+export const RATING_CONFIG: Record<
+  FSRSRating,
+  { label: string; sub: string; color: string; xp: number }
+> = {
+  [FSRSRating.Again]: {
+    label: "Oublié",
+    sub: "<1min",
+    color: "#ef4444",
+    xp: 3,
+  },
+  [FSRSRating.Hard]: {
+    label: "Difficile",
+    sub: "~6min",
+    color: "#f97316",
+    xp: 5,
+  },
   [FSRSRating.Good]: { label: "Bien", sub: "~10min", color: "#10b981", xp: 10 },
   [FSRSRating.Easy]: { label: "Facile", sub: ">1j", color: "#3b82f6", xp: 12 },
 };

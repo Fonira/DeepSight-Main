@@ -2,48 +2,59 @@
  * DebateFactCheck — Grille de résultats de vérification factuelle
  */
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircle2, AlertTriangle, XCircle, HelpCircle, ExternalLink } from 'lucide-react';
-import type { FactCheckItem } from '../../types/debate';
+import React from "react";
+import { motion } from "framer-motion";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  HelpCircle,
+  ExternalLink,
+} from "lucide-react";
+import type { FactCheckItem } from "../../types/debate";
 
 interface DebateFactCheckProps {
   results: FactCheckItem[];
 }
 
-const VERDICT_CONFIG: Record<FactCheckItem['verdict'], {
-  label: string;
-  icon: React.ElementType;
-  className: string;
-  bgClassName: string;
-}> = {
+const VERDICT_CONFIG: Record<
+  FactCheckItem["verdict"],
+  {
+    label: string;
+    icon: React.ElementType;
+    className: string;
+    bgClassName: string;
+  }
+> = {
   confirmed: {
-    label: 'Confirmé',
+    label: "Confirmé",
     icon: CheckCircle2,
-    className: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
-    bgClassName: 'border-emerald-500/15',
+    className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
+    bgClassName: "border-emerald-500/15",
   },
   nuanced: {
-    label: 'Nuancé',
+    label: "Nuancé",
     icon: AlertTriangle,
-    className: 'bg-amber-500/15 text-amber-400 border-amber-500/25',
-    bgClassName: 'border-amber-500/15',
+    className: "bg-amber-500/15 text-amber-400 border-amber-500/25",
+    bgClassName: "border-amber-500/15",
   },
   disputed: {
-    label: 'Contesté',
+    label: "Contesté",
     icon: XCircle,
-    className: 'bg-red-500/15 text-red-400 border-red-500/25',
-    bgClassName: 'border-red-500/15',
+    className: "bg-red-500/15 text-red-400 border-red-500/25",
+    bgClassName: "border-red-500/15",
   },
   unverifiable: {
-    label: 'Invérifiable',
+    label: "Invérifiable",
     icon: HelpCircle,
-    className: 'bg-white/10 text-white/50 border-white/15',
-    bgClassName: 'border-white/10',
+    className: "bg-white/10 text-white/50 border-white/15",
+    bgClassName: "border-white/10",
   },
 };
 
-export const DebateFactCheck: React.FC<DebateFactCheckProps> = ({ results }) => {
+export const DebateFactCheck: React.FC<DebateFactCheckProps> = ({
+  results,
+}) => {
   return (
     <div className="rounded-xl bg-white/5 border border-white/10 backdrop-blur-xl p-5">
       <div className="flex items-center gap-2 mb-5">
@@ -51,16 +62,20 @@ export const DebateFactCheck: React.FC<DebateFactCheckProps> = ({ results }) => 
           <CheckCircle2 className="w-4 h-4 text-cyan-400" />
         </div>
         <div>
-          <h3 className="text-sm font-semibold text-white">Vérification factuelle</h3>
+          <h3 className="text-sm font-semibold text-white">
+            Vérification factuelle
+          </h3>
           <p className="text-xs text-white/40">
-            {results.length} affirmation{results.length > 1 ? 's' : ''} vérifiée{results.length > 1 ? 's' : ''}
+            {results.length} affirmation{results.length > 1 ? "s" : ""} vérifiée
+            {results.length > 1 ? "s" : ""}
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {results.map((item, i) => {
-          const verdict = VERDICT_CONFIG[item.verdict] ?? VERDICT_CONFIG.unverifiable;
+          const verdict =
+            VERDICT_CONFIG[item.verdict] ?? VERDICT_CONFIG.unverifiable;
           const VerdictIcon = verdict.icon;
 
           return (

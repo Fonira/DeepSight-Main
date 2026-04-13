@@ -2,8 +2,8 @@
  * DEEP SIGHT — ConfidenceButtons
  * 4 boutons FSRS de rating après avoir vu la réponse.
  */
-import React from 'react';
-import { motion } from 'framer-motion';
+import React from "react";
+import { motion } from "framer-motion";
 
 interface ConfidenceButtonsProps {
   onRate: (rating: 1 | 2 | 3 | 4) => void;
@@ -19,10 +19,34 @@ interface ButtonConfig {
 }
 
 const BUTTONS: ButtonConfig[] = [
-  { rating: 1, label: 'Oublié', subtext: '<1min', color: 'text-red-400', hoverBg: 'hover:bg-red-500/15' },
-  { rating: 2, label: 'Difficile', subtext: '~6min', color: 'text-orange-400', hoverBg: 'hover:bg-orange-500/15' },
-  { rating: 3, label: 'Bien', subtext: '~10min', color: 'text-green-400', hoverBg: 'hover:bg-green-500/15' },
-  { rating: 4, label: 'Facile', subtext: '>1j', color: 'text-blue-400', hoverBg: 'hover:bg-blue-500/15' },
+  {
+    rating: 1,
+    label: "Oublié",
+    subtext: "<1min",
+    color: "text-red-400",
+    hoverBg: "hover:bg-red-500/15",
+  },
+  {
+    rating: 2,
+    label: "Difficile",
+    subtext: "~6min",
+    color: "text-orange-400",
+    hoverBg: "hover:bg-orange-500/15",
+  },
+  {
+    rating: 3,
+    label: "Bien",
+    subtext: "~10min",
+    color: "text-green-400",
+    hoverBg: "hover:bg-green-500/15",
+  },
+  {
+    rating: 4,
+    label: "Facile",
+    subtext: ">1j",
+    color: "text-blue-400",
+    hoverBg: "hover:bg-blue-500/15",
+  },
 ];
 
 export const ConfidenceButtons: React.FC<ConfidenceButtonsProps> = ({
@@ -46,7 +70,9 @@ export const ConfidenceButtons: React.FC<ConfidenceButtonsProps> = ({
           whileTap={disabled ? undefined : { scale: 0.97 }}
           aria-label={`${btn.label} — intervalle ${btn.subtext}`}
         >
-          <span className={`text-sm font-semibold ${btn.color}`}>{btn.label}</span>
+          <span className={`text-sm font-semibold ${btn.color}`}>
+            {btn.label}
+          </span>
           <span className="text-[10px] text-white/40">{btn.subtext}</span>
         </motion.button>
       ))}

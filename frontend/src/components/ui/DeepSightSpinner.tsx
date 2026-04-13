@@ -10,13 +10,13 @@
  * ╚════════════════════════════════════════════════════════════════════════════════════╝
  */
 
-import React from 'react';
+import React from "react";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // TYPES & CONFIG
 // ═══════════════════════════════════════════════════════════════════════════════
 
-type SpinnerSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
+type SpinnerSize = "xs" | "sm" | "md" | "lg" | "xl" | "xxl";
 
 interface DeepSightSpinnerProps {
   /** Taille prédéfinie ou pixels custom */
@@ -28,7 +28,7 @@ interface DeepSightSpinnerProps {
   /** Afficher le label */
   showLabel?: boolean;
   /** Vitesse de rotation */
-  speed?: 'slow' | 'normal' | 'fast';
+  speed?: "slow" | "normal" | "fast";
   /**
    * Mode fond clair : pour usage dans boutons/surfaces claires.
    * Ajoute un fond noir circulaire et désactive mix-blend-mode
@@ -38,11 +38,11 @@ interface DeepSightSpinnerProps {
 }
 
 const sizeConfig: Record<SpinnerSize, { container: number; wheel: number }> = {
-  xs:  { container: 24,  wheel: 22  },
-  sm:  { container: 40,  wheel: 36  },
-  md:  { container: 64,  wheel: 58  },
-  lg:  { container: 120, wheel: 110 },
-  xl:  { container: 200, wheel: 185 },
+  xs: { container: 24, wheel: 22 },
+  sm: { container: 40, wheel: 36 },
+  md: { container: 64, wheel: 58 },
+  lg: { container: 120, wheel: 110 },
+  xl: { container: 200, wheel: 185 },
   xxl: { container: 350, wheel: 320 },
 };
 
@@ -57,16 +57,20 @@ const speedMap: Record<string, number> = {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
-  size = 'md',
-  className = '',
-  label = 'Chargement...',
+  size = "md",
+  className = "",
+  label = "Chargement...",
   showLabel = false,
-  speed = 'normal',
+  speed = "normal",
   onLight = false,
 }) => {
-  const isPreset = typeof size === 'string';
-  const containerPx = isPreset ? sizeConfig[size as SpinnerSize].container : size;
-  const wheelPx = isPreset ? sizeConfig[size as SpinnerSize].wheel : Math.round((size as number) * 0.91);
+  const isPreset = typeof size === "string";
+  const containerPx = isPreset
+    ? sizeConfig[size as SpinnerSize].container
+    : size;
+  const wheelPx = isPreset
+    ? sizeConfig[size as SpinnerSize].wheel
+    : Math.round((size as number) * 0.91);
   const duration = speedMap[speed];
 
   // Pour xs, pas de flammes — trop petit pour que ce soit lisible
@@ -86,9 +90,9 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
           height: containerPx,
           // Sur fond clair : fond noir circulaire pour que screen blend fonctionne
           ...(onLight && {
-            backgroundColor: '#000',
-            borderRadius: '50%',
-            overflow: 'hidden',
+            backgroundColor: "#000",
+            borderRadius: "50%",
+            overflow: "hidden",
           }),
         }}
       >
@@ -117,8 +121,8 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
                 black 100%
               )`,
               zIndex: 1,
-              mixBlendMode: onLight ? 'normal' : 'screen',
-              borderRadius: '50%',
+              mixBlendMode: onLight ? "normal" : "screen",
+              borderRadius: "50%",
             }}
           />
         )}
@@ -131,13 +135,13 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
           style={{
             width: wheelPx,
             height: wheelPx,
-            position: 'relative',
+            position: "relative",
             zIndex: 10,
-            mixBlendMode: onLight ? 'normal' : 'screen',
+            mixBlendMode: onLight ? "normal" : "screen",
             opacity: 0.85,
-            filter: 'brightness(1.2) contrast(1.25) saturate(1.1)',
+            filter: "brightness(1.2) contrast(1.25) saturate(1.1)",
             animation: `deepsight-gouvernail-spin ${duration}s linear infinite`,
-            willChange: 'transform',
+            willChange: "transform",
           }}
         />
       </div>
@@ -168,22 +172,28 @@ export const DeepSightSpinner: React.FC<DeepSightSpinnerProps> = ({
 // ═══════════════════════════════════════════════════════════════════════════════
 
 /** 24px — Inline dans boutons, badges, à côté de texte (fond sombre) */
-export const DeepSightSpinnerMicro: React.FC<{ className?: string; onLight?: boolean }> = (props) => (
-  <DeepSightSpinner size="xs" speed="fast" {...props} />
-);
+export const DeepSightSpinnerMicro: React.FC<{
+  className?: string;
+  onLight?: boolean;
+}> = (props) => <DeepSightSpinner size="xs" speed="fast" {...props} />;
 
 /** 40px — Boutons moyens, headers de section */
-export const DeepSightSpinnerSmall: React.FC<{ className?: string; onLight?: boolean }> = (props) => (
-  <DeepSightSpinner size="sm" speed="normal" {...props} />
-);
+export const DeepSightSpinnerSmall: React.FC<{
+  className?: string;
+  onLight?: boolean;
+}> = (props) => <DeepSightSpinner size="sm" speed="normal" {...props} />;
 
 /** 120px — Section loading, cards, modals — avec label */
-export const DeepSightSpinnerLarge: React.FC<{ className?: string; label?: string }> = (props) => (
-  <DeepSightSpinner size="lg" showLabel {...props} />
-);
+export const DeepSightSpinnerLarge: React.FC<{
+  className?: string;
+  label?: string;
+}> = (props) => <DeepSightSpinner size="lg" showLabel {...props} />;
 
 /** 350px — Hero loading, full-page, landing */
-export const DeepSightSpinnerHero: React.FC<{ className?: string; label?: string }> = (props) => (
+export const DeepSightSpinnerHero: React.FC<{
+  className?: string;
+  label?: string;
+}> = (props) => (
   <DeepSightSpinner size="xxl" speed="slow" showLabel {...props} />
 );
 

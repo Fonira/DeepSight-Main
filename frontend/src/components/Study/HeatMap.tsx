@@ -2,8 +2,8 @@
  * DEEP SIGHT — HeatMap
  * Heat map style GitHub des 35 derniers jours.
  */
-import React, { useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import React, { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface ActivityDay {
   date: string;
@@ -16,11 +16,11 @@ interface HeatMapProps {
 }
 
 const INTENSITY_CLASSES = [
-  'bg-white/5',
-  'bg-indigo-500/20',
-  'bg-indigo-500/40',
-  'bg-indigo-500/60',
-  'bg-indigo-500/90',
+  "bg-white/5",
+  "bg-indigo-500/20",
+  "bg-indigo-500/40",
+  "bg-indigo-500/60",
+  "bg-indigo-500/90",
 ];
 
 const getIntensity = (count: number, max: number): number => {
@@ -34,11 +34,15 @@ const getIntensity = (count: number, max: number): number => {
 
 const formatDate = (dateStr: string): string => {
   const d = new Date(dateStr);
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 };
 
 export const HeatMap: React.FC<HeatMapProps> = ({ activities }) => {
-  const [tooltip, setTooltip] = useState<{ idx: number; x: number; y: number } | null>(null);
+  const [tooltip, setTooltip] = useState<{
+    idx: number;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const { grid, maxCards } = useMemo(() => {
     const actMap = new Map<string, ActivityDay>();
@@ -49,7 +53,7 @@ export const HeatMap: React.FC<HeatMapProps> = ({ activities }) => {
     for (let i = 34; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().split('T')[0];
+      const key = d.toISOString().split("T")[0];
       const act = actMap.get(key);
       days.push({
         dateStr: key,
@@ -68,7 +72,10 @@ export const HeatMap: React.FC<HeatMapProps> = ({ activities }) => {
       {/* Grid 7×5 */}
       <div
         className="grid gap-1"
-        style={{ gridTemplateColumns: 'repeat(7, 1fr)', gridTemplateRows: 'repeat(5, 1fr)' }}
+        style={{
+          gridTemplateColumns: "repeat(7, 1fr)",
+          gridTemplateRows: "repeat(5, 1fr)",
+        }}
         role="img"
         aria-label="Carte de chaleur des 35 derniers jours d'activité"
       >
@@ -103,9 +110,15 @@ export const HeatMap: React.FC<HeatMapProps> = ({ activities }) => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
             className="fixed z-50 px-2.5 py-1.5 rounded-lg bg-[#1a1a2e] border border-white/10 text-xs text-white shadow-xl pointer-events-none"
-            style={{ left: tooltip.x, top: tooltip.y - 36, transform: 'translateX(-50%)' }}
+            style={{
+              left: tooltip.x,
+              top: tooltip.y - 36,
+              transform: "translateX(-50%)",
+            }}
           >
-            <span className="font-medium">{formatDate(grid[tooltip.idx].dateStr)}</span>
+            <span className="font-medium">
+              {formatDate(grid[tooltip.idx].dateStr)}
+            </span>
             <span className="text-white/50"> — </span>
             <span>{grid[tooltip.idx].cards_reviewed} cartes</span>
           </motion.div>

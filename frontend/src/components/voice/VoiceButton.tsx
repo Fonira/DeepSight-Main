@@ -3,11 +3,11 @@
  * Fixed bottom-right, 3 states: idle / locked / active
  */
 
-import React, { useCallback } from 'react';
-import { motion, type Variants } from 'framer-motion';
-import { Mic, Lock } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
-import { PLAN_LIMITS, normalizePlanId } from '../../config/planPrivileges';
+import React, { useCallback } from "react";
+import { motion, type Variants } from "framer-motion";
+import { Mic, Lock } from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
+import { PLAN_LIMITS, normalizePlanId } from "../../config/planPrivileges";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Types
@@ -19,7 +19,7 @@ interface VoiceButtonProps {
   disabled?: boolean;
 }
 
-type VoiceState = 'idle' | 'locked';
+type VoiceState = "idle" | "locked";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Animation variants
@@ -28,18 +28,18 @@ type VoiceState = 'idle' | 'locked';
 const pulseVariants: Variants = {
   active: {
     boxShadow: [
-      '0 0 0 0 rgba(99, 102, 241, 0)',
-      '0 0 20px 8px rgba(99, 102, 241, 0.35)',
-      '0 0 0 0 rgba(99, 102, 241, 0)',
+      "0 0 0 0 rgba(99, 102, 241, 0)",
+      "0 0 20px 8px rgba(99, 102, 241, 0.35)",
+      "0 0 0 0 rgba(99, 102, 241, 0)",
     ],
     transition: {
       duration: 2,
       repeat: Infinity,
-      ease: 'easeInOut',
+      ease: "easeInOut",
     },
   },
   idle: {
-    boxShadow: '0 0 0 0 rgba(99, 102, 241, 0)',
+    boxShadow: "0 0 0 0 rgba(99, 102, 241, 0)",
   },
 };
 
@@ -56,24 +56,25 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
   const { user } = useAuth();
   const plan = normalizePlanId(user?.plan);
   const ADMIN_EMAIL = "maximeleparc3@gmail.com";
-  const isAdmin = user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+  const isAdmin =
+    user?.is_admin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
   const voiceEnabled = isAdmin || PLAN_LIMITS[plan].voiceChatEnabled;
 
   // Determine visual state
   const state: VoiceState = disabled
-    ? 'idle'
+    ? "idle"
     : !voiceEnabled
-      ? 'locked'
-      : 'idle';
+      ? "locked"
+      : "idle";
 
   const handleClick = useCallback(() => {
-    if (state === 'locked' || disabled) return;
+    if (state === "locked" || disabled) return;
     onOpen();
   }, [state, disabled, onOpen]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
+      if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
         handleClick();
       }
@@ -81,7 +82,7 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
     [handleClick],
   );
 
-  const isLocked = state === 'locked';
+  const isLocked = state === "locked";
 
   return (
     <motion.div
@@ -89,8 +90,8 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
       tabIndex={0}
       aria-label={
         isLocked
-          ? 'Chat vocal — Disponible à partir du plan Étudiant'
-          : 'Ouvrir le chat vocal'
+          ? "Chat vocal — Disponible à partir du plan Étudiant"
+          : "Ouvrir le chat vocal"
       }
       aria-disabled={isLocked || disabled}
       className={`
@@ -103,8 +104,8 @@ const VoiceButton: React.FC<VoiceButtonProps> = ({
         focus-visible:ring-2 focus-visible:ring-indigo-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0f]
         ${
           isLocked
-            ? 'bg-white/5 border border-white/10 cursor-not-allowed opacity-60'
-            : 'bg-white/5 border border-white/10 hover:bg-white/[0.08]'
+            ? "bg-white/5 border border-white/10 cursor-not-allowed opacity-60"
+            : "bg-white/5 border border-white/10 hover:bg-white/[0.08]"
         }
         group
       `}

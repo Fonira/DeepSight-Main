@@ -21,8 +21,12 @@ import {
   HardDrive,
   Cpu,
 } from "lucide-react";
-import { statusApi, type DeepSystemStatus, type ServiceStatus } from "../services/api";
-import { SEO } from '../components/SEO';
+import {
+  statusApi,
+  type DeepSystemStatus,
+  type ServiceStatus,
+} from "../services/api";
+import { SEO } from "../components/SEO";
 
 // ───────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -30,7 +34,10 @@ import { SEO } from '../components/SEO';
 
 const POLL_INTERVAL = 60; // seconds
 
-const SERVICE_META: Record<string, { icon: typeof Database; label: string; description: string }> = {
+const SERVICE_META: Record<
+  string,
+  { icon: typeof Database; label: string; description: string }
+> = {
   database: {
     icon: Database,
     label: "Base de données",
@@ -88,8 +95,10 @@ function StatusDot({ status }: { status: string }) {
 }
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === "operational") return <CheckCircle2 size={18} style={{ color: statusColor(status) }} />;
-  if (status === "degraded") return <AlertTriangle size={18} style={{ color: statusColor(status) }} />;
+  if (status === "operational")
+    return <CheckCircle2 size={18} style={{ color: statusColor(status) }} />;
+  if (status === "degraded")
+    return <AlertTriangle size={18} style={{ color: statusColor(status) }} />;
   return <XCircle size={18} style={{ color: statusColor(status) }} />;
 }
 
@@ -169,7 +178,11 @@ export default function StatusPage() {
     return (
       <div className="min-h-screen bg-[var(--bg-primary,#0a0a0f)] flex flex-col items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <XCircle size={48} className="mx-auto mb-4" style={{ color: "#ef4444" }} />
+          <XCircle
+            size={48}
+            className="mx-auto mb-4"
+            style={{ color: "#ef4444" }}
+          />
           <h1 className="text-2xl font-bold text-[var(--text-primary,#f5f5f7)] mb-2">
             {error}
           </h1>
@@ -177,7 +190,10 @@ export default function StatusPage() {
             L'API DeepSight ne r&eacute;pond pas.
           </p>
           <button
-            onClick={() => { setLoading(true); fetchStatus(); }}
+            onClick={() => {
+              setLoading(true);
+              fetchStatus();
+            }}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-lg
                        bg-[var(--accent-primary,#6366f1)] text-white font-medium
                        hover:opacity-90 transition-opacity"
@@ -200,7 +216,10 @@ export default function StatusPage() {
             <div className="h-24 rounded-xl bg-[var(--bg-tertiary,#1a1a24)]" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="h-36 rounded-xl bg-[var(--bg-tertiary,#1a1a24)]" />
+                <div
+                  key={i}
+                  className="h-36 rounded-xl bg-[var(--bg-tertiary,#1a1a24)]"
+                />
               ))}
             </div>
           </div>
@@ -218,7 +237,11 @@ export default function StatusPage() {
         : "Incident en cours";
 
   const overallEmoji =
-    data.status === "operational" ? "\uD83D\uDFE2" : data.status === "degraded" ? "\uD83D\uDFE1" : "\uD83D\uDD34";
+    data.status === "operational"
+      ? "\uD83D\uDFE2"
+      : data.status === "degraded"
+        ? "\uD83D\uDFE1"
+        : "\uD83D\uDD34";
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary,#0a0a0f)] text-[var(--text-primary,#f5f5f7)]">
@@ -232,7 +255,10 @@ export default function StatusPage() {
       <header className="border-b border-[var(--border-subtle,#ffffff0d)] bg-[var(--bg-secondary,#111118)]">
         <div className="max-w-3xl mx-auto px-4 py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Activity size={24} style={{ color: "var(--accent-primary, #6366f1)" }} />
+            <Activity
+              size={24}
+              style={{ color: "var(--accent-primary, #6366f1)" }}
+            />
             <h1 className="text-xl font-bold">Statut DeepSight</h1>
           </div>
           <div className="flex items-center gap-3">
@@ -244,7 +270,10 @@ export default function StatusPage() {
                          text-[var(--text-secondary,#a1a1b5)] hover:text-white
                          transition-colors disabled:opacity-50"
             >
-              <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+              <RefreshCw
+                size={14}
+                className={refreshing ? "animate-spin" : ""}
+              />
               Rafra&icirc;chir
             </button>
             <span className="text-xs text-[var(--text-tertiary,#6b6b80)] tabular-nums">
@@ -268,7 +297,10 @@ export default function StatusPage() {
         >
           <div className="flex items-center gap-3">
             <StatusIcon status={data.status} />
-            <span className="text-lg font-semibold" style={{ color: overallColor }}>
+            <span
+              className="text-lg font-semibold"
+              style={{ color: overallColor }}
+            >
               {overallEmoji} {overallLabel}
             </span>
           </div>
@@ -286,8 +318,8 @@ export default function StatusPage() {
             {data.memory && data.memory.rss_mb && (
               <span className="inline-flex items-center gap-1.5">
                 <Cpu size={14} />
-                M&eacute;moire : {data.memory.rss_mb} MB / {data.memory.limit_mb} MB
-                ({data.memory.usage_percent}%)
+                M&eacute;moire : {data.memory.rss_mb} MB /{" "}
+                {data.memory.limit_mb} MB ({data.memory.usage_percent}%)
               </span>
             )}
           </div>
@@ -318,7 +350,10 @@ export default function StatusPage() {
                     className="flex items-center justify-center w-10 h-10 rounded-lg"
                     style={{ backgroundColor: `${statusColor(svc.status)}15` }}
                   >
-                    <Icon size={20} style={{ color: statusColor(svc.status) }} />
+                    <Icon
+                      size={20}
+                      style={{ color: statusColor(svc.status) }}
+                    />
                   </div>
                   <StatusDot status={svc.status} />
                 </div>
